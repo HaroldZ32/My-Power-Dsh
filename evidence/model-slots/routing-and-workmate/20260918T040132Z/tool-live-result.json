@@ -1,0 +1,154 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-t10-live-n9kmpt",
+  "steps": {
+    "l1ToolCallStaged": {
+      "ok": true,
+      "problems": [],
+      "toolCalled": true,
+      "toolSucceeded": true,
+      "callArguments": [
+        {
+          "callId": "call_00_CrvsYQtjLtd9pQfjEWvp1160",
+          "arguments": "{\"name\": \"t10-live\", \"profile\": \"mpd\", \"approval\": \"required\"}"
+        }
+      ],
+      "resultText": "Team \"t10-live\" plan created under /tmp/mpd-t10-live-n9kmpt/l1-tool-staged/ws/.mpd/team/t10-live. It is staged: finish the roster and DAG, then wait for the user to edit and approve it. Do not start or approve it yourself.",
+      "teamId": "t10-live",
+      "phase": "staged",
+      "routes": {
+        "Architect": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Researcher": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Planner": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Explorer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Plan Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Vision Analyst": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash-vision-exp",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Lead": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Deep Worker": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Senior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Junior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        }
+      },
+      "exit": 0,
+      "sessionRecords": 25,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t10-live-n9kmpt-l1-tool-staged-ws--"
+        ]
+      }
+    },
+    "l2ToolCallBrokenSlot": {
+      "ok": true,
+      "toolCalled": true,
+      "toolFailed": true,
+      "errorText": "Error: member \"Architect\" route from teamModels.slot1 failed: unknown member model \"no-such-model-xyz\" for provider \"deepseek-official\" (available: deepseek-flash, deepseek-v4-flash, deepseek-v4-pro, deepseek-v4-flash-vision-exp) (fix teamModels.slot1.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)",
+      "namesSlot1Member": true,
+      "namesSlot": true,
+      "teamIds": [],
+      "exit": 0,
+      "sessionRecords": 25,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t10-live-n9kmpt-l2-tool-broken-slot-ws--"
+        ]
+      },
+      "problems": []
+    },
+    "realHomeUntouched": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    },
+    "credentials": {
+      "ok": true,
+      "descriptor": {
+        "provider": "deepseek",
+        "keyName": "DEEPSEEK_API_KEY",
+        "present": true,
+        "source": "shell-profile",
+        "file": "/root/.bashrc",
+        "line": 129,
+        "length": 35,
+        "reason": null,
+        "tried": [
+          {
+            "tier": "environment",
+            "detail": "DEEPSEEK_API_KEY",
+            "outcome": "unset"
+          },
+          {
+            "tier": "credentials-file",
+            "detail": "/root/.dsh/.credentials.yaml",
+            "outcome": "present but carries no DEEPSEEK_API_KEY entry"
+          },
+          {
+            "tier": "shell-profile",
+            "detail": "/root/.bashrc:129",
+            "outcome": "hit"
+          }
+        ]
+      },
+      "storedInSandboxOnly": true
+    }
+  }
+}

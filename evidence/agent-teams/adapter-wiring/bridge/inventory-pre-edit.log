@@ -1,0 +1,351 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+187 | }
+188 | 
+189 | test("AC15: no adopted server file reaches a harness seam on a receiver the facade cannot cover", () => {
+190 |     const { findings } = inventory()
+191 |     const report = findings.map((hit) => `${hit.file}:${hit.line} ${hit.seam} on "${hit.receiver}" — ${hit.text}`).join("\n")
+192 |     expect(findings, `unrouted seam access(es):\n${report}`).toEqual([])
+                                                                   ^
+error: unrouted seam access(es):
+tools.js:311 subagents-runtime on "ctx" — const runtime = ctx.subagents;
+tools.js:372 agent.turn-cancel on "captain" — input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+tools.js:379 agent.turn-cancel on "captain" — input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+tools.js:615 agent.turn-cancel on "captain" — captain.cancel({ kind: 'user' }, { keepInbox: true });
+tools.js:617 agent.turn-start on "captain" — captain.followup(createUserMessage({
+tools.js:666 agent.turn-cancel on "captain" — captain.cancel({ kind: 'user' }, { keepInbox: true });
+members.js:634 subagents-runtime on "ctx" — await queueMemberPrompt(ctx.subagents, captain, brandedSessionId(childId), [{ type: 'text', text }], signal);
+capabilities.js:93 scoped-ctx.seam on "agent" — revoke = agent.ctx.tools.restrict({
+capabilities.js:96 scoped-ctx.seam on "agent" — releaseLifetime = agent.ctx.effect(() => state.dispose, 'agent-teams: capability lifetime');
+command.js:222 agent.turn-start on "agent" — invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${AGENT_TEAMS_COMMAND}${invocation.rawIn
+command.js:241 agent.turn-start on "agent" — invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${commandName}${invocation.rawInput}` }]
+harness-compat.js:67 subagents-runtime on "ctx" — const runtime = ctx.subagents;
+harness-compat.js:93 scoped-ctx.handout on "agent" — teardown = setup(agent.ctx, agent);
+harness-compat.js:101 scoped-ctx.seam on "agent" — teardown = agent.ctx.on('agent/request', () => { throw failure; });
+harness-compat.js:117 scoped-ctx.seam on "agent" — agent.ctx.effect(() => dispose, 'agent-teams: child compatibility setup');
+harness-compat.js:163 subagents-runtime on "ctx" — const runtime = ctx.subagents;
+harness-compat.js:193 agents-lookup on "" — const sender = ctx.get?.('agents')?.get(request?.parentSessionId);
+
+- []
++ [
++   {
++     "file": "tools.js",
++     "line": 311,
++     "receiver": "ctx",
++     "seam": "subagents-runtime",
++     "text": "const runtime = ctx.subagents;",
++   },
++   {
++     "file": "tools.js",
++     "line": 372,
++     "receiver": "captain",
++     "seam": "agent.turn-cancel",
++     "text": "input.captain.cancel({ kind: 'user' }, { keepInbox: true });",
++   },
++   {
++     "file": "tools.js",
++     "line": 379,
++     "receiver": "captain",
++     "seam": "agent.turn-cancel",
++     "text": "input.captain.cancel({ kind: 'user' }, { keepInbox: true });",
++   },
++   {
++     "file": "tools.js",
++     "line": 615,
++     "receiver": "captain",
++     "seam": "agent.turn-cancel",
++     "text": "captain.cancel({ kind: 'user' }, { keepInbox: true });",
++   },
++   {
++     "file": "tools.js",
++     "line": 617,
++     "receiver": "captain",
++     "seam": "agent.turn-start",
++     "text": "captain.followup(createUserMessage({",
++   },
++   {
++     "file": "tools.js",
++     "line": 666,
++     "receiver": "captain",
++     "seam": "agent.turn-cancel",
++     "text": "captain.cancel({ kind: 'user' }, { keepInbox: true });",
++   },
++   {
++     "file": "members.js",
++     "line": 634,
++     "receiver": "ctx",
++     "seam": "subagents-runtime",
++     "text": "await queueMemberPrompt(ctx.subagents, captain, brandedSessionId(childId), [{ type: 'text', text }], signal);",
++   },
++   {
++     "file": "capabilities.js",
++     "line": 93,
++     "receiver": "agent",
++     "seam": "scoped-ctx.seam",
++     "text": "revoke = agent.ctx.tools.restrict({",
++   },
++   {
++     "file": "capabilities.js",
++     "line": 96,
++     "receiver": "agent",
++     "seam": "scoped-ctx.seam",
++     "text": "releaseLifetime = agent.ctx.effect(() => state.dispose, 'agent-teams: capability lifetime');",
++   },
++   {
++     "file": "command.js",
++     "line": 222,
++     "receiver": "agent",
++     "seam": "agent.turn-start",
++     "text": "invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${AGENT_TEAMS_COMMAND}${invocation.rawIn",
++   },
++   {
++     "file": "command.js",
++     "line": 241,
++     "receiver": "agent",
++     "seam": "agent.turn-start",
++     "text": "invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${commandName}${invocation.rawInput}` }]",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 67,
++     "receiver": "ctx",
++     "seam": "subagents-runtime",
++     "text": "const runtime = ctx.subagents;",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 93,
++     "receiver": "agent",
++     "seam": "scoped-ctx.handout",
++     "text": "teardown = setup(agent.ctx, agent);",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 101,
++     "receiver": "agent",
++     "seam": "scoped-ctx.seam",
++     "text": "teardown = agent.ctx.on('agent/request', () => { throw failure; });",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 117,
++     "receiver": "agent",
++     "seam": "scoped-ctx.seam",
++     "text": "agent.ctx.effect(() => dispose, 'agent-teams: child compatibility setup');",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 163,
++     "receiver": "ctx",
++     "seam": "subagents-runtime",
++     "text": "const runtime = ctx.subagents;",
++   },
++   {
++     "file": "harness-compat.js",
++     "line": 193,
++     "receiver": "",
++     "seam": "agents-lookup",
++     "text": "const sender = ctx.get?.('agents')?.get(request?.parentSessionId);",
++   },
++ ]
+
+- Expected  - 1
++ Received  + 121
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:192:62)
+(fail) AC15: no adopted server file reaches a harness seam on a receiver the facade cannot cover [84.60ms]
+(pass) AC15: the host-handed child scope is a COUNTED residual, never an unseen path [78.86ms]
+211 |     const bridge = readFileSync(join(libDir, BRIDGE_FILE), "utf8")
+212 |     for (const expression of rawFallbacks) expect(bridge).toContain(expression)
+213 |     for (const file of SERVER_FILES) {
+214 |         const code = stripComments(readFileSync(join(libDir, file), "utf8"))
+215 |         for (const expression of rawFallbacks) {
+216 |             expect(code.includes(expression), `${file} carries the raw fallback "${expression}" outside the bridge`).toBe(false)
+                                                                                                                           ^
+error: command.js carries the raw fallback "agent.followup(" outside the bridge
+
+Expected: false
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:216:118)
+(fail) AC15: the bridge is the ONLY server module holding a raw-context fallback expression [12.02ms]
+234 |         "tools.js": ["mpd-delta adapter-turn-submit", "mpd-delta adapter-cancel-halt", "mpd-delta adapter-cancel-feedback",
+235 |             "mpd-delta adapter-cancel-discard", "mpd-delta adapter-subagent-runtime-halt-drain"],
+236 |     }
+237 |     for (const file of [...SERVER_FILES, BRIDGE_FILE]) {
+238 |         const { ids } = regionSpans(readFileSync(join(libDir, file), "utf8"))
+239 |         for (const id of ids) expect(registered.has(`${file}::${id}`), `${file}: region "${id}" is not in lib/mpd-deltas.js`).toBe(true)
+                                                                                                                                    ^
+error: mpd-adapter-ctx.js: region "mpd-delta adapter-ctx-bridge" is not in lib/mpd-deltas.js
+
+Expected: true
+Received: false
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:239:127)
+(fail) AC15: every region a server file carries is registered, and the six bridged files carry their frozen ids [4.22ms]
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+ 1 pass
+ 3 fail
+ 1032 expect() calls
+Ran 4 tests across 81 files. [7.71s]

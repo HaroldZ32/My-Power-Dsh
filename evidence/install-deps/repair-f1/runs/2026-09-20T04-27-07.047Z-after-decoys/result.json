@@ -1,0 +1,130 @@
+{
+  "case": "install-deps/repair-f1/ledger",
+  "label": "after-decoys",
+  "ok": true,
+  "measuredAtUtc": "2026-09-20T04:27:36.920Z",
+  "guardTextSha256": "75497450c77626bd4b0d7dfc4dc120f6a5e435ec6c9bca30c29a2de4db7f0e82",
+  "compositions": [
+    {
+      "name": "decoy-comment-layer",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "t5-decoy-comment"
+      ],
+      "decoy": "t5-decoy-comment",
+      "expectDecision": "ENABLED",
+      "expectServed": true,
+      "isDecoy": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3441 --no-open",
+        "logPath": "/tmp/mpd-f1-decoy-comment-layer-jVURpl/web.log",
+        "port": 3441,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+        ],
+        "guardDecision": "ENABLED",
+        "fatalSignatures": [],
+        "evidenceLog": "decoy-comment-layer.boot.log"
+      },
+      "served": true,
+      "links": [
+        {
+          "name": "t5-decoy-comment",
+          "path": "/tmp/mpd-f1-decoy-comment-layer-jVURpl/dsh/profiles/w/node_modules/t5-decoy-comment",
+          "provenance": "copied from evidence/install-deps/verification/20260920T034521Z/fixtures/t5-decoy-comment"
+        }
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "decoy-disabled-row",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "t5-decoy-disabled"
+      ],
+      "decoy": "t5-decoy-disabled",
+      "expectDecision": "ENABLED",
+      "expectServed": true,
+      "isDecoy": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "t5-decoy-disabled-row",
+            "disabledRaw": "true",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3442 --no-open",
+        "logPath": "/tmp/mpd-f1-decoy-disabled-row-aYWoXZ/web.log",
+        "port": 3442,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+        ],
+        "guardDecision": "ENABLED",
+        "fatalSignatures": [],
+        "evidenceLog": "decoy-disabled-row.boot.log"
+      },
+      "served": true,
+      "links": [
+        {
+          "name": "t5-decoy-disabled",
+          "path": "/tmp/mpd-f1-decoy-disabled-row-aYWoXZ/dsh/profiles/w/node_modules/t5-decoy-disabled",
+          "provenance": "copied from evidence/install-deps/verification/20260920T034521Z/fixtures/t5-decoy-disabled"
+        }
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    }
+  ]
+}

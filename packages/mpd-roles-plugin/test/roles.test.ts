@@ -261,7 +261,7 @@ test("roles and workmate read-only deny lists are exactly equal (drift guard)", 
 // lazy `ctx.get("mpdExtensions")` seam the mounted tree uses. A hand-made service stub
 // would prove only the stub, so only the broken/absent cases use one.
 
-const EXT_PERSONA = "# Verilog Reviewer\nYou review SystemVerilog RTL read-only. Never edit any file."
+const EXT_PERSONA = "# Code Reviewer\nYou review a change read-only. Never edit any file."
 
 /** A stub ctx serving the cordis service map lazily — exactly the seam both plugins use. */
 function serviceCtx() {
@@ -287,22 +287,22 @@ function serviceCtx() {
 }
 
 /** One extension root carrying the persona asset, plus a descriptor that references it. */
-function extensionFixture(id = "rtl-verilog", roleName = "Verilog Reviewer") {
+function extensionFixture(id = "authoring-flows", roleName = "Code Reviewer") {
   const root = mkdtempSync(join(tmpdir(), "mpd-roles-ext-"))
   mkdirSync(join(root, "personas"), { recursive: true })
-  writeFileSync(join(root, "personas", "verilog-reviewer.md"), EXT_PERSONA)
+  writeFileSync(join(root, "personas", "code-reviewer.md"), EXT_PERSONA)
   return {
     root,
     descriptor: {
       apiVersion: 1,
       id,
-      description: "RTL authoring flow",
+      description: "authoring flow",
       contributes: {
         roles: [{
           name: roleName,
-          description: "Reviews SystemVerilog RTL without editing it",
+          description: "Reviews a change without editing it",
           readonly: true,
-          persona: "personas/verilog-reviewer.md",
+          persona: "personas/code-reviewer.md",
           provider: "deepseek-official",
           model: "deepseek-v4-flash",
         }],
@@ -348,42 +348,42 @@ test("extension roles: a real mpd-ext registration joins the roster with its own
 
     const listed = await list.execute({}, stack.exec)
     expect(listed.count).toBe(baseline + 1)
-    const contributed = listed.roles.find((r: any) => r.name === "Verilog Reviewer")
-    expect(contributed.extension).toBe("rtl-verilog")
+    const contributed = listed.roles.find((r: any) => r.name === "Code Reviewer")
+    expect(contributed.extension).toBe("authoring-flows")
     expect(contributed.readonly).toBe(true)
     expect(contributed.model).toBe("deepseek-v4-flash")
     expect(listed.refused).toEqual([])
     // The render names the owning extension and leaves the base lines untouched.
     const rendered = list.output.render({}, listed)[0].text
-    expect(rendered).toContain("Verilog Reviewer")
-    expect(rendered).toContain("extension:rtl-verilog")
+    expect(rendered).toContain("Code Reviewer")
+    expect(rendered).toContain("extension:authoring-flows")
     expect(rendered).toContain("- Architect [deepseek-v4-flash readonly] — ")
 
     // Spawn: addressed by the declared name in ANY spelling, labelled with that name, and
     // carrying the declared read-only discipline.
     const spawn = toolNamed(stack.tools, "mpd_role_spawn")
-    const spawned = await spawn.execute({ role: "verilog reviewer", task: "review the RTL" }, stack.exec)
-    expect(spawned.role).toBe("Verilog Reviewer")
-    expect(stack.spawned[0].label).toBe("Verilog Reviewer")
+    const spawned = await spawn.execute({ role: "code reviewer", task: "review the change" }, stack.exec)
+    expect(spawned.role).toBe("Code Reviewer")
+    expect(stack.spawned[0].label).toBe("Code Reviewer")
     expect(stack.spawned[0].toolFilter).toEqual({ deny: READONLY_DENY })
     expect(String(stack.spawned[0].persona)).toContain("Never edit any file")
 
     const persona = toolNamed(stack.tools, "mpd_role_persona")
-    const personaRes = await persona.execute({ role: "Verilog Reviewer" }, stack.exec)
-    expect(personaRes.role).toBe("Verilog Reviewer")
-    expect(personaRes.persona).toContain("SystemVerilog")
+    const personaRes = await persona.execute({ role: "Code Reviewer" }, stack.exec)
+    expect(personaRes.role).toBe("Code Reviewer")
+    expect(personaRes.persona).toContain("Code Reviewer")
     expect(personaRes.chars).toBe(personaRes.persona.length)
 
     // The mpdRoles service is the surface mpd_workmate_init and mpd_modelchain_resolve read.
     const service = stack.provided.mpdRoles
     expect(service.list().length).toBe(baseline + 1)
-    const byName = service.get("Verilog Reviewer")
-    expect(byName.id).toBe("ext-rtl-verilog-verilog-reviewer")
+    const byName = service.get("Code Reviewer")
+    expect(byName.id).toBe("ext-authoring-flows-code-reviewer")
     expect(byName.readonly).toBe(true)
-    expect(byName.persona).toContain("SystemVerilog")
+    expect(byName.persona).toContain("Code Reviewer")
     expect(byName.chain).toEqual([{ provider: "deepseek-official", model: "deepseek-v4-flash" }])
     // …and the namespaced id resolves through the same service.
-    expect(service.get("ext-rtl-verilog-verilog-reviewer").name).toBe("Verilog Reviewer")
+    expect(service.get("ext-authoring-flows-code-reviewer").name).toBe("Code Reviewer")
     expect(service.get("Deep Worker").id).toBe("hephaestus")
   } finally {
     sandbox.restore()
@@ -423,8 +423,8 @@ test("extension roles: a name colliding with a base role or another extension is
     applyExtensions(stack.ctx, {})
     apply(stack.ctx, {})
     const first = extensionFixture("ext-a", "Architect") // collides with the base roster
-    const second = extensionFixture("ext-b", "Verilog Reviewer")
-    const third = extensionFixture("ext-c", "verilog reviewer") // collides with ext-b
+    const second = extensionFixture("ext-b", "Code Reviewer")
+    const third = extensionFixture("ext-c", "code reviewer") // collides with ext-b
     const list = toolNamed(stack.tools, "mpd_roles_list")
     const baseline = (await list.execute({}, stack.exec)).count
     expect(stack.services.mpdExtensions.register(first.descriptor, { root: first.root }).ok).toBe(true)
@@ -437,7 +437,7 @@ test("extension roles: a name colliding with a base role or another extension is
     expect(listed.count).toBe(baseline + 1)
     expect(listed.roles.find((r: any) => r.name === "Architect").extension).toBe(null)
     const refusedNames = listed.refused.map((r: any) => r.name).sort()
-    expect(refusedNames).toEqual(["Architect", "verilog reviewer"])
+    expect(refusedNames).toEqual(["Architect", "code reviewer"])
     const crossExtension = listed.refused.find((r: any) => r.extension === "ext-c")
     expect(crossExtension.reason).toContain('extension "ext-b"')
     for (const refused of listed.refused) {
@@ -456,7 +456,7 @@ test("extension roles: a name colliding with a base role or another extension is
     expect(registryIds).toEqual(expect.arrayContaining(["ext-a", "ext-b", "ext-c"]))
     // …and the other extension roles still spawn.
     const spawn = toolNamed(stack.tools, "mpd_role_spawn")
-    expect((await spawn.execute({ role: "Verilog Reviewer", task: "review" }, stack.exec)).role).toBe("Verilog Reviewer")
+    expect((await spawn.execute({ role: "Code Reviewer", task: "review" }, stack.exec)).role).toBe("Code Reviewer")
     const unknown = await spawn.execute({ role: "Architect", task: "review" }, stack.exec)
     expect(unknown.role).toBe("Architect") // the BASE Architect still spawns
     expect(stack.spawned[1].label).toBe("Architect")
@@ -476,13 +476,15 @@ test("extension roles: usable as a workmate BASE template (real mpd_workmate_ini
     expect(stack.services.mpdExtensions.register(descriptor, { root }).ok).toBe(true)
 
     const init = toolNamed(stack.tools, "mpd_workmate_init")
-    const created = await init.execute({ base: "Verilog Reviewer", name: "verilog-reviewer-1", note: "extension base" }, stack.exec)
-    expect(created.baseName).toBe("Verilog Reviewer")
-    expect(created.baseId).toBe("ext-rtl-verilog-verilog-reviewer")
+    const created = await init.execute({ base: "Code Reviewer", name: "code-reviewer-1", note: "extension base" }, stack.exec)
+    expect(created.baseName).toBe("Code Reviewer")
+    // C3 (workmate alias removal): the roster id is internal provenance exposed by NO tool
+    // output — only the stored record below may carry it.
+    expect(created.baseId).toBeUndefined()
     expect(created.readonly).toBe(true)
-    const dir = join(sandbox.home, ".mpd", "workmate", "verilog-reviewer-1")
-    expect(readFileSync(join(dir, "persona.md"), "utf8")).toContain("SystemVerilog")
-    expect(JSON.parse(readFileSync(join(dir, "meta.json"), "utf8")).baseId).toBe("ext-rtl-verilog-verilog-reviewer")
+    const dir = join(sandbox.home, ".mpd", "workmate", "code-reviewer-1")
+    expect(readFileSync(join(dir, "persona.md"), "utf8")).toContain("Code Reviewer")
+    expect(JSON.parse(readFileSync(join(dir, "meta.json"), "utf8")).baseId).toBe("ext-authoring-flows-code-reviewer")
   } finally {
     sandbox.restore()
   }
@@ -532,12 +534,12 @@ test("extension roles do NOT enter the agent-teams `mpd` profile member list (do
     const { root, descriptor } = extensionFixture()
     stack.services.mpdExtensions.register(descriptor, { root })
     const listed = await toolNamed(stack.tools, "mpd_roles_list").execute({}, stack.exec)
-    expect(listed.roles.map((r: any) => r.name)).toContain("Verilog Reviewer")
+    expect(listed.roles.map((r: any) => r.name)).toContain("Code Reviewer")
     // The adopted agent-teams `mpd` roster profile is static patch configuration: this plugin
     // publishes no member template, so an extension role is spawnable/workmate-able but can
     // never be staged as a teammate. Pinned against the bundle patch itself.
     const patch = readFileSync(join(pkgRoot(), "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-    expect(patch).not.toContain("Verilog Reviewer")
+    expect(patch).not.toContain("Code Reviewer")
   } finally {
     sandbox.restore()
   }

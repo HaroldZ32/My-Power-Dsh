@@ -1,0 +1,29 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing ALL adopted files from the same state is byte-identical [447.18ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [270.79ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [167.23ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [5053.68ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.80ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.22ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [6.00ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [32.80ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [39.27ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [1183.24ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.83ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [4.15ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [502.27ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [8.41ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [477.67ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [199.05ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.92ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [210.02ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [690.91ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [24.27ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [43.75ms]
+
+ 21 pass
+ 0 fail
+ 1038 expect() calls
+Ran 21 tests across 1 file. [9.42s]

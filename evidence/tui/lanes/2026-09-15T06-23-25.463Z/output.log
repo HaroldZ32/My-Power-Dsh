@@ -1,0 +1,5 @@
+seeded workmate library at .mpd/recon/qa/home/.mpd/workmate/qa-tui-probe
+harness command records THIS run: [{"sessionId":"60f01b41-d419-4a4a-8880-5c18144ce8d7","commandId":"cmd-3cc9949c-1","kind":"error","text":"mpd: unknown action \"backspacebackspacebackspacebackspace/mpd\" — usage: /mpd [board|workmates|status]"},{"sessionId":"60f01b41-d419-4a4a-8880-5c18144ce8d7","commandId":"cmd-3cc9949c-2","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=MISSING tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+negative control ok=false (must be false)
+board-opened events in the sandbox store=7 scene-reported transcript rows=0

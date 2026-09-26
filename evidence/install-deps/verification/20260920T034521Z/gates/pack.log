@@ -1,0 +1,4 @@
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] modes normalized: 1195 files (644: 1183, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+pack exit=0

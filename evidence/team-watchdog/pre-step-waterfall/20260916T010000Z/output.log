@@ -1,0 +1,45 @@
+### empty
+{
+  "tag": "empty",
+  "copyState": false,
+  "workspace": "/tmp/mxw-empty-DvXURQ/ws",
+  "bootLine": "dsh web: http://127.0.0.1:3251/?token=<redacted>",
+  "create": {
+    "status": 200,
+    "ok": true,
+    "agentPreset": "mpd"
+  },
+  "prompt": {
+    "status": 200,
+    "accepted": true
+  },
+  "turnEnd": [
+    "{\"type\":\"turn/end\",\"seq\":17,\"time\":1789521424372,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"llm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\",\"code\":\"MISSING_CREDENTIAL\"}}}}"
+  ],
+  "assistantText": [],
+  "crashSignatures": [],
+  "watchdogBootLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0"
+}
+
+### copied
+{
+  "tag": "copied",
+  "copyState": true,
+  "workspace": "/tmp/mxw-copied-LWiLMD/ws",
+  "bootLine": "dsh web: http://127.0.0.1:3252/?token=<redacted>",
+  "create": {
+    "status": 200,
+    "ok": true,
+    "agentPreset": "mpd"
+  },
+  "prompt": {
+    "status": 200,
+    "accepted": true
+  },
+  "turnEnd": [
+    "{\"type\":\"turn/end\",\"seq\":18,\"time\":1789521441616,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"llm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\",\"code\":\"MISSING_CREDENTIAL\"}}}}"
+  ],
+  "assistantText": [],
+  "crashSignatures": [],
+  "watchdogBootLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0"
+}

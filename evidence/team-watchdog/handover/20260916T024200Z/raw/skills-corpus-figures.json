@@ -1,0 +1,13 @@
+{
+ "depsCheck": {
+  "fileCount": 635,
+  "matchesLock": true
+ },
+ "skills": {
+  "fileCount": 317,
+  "treeSha": "9e643d07192fe8bd9cc2bc5e252bb5c031a2444fa958cd10a19c5043e8b6be89",
+  "previousLockTreeSha": "5aec4b643065891082c8c6b072f85e30488585a42b25a2184dead30221c40ce3",
+  "countUnchanged": true,
+  "prefixMatchesLane": true
+ }
+}

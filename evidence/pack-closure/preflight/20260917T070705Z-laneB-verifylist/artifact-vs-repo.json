@@ -1,0 +1,48 @@
+{
+  "captured_at": "2026-09-17T07:07:21.879Z",
+  "trees": {
+    "skills": {
+      "same": 323,
+      "diff": 0,
+      "extra": 0
+    },
+    "presets": {
+      "same": 2,
+      "diff": 0,
+      "extra": 0
+    },
+    "docs": {
+      "same": 37,
+      "diff": 0,
+      "extra": 0
+    },
+    "agent-references": {
+      "same": 3,
+      "diff": 0,
+      "extra": 0
+    },
+    "templates": {
+      "same": 7,
+      "diff": 0,
+      "extra": 0
+    },
+    "scripts": {
+      "same": 2,
+      "diff": 0,
+      "extra": 0
+    },
+    "extensions": {
+      "same": 7,
+      "diff": 0,
+      "extra": 0
+    }
+  },
+  "pkg": {
+    "same": 26,
+    "diff": [],
+    "missing": [
+      "packages/mpd-qa-roles-probe/dist/index.js"
+    ],
+    "compared": 27
+  }
+}

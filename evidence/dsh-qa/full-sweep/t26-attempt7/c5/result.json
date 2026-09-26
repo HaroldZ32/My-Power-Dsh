@@ -1,0 +1,77 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T04:38:14.086Z",
+  "finishedAt": "2026-09-17T04:48:18.138Z",
+  "durationMs": 604051,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "session-start-team",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 472514,
+      "command": "bun skills/dsh-qa/scripts/session-start-team.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/session-start-team.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-17T04-38-14.171Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c5/lanes/session-start-team.log",
+      "outputTail": [
+        "  patchRow: {\"ok\":true,\"hasRow\":true}",
+        "  compose: {\"ok\":true,\"exit\":0}",
+        "  simpleSide: [{\"prompt\":\"Reply with exactly: hello-ok\",\"exited\":0,\"teams\":0,\"members\":0,\"spawnedMembers\":0,\"notice\":false,\"ok\":true},{\"prompt\":\"What does the git-master skill do? Answer in one sentence.\",\"exited\":0,\"teams\":0,\"members\":0,\"spawnedMembers\":0,\"notice\":false,\"ok\":true},{\"prompt\":\"Rename the variable `foo` to `bar` in src/util.ts and run its test.\",\"exited\":0,\"teams\":0,\"members\":0,\"spawnedMembers\":0",
+        "  complexSide: [{\"prompt\":\"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.\",\"exited\":0,\"teams\":1,\"staged\":\"staged\",\"profile\":\"mpd\",\"members\":11,\"spawnedMembers\":0,\"notice\":true,\"ok\":true},{\"prompt\":\"team: fix the flaky test\",\"exited\":0,\"teams\":0,\"members\":0,\"spawnedMembers\":0,\"notice\":true,\"ok\":false},{\"prompt\":\"1. Read the patch file\\n2. Audit the gates\\n3. Im",
+        "  negativeControl: {\"ok\":true,\"teams\":0,\"notice\":false,\"disarmed\":true}",
+        "  twoSided: {\"ok\":false,\"simpleTeams\":[0,0,0],\"simpleNotices\":[false,false,false],\"complexTeams\":[1,0,0],\"complexNotices\":[true,true,true]}"
+      ],
+      "suite": "(only)"
+    },
+    {
+      "case": "workmate-team-member",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 131528,
+      "command": "bun skills/dsh-qa/scripts/workmate-team-member.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/workmate-team-member.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-f/workmate-team-member/2026-09-17T04-46-06.677Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c5/lanes/workmate-team-member.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

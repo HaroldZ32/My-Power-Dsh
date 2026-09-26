@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # P0–P3 review report (2026-08-26)
 
 Review target: mpd-dsh repo commits 80e5260..4d37934 (P0–P3 + review fixes)
@@ -73,4 +74,4 @@ i.e. the strongest proof achievable in the current environment; once environment
 
 1. Do F6/F7 first (build dependency discovery + self-developed pluginized path resolution), then write the 3 DeepSeek presets;
 2. Preset QA needs a self-developed "preset probe plugin" (agentPresets.list()/resolve() assertions + isolated headless composition);
-3. Golden-task set should include 1 Verilog RTL sample (ast-grep's LANGUAGES doesn't have verilog yet — in the golden run also verify taxonomy, or switch to C/TS samples).
+3. Golden-task set should include 1 non-JS/TS language sample (ast-grep's LANGUAGES does not cover every language yet — in the golden run also verify taxonomy, or switch to C/TS samples).

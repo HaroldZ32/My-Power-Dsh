@@ -1,0 +1,277 @@
+{
+  "id": "A2-aggregate-first",
+  "plane": "web",
+  "purpose": "an aggregate that also mounts the sidebar is installed FIRST: still exactly one mount, healthy boot.",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@linxin666/dsh-web-all",
+    "@mpd-dsh/mpd"
+  ],
+  "profileName": "w",
+  "stage": false,
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 2,
+    "literalEnabledMax": 1,
+    "guard": "DISABLED",
+    "served": true,
+    "routeMounted": true
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=2 in [1,2] ids=[\"web-ui-better-sidebar\",\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=1 <= 1 [\"web-ui-better-sidebar\"]"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": true,
+      "detail": "guard={\"decision\":\"DISABLED\",\"reason\":\"bundle layer @linxin666/dsh-web-all already mounts it in its own patch\"} expected=DISABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": true,
+      "detail": "GET /sidebar/api -> 405 body=\"{\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"method-error\\\",\\\"message\\\":\\\"method not allowed\\\"}}\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": true,
+      "detail": "servedClientCarriesSidebar=true module={\"status\":404,\"bytes\":0,\"prefix\":\"\"}"
+    },
+    {
+      "name": "load.oneSidebarMount",
+      "ok": true,
+      "detail": "exactly-once / expected-absent verdict"
+    }
+  ],
+  "failedChecks": [],
+  "findingArm": false,
+  "findingIf": null,
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": null,
+  "nodeModulesAfterBoot": [
+    "@antfu",
+    "@braintree",
+    "@chevrotain",
+    "@codemirror",
+    "@iconify",
+    "@lezer",
+    "@linxin666",
+    "@marijn",
+    "@mermaid-js",
+    "@mpd-dsh",
+    "@types",
+    "@upsetjs",
+    "@xterm",
+    "asn1",
+    "bcrypt-pbkdf",
+    "cloudflared",
+    "clsx",
+    "cose-base",
+    "cosmokit",
+    "crelt",
+    "cytoscape",
+    "cytoscape-cose-bilkent",
+    "cytoscape-fcose",
+    "d3",
+    "d3-array",
+    "d3-axis",
+    "d3-brush",
+    "d3-chord",
+    "d3-color",
+    "d3-contour",
+    "d3-delaunay",
+    "d3-dispatch",
+    "d3-drag",
+    "d3-dsv",
+    "d3-ease",
+    "d3-fetch",
+    "d3-force",
+    "d3-format",
+    "d3-geo",
+    "d3-hierarchy",
+    "d3-interpolate",
+    "d3-path",
+    "d3-polygon",
+    "d3-quadtree",
+    "d3-random",
+    "d3-sankey",
+    "d3-scale",
+    "d3-scale-chromatic",
+    "d3-selection",
+    "d3-shape",
+    "d3-time",
+    "d3-time-format",
+    "d3-timer",
+    "d3-transition",
+    "d3-zoom",
+    "dagre-d3-es",
+    "dayjs",
+    "delaunator",
+    "dompurify",
+    "dsh-better-sidebar",
+    "es-toolkit",
+    "fastdom",
+    "hachure-fill",
+    "import-meta-resolve",
+    "internmap",
+    "jpeg-js",
+    "katex",
+    "khroma",
+    "layout-base",
+    "lightningcss",
+    "lodash-es",
+    "marked",
+    "mermaid",
+    "package-manager-detector",
+    "path-data-parser",
+    "points-on-curve",
+    "points-on-path",
+    "qrcode.react",
+    "react-icons",
+    "robust-predicates",
+    "roughjs",
+    "rw",
+    "rxjs",
+    "schemastery",
+    "ssh2",
+    "strictdom",
+    "style-mod",
+    "stylis",
+    "tinyexec",
+    "ts-dedent",
+    "tweetnacl",
+    "uuid",
+    "w3c-keyname"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "persisted": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log",
+    "tuiPane": null,
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.composed.txt"
+  },
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "web-ui-better-sidebar",
+        "disabledRaw": null,
+        "enabled": true
+      },
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "composedTextFile": null,
+    "rowCount": 2,
+    "rowIds": [
+      "web-ui-better-sidebar",
+      "mpd-better-sidebar"
+    ],
+    "literalEnabledCount": 1,
+    "literalEnabledIds": [
+      "web-ui-better-sidebar"
+    ],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config anywhere in this claim)",
+    "bootCommand": "dsh --profile w --port 3516 --no-open",
+    "logPath": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log",
+    "port": 3516,
+    "booted": true,
+    "index": {
+      "status": 200,
+      "bytes": 35092
+    },
+    "servedClientCarriesSidebar": true,
+    "servedClientUrlCount": 61,
+    "sidebarClientUrl": "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh-cordis-client-runner/client.js,@deepseek-ai/dsh-client-ui-theme/client.js,@deepseek-ai/dsh-client-locale/client.js,@deepseek-ai/dsh-client-ui-layout/client.js,@deepseek-ai/dsh-client-ui-renderer/client.js,@deepseek-ai/dsh-client-ui-session/client.js,@deepseek-ai/dsh-client-resources/client.js,@deepseek-ai/dsh-client-ui-sidebar/client.js,@deepseek-ai/dsh-client-ui-sidebar-right/client.js,@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client.js,@deepseek-ai/dsh-client-ui-sidebar-files/client.js,@deepseek-ai/dsh-client-ui-settings/client.js,@deepseek-ai/dsh-client-ui-settings-general/client.js,@deepseek-ai/dsh-client-ui-settings-models/client.js,@deepseek-ai/dsh-client-ui-settings-plugin-inventory/client.js,@deepseek-ai/dsh-client-ui-conversation/client.js,@deepseek-ai/dsh-client-ui-approval/client.js,@deepseek-ai/dsh-client-ui-chat/client.js,@deepseek-ai/dsh-client-ui-brand-official/client.js,@deepseek-ai/dsh-client-ui-attachment/client.js,@deepseek-ai/dsh-client-ui-tool/client.js,@deepseek-ai/dsh-client-ui-cordis/client.js,@deepseek-ai/dsh-client-ui-workflow-run/client.js,@deepseek-ai/dsh-client-ui-workspace/client.js,@deepseek-ai/dsh-client-ui-input-trigger/client.js,@deepseek-ai/dsh-client-ui-commands/client.js,@deepseek-ai/dsh-client-ui-skill/client.js,@deepseek-ai/dsh-client-ui-subagent/client.js,@deepseek-ai/dsh-client-ui-reference/client.js,@deepseek-ai/dsh-client-ui-jobs/client.js,@deepseek-ai/dsh-client-ui-goal/client.js,@deepseek-ai/dsh-client-ui-message-feedback/client.js,@deepseek-ai/dsh-client-ui-model-selection/client.js,@deepseek-ai/dsh-client-ui-permission-presets/client.js,@deepseek-ai/dsh-client-ui-agent-preset/client.js,@deepseek-ai/dsh-client-ui-settings-plugins/client.js,@deepseek-ai/dsh-client-ui-plan/client.js,@deepseek-ai/dsh-client-ui-user-questions/client.js,@deepseek-ai/dsh-client-ui-trajectory/client.js,@linxin666/dsh-web-all/client.js,@linxin666/dsh-i18n/client.js,@mpd-dsh/mpd/client.js,@deepseek-ai/dsh-session-log-export/client.js,@deepseek-ai/dsh-client-file-upload/client.js,@deepseek-ai/dsh-api-remotes/client.js,@deepseek-ai/dsh-client-ui-deliverables/client.js,@deepseek-ai/dsh-typert-registry/client.js,@deepseek-ai/dsh-client-connection/client.js,@deepseek-ai/dsh-api-workspace-controller/client.js,dsh-better-sidebar/client.js,@deepseek-ai/dsh-api-session-controller/client.js,@deepseek-ai/dsh-client-ui-directory-picker-browse/client.js&amp;rev=410e9799e965",
+    "sidebarClientModule": {
+      "status": 404,
+      "bytes": 0,
+      "prefix": ""
+    },
+    "sidebarRoute": {
+      "path": "/sidebar/api",
+      "status": 405,
+      "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+    },
+    "sidebarRouteMounted": true,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+    ],
+    "sidebarMentions": [],
+    "logTail": [
+      "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+      "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+      "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+      "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+      "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+      "dsh web: http://127.0.0.1:3516/?token=<redacted>"
+    ],
+    "logBytes": 1930,
+    "logPathDurable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log"
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [
+      "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log"
+    ],
+    "rewrotePrunedCitations": 6,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

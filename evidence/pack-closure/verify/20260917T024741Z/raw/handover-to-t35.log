@@ -1,0 +1,52 @@
+=== handover snapshot for t35 (2026-09-17T03:01:44Z, HEAD 646d801) ===
+artifact outDir mtime: 2026-09-17 11:01:30.659223432 +0800  (my pass-2 pack was 2026-09-17T02:56:59.067Z)
+artifact asset files: 1188
+--- legs on the artifact as it stands (re-read now, not inherited) ---
+LEG(a) compared=1185 drift=0 no-source=0
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 523ms
+packages           post-pack writers: 0
+skills             post-pack writers: 0
+presets            post-pack writers: 0
+extensions         post-pack writers: 0
+templates          post-pack writers: 0
+docs               post-pack writers: 0
+agent-references   post-pack writers: 0
+scripts            post-pack writers: 1
+--- is the NEW artifact (packed 03:01:30Z, not by me) complete and consistent? independent check ---
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (378 asset files); agent references 3/3
+closure exit=0
+packed CLI validate exit=0
+[mpd-ext] --self-test passed (53 checks) [validator: compiled]
+packed CLI --self-test exit=0
+outDir mtime UNCHANGED during these checks -> no pack ran concurrently; the readings describe a settled artifact
+--- credentials.mjs: drift or omission at THIS revision (the decider the leg (c) framing needs) ---
+  SHIPPED+IDENTICAL skills/dsh-qa/scripts/lib/credentials.mjs
+  SHIPPED+IDENTICAL skills/dsh-qa/scripts/lib/immutable-output.mjs
+  SHIPPED+IDENTICAL skills/dsh-qa/cases.json
+--- is a T-63(i) drift-vs-omission map on disk at this revision? ---
+evidence/team-watchdog/redesign/holds/SUMMARY.md
+evidence/pack-closure/impl/20260917T011849Z/result.json
+evidence/pack-closure/verify/20260917T024741Z/raw/handover-to-t35.log
+evidence/pack-closure/verify/20260917T024741Z/raw/verify-driver.mjs
+.mpd/team/friction-p1-wave/inbox/docs-gate-engineer.jsonl
+.mpd/team/friction-p1-wave/inbox/packaging-engineer.jsonl
+.mpd/team/friction-p1-wave/inbox/watchdog-engineer.jsonl
+.mpd/team/friction-p1-wave/inbox/platform-engineer.jsonl
+  (files mentioning T-63 above; 'none' means the decider is NOT on disk at this revision)
+
+=== CORRECTION (appended 2026-09-17T03:15:48Z): my 03:01:30Z pack attribution was WRONG ===
+I wrote earlier in this log: 'a pack has ALREADY run at 03:01:30.659Z (not mine; presumably yours)'. That inference came from the OUTDIR mtime alone and it does not hold:
+  dist/mpd-package/package.json      2026-09-17 10:56:59.067369444 +0800
+  dist/mpd-package/cordis.patch.yml  2026-09-17 10:56:59.067369444 +0800
+  dist/mpd-package/README.md         2026-09-17 10:56:58.985367402 +0800
+sort: write failed: 'standard output': Broken pipe
+sort: write error
+  newest file in the artifact        2026-09-17T10:56:59.0673694440 dist/mpd-package/package.json
+  files with a mtime in 03:01:25-03:01:40Z: 0
+  the ONLY 03:01:30.659Z entry is the DIRECTORY itself (an entry add/remove/rename changes a directory mtime; a pack would rewrite every file stamp).
+  => NO pack ran at 03:01:30Z. The last pack remains MY pass 2 at 02:56:59.067Z, so the artifact is still mine by attribution and the NEXT pack is t35's. Correction supplied by packaging-engineer (their last pack was 01:28Z in the t11 window) and confirmed by the stamps above.
+  RULE extracted: attribute a pack by a FILE stamp inside the artifact, never by the outDir mtime.
+=== current drift state on the file the wave edited twice ===
+  source   f6b4d1bec8745da6  35548 B  T-23 ids=2
+  artifact b4032f41a33ffea2  35534 B  T-23 ids=0
+  => the artifact predates BOTH repairs (t52 +7 B at 03:03:59Z, t56 +7 B at 03:11:38Z); the re-pack is mandatory and the one-command check is: grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md  # expect 2

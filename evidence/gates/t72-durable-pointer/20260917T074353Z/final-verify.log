@@ -1,0 +1,43 @@
+=== t25: re-point EXTENSIONS-FOR-AGENTS.md to the durable checker — 2026-09-17T07:43:53Z ===
+
+-- the edit (single token, line 49) --
+diff --git a/EXTENSIONS-FOR-AGENTS.md b/EXTENSIONS-FOR-AGENTS.md
+index 266c801..a2429bb 100644
+--- a/EXTENSIONS-FOR-AGENTS.md
++++ b/EXTENSIONS-FOR-AGENTS.md
+@@ -46,7 +46,7 @@ refused at every level — descriptor, `contributes`, and each item.
+ ## 3. Manifest skeleton (validates as written)
+ 
+ The skeleton below is extracted from this file by
+-`evidence/extensions/docs-claims/check-citations.mjs`, materialized next to the template's four
++`scripts/check-citations.mjs`, materialized next to the template's four
+ assets, and validated with the CLI; the run must exit 0.
+ 
+ <!-- citation-check: illustrative: the skeleton's own extension-root-relative asset paths -->
+-- resulting line 49 --
+`scripts/check-citations.mjs`, materialized next to the template's four
+-- line count + heading 46 (unchanged structure) --
+236 EXTENSIONS-FOR-AGENTS.md
+## 3. Manifest skeleton (validates as written)
+
+-- hashes AFTER: the shipped file, the frozen evidence-side copy, the durable checker --
+a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5  EXTENSIONS-FOR-AGENTS.md
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+
+-- 1/2: node scripts/check-citations.mjs --
+exit=0
+  ok   content:anchors — 49 citation(s) verified against their claim: 19 symbol-first (line-free, whole file), 30 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2/2: node scripts/check-citations.mjs --self-test --
+exit=0
+
+[docs-claims] 21/21 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- extra observation (not this task's verify): bun run verify:docs --
+exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS
+=== end 2026-09-17T07:43:54Z ===

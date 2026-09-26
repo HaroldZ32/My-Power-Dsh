@@ -1,0 +1,4 @@
+[run-qa-lanes] drift: 1 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/ulw-command.mjs
+[run-qa-lanes] discovery: 48 lane script(s) discovered (47 listed, 1 unlisted, 19 outside every suite); .mjs entries 48, underscore-excluded 0
+[run-qa-lanes] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=37
+exit=1

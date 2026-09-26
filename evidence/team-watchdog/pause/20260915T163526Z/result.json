@@ -1,0 +1,113 @@
+{
+  "task": "t62",
+  "subject": "w7 The preserving pause: additive hold gates in the scheduler, tool-boundary guards, and a resume that re-arms the same attempts",
+  "assignee": "Deep Worker",
+  "attemptId": "528dcfea-5817-4bd3-aea3-d722e7d0aa96",
+  "revision": "3dec3bd2994d78ae64c30e33118642987a0401cf",
+  "attemptIdNote": "The dispatch text promised attempt 1 / 09871ebc-\u2026; claim_task returned attempt 2 / 528dcfea-\u2026. The claim's return value is the authoritative capability and is what every update carried.",
+  "delta": {
+    "registryBefore": 48,
+    "registryAfter": 53,
+    "newRegionIds": [
+      "mpd-delta watchdog-hold-reader (scheduler.js, module scope)",
+      "mpd-delta kick-member-hold-decline (scheduler.js, NEW region)",
+      "mpd-delta watchdog-hold-reader (tools.js, module scope)",
+      "mpd-delta claim-task-hold-guard (tools.js, NEW region)",
+      "mpd-delta update-task-hold-guard (tools.js, NEW region)"
+    ],
+    "inRegionEdits": [
+      "mpd-delta kick-team-decline-logs \u2014 one hold decline added INSIDE the existing region (scheduler.js:422-423's neighbourhood)",
+      "mpd-delta kick-member-locked-decline-logs \u2014 one hold decline added INSIDE the existing region (the locked re-read path)"
+    ],
+    "writeRegistryRuns": 1,
+    "checkAfter": "[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s) (exit 0)",
+    "adoptedDiff": "scheduler.js 70 insertions / 0 deletions; tools.js 72 insertions / 0 deletions; mpd-deltas.js 63 insertions / 2 deletions (the 2 deletions are the regenerated `block:` strings of the two in-region edits in the GENERATED registry \u2014 the adopted sources have zero deletions, so nothing was reflowed or reformatted)"
+  },
+  "holdReadContract": {
+    "asSpecifiedInTheDispatch": "{ teamId, holdId, at, reason, actor, source } \u2014 this is the watchdog's READER-VIEW spelling",
+    "asActuallyWrittenByW3": "{ id, teamId, since, cause, taskId, attemptId, sceneAt } \u2014 verified in packages/mpd-team-watchdog-plugin/src/sidecars.ts (HoldRecord) and in a hold file the plugin wrote on disk",
+    "resolution": "The gate accepts BOTH spellings (holdId ?? id, at ?? since, reason ?? cause) and treats only the ABSENCE/UNREADABILITY of the file as 'not held'. Discrepancy REPORTED rather than silently implemented against the wrong one; w3 is terminal and out of this task's scope, so no change was made there.",
+    "readShape": "one statSync + at most one readFileSync per gate call, cached by (path, mtimeMs, size), cache bounded at 256 entries; no cross-package import, no service dependency",
+    "failOpen": "no file, no watchdog row, unreadable path or parse failure \u21d2 NO hold \u21d2 dispatch behaves exactly as before (proven: C2 corrupt file and C3 missing file both dispatch)"
+  },
+  "acceptance": [
+    {
+      "criterion": "a HELD team does not receive a dispatch: a task that would otherwise be claimed (the member's own task and a pooled one) is left alone while the hold is present, with a named decline log line",
+      "status": "passed",
+      "evidence": "raw/driver.result.json checks A1/A2/A3. A1 is the CONTROL: with no hold the identical fixture DOES dispatch (1 delivery). A2: with the hold present, kickTeam + kickMember produce 0 deliveries and 2 decline lines, verbatim `agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:36:18.900Z: silence)` and the same for the member path. A3: with a pooled (unassigned) task present, still 0 deliveries and both tasks remain `pending`. The declines come from all three gate sites (kickTeam, kickMember, and the locked re-read)."
+    },
+    {
+      "criterion": "a task that is `claimed`/`running` when the hold lands is STILL `claimed`/`running` with the SAME attemptId after the hold \u2014 never `cancelled`, never re-`pending`, no `handoffId`/`output` cleared (AC-17's substance)",
+      "status": "passed",
+      "evidence": "raw/driver.result.json checks B and D7. B: a task at `in_progress` attempt 3 attemptId `att-live` with `output: \"partial result\"` and `handoffId: \"handoff-1\"` is byte-identical after the held kick (sha256 of the adopted team.json unchanged) and every field survives. D7: the same shape (attemptId `att-live-2`, attempt 2, output `kept`) is STILL `in_progress`/`att-live-2`/attempt 2/output `kept` after the held kick, with 0 deliveries. No `cancelled` string appears anywhere in the record. `haltTeamWork` is never called; its cancel loop was not touched."
+    },
+    {
+      "criterion": "the hold is ENFORCED from the durable sidecar contract (path + schema documented in the watchdog README), read by the gate itself; a missing file / absent watchdog row means NO hold and dispatch behaves exactly as before (fail-open, stated)",
+      "status": "passed",
+      "evidence": "The gate reads `<stateRoot>/watchdog/hold/<teamId>.json` itself (no cross-package import, no service): checks C1 (the reader-view spelling `{teamId,holdId,at,reason,actor,source}` enforces, naming hold `hold-view-spelling`), C2 (a corrupt file = invalid JSON does NOT block: 1 delivery), C3 (no file at all \u21d2 dispatch exactly as before and ZERO watchdog decline lines), C4 (clearing the file is observed without a restart, so the mtime-keyed cache is not sticky). The path+schema are documented in packages/mpd-team-watchdog-plugin/README.md ('The hold, the incidents and the watermark'); the gate's own docstring in each file states the fail-open rule. The driver mounts NO watchdog row for the gate sections, which is exactly the absent-row shape."
+    },
+    {
+      "criterion": "resume (the plugin's own `session-watchdog-resume` action) clears the hold AND re-arms the still-claimed attempts so the held work continues through the EXISTING parked-attempt machinery \u2014 proven by observing dispatch after resume",
+      "status": "passed",
+      "evidence": "raw/driver.result.json checks D1/D4/D5/D6/D7. The hold and the resume are driven through the REAL watchdog plugin (its built dist mounted on the same stub ctx): D1 `session-watchdog-hold` writes the durable file; D4 `session-watchdog-resume` returns resumed:true and the file is gone; D5 the next kick through the SAME `installTeamScheduler` machinery delivers (1 delivery); D6 the delivered task carries a live attempt of its own; D7 the still-claimed case: attempt 2 frozen while held, then re-armed to attempt 3 with a fresh attemptId by the existing `beginTaskAttempt`/park path \u2014 the adopted machinery's own generation semantics, NOT a cancel/recreate. Nothing in the resume path calls `agent_teams_resume` or `haltTeamWork`."
+    },
+    {
+      "criterion": "the tool boundary refuses `agent_teams_claim_task`/`agent_teams_update_task` for a held team with a LOUD, named reason (the claim path has no halted guard today \u2014 measured), while leaving the team's records byte-untouched",
+      "status": "passed",
+      "evidence": "checks E1/E2/E3/E4. Both tools are driven through the REAL registered definitions (`apply` from lib/index.js). E1 claim_task: throws `team pause-probe is held by the team watchdog (hold 1b752647-\u2026 since \u2026: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work`. E2 update_task throws the same named refusal. E3: sha256 of the adopted team.json is unchanged by both refusals (the guards throw before any write; they also sit inside the team lock, so no partial mutation is possible). E4: after the resume the same call no longer reports the hold \u2014 the refusal was the hold, not the tool."
+    },
+    {
+      "criterion": "`node scripts/patch-agent-teams-fixes.mjs --check` is clean after ONE `--write-registry` run, every new region is ADDITIVE-shaped, and the adopted-tree diff contains only the new regions (no reflow, no reformat)",
+      "status": "passed",
+      "evidence": "raw/delta-check.log: `[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)` exit 0, after EXACTLY ONE `--write-registry` run (its stdout is quoted in this task's completion; the resulting state is captured in raw/registry-state.log: 53 region blocks across 9 files, 53 registry entries, `--check` clean) that reported `registry regenerated \u2026 (53 regions)`. raw/adopted-diff-numstat.log: scheduler.js 70/0, tools.js 72/0 \u2014 pure insertions, zero deletions, so no line was reflowed; mpd-deltas.js 63/2, whose 2 deletions are the regenerated `block:` strings of the two in-region edits in the GENERATED registry (raw/adopted-diff-deletions.log shows both deleted lines are `block:` lines). Every new region declares no module-scope name that already exists outside a region (the F3 guard passes), and each block only ADDS statements to its site."
+    },
+    {
+      "criterion": "all existing adopted-plugin suites still pass (self-fix-tests + test/), and `bun test packages` is green with raw output captured",
+      "status": "passed",
+      "evidence": "raw/tests-adopted.log: 220 pass / 0 fail (60 files, includes self-fix-tests/) exit 0. raw/tests-all.log: 695 pass / 0 fail (134 files) exit 0. raw/tests-two-packages.log: `bun test packages/mpd-agent-teams-plugin packages/mpd-bundle-plugin` in ONE process = 288 pass / 0 fail, which is the isolation proof. DISCLOSED: two EARLIER full-suite runs in this same session were red (13 fails, then 1 fail) with EVERY failure confined to `packages/mpd-bundle-plugin` (page rendering / badge polling), while another writer was actively rewriting `packages/mpd-bundle-plugin/client.js` (mtime 00:37:33 \u2192 00:41:00 \u2192 00:41:43 across those runs); that package alone and together with mine is green, and the final settled full-suite run is 695/0. The red runs were NOT captured into raw/ because the same log file was reused; the observed counts and the failing package are recorded here rather than presented as a clean run."
+    },
+    {
+      "criterion": "an idempotence check: a second hold for an already-held team writes no second hold and interrupts nothing; a resume for a non-held team is a no-op, not an error",
+      "status": "passed",
+      "evidence": "checks F1/F2. F1: a second `session-watchdog-hold` leaves the hold file byte-identical AND its mtime unchanged, and the adopted team.json sha256 is unchanged \u2014 the hold is not restarted and nothing is interrupted. F2: `session-watchdog-resume` for a team with no hold returns `{resumed:false, reason:'not-held', path:\u2026}` with no throw."
+    }
+  ],
+  "verify": [
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/delta-check.log \u2014 already applied: 53 mpd delta region(s) across 9 adopted file(s)"
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/tests-adopted.log \u2014 220 pass / 0 fail / 1615 expect() calls / 60 files"
+    },
+    {
+      "command": "bun test packages",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/tests-all.log \u2014 695 pass / 0 fail / 134 files (see the disclosure in the acceptance item above about the two earlier foreign-caused red runs)"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "raw/typecheck.log \u2014 `$ tsgo --noEmit`, no diagnostics"
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "evidence/team-watchdog/pause/20260915T163526Z/"
+  ],
+  "notClaimed": [
+    "NO negative control that reddens `haltTeamWork` (plan AC-17's `--case pause-preserves-halt-control`): that is w8's fault-injection lane, and this driver never calls haltTeamWork. Its cancel loop was not touched, so the control remains available to w8.",
+    "NO live wedge and NO live host: the driver drives the REAL adopted scheduler and the REAL watchdog plugin through stub harness contexts (the shape the plugin's own `test/dispatch-stall-regression.test.mjs` uses). No `dsh` boot was performed for this task, so 'the gates fire inside a real host process' is not claimed here.",
+    "The hold FIELD-SCHEMA discrepancy (dispatch says {teamId,holdId,at,reason,actor,source}; w3 writes {id,teamId,since,cause,taskId,attemptId,sceneAt}) is REPORTED, not fixed: the gate tolerates both, and w3 is out of scope and terminal.",
+    "No re-arm is claimed for an attempt that the parked-attempt map considers CURRENTLY parked with the same id (`scheduler.js:515-518` deliberately does not re-dispatch it \u2014 that is upstream's 'a resident idle member may keep an attempt open' policy). D7 measures the recovery branch that DOES re-arm (a fresh scheduler install = a cold process), which is the branch the design's \u00a73.2 names."
+  ]
+}

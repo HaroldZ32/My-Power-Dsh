@@ -1,0 +1,118 @@
+== revision-2 conformance record (bridge lane t5) ==
+read at: 2026-09-19T15:15:15Z
+
+---- F1: agentScopeOf source (current bytes) ----
+export function agentScopeOf(ctx, agent) {
+    const provided = typeof ctx?.agentScope === 'function' ? ctx.agentScope(agent) : undefined;
+    return isUsableScope(provided) ? provided : scopeShapeFrom(agent?.ctx, reportRawSubstitution);
+}
+
+---- F1: the pre-fix one-liner is ABSENT (occurrences must be 0) ----
+0
+0
+
+---- F1: the scope shape builder + the usability gate ----
+174:function scopeShapeFrom(scoped, report) {
+178:    const usableTools = tools !== null && typeof tools === 'object' && typeof tools.restrict === 'function';
+184:        substituted.push('context');
+186:        substituted.push('tools.restrict');
+188:        substituted.push('on');
+190:        substituted.push('effect');
+208:function isUsableScope(scope) {
+
+---- F2: the three ruled call sites (SYMBOL-anchored) ----
+packages/mpd-agent-teams-plugin/lib/index.js:405:                            ctx.steerAgentTurn(captain, createUserMessage({
+packages/mpd-agent-teams-plugin/lib/members.js:248:        ctx.steerAgentTurn(captain, createUserMessage({
+685:            ctx.injectAgentMessage(captain, createUserMessage({
+---- F2: capability flags used by the F2 seams ----
+401:            const steer = seam('steerAgentTurn', 'agentTurnSteer');
+409:            const inject = seam('injectAgentMessage', 'agentTurnInject');
+---- F2: whenIdle stays DIRECT (exactly 2 sites, no adapter method) ----
+packages/mpd-agent-teams-plugin/lib/members.js:410:                await child.whenIdle();
+packages/mpd-agent-teams-plugin/lib/tools.js:295:        await Promise.race([live.whenIdle(), aborted]);
+adapter methods mentioning whenIdle: 0
+
+---- F7: instrument scope (routing test) ----
+311:test("F7: the raw-hit instrument covers ONLY the plugin ctx — the host per-agent ctx is exempt", () => {
+317:    // read of it never counts toward the plugin-ctx instrument (F7's scope rule).
+
+---- F1 three-arm test (assertions, from the test source) ----
+test("F1: agentScopeOf returns ONE shape in ALL THREE arms (mounted / pending / absent-throwing)", () => {
+    // Receiver discipline (the captain's ruling): `restrict` must run on the CAPTURED ctx.tools
+    // object and `on`/`effect` must run BOUND to the raw agent ctx — recorded as `this` here.
+    const receivers = []
+    const toolsProxy = {
+        restrict: function (filter) { receivers.push(["tools.restrict", this]); return () => undefined },
+    }
+    const scoped = {
+        tools: toolsProxy,
+
+---- F1 result: mounted/pending/absent-throwing arms + receivers ----
+(pass) AC4: the witness strings are the frozen contract §4 literals [0.11ms]
+(pass) AC4: the facade exposes EXACTLY the frozen property set [0.65ms]
+(pass) AC4: with NO mpdDsh every seam runs today's raw expression and the ABSENT witness fires once [1.78ms]
+(pass) AC4: the raw fallback throws EXACTLY where today's expression throws [0.81ms]
+(pass) AC4: with mpdDsh mounted the facade routes every seam and prints the MOUNTED witness once [1.27ms]
+(pass) AC4: the adapter wins even where the raw seam object is present, so no fallback line is printed [0.18ms]
+(pass) AC4: a PENDING probe is not ABSENT, and the next access re-probes (T-50) [0.20ms]
+(pass) AC4: the absent witness reaches the console by default (greppable in a boot log) [0.16ms]
+(pass) AC4: the fallback lane forwards listener options and always returns a disposer [0.12ms]
+(pass) AC4: inject hands the callback an already-wrapped scoped ctx (no call-site edit) [0.29ms]
+(pass) AC4: an adapter that cannot serve one seam degrades to the raw expression for that seam only [0.12ms]
+(pass) F2: steerAgentTurn / injectAgentMessage route to the adapter and keep today's throw [0.57ms]
+
+---- F2/F7 routing test ----
+(pass) AC3: apply() routes the whole composition root through the adapter and touches no raw seam [25.48ms]
+(pass) AC3: the turn seams route through the adapter on both registered paths [5.09ms]
+(pass) AC3: the runtime-only seams route through the consumers that own them [9.37ms]
+(pass) AC3: haltTeamWork drains through the RUNTIME the adapter resolves (the measured gap) [6.97ms]
+(pass) F2: the steer/inject seams route through the adapter, and the caller's throw contract survives [9.56ms]
+(pass) F7: the raw-hit instrument covers ONLY the plugin ctx — the host per-agent ctx is exempt [19.74ms]
+(pass) AC3: every raw seam would have been visible — the throwing proxy is a real detector [0.37ms]
+ 7 pass
+ 0 fail
+
+---- AC15 scanner (incl. Class-B whenIdle inventory + childCtx count) ----
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+(pass) AC15: no adopted server file reaches a harness seam on a receiver the facade cannot cover [103.51ms]
+(pass) AC15: the host-handed child scope is a COUNTED residual, never an unseen path [97.08ms]
+(pass) F2/AC15: the Class-B set is inventoried exactly, so it cannot grow silently [14.63ms]
+(pass) AC15: the bridge is the ONLY server module holding a raw-context fallback expression [15.85ms]
+(pass) AC15: every region a server file carries is registered, and the six bridged files carry their frozen ids [6.59ms]
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+grep: write error: Broken pipe
+
+---- facade suite, F1/BR-1 arms explicitly ----
+(pass) F1: agentScopeOf returns ONE shape in ALL THREE arms (mounted / pending / absent-throwing) [1.11ms]
+(pass) BR-1: a substituted NO-OP member is reported ONCE per plugin instance, NAMED, and never throws [0.80ms]
+ 16 pass
+ 0 fail
+
+---- settled check (hashes unchanged since the 15:13 record?) ----
+01fd9125510885fb packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+456a297b00e5225f packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+recorded at 15:13:25Z: 01fd9125510885fb (bridge), 456a297b00e5225f (registry)
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+read again at: 2026-09-19T15:16:06Z
+== region/id counts, MEASURED (read at 2026-09-19T15:17:01Z) ==
+registry entries: 151 | files: 13
+bridge entry: id "mpd-delta adapter-ctx-bridge" | keys ["afterContext","beforeContext","block","file","id"]
+entries carrying a `create` key: 0
+adapter-id markers in the six adopted files: 27 | distinct: 26
+adapter-id markers incl. the bridge module: 28 | distinct: 27
+ids carried in MORE THAN ONE file: [ 'mpd-delta adapter-subagent-runtime-import' ]
+all adapter ids: ["mpd-delta adapter-agent-scope","mpd-delta adapter-agent-scope-import","mpd-delta adapter-cancel-discard","mpd-delta adapter-cancel-feedback","mpd-delta adapter-cancel-halt","mpd-delta adapter-command-turn-submit","mpd-delta adapter-command-turn-submit-profile","mpd-delta adapter-ctx-bridge","mpd-delta adapter-delivery-runtime","mpd-delta adapter-delivery-runtime-import","mpd-delta adapter-facade-import","mpd-delta adapter-facade-wiring","mpd-delta adapter-inject-staged-discard","mpd-delta adapter-steer-approval-notice","mpd-delta adapter-steer-captain-report","mpd-delta adapter-steer-captain-report-caller","mpd-delta adapter-steer-send-message-caller","mpd-delta adapter-subagent-runtime-agent-scope","mpd-delta adapter-subagent-runtime-agent-scope-effect","mpd-delta adapter-subagent-runtime-agent-scope-request","mpd-delta adapter-subagent-runtime-agent-scope-setup","mpd-delta adapter-subagent-runtime-agents-lookup","mpd-delta adapter-subagent-runtime-guard","mpd-delta adapter-subagent-runtime-halt-drain","mpd-delta adapter-subagent-runtime-import","mpd-delta adapter-subagent-runtime-install","mpd-delta adapter-turn-submit"]
+== final sweep after the F1 wording alignment (read 2026-09-19T15:19:31Z) ==
+ 360 pass
+ 0 fail
+ 5259 expect() calls
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+$ tsgo --noEmit
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+01fd9125510885fb packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+456a297b00e5225f packages/mpd-agent-teams-plugin/lib/mpd-deltas.js

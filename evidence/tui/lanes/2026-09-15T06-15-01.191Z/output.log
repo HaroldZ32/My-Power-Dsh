@@ -1,0 +1,4 @@
+seeded workmate library at .mpd/recon/qa/home/.mpd/workmate/qa-tui-probe
+surfaces: tuiStatus=rendered commands=MISSING tuiCommandTrees=MISSING tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=MISSING
+negative control ok=false (must be false)
+board-opened events in the sandbox store=2 scene-reported transcript rows=0

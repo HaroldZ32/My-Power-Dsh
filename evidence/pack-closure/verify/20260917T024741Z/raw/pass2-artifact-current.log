@@ -1,0 +1,8 @@
+=== PASS-2 artifact: the two files that drifted after pass 1 are now identical to source ===
+  identical  skills/dsh-qa/scripts/workmate-library.mjs
+  identical  packages/mpd-workmate-plugin/dist/index.js
+=== pack moment (pass 2) vs the last copied-tree writer ===
+  pack outDir mtime: 2026-09-17T02:56:59.067Z
+  last copied-tree writer: 2026-09-17T02:54:37.464Z packages/mpd-workmate-plugin/dist/index.js (t48 rebuild)
+=== writers in a COPIED tree AFTER the pass-2 pack (02:57:02Z) ===
+  0 (artifact readings current at the moment of this check)

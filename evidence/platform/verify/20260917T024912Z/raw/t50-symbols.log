@@ -1,0 +1,23 @@
+=== T-50: the lazy resolution, cited by SYMBOL (T-55) ===
+  packages/mpd-dsh-adapter-plugin/src/index.ts:962:export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions): DshAdapter {
+  packages/mpd-ext-plugin/src/index.ts:21:import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+  packages/mpd-ext-plugin/src/index.ts:82: * THE FIX — `createLazyDshAdapter(ctx, …)` resolves on EVERY use and caches ONLY a successful
+  packages/mpd-ext-plugin/src/index.ts:260:    dsh = createLazyDshAdapter(ctx, { label: "mpd-ext", warn })
+  packages/mpd-roles-plugin/src/index.ts:20:import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+  packages/mpd-roles-plugin/src/index.ts:355:  const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn })
+--- the two consumer call sites ---
+  packages/mpd-ext-plugin/src/index.ts:82: * THE FIX — `createLazyDshAdapter(ctx, …)` resolves on EVERY use and caches ONLY a successful
+  packages/mpd-ext-plugin/src/index.ts:260:    dsh = createLazyDshAdapter(ctx, { label: "mpd-ext", warn })
+  packages/mpd-roles-plugin/src/index.ts:355:  const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn })
+--- the honest wording: provider-not-active vs provably absent ---
+898:export const ADAPTER_IDENTITY_PENDING = "pending:provider-not-active"
+912: * One contained service probe. `strict: true` asks cordis for an ACTIVE provider only
+913: * (`get(name, strict = true)` drops a provider whose fiber state is not ACTIVE); `strict: false`
+943: * for a provider whose fiber is not ACTIVE, so `ctx.get("mpdDsh")` can miss TRANSIENTLY even on a
+982:    // provider is starting), while a strict+non-strict miss proves it is absent from this
+987:        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
+=== T-43 negative case (a normal session is never refused): the plugin's own suite ===
+ 28 pass
+ 0 fail
+ 333 expect() calls
+Ran 28 tests across 4 files. [279.00ms]

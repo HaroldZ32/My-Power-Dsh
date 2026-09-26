@@ -1,0 +1,17 @@
+### SCRATCH MIRROR = scripts/ + packages/mpd-agent-teams-plugin/lib/ only (T-89: outside workspace, deleted after use)
+### ARM 1 — baseline --check in the mirror
+[patch-agent-teams-fixes] already applied: 88 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+### ARM 2 — EDIT: append one new marked region to lib/state.js
+[patch-agent-teams-fixes] FAIL: no afterContext window for region "mpd-delta reviewer-probe-region" in packages/mpd-agent-teams-plugin/lib/state.js is unique in the region-stripped skeleton within 6 lines — refusing to register a far-away or ambiguous anchor (that fallback is exactly the wave-2 order-dependence bug)
+write-registry exit=1
+
+### ARM 3 — --check AFTER the regeneration
+[patch-agent-teams-fixes] already applied: 88 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+### ARM 4 (NEGATIVE) — strip one region's END marker; --check must FAIL
+stripped end marker of region: coverage-gap-text
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta coverage-gap-text" is MISSING from packages/mpd-agent-teams-plugin/lib/quality-gates.js (partially stripped: the begin marker at line 693 survived and its partner is gone) (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js
+exit=1

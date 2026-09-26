@@ -1,0 +1,215 @@
+{
+  "schema": "laneB/wave2b-laneB-evidence/1",
+  "captured_at": "2026-09-17T14:31:10.196Z",
+  "task": "t14 - wave-2b lane B: gates/packaging/hygiene (T-34, T-41, T-66, T-68, T-70, T-71, T-77, T-88 + T-89's runner half)",
+  "repo_head": "ca78033",
+  "steps": [
+    {
+      "name": "self-test-verify-rows-parity",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-rows-parity.mjs --self-test",
+      "exitCode": 0,
+      "ms": 772,
+      "log": "self-test-verify-rows-parity.log",
+      "expected": 0
+    },
+    {
+      "name": "live-verify-rows-parity",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-rows-parity.mjs",
+      "exitCode": 0,
+      "ms": 125,
+      "log": "live-verify-rows-parity.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-verify-manual-paths",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-manual-paths.mjs --self-test",
+      "exitCode": 0,
+      "ms": 750,
+      "log": "self-test-verify-manual-paths.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-verify-gates",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-gates.mjs --self-test",
+      "exitCode": 0,
+      "ms": 2149,
+      "log": "self-test-verify-gates.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-mpd-doctor",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/mpd-doctor.mjs --self-test",
+      "exitCode": 0,
+      "ms": 11258,
+      "log": "self-test-mpd-doctor.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-install-git-hooks",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/install-git-hooks.mjs --self-test",
+      "exitCode": 0,
+      "ms": 549,
+      "log": "self-test-install-git-hooks.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-repin-vendor",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/repin-vendor.mjs --self-test",
+      "exitCode": 0,
+      "ms": 1535,
+      "log": "self-test-repin-vendor.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-run-qa-lanes",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/run-qa-lanes.mjs --self-test",
+      "exitCode": 0,
+      "ms": 2374,
+      "log": "self-test-run-qa-lanes.log",
+      "expected": 0
+    },
+    {
+      "name": "self-test-verify-pack-closure",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "ms": 7359,
+      "log": "self-test-verify-pack-closure.log",
+      "expected": 0
+    },
+    {
+      "name": "contract-verify-rows-parity",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-rows-parity.mjs",
+      "exitCode": 0,
+      "ms": 204,
+      "log": "contract-verify-rows-parity.log",
+      "expected": 0
+    },
+    {
+      "name": "contract-check-drift",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/run-qa-lanes.mjs --check-drift",
+      "exitCode": 0,
+      "ms": 100,
+      "log": "contract-check-drift.log",
+      "expected": 0
+    },
+    {
+      "name": "reading-verify-manual-paths-live",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/verify-manual-paths.mjs",
+      "exitCode": 1,
+      "ms": 137,
+      "log": "reading-verify-manual-paths-live.log",
+      "expected": "reported"
+    },
+    {
+      "name": "reading-mpd-doctor-live",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/mpd-doctor.mjs",
+      "exitCode": 0,
+      "ms": 580,
+      "log": "reading-mpd-doctor-live.log",
+      "expected": "reported"
+    },
+    {
+      "name": "reading-mpd-doctor-missing-sg",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/mpd-doctor.mjs   (env MPD_AST_GREP_SG_PATH=/nonexistent/sg)",
+      "exitCode": 2,
+      "ms": 316,
+      "expected": "reported",
+      "log": "reading-mpd-doctor-missing-sg.log"
+    },
+    {
+      "name": "reading-repin-vendor-check",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node ./scripts/repin-vendor.mjs --check",
+      "exitCode": 0,
+      "ms": 228,
+      "log": "reading-repin-vendor-check.log",
+      "expected": "reported"
+    },
+    {
+      "name": "driver-derived-surface-selftest",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/gates/wave2b-laneB/20260917T141936Z-laneB/derived-surface-audit.mjs --self-test",
+      "exitCode": 0,
+      "ms": 50,
+      "log": "driver-derived-surface-selftest.log",
+      "expected": 0
+    },
+    {
+      "name": "driver-derived-surface-live",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/gates/wave2b-laneB/20260917T141936Z-laneB/derived-surface-audit.mjs",
+      "exitCode": 0,
+      "ms": 50,
+      "log": "driver-derived-surface-live.log",
+      "expected": 0
+    },
+    {
+      "name": "driver-gitignore-shape",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/gates/wave2b-laneB/20260917T141936Z-laneB/gitignore-shape-driver.mjs",
+      "exitCode": 0,
+      "ms": 162,
+      "log": "driver-gitignore-shape.log",
+      "expected": 0
+    }
+  ],
+  "failures": [],
+  "reported_readings": [
+    {
+      "name": "reading-verify-manual-paths-live",
+      "exitCode": 1,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-mpd-doctor-live",
+      "exitCode": 0,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-mpd-doctor-missing-sg",
+      "exitCode": 2,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-repin-vendor-check",
+      "exitCode": 0,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    }
+  ],
+  "artifacts": {
+    "REPORT.md": "d83356ac1e025969",
+    "contract-check-drift.log": "2675c915f1ba221c",
+    "contract-verify-rows-parity.log": "44ea35532e5cc806",
+    "derived-surface-audit.mjs": "e8560abedea76d29",
+    "derived-surface-live.log": "8912bec30d55dabf",
+    "driver-derived-surface-live.log": "681fbdb8f4bb14ab",
+    "driver-derived-surface-selftest.log": "03d77d8841abeae9",
+    "driver-gitignore-shape.log": "6814adbf804c50ce",
+    "gitignore-shape-driver.mjs": "618a0cefcc359e33",
+    "gitignore-shape.log": "6814adbf804c50ce",
+    "live-verify-rows-parity.log": "44ea35532e5cc806",
+    "mpd-doctor-live.log": "aa58686825f082bd",
+    "mpd-doctor-missing-sg.log": "aaff36fdc4e169c9",
+    "mpd-doctor-selftest.log": "54042ea9ec8610f1",
+    "reading-mpd-doctor-live.log": "b17cfce9e1f8cef0",
+    "reading-mpd-doctor-missing-sg.log": "310d4ce2126b0123",
+    "reading-repin-vendor-check.log": "4efb619629b951e3",
+    "reading-verify-manual-paths-live.log": "9ba253554fbf7fdb",
+    "run-laneB-evidence.mjs": "65e69a7b9d070d53",
+    "runner-summary.json": "7dfb9d18d7d8bee2",
+    "self-test-install-git-hooks.log": "325d7104f2a2544c",
+    "self-test-mpd-doctor.log": "7f30db4563e9a9c4",
+    "self-test-repin-vendor.log": "eeeaab74b6f4b756",
+    "self-test-run-qa-lanes.log": "0f6b90b3a60f0673",
+    "self-test-verify-gates.log": "bc388114ec3a3ad6",
+    "self-test-verify-manual-paths.log": "a323cbe41be31823",
+    "self-test-verify-pack-closure.log": "51f8ef626a7ee513",
+    "self-test-verify-rows-parity.log": "e3ed28bc13f683c1",
+    "t70-after-runner-real.log": "80d97b14518873ca",
+    "t70-before-chain.log": "a6e9fc9cb7afc79c",
+    "t70-old-chain-natural.log": "20968e23f538b463",
+    "verify-manual-paths-live.log": "1a1f49043c50a607",
+    "verify-manual-paths-selftest.log": "7f0194c92541fd84",
+    "write-set-audit.log": "84906b02523f22ce"
+  },
+  "digests_skipped": {
+    "runner-stdout.log": "empty file at digest time (0 bytes)"
+  },
+  "result_digest_note": "result.json excludes itself; every run prints its own post-write digest."
+}

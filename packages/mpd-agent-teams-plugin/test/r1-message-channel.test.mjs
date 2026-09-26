@@ -81,7 +81,9 @@ test("R1 dedup: a send OUTSIDE the 60 s window is a new record (window is real)"
   try {
     const ts = 7_000_000
     await appendMailboxDeduped(stateRoot, TEAM, "captain", message({ id: "w1", ts }))
-    const late = await appendMailboxDeduped(stateRoot, TEAM, "captain", message({ id: "w2", ts: ts + MAILBOX_DEDUP_WINDOW_MS + 1 }))
+    // t47/P1e: this arm's intent is "beyond the window", so it pins its OWN window; the module default
+    // is now 30 min and would have folded a record 60 s out, which is exactly what this arm forbids.
+    const late = await appendMailboxDeduped(stateRoot, TEAM, "captain", message({ id: "w2", ts: ts + 61_000 }), { windowMs: 60_000 })
     expect(late.folded).toBe(false)
     expect((await readMailbox(stateRoot, TEAM, "captain")).length).toBe(2)
   } finally { cleanup() }
@@ -93,7 +95,7 @@ test("R1 clear: archive-first tombstone + recoverable sidecar + audit event", as
     await appendMailbox(stateRoot, TEAM, "captain", message({ id: "old-1", ts: 100, content: "SECRET-OLD-BYTES" }))
     await appendMailbox(stateRoot, TEAM, "captain", message({ id: "old-2", ts: 200, content: "older two" }))
     await appendMailbox(stateRoot, TEAM, "captain", message({ id: "new-1", ts: 900, content: "kept" }))
-    const result = await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 1_000_000 })
+    const result = await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { force: true, now: 1_000_000 })
     expect(result.cleared.sort()).toEqual(["old-1", "old-2"])
     expect(result.audit.kind).toBe("mailbox-cleared")
     expect(result.audit.clearedCount).toBe(2)
@@ -118,7 +120,7 @@ test("R1 clear NEGATIVE CONTROL: no hard-delete path — cleared bytes survive o
   try {
     await appendMailbox(stateRoot, TEAM, "captain", message({ id: "gone", ts: 100, content: "RECOVER-ME-42" }))
     const before = await readMailbox(stateRoot, TEAM, "captain")
-    const result = await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 11 })
+    const result = await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { force: true, now: 11 })
     // the record itself is still present (tombstone), so nothing was deleted
     expect((await readMailbox(stateRoot, TEAM, "captain")).length).toBe(before.length)
     // and the original bytes are recoverable from the archive sidecar
@@ -257,7 +259,7 @@ test("R1 SEAM: after a clear -> 0 unread and 0 deliverable (tombstones never re-
     await appendMailbox(stateRoot, TEAM, "captain", message({ id: "c2", ts: 200, content: "payload-2" }))
     // both are unread before the clear
     expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(2)
-    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 1_000 })
+    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { force: true, now: 1_000 })
     // the seam: a cleared record is not unread and not deliverable — it is a tombstone
     expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
     expect((await readLiveMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
@@ -275,7 +277,7 @@ test("R1 SEAM: a clear cannot RE-OPEN an acknowledged record", async () => {
     await acknowledgeMailbox(stateRoot, TEAM, "captain", ["ack-1"])
     expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
     // clearing must PRESERVE those markers, otherwise the row would look unread again
-    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { now: 1_000 })
+    await clearMailboxToWatermark(stateRoot, TEAM, "captain", 500, { force: true, now: 1_000 })
     expect((await readUnreadMailbox(stateRoot, TEAM, "captain")).length).toBe(0)
     const record = (await readMailbox(stateRoot, TEAM, "captain")).find((entry) => entry.id === "ack-1")
     expect(record.tombstone).toBe(true)

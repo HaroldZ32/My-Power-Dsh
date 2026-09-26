@@ -1,0 +1,6 @@
+registered commands (name -> description):
+  ulw -> "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)"
+  ultrawork -> "Run the ULW discipline for an objective, fully autonomously (identical alias: /ulw)"
+
+behaviour: 2 registrations, 2 submissions, identical directive bytes: true
+problems: []

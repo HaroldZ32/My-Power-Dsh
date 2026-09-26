@@ -1,0 +1,8 @@
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  TEMPLATES - scripts/mpd-ext.mjs scaffold copies <root>/templates/mpd-extension but the packed tree has no templates/mpd-extension/mpd-ext.json — the documented author workflow would have nothing to copy (T-35)
+  TREE-DRIFT - templates/ differs from the source tree - dropped by the pack: mpd-extension/mpd-ext.json; not in the source: (none)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/review/20260917T030041Z/negative-control-copy (377 asset files)

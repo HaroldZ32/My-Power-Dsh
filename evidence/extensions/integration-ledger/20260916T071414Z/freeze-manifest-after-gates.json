@@ -1,0 +1,400 @@
+{
+  "task": "t17",
+  "frozenAtUtc": "2026-09-16T07:21:52.650Z",
+  "branch": "dev",
+  "head": "1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f",
+  "changeSet": [
+    "M README.md",
+    "M README.zh-CN.md",
+    "M VENDOR_LOCK.json",
+    "M docs/extension-adaptation-report.md",
+    "M docs/extension-adaptation-report.zh-CN.md",
+    "M docs/index.md",
+    "M docs/index.zh-CN.md",
+    "M package.json",
+    "M packages/mpd-bundle/cordis.patch.yml",
+    "M packages/mpd-ext-plugin/dist/index.js",
+    "M packages/mpd-ext-plugin/src/index.ts",
+    "M packages/mpd-roles-plugin/dist/index.js",
+    "M packages/mpd-roles-plugin/src/index.ts",
+    "M scripts/mpd-ext.mjs",
+    "M skills/dsh-qa/SKILL.md",
+    "M skills/dsh-qa/scripts/extension-lifecycle.mjs",
+    "M skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+    "?? EXTENSIONS-FOR-AGENTS.md",
+    "?? docs/extension-authoring-guide.md",
+    "?? docs/extension-authoring-guide.zh-CN.md",
+    "?? evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/",
+    "?? evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-25-17.760Z/",
+    "?? evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z/",
+    "?? evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-19-44.444Z/",
+    "?? evidence/dsh-qa/preset-conformance/2026-09-16T07-20-00.878Z/",
+    "?? evidence/extensions/boot-repeat/",
+    "?? evidence/extensions/boundary-index/",
+    "?? evidence/extensions/debranding-probe/",
+    "?? evidence/extensions/docs-claims/",
+    "?? evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/",
+    "?? evidence/extensions/extension-lifecycle/2026-09-16T07-20-41.691Z/",
+    "?? evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/",
+    "?? evidence/extensions/extension-template/",
+    "?? evidence/extensions/f1-adapter-identity/",
+    "?? evidence/extensions/integration-ledger/",
+    "?? evidence/extensions/pack-closure-check/",
+    "?? evidence/extensions/template-scaffold/",
+    "?? evidence/extensions/verify-code-template/",
+    "?? evidence/extensions/verify-docs/",
+    "?? evidence/extensions/verify-skills/",
+    "?? evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/",
+    "?? packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+    "?? packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+    "?? scripts/verify-pack-closure.mjs",
+    "?? skills/dsh-qa/scripts/extension-template.mjs",
+    "?? templates/"
+  ],
+  "digests": [
+    {
+      "state": "M",
+      "path": "README.md",
+      "kind": "file",
+      "bytes": 14569,
+      "sha256": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718"
+    },
+    {
+      "state": "M",
+      "path": "README.zh-CN.md",
+      "kind": "file",
+      "bytes": 14691,
+      "sha256": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03"
+    },
+    {
+      "state": "M",
+      "path": "VENDOR_LOCK.json",
+      "kind": "file",
+      "bytes": 3434,
+      "sha256": "6b65176a935f573eaf4c9766c9a42d6ad3c48d3fc4d5e6a0797bade6992449ff"
+    },
+    {
+      "state": "M",
+      "path": "docs/extension-adaptation-report.md",
+      "kind": "file",
+      "bytes": 35511,
+      "sha256": "ed903aaf42a39a189694f0cd14d9391040ccc528465a70c1b1c28e7d27dccb5f"
+    },
+    {
+      "state": "M",
+      "path": "docs/extension-adaptation-report.zh-CN.md",
+      "kind": "file",
+      "bytes": 34880,
+      "sha256": "34daae0118897dbdbe4ae7455d8e6155863a92a8fcfc90f6ab8168e049a764e8"
+    },
+    {
+      "state": "M",
+      "path": "docs/index.md",
+      "kind": "file",
+      "bytes": 5947,
+      "sha256": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81"
+    },
+    {
+      "state": "M",
+      "path": "docs/index.zh-CN.md",
+      "kind": "file",
+      "bytes": 5862,
+      "sha256": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93"
+    },
+    {
+      "state": "M",
+      "path": "package.json",
+      "kind": "file",
+      "bytes": 3654,
+      "sha256": "ea608ea2b39b2c9494a2d741bb2bcbf669a304830b6ba75713d8f8f3f719d723"
+    },
+    {
+      "state": "M",
+      "path": "packages/mpd-bundle/cordis.patch.yml",
+      "kind": "file",
+      "bytes": 31752,
+      "sha256": "3aef18d6c715246b77cee87bcacf98d32ec948e647201d05ac87de4583fc918b"
+    },
+    {
+      "state": "M",
+      "path": "packages/mpd-ext-plugin/dist/index.js",
+      "kind": "file",
+      "bytes": 151093,
+      "sha256": "0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55"
+    },
+    {
+      "state": "M",
+      "path": "packages/mpd-ext-plugin/src/index.ts",
+      "kind": "file",
+      "bytes": 51079,
+      "sha256": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0"
+    },
+    {
+      "state": "M",
+      "path": "packages/mpd-roles-plugin/dist/index.js",
+      "kind": "file",
+      "bytes": 37803,
+      "sha256": "22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb"
+    },
+    {
+      "state": "M",
+      "path": "packages/mpd-roles-plugin/src/index.ts",
+      "kind": "file",
+      "bytes": 27131,
+      "sha256": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c"
+    },
+    {
+      "state": "M",
+      "path": "scripts/mpd-ext.mjs",
+      "kind": "file",
+      "bytes": 29701,
+      "sha256": "60d7901245381d9874094604de4b05b9d8c07b14f766b8adb8a8a40eea2618af"
+    },
+    {
+      "state": "M",
+      "path": "skills/dsh-qa/SKILL.md",
+      "kind": "file",
+      "bytes": 44233,
+      "sha256": "843b7f0cba4253ee02551aa4c56d31fe686064f9a57912127664b8f850b1b1f7"
+    },
+    {
+      "state": "M",
+      "path": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "kind": "file",
+      "bytes": 29682,
+      "sha256": "f8a4af525f4b86591b913390c2e008f9f6b32bef8e6193b6f70dca74407a0ac2"
+    },
+    {
+      "state": "M",
+      "path": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "kind": "file",
+      "bytes": 28153,
+      "sha256": "42cfd27d731d14663e4cd65ba9c665241e2767700c5057bc6e1afbc408c89a87"
+    },
+    {
+      "state": "??",
+      "path": "EXTENSIONS-FOR-AGENTS.md",
+      "kind": "file",
+      "bytes": 15038,
+      "sha256": "9a34622cc2843eddc10bcda810efbfa027f676dfa32108ff92d504e2985edf18"
+    },
+    {
+      "state": "??",
+      "path": "docs/extension-authoring-guide.md",
+      "kind": "file",
+      "bytes": 16579,
+      "sha256": "f8f771e83790f17998e5ba39ba0e0070bca21e706e28a48c4df3b8bf297887ce"
+    },
+    {
+      "state": "??",
+      "path": "docs/extension-authoring-guide.zh-CN.md",
+      "kind": "file",
+      "bytes": 16397,
+      "sha256": "07f7f9ff6b20739070beb9996222cf954614daa1cf2a0dd2c72fa470d457da68"
+    },
+    {
+      "state": "??",
+      "path": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/",
+      "kind": "dir",
+      "fileCount": 3,
+      "bytes": 7790,
+      "treeSha256": "10c54b95328673e525a2bf927db7556bc72c9c172fbed837aea08bf0dd0be545"
+    },
+    {
+      "state": "??",
+      "path": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-25-17.760Z/",
+      "kind": "dir",
+      "fileCount": 3,
+      "bytes": 7789,
+      "treeSha256": "0b2d82a58c570780a872bd7c1b25795d76d5f45cf7ca8529f52057d271693ee2"
+    },
+    {
+      "state": "??",
+      "path": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-37-56.922Z/",
+      "kind": "dir",
+      "fileCount": 3,
+      "bytes": 7789,
+      "treeSha256": "877e097d6b14c048e448a46187e3c25fee21f55047fbf133a6c00d94479cdb25"
+    },
+    {
+      "state": "??",
+      "path": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T07-19-44.444Z/",
+      "kind": "dir",
+      "fileCount": 3,
+      "bytes": 7917,
+      "treeSha256": "3b5a09457d7732154871ac601e1ca7363aa36e45cf210d8e1be64cd23eb8b458"
+    },
+    {
+      "state": "??",
+      "path": "evidence/dsh-qa/preset-conformance/2026-09-16T07-20-00.878Z/",
+      "kind": "dir",
+      "fileCount": 4,
+      "bytes": 8085,
+      "treeSha256": "68704356085d985beaf2648ff35424d3f509224441d5bd352c1ee6066b1b4259"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/boot-repeat/",
+      "kind": "dir",
+      "fileCount": 18,
+      "bytes": 64952,
+      "treeSha256": "62bde6c2c339298a34b6038c6045ce392f4b29877509f470bbc36e2859217337"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/boundary-index/",
+      "kind": "dir",
+      "fileCount": 4,
+      "bytes": 116106,
+      "treeSha256": "9644ed01e898d4f3389053b9e6cda0536d1e4ec18bcd60baa34aeef06119939f"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/debranding-probe/",
+      "kind": "dir",
+      "fileCount": 6,
+      "bytes": 67209,
+      "treeSha256": "52653e7cf2a989a57f7f73043bbc91983843c60e78ea2a2bb0b286562a96bb24"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/docs-claims/",
+      "kind": "dir",
+      "fileCount": 31,
+      "bytes": 117848,
+      "treeSha256": "45f939e59b04b40d01886ab51a521431736be948ac35feb58d7601bf39d548bc"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/",
+      "kind": "dir",
+      "fileCount": 13,
+      "bytes": 858303,
+      "treeSha256": "49d6c67bc25e2965b39c0035dfb99cb06c64f33b4ae0b1c9e4ed4f17c7ddc1a3"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/extension-lifecycle/2026-09-16T07-20-41.691Z/",
+      "kind": "dir",
+      "fileCount": 12,
+      "bytes": 845391,
+      "treeSha256": "605fd16a6193e835f1c9957ed661f3f0ddd84b900846f5c832c272e9d521017d"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/extension-mcp-bridge/2026-09-16T06-31-25.127Z/",
+      "kind": "dir",
+      "fileCount": 4,
+      "bytes": 194130,
+      "treeSha256": "aa85093b86a7a680b37548e7708c129ae0f9dcef66e6f4f859933ead788422bd"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/extension-template/",
+      "kind": "dir",
+      "fileCount": 16,
+      "bytes": 753055,
+      "treeSha256": "c782ec405eb5a9aca7d6972d23d3d789596cc74c5acd892a20f48deff4239db6"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/f1-adapter-identity/",
+      "kind": "dir",
+      "fileCount": 36,
+      "bytes": 200717,
+      "treeSha256": "8935c7549b5c411b9e4e15e996fde0375d610363575f408f141711760a39d8ab"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/integration-ledger/",
+      "kind": "dir",
+      "fileCount": 34,
+      "bytes": 442825,
+      "treeSha256": "56889022ace980983f05b00b9e4a575671e5f6747ad6697410f5a9c47a49be1c"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/pack-closure-check/",
+      "kind": "dir",
+      "fileCount": 30,
+      "bytes": 116065,
+      "treeSha256": "5d8457bb18215517fe171f84405fdfbf1de5a534f3c5123c930b62e4fb95003e"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/template-scaffold/",
+      "kind": "dir",
+      "fileCount": 35,
+      "bytes": 111456,
+      "treeSha256": "42b4780426b8b899049330bb7953df9c99f4cab8a20c10ffb350b731eb09edea"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/verify-code-template/",
+      "kind": "dir",
+      "fileCount": 86,
+      "bytes": 444829,
+      "treeSha256": "a80d5b365221400c04f2d2a767078231bde055c584053e5ed80042f7d7a08b66"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/verify-docs/",
+      "kind": "dir",
+      "fileCount": 75,
+      "bytes": 417106,
+      "treeSha256": "321e81907f2ad0d87056a2add46689d25ed1454a5f2fd49a1eb747e7f5f1a77e"
+    },
+    {
+      "state": "??",
+      "path": "evidence/extensions/verify-skills/",
+      "kind": "dir",
+      "fileCount": 36,
+      "bytes": 122365,
+      "treeSha256": "c22310a85337e96abe4c069448ce847c1691f695f16f1006d54b2ad1e1576af9"
+    },
+    {
+      "state": "??",
+      "path": "evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/",
+      "kind": "dir",
+      "fileCount": 3,
+      "bytes": 60300,
+      "treeSha256": "a33ca5379da5da8064074adce691ca1229b24a57c811e774580c9b421d6c0e56"
+    },
+    {
+      "state": "??",
+      "path": "packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+      "kind": "file",
+      "bytes": 8865,
+      "sha256": "e631d8096f4d688ca3498d264509e0337b889fe136b4a046b187b453deedd6c4"
+    },
+    {
+      "state": "??",
+      "path": "packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+      "kind": "file",
+      "bytes": 7058,
+      "sha256": "b1bd5a94fef7737ff997e5428838ac1c5b82f010610cd68a3a85109e8e0cf25f"
+    },
+    {
+      "state": "??",
+      "path": "scripts/verify-pack-closure.mjs",
+      "kind": "file",
+      "bytes": 18740,
+      "sha256": "9decb0830f327f6d220e7738aafb9237cc0cc318f2356c66433d5b10b61135df"
+    },
+    {
+      "state": "??",
+      "path": "skills/dsh-qa/scripts/extension-template.mjs",
+      "kind": "file",
+      "bytes": 22071,
+      "sha256": "42a46bf16b766d2d909fb1fec989b9544722a868a6af991729f6afed2467336c"
+    },
+    {
+      "state": "??",
+      "path": "templates/",
+      "kind": "dir",
+      "fileCount": 7,
+      "bytes": 23804,
+      "treeSha256": "e2778e16c490057a3ddb0529679b0c542913fce07eba53160770258130bba1c3"
+    }
+  ]
+}

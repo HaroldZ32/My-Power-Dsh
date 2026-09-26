@@ -1,0 +1,39 @@
+{
+  "task": "t41",
+  "attempt": 2,
+  "attemptId": "d55d4d15-91eb-4db6-8306-28c6360f0986",
+  "ok": true,
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "bytes": 282453,
+    "sha256": "dd9c88933a31627739eb04d0ad46208499ab4a5eb8a415f209477d30c9d999b7",
+    "builderReportedCodeUnits": 277939
+  },
+  "registration": {
+    "slot": "settings.plugin.item",
+    "key": "mpd",
+    "locale": "mpdSettings",
+    "shape": "ctx.slots.inject(\"settings.plugin.item\", function* () { yield ctx.slots.register({ name: SLOT, key: NS, locale: LOCALE_NS, inject: () => controller.inject() }, Card) })",
+    "mount": "deferred: ctx.inject([\"settingsScope\"], \u2026); the client still declares only [\"slots\", \"locale\"]",
+    "writeSeam": "ctx.settingsScope.bind({namespace:'mpd'}) -> getSnapshot/subscribe/mutate(ops, revision) (nested paths; unset for reset)"
+  },
+  "claims": {
+    "witnessed": [
+      "the registration in the BUILT and SERVED client bytes (automated + the lane re-hashing the artifact)",
+      "the card module's render/write/refuse/read-only behaviour in the offline hook harness",
+      "the write path end to end via the host's own authenticated settings/mutate (web-settings-bridge.mjs W1-W13)"
+    ],
+    "notClaimed": [
+      "a real browser renders the card; the host dispatches this key in a live page; a click produces the mutate \u2014 no browser binary exists in this environment (lane cardClaim.W3.witnessed === false)"
+    ],
+    "reproSteps": "Settings -> Plugins -> Plugin configuration tab -> the 'MPD bundle' card for namespace mpd; edit a field, Save; with exactly one live session the workspace's .mpd/mpd.jsonc changes with comments intact, otherwise the bridge refuses loudly with no-live-session / ambiguous-multi-root and states the value is not lost; a non-loopback page renders read-only with its reason."
+  },
+  "verify": {
+    "bun run typecheck": "exit 0",
+    "bun test packages/mpd-bundle-plugin": "68 pass / 0 fail / 551 expect() calls / 8 files",
+    "node scripts/build-mpd-client.mjs": "rebuilt; deterministic (the rebuilt artifact re-hashes to the recorded value)",
+    "node skills/dsh-qa/scripts/agent-teams-sidebar.mjs --self-test": "ok: 17 checks (the module list includes @mpd-dsh/settings-card; the sidebar page is unaffected)",
+    "bun skills/dsh-qa/scripts/web-client-adapt.mjs --self-test": "ok: 14 checks"
+  },
+  "followUpNotInScope": "packages/mpd-bundle/cordis.patch.yml: move the mpd-config row (line 216) after the settings provider / nearer mpd-tui (line 300); the code works around it in t39 (deferred registration + deterministic owner check)."
+}

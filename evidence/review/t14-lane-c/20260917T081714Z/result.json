@@ -1,0 +1,70 @@
+{
+  "task": "t14 — review-C — falsify the KICK instrument, the live knobs and the single pause mechanism",
+  "reviewedTask": "t10",
+  "kind": "review",
+  "attemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "contractRevision": 2,
+  "verdict": "pass",
+  "addendaCarried": {
+    "t21_open": "t21 (lib/tools.js status-pause-mechanisms) is PENDING as of this review: the agent-teams status LINE still presents TWO pause mechanisms. Per the captain's addendum the single-mechanism claim is therefore verified on the surfaces that EXIST (the tools' registered descriptions, the watchdog's own status tool, the doc pair) and the status-line surface is named as UNVERIFIED — never assumed.",
+    "t20_readme_pair": "t20 is terminal and its SOURCE pair is what I judged: README.md ffece49fd8820f9b26a07d14de41c325c51c45ebba79d307d85361426eed12a3, README.zh-CN.md e09a021bdaf52000f797dd574ff8148dee244995f81a7c168c76d63da695d7b2 (both match the captain's post-edit values); `bun run verify:docs` exit 0 'pairs=37 failed=0 violations=0 exempt=17 derived=3'. The packed artifact still ships the PRE-EDIT pair until t18's single re-pack — an ordered state, not a defect."
+  },
+  "pinnedRevisions": {
+    "pinUtc": "2026-09-17T08:21:11Z",
+    "files": {
+      "packages/mpd-team-watchdog-plugin/src/machine.ts": "47511b5d415477e2",
+      "packages/mpd-team-watchdog-plugin/src/engine.ts": "a82913cc7566dae2",
+      "packages/mpd-team-watchdog-plugin/src/actions.ts": "69ca5fa9f63f80df",
+      "packages/mpd-team-watchdog-plugin/src/index.ts": "31f6dfbd9d15acd8",
+      "packages/mpd-team-watchdog-plugin/src/config-file.ts": "c535df9eb04decf2",
+      "packages/mpd-team-watchdog-plugin/dist/index.js": "6aa3069c5cb89f97",
+      "packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts": "133f3c6342961c64",
+      "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts": "8ffc36053f5f98ef",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4b824797195996fa",
+      "packages/mpd-team-watchdog-plugin/README.md": "ffece49fd8820f9b",
+      "packages/mpd-team-watchdog-plugin/README.zh-CN.md": "e09a021bdaf52000"
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Every claim in t10's output is REPRODUCED independently on the pinned revision (quote command + reading)",
+      "status": "passed",
+      "evidence": "`bun test packages/mpd-team-watchdog-plugin` -> exit 0, 139 pass / 0 fail across 1053 files (claim: 139/0). `bun test packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts` -> exit 0, 12 pass / 0 fail (claim: 12). `node scripts/mpd-bg.mjs --self-test` -> exit 0, '13/13 arms passed' (claim: 13/13). `bun run typecheck` -> exit 0 (claim: green; RED1 fixed). `node scripts/verify-dist-fresh.mjs` -> exit 0, 'ok: 20/20 targets fresh … 7 NOT COVERED' and dist/index.js sha 6aa3069c5cb89f97… (claim: FRESH, sha 6aa3069c5cb8…). The live driver `bun evidence/team-watchdog/lane-c-2a/20260917T074144Z/lane-c-live.mjs --self-test` -> exit 0, 3/3 arms."
+    },
+    {
+      "criterion": "The KICK instrument really observes the FROZEN reading (D-2): no delivery while held, claim/update succeed, a kick is ANSWERED with a NAMED decline, and the SAME kick delivers after release — both states read, and the reverted guard reads RED",
+      "status": "passed",
+      "evidence": "All four legs are asserted in ONE arm (test 1 of lane-c-wave2.test.ts: 'held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED') and I read the assertions: the decline line must be exactly ONE and must carry the hold id, the ISO 'since' and the reason ('the team is held by the team watchdog (hold …: silence)'), deliveriesWhileHeld === 0 with the team bytes unchanged, claim+update SUCCEED, and after the release the SAME kick delivers exactly once — both states read. MY OWN OUT-OF-BAND REVERTS in a 16 MB mirror of packages/ (no product file touched, mirror deleted afterwards): (a) neutering the decline seam in the mirror's adopted lib/scheduler.js (`function noteDispatchDecline(...) { return; … }`) -> the KICK arm FAILS (12 pass -> 9 pass / 3 fail, exit 1); (b) making the member-scoped hold refusal unreachable (`if (memberHold !== undefined)` -> `if (false)`) -> the KICK arm FAILS again (9 pass / 3 fail). The mirror baseline was 12 pass / 0 fail before each revert, so the mirror itself is valid."
+    },
+    {
+      "criterion": "The single-mechanism claim is checked on EVERY surface that used to present two — tools, status output, AND the doc pair. (…BOTH TOOLS STAY REGISTERED)",
+      "status": "passed",
+      "evidence": "TOOLS: arm 11 ('the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism') and arm 12 ('apply() keeps exactly the three tools registered and publishes the hold service') both PASS; holds-lifecycle.test.ts pins the three names and asserts the OLD two-mechanism strings are absent ('PAUSED — halted (agent_teams_halt)', 'PAUSED — held (watchdog hold)', 'both (… + …)') and that the status view carries mechanism='agent_teams_halt' with implementation='watchdog-hold'. No tool was removed, so the acceptance's removal-clause never triggers. STATUS OUTPUT: the WATCHDOG'S OWN status tool reports ONE mechanism (asserted above); the AGENT-TEAMS STATUS LINE is UNVERIFIED because t21 is still PENDING — measured text at packages/mpd-agent-teams-plugin/lib/tools.js (region mpd-delta status-pause-mechanisms): 'TWO pause mechanisms can stop this team … this line NAMES both mechanisms and DEFERS the hold to its owner' rendering 'Pause: agent-teams halt … · team watchdog hold: not read on this surface …'. DOC PAIR: the SOURCE pair reads 'the ONE external pause is agent_teams_halt … It is the INTERNAL implementation of a team pause … never a second mechanism a caller picks between' (EN :294-295/:321-323, zh mirror), hashes match the captain's, verify:docs exit 0 (pairs=37 failed=0 violations=0 exempt=17 derived=3). Mounted boot: my own `bun skills/dsh-qa/scripts/team-watchdog-boot.mjs` run -> ok:true, B1-B12 green, B1 'the watchdog row APPLIED in the real boot {\"enabled\":\"true\",\"disposers\":8,\"holdService\":\"mpdWatchdog\"}' (the boot lane records no tool list — see O3)."
+    },
+    {
+      "criterion": "The live-knob claim is an OBSERVED no-restart effect (not a re-read after restart) and the `--live` assertion reddens when liveness is removed",
+      "status": "passed",
+      "evidence": "`lane-c-live.mjs --live` -> exit 0, same instance, mounted=90000 / fileValue=900000 / sameInstanceValue=900000, sameInstance=true, fileApplied=true, liveLayer='file', restartRequired=false, liveWithoutRestart=TRUE (my own run; sourceHash a82913cc7566dae2 — the same hash t10 quotes for engine.ts). `lane-c-live.mjs --mutant restart-needed` -> on the seeded-revert tree the SAME instance keeps the OLD value (observed=90000) and prints 'the `--live` assertion on this tree: FAIL (exit 1) — liveness LOST … restartRequired=true', then 'mutant DETECTED (the assertion reddened)' with the runner exiting 0 — the honest meta-assertion shape. `--self-test` -> 3/3."
+    },
+    {
+      "criterion": "T-79's DELIVERY half is verified as far as this lane can (the scheduler composes no ticket for a terminal task) and the JOINT reading is left to F-2 on the merged tip — the reviewer must not accept a one-sided claim as the whole of T-79",
+      "status": "passed",
+      "evidence": "Arm 8 ('T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken') PASSES, with its own RED leg in the same run; arm 7 covers the blocked/claimable/terminal predicate (ZERO / exactly ONE / ZERO deliveries). I accept this as the DELIVERY half only: the JOINT reading (state half + delivery half on the merged tip) is F-2's, and t8's state half was reviewed separately by me under t12 — I do not read this arm as the whole of T-79."
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js", "problem": "The named decline reaches the caller through the `noteDispatchDecline` -> `ctx.logger.warn` seam, and the arm MEASURES that the kick's return value does NOT carry the name (`expect(kickReturn).toBeUndefined()`, 'measured: the name is NOT carried by the return value'). So a caller that reads only the tool's return value sees no name; the name arrives as the warning every dispatch decline in this codebase uses.", "requiredFix": "none required — the seam is the shipping channel for every refusal and the arm asserts the line's CONTENT and uniqueness (hold id + since + reason, exactly once, only on the refusal path). Recorded so no reader assumes the return value carries it." },
+    { "id": "O2", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/tools.js", "problem": "The agent-teams STATUS LINE still presents TWO pause mechanisms ('TWO pause mechanisms can stop this team … this line NAMES both mechanisms'). t21 is PENDING, so this surface of the single-mechanism claim is UNVERIFIED rather than closed.", "requiredFix": "t21's completion (captain-owned surface); not a t10 defect — lane C quoted it and did not edit it." },
+    { "id": "O3", "severity": "info", "file": "skills/dsh-qa/scripts/team-watchdog-boot.mjs", "problem": "Bound: the mounted boot proves the watchdog row APPLIES (B1: holdService mpdWatchdog, disposers 8) but its result.json records no tool list, so the tool-NAME registration evidence is the in-process pins (arm 12 + holds-lifecycle), not the boot. No tool was removed, so the acceptance's 'removal without a mounted-boot tool-list reading' clause does not fire.", "requiredFix": "none; stated as a bound." },
+    { "id": "O4", "severity": "info", "file": "packages/mpd-team-watchdog-plugin/README.md", "problem": "The packed artifact still ships the PRE-EDIT README pair until the captain's single re-pack at t18; I judged the SOURCE pair as instructed.", "requiredFix": "none — ordered state." },
+    { "id": "O5", "severity": "info", "file": ".mpd/team/friction-p2-wave/team.json", "problem": "t10's `verify` FIELD still lists `bun run typecheck` while its acceptance says the aggregate is a reading, not this lane's verify. t10 disclosed this itself ('VERIFY-FIELD ANSWER: YES — t10's verify still lists …'); it is green either way.", "requiredFix": "the captain re-pins the verify field when convenient (field-only change)." }
+  ],
+  "bounds": [
+    "The single-mechanism claim is verified on the tools surface, the watchdog's own status tool and the doc pair, and is UNVERIFIED on the agent-teams status line (t21 pending).",
+    "The JOINT T-79 reading is F-2's; this review covers the DELIVERY half only.",
+    "My revert-state runs were performed in a 16 MB mirror of packages/ which I deleted afterwards (no product file edited) — the same discipline that keeps scratch copies out of bun's substring test filter.",
+    "t10's declared bound 'no live dsh boot was run for this lane' is now partly filled by MY mounted boot (B1-B12 green), which certifies the row applies; it is not a lane-C claim."
+  ]
+}

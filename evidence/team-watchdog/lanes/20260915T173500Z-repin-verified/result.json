@@ -1,0 +1,58 @@
+{
+  "task": "t67 (post-re-pin verification record)",
+  "lane": "team-watchdog-lanes",
+  "reverifiedOn": "2026-09-15T17:35Z (after the captain landed the re-pin)",
+  "vendorPairing": {
+    "before": "310/8ec53287296e",
+    "after": "316/10c945f47a5e645e0ecd9e4bce198b3a314389407f4681fd8906b988f8e7f3bb",
+    "repinnedBy": "the captain (VENDOR_LOCK.json is out of t67's scope)",
+    "verifyVendor": "PASS, exit 0 — asset OK: skills 316 files"
+  },
+  "gates": [
+    {
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "bun run test:qa",
+      "exitCode": 0,
+      "evidence": "all self-tests passed (raw/test-qa.log)"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exitCode": 0
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0
+    }
+  ],
+  "laneReruns": {
+    "heartbeat": {
+      "selfTest": "[self-test] PASS — team-watchdog-heartbeat (7 checks, 0 failed)",
+      "realRun": "[team-watchdog-heartbeat] PASS — 13 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/"
+    },
+    "fault": {
+      "selfTest": "[self-test] PASS — team-watchdog-fault (10 checks, 0 failed)",
+      "realRun": "[team-watchdog-fault] PASS — 11 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/2026"
+    },
+    "scene": {
+      "selfTest": "[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)",
+      "realRun": "[team-watchdog-scene] PASS — 10 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/2026"
+    },
+    "config": {
+      "selfTest": "[self-test] PASS — team-watchdog-config (8 checks, 0 failed)",
+      "realRun": "[team-watchdog-config] PASS — 10 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/202"
+    },
+    "notify": {
+      "selfTest": "[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)",
+      "realRun": "[team-watchdog-notify] PASS — 18 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/202"
+    }
+  },
+  "notClaimed": [
+    "No live model turn / no live dsh host: the heartbeat witness is a mounted boot plus the events the host would fire, read back by a fresh process.",
+    "No real browser render and no real TTY keystroke drive: the notify lane asserts the rendered tree through the offline hook runtime and the TUI's composed status value + dialog + the real watermark file.",
+    "Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN.",
+    "The fixture's W-3 limit, repeated verbatim: 'W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.'"
+  ]
+}

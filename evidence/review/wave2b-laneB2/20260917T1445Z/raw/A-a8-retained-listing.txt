@@ -1,0 +1,7 @@
+/tmp/t21-revb2-scratch/a8/runA/revisions:
+checker.mjs
+superseded.mjs
+
+/tmp/t21-revb2-scratch/a8/runB/revisions:
+checker.mjs
+superseded.mjs

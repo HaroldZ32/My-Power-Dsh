@@ -1,0 +1,4 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "\"dupCount\"" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/20260917T142452Z · scope 16 text file(s) · moment 2026-09-17T14:40:19.069Z
+
+[anchor-scan] 0 match(es) in 16 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z

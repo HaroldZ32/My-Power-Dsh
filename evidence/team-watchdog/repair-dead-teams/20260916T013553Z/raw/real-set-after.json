@@ -1,0 +1,68 @@
+{
+  "label": "after",
+  "revision": "dist as it stands at this run",
+  "distSha256": "54f1f41ce60629651d96320cffe573e5c0079d742f1a024213c07e733681935b",
+  "copiedRecords": [
+    "mpd-default",
+    "agent-teams-sidebar-migration",
+    "mpd-default-d92bc69a",
+    "mpd-default-e1f54e18",
+    "mpd-default-db53f0d4",
+    "mpd-default-84e50f06"
+  ],
+  "copiedHeartbeatFiles": [
+    "lead.jsonl",
+    "deep-worker.jsonl",
+    "session-session.jsonl",
+    "session-396bfcf8.jsonl",
+    "captain.jsonl"
+  ],
+  "liveRegistryIds": 12,
+  "totals": {
+    "neverStarted": 0,
+    "skippedTeams": 5,
+    "incidents": 0,
+    "consoleLines": 0,
+    "decisions": 0
+  },
+  "perTeam": {
+    "mpd-default": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    },
+    "agent-teams-sidebar-migration": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    },
+    "mpd-default-d92bc69a": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    },
+    "mpd-default-e1f54e18": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    },
+    "mpd-default-db53f0d4": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    },
+    "mpd-default-84e50f06": {
+      "incidents": 0,
+      "consoleLines": 0,
+      "decisions": []
+    }
+  },
+  "consoleSample": [],
+  "debugSkipLines": [
+    "[mpd-team-watchdog] skipping team agent-teams-sidebar-migration (phase running, 10 task(s)) has NO live agent: neither the captain session nor any of its 11 member id(s) is in this process's live registry (12 live agent(s))",
+    "[mpd-team-watchdog] skipping team mpd-default-84e50f06 (phase staged, 8 task(s)) has NO live agent: neither the captain session nor any of its 11 member id(s) is in this process's live registry (12 live agent(s))",
+    "[mpd-team-watchdog] skipping team mpd-default-d92bc69a (phase running, 32 task(s)) has NO live agent: neither the captain session nor any of its 11 member id(s) is in this process's live registry (12 live agent(s))",
+    "[mpd-team-watchdog] skipping team mpd-default-db53f0d4 (phase running, 54 task(s)) has NO live agent: neither the captain session nor any of its 11 member id(s) is in this process's live registry (12 live agent(s))",
+    "[mpd-team-watchdog] skipping team mpd-default-e1f54e18 (phase running, 18 task(s)) has NO live agent: neither the captain session nor any of its 7 member id(s) is in this process's live registry (12 live agent(s))"
+  ]
+}

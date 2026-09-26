@@ -1,0 +1,10 @@
+=== 1. PRE-WRITE STATE (the authority is the dry run taken NOW) ===
+lock sha256 (pre): c9a827004c8d94624a5c5b8c613acf5c5d7928f594ae58b5d40af2aed7322d22
+git status --porcelain -- VENDOR_LOCK.json: []
+repin --check (pre-write) exit=1
+--- the skills asset line from that run ---
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=b9097d115ae0742828744d9a305c145fe2efeaef11d6a4e641bf666687102620 fileCount=323
+[repin-vendor]   computed (LF) : treeSha=5fbe9dbcd5c52c50a0148f9b2c14b07e6210f4b710e4d7060aeee94a8887b71a fileCount=324 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 26ec1af28bb29eee4b1b5b4b6282d0baf4f24c4776bc4a0c2f4b1a7db9dd41cc   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha b9097d115ae0742828744d9a305c145fe2efeaef11d6a4e641bf666687102620 -> 5fbe9dbcd5c52c50a0148f9b2c14b07e6210f4b710e4d7060aeee94a8887b71a

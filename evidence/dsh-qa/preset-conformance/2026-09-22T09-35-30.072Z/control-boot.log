@@ -1,0 +1,176 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=C:\MyDoc\DshProj\my-power-dsh\node_modules\.bun\@colbymchenry+codegraph@1.5.0\node_modules\@colbymchenry\codegraph\npm-shim.js cwd=C:\Users\ZHAO~1.YIN\AppData\Local\Temp\mpd-preset-control-3RqoK2\ws
+[mpd-bootstrap] skill corpus served from C:\MyDoc\DshProj\my-power-dsh\skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry webserver (@deepseek-ai/dsh-host-webserver): listen EADDRINUSE: address already in use 127.0.0.1:3198
+Error: listen EADDRINUSE: address already in use 127.0.0.1:3198
+    at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+    at listenInCluster (node:net:2437:12)
+    at node:net:2666:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at boot (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry webserver (@deepseek-ai/dsh-host-webserver): listen EADDRINUSE: address already in use 127.0.0.1:3198
+      at updateError (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Entry.init (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+      at async Entry.update (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+      at async EntryGroup.create (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+      at async Proxy.create (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:227:14)
+      at async mountRootInclude (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1343:20)
+      at async boot (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1534:3)
+      at async runProfile (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14) {
+    [cause]: Error: failed to apply loader entry webserver (@deepseek-ai/dsh-host-webserver): listen EADDRINUSE: address already in use 127.0.0.1:3198
+        at updateError (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._await (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:516:10)
+        at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+        at async Entry.init (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:510:3)
+        at async Entry.update (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+        at async EntryGroup.create (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+        at async Promise.allSettled (index 103)
+        at async EntryGroup.update (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:97:21)
+        at async Include._apply (file:///C:/Users/zhao.yinan/AppData/Roaming/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+      [cause]: Error: listen EADDRINUSE: address already in use 127.0.0.1:3198
+          at Server.setupListenHandle [as _listen2] (node:net:2328:16)
+          at listenInCluster (node:net:2437:12)
+          at node:net:2666:7
+          at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+        code: 'EADDRINUSE',
+        errno: -4091,
+        syscall: 'listen',
+        address: '127.0.0.1',
+        port: 3198
+      }
+    }
+  }
+}
+
+Node.js v24.21.0

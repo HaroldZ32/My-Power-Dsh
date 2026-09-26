@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T01-43-27.803Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":false,"exit":1}
+  flow: {"ok":false,"sample":"[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wm-home-E8VOK5/ws | [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free) | [mpd-bootstrap] skil
+  files: {"ok":false,"note":"","wmRoot":"/tmp/mpd-wm-home-E8VOK5/.mpd/workmate"}
+  isolation: {"ok":false,"realWm":"/root/.mpd/workmate"}

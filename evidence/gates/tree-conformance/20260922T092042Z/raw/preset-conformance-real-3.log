@@ -1,0 +1,12 @@
+<anonymous_script>:1
+unauthorized
+^
+
+SyntaxError: Unexpected token 'u', "unauthorized" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at parseJSONFromBytes (node:internal/deps/undici/undici:4394:19)
+    at successSteps (node:internal/deps/undici/undici:7048:27)
+    at readAllBytes (node:internal/deps/undici/undici:5965:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.21.0

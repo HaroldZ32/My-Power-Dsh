@@ -1,0 +1,5 @@
+[live-team-never-started] the record is STALE (ten days) but its member resolves to a LIVE agent, so the team IS ticked (skippedTeams 0)
+[live-team-never-started] a claimed task that never stamped is still recorded ONCE: [{"kind":"never-started","taskId":"t1","scene":null,"hold":"not-requested"}] with 1 notice line(s)
+[live-team-never-started] no WARN/ESCALATE was manufactured: []
+[live-team-never-started] debug skip lines (expected none): []
+[live-team-never-started] => AC-2's never-started record path is intact (r4)

@@ -1,0 +1,23 @@
+=== t36 final run set — 2026-09-17T14:58:34Z ===
+-- revision --
+bc49d6c716652038d5418d9795b1b9d6bc96733d83955b96089e430e070a755b  scripts/check-citations.mjs
+1257 scripts/check-citations.mjs
+
+-- 1: required verify: node scripts/check-citations.mjs --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2: --self-test --
+exit=0
+
+[docs-claims] 25/25 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3: T-80 fixture arms --
+exit=0
+[driver-headers self-test] 3/3 arms passed
+
+-- 4: the units registry is IN the record (byte read) --
+units entries: 12 | moment: 2026-09-17T14:57:48.822Z | third_direction.unit: reference LINES (not driver files): the sum, over the scanned rows, of their `re
+-- final hash --
+bc49d6c716652038d5418d9795b1b9d6bc96733d83955b96089e430e070a755b  scripts/check-citations.mjs

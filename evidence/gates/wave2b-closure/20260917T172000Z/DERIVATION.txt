@@ -1,0 +1,53 @@
+DERIVATION (mechanical; the ids are READ, never recalled)
+  plan §5 item table names 36 distinct ids: T-06, T-08, T-11, T-13, T-14, T-15, T-27, T-42, T-44, T-64, T-84, T-87, T-92, T-93, T-66, T-68, T-70, T-71, T-77, T-88, T-34, T-41, T-78, T-80, T-82, T-28, T-29, T-30, T-47, T-91, T-90, T-79, T-25, T-89, T-69, T-74
+  §8.8's own disposition table closes 19 of them in wave 2a: T-61, T-62, T-75, T-79, T-81, T-63, T-65, T-67, T-76, T-48, T-16, T-18, T-19, T-05, T-83, T-85, T-86, T-72, T-73
+  rolling into wave 2b  =  §5 ids − §8.8-closed  =  35 ids: T-06, T-08, T-11, T-13, T-14, T-15, T-27, T-42, T-44, T-64, T-84, T-87, T-92, T-93, T-66, T-68, T-70, T-71, T-77, T-88, T-34, T-41, T-78, T-80, T-82, T-28, T-29, T-30, T-47, T-91, T-90, T-25, T-89, T-69, T-74
+  RECONCILIATION (the plan and the register tail do not count the same set):
+    · the register tail: 34 rolling = 27 originally-planned P2 (the 16 of §8.5 + 11 further P2 ids the plan names) + T-74/T-87/T-88/T-89/T-90/T-91/T-92 (7) → 53 = 19 + 34 ✓
+    · the plan §5 item table names 36 ids: the same 34, PLUS T-93 (the mint origin — its own row, authored at evidence/agent-teams/wave2b-laneA/20260917T160558Z/T-93-register-row.md) PLUS T-79 (double-listed: §8.8 closed its row in 2a, wave 2b carries its carry-forward test half)
+    · the two carry-forwards the tail names are HALVES of T-79 and of T-19's lane (T-19 closed in 2a) and mint no id
+    · the table therefore carries 36 rows = 34 rolling + T-93 (the mint origin); T-79 is double-listed and is NOT counted twice
+  VARIANT rows fold into their base id (T-88 doctrine→T-88, T-79 test→T-79, T-41 probe→T-41, T-77 driver half→T-77, T-80 arms→T-80, T-25 reader half→T-25, T-69 lane half→T-69); the two named carry-forwards are halves of T-79 and T-19's lane and mint NO new id.
+
+POINTER RESOLUTION (each pointer checked with statSync: kind = directory | file | MISSING)
+  ok    T-06   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-08   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-11   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-13   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-14   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-15   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-25   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-27   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-28   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-29   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-30   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-34   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-41   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-42   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-44   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-47   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-64   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-66   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-67   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-68   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-69   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-70   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-71   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-74   directory evidence/gates/wave2b-laneB2/20260917T150936Z/
+  ok    T-77   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-78   directory evidence/gates/wave2b-laneB2/20260917T150936Z/
+  ok    T-79   directory evidence/review/wave2b-laneC/
+  ok    T-80   directory evidence/gates/wave2b-laneB2/20260917T150936Z/
+  ok    T-82   directory evidence/gates/wave2b-laneB2/20260917T150936Z/
+  ok    T-84   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-87   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-88   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-89   directory evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/
+  ok    T-90   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-91   directory evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/
+  ok    T-92   directory evidence/agent-teams/wave2b-laneA/20260917T165932Z/
+  ok    T-93   file      evidence/agent-teams/wave2b-laneA/20260917T160558Z/T-93-register-row.md
+  UNRESOLVED COUNT: 0
+
+ROWS PRESENT: 35 of the 35 rolling ids (+T-93 as its own row)
+

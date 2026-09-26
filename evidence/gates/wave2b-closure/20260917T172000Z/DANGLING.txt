@@ -1,0 +1,8 @@
+DANGLING-CITATION SCAN (t59) — ids cited in the closure table and in the map's REGISTER column that
+appear in NEITHER .mpd/TODO.md nor .mpd/plans/friction-p2-wave-2b.md. The map's DRAFT column is
+excluded by construction: a draft id is not expected to exist in the register (that is the map's point).
+
+  DANGLING COUNT: 0
+
+EXPECTED (by construction, NOT dangling): the 25 DRAFT ids T-95…T-119 exist only as drafts; every
+citation of them resolves through MINT-RENUMBER-MAP.md (subtract 1). The map is the remedy the task asks for.

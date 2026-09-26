@@ -1,0 +1,34 @@
+{
+  "driver": "prefix-tree-run (T-73 acceptance item 3)",
+  "headCommit": "c826f16",
+  "arm": "/tmp/mpd-t73-prefix-tree-MIO2C2/pkg/self-fix-tests/composed-ticket-output-preserved.test.mjs",
+  "runs": {
+    "pre-fix tree (HEAD state.js)": {
+      "exit": 1,
+      "failed": 2,
+      "passed": 4,
+      "failedCases": [
+        "T-73: the deterministic probe — a composed ticket no longer WIPES the stored deliverable [14.18ms]",
+        "T-73 negative control: with the new condition neutralised, the SAME fixture is WIPED [3.45ms]"
+      ],
+      "tail": [
+        " 2 fail",
+        " 20 expect() calls",
+        "Ran 6 tests across 1 file. [138.00ms]"
+      ]
+    },
+    "fixed tree": {
+      "exit": 0,
+      "failed": 0,
+      "passed": 6,
+      "failedCases": [],
+      "tail": [
+        " 0 fail",
+        " 25 expect() calls",
+        "Ran 6 tests across 1 file. [152.00ms]"
+      ]
+    }
+  },
+  "headStateBytes": 69027,
+  "armExists": true
+}

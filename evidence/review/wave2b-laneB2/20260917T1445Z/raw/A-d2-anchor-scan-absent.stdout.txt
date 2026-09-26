@@ -1,0 +1,4 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "00000000deadbeef" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under /tmp/t21-revb2-scratch/d-mailbox · scope 1 text file(s) · moment 2026-09-17T14:36:56.374Z
+
+[anchor-scan] 0 match(es) in 1 file(s) under /tmp/t21-revb2-scratch/d-mailbox

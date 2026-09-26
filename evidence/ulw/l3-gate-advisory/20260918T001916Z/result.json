@@ -1,0 +1,147 @@
+{
+  "lane": "L3 — gate advisory (no pre-staging) + delta registry",
+  "task": "t5",
+  "attempt_id": "2d7299d8-4011-4af0-a64a-004327cce7e8",
+  "timestamp_utc": "2026-09-18T00:19:16Z",
+  "base_revision": "5aa222a",
+  "plan_of_record": ".mpd/plans/ulw-commands-and-gate.md (§2 D1, §3 L3, §8 R1)",
+  "frozen_contract": "evidence/ulw/requirements/20260918T001246Z/contract.md (§4 clause 4, G1-G3/G7/G10, §4.3)",
+  "what_changed": {
+    "routeDecision": "a triggered SOFT auto-route (B/C/D) now returns action 'advise'; an explicit `team:` / `!team` request (signal A) still returns 'provision' (R4); mode 'auto' -> provision, 'instruct' -> instruct, 'off'+autoRoute:false -> none, no user text -> none (all unchanged).",
+    "advisoryNotice": "NEW exported builder (inside region mpd-delta session-start-gate): keeps STARTUP_NOTICE_MARKER, user role, names the fired signals, states 'NO team was staged', names agent_teams_create(approval=\"required\", profile=\"mpd\") for the moment the work warrants a team, tells the captain to continue solo and say so otherwise; says nothing about automatic approval (clause-3 consistency, contract §4.3). source.reason = 'session-start-advisory'.",
+    "provisionedNotice": "kept for the two paths that DO stage (explicit flag / mode 'auto'); its routing clause is now path-accurate instead of claiming the complexity gate routed every provisioning.",
+    "installSessionTeamPolicy": "the advise branch injects advisoryNotice and stages nothing; provisioning is reached only from mode:'auto' or the explicit flag; flag consumption, stale-staged-team reclamation and the plan-artifact signal unchanged.",
+    "lib_index_js": "sessionTeamPolicy config comment no longer says the gate stages a team; states the gate is ADVISORY and provisions nothing by itself.",
+    "module_header": "the autoRoute bullet and the settle-once paragraph in lib/session-start.js no longer promise provisioning on a triggered route.",
+    "registry": "lib/mpd-deltas.js regenerated with --write-registry (never hand-edited): 120 regions, count unchanged because the edit is INSIDE the existing region."
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "routeDecision returns the new advisory action on a triggered auto-route and still returns provision for the explicit flag and for mode:\"auto\"",
+      "status": "passed",
+      "evidence": "test/session-start.test.ts 'routeDecision: a triggered auto-route ADVISES...' + test/r3-f1-signal-c.test.mjs (explicit per-prompt action table) + probe.mjs direction table: simple->none, SOFT->advise(C), team:->provision(A), !team->provision(A), mode auto->provision, mode instruct->instruct, autoRoute off->none, no text->none, plan artifact D->advise"
+    },
+    {
+      "criterion": "installSessionTeamPolicy injects the advisory notice and creates NO team state for a triggered auto-route (verified by a unit test that asserts both the notice and the absence of provisioning)",
+      "status": "passed",
+      "evidence": "test/session-start.test.ts 'installSessionTeamPolicy: a triggered SOFT auto-route injects the advisory and stages NO team' (run in isolation: 1 test, 10 expect calls, pass) asserts the spliced user-role notice AND readdirSync(stateRoot) === [] ; probe.mjs arms 'decision carries claimed message + notice', 'injected notice is the advisory', 'NO team state was created' (entries: [])"
+    },
+    {
+      "criterion": "The advisory notice keeps the [AgentTeams] Session-start team rule marker, is user-role, names the fired signals, states that no team was staged, and names agent_teams_create(approval=\"required\", profile=\"mpd\") as the on-demand path",
+      "status": "passed",
+      "evidence": "test 'advisory notice: marker, fired signals, NO team staged, on-demand staging path' (8 expect calls) + probe checks marker / 'complexity signals C' / 'NO team was staged' / 'agent_teams_create(approval=\"required\", profile=\"mpd\")' / 'continue solo' / no 'approval=\"automatic\"' / source.reason"
+    },
+    {
+      "criterion": "Every user-visible string that promised pre-staging is updated: plugin prompt/rule text and config description in lib/index.js, the exported notice builders, and the plugin tests that encoded the old behaviour",
+      "status": "passed",
+      "evidence": "lib/index.js sessionTeamPolicy comment rewritten; lib/session-start.js module header rewritten (autoRoute bullet + settle-once paragraph); advisoryNotice added and provisionedNotice re-worded path-accurately; test/session-start.test.ts routeDecision case and test/r3-f1-signal-c.test.mjs two-sided case were REWRITTEN to encode the new behaviour (both previously asserted 'provision' for soft triggers); grep over lib/*.js (excluding the generated registry) shows no remaining pre-staging promise"
+    },
+    {
+      "criterion": "The gate edit lives inside region mpd-delta session-start-gate without nesting or splitting a declaration; node scripts/patch-agent-teams-fixes.mjs --check exits 0 and lib/mpd-deltas.js was regenerated with --write-registry (never hand-edited)",
+      "status": "passed",
+      "evidence": "span scan of lib/session-start.js: session-start-gate 90-607, plan-format-seed 608-697, interjection-expiry-session-start 698-745, nested regions 0; pre-regeneration --check exited 1 naming the drift (expected), --write-registry exited 0 ('registry regenerated ... 120 regions'), post --check exited 0 ('120 mpd delta region(s) across 10 adopted file(s)'); registry heal suites 37 pass"
+    },
+    {
+      "criterion": "agent-references/agent-teams-deltas.md documents the changed region behaviour",
+      "status": "passed",
+      "evidence": "A5 row extended: advisory `advise` action, advisoryNotice contract, provisioning only from mode:'auto'/explicit flag, `D_AUTOROUTE_ADVISORY` naming without minting a D-id (derived A1–D42 value untouched), and the disclosed limit that the two comment-only edits sit outside any region"
+    },
+    {
+      "criterion": "bun test packages/mpd-agent-teams-plugin is green and bun run typecheck passes",
+      "status": "passed",
+      "evidence": "bun test packages/mpd-agent-teams-plugin: 301 pass / 0 fail (2794 expect calls), exit 0; bun run typecheck (tsgo --noEmit): exit 0"
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "post-regeneration run: 'already applied: 120 mpd delta region(s) across 10 adopted file(s)' (the pre-regeneration run exited 1 with the drift message at lib/session-start.js line 404 — the designed signal, recorded in output.log)"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --write-registry",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "'registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (120 regions)'; git diff on that file is 1 line (the stored region block)"
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "301 pass, 0 fail, 2794 expect() calls, 22.61s"
+    },
+    {
+      "command": "bun run typecheck",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "node evidence/ulw/l3-gate-advisory/20260918T001916Z/probe.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "independent probe: ok=true, 21 checks green (directions, notice contract, installer notice + no team state)"
+    },
+    {
+      "command": "MUTATION CONTROL: re-inject the old soft-trigger action in place, run the probe, restore",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "probe exit 1 with exactly three RED checks (SOFT trigger -> advise observed 'provision'; plan artifact D -> advise observed 'provision'; injected notice was the instruct text) — the assertion is falsifiable; file restored byte-exactly (sha256 4888f69f… before and after) and --check 0 post-restore"
+    }
+  ],
+  "labelled_findings": [
+    {
+      "id": "L3-F1",
+      "severity": "medium",
+      "kind": "delta-discipline deviation (disclosed, not silent)",
+      "problem": "Two comment-only strings changed OUTSIDE any mpd-delta region: the module header of lib/session-start.js (the autoRoute bullet + settle-once paragraph) and the sessionTeamPolicy config comment in lib/index.js. Neither span can be region-wrapped safely: the session-start.js header sits ABOVE the gate region's registered beforeContext anchor (export const STARTUP_NOTICE_MARKER), so wrapping it would destroy that anchor; the index.js property is a non-declaration block whose heal could duplicate the `sessionTeamPolicy:` key (the D13/D14 last-wins hazard).",
+      "impact": "a human re-materialize of the adopted tree would silently revert those two comments (never the behaviour — the behaviour is inside the region). Recorded in agent-references/agent-teams-deltas.md's A5 row.",
+      "requiredFix": "captain/integration: decide whether the two comments need their own region in a later wave; no action needed for this wave's acceptance."
+    },
+    {
+      "id": "L3-F2",
+      "severity": "medium",
+      "kind": "path amendment requested (R1, one captain message, no work attached)",
+      "problem": "presets/mpd/agent.cordis.yml lines 85-101 (SESSION STARTUP RULE) still promises pre-staging ('the plugin has already staged the default team') and carries the superseded `(matchedSignals >= 2)` predicate; packages/mpd-bundle/README.md lines 24-40 and README.zh-CN.md line 15 carry the same two defects. All three are OUTSIDE t5's inScope and unowned (agent_teams_path_owner: free to declare).",
+      "impact": "if unamended, the shipped startup rule contradicts the notice the plugin emits (contract S12/S13/S14, G4/G5).",
+      "requiredFix": "captain: add presets/mpd/agent.cordis.yml + packages/mpd-bundle/README.md + README.zh-CN.md to t6's inScope (preferred: t6 is still pending), or to t5 with an attempt-safe amend. Message sent 2026-09-18T00:19Z (mailbox id 62947c48-ce0b-4a75-94fa-4528c890ed99)."
+    }
+  ],
+  "captain_steering_2026-09-18T0020Z": {
+    "received": "Captain confirmed t1's contract as the authoritative input for the lane and ruled the two remaining user-visible gate surfaces OUT of t5: presets/mpd/agent.cordis.yml (S12) and packages/mpd-bundle/README*.md (S13/S14) are owned by t6 (docs lane), because amending the running t5 contract would have revoked this attempt.",
+    "frozen_facts_honoured": {
+      "predicate": "unchanged and never touched by this lane: lib/session-start.js `const trigger = input.explicitFlag === true || signals.length >= 1;`",
+      "matchedSignals_ge_2_is_never_a_rule": "the only occurrences are rationale/history and each says so: session-start.js:35 ('The superseded `matchedSignals >= 2` wording must NOT be restored'), session-start.js:218 (the Option A supersession note), the generated registry copy of that same comment inside lib/mpd-deltas.js's stored block, and the pre-fix measurement narration at test/r3-f1-signal-c.test.mjs:5 ('Measured before the fix: ... reached matchedSignals >= 2 and auto-provisioned a team'). None is a predicate and none was restored.",
+      "auto_route_creates_no_team_state": "asserted twice: test/session-start.test.ts (readdirSync(stateRoot) === []) and probe.mjs ('NO team state was created', state root entries: [])",
+      "explicit_flag_and_mode_auto_still_provision": "probe.mjs directions: 'team: do it' -> provision(A), '!team' -> provision(A), mode auto -> provision"
+    },
+    "compliance_verified_2026-09-18": {
+      "forbidden_paths_untouched_by_this_lane": "`git status --porcelain -- presets/mpd/agent.cordis.yml packages/mpd-bundle/README.md packages/mpd-bundle/README.zh-CN.md` is EMPTY",
+      "changed_paths_git_diff_name_only": [
+        "packages/mpd-agent-teams-plugin/lib/session-start.js",
+        "packages/mpd-agent-teams-plugin/lib/index.js",
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+        "packages/mpd-agent-teams-plugin/test/session-start.test.ts",
+        "packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs",
+        "agent-references/agent-teams-deltas.md"
+      ]
+    },
+    "L3-F2_resolution": "CLOSED as owner-routed by the captain: S12 -> t6, S13/S14 -> t6. No further action from t5; contract G4/G5 stay with the docs lane and G8/G9 with the skills lane (t7)."
+  },
+  "not_done_out_of_scope": [
+    "skills/dsh-qa/scripts/session-start-team.mjs + lib/gate-probe.mjs adversarial rewrite (contract G8) — qa-engineer t7",
+    "packages/mpd-agent-teams-plugin/README*.md gate narrative (G6) — docs-engineer t6",
+    "packages/*/dist/** rebuilds (D6/T-88) — integration t8; no dist file was touched here",
+    "the §4.3 cross-lane coexistence test (advisory's approval=\"required\" vs the ULW directive's approval=\"automatic\") — the ULW directive is mpd-ulw-plugin (t4, not yet landed); the notice-side half is asserted here (no prohibition, no 'automatic' text)"
+  ],
+  "settled_hashes_sha256": {
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8",
+    "packages/mpd-agent-teams-plugin/lib/index.js": "5d91a60c4d7605dd2e6dfd0235ff20cf09b970652d51751e3240b634e116cc72",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d",
+    "packages/mpd-agent-teams-plugin/test/session-start.test.ts": "baafea4603083ddc6be3bc1d7af32045fea81d5638a6ed18a53c2a35132b8803",
+    "packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs": "007fd149e0afc54b41e7995444b266e6160278bd93a11e0e7ea42b14b2ee6943",
+    "agent-references/agent-teams-deltas.md": "a95e84d0fea9b9b45fde707bf7d543a0cadc922bdd654f47ef5150f2c67eff63",
+    "evidence/ulw/l3-gate-advisory/20260918T001916Z/probe.mjs": "48e7cef0ea2089fcc99730f8aa0cca92283b240c0454d36b553cd635d6f35e91"
+  }
+}

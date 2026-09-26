@@ -1,0 +1,280 @@
+{
+  "task": "t8 (contract lane t6) \u2014 verification: mounting boot, disabled-adapter negative control, preset conformance, aggregate gates, settled hashes",
+  "seat": "Deep Worker",
+  "attempt": 6,
+  "attempt_id": "3acd4b89-a0b1-429c-8cfd-512a254bc109",
+  "stamp": "20260919T152119Z",
+  "verdict": "FAILED \u2014 AC12 and AC13 are RED; AC10, AC11, the F1 regression check, the three-arm scope test and AC16 are GREEN. Two findings, ONE shared root cause for the live-boot reds.",
+  "ac16_settled_hashes": {
+    "start_read_utc": "2026-09-19T15:21:19Z",
+    "end_read_utc": "2026-09-19T15:46:52Z",
+    "settle_window_s": 50,
+    "files": 22,
+    "comparison": "start == end-a == end-b == end-c over all 22 files (IDENTICAL); end-a vs end-b identical after the 50 s settle",
+    "verifier_artifact_note": "an earlier diff printed a spurious first-line difference because start.txt carries TWO comment lines and the end files ONE; comparing the HASH LINES only removes it. No product anomaly was observed; the bridge file's hash is 01fd9125510885fb\u2026 at start AND end.",
+    "files_hashed": [
+      "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "packages/mpd-agent-teams-plugin/lib/index.js",
+      "packages/mpd-agent-teams-plugin/lib/capabilities.js",
+      "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+      "packages/mpd-agent-teams-plugin/lib/members.js",
+      "packages/mpd-agent-teams-plugin/lib/command.js",
+      "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+      "packages/mpd-agent-teams-plugin/lib/events.js",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "packages/mpd-agent-teams-plugin/lib/types.js",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "scripts/patch-agent-teams-fixes.mjs",
+      "AGENTS.md",
+      "docs/design.md",
+      "docs/design.zh-CN.md",
+      "agent-references/agent-teams-deltas.md",
+      "packages/mpd-dsh-adapter-plugin/README.md",
+      "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs"
+    ]
+  },
+  "AC10_mounting_boot": {
+    "t23_F7_live_registry_scope_limitation": [
+      "SCOPE NOTE (added by t23, repair round 2) so the AC10 evidence above is not read as a witness for all twelve flags.",
+      "WITNESSED TRUE in this boot: the SEVEN service-level flags the ADAPTER_SEAMS line carries - toolsRegisterHost, subagentsProvider, subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection.",
+      "NOT WITNESSED, and read FALSE in a session-less boot: the FIVE agent-object flags - agentScope, agentTurnStart, agentTurnCancel, agentTurnSteer, agentTurnInject. They are LIVE-REGISTRY probes (capabilities() asks whether a live agent exposes the member), so a boot without a live agent reads false exactly like the pre-existing turnSubmit on the same line.",
+      "Their evidence is therefore NOT this boot: it is the adapter flag-presence check plus the flag-false degrade arms - all FOURTEEN flags present in the adapter SOURCE and in the SHIPPED dist (evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.{mjs,log}), and the facade capability-gate arms in test/adapter-facade.test.mjs.",
+      "Consequence for a reader: AC10 green means the mediated tree mounts and the seven service seams are advertised; it is NOT a claim that the five agent-object seams were exercised."
+    ],
+    "ok": true,
+    "case": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs (UNMODIFIED) \u2014 PASS, exit 0",
+    "case_evidence": "evidence/dsh-qa/bundle-lifecycle/2026-09-19T15-21-24.780Z/{boot.log,result.json}",
+    "boot_lines": {
+      "adapter_row_provided": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free) \u00d71",
+      "mounted_witness": "[agent-teams] adapter: mpdDsh mounted \u2014 harness seams routed through mpd-dsh-adapter \u00d71",
+      "fallback_witnesses": "ABSENT=0, pending=0",
+      "ADAPTER_SEAMS": "carries toolsRegisterHost, subagentsProvider, subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection; the five agent-object flags (agentScope, agentTurnStart, agentTurnCancel, agentTurnSteer, agentTurnInject) are LIVE-REGISTRY probes and read FALSE in a session-less boot \u2014 exactly like the pre-existing turnSubmit, which is false in the same line",
+      "tool_call": "[roles-probe] ADAPTER_TOOL_CALL=ok (a REAL tool executed through the adapter)",
+      "tools_21": "[verif-probe] VERIF_AGENT_TEAMS_TOOLS=21/21 (the shipped probe's own line says 7/7 \u2014 it instruments only 7 named tools)"
+    },
+    "extra_instrumented_boot": "adapter-enabled-boot.mjs: adapter row provided \u00d71, MOUNTED witness \u00d71, fallback \u00d70, 21/21 tools, roles-probe PASS, isolation asserted"
+  },
+  "AC11_negative_control": {
+    "ok": true,
+    "case": "adapter-disabled-boot.mjs (scratch, this dir) \u2014 PASS, exit 0",
+    "boot_log": "adapter-disabled-boot.log",
+    "result_json": "adapter-disabled-result.json",
+    "measurements": {
+      "adapter_row_disabled": "[mpd-dsh-adapter] mpdDsh provided \u00d70 (the \u00a711 E4 id-targeted `disabled: true` overlay took effect)",
+      "fallback_witness": "ABSOLUTELY EXACTLY ONE: ABSENT=1, pending=0, mounted=0",
+      "tools_21": "VERIF_AGENT_TEAMS_TOOLS=21/21 \u2014 the plugin still applies and registers every tool",
+      "f1_signatures": "agent-teams: member initialization failed \u00d70",
+      "roles_probe": "PASS (preset/roster/skills still served with the adapter row off)",
+      "isolation": "DSH_HOME + HOME + workspace sandboxed; assertSessionsSandboxed OK; no <DSH_HOME>/sessions/<projectKey(realCwd)> key"
+    }
+  },
+  "F1_regression_check": {
+    "ok": true,
+    "boot_level_arm": "in BOTH arms a hostile per-agent ctx (Proxy throwing on every read) through the REAL bridge agentScopeOf(facade, agent) returns {context,effect,on,tools} with context === hostileCtx (Object.is true) and no read throws \u2014 the exact failure the architecture note measured (scope.context throwing \u2192 member model selection silently disabled) is GONE at boot level",
+    "failure_signature_counts": {
+      "enabled_arm": 0,
+      "disabled_arm": 0
+    },
+    "note": "no team member is created in either boot (no session/model turn), so the signature count is a necessary-not-sufficient arm; the boot-level hostile-ctx call through the real bridge is the positive evidence."
+  },
+  "three_arm_scope_test": {
+    "ok": true,
+    "file": "packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs",
+    "test": "F1: agentScopeOf returns ONE shape in ALL THREE arms (mounted / pending / absent-with-a-throwing-proxy)",
+    "run": "targeted bun test run: 130 pass / 0 fail / 2390 expect (four bridge test files + the adapter package)"
+  },
+  "AC12_preset_conformance": {
+    "ok": false,
+    "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+    "exit": 1,
+    "self_test": "PASS (exit 0): 31 harness rows conform; row parity 31/31",
+    "real_run": "FAIL: conformance substep GREEN (checked 31, schemaFree 6, parity reference 31 / ours 31, missing [] extra [] problems []); auth/sessionCreate/sessionHeader/bootLog/negativeControl all failed",
+    "case_evidence": "evidence/dsh-qa/preset-conformance/2026-09-19T15-28-08.386Z/{boot.log,control-boot.log,result.json}",
+    "root_cause": "the SANDBOX BOOT aborts: `failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at \u2026/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1` \u2014 the whole plugin tree fails to load, so every later step (auth/session/negative control) fails as a consequence. NOT a preset-row defect: the row-conformance substep is green.",
+    "finding_id": "V-1"
+  },
+  "AC13_aggregate_gates": {
+    "ok": false,
+    "green": [
+      "bun run verify:gates -> exit 0 (5/5 members; docs-parity DERIVED region-count claim agrees 151/13)",
+      "bun run typecheck -> exit 0",
+      "node scripts/verify-dist-fresh.mjs -> exit 0, 20/20 targets fresh, ZERO STALE (the adapter lane's 17-package rebuild holds)",
+      "bun run verify:docs -> exit 0, pairs=38 failed=0 violations=0 dead=0",
+      "bun run verify:rows -> exit 0, 25 row ids match"
+    ],
+    "red": {
+      "bun_test_bare": "exit 1 \u2014 4295 pass / 605 fail / 1052 errors across 27700 files",
+      "bun_test_bare_cause": "ALL 605 failing test files live under evidence/mpd-naming/wave2/raw/scratch/** (wave-2 scratch copies of vendored ast-grep/git-bash/lsp build trees); ZERO failures under packages/**, ZERO under .qa-reloc/**, ZERO under node_modules/**",
+      "bun_test_sanctioned_scope": "bun test packages (the repo's own `test` script and the per-package reading in AGENTS.md \u00a74) -> exit 0, 1151 pass / 0 fail / 11765 expect",
+      "test_qa": "exit 1 \u2014 skills/dsh-qa/scripts/agent-teams-dispatch.mjs failed 2 of 14 checks",
+      "test_qa_root_cause": "the dispatch case's captainRun fails with the SAME dsh-credentials-local parse error as V-1 (its tail names parseCredentialsDocument/loadInitial), so tasks=0 and no member assignments follow; the two failed checks are downstream of the aborted boot  [CORRECTED 2026-09-19T16:13:25Z: see erratum_dispatch_attribution \u2014 the two failing CHECKS were the stale PRE-BRIDGE spellings (green at HEAD, red with the bridge rewiring); the dsh-credentials-local parse error (V-1) killed the captainRun LEG in the same run and is NOT the cause of the 2/14.]",
+      "finding_ids": [
+        "V-2",
+        "V-1"
+      ]
+    },
+    "docs_counts_re_measured": {
+      "registry": "151 entries / 13 files (matches the docs claim)",
+      "adapter_star_markers_six_bridged_files": "27 region-open markers / 26 distinct ids (matches)",
+      "with_bridge_its_own_region": "28 markers / 27 distinct ids (matches)",
+      "adapter_methods": "14/14 present",
+      "capability_flags_used_by_the_bridge": "13 (matches)",
+      "members_childCtx_lines": "5 by the inventory test's own rule (grep sees 6 lines; the 6th is a comment \u2014 rule-consistent)",
+      "capability_flags_used_by_the_bridge_ERRATUM": {
+        "read_utc": "2026-09-19T15:50:21Z",
+        "was": "13 (my candidate-list grep \u2014 the same artifact the adapter lane's record carried)",
+        "is": "14 \u2014 the fourteenth flag is `subagents`, which gates subagentRuntime(); the AGENTS.md \u00a76 sentence 'fourteen adapter methods, each behind its own capabilities() flag' therefore agrees with the measured set",
+        "method": "seam(name, flag) second args + capabilities() reads from lib/mpd-adapter-ctx.js (14 derived), each verified present in the brace-scanned capabilities() literal of the SHIPPED dist (14/14)",
+        "verdict_effect": "none \u2014 this is a docs-count corroboration line inside AC13; AC13's red remains V-1 (credentials staging) and V-2 (foreign tracked tests), untouched by this correction.  [CORRECTED 2026-09-19T15:52:00Z: NOT tracked \u2014 see erratum_v2_tracking; these files are UNTRACKED and GITIGNORED by design]"
+      }
+    }
+  },
+  "V1_credentials_staging_defect": {
+    "id": "V-1",
+    "severity": "high (it reddens every sandboxed LIVE boot in this environment)",
+    "mechanism": "skills/dsh-qa/scripts/lib/credentials.mjs mergeRefsEntry(): the operator's ~/.dsh/.credentials.yaml carries an INLINE `refs: {}` (3 characters after the colon, measured; key names only, no values read). The existing-refs regex `/^refs:[ \\t]*$/m` does not match it, the flat-layout branch is skipped (the document has `version:`), so the function falls through and APPENDS a second top-level `refs:` key. The harness's strict YAML reader rejects it as DUPLICATE_KEY, the credentials row fails, and the whole plugin tree fails to load.",
+    "demonstration": "credentials-merge-repro.mjs (SECRET-FREE, synthetic document): inline `refs: {}` -> 2 top-level refs keys; control bare `refs:` -> 1. Exit 0 (assertion held).",
+    "not_wave_caused": "the wave touched no credentials file, no QA case and no harness row; the failure is in credential staging + YAML parsing, and the preset ROW conformance substep is green. Both live-boot reds (AC12 real run, test:qa's dispatch case) share this one cause.",
+    "remedy_options": [
+      "fix mergeRefsEntry to treat an inline `refs: {}`/`refs: <map>` as a mergeable refs block (or to replace it)",
+      "or make the staging copy normalize the document before writing it into the sandbox"
+    ],
+    "owner_hint": "skills/dsh-qa/** \u2014 a QA-corpus fix; NOTE the single-skills-writer rule (AGENTS.md \u00a79): a skills/** edit invalidates the corpus treeSha and needs the wave's single VENDOR_LOCK re-pin, so serialise it."
+  },
+  "V2_evidence_scratch_tests": {
+    "id": "V-2",
+    "severity": "medium (it reddens the bare `bun test` spelling only)",
+    "mechanism": "bare `bun test` at the repo root discovers TRACKED test files under evidence/mpd-naming/wave2/raw/scratch/** \u2014 vendored ast-grep/git-bash/lsp build copies from an earlier wave \u2014 and runs 3766 foreign tests there; 605 of them fail in that scratch tree.  [CORRECTED 2026-09-19T15:52:00Z: NOT tracked \u2014 see erratum_v2_tracking; these files are UNTRACKED and GITIGNORED by design]",
+    "scope_note": "package.json's own `test` script is `bun test packages`, which is green (1151/0); .qa-reloc/** is gitignored and contributes zero failures.",
+    "remedy_options": [
+      "remove/quarantine the wave-2 evidence scratch trees",
+      "or make the repo's test scope explicit everywhere the bare spelling appears"
+    ]
+  },
+  "live_tool_call_criterion": {
+    "status": "PASSED as scoped",
+    "what_is_proven": "every behavioural claim in this lane is anchored on HARNESS-side instrumentation or a real result: the 21-tool count is an in-boot live-registry read (the technique AGENTS.md \u00a74 mandates for post-boot registration), and ADAPTER_TOOL_CALL=ok is a REAL tool executed through the adapter in the AC10 boot.",
+    "what_is_NOT_proven": "no MODEL-DRIVEN tool call was executed in this lane (the boots create no session/model turn), so the session/event-record form of the claim (request/header.tools[] advertising the 21 tools to a model) is explicitly NOT MEASURED. No verdict here depends on it.",
+    "no_model_prose": "no verdict in this lane cites model output as evidence."
+  },
+  "evidence_convention": {
+    "ok": true,
+    "dir": "evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/",
+    "files": [
+      "result.json",
+      "output.log (to be written)",
+      "ac10-bundle-lifecycle.log",
+      "ac10-enabled-boot.log",
+      "adapter-enabled-boot.log",
+      "ac11-adapter-disabled.log",
+      "adapter-disabled-boot.log",
+      "ac12-preset-conformance.log",
+      "ac13-static-gates.log",
+      "ac13-suite-gates.log",
+      "ac13-tests-comparison.log",
+      "ac13-bun-test-packages.raw.log",
+      "ac13-bun-test-bare.raw.log",
+      "agent-teams-dispatch.raw.log",
+      "ac-scope-and-bridge-tests.log",
+      "credentials-merge-repro.log",
+      "ac16-settled-hashes.log",
+      "start.txt",
+      "end-a.txt",
+      "end-b.txt",
+      "end-c.txt",
+      "adapter-disabled-boot.mjs",
+      "adapter-enabled-boot.mjs",
+      "verif-probe.mjs",
+      "credentials-merge-repro.mjs"
+    ],
+    "every_gate_command_quoted_with_exit_code": true
+  },
+  "post_verdict_recheck": {
+    "read_utc": "2026-09-19T15:49:02Z",
+    "revision": "UNCHANGED \u2014 the 22-file hash set is byte-identical to the settled end-c set, so this verdict stands on the current tree (file: recheck-154850Z.txt)",
+    "V1_status": "STILL OPEN \u2014 credentials-merge-repro.mjs re-run: inline `refs: {}` still yields 2 top-level refs keys (control 1)",
+    "V2_status": "STILL OPEN \u2014 411 *.test.ts files remain under evidence/mpd-naming/wave2/raw/scratch/**",
+    "attempt_note": "the stored task t8 shows attempt 6 (this lane) as the terminal FAILED attempt; no newer attempt exists to claim. A re-verification of a REPAIRED revision needs a fresh attempt from the captain, because terminal results are immutable.",
+    "contract_note": "the stored contract revision 3 lists NINE acceptance items (AC10, AC11, F1 regression, three-arm scope test, AC12, AC13, AC16, live-tool-call/session-record, evidence convention). The assignment mail says eleven; if two more were intended, they are not in the stored contract."
+  },
+  "captain_dispositions": {
+    "recorded_utc": "2026-09-19T15:51:10Z",
+    "provenance": "captain reply to this lane's three asks; recorded verbatim in effect so the review lane reads the reds correctly",
+    "contract_count": "The stored contract's NINE acceptance items are AUTHORITATIVE and nothing is missing \u2014 the captain's 'eleven' was a mis-statement on his side. Every item the stored contract carries is judged in this result.json; no further item is outstanding.",
+    "V2_disposition": {
+      "decision": "NO CODE CHANGE \u2014 accepted and recorded as a documented ENVIRONMENT NOTE",
+      "rationale": "the sanctioned gate command is `bun test packages` (package.json's own `test` script = 1151 pass / 0 fail, ZERO failures under packages/**) and AGENTS.md \u00a74 already specifies the per-package form. The 605 bare-form failures come from 411 tracked `*.test.ts` files under evidence/mpd-naming/wave2/raw/scratch/**, which are a PAST WAVE'S EVIDENCE ARCHIVE, not test sources. Deleting or narrowing tracked evidence to make an unsanctioned spelling pass would trade a real record for a cosmetic green, and a bunfig scope change is outside this wave's surface.  [CORRECTED 2026-09-19T15:52:00Z: NOT tracked \u2014 see erratum_v2_tracking; these files are UNTRACKED and GITIGNORED by design]",
+      "carry_forward": "the captain will have this carried in the wave report and handed to the review lane so nobody reads the bare-form red as a wave defect.",
+      "how_to_read_the_AC13_red_now": "V-2 stands as a characterized environment note; the AC13 red that remains actionable for the wave is V-1 only."
+    },
+    "V1_repair_plan": {
+      "dispatched_as": "t22 \u2014 Junior Engineer, inScope `skills/dsh-qa/scripts/lib/credentials.mjs` + its own evidence dir",
+      "instrument": "the secret-free reproducer from this lane (credentials-merge-repro.mjs) is the before/after instrument",
+      "after_it_lands": "the captain performs the wave's ONE VENDOR_LOCK.json re-pin himself (captain-only, AGENTS.md \u00a79), then issues a FRESH attempt on t8 (terminals stay immutable)",
+      "this_lane_will_re_measure": [
+        "node skills/dsh-qa/scripts/preset-conformance.mjs (real run, AC12)",
+        "bun run test:qa",
+        "bare `bun test` with the V-2 disposition above",
+        "a full re-anchor of the sweep, because the skills corpus treeSha moves under the vendor gate"
+      ],
+      "standards_note": "if any green arm changes because of the V-1 fix, that is a FINDING, not an inconvenience \u2014 the re-run will report it as such.",
+      "vendor_gate_baseline_for_the_re_anchor": {
+        "read_utc": "2026-09-19T15:54:39Z",
+        "skills_working_tree": "exactly ONE modified path: skills/dsh-qa/scripts/lib/credentials.mjs (t22's in-flight fix) \u2014 the single-writer rule is INTACT",
+        "VENDOR_LOCK_json": "unmodified (the re-pin has not landed, which is the correct ordering before the commit)",
+        "node scripts/verify-vendor.mjs": "FAIL \u2014 `asset skills treeSha mismatch` (EXPECTED while the skills edit is uncommitted); every other asset OK (_deps 635 files, the three MCP binaries, codegraph serve.js)",
+        "what_the_fresh_attempt_must_show": "after the captain's single re-pin: verify-vendor GREEN and the skills treeSha matching the new VENDOR_LOCK.json entry \u2014 a red-to-green transition on the vendor gate is part of the re-anchor, not a surprise",
+        "alarm_condition": "a SECOND path appearing under skills/** before that commit would break the \u00a79 single-writer invariant; measured count is 1 (this lane independently confirmed the peer's check)",
+        "red_attribution": {
+          "read_utc": "2026-09-19T15:55:37Z",
+          "measured": "the vendor gate's failure count is EXACTLY ONE line \u2014 `[verify-vendor] FAIL - asset skills treeSha mismatch` alongside 8 OK lines (commit / version / stats + the 5 fingerprinted assets). So the whole red is attributable to the ONE uncommitted skills path.",
+          "why_nothing_of_the_bridge_lane_is_implicated": "VENDOR_LOCK.json carries 7 entries (+ a `_note`): `skills`, `packages/mpd-agent-teams-plugin/_deps`, and the four MCP binaries (astgrep/gitbash/lsp cli.js + codegraph serve.js). `packages/mpd-agent-teams-plugin/lib/**` is NOT an entry (measured: `covered? false`), so the bridge and the six bridged adopted files are OUTSIDE this package's VENDOR_LOCK coverage by construction \u2014 `lib/**` edits cannot redden this gate.",
+          "reading_rule": "per AGENTS.md \u00a74 the vendor gate 'expects a CLEAN tree: a dirty skills/** corpus legitimately reddens the vendor gate until the wave's single re-pin lands (\u00a79/\u00a711)' \u2014 so this EXIT 1 is the documented transient, and the RED\u2192GREEN transition after the captain's single re-pin is part of the re-anchor.",
+          "alarm_condition_unchanged": "a SECOND path appearing under skills/** before that commit breaks the \u00a79 single-writer invariant; independent count = 1 (peer check reproduced by this lane)."
+        }
+      }
+    },
+    "kept_as_is_by_captain": "the 21-tool measurement via this lane's own instrument (verif-probe.mjs), because the shipped QA probe checks only 7 \u2014 the gap between the probe that exists and the claim the contract makes is exactly what a verification lane exists to expose."
+  },
+  "erratum_v2_tracking": {
+    "recorded_utc": "2026-09-19T15:52:00Z",
+    "issued_by": "this lane, after the captain corrected his own V-2 characterization; independently re-measured here before recording",
+    "what_was_wrong_in_this_record": "the V-2 blocks described the 411 *.test.ts files under evidence/mpd-naming/wave2/raw/scratch/** as TRACKED and as a PAST WAVE'S EVIDENCE ARCHIVE. Both halves were wrong.",
+    "measured_facts": {
+      "git_ls_files_scratch_subtree": 0,
+      "git_check_ignore": ".gitignore:45:evidence/**/raw/scratch/  (the whole scratch/ directory is IGNORED BY DESIGN)",
+      "scratch_test_files_local_untracked": 411,
+      "tracked_files_under_evidence_mpd_naming_wave2_raw": 7,
+      "the_seven_tracked_siblings": [
+        "10-verify-t14.log",
+        "20-verify-vendor-after-t14.log",
+        "apply-t14-edits-2.mjs",
+        "apply-t14-edits.mjs",
+        "build-mcp.mjs.pre-t14",
+        "build-repro.mjs",
+        "verify-t14.mjs"
+      ],
+      "nature": "local, ignored working material (vendored ast-grep / git-bash / lsp copies), not part of the repository's record"
+    },
+    "disposition": "UNCHANGED and now better grounded: the sanctioned gate command is `bun test packages` (package.json's test script; 1151 pass / 0 fail, zero under packages/**), the bare `bun test` spelling is NOT a gate, and the files it picks up are outside the repository's record by design \u2014 so nothing in the record needs to change and NOTHING should be deleted to make an unsanctioned spelling look green.",
+    "how_to_read_it": "V-2 remains a characterized ENVIRONMENT NOTE (untracked, gitignored local scratch copies picked up only by the unsanctioned bare spelling); it is not an archive problem and it is not a wave defect. No action follows for the wave; the arm was NOT re-opened.",
+    "verdict_effect": "none \u2014 AC13's actionable remaining red is still V-1 alone (credentials staging, dispatched as t22)."
+  },
+  "erratum_dispatch_attribution": {
+    "recorded_utc": "2026-09-19T16:13:25Z",
+    "what_was_wrong": "this record attributed the agent-teams-dispatch 2-of-14 failures to the V-1 credentials parse error. That conflated two independent failures in the same run.",
+    "measured_correction": {
+      "method": "git show HEAD:skills/dsh-qa/scripts/agent-teams-dispatch.mjs vs the repaired working copy, reading the two checks' required spellings",
+      "HEAD_check_1": "members.includes(\"await queueMemberPrompt(ctx.subagents,\")",
+      "HEAD_check_2": "caps.includes(\"revoke = agent.ctx.tools.restrict({\")",
+      "now_check_1": "members.includes(\"await queueMemberPrompt(subagentRuntimeOf(ctx), captain, brandedSessionId(childId),\") AND !members.includes(\"await queueMemberPrompt(ctx.subagents,\")",
+      "now_check_2": "the agentScopeOf + `revoke = scope.tools.restrict({` form with the deny-filter expression verbatim",
+      "conclusion": "both checks were GREEN at HEAD and went RED with the BRIDGE REWIRING (the spellings they asserted were the pre-bridge ones); the dsh-credentials-local parse error (V-1) killed the captainRun LEG in the same run \u2014 a second, independent failure \u2014 and is not the cause of the 2/14."
+    },
+    "confirmation": "the captain's correction is right; recorded by the repair lane (t22) and now confirmed here with my own HEAD-vs-now reading."
+  }
+}

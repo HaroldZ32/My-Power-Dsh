@@ -1,0 +1,55 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-r0KThh",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "teamState": {
+      "ok": false,
+      "teamIds": [],
+      "inbox": [],
+      "teamJson": []
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": false,
+      "tasks": 0,
+      "taskTerminal": false
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": false,
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

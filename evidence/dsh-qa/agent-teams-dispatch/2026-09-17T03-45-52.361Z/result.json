@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-dispatch-lH6UzP",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": true,
+      "exit": 0,
+      "tail": "ser can approve it via the Web UI? That seems helpful and within my authority? Rule 3 says the plan must be staged by me: create + members + tasks, then \"tell the user the Web plan is ready, then end this turn.\" But the user didn't ask for that and said \"nothing else\". I'll offer it rather than do it, asking for a go-ahead. Given approval policy is \"ask\", asking is appropriate.\n\nHmm, but would the probe evaluator consider that a failure to act? The user's instruction is explicit: \"Do exactly this and nothing else\". Creating a team is \"something else\". So no.\n\nFinal answer: report the blocker.\n"
+    },
+    "tasks": {
+      "total": 0
+    },
+    "memberAssignments": {
+      "count": 0,
+      "sessions": 1,
+      "labels": []
+    },
+    "secondBatchDispatched": {
+      "ok": false
+    },
+    "assignmentDelivery": {
+      "ok": false
+    }
+  }
+}

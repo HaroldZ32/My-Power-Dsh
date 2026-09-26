@@ -1,0 +1,1 @@
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present

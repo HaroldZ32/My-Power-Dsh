@@ -1,0 +1,27 @@
+$ node scripts/repin-vendor.mjs
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.mjs (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /root/dshProj/my-power-dsh/VENDOR_LOCK.json  (3434 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 6 decisive token(s) of scripts/verify-vendor.mjs
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff fileCount=319
+[repin-vendor]   computed (LF) : treeSha=ee716c0d01d5173cdb527bf0c312537eb0e9ca218cedfd676998cceb5ba48589 fileCount=321 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : d9d3825ddea263ab626ec29bc9b171e9b267e849a8a1a1d91889bfff971095e2   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff -> ee716c0d01d5173cdb527bf0c312537eb0e9ca218cedfd676998cceb5ba48589
+[repin-vendor]   DELTA        : fileCount 319 -> 321
+
+[repin-vendor] asset          : packages/mpd-agent-teams-plugin/_deps
+[repin-vendor]   locked       : treeSha=d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 fileCount=635
+[repin-vendor]   computed (LF) : treeSha=d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 fileCount=635 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: NOT REPINNED - underscore-prefixed metadata key (the gate skips these too)
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: NOT REPINNED - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: NOT REPINNED - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: NOT REPINNED - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: NOT REPINNED - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] DRY RUN   : 1 asset(s) would be re-pinned; nothing was written

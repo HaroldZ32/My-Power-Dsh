@@ -6,7 +6,7 @@
 
 `@mpd-dsh/mpd` bundle 的扩展接口：通过一份**冻结契约**，让一个插件包——或者磁盘上的一个普通目录——在不改动核心 bundle 的前提下贡献 **skill**、**flow**、**MCP server** 与 **role**。Loader row id 为 `mpd-ext`，cordis service 为 `mpdExtensions`。
 
-本指南面向希望加入 RTL 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.mjs`），每条命令都按原样运行过——见 [§12](#12-本指南中的示例如何验证)。
+本指南面向希望加入 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.mjs`），每条命令都按原样运行过——见 [§12](#12-本指南中的示例如何验证)。
 
 ---
 
@@ -47,8 +47,8 @@ const ext = ctx.get("mpdExtensions")
 ext?.register(
   defineExtension({
     apiVersion: 1,
-    id: "rtl-verilog",
-    description: "Verilog authoring flows, shipped by the rtl package",
+    id: "authoring-flows",
+    description: "Authoring flows for code changes, shipped by the authoring package",
     contributes: { skills: [{ root: "skills" }], flows: [{ dir: "flows" }] },
   }),
   { root: pkgRoot }, // 你的资源所在目录——请从自己的包位置解析，
@@ -61,14 +61,14 @@ ext?.register(
 **数据面（data plane）**——目录名即 root，内含一个 manifest 文件：
 
 ```text
-~/.mpd/extensions/rtl-verilog/
+~/.mpd/extensions/authoring-flows/
 ├── mpd-ext.json          # 描述符（root 由本文件所在目录定义）
 ├── skills/               # { "root": "skills" }
-│   └── rtl-triage/SKILL.md
+│   └── change-triage/SKILL.md
 ├── flows/                # { "dir": "flows" }
-│   └── rtl-triage-flow.json
+│   └── change-triage-flow.json
 ├── personas/             # { "roles": [{ "persona": "personas/…" }] }
-│   └── verilog-reviewer.md
+│   └── code-reviewer.md
 └── server.mjs            # { "mcp": [{ "command": "node", "args": ["server.mjs"] }] }
 ```
 
@@ -115,11 +115,11 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 
 ```json
 {
-  "serverName": "rtl-lint",
+  "serverName": "lint-mcp",
   "transport": "stdio",
   "command": "node",
   "args": ["server.js"],
-  "env": { "RTL_ROOT": "." },
+  "env": { "PROJECT_ROOT": "." },
   "cwd": ".",
   "toolCallTimeoutMs": 60000,
   "connectTimeoutMs": 10000
@@ -130,10 +130,10 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 
 ```json
 {
-  "name": "Verilog Reviewer",
-  "description": "Reviews SystemVerilog RTL read-only.",
+  "name": "Code Reviewer",
+  "description": "Reviews a code change read-only before review.",
   "readonly": true,
-  "persona": "personas/verilog-reviewer.md",
+  "persona": "personas/code-reviewer.md",
   "provider": "deepseek-official",
   "model": "deepseek-v4-flash"
 }
@@ -214,15 +214,15 @@ id 相同时发现优先级为 **project → user → bundle**（先到者胜）
 
 ### 5.1 skill（`skills`）
 
-manifest 行：`"skills": [{ "root": "skills", "rank": 300 }]`，以及 `extensions/mpd-ext-example/skills/rtl-triage/SKILL.md`：
+manifest 行：`"skills": [{ "root": "skills", "rank": 300 }]`，以及 `extensions/mpd-ext-example/skills/change-triage/SKILL.md`：
 
 ```markdown
 ---
-name: rtl-triage
-description: "Reference extension skill: triage an RTL change before review (what changed, what it touches, which risks deserve a reader). Use when a Verilog/SystemVerilog diff needs a first pass before a human or reviewer looks at it."
+name: change-triage
+description: "Reference extension skill: triage a code change before review (what changed, what it touches, which risks deserve a reader). Use when a code diff needs a first pass before a human or reviewer looks at it."
 ---
 
-# rtl-triage
+# change-triage
 
 …流程正文…
 ```
@@ -231,14 +231,14 @@ frontmatter 需要一个非空的 `name`（skill 名语法）与非空的 `descr
 
 ### 5.2 flow（`flows`）
 
-manifest 行：`"flows": [{ "dir": "flows", "rank": 300 }]`，以及 `extensions/mpd-ext-example/flows/rtl-triage-flow.json`（此处只摘录前两步）：
+manifest 行：`"flows": [{ "dir": "flows", "rank": 300 }]`，以及 `extensions/mpd-ext-example/flows/change-triage-flow.json`（此处只摘录前两步）：
 
 ```json
 {
-  "id": "rtl-triage-flow",
-  "title": "RTL triage before review",
-  "description": "Walk an RTL change through the reference extension's triage skill, then hand the result to a reviewer. Use before a Verilog/SystemVerilog change is reviewed.",
-  "whenToUse": "Use when a Verilog/SystemVerilog change needs a first pass before review.",
+  "id": "change-triage-flow",
+  "title": "Change triage before review",
+  "description": "Walk a code change through the reference extension's triage skill, then hand the result to a reviewer. Use before a code change is reviewed.",
+  "whenToUse": "Use when a code change needs a first pass before review.",
   "steps": [
     {
       "title": "Collect the change",
@@ -248,7 +248,7 @@ manifest 行：`"flows": [{ "dir": "flows", "rank": 300 }]`，以及 `extensions
     },
     {
       "title": "Apply the triage skill",
-      "detail": "Follow the `rtl-triage` skill: classify functional vs editorial, then name the contract each functional change can break.",
+      "detail": "Follow the `change-triage` skill: classify functional vs editorial, then name the contract each functional change can break.",
       "tool": "read",
       "output": "A ranked list of risks with file and line."
     }
@@ -264,7 +264,7 @@ manifest 条目（`extensions/mpd-ext-example/mpd-ext.json`）：
 {
   "mcp": [
     {
-      "serverName": "example",
+      "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
       "args": ["server.mjs"],
@@ -282,20 +282,20 @@ server 必须在 stdio 上说换行分隔的 JSON-RPC 2.0（`initialize`、`tool
 作者最容易弄错的两点：
 
 - **`cwd` 是扩展根目录相对的。** `"cwd": "."` 指该扩展自己的目录，而不是 dsh 进程的工作目录；`command` 与 `args` 按你写的原样使用。
-- **工具名是推导出来的，不能自选。** server `rtl-lint` 上发现的原始工具名 `foo` 会变成 `mcp__rtl-lint__foo`。`[A-Za-z0-9_-]` 之外的字符变为 `_`，整体长度上限 64 字符，并且**任何有损变换（净化或截断）都会追加 `_<12 位十六进制 sha256(serverName + NUL + rawName)>`**，从而两个不同的原始名永远不会相撞。flow 的步骤随后就可以把 `mcp__rtl-lint__foo` 作为工具提示引用。
+- **工具名是推导出来的，不能自选。** server `lint-mcp` 上发现的原始工具名 `foo` 会变成 `mcp__lint-mcp__foo`。`[A-Za-z0-9_-]` 之外的字符变为 `_`，整体长度上限 64 字符，并且**任何有损变换（净化或截断）都会追加 `_<12 位十六进制 sha256(serverName + NUL + rawName)>`**，从而两个不同的原始名永远不会相撞。flow 的步骤随后就可以把 `mcp__lint-mcp__foo` 作为工具提示引用。
 
 ### 5.4 role（`roles`）
 
-manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/example-reviewer.md`）：
+manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code-reviewer.md`）：
 
 ```json
 {
   "roles": [
     {
-      "name": "Example Reviewer",
-      "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+      "name": "Code Reviewer",
+      "description": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
       "readonly": true,
-      "persona": "personas/example-reviewer.md"
+      "persona": "personas/code-reviewer.md"
     }
   ]
 }
@@ -308,7 +308,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/exam
 - `mpd_role_persona` 返回 persona 文本，`mpd_workmate_init base="<role 名>"` 可将其用作 workmate BASE 模板；
 - `provider` + `model`（必须同时提供）成为它的 route；两者都缺省则使用名册默认值。
 
-**role 永远不会成为 agent-teams 的 teammate。** 所采用的 agent-teams `mpd` profile 成员列表是静态 patch 配置（`packages/mpd-bundle/cordis.patch.yml`），插件无法在运行时扩展它。请以一次性 spawn 或 workmate base 的方式使用它。
+**role 不会自己变成 teammate。** 队友名册是 Lead 用官方 `spawn_teammate` 工具按名字创建出来的；它是一个面向模型的工具调用，而不是注册面，因此扩展插件无法往里面加成员。请以一次性 spawn 或 workmate base 的方式使用它。
 
 ## 6. 失败与冲突策略
 
@@ -325,7 +325,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/exam
 | skill 名与更低 rank 的 provider 相撞 | 由 rank 阶梯裁定，落败的候选会被 harness 丢弃；现在两种情形都会被报告：两个**扩展**之间的相撞会标注在落败方（其错误列表里出现 `skill surface:`，写明赢家与双方的 rank），而每个被声明的名字都会由 `mpd_ext_list` / `mpd_ext_show` 与 harness 自身的目录比对（`skillServing.served` / `.notServed`） |
 | MCP 工具名与已存在的工具相撞 | 该工具被跳过并记录；一次失败的 swap 之后存活的工具数是 **零**，绝不会是半挂载的 server |
 | MCP server 不可达、卡住或退出 | `mpd_ext_show` 给出每个 server 的状态 `connecting`/`connected`/`unavailable`/`failed`/`disabled` 以及 stderr 尾部；启动既不被阻塞也不失败 |
-| role 名已被基础 role 或另一个扩展占用 | 逐个 role 拒绝，出现在 `mpd_roles_list` 的 `refused` 列表并记录一次日志；名册与启动照常工作 |
+| role 名已被基础 role 或另一个扩展占用 | 逐个 role 拒绝，且**两侧都会报告**（扩展 `errors` 中的 `refused: …` 行，以及 `mpd_roles_list` 的 `refused` 列表），并记录一次日志；名册与启动照常工作 |
 | role 的 persona 文件无法读取 | 逐个 role 拒绝，理由中带上路径 |
 | 两个扩展 id 相同 | 先到的 plane 胜出，被遮蔽者被记录（`shadowed`） |
 
@@ -350,15 +350,15 @@ v1 提供**四个**工具——早期计划里数到五个，其中 `mpd_ext_rel
 # 1. 直接脚手架出一个最小、可加载的扩展到一个发现根目录。
 #    四种类型都贡献时，user plane 才是正确选择；project plane
 #    （<workspace>/.mpd/extensions）只接受 skills + flows。
-bun scripts/mpd-ext.mjs scaffold rtl-demo --dir ~/.mpd/extensions
-# [mpd-ext] scaffolded "rtl-demo" at /home/<you>/.mpd/extensions/rtl-demo
+bun scripts/mpd-ext.mjs scaffold demo-ext --dir ~/.mpd/extensions
+# [mpd-ext] scaffolded "demo-ext" at /home/<you>/.mpd/extensions/demo-ext
 #   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
-#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/rtl-demo
+#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/demo-ext
 
 # 2. 用运行时**同一个**校验器验证它（exit 0 = 可加载）。
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/rtl-demo
-# [mpd-ext] validate /home/<you>/.mpd/extensions/rtl-demo (plane=user)
-#   extension "rtl-demo": loadable
+bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/demo-ext
+# [mpd-ext] validate /home/<you>/.mpd/extensions/demo-ext (plane=user)
+#   extension "demo-ext": loadable
 # [mpd-ext] ok
 
 # 3. 看看本宿主会逐 plane 发现什么（含 bundle plane）。
@@ -366,17 +366,17 @@ bun scripts/mpd-ext.mjs list
 
 # 4. 编辑 manifest：写入你的真实内容并把 "enabled": true
 #    （脚手架出来的扩展默认是禁用的，这是刻意的）。
-$EDITOR ~/.mpd/extensions/rtl-demo/mpd-ext.json
+$EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 
 # 5. 重启 dsh —— v1 没有 reload 工具；重启**就是** reload。
 
 # 6. 在会话里使用它：先问模型看到了什么，再使用内容。
-#    mpd_ext_list      -> rtl-demo [user/directory] enabled skills=1 flows=1 ...
-#    mpd_flow_list     -> rtl-demo-flow ...
-#    mpd_roles_list    -> <role 名称> [..., extension:rtl-demo]
+#    mpd_ext_list      -> demo-ext [user/directory] enabled skills=1 flows=1 ...
+#    mpd_flow_list     -> demo-ext-flow ...
+#    mpd_roles_list    -> <role 名称> [..., extension:demo-ext]
 ```
 
-不修改 manifest 也可启用：描述符里写 `"enabled": true`，或在 `.mpd/mpd.jsonc` 里写 `extensions.enable: ["rtl-demo"]`（§4.3）。被**禁用**的扩展在任何地方都不贡献——skill、flow、MCP、role 皆无；另外 CLI 的 `list` 展示的是 manifest 自身的标志，而 `mpd_ext_list` 展示的是**生效**状态（因此当配置列表覆盖 manifest 时，两者可以不同）。
+不修改 manifest 也可启用：描述符里写 `"enabled": true`，或在 `.mpd/mpd.jsonc` 里写 `extensions.enable: ["demo-ext"]`（§4.3）。被**禁用**的扩展在任何地方都不贡献——skill、flow、MCP、role 皆无；另外 CLI 的 `list` 展示的是 manifest 自身的标志，而 `mpd_ext_list` 展示的是**生效**状态（因此当配置列表覆盖 manifest 时，两者可以不同）。
 
 CLI 也会自检：
 
@@ -416,13 +416,13 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 - **仅 stdio MCP**——不支持 HTTP/SSE 传输，不支持 MCP resources 或 prompts（只有工具）。
 - **仅 JSON flow 文件**——YAML flow 属于后续项；flow 是声明式的，没有执行状态机。
 - **不支持扩展贡献 agent preset**——preset 面被刻意排除在范围外（没有干净的运行时 seam）。
-- **扩展 role 永远不会成为 agent-teams 的 teammate**——那份成员列表是静态 patch 配置。
+- **扩展 role 不会自己变成 teammate**——只有 Lead 用官方 `spawn_teammate` 按名字创建，才存在队友。
 - **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。
 - **`extensions.*` 配置是进程级、不是按会话的**（§4.3），因为 `mpdConfig` 是 apply 期的进程级快照。
 - **跨 provider 的 skill 遮蔽需要读一次目录才可见**——我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。
-- **被名册拒绝的 role 仍会被 `mpd_ext_list` 列为已声明**——名册侧报告拒绝（`mpd_roles_list.refused`），扩展 registry 侧不会；让两个 surface 一致属于后续项。
+- **被名册拒绝的 role 现在两侧都会报告。** `mpd_ext_list` 会重新推导出相同的拒绝原因（扩展 `errors` 中的 `refused: …` 行，由 `src/registry.ts` 的 `annotateRoleSurfaces` 生成），并且只列出可用的 role 名，因此其视图与 `mpd_roles_list.refused` 一致——原先的后续项已经关闭。
 - **没有 GUI 面板、没有市场、没有远程下载、没有版本求解。**
-- RTL/EDA 与 HarmonyOS 的能力面**本身不在此构建**：本版本交付的是让它们作为独立扩展或独立包到来的接口。
+- 特定语言与领域的能力面**本身不在此构建**：本版本交付的是让它们作为独立扩展或独立包到来的接口。
 
 ## 12. 本指南中的示例如何验证
 
@@ -433,8 +433,8 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
 
 # §8 的工作流端到端（scaffold -> validate -> enable -> list）
-SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold rtl-demo --dir $SB/.mpd/extensions
-HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/rtl-demo
+SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold demo-ext --dir $SB/.mpd/extensions
+HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/demo-ext
 
 # CLI 自身的检查（仅使用临时目录）
 bun scripts/mpd-ext.mjs --self-test

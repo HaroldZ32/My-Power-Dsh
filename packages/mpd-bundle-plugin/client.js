@@ -3724,32 +3724,27 @@ window.__ModuleLoader__.load({
 //# sourceMappingURL=client.js.map
 
 // ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====
-window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTeams sidebar page (factory body, inlined into the combined client.js by
-// scripts/build-mpd-client.mjs as the module id "@mpd-dsh/team-page").
+window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle web client — the bundle's OWN team surface: the TEAM WATCHDOG view.
 //
-// DSH-better-sidebar is the ONLY GUI surface for AgentTeams now: this page renders
-// everything the adopted in-conversation card and the top-right floating panel used to
-// render — the conversation's teams with members/live activity, task rows, the
-// dependency map, the stop-team control and the staged-plan approval editor — inside a
-// sidebar tab, for the tab's own conversation scope.
+// 0.1.7 REBASE (why this file is small now). Until 0.1.7 this page composed the RETIRED
+// vendored `agent-teams` client's views (roster, task DAG, staged-plan cards, floater markup)
+// into a DSH-better-sidebar tab, requiring `@nanmicoder/dsh-agent-teams` for its store,
+// views, locales and CSS. Harness 0.1.7 ships an OFFICIAL Agent Teams client
+// (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this bundle's
+// `mpd-ui-agent-team` row) that owns the roster and task-board UI, so this page must NOT
+// duplicate it. What remains OURS — and what no official client renders — is the team
+// WATCHDOG: the hold per team, the newest WARN/ESCALATE banner and the unread incident
+// replay, served by this bundle's own routes (`src/watchdog-web.ts`).
 //
-// VISUAL PARITY IS A REQUIREMENT, so the page reproduces the floater's own composition
-// instead of inventing a layout: the same `aside` root carrying the adopted
-// `panel`/`panelHead`/`panelTitle`/`panelDot`/`panelControls`/`iconButton`/`teams`/
-// `emptyHint`/`archivedWrap`/`archiveLabel` class names, the same header markup
-// (title + busy dot + collapse control) and the same TeamSections. Carrying `panel` is
-// not cosmetic: that class is where the adopted CSS declares the `--dsw-alias-*` custom
-// properties every team/member/task rule reads, so without it the sections render
-// unstyled. Only two things are NOT reproduced, both by decision: the window-manager
-// half (inline overrides below) and the historic-card branch — it was fed by the
-// removed in-conversation card's registry, so it is unreachable by construction.
+// The page therefore renders EXACTLY that: it polls `/plugins/mpd-team-watchdog/state`,
+// shows the banner/hold/activity rows and acknowledges one incident through
+// `/plugins/mpd-team-watchdog/ack`. It reads no team record, requires no adopted client and
+// never registers an overlay, a chat node or a footer toggle (sidebar-only, as before).
 //
-// It deliberately does NOT render the adopted ActivityPanel component itself: that
-// component IS the window manager (it measures the shell overlay, writes the
-// conversation-column shift and drags/resizes itself), which is exactly what the
-// sidebar replaces. It composes the adopted VIEWS and CSS-module classes instead —
-// TeamSection / the monitor store / the locale dictionaries — all reached through the
-// additive export bridge (scripts/patch-agent-teams-client.mjs).
+// The module id, the factory shape and the exported names are UNCHANGED so the combined
+// client (`scripts/build-mpd-client.mjs`) composes the same way; only the page's contents
+// changed. The tab id is kept because the sidebar's `registerTab` throws on a duplicate and
+// the host keys restored tabs on it.
 //
 // Plain JS, React.createElement only: there is no JSX transform in this bundle.
 (require) => {
@@ -3757,522 +3752,295 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
   let react = require("react");
-  const adopted = require("@nanmicoder/dsh-agent-teams");
 
   const TEAM_TAB_ID = "mpd-agent-teams";
   const TEAM_TAB_ORDER = 85;
   const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
-  const AUTO_OPEN_KEY = "autoOpenOnTeamActivity";
-  // NO content seed. dsh-better-sidebar >= 0.19 routes any seed carrying `path` (or
-  // `url`) to DSH's NATIVE right column through `surface.openResource(fileAddress(…))`
-  // instead of opening this registered tab type ("An open carrying a `path` or `url`
-  // goes through the native surface instead"), so the throwaway marker path this call
-  // used to carry (`team-activity`) made the host resolve `<cwd>/team-activity`, fail
-  // `realpath` with ENOENT and raise `cannot resolve target …` into the GUI — while
-  // never opening the tab at all. A type-only seed lands the tab in its own surface and
-  // expands it, which is exactly what auto-open means here.
-  /** Page-settle window: teams restored on page load must never auto-open the panel. */
-  const AUTO_OPEN_SETTLE_MS = 2500;
 
-  // Page-owned keys only. Everything the panel itself shows (title, empty hint,
-  // collapse, panel aria) resolves through the adopted dictionaries, so the sidebar page
-  // says exactly what the floater said.
+  // The watchdog's own routes, served by this bundle's main plugin (`src/watchdog-web.ts`).
+  const WATCHDOG_STATE_URL = "/plugins/mpd-team-watchdog/state";
+  const WATCHDOG_ACK_URL = "/plugins/mpd-team-watchdog/ack";
+  const WATCHDOG_WEB_READER = "web-panel";
+  const WATCHDOG_POLL_MS = 15000;
+
   const zh = {
-    "tab.title": "AgentTeams",
-    "page.error": "团队状态读取失败：{message}",
-    "page.unavailable": "团队视图不可用：{reason}",
-    "settings.autoOpen.title": "团队出现时自动打开",
-    "settings.autoOpen.desc": "本对话新建团队或有团队开始工作时，自动在侧栏打开 AgentTeams 页面。",
+    "tab.title": "团队看门狗",
+    "panel.subtitle": "只看门狗视图 —— 花名册与任务板由官方 Agent Teams 客户端提供。",
+    "panel.loading": "加载中…",
+    "panel.empty": "没有卡住的团队：没有 hold，也没有未读事件。",
+    "panel.stuck": "有团队被暂停",
+    "panel.hold": "hold",
+    "panel.since": "自",
+    "panel.activity": "未读事件",
+    "panel.ack": "标记已读",
+    "panel.reader": "读者",
+    "panel.error": "看门狗状态不可读",
+    "panel.replay": "（重放：这些事件尚未被确认）"
   };
   const en = {
-    "tab.title": "AgentTeams",
-    "page.error": "Failed to read team state: {message}",
-    "page.unavailable": "Team view unavailable: {reason}",
-    "settings.autoOpen.title": "Auto-open when a team appears",
-    "settings.autoOpen.desc": "Open the AgentTeams page in the sidebar when this conversation creates a team or a team starts working.",
+    "tab.title": "Team watchdog",
+    "panel.subtitle": "Watchdog view only — the roster and task board belong to the official Agent Teams client.",
+    "panel.loading": "Loading…",
+    "panel.empty": "No stuck team: no hold and no unread incident.",
+    "panel.stuck": "A team is paused",
+    "panel.hold": "hold",
+    "panel.since": "since",
+    "panel.activity": "Unread incidents",
+    "panel.ack": "Acknowledge",
+    "panel.reader": "reader",
+    "panel.error": "the watchdog state is unreadable",
+    "panel.replay": "(replay: these incidents have not been acknowledged yet)"
   };
-  /** Inline SVG path of the platform's `IconChevronDownOutline14` (see chevronDown14). */
-  const CHEVRON_DOWN_14_PATH = "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z";
 
-  function interpolate(template, params) {
-    return String(template).replace(/\{(\w+)\}/g, (_match, key) =>
-      params && params[key] !== undefined ? String(params[key]) : "{" + key + "}");
-  }
-
-  /** The host's active locale, tolerating a minimal ctx (tests, older runtimes). */
+  /** The locale the browser is in, resolved through the host's own locale service. */
   function activeLocale(ctx) {
     try {
-      const active = ctx && ctx.locale && ctx.locale.getSnapshot && ctx.locale.getSnapshot().active;
-      return active === "zh" ? "zh" : "en";
+      const locale = ctx !== undefined && ctx !== null ? (typeof ctx.get === "function" ? ctx.get("locale") : undefined) : undefined;
+      const value = locale !== undefined && locale !== null && typeof locale.get === "function" ? locale.get() : undefined;
+      if (typeof value === "string" && value !== "") return value;
     } catch {
-      return "en";
+      // fall through to the default
+    }
+    return "en";
+  }
+
+  /** A translator bound to this context's locale (a missing key falls back to the key). */
+  function translatorFor(ctx) {
+    const dict = activeLocale(ctx).toLowerCase().startsWith("zh") ? zh : en;
+    return (key) => (dict[key] !== undefined ? dict[key] : key);
+  }
+
+  // ── the store the page renders (ONE payload, refreshed by ONE poller) ────────
+  let store = { payload: null, error: undefined };
+  const listeners = new Set();
+  let pollTimer = null;
+  let pollInFlight = false;
+  let watchdogInFlight = false;
+
+  function publish(patch) {
+    store = Object.assign({}, store, patch);
+    for (const listener of [...listeners]) {
+      try {
+        listener();
+      } catch {
+        // one bad subscriber must not stop the others
+      }
     }
   }
 
-  /**
-   * Translator for the page AND the adopted views it renders: our page keys plus the
-   * adopted dictionaries (which is what TeamSection/StagingPlanEditor look up).
-   */
-  function translatorFor(ctx) {
-    const locale = activeLocale(ctx);
-    const adoptedDict = (locale === "zh" ? adopted.zh : adopted.en) || {};
-    const ownDict = locale === "zh" ? zh : en;
-    return (key, params) => {
-      const value = ownDict[key] !== undefined ? ownDict[key] : adoptedDict[key];
-      return interpolate(value === undefined ? key : value, params);
-    };
+  function subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
   }
 
-  // ── Shared team state (module-level singleton) ──────────────────────────────
-  // One polling controller for the whole client: the adopted startActivityPolling is
-  // NOT reference counted, so a second caller would double every request. The store is
-  // also what the tab badge reads — the badge runs on every tab-bar render, including
-  // while the sidebar is collapsed, so it must never fetch.
-  let store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
-  const storeListeners = new Set();
-  let pollController = null;
-  let pollSessionId = undefined;
-  let pollUnsubscribe = null;
-  // Auto-open bookkeeping: ids seen in a settled snapshot never auto-open (that is the
-  // restore pass), and an id only ever opens once.
-  let autoOpenArmed = false;
-  let autoOpenTimer = null;
-  const autoOpenSeen = new Set();
-  const autoOpenFired = new Set();
-
-  function publishSnapshot() {
-    const snapshot = adopted.getActivitySnapshotsSnapshot();
-    const next = {
-      ...store,
-      teams: Array.isArray(snapshot.teams) ? snapshot.teams : [],
-      archivedTeams: Array.isArray(snapshot.archivedTeams) ? snapshot.archivedTeams : [],
-      error: undefined,
-    };
-    store = next;
-    for (const listener of storeListeners) listener();
-  }
-
-  function subscribeStore(listener) {
-    storeListeners.add(listener);
-    return () => { storeListeners.delete(listener); };
-  }
-
-  function getStoreSnapshot() {
+  function getSnapshot() {
     return store;
   }
 
-  function stopPolling() {
-    if (pollController !== null) {
-      try { pollController.stop(); } catch { /* already stopped */ }
-      pollController = null;
+  async function fetchJson(url, init) {
+    const response = await fetch(url, init);
+    if (response === undefined || response === null || response.ok !== true) {
+      throw new Error("HTTP " + String(response === undefined || response === null ? "?" : response.status));
     }
-    if (pollUnsubscribe !== null) {
-      try { pollUnsubscribe(); } catch { /* already disposed */ }
-      pollUnsubscribe = null;
-    }
-    pollSessionId = undefined;
+    return await response.json();
   }
 
-  /**
-   * Point the single controller at one conversation. The adopted controller performs an
-   * immediate live+archive restore for a discovery session, then probes at a low
-   * cadence and upgrades to the live cadence once that session owns a team.
-   */
-  function ensurePolling(sessionId) {
-    const id = typeof sessionId === "string" ? sessionId.trim() : "";
-    if (id === "") return;
-    if (pollController !== null && pollSessionId === id) return;
-    stopPolling();
-    pollSessionId = id;
+  /** One poll of the watchdog state route. Never throws into a render. */
+  async function refreshWatchdog() {
+    if (watchdogInFlight) return store.payload;
+    watchdogInFlight = true;
     try {
-      pollUnsubscribe = adopted.subscribeActivitySnapshots(() => { publishSnapshot(); });
-      pollController = adopted.startActivityPolling([], { discoverySessionId: id });
-      store = { ...store, sessionId: id };
-      void pollController.firstTick.then(
-        () => { publishSnapshot(); armAutoOpen(); },
-        (error) => {
-          store = { ...store, error: String(error && error.message ? error.message : error) };
-          for (const listener of storeListeners) listener();
-        },
-      );
-    } catch (error) {
-      store = { ...store, error: String(error) };
-      for (const listener of storeListeners) listener();
-    }
-  }
-
-  /** After the settle window, the current team set becomes the restore baseline. */
-  function armAutoOpen(delayMs) {
-    if (autoOpenTimer !== null) return;
-    autoOpenTimer = setTimeout(() => {
-      autoOpenTimer = null;
-      for (const team of store.teams) autoOpenSeen.add(team.teamId);
-      autoOpenArmed = true;
-    }, delayMs === undefined ? AUTO_OPEN_SETTLE_MS : delayMs);
-    if (typeof autoOpenTimer === "object" && autoOpenTimer !== null && typeof autoOpenTimer.unref === "function") {
-      autoOpenTimer.unref();
-    }
-  }
-
-  /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
-  let autoOpenPolicyService = undefined;
-  function autoOpenEnabled() {
-    try {
-      const snapshot = autoOpenPolicyService && typeof autoOpenPolicyService.getSnapshot === "function"
-        ? autoOpenPolicyService.getSnapshot()
-        : undefined;
-      const prefs = snapshot ? snapshot.prefs : undefined;
-      const settings = prefs && prefs.pluginSettings ? prefs.pluginSettings[TEAM_TAB_ID] : undefined;
-      const value = settings ? settings[AUTO_OPEN_KEY] : undefined;
-      // The sidebar declares no default for plugin-owned keys: an unwritten key is ON.
-      return value === undefined ? true : value !== false;
-    } catch {
-      return true;
-    }
-  }
-
-  /** Open the tab once for a team that appeared after the restore baseline. */
-  function maybeAutoOpen() {
-    if (!autoOpenArmed || autoOpenPolicyService === undefined) return;
-    if (autoOpenEnabled() === false) return;
-    try {
-      if (autoOpenPolicyService.isTabEnabled && autoOpenPolicyService.isTabEnabled(TEAM_TAB_ID) === false) return;
-    } catch {
-      return;
-    }
-    for (const team of store.teams) {
-      if (autoOpenSeen.has(team.teamId) || autoOpenFired.has(team.teamId)) continue;
-      autoOpenSeen.add(team.teamId);
-      autoOpenFired.add(team.teamId);
-      try {
-        autoOpenPolicyService.openTab({ type: TEAM_TAB_ID });
-      } catch (error) {
-        console.warn("[mpd] AgentTeams auto-open failed: " + String(error));
+      const payload = await fetchJson(WATCHDOG_STATE_URL);
+      if (payload !== null && typeof payload === "object" && payload.ok === true) {
+        publish({ payload, error: undefined });
+        return payload;
       }
-      return;
+      publish({ payload: null, error: new Error("the watchdog route answered a non-ok payload") });
+    } catch (error) {
+      publish({ payload: null, error });
+    } finally {
+      watchdogInFlight = false;
     }
+    return store.payload;
   }
 
-  // ── Adopted-view helpers ────────────────────────────────────────────────────
-  /** Live team count for one conversation — cheap, cached, never throws (badge path). */
-  function liveTeamCount(sessionId) {
-    if (typeof sessionId !== "string" || sessionId === "") return 0;
-    let count = 0;
-    for (const team of store.teams) {
-      if (team.captainSessionId === sessionId) count += 1;
-    }
-    return count;
-  }
-
-  /**
-   * The staged-plan approval editor needs a model directory, and the adopted
-   * directoryFor() THROWS for an unknown session while StagingPlanEditor calls it during
-   * render — so it is resolved defensively and degrades to no editor, never to a crash.
-   */
-  function directoryForTeam(ctx, team) {
-    if (team === undefined || team.phase !== "staged") return undefined;
+  /** Acknowledge the replay up to ONE incident timestamp through the ack route. */
+  async function acknowledgeIncident(incidentTs) {
     try {
-      const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined;
-      if (directories === undefined || typeof directories.directoryFor !== "function") return undefined;
-      return directories.directoryFor(team.captainSessionId);
-    } catch {
-      return undefined;
-    }
-  }
-
-  /** Best-effort composer focus, mirroring the floater's "return to the conversation". */
-  function focusComposer() {
-    try {
-      window.requestAnimationFrame(() => {
-        const composer = document.querySelector("[data-composer-card] textarea");
-        if (composer !== null) composer.focus();
+      const response = await fetch(WATCHDOG_ACK_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, upTo: incidentTs })
       });
-    } catch { /* no DOM (offline harness) */ }
-  }
-
-  /** Open one member's transcript, mirroring the adopted session-navigation helper. */
-  function openMember(ctx, parentSessionId, childSessionId) {
-    const sessions = ctx ? ctx.sessions : undefined;
-    if (sessions === undefined || typeof sessions.open !== "function") return;
-    if (sessions.openSubagent === undefined || sessions.refreshSubagents === undefined) {
-      try { sessions.open(childSessionId); } catch (error) { console.warn("[mpd] member open failed: " + String(error)); }
-      return;
-    }
-    Promise.resolve(sessions.refreshSubagents(parentSessionId)).then(() => {
-      const retained = typeof sessions.subagentAddress === "function" ? sessions.subagentAddress(childSessionId) : undefined;
-      sessions.openSubagent(retained && retained.parentSessionId === parentSessionId
-        ? retained
-        : { parentSessionId, childSessionId, mode: "continuable" });
-    }).catch((error) => {
-      console.warn("[mpd] member open failed: " + String(error));
-      try { sessions.open(childSessionId); } catch { /* nothing else to do */ }
-    });
-  }
-
-  // ── Shared helpers for the page ─────────────────────────────────────────────
-  let chevronIcon = undefined;
-
-  /**
-   * The collapse control's glyph: the platform's own `IconChevronDownOutline14`, the
-   * exact component the adopted panel renders, reached through the same client
-   * externals module the adopted bundle (and DSH-better-sidebar itself) requires. If
-   * that module cannot be resolved, the identical 14×14 path is rendered inline, so the
-   * control is never glyph-less.
-   */
-  function ChevronDown14(props) {
-    if (chevronIcon === undefined) {
-      try {
-        const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-        chevronIcon = primitives && primitives.IconChevronDownOutline14 ? primitives.IconChevronDownOutline14 : null;
-      } catch {
-        chevronIcon = null;
+      if (response === undefined || response === null || response.ok !== true) {
+        throw new Error("HTTP " + String(response === undefined || response === null ? "?" : response.status));
       }
-    }
-    if (chevronIcon !== null) return react.createElement(chevronIcon, props || {});
-    return react.createElement("svg", {
-      width: 14, height: 14, viewBox: "0 0 14 14", fill: "none", xmlns: "http://www.w3.org/2000/svg",
-    }, react.createElement("path", { d: CHEVRON_DOWN_14_PATH, fill: "currentColor" }));
-  }
-
-  /**
-   * Close the sidebar panel — the sidebar's equivalent of the floater's "collapse
-   * activity panel" button, since the tab is only visible while the panel is open.
-   * Guarded so a store-less render (offline harness) still produces the same markup.
-   */
-  function collapsePanel(store) {
-    try {
-      if (store !== undefined && store !== null && typeof store.reduce === "function") {
-        // The same next-state shape DSH-better-sidebar's own togglePanel computes.
-        store.reduce((state) => ({ ...state, panelOpen: false }));
-      }
+      await refreshWatchdog();
+      return true;
     } catch (error) {
-      console.warn("[mpd] AgentTeams collapse failed: " + String(error));
+      publish({ error });
+      return false;
     }
   }
 
-  // ── The page ────────────────────────────────────────────────────────────────
-  // Everything the adopted floater's own `.panel` rule declares, minus the window
-  // manager: the sidebar pane owns the box, so position/size are pinned to it, the
-  // drag/resize affordances are gone (no handles are rendered and `data-compact`
-  // selects the head's non-draggable cursor), and the floating frame —
-  // border/radius/shadow/backdrop blur — is dropped because the pane is already a
-  // framed surface. The class still has to stay on the root: it is what scopes the
-  // adopted `--dsw-alias-*` custom properties for the whole subtree.
-  const PANE_STYLE = {
-    position: "relative", top: "auto", left: "auto",
-    width: "100%", height: "100%", minHeight: 0, maxHeight: "none",
-    flex: "1 1 auto",
-    transform: "none", willChange: "auto", animation: "none",
-    border: "none", borderRadius: 0, background: "transparent",
-    boxShadow: "none", backdropFilter: "none", WebkitBackdropFilter: "none",
-  };
-  const UNAVAILABLE_STYLE = {
-    padding: 10, fontSize: 12, lineHeight: 1.5, color: "rgba(128,128,128,0.95)",
-    fontFamily: "system-ui, sans-serif", boxSizing: "border-box",
-  };
+  function startPolling() {
+    if (pollTimer !== null) return;
+    void refreshWatchdog();
+    try {
+      pollTimer = setInterval(() => {
+        if (pollInFlight) return;
+        pollInFlight = true;
+        void refreshWatchdog().finally(() => {
+          pollInFlight = false;
+        });
+      }, WATCHDOG_POLL_MS);
+    } catch {
+      pollTimer = null;
+    }
+  }
+
+  function stopPolling() {
+    if (pollTimer === null) return;
+    try {
+      clearInterval(pollTimer);
+    } catch {
+      // already cleared
+    }
+    pollTimer = null;
+  }
+
+  // ── rendering ────────────────────────────────────────────────────────────────
+  const PANEL_STYLE = { display: "flex", flexDirection: "column", gap: "6px", padding: "8px", fontFamily: "inherit" };
+  const BANNER_STYLE = { padding: "6px 8px", borderRadius: "4px", border: "1px solid currentColor" };
+  const MUTED_STYLE = { opacity: 0.7, fontSize: "0.9em" };
+  const ROW_STYLE = { display: "flex", flexDirection: "column", gap: "2px", padding: "4px 0" };
+
+  function formatTime(at) {
+    try {
+      return new Date(at).toISOString();
+    } catch {
+      return String(at);
+    }
+  }
 
   /**
-   * The AgentTeams sidebar page: the adopted panel's interior, in the conversation the
-   * tab belongs to. Live teams first, then the server-side archive, then — exactly like
-   * the floater — the panel's own empty hint.
+   * The store subscription, in the form every React of this vintage supports.
+   *
+   * A host WITHOUT `useSyncExternalStore` still renders: the component then reads the store
+   * on each render and re-renders through the subscription.
    */
-  function TeamPageView(props) {
-    const ctx = props.ctx;
-    const scope = props.scope || {};
-    const t = translatorFor(ctx);
-    const state = react.useSyncExternalStore(subscribeStore, getStoreSnapshot);
-    const sessionId = scope.sessionId;
-
-    react.useEffect(() => { ensurePolling(sessionId); }, [sessionId]);
-
-    // A hidden tab keeps no live view (the sidebar CSS-hides collapsed tabs rather than
-    // unmounting them); the badge still reads the cached store.
-    if (props.visible === false) return null;
-    if (adopted.TeamSection === undefined || adopted.ACTIVITY_PANEL_CSS === undefined) {
-      return react.createElement("div", { style: UNAVAILABLE_STYLE, "data-agent-teams-unavailable": true },
-        t("page.unavailable", { reason: "adopted views missing" }));
+  function useStoreSnapshot() {
+    const React = react;
+    if (typeof React.useSyncExternalStore === "function") {
+      return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     }
-
-    const css = adopted.ACTIVITY_PANEL_CSS;
-    const live = state.teams.filter((team) => team.captainSessionId === sessionId);
-    const archived = state.archivedTeams.filter((team) =>
-      team.captainSessionId === sessionId && !live.some((candidate) => candidate.teamId === team.teamId));
-    const busy = live.some((team) => Array.isArray(team.members)
-      && team.members.some((member) => member.activity === "working"));
-
-    const body = [];
-    if (state.error !== undefined) {
-      // A failure mode the floater could not represent either (it simply had no teams):
-      // the notice keeps the original body shape and styling.
-      body.push(react.createElement("span", { key: "error", className: css.emptyHint, "data-agent-teams-error": true },
-        t("page.error", { message: state.error })));
-    } else if (live.length === 0 && archived.length === 0) {
-      body.push(react.createElement("span", { key: "empty", className: css.emptyHint, "data-agent-teams-empty": true },
-        t("activity.empty")));
-    } else {
-      for (const team of live) {
-        body.push(react.createElement(adopted.TeamSection, {
-          key: team.teamId,
-          team,
-          modelDirectory: directoryForTeam(ctx, team),
-          onContinuePlanning: focusComposer,
-          onDiscarded: focusComposer,
-          onNavigate: (parentId, childId) => { openMember(ctx, parentId, childId); },
-          t,
-        }));
-      }
-      for (const team of archived) {
-        // Historic conversation cards are INTENTIONALLY not rendered: the adopted panel's
-        // historic-card branch was fed by the removed in-conversation card's
-        // conversationEvents registry, which this harness does not provide, so no historic
-        // card can exist any more (the bridge still exports historicCardTeam for parity).
-        // Ended teams reach this page through the server-side archive below instead.
-        //
-        // `archivedWrap` is absent from the adopted class map although the adopted panel
-        // reads it too, so the original renders a CLASS-LESS wrapper div — performing the
-        // same lookup is what keeps this markup identical, and an upstream fix flows through
-        // by itself (pinned by packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs).
-        body.push(react.createElement("div", {
-          key: team.captainSessionId + ":" + team.teamId,
-          className: css.archivedWrap,
-          "data-team-id": team.teamId,
-          "data-historic": true,
-        },
-          react.createElement("span", { className: css.archiveLabel },
-            t(team.phase === "staged" ? "archive.discardedLabel" : "archive.label")),
-          react.createElement(adopted.TeamSection, {
-            team,
-            onNavigate: (parentId, childId) => { openMember(ctx, parentId, childId); },
-            t,
-            historic: true,
-          }),
-        ));
-      }
+    if (typeof React.useState === "function") {
+      const state = React.useState(store);
+      const setState = state[1];
+      React.useEffect(() => subscribe(() => setState(getSnapshot())), []);
+      return state[0];
     }
-
-    return react.createElement("aside", {
-      className: css.panel,
-      style: PANE_STYLE,
-      "data-agent-teams-page": true,
-      "data-agent-teams-activity": true,
-      "data-team-count": String(live.length),
-      // The floater's head is a drag handle; here it must not advertise a drag.
-      "data-compact": true,
-      "aria-label": t("activity.panelAria"),
-    },
-      react.createElement("header", { className: css.panelHead },
-        react.createElement("span", { className: css.panelTitle },
-          t("activity.title"),
-          react.createElement("span", { className: css.panelDot, "data-busy": busy, "aria-hidden": true }),
-        ),
-        react.createElement("span", { className: css.panelControls },
-          react.createElement("button", {
-            type: "button",
-            className: css.iconButton,
-            "data-control": "collapse",
-            onClick: () => { collapsePanel(props.store); },
-            "aria-label": t("activity.collapse"),
-            title: t("activity.collapse"),
-          }, react.createElement(ChevronDown14, {})),
-        ),
-      ),
-      react.createElement("div", { className: css.teams }, body),
-    );
+    return store;
   }
 
-  // ── Sidebar contribution ────────────────────────────────────────────────────
-  /** Resolve a client service without ever declaring it (a pending entry kills the page). */
-  function probe(ctx, name) {
-    let viaGet;
-    try {
-      viaGet = ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined;
-    } catch {
-      viaGet = undefined;
+  /** The panel body. Pure over `state`; every failure has an on-screen answer. */
+  function TeamPageView(props) {
+    const t = props !== undefined && typeof props.t === "function" ? props.t : (key) => key;
+    const state = useStoreSnapshot();
+    const payload = state.payload;
+    const rows = [];
+    rows.push(react.createElement("div", { key: "subtitle", style: MUTED_STYLE }, t("panel.subtitle")));
+    if (state.error !== undefined && payload === null) {
+      rows.push(react.createElement("div", { key: "error", "data-watchdog-error": true },
+        t("panel.error") + ": " + String((state.error !== null && state.error !== undefined && state.error.message !== undefined) ? state.error.message : state.error)));
+    } else if (payload === null) {
+      rows.push(react.createElement("div", { key: "loading", style: MUTED_STYLE }, t("panel.loading")));
+    } else {
+      const banner = payload.banner !== null && payload.banner !== undefined ? payload.banner : null;
+      rows.push(react.createElement("div", {
+        key: "banner",
+        style: BANNER_STYLE,
+        "data-watchdog-banner": banner === null ? "none" : String(banner.kind)
+      }, banner === null
+        ? t("panel.empty")
+        : t("panel.stuck") + " · " + String(banner.teamId) + " · " + String(banner.cause) + " · " + t("panel.since") + " " + formatTime(banner.since)));
+      const holds = Array.isArray(payload.held) ? payload.held : [];
+      if (holds.length > 0) {
+        rows.push(react.createElement("div", { key: "holds-title", style: MUTED_STYLE }, t("panel.hold")));
+        for (const hold of holds) {
+          rows.push(react.createElement("div", { key: "hold-" + String(hold.teamId), "data-watchdog-hold": String(hold.teamId) },
+            String(hold.teamId) + " · " + String(hold.cause) + " · " + t("panel.since") + " " + formatTime(hold.since)));
+        }
+      }
+      const activity = Array.isArray(payload.activity) ? payload.activity : [];
+      if (activity.length > 0) {
+        rows.push(react.createElement("div", { key: "activity-title", style: MUTED_STYLE }, t("panel.activity") + " (" + activity.length + ")"));
+        if (payload.replay === true) rows.push(react.createElement("div", { key: "replay", style: MUTED_STYLE }, t("panel.replay")));
+        for (const record of activity) {
+          rows.push(react.createElement("div", { key: "activity-" + String(record.id), style: ROW_STYLE, "data-watchdog-activity": String(record.id) },
+            react.createElement("span", null, String(record.label !== undefined ? record.label : record.kind) + " · " + String(record.teamId) + " · " + formatTime(record.at)),
+            react.createElement("span", { style: MUTED_STYLE }, String(record.cause) + (record.ms === null || record.ms === undefined ? "" : " " + String(record.ms) + "ms")),
+            react.createElement("button", {
+              key: "ack",
+              type: "button",
+              "data-watchdog-ack": String(record.id),
+              onClick: () => { void acknowledgeIncident(record.at); }
+            }, t("panel.ack"))));
+        }
+      }
+      rows.push(react.createElement("div", { key: "reader", style: MUTED_STYLE }, t("panel.reader") + ": " + String(payload.reader)));
     }
-    if (viaGet !== undefined) return viaGet;
-    try {
-      return ctx ? ctx[name] : undefined;
-    } catch {
-      return undefined;
-    }
+    return react.createElement("div", { style: PANEL_STYLE, "data-mpd-team-watchdog-page": true }, rows);
   }
 
   /**
-   * Register the single AgentTeams sidebar tab against an ALREADY-RESOLVED sidebar
-   * service. The service is a parameter, never a probe: DSH-better-sidebar is provided by
-   * another plugin whose fiber activates later than ours, so a `ctx.get` probe here answers
-   * undefined (measured live) and the tab would never register. The caller resolves it
-   * through `ctx.inject(['betterSidebar'], …)` — see mountSidebarPages in src/web-client.js.
+   * Register the watchdog sidebar tab once DSH-better-sidebar is available.
+   * @param ctx - the better-sidebar-scoped context.
+   * @param service - the `betterSidebar` service.
+   * @returns true when the tab is registered (or already present).
    */
   function registerTeamSidebarTab(ctx, service) {
+    if (service === undefined || service === null || typeof service.registerTab !== "function") {
+      console.warn("[mpd] better-sidebar exposes no registerTab — the team watchdog page has no host");
+      return false;
+    }
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires on a provider remount and the
+    // sidebar's `registerTab` THROWS on a duplicate id.
     try {
-      if (service === undefined || service === null || typeof service.registerTab !== "function") {
-        console.warn("[mpd] better-sidebar exposes no registerTab — the AgentTeams page has no host (no floating fallback by design)");
-        return false;
-      }
-      autoOpenPolicyService = service;
+      if (typeof service.getTab === "function" && service.getTab(TEAM_TAB_ID) !== undefined) return true;
+    } catch {
+      // a throwing getTab means "cannot tell": fall through and register as before
+    }
+    try {
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
       ctx.effect(() => service.registerTab({
         id: TEAM_TAB_ID,
-        title: () => "AgentTeams",
-        icon: (size) => react.createElement("span", {
-          "aria-hidden": true,
-          style: { fontSize: size, lineHeight: 1 },
-        }, "\u{1F433}"),
+        title: () => t("tab.title"),
+        icon: (size) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F6A8}"),
         order: TEAM_TAB_ORDER,
         single: true,
-        // Mint the tab ourselves so the auto-open content seed never lands on it.
-        createTab: () => ({ tab: { id: TEAM_TAB_ID, type: TEAM_TAB_ID, title: "AgentTeams" } }),
-        // Called on every tab-bar render, including while the panel is collapsed:
-        // a cached count only — no fetch, no throw.
-        badge: (_ctx, scope) => {
+        createTab: () => ({ tab: { id: TEAM_TAB_ID, type: TEAM_TAB_ID, title: t("tab.title") } }),
+        // The badge is the UNREAD count of the last poll: no fetch, never a throw.
+        badge: () => {
           try {
-            const count = liveTeamCount(scope ? scope.sessionId : undefined);
-            return count > 0 ? count : undefined;
+            const payload = store.payload;
+            if (payload === null || payload === undefined) return undefined;
+            const unread = Array.isArray(payload.unread) ? payload.unread.length : 0;
+            return unread > 0 ? unread : undefined;
           } catch {
             return undefined;
           }
         },
-        settings: {
-          pluginToggles: [{
-            key: AUTO_OPEN_KEY,
-            title: () => t("settings.autoOpen.title"),
-            desc: () => t("settings.autoOpen.desc"),
-            type: "switch",
-          }],
-        },
-        component: (props) => react.createElement(TeamPageView, props),
+        component: (props) => react.createElement(TeamPageView, Object.assign({ t }, props))
       }), "mpd-agent-teams: sidebar tab");
-      const pollCurrentSession = () => {
-        try {
-          const sessions = probe(ctx, "sessions");
-          const current = sessions && sessions.list ? sessions.list.getSnapshot().current : undefined;
-          ensurePolling(current);
-        } catch { /* no sessions service: the page starts polling on mount instead */ }
-      };
       ctx.effect(() => {
-        pollCurrentSession();
-        const sessions = probe(ctx, "sessions");
-        if (sessions === undefined || sessions.list === undefined || typeof sessions.list.subscribe !== "function") {
-          return () => { stopPolling(); };
-        }
-        const unsubscribe = sessions.list.subscribe(() => {
-          pollCurrentSession();
-          maybeAutoOpen();
-        });
-        return () => {
-          unsubscribe();
-          stopPolling();
-        };
-      }, "mpd-agent-teams: activity polling");
-      ctx.effect(() => {
-        const unsubscribe = subscribeStore(() => { maybeAutoOpen(); });
-        return unsubscribe;
-      }, "mpd-agent-teams: auto-open watcher");
+        startPolling();
+        return () => { stopPolling(); };
+      }, "mpd-agent-teams: watchdog polling");
       return true;
     } catch (error) {
-      console.warn("[mpd] AgentTeams sidebar tab registration failed: " + String(error));
+      console.warn("[mpd] team watchdog sidebar tab registration failed: " + String(error));
       return false;
     }
   }
@@ -4281,24 +4049,1152 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
   exports.TeamPageView = TeamPageView;
   exports.SIDEBAR_TAB_ID = TEAM_TAB_ID;
   exports.SIDEBAR_TAB_ORDER = TEAM_TAB_ORDER;
-  // Test seams: the offline harness pins the auto-open policy and the single-controller
-  // rule against these instead of reaching into module internals.
+  // Test seams: the offline driver polls and acknowledges through these instead of reaching
+  // into module internals.
+  exports.__watchdogState = () => store;
+  exports.__watchdogPoll = () => refreshWatchdog();
+  exports.__watchdogAck = (incidentTs) => acknowledgeIncident(incidentTs);
   exports.__resetTeamPageForTests = () => {
-    if (autoOpenTimer !== null) {
-      try { clearTimeout(autoOpenTimer); } catch { /* ignore */ }
-    }
     stopPolling();
-    store = { teams: [], archivedTeams: [], error: undefined, sessionId: undefined };
-    autoOpenArmed = false;
-    autoOpenTimer = null;
-    autoOpenSeen.clear();
-    autoOpenFired.clear();
-    autoOpenPolicyService = undefined;
-    chevronIcon = undefined;
+    pollInFlight = false;
+    watchdogInFlight = false;
+    store = { payload: null, error: undefined };
+    listeners.clear();
   };
-  exports.__armAutoOpen = armAutoOpen;
-  exports.__maybeAutoOpen = maybeAutoOpen;
+  exports.WATCHDOG_STATE_URL = WATCHDOG_STATE_URL;
+  exports.WATCHDOG_ACK_URL = WATCHDOG_ACK_URL;
+  exports.WATCHDOG_WEB_READER = WATCHDOG_WEB_READER;
   return module.exports;
+} });
+
+// ==== @mpd-dsh/settings-card: the mpd settings card (t35, additive + isolated) ====
+window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd settings section — the browser half of the `mpd` settings namespace (t35; moved to its own
+// top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
+//
+// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same
+// mpd.jsonc knobs (thirteen scalar knobs plus the twelve team-model slot leaves) used to ride the
+// Plugins tab's keyed per-namespace item slot; this file no longer
+// registers anything there, so the Plugins tab shows no mpd card.
+//
+// THE PATTERN IS THE HOST'S OWN, MEASURED in the host's settings-models section
+// (`@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js:2936-2952`):
+//   • `ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section",
+//     id, order, label: () => t("nav"), inject, children }, Component))` — the settings shell
+//     collects that LIST slot (`ctx.slots.entries("settings.section")`, sorted by `order`) and
+//     renders the ACTIVE one (`dsh-client-ui-settings/lib/client.js:561-572`, `:167`);
+//   • `label` is a FUNCTION resolved through the registration's locale dictionaries, so the nav
+//     text lives in the `mpdSettings` dictionaries below (key `nav`);
+//   • the host's own sections are `general` 0, `models` 10 and `plugins` 15; this section takes
+//     `order: 20`, i.e. AFTER them, so no existing section moves;
+//   • `children` is DELIBERATELY OMITTED: this section renders no nested slot (the host's `models`
+//     section declares its provider card + footer there; ours has none), which is a declared
+//     absence rather than a copy of their list;
+//   • the component receives `{ t, edit, resetField, save, discard, use<X>Card }`, where `t` comes
+//     from the registered `locale` dictionaries and `use<X>Card` is the hook the registration's
+//     `inject()` result provides;
+//   • the write goes through the PUBLIC client seam `ctx.settingsScope.bind({namespace})`, whose
+//     actions are `set`/`unset`/`mutate(ops, expectedRevision)` — i.e. the `settings/mutate` RPC
+//     the bridge consumes. The client performs NO filesystem I/O and cannot.
+// The host's `PluginCard`/`ValueField` are that package's PRIVATE components and are NOT imported
+// here: this component is self-contained markup.
+//
+// WHAT IS CLAIMED (recorded in the lane/evidence): the registration is present in the BUILT and
+// SERVED client, and the write path it drives (settings namespace -> bridge ->
+// `<workspace>/.mpd/mpd.jsonc`) is proven by `web-settings-bridge.mjs` over the host's own
+// authenticated API. WHAT IS NOT CLAIMED: that a browser renders this section or that a click
+// produces the mutate — no browser exists in this environment; the user sees that in their own GUI.
+//
+// Labels/hints/zh descriptions are MIRRORED from the TUI section
+// (`packages/mpd-tui-plugin/src/settings.ts`) and a test asserts the two lists stay identical, so
+// the two front doors cannot drift.
+(require) => {
+  const NS = "mpd"
+  /** The locale namespace the section's own labels live in. */
+  const LOCALE_NS = "mpdSettings"
+  /** The LIST slot the settings shell renders as top-level sections. */
+  const SECTION_SLOT = "settings.section"
+  /** This section's stable id (the shell keys the active section by it). */
+  const SECTION_ID = "mpd"
+  /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
+  const SECTION_ORDER = 20
+
+  /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
+  /**
+   * The HOST LIMITATION half of the truth (T-18), byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
+   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
+   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
+   * a change made through the settings document can reach a running plugin (where it subscribes).
+   * This is the honest replacement for the old "any settings edit wins from the next tick on"
+   * claim, which the host's mount-time base read does not support.
+   */
+  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
+  // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
+  // hint and the status line carry).
+  const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+
+  /**
+   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
+   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
+   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
+   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
+   * from the live catalog at render time instead.
+   */
+  const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
+  const SLOT_LEAVES = [
+    { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
+    { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
+  ]
+  /**
+   * What each slot IS — the member group it routes, in the group's own order (mirror of
+   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
+   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
+   * the parity test compares every sentence and heading below with the shared declaration's own
+   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
+   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
+   */
+  const SLOT_GROUPS = {
+    slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
+    slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
+    slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
+    slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
+  }
+  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
+  const SLOT_IMPACT = {
+    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
+    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+  }
+  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
+  const SLOT_IMPACT_OVERRIDES = {
+    slot4: {
+      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
+      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+    },
+  }
+  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
+  const SLOT_SENTENCE_OVERRIDES = {
+    slot4: {
+      provider: {
+        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+      },
+      model: {
+        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
+      },
+      reasoningEffort: {
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+      },
+    },
+  }
+  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
+  const impactOf = (slot, lang) => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
+  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
+  function slotSentence(slot, leaf) {
+    const override = SLOT_SENTENCE_OVERRIDES[slot]
+    if (override !== undefined) return override[leaf]
+    const group = SLOT_GROUPS[slot]
+    if (leaf === "provider") {
+      return {
+        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
+        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
+      }
+    }
+    if (leaf === "model") {
+      return {
+        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
+        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
+      }
+    }
+    return {
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+    }
+  }
+  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
+  function slotHeading(slot, index) {
+    const group = SLOT_GROUPS[slot]
+    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
+  }
+  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
+  const SLOT_FIELDS = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    const sentence = slotSentence(slot, leaf)
+    return {
+      path: ["teamModels", slot, leaf],
+      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
+      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      kind: "select",
+      options,
+      semantics: sentence.en,
+      semanticsZh: sentence.zh,
+    }
+  }))
+
+  const FIELDS = [
+    { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
+    { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
+    { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+    { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
+    { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+    { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+    { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+    { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+    { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+    { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
+    { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
+    { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
+    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
+    // options come from the live catalog at render time (see optionsFor) and fall back to the
+    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
+    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
+    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
+    // exactly as the shared declaration states it (a test compares the two element-wise).
+    ...SLOT_FIELDS,
+  ]
+
+  // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what
+  // configuring it does) leads in the row's locale, then the real mpd.jsonc key with the bridge
+  // disclosure and the not-lost clause — byte-identical to the hint the TUI section builds for the
+  // same knob, so the two front doors state the same thing in the same order. A knob with no
+  // human sentence keeps the disclosure-only hint it always had.
+  const disclosureOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE} ${NOT_LOST}`
+  const hintOf = (field, lang = "en") => {
+    const sentence = lang === "zh" ? field.semanticsZh : field.semantics
+    const disclosure = disclosureOf(field)
+    return sentence === undefined || sentence.length === 0 ? disclosure : `${sentence} ${disclosure}`
+  }
+  const fieldKey = (field) => field.path.join(".")
+  const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
+
+  /** Parse the control's text into a value for this field, or undefined when it is not one. */
+  function parse(kind, text) {
+    if (kind === "number") {
+      const n = Number(String(text).trim())
+      return Number.isFinite(n) ? n : undefined
+    }
+    if (kind === "boolean") {
+      const t = String(text).trim().toLowerCase()
+      if (t === "true" || t === "1") return true
+      if (t === "false" || t === "0") return false
+      return undefined
+    }
+    const t = String(text)
+    return t.length === 0 ? undefined : t
+  }
+
+  const format = (kind, value) => (value === undefined || value === null ? "" : String(value))
+
+  /**
+   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
+   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
+   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
+   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
+   * QA gate pins it), and the parity test compares the mirror with the real one.
+   */
+  const TEAM_MODEL_SLOT = "teamModels"
+
+  /**
+   * The session the catalog binds to, read from the client's OWN list snapshot.
+   *
+   * MEASURED in a real browser against the live host (`evidence/web-card-catalog/20260918T073000Z/`):
+   * `sessions.list.getSnapshot()` is `{ ids, byId, current, phase, subagentsByParent, jobsBySession,
+   * currentAddress }`, and `current` is the session ID **STRING** — never an object. The host's own
+   * consumers prove it: `dsh-client-ui-session` hands it straight to `sessions.binding(current)`, and
+   * `dsh-api-session-controller`'s `followCurrent()` indexes `snapshot.byId[current]`.
+   *
+   * THE DEFECT THIS REPLACES: `current.sessionId ?? current.id` on a STRING is always `undefined`, so
+   * a card with a live current session rendered `no session is bound` — the exact sentence measured in
+   * the user's browser. The earlier acceptance missed it because its fixture INJECTED
+   * `{ current: { sessionId } }`, i.e. it asserted the ASSUMED shape instead of the real one.
+   *
+   * The object form is still accepted (last) so an existing caller that injects `{ sessionId }` keeps
+   * working. Guarded: a missing sessions service, a missing list or an unbound session answer
+   * undefined instead of throwing.
+   */
+  function currentSessionIdOf(sessions) {
+    try {
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      const current = snapshot.current
+      if (typeof current === "string") return current.length === 0 ? undefined : current
+      if (current !== null && typeof current === "object") {
+        const id = current.sessionId ?? current.id
+        return typeof id === "string" && id.length > 0 ? id : undefined
+      }
+      return undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The client's session-list snapshot, or undefined when the service is absent or unreadable. */
+  function listSnapshotOf(sessions) {
+    const list = sessions ? sessions.list : undefined
+    return list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
+  }
+
+  /**
+   * Every session id the list snapshot carries, in the snapshot's own order. `ids` is the MEASURED
+   * field; `items` and `byId` are read too, so a snapshot from another host build still yields
+   * candidates.
+   */
+  function listedSessionIds(snapshot) {
+    const ids = []
+    const push = (id) => {
+      if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id)
+    }
+    if (Array.isArray(snapshot.ids)) for (const id of snapshot.ids) push(id)
+    if (Array.isArray(snapshot.items)) for (const item of snapshot.items) push(item === null || item === undefined ? undefined : (item.sessionId ?? item.id))
+    if (snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object") for (const id of Object.keys(snapshot.byId)) push(id)
+    return ids
+  }
+
+  /**
+   * The session a model directory can actually be resolved FOR. The session the app is SHOWING wins
+   * (`current`); when the app has no current session — measured: the settings dialog opens before any
+   * conversation — every LISTED session is tried and the first for which BOTH `scope(id)` and
+   * `binding(id)` resolve wins, because that pair is exactly the precondition the host's resolver
+   * documents (`… resolved no scope` / `… resolved no binding`). A non-`blank` session is tried
+   * first: a placeholder row is a poor thing to pin a catalog preview to.
+   *
+   * No `open()` is needed and none is performed: the host mints a listed session's scope lazily
+   * (`eligible(id) = current === id || ids.includes(id)`, measured resolving for every listed id).
+   */
+  function boundSessionIdOf(sessions) {
+    const current = currentSessionIdOf(sessions)
+    if (current !== undefined) return current
+    try {
+      if (sessions === null || sessions === undefined) return undefined
+      if (typeof sessions.scope !== "function" || typeof sessions.binding !== "function") return undefined
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      const ids = listedSessionIds(snapshot)
+      const byId = snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object" ? snapshot.byId : {}
+      const ordered = [...ids.filter((id) => byId[id]?.blank !== true), ...ids.filter((id) => byId[id]?.blank === true)]
+      for (const id of ordered) {
+        try {
+          if (sessions.scope(id) !== undefined && sessions.binding(id) !== undefined) return id
+        } catch {
+          /* an unresolvable id is not a candidate */
+        }
+      }
+    } catch {
+      /* an unreadable list is not a candidate */
+    }
+    return undefined
+  }
+
+  /** Read one service from a context that has it IN SCOPE (never throws). */
+  function readService(ctx, name) {
+    try {
+      return ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /** The data attribute carrying the branch that produced the option lists (assertable, no browser). */
+  const CATALOG_ATTR = "data-mpd-catalog-state"
+  /** The sentence a fallback MUST say out loud — a silent fallback is what hid this defect. */
+  const CATALOG_FALLBACK_NOTICE = "declared fallback — live catalog unavailable"
+  const FALLBACK_CATALOG = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
+
+  /** The one sentence the card renders for one catalog state: LIVE (with counts) or fallback. */
+  function catalogNotice(info) {
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") {
+      const providers = Number(state.providers ?? 0)
+      const models = Number(state.models ?? 0)
+      return "live catalog — " + String(providers) + (providers === 1 ? " provider" : " providers") + " · " + String(models) + (models === 1 ? " model" : " models")
+    }
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? " (" + state.reason + ")" : ""
+    return CATALOG_FALLBACK_NOTICE + reason
+  }
+
+  /**
+   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
+   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
+   * here — the hint is not part of the front-door parity contract (the parity pin compares the
+   * declaration), so the suffix is a render-time addition only.
+   */
+  function slotFallbackMarker(info) {
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") return ""
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? state.reason : ""
+    return reason === "" ? " — declared fallback" : " — declared fallback: " + reason
+  }
+
+  /** The provider/model counts of one group list. */
+  function catalogCounts(groups) {
+    let models = 0
+    for (const group of groups) models += Array.isArray(group.models) ? group.models.length : 0
+    return { providers: groups.length, models }
+  }
+
+  /**
+   * The LIVE model catalog: the host client's own provider groups
+   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`).
+   *
+   * THE DEFECT THIS REPLACES (measured): a BARE `ctx.get` probe for `modelDirectories` can never
+   * see the service — `@deepseek-ai/dsh-client-ui-model-selection` provides it from ANOTHER
+   * plugin's
+   * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
+   * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
+   * The measured rule lives in this package's `src/web-client.js` header; the answer is the
+   * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
+   * for the providers
+   * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
+   * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
+   * page (`assertEntriesActive` turns it into a `pending` entry).
+   *
+   * THE SECOND DEFECT (measured in a real browser, `evidence/web-card-catalog/`): the injection
+   * alone is not enough, because cordis services are CALLER-scoped — the service's own `ctx`
+   * resolves to the ACCESSING ctx. The host's model-directory resolver declares
+   * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
+   * `directoryFor()`, so a caller that injected only `["modelDirectories","sessions"]` is REJECTED
+   * with `cannot get property "remote.session" without inject`, the card degrades, and the UI shows
+   * the declared fallback while the browser's own catalog carries two providers. The caller must
+   * therefore declare the same dotted chain it makes the service read: `remote.session` is
+   * NECESSARY AND SUFFICIENT (measured: `["modelDirectories","sessions"]` throws,
+   * `+ "remote"` throws, `+ "remote.session"` is ready with 2 providers / 31 models). `remote` is
+   * NOT added: `this.ctx.remote` is a FIRST-LEVEL read, which a caller-scoped call re-roots at the
+   * RESOLVER's own fiber (where its `static inject` satisfies it) — only DOTTED seams are re-rooted
+   * at the CALLER's injection fiber, so `remote` would be one more activation precondition and
+   * nothing else. The name stays in the DYNAMIC inject list only: a declared-but-unregistered
+   * service on a loader ENTRY is page-fatal (`assertEntriesActive`), while a parked dynamic
+   * injection merely never fires and the card keeps its declared fallback.
+   *
+   * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
+   * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
+   * re-projects the card's own store — a provider/model that appears while the page is open shows
+   * up without a rebuild. `directoryFor` THROWS for a session the host does not know, so every
+   * step is wrapped and degrades to the declared lists — with `info()` saying so out loud.
+   */
+  function createLiveCatalog(hostCtx) {
+    let directory
+    let boundSessionId
+    let groups = []
+    let info = FALLBACK_CATALOG
+    let unsubscribeStore = null
+    let unsubscribeSessions = null
+    let fiber = null
+    const listeners = new Set()
+
+    function notify() {
+      for (const listener of [...listeners]) {
+        try {
+          listener()
+        } catch {
+          /* a broken listener must not break the card */
+        }
+      }
+    }
+
+    /**
+     * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
+     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
+     * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
+     * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
+     * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
+     * info when it becomes live. The sentence is `catalogNotice`'s — never a second wording.
+     */
+    /**
+     * Announce a state change ONCE per transition. `pending` marks a fallback that is only the
+     * sessions list still ENUMERATING: the card starts with the plugin (measured — the injected
+     * callback fires during app BOOT, long before any conversation exists), so announcing that first
+     * "no session is bound" put a `[mpd]` WARNING into every healthy boot while nothing was wrong.
+     * The rendered state is unchanged (the visible fallback paragraph still says exactly this); only
+     * the CONSOLE announce waits for the list to settle, so a warning means a degrade again.
+     */
+    let announcedMode
+    function publish(nextGroups, nextInfo) {
+      groups = nextGroups
+      info = nextInfo
+      const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
+      const pending = info !== null && info !== undefined && info.pending === true
+      if (pending !== true && mode !== announcedMode) {
+        announcedMode = mode
+        const sentence = catalogNotice(info)
+        if (mode === "live") console.info("[mpd] model catalog:", sentence)
+        else console.warn("[mpd] model catalog:", sentence)
+      }
+      notify()
+    }
+
+    function fallback(reason, pending) {
+      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason, pending: pending === true })
+    }
+
+    function releaseDirectory() {
+      if (unsubscribeStore !== null) {
+        try {
+          unsubscribeStore()
+        } catch {
+          /* the store may already be gone */
+        }
+        unsubscribeStore = null
+      }
+      directory = undefined
+    }
+
+    /** Re-read the bound directory's store and republish (live: called on every notification). */
+    function readStore() {
+      try {
+        const store = directory ? directory.store : undefined
+        const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
+        const raw = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
+        const next = raw.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
+        if (next.length === 0) {
+          fallback("the model directory for this session reports no provider")
+          return
+        }
+        const counts = catalogCounts(next)
+        publish(next, { mode: "live", providers: counts.providers, models: counts.models })
+      } catch {
+        fallback("the model directory could not be read")
+      }
+    }
+
+    function bindDirectory(directories, sessions, force) {
+      const sessionId = boundSessionIdOf(sessions)
+      // A session-list notification is not a reason to re-fetch an unchanged directory: only a
+      // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
+      if (force !== true && sessionId !== undefined && sessionId === boundSessionId && directory !== undefined) return
+      boundSessionId = sessionId
+      releaseDirectory()
+      try {
+        if (directories === null || directories === undefined || typeof directories.directoryFor !== "function") {
+          fallback("no model directory service is registered")
+          return
+        }
+        if (sessionId === undefined) {
+          // "the list has not enumerated yet" is NOT the same state as "the list is ready and offers
+          // no bindable session": only the second is a degrade worth a console warning.
+          const snapshot = listSnapshotOf(sessions)
+          const enumerating = snapshot !== undefined && snapshot !== null && snapshot.phase !== "ready"
+          fallback("no session is bound", enumerating)
+          return
+        }
+        const found = directories.directoryFor(sessionId)
+        if (found === null || found === undefined) {
+          fallback("the host resolved no model directory for this session")
+          return
+        }
+        directory = found
+        const store = found.store
+        if (store && typeof store.subscribe === "function") unsubscribeStore = store.subscribe(() => readStore())
+        readStore()
+        if (typeof found.load === "function") {
+          try {
+            Promise.resolve(found.load()).then(() => readStore(), () => { /* a failed load keeps the last snapshot */ })
+          } catch {
+            /* a synchronous throw keeps the last snapshot */
+          }
+        }
+      } catch (error) {
+        // directoryFor THROWS for a session the host does not know — and for a CALLER whose inject
+        // list does not satisfy the service's own reads (`cannot get property "remote.session"
+        // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
+        // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
+        const detail = error !== null && error !== undefined && typeof error.message === "string" ? error.message : ""
+        fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
+      }
+    }
+
+    function bind(scoped) {
+      releaseDirectory()
+      if (unsubscribeSessions !== null) {
+        try {
+          unsubscribeSessions()
+        } catch {
+          /* the list may be gone */
+        }
+        unsubscribeSessions = null
+      }
+      const directories = readService(scoped, "modelDirectories")
+      const sessions = readService(scoped, "sessions")
+      try {
+        const list = sessions ? sessions.list : undefined
+        // A session SWITCH re-binds the directory: the picker follows the session the page is on.
+        if (list && typeof list.subscribe === "function") unsubscribeSessions = list.subscribe(() => bindDirectory(directories, sessions, false))
+      } catch {
+        unsubscribeSessions = null
+      }
+      // The injection itself is a (re)bind: a provider remount must never keep a stale directory.
+      bindDirectory(directories, sessions, true)
+    }
+
+    return {
+      /** Start the dynamic injection. The scoped ctx of the callback is what reads the services. */
+      start() {
+        if (typeof hostCtx?.inject !== "function") {
+          fallback("the client runtime exposes no ctx.inject")
+          return false
+        }
+        try {
+          // The CALLER-SCOPED chain: `remote.session` is what the host's directory resolver reads on
+          // ITS ctx, and cordis resolves a service's ctx to the ACCESSING ctx — so it must be
+          // declared HERE (dynamically; never in the module's declared inject) or `directoryFor`
+          // throws `cannot get property "remote.session" without inject`. Measured necessary AND
+          // sufficient; see the class comment above.
+          fiber = hostCtx.inject(["modelDirectories", "sessions", "remote.session"], (scoped) => bind(scoped))
+        } catch (error) {
+          console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
+          fallback("the model catalog injection failed")
+          return false
+        }
+        return true
+      },
+      dispose() {
+        releaseDirectory()
+        if (unsubscribeSessions !== null) {
+          try {
+            unsubscribeSessions()
+          } catch {
+            /* the list may be gone */
+          }
+          unsubscribeSessions = null
+        }
+        if (fiber !== null && typeof fiber.dispose === "function") {
+          try {
+            fiber.dispose()
+          } catch {
+            /* the fiber may already be gone */
+          }
+        }
+        fiber = null
+        listeners.clear()
+      },
+      groups: () => groups,
+      info: () => info,
+      subscribe(listener) {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+    }
+  }
+
+  /** The declared fallback options of one knob, in the { value, label } shape the card renders. */
+  function declaredOptions(field) {
+    return (Array.isArray(field.options) ? field.options : []).map((value) => ({ value, label: value }))
+  }
+
+  /** The catalog entry of one exact provider/model pair (the provider leaf picks the group). */
+  function findModel(groups, providerId, modelId) {
+    const preferred = groups.filter((group) => group.id === providerId)
+    for (const group of [...preferred, ...groups.filter((group) => group.id !== providerId)]) {
+      for (const model of group.models) if (model && model.id === modelId) return model
+    }
+    return undefined
+  }
+
+  /**
+   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
+   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
+   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
+   *   provider          -> the catalog's provider ids (label = the provider's display name)
+   *   model             -> every provider's models, GROUPED by provider (optgroup label)
+   *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
+   */
+  function optionsFor(field, groups, controls) {
+    const declared = declaredOptions(field)
+    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
+    const slot = field.path[1]
+    const leaf = field.path[2]
+    if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
+    if (leaf === "model") {
+      const options = []
+      for (const group of groups) {
+        for (const model of group.models) if (model && typeof model.id === "string") options.push({ value: model.id, label: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id, group: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id })
+      }
+      return options.length > 0 ? options : declared
+    }
+    const textOf = (path) => {
+      const control = controls ? controls[path.join(".")] : undefined
+      return control ? control.text : undefined
+    }
+    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
+    const derived = efforts.filter((effort) => effort && typeof effort.id === "string").map((effort) => ({ value: effort.id, label: typeof effort.name === "string" && effort.name.length > 0 ? effort.name : effort.id }))
+    return derived.length > 0 ? derived : declared
+  }
+
+  /**
+   * The option children of one select: `optgroup`s keyed by provider when the options carry a
+   * group (the model control, where the provider is shown as a group), a flat list otherwise.
+   */
+  function optionElements(createElement, options) {
+    if (!options.some((option) => typeof option.group === "string")) {
+      return options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))
+    }
+    const labels = []
+    const byGroup = new Map()
+    for (const option of options) {
+      const label = typeof option.group === "string" ? option.group : ""
+      if (!byGroup.has(label)) {
+        byGroup.set(label, [])
+        labels.push(label)
+      }
+      byGroup.get(label).push(option)
+    }
+    return labels.map((label) =>
+      createElement(
+        "optgroup",
+        { key: label, label },
+        ...byGroup.get(label).map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
+      ),
+    )
+  }
+
+  /** A minimal snapshot store (the host's own is private): subscribe + getSnapshot, stable refs. */
+  function createStore(initial) {
+    let snapshot = initial
+    const listeners = new Set()
+    return {
+      getSnapshot: () => snapshot,
+      subscribe(listener) {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      set(next) {
+        snapshot = next
+        for (const listener of [...listeners]) {
+          try {
+            listener()
+          } catch {
+            /* a broken listener must not break the card */
+          }
+        }
+      },
+    }
+  }
+
+  /**
+   * The card's form controller: reads the bound settings scope, stages edits, and writes them with
+   * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
+   * express (it writes top-level fields only).
+   */
+  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo = () => FALLBACK_CATALOG) {
+    const staged = new Map()
+    // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
+    // call site is a TDZ ReferenceError (measured by this module's own test).
+    let saving = false
+    let failed = false
+    let lastError = ""
+    const store = createStore(project())
+
+    function readScope() {
+      const snapshot = scope.getSnapshot()
+      return { snapshot, section: snapshot?.value ?? snapshot?.user }
+    }
+
+    function project() {
+      const { snapshot, section } = readScope()
+      const controls = {}
+      let dirty = false
+      let invalid = false
+      for (const field of fields) {
+        const key = fieldKey(field)
+        const stagedEdit = staged.get(key)
+        if (stagedEdit !== undefined) {
+          const parsed = stagedEdit.clear ? { kind: "clear" } : parse(field.kind, stagedEdit.text)
+          controls[key] = { text: stagedEdit.text, overridden: parsed?.kind === "set", invalid: parsed === undefined }
+          if (parsed === undefined) invalid = true
+          dirty = true
+          continue
+        }
+        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
+      }
+      return {
+        available: snapshot?.status === "ready",
+        writable: snapshot?.writable === true,
+        mode: snapshot?.mode ?? "memory",
+        dirty,
+        invalid,
+        saving,
+        failed,
+        error: lastError,
+        controls,
+        disclosure,
+        // Which branch produced the slot option lists — LIVE (with counts) or the declared
+        // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
+        catalog: catalogInfo() ?? FALLBACK_CATALOG,
+      }
+    }
+
+    function publish() {
+      store.set(project())
+    }
+    try {
+      scope.subscribe(publish)
+    } catch {
+      /* a scope without subscribe still renders its first snapshot */
+    }
+
+    /** Every staged edit a save would write (an unparsable draft contributes no write). */
+    function plan() {
+      const writes = []
+      for (const field of fields) {
+        const key = fieldKey(field)
+        const stagedEdit = staged.get(key)
+        if (stagedEdit === undefined) continue
+        if (stagedEdit.clear) {
+          writes.push({ op: "unset", path: [...field.path] })
+          continue
+        }
+        const parsed = parse(field.kind, stagedEdit.text)
+        if (parsed === undefined) continue
+        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
+        writes.push({ op: "set", path: [...field.path], value: parsed })
+      }
+      return writes
+    }
+
+    async function save() {
+      const writes = plan()
+      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
+      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
+      // rather than being silently dropped on the wire.
+      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
+      saving = true
+      failed = false
+      lastError = ""
+      publish()
+      try {
+        // The revision fence: the scope reports the revision it read, so a concurrent change is a
+        // conflict the user can retry rather than a silent overwrite.
+        await scope.mutate(writes, scope.getSnapshot()?.revision)
+        staged.clear()
+      } catch (error) {
+        failed = true
+        lastError = String(error?.message ?? error)
+      }
+      saving = false
+      publish()
+    }
+
+    function stage(key, edit) {
+      staged.set(key, edit)
+      failed = false
+      lastError = ""
+      publish()
+    }
+
+    return {
+      /** The face the slot registration injects: one hook store plus the form actions. */
+      inject() {
+        return {
+          hooks: { mpdCard: store },
+          edit: (key, text) => stage(key, { text, clear: false }),
+          resetField: (key) => stage(key, { text: "", clear: true }),
+          save: () => {
+            void save()
+          },
+          discard: () => {
+            if (staged.size === 0 && !failed) return
+            staged.clear()
+            failed = false
+            lastError = ""
+            publish()
+          },
+        }
+      },
+      store,
+      /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
+      refresh: () => {
+        publish()
+      },
+      dispose: () => {
+        try {
+          scope.dispose()
+        } catch {
+          /* already disposed */
+        }
+      },
+    }
+  }
+
+  /** The card component: self-contained markup, no private host components. */
+  function createCardComponent(react, fields = FIELDS, readGroups = () => []) {
+    const { createElement } = react
+    return function MpdSettingsCard(props) {
+      const state = props.useMpdCard((snapshot) => snapshot)
+      const t = typeof props.t === "function" ? props.t : (key) => key
+      const disabled = !state.writable
+      // The catalog branch this render used. Silent fallback is what hid the defect, so the state
+      // is part of the rendered output (and of the data attributes) — never implicit.
+      const catalog = state.catalog ?? FALLBACK_CATALOG
+      let groups = []
+      try {
+        const probed = readGroups()
+        if (Array.isArray(probed)) groups = probed
+      } catch {
+        /* a broken catalog probe degrades the OPTIONS, never the section */
+      }
+      const rows = fields.map((field) => {
+        const key = fieldKey(field)
+        const control = state.controls[key] ?? { text: "" }
+        const label = t(key)
+        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
+        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // HUMAN SENTENCE FIRST, at full readability; the mandatory key+disclosure line sits BENEATH
+        // it, dimmer. A knob with no human sentence renders the single dim disclosure line it always
+        // had, so the thirteen scalar rows are byte-unchanged.
+        const disclosureAt = hint.indexOf("mpd.jsonc " + key)
+        const human = disclosureAt > 0 ? hint.slice(0, disclosureAt).trim() : ""
+        const disclosure = disclosureAt < 0 ? hint : hint.slice(disclosureAt)
+        const hintNode = human.length === 0
+          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 } }, disclosure)
+          : createElement(
+              "span",
+              { style: { display: "block", marginBottom: 2 } },
+              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
+              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-disclosure": key }, disclosure),
+            )
+        const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
+        const input = field.kind === "select" && options.length > 0
+          ? createElement(
+              "select",
+              { value: control.text, disabled, onChange: (event) => props.edit(key, event.target.value), style: { width: "100%" } },
+              createElement("option", { value: "" }, "—"),
+              ...optionElements(createElement, options),
+            )
+          : createElement("input", {
+              value: control.text,
+              disabled,
+              onChange: (event) => props.edit(key, event.target.value),
+              style: { width: "100%" },
+            })
+        return createElement(
+          "label",
+          { key, style: { display: "block", margin: "8px 0" } },
+          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
+          hintNode,
+          input,
+          createElement(
+            "span",
+            { style: { fontSize: 11, opacity: 0.7 } },
+            (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
+          ),
+        )
+      })
+      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
+      // where the section's top notice is off-screen — so the SAME sentence renders again
+      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
+      // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
+      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      const slotLine = createElement(
+        "p",
+        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        catalogNotice(catalog),
+      )
+      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
+      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
+      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
+      const slotChildren = []
+      for (let index = 0; index < slotRows.length; index++) {
+        const slot = String(fields[slotStart + index].path[1])
+        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
+        if (slot !== previous) {
+          slotChildren.push(createElement(
+            "div",
+            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            t("teamModels." + slot + ".heading"),
+          ))
+          slotChildren.push(createElement(
+            "p",
+            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            t("teamModels." + slot + ".impact"),
+          ))
+        }
+        slotChildren.push(slotRows[index])
+      }
+      return createElement(
+        "div",
+        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
+        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
+        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
+        disabled
+          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
+          : null,
+        createElement(
+          "p",
+          {
+            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            [CATALOG_ATTR]: catalog.mode,
+            "data-mpd-catalog-providers": String(catalog.providers ?? 0),
+            "data-mpd-catalog-models": String(catalog.models ?? 0),
+          },
+          catalogNotice(catalog),
+        ),
+        ...scalarRows,
+        slotLine,
+        ...slotChildren,
+        createElement(
+          "div",
+          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
+          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
+          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+        ),
+        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "8px 0 0" } }, state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        state.mode === "memory"
+          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
+          : null,
+      )
+    }
+  }
+
+  /** The zh/en dictionaries: the TUI section's labels and zh descriptions, plus the card's copy. */
+  function dictionaries(fields = FIELDS) {
+    const en = {
+      nav: "MPD",
+      title: "MPD bundle",
+      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      save: "Save",
+      discard: "Discard",
+      reset: "Reset to the file value",
+      saving: "Saving…",
+      unsaved: "Unsaved",
+      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
+      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+    }
+    const zh = {
+      nav: "MPD",
+      title: "MPD 插件包",
+      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      save: "保存",
+      discard: "放弃",
+      reset: "重置为文件值",
+      saving: "保存中…",
+      unsaved: "未保存",
+      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
+      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+    }
+    for (const field of fields) {
+      const key = fieldKey(field)
+      en[key] = field.label
+      zh[key] = field.zh
+      en[key + ".hint"] = hintOf(field, "en")
+      zh[key + ".hint"] = hintOf(field, "zh")
+    }
+    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
+    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
+    for (const [index, slot] of SLOT_SLOTS.entries()) {
+      const heading = slotHeading(slot, index + 1)
+      en["teamModels." + slot + ".heading"] = heading.en
+      zh["teamModels." + slot + ".heading"] = heading.zh
+      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
+      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
+    }
+    return { en, zh }
+  }
+
+  /**
+   * Mount the section. `settingsScope` is a PLUGIN-provided service, so it is reached through
+   * `ctx.inject` — never a declared dependency (a declared-but-absent service makes the whole page
+   * fail as `entry: pending`; `web-client-adapt --self-test` asserts this rule against the built
+   * client). One warning on absence, never a throw.
+   * @param ctx - the client entry's context.
+   * @returns true when the registration was attempted.
+   */
+  function mountSettingsCard(ctx, options = {}) {
+    try {
+      if (ctx === undefined || ctx === null || ctx.slots === undefined || typeof ctx.slots.inject !== "function") return false
+      const fields = options.fields ?? FIELDS
+      const dicts = dictionaries(fields)
+      try {
+        if (ctx.locale !== undefined && typeof ctx.locale.register === "function") ctx.locale.register(LOCALE_NS, dicts)
+      } catch (error) {
+        console.warn("[mpd] settings section: locale registration failed: " + String(error))
+      }
+      ctx.slots.inject(SECTION_SLOT, function* () {
+        try {
+          ctx.inject(["settingsScope"], (scoped) => {
+            const service = typeof scoped.get === "function" ? scoped.get("settingsScope") : scoped.settingsScope
+            if (service === undefined || service === null || typeof service.bind !== "function") {
+              console.warn("[mpd] settings section: the settings scope is unavailable — the mpd section is not registered")
+              return
+            }
+            const scope = service.bind({ namespace: NS })
+            // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
+            // card's own store on every change. Started BEFORE the registration so the first
+            // render already carries the real list when the providers are up.
+            const catalog = createLiveCatalog(ctx)
+            const controller = createMpdCardController(scope, fields, undefined, () => catalog.info())
+            const unsubscribeCatalog = catalog.subscribe(() => {
+              controller.refresh()
+            })
+            catalog.start()
+            // The slot leaves render their option lists from the LIVE catalog on every render.
+            const Section = createCardComponent(require("react"), fields, () => catalog.groups())
+            // The host's descriptor: id + explicit order + a label resolved through this
+            // registration's locale dictionaries. `children` is omitted because this section
+            // renders no nested slot of its own.
+            const unregister = ctx.slots.register(
+              { name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },
+              Section,
+            )
+            return () => {
+              try {
+                unregister()
+              } catch {
+                /* the slot may be gone */
+              }
+              try {
+                unsubscribeCatalog()
+              } catch {
+                /* already unsubscribed */
+              }
+              catalog.dispose()
+              controller.dispose()
+            }
+          })
+        } catch (error) {
+          console.warn("[mpd] settings section: could not mount the mpd section: " + String(error))
+        }
+        yield undefined
+      })
+      return true
+    } catch (error) {
+      console.warn("[mpd] settings section: slot registration failed: " + String(error))
+      return false
+    }
+  }
+
+  return {
+    mountSettingsCard,
+    createMpdCardController,
+    createCardComponent,
+    dictionaries,
+    createLiveCatalog,
+    catalogNotice,
+    optionsFor,
+    optionElements,
+    FIELDS,
+    SETTINGS_NS: NS,
+    LOCALE_NS,
+    SECTION_SLOT,
+    SECTION_ID,
+    SECTION_ORDER,
+    BRIDGE_DISCLOSURE,
+    BRIDGE_RESTART_LIMIT,
+    NO_WORKSPACE_NOTICE,
+    CATALOG_ATTR,
+    CATALOG_FALLBACK_NOTICE,
+  }
 } });
 
 // ==== @mpd-dsh/mpd bundled client: team page + workmate library ====
@@ -4317,7 +5213,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
   let react = require("react");
-  const agentTeams = require("@nanmicoder/dsh-agent-teams");
+  // 0.1.7 REBASE: `require("@nanmicoder/dsh-agent-teams")` used to sit here. The retired
+  // vendored client is NO LONGER required by any mpd client source: the official
+  // `@deepseek-ai/dsh-experimental-client-ui-agent-team` client owns the roster/task-board UI,
+  // and this bundle's own team surface is the WATCHDOG view (src/team-page.js), which reads
+  // only this bundle's own routes through `fetch`. Nothing in this factory touches the
+  // harness's client modules.
 
   // ── Version-tolerant client seams ──────────────────────────────────────────
   // The web boot hard-fails the WHOLE page when one entry stays `pending`:
@@ -4424,6 +5325,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  /**
+   * Whether a sidebar service already holds a descriptor for `id`.
+   *
+   * A service WITHOUT `getTab` answers `false` (register as before), so this guard can only
+   * ever remove a duplicate registration — never suppress the first one.
+   */
+  function sidebarAlreadyHasTab(service, id) {
+    try {
+      return typeof service.getTab === "function" && service.getTab(id) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
   const LIST_URL = "/plugins/mpd-workmate/list";
   const INIT_URL = "/plugins/mpd-workmate/init";
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
@@ -4451,7 +5366,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.loading": "加载中…",
     "panel.empty": "暂无 workmate — 请在下方初始化一个。",
     "panel.baseLabel": "Base（专家模板）",
-    "panel.basePlaceholder": "base（例如 hephaestus）",
+    "panel.basePlaceholder": "base（例如 Deep Worker）",
     "panel.nameLabel": "名称（可选）",
     "panel.namePlaceholder": "名称（可选）",
     "panel.noteLabel": "备注（可选）",
@@ -4470,7 +5385,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.created": "创建",
     "panel.updated": "更新",
     "panel.model": "模型",
-    "panel.rosterUnavailable": "roster 不可用，请手填 base id",
+    "panel.rosterUnavailable": "roster 不可用，请手填 base 名称",
     "mutate.renameTitle": "重命名",
     "mutate.renameLabel": "新名称（仅限 [a-z0-9_-]）",
     "mutate.renamePlaceholder": "新名称",
@@ -4506,7 +5421,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.loading": "Loading…",
     "panel.empty": "No workmates yet — initialize one below.",
     "panel.baseLabel": "Base (roster template)",
-    "panel.basePlaceholder": "base (e.g. hephaestus)",
+    "panel.basePlaceholder": "base (e.g. Deep Worker)",
     "panel.nameLabel": "Name (optional)",
     "panel.namePlaceholder": "name (optional)",
     "panel.noteLabel": "Note (optional)",
@@ -4525,7 +5440,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.created": "Created",
     "panel.updated": "Updated",
     "panel.model": "Model",
-    "panel.rosterUnavailable": "roster unavailable — type the base id",
+    "panel.rosterUnavailable": "roster unavailable — type the base name",
     "mutate.renameTitle": "Rename",
     "mutate.renameLabel": "New name ([a-z0-9_-] only)",
     "mutate.renamePlaceholder": "new name",
@@ -4691,7 +5606,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         .then((data) => { setWorkmates(data.workmates ?? []); setError(null); })
         .catch((e) => { setError(String(e?.message ?? e)); setWorkmates([]); });
       request(ROSTER_URL)
-        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.id ?? "")); })
+        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.name ?? "")); })
         .catch(() => setBases([]));
     }, []);
     react.useEffect(() => { refresh(); }, [refresh]);
@@ -4879,7 +5794,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             : react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)))
           : react.createElement("div", { style: { overflowY: "auto" } },
           react.createElement("div", { style: MUTED },
-            String(d.baseName ?? d.baseId ?? ""),
+            String(d.baseName ?? ""),
             d.readonly ? " · " + t("panel.readonly") : "",
             d.uses !== undefined ? " · " + t("panel.uses", { count: d.uses }) : "",
           ),
@@ -4929,7 +5844,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           react.createElement("span", null, t("panel.baseLabel")),
           (bases ?? []).length > 0
             ? react.createElement("select", { value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
-                (bases ?? []).map((b) => react.createElement("option", { key: b.id, value: b.id }, b.name + " (" + b.id + ")" + (b.readonly ? " · " + t("panel.readonly") : ""))))
+                (bases ?? []).map((b) => react.createElement("option", { key: b.name, value: b.name }, b.name + (b.readonly ? " · " + t("panel.readonly") : ""))))
             : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE }),
         ),
         bases !== null && (bases ?? []).length === 0 ? react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("panel.rosterUnavailable")) : null,
@@ -4955,6 +5870,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   */
   function registerWorkmateSidebarTab(ctx, sidebar) {
     if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
+    // and the sidebar's own `registerTab` THROWS on a duplicate id. Re-checking through the
+    // service's own registry both absorbs a re-fire and RESTORES the tab after a remount
+    // that lost it, instead of reporting a failure the user sees as "the tab is gone".
+    if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,
@@ -4988,6 +5908,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     return { registerTeamSidebarTab: () => false };
   }
 
+  /**
+  * Load the mpd settings card module defensively. It is an ADDITIVE feature: a missing or broken
+  * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
+  * client entry fails the whole page as `entry: pending`).
+  */
+  function loadSettingsCard() {
+    try {
+      const card = require("@mpd-dsh/settings-card");
+      if (card !== undefined && card !== null && typeof card.mountSettingsCard === "function") return card;
+      console.warn("[mpd] settings card module exposes no mountSettingsCard — the mpd card is unavailable");
+    } catch (error) {
+      console.warn("[mpd] settings card module failed to load: " + String(error));
+    }
+    return { mountSettingsCard: () => false };
+  }
+
   function apply(ctx) {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
     // declared dependency, so it is present.
@@ -4999,6 +5935,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // ctx.inject callback, never from a probe here (that race is what left the sidebar's
     // "+" menu with no mpd row at all). A profile without the sidebar fires nothing.
     mountSidebarPages(ctx, loadTeamPage());
+    // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
+    // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
+    // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided
+    // service, so it is awaited with ctx.inject, never declared here).
+    try {
+      loadSettingsCard().mountSettingsCard(ctx);
+    } catch (error) {
+      console.warn("[mpd] settings card mount failed: " + String(error));
+    }
   }
 
   // zh is the key-set source of truth; en must stay key-complete against it. Exported so
@@ -5008,6 +5953,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
   // (dictionaries and the §D failure mapper) are exported so the offline harness
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries };
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
 } });

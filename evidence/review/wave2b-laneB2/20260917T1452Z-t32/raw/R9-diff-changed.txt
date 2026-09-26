@@ -1,0 +1,9 @@
+--- /tmp/t32-t82b/runA/revisions/checker.mjs	2026-09-17 22:53:26.062985413 +0800
++++ /tmp/t32-t82b/runB/revisions/checker.mjs	2026-09-17 22:53:26.204988980 +0800
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env node
+-// ARM CHANGE A
++// ARM CHANGE B
+ 
+ // t72 docs-claims checker — the DURABLE home of the t9/t21 checker, moved out of the evidence
+ // tree by T-72. Every repo path, line anchor, directory and command the three adaptation

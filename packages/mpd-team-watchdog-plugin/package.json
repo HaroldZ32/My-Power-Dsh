@@ -1,0 +1,12 @@
+{
+  "name": "@mpd-dsh/team-watchdog-plugin",
+  "private": true,
+  "version": "0.3.2",
+  "type": "module",
+  "description": "Team watchdog core: per-step/per-tool heartbeat store (members and captain), the configurable WARN->ESCALATE state machine, the atomic restorable scene snapshot, the durable watchdogHold + incident/watermark sidecars beside team.json, and the plugin's own session-watchdog-hold/-resume actions",
+  "scripts": {
+    "build": "cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js",
+    "test": "bun test"
+  },
+  "license": "SEE LICENSE IN ../../LICENSE.md"
+}

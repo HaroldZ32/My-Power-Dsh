@@ -110,7 +110,7 @@ function writeTeamRecord(cwd: string, teamId: string, members: string[], sub = "
   writeFileSync(join(dirPath, "team.json"), JSON.stringify({ id: teamId, name: teamId, members: members.map((m, i) => ({ id: "m" + i, name: m, status: "idle" })) }, null, 2))
 }
 
-async function initOne(h: Harness, name: string, base = "hephaestus") {
+async function initOne(h: Harness, name: string, base = "Deep Worker") {
   return h.byName("mpd_workmate_init").execute({ base, name }, h.exec)
 }
 
@@ -280,10 +280,15 @@ test("collision guard: ANY lstat hit on the target is a 409 collision and nothin
   await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-4" }, h.exec)).rejects.toThrow(/already exists/)
   expect(readText(inst("oracle-4"))).toBe("not a directory")
 
-  // 4) a DANGLING symlink: invisible to existsSync, visible to lstatSync
-  symlinkSync(join(root(), "does-not-exist"), inst("oracle-5"))
-  expect(existsSync(inst("oracle-5"))).toBe(false)
-  await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-5" }, h.exec)).rejects.toThrow(/already exists/)
+  // 4) a DANGLING symlink: invisible to existsSync, visible to lstatSync.
+  // Windows cannot create one without SeCreateSymbolicLinkPrivilege (admin or Developer Mode), and a
+  // junction always requires an EXISTING target, so this arm is POSIX-only. Arms 1-3 keep the
+  // lstat-vs-existsSync distinction itself; they are not skipped with it.
+  if (process.platform !== "win32") {
+    symlinkSync(join(root(), "does-not-exist"), inst("oracle-5"))
+    expect(existsSync(inst("oracle-5"))).toBe(false)
+    await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-5" }, h.exec)).rejects.toThrow(/already exists/)
+  }
 
   expect(existsSync(inst("oracle-1"))).toBe(true)
   expect(indexKeys()).toEqual(["oracle-1"])
@@ -292,7 +297,9 @@ test("collision guard: ANY lstat hit on the target is a 409 collision and nothin
 test("a symlinked instance directory is refused, not resolved (§H)", async () => {
   const h = makeHarness()
   await initOne(h, "real-1")
-  symlinkSync(inst("real-1"), inst("link-1"))
+  // "junction": the target is an existing directory, and a junction needs no Windows privilege
+  // (a "dir" symlink fails with EPERM there). POSIX ignores the type.
+  symlinkSync(inst("real-1"), inst("link-1"), "junction")
   const before = readText(join(inst("real-1"), "meta.json"))
 
   await expect(h.byName("mpd_workmate_rename").execute({ name: "link-1", new_name: "link-2" }, h.exec)).rejects.toThrow(/symlink/)
@@ -386,7 +393,7 @@ test("purge requires confirm === name, then removes the instance for good (D1)",
 
 test("a READONLY instance is a valid mutation target: library administration, not self-editing (M1)", async () => {
   const h = makeHarness()
-  await initOne(h, "librarian-1", "librarian")
+  await initOne(h, "librarian-1", "Researcher")
   expect(h.provided.mpdWorkmate.get("librarian-1").readonly).toBe(true)
   const out = await h.byName("mpd_workmate_rename").execute({ name: "librarian-1", new_name: "librarian-2" }, h.exec)
   expect(out.name).toBe("librarian-2")
@@ -648,20 +655,57 @@ test("a headless profile stays tool-only: no webServer, no route work, tools sti
 // actually returns — and pins the old shape as a FAILURE so the defect can never come back silently.
 import { createRequire } from "node:module"
 import { existsSync } from "node:fs"
+import { pathToFileURL } from "node:url"
 
-/** Every npm-global location the installed harness can live in, derived from the `dsh` binary. */
+/**
+ * The PATH-resolved `dsh` launcher, WITHOUT `sh` and WITHOUT `which`.
+ *
+ * `execFileSync("which", ["dsh"])` is a POSIX-only shape in two ways: `which` is not a
+ * program on Windows, and the MSYS `which` a Git-Bash host answers with prints a POSIX
+ * path (`/c/Users/...`) that `dirname` cannot walk. The PATH scan below is the
+ * platform-native equivalent and needs no shell at all — the same shape the QA lanes
+ * adopted (`skills/dsh-qa/scripts/preset-conformance.mjs`, `whichDsh`).
+ */
+function whichDsh(): string {
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")
+  const names = process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh.bat", "dsh"] : ["dsh"]
+  for (const dir of dirs) {
+    if (dir === "") continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return ""
+}
+
+/**
+ * Every npm-global location the installed harness can live in, derived from the `dsh` binary.
+ *
+ * The npm prefix keeps its global tree at `<prefix>/lib/node_modules` on POSIX and at
+ * `<prefix>/node_modules` on Windows, and `dsh` itself sits at `<prefix>/bin/dsh` there
+ * but directly at `<prefix>/dsh.cmd` here — so BOTH shapes are probed at every ancestor
+ * of the launcher, and a candidate that does not exist is dropped by the caller's
+ * `existsSync` filter.
+ */
 function harnessToolsCandidates(): string[] {
   const requireHere = createRequire(join(import.meta.dirname, "noop.js"))
   const candidates: string[] = []
   try { candidates.push(requireHere.resolve("@deepseek-ai/dsh-tools")) } catch { /* not a dependency of this checkout */ }
-  try {
-    const { execFileSync } = require("node:child_process")
-    const dsh = execFileSync("which", ["dsh"], { encoding: "utf8" }).trim()
-    const globalLib = join(dirname(dsh), "..", "lib", "node_modules")
-    for (const base of [join(globalLib, "@deepseek-ai", "dsh"), globalLib]) {
-      candidates.push(join(base, "node_modules", "@deepseek-ai", "dsh-tools", "lib", "index.js"))
+  const bin = whichDsh()
+  if (bin !== "") {
+    let dir = dirname(bin)
+    for (let i = 0; i < 8; i++) {
+      for (const modules of [join(dir, "lib", "node_modules"), join(dir, "node_modules")]) {
+        for (const base of [join(modules, "@deepseek-ai", "dsh"), modules]) {
+          candidates.push(join(base, "node_modules", "@deepseek-ai", "dsh-tools", "lib", "index.js"))
+        }
+      }
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
     }
-  } catch { /* dsh not on PATH */ }
+  }
   return candidates
 }
 
@@ -670,7 +714,9 @@ async function harnessValidator(): Promise<{ assertSupportedJsonSchema: (s: unkn
   for (const candidate of harnessToolsCandidates()) {
     if (candidate.endsWith(".js") && !existsSync(candidate)) continue
     try {
-      const mod: any = await import(candidate)
+      // pathToFileURL: node's ESM loader rejects a bare absolute Windows path
+      // (ERR_UNSUPPORTED_ESM_URL_SCHEME, received protocol 'c:').
+      const mod: any = await import(pathToFileURL(candidate).href)
       if (typeof mod.validateJsonSchemaValue === "function" && typeof mod.assertSupportedJsonSchema === "function") return mod
     } catch { /* try the next resolution route */ }
   }
@@ -741,11 +787,51 @@ test("the workmate deny list denies bash and the write-capable MCP tools, and ca
   for (const dead of ["str_replace" + "_editor", "apply" + "_patch"]) expect(READONLY_DENY).not.toContain(dead)
 
   const h = makeHarness()
-  await initOne(h, "librarian-1", "librarian")
+  await initOne(h, "librarian-1", "Researcher")
   await h.byName("mpd_workmate_spawn").execute({ name: "librarian-1", task: "search" }, h.exec)
   expect(h.spawned[0].toolFilter).toEqual({ deny: [...READONLY_DENY] })
   // a non-readonly workmate keeps its write tools
   await initOne(h, "worker-1")
   await h.byName("mpd_workmate_spawn").execute({ name: "worker-1", task: "write" }, h.exec)
   expect(h.spawned[1].toolFilter).toBeUndefined()
+})
+
+// ── C3: the workmate web routes expose no roster id and no baseId ───────────────────────────────
+test("the workmate web routes carry no id/baseId for a base or an instance", async () => {
+  const h = makeHarness()
+  await initOne(h, "routes-1")
+  const callRoute = async (path: string, url = "") => {
+    const route = h.routes.find((r) => r.path === "/plugins/mpd-workmate/" + path)
+    if (!route) throw new Error("no route registered for " + path)
+    const res: any = {
+      status: 0, headers: {} as Record<string, string>, raw: "",
+      writeHead(s: number, hd: any) { res.status = s; res.headers = hd ?? {} },
+      end(b?: any) { res.raw = b === undefined ? "" : String(b) }
+    }
+    await route.handler({ method: "GET", url, async *[Symbol.asyncIterator]() {} }, res)
+    return { status: res.status, body: res.raw === "" ? null : JSON.parse(res.raw) }
+  }
+
+  const list = await callRoute("list")
+  expect(list.status).toBe(200)
+  expect(list.body.workmates.length).toBe(1)
+  for (const w of list.body.workmates) {
+    expect(Object.hasOwn(w, "baseId")).toBe(false)
+    expect(Object.hasOwn(w, "id")).toBe(false)
+    expect(w.baseName).toBe("Deep Worker")
+  }
+
+  const roster = await callRoute("roster")
+  expect(roster.status).toBe(200)
+  expect(roster.body.bases.map((b: any) => b.name)).toEqual(["Deep Worker", "Researcher"])
+  for (const b of roster.body.bases) {
+    expect(Object.hasOwn(b, "id")).toBe(false)
+    expect(Object.hasOwn(b, "baseId")).toBe(false)
+  }
+
+  const get = await callRoute("get", "/plugins/mpd-workmate/get?name=routes-1")
+  expect(get.status).toBe(200)
+  expect(Object.hasOwn(get.body, "baseId")).toBe(false)
+  expect(get.body.baseName).toBe("Deep Worker")
+  expect(get.body.name).toBe("routes-1")
 })

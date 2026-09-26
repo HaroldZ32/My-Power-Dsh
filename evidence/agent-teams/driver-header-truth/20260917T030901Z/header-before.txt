@@ -1,0 +1,26 @@
+//
+// Why a boot and not the in-process tests: those prove what THIS plugin composes (the deny
+// list handed to the harness). Whether the harness then ADVERTISES the tool to the child is
+// harness behaviour, witnessed only by a mounted boot — `dsh --dump-config` proves
+// composition alone and never executes plugin code.
+//
+// Technique (the house pattern from `readonly-deny.mjs`): a local OpenAI-shaped STUB answers
+// every model call, so no provider credential is needed and the flow is deterministic. The
+// stub records the EXACT `tools[]` of every request the harness composes, which is the
+// measured seat surface. A `mpd-headless` boot in an isolated DSH_HOME + sandbox HOME/workspace
+// drives the captain through create → add_member (read-only Architect) → create_task → approve;
+// the spawn then happens for real and the member's own first turn asks for the contract.
+//
+// Assertions:
+//   A1 the CAPTAIN's request carries `agent_teams_approve` (seat classification works at all)
+//   A2 the READ-ONLY MEMBER's request LISTS `agent_teams_task_contract`      <- T-49 GREEN
+//   A3 the same member request does NOT list `agent_teams_approve`           <- discriminating
+//   A4 the harness SESSION LOG for the member records a `tool/call` for
+//      `agent_teams_task_contract` with a NON-ERROR `tool/result` whose text
+//      carries the measured contract (read THROUGH it, proven from the log)
+//   A5 the member's `toolFilter` really denied the write tools (negative contrast:
+//      `bash`/`write` absent from the member's tools[] while present for the captain)
+import { createServer } from "node:http"
+import { spawn } from "node:child_process"
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"

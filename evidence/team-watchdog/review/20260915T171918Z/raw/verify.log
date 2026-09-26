@@ -1,0 +1,15 @@
+=== bun test packages/mpd-team-watchdog-plugin ===
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+
+ 55 pass
+ 0 fail
+ 251 expect() calls
+Ran 55 tests across 12 files. [206.00ms]
+
+=== bun run typecheck ===
+$ tsgo --noEmit
+
+=== verify-vendor ===
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS

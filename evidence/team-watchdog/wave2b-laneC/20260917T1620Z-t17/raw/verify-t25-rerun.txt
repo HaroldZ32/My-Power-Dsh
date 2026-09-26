@@ -1,0 +1,18 @@
+{
+  "primary_store": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+  "frames": 10,
+  "naive_records": 1,
+  "naive_events": 0,
+  "naive_types": [
+    "session"
+  ],
+  "regressed_records": 1,
+  "frame_by_frame_records": 26,
+  "frame_by_frame_events": 25,
+  "corpus": {
+    "found": 10,
+    "multiFrame": 10,
+    "naiveZeroEventStores": 10
+  },
+  "failed_assertions": []
+}

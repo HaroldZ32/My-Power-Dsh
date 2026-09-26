@@ -1,0 +1,58 @@
+{
+  "task": "t59 (diagnosis: which side does each failed fault-lane check belong to?)",
+  "attempt_id": "8117a903-9082-4424-bd50-b96dfdf37485",
+  "verdict": "STALE LANE EXPECTATION for all three failed checks \u2014 NO lane-A regression, NO blocker",
+  "rootCause": {
+    "where": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs builds teams as `members: [MEMBER_NAME]` (a list of NAME STRINGS), while the engine resolves the owner session from `member.id` (engine.ts candidates(): `memberSessions.set(member.name, member.id)` and `sessionId = memberSessions.get(assignee) ?? null`). With no member id there is no session id, so engine.ts:1028 takes `noteFallback(\"team \u2026 carries no session id for task owner \u2026\")` and returns `{ channelState: null, heartbeatFallback: true }`.",
+    "consequence": "heartbeatFallback = \u00a74's REPORT-ONLY degradation. machine.observeSilence(..., reportOnly=true) then (a) can never escalate (`if (streak >= knobs.warnStreakToEscalate && !reportOnly)`), and (b) emits exactly ONE warn per task+attempt generation (`if (reportOnly) { if (this.reportedFallback.has(key)) return; this.reportedFallback.add(key) }`) \u2014 the source comment says it in words: 'the heartbeat fallback may WARN ONCE per task+attempt generation \u2026 and may NEVER escalate or hold \u2014 the streak keeps counting so the diagnostics still show the silence continuing'.",
+    "specSide": "the FROZEN CONTRACT \u00a74 says the same: with the fold unable to answer, the engine 'may WARN (with the cause recorded as `silence-heartbeat`), and it may NEVER hold or escalate'. \u00a73's ladder (WARN then ESCALATE after N consecutive OUTSTANDING observations) governs the \u00a71 fold predicate, not the fallback."
+  },
+  "smokingGun": {
+    "incidentCause": "the lane's own incident records in MY run carry `\"cause\": {\"kind\": \"silence-heartbeat\", \"ms\": 90001}` \u2014 the fallback cause, not `silence-channel` (the \u00a71 fold authority)",
+    "engineAnnouncement": "my run's log carries the once-per-process \u00a74 line: 'REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.' (24 occurrences of `silence-heartbeat` in the run log)",
+    "observedShape": "escalate-3x kinds [\"warn\",\"\",\"\",\"\"] with holdsApplied 0; mid-turn-stall warns at silence 90001 then nothing at 180001/270001 while the silence keeps growing \u2014 exactly the once-per-generation cap plus the 'streak keeps counting' diagnostic"
+  },
+  "perCheck": [
+    {
+      "id": "F2",
+      "severity": "stale-lane-expectation",
+      "failedCases": [
+        "mid-turn-stall",
+        "escalate-3x",
+        "scene-restore",
+        "long-tool-bound-disabled-control",
+        "completed-tool-not-in-flight"
+      ],
+      "why": "all five expect decisions on later silent ticks (and, for escalate-3x/scene-restore, an escalation with scene+hold). Under \u00a74 report-only the engine warns once per generation and may never escalate/hold, so every one of those expectations is unreachable by construction with the fixture's inputs.",
+      "side": "the LANE's expectation (it contradicts \u00a74 and drives inputs that \u00a71 cannot answer for)"
+    },
+    {
+      "id": "F4",
+      "severity": "stale-lane-expectation",
+      "detail": "'the third consecutive WARN escalates ONCE, writes its scene and applies the hold once' \u2014 kinds [\"warn\",\"\",\"\",\"\"], stats {scenes:1, incidents:1, holdsApplied:0}. The single warn + single scene is exactly the fallback's allowed surface; the missing warns 2/3 and the hold are \u00a74-forbidden for these inputs.",
+      "side": "the LANE's expectation"
+    },
+    {
+      "id": "F9",
+      "severity": "stale-lane-expectation-cascade",
+      "detail": "scene-restore threw ENOENT on the hold sidecar \u2014 a cascade of F4: with no escalation there is no hold file to read. Nothing additional is wrong.",
+      "side": "the LANE's expectation (follows F2/F4)"
+    }
+  ],
+  "notBlocker": "Because every failed check is a lane-side expectation, this is NOT a blocker against lane A and the words 'BLOCKER against lane A' are NOT used. BUT the lane must not be read as verified either: it is RED, and its red now has a lane-side cause.",
+  "measuredStalenessFacts": {
+    "laneScript": "skills/dsh-qa/scripts/team-watchdog-fault.mjs mtime 2026-09-16 09:43:28 (sha a5d91a75\u2026)",
+    "fixture": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs mtime 2026-09-16 10:58:12 (sha c3294141\u2026)",
+    "engineSources": "packages/mpd-team-watchdog-plugin/src/*.ts mtimes 2026-09-17 09:11:39 \u2013 09:44:19 \u2014 the lane predates the redesign by ~24 h",
+    "fixtureFrozenTuple": "the fixture's own `FROZEN` constant is the PRE-redesign ladder (warnSilenceMs 90000, warnStreakToEscalate 3, actionOnEscalate pause) and its F3 check asserts `knobsAreTheFrozenDefaults: true` against it, while \u00a73's NEW defaults are 600000 / 6 / warn-only",
+    "realRecordShape": "a REAL team record carries member objects with ids (.mpd/team/friction-p1-wave/team.json members[0] = {id, name, role, \u2026}), which is the shape the engine needs for \u00a71"
+  },
+  "missingReadingToSettleTheResidual": "the \u00a71 ladder is NOT exercised by this lane at all: no case supplies a real-shaped team (member objects with ids) plus fold events (a `step/start` with no `step/end`) and \u2265N ticks on the fold path. The plugin's own machine test ('exactly one WARN per silent tick, and the third WARN escalates once', knobs 90000/3) proves the DECISION layer still climbs the ladder when not report-only, and the 127/0 engine suite is green \u2014 but an end-to-end fold-path escalation through the ENGINE remains unproven by any lane. That case is the repair's target, and the repair belongs to t21's window (skills/dsh-qa/scripts/**).",
+  "commandsRun": [
+    "node skills/dsh-qa/scripts/team-watchdog-fault.mjs --out <t59 evidence>/fault-lane  -> exit 1; F2/F4/F9 failed; F6 (deliveriesWhileHeld 0) PASSED"
+  ],
+  "revisions": {
+    "faultLaneScript": "a5d91a75d0e8ca287e686bfd0811559fe94c1ce3b9e5fd01588e00c94f9a9188",
+    "fixture": "c3294141837a886c9e163b60f38f84fd7bf44b8f69323c468e5ea5112614fd58"
+  }
+}

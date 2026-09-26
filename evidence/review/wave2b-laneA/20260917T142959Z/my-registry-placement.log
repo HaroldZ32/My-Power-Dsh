@@ -1,0 +1,19 @@
+### SCRATCH 3 — placement experiment (minimal mirror, outside workspace, deleted after)
+### baseline
+[patch-agent-teams-fixes] already applied: 88 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+### insert ONE top-level region + ONE nested region into state.js
+regions=6 target_line=21: export { buildCoverageMatrix, canDeclareDelivery, classifyChangedPath,
+nested probe inserted inside region starting line 21
+
+### --write-registry
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (89 regions)
+exit=0
+
+### which probe ids are IN the regenerated registry?
+  reviewer-probe-region      2
+  reviewer-nested-region     1
+### --check
+[patch-agent-teams-fixes] already applied: 89 mpd delta region(s) across 9 adopted file(s)
+exit=0

@@ -1,0 +1,87 @@
+{
+  "task": "t54 (re-judge t47's four docs under the MOVED checker; O2 remedy)",
+  "attempt_id": "65446743-3a27-47b0-9e2d-098869b96b45",
+  "verdict": "pass",
+  "thePairAtVerdictTime": {
+    "checker": {
+      "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+      "bytes": 30345,
+      "mtime": "2026-09-17 11:07:02 (+0800)"
+    },
+    "helper": {
+      "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+      "bytes": 4823,
+      "mtime": "2026-09-17 10:33:29 (+0800)"
+    },
+    "measuredBy": "me, at claim time 20260917T033739Z",
+    "settleCheck": "checker hash re-measured after a 50 s window: dfe26090... before and after -> SETTLED for this verdict"
+  },
+  "driftChain": [
+    {
+      "revision": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83",
+      "bytes": 25530,
+      "mtime": "2026-09-17 10:34:53",
+      "who": "t47's verified revision = my original t49 pin"
+    },
+    {
+      "revision": "e332da7013ed828be1bf9806895fb27085f2ca43c2776e4c7d9377396bc64ed8",
+      "bytes": 28116,
+      "mtime": "2026-09-17 11:04:43",
+      "who": "packaging-engineer's sample; NO COPY EXISTS on disk, so it is corroboration only, never re-measured by me"
+    },
+    {
+      "revision": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+      "bytes": 30345,
+      "mtime": "2026-09-17 11:07:02",
+      "who": "THIS verdict's revision (mine, settled)"
+    }
+  ],
+  "whyItChanged": {
+    "writerAndIntent": "evidence/extensions/docs-claims/** is t21's path (lane C3: the remaining red lanes, immutable-by-default evidence writes, one product formula). t21 is now CLOSED by captain takeover, so the window that moved the checker is terminal.",
+    "reconstructableDiff": "the only pre-change copy on disk is .mpd/red-baseline/evidence/extensions/docs-claims/check-citations.mjs == git HEAD (fdbca48) == 471aec42e0644ad28ce7bc3716ead64bffaef58bcc1b94ce9945c85597d6578e, 24,021 B, mtime 2026-09-16 16:49:58. Diffing it against the current revision (+99/-8 lines, saved at checker-drift.diff) shows the wave's changes are STRENGTHENING and additive: T-53 immutable-by-default output (--out / resolveOutputDir / writeImmutable / the refusal to overwrite a canonical file), T-55 symbol-first arms (symbolOnlyClaimCheck, citedFileText, 'T-55 SYMBOL-FIRST arm'), and TWO new self-test negative controls (negative-control:symbol-first-present / symbol-first-absent). No arm was removed.",
+    "boundStatedPlainly": "no copy of 5e56c82c... or e332da70... exists anywhere on disk (git HEAD is an older state and the file is tracked-but-modified), so the exact per-revision delta between t47's verified revision and the intermediate sample is NOT reconstructable; the evidence is the hash/size/mtime chain plus my arm-name+verdict set diff between the two revisions I could actually run: exactly ONE line changed between 5e56c82c's run and dfe26090's run (citations:EXTENSIONS-FOR-AGENTS FAIL -> ok), the denominator stayed 12 arms, and content:anchors verifies MORE (46/0 vs 40/0) \u2014 no rule weakened."
+  },
+  "rejudge": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=evidence/review/t49-rejudge/20260917T033739Z/checker-run",
+    "exit": 0,
+    "headline": "12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative",
+    "perFileLines": [
+      "ok citations:docs/extension-authoring-guide.md \u2014 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved",
+      "ok citations:docs/extension-authoring-guide.zh-CN.md \u2014 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved",
+      "ok citations:EXTENSIONS-FOR-AGENTS.md \u2014 59 citation(s) (checked 55: path 38, dir 5, command 12; pending 0, illustrative 4), 0 unresolved",
+      "ok citations:docs/extension-adaptation-report.md \u2014 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved",
+      "ok citations:docs/extension-adaptation-report.zh-CN.md \u2014 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved",
+      "ok content:anchors \u2014 46 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim"
+    ],
+    "deviation": "run with --out rather than bare: the bare form writes a fresh runs/run-<ts>/ into evidence/extensions/docs-claims/**, which this task's own outOfScope names; --out is the checker's own documented mechanism and changes only where artifacts land."
+  },
+  "docsUnchangedUnderThreeRevisions": {
+    "docs/extension-authoring-guide.md": "1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80",
+    "docs/extension-authoring-guide.zh-CN.md": "dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35",
+    "docs/extension-adaptation-report.md": "b6f5db6b428a64550182c091d68e27668ff0f0c3c775e4b291b50b4faf3a2ef0",
+    "docs/extension-adaptation-report.zh-CN.md": "85b5f9e415cc405b2c6f81ea04f5684c2eca6cbec178a09ab2b77e6f404e3549",
+    "note": "identical to both my t49 review hashes and the packaging-engineer's completion hashes -> the repair needed no re-edit across three checker revisions"
+  },
+  "gates": {
+    "verifyDocs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "reading": "pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS"
+    },
+    "headingTrees": {
+      "method": "my own fence-stripped computation",
+      "reading": "guide 10 EN / 10 zh-CN levels identical; report 15 / 15 levels identical"
+    }
+  },
+  "binding": "THIS VERDICT IS BOUND TO checker dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c (30,345 B, mtime 11:07:02, settled across 50 s) and helper 5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976. Any later edit to either file VOIDS this re-judge for that revision and requires the same procedure again (t21 is terminal, so a new edit would open a new writer window).",
+  "findings": [
+    {
+      "id": "V1",
+      "severity": "low",
+      "file": "evidence/extensions/docs-claims/check-citations.mjs",
+      "line": 0,
+      "problem": "No copy of the checker's intermediate revisions is retained anywhere on disk: the version t47's verdict was pinned to (5e56c82c..., 25,530 B) and the packaging-engineer's sample (e332da70..., 28,116 B) are gone, so the exact per-revision delta cannot be reconstructed \u2014 only the pre-wave copy (471aec42..., == git HEAD fdbca48) and the current one can be diffed. The wave's own hash-pinning discipline is therefore stronger on the SUBJECTS (docs unchanged, provable) than on the INSTRUMENT (checker revisions, unprovable beyond hashes/sizes/times).",
+      "requiredFix": "Retain the checker bytes per revision in the lane that edits it (the .mpd/red-baseline pattern already used for the pre-wave copy) or commit the checker together with each lane's evidence, so a future drift is diffable instead of only hash-comparable."
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+{
+  "task": "t62",
+  "fixture": {
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T163526Z/raw/ws",
+    "stateDir": ".mpd/team",
+    "team": "pause-probe"
+  },
+  "gateLines": [
+    "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:42:30.760Z: silence)",
+    "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:42:30.760Z: silence)"
+  ],
+  "preservation": {
+    "before": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3
+    },
+    "after": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3
+    }
+  },
+  "resume": {
+    "deliveriesAfterResume": 1,
+    "task": {
+      "status": "claimed",
+      "attempt": 1,
+      "attemptId": "0e1d3a29-448c-4b08-a061-6a1c07c162bb"
+    }
+  },
+  "reArm": {
+    "whileHeld": {
+      "status": "in_progress",
+      "attemptId": "att-live-2",
+      "attempt": 2,
+      "output": "kept"
+    },
+    "afterResume": {
+      "status": "claimed",
+      "attemptId": "aeaed160-b2a2-4869-bd0d-5addf3e3e484",
+      "attempt": 3,
+      "output": null
+    }
+  },
+  "watchdog": {
+    "applied": true,
+    "holdService": "mpdWatchdog",
+    "tools": 20
+  },
+  "toolRefusals": {
+    "claim": "team pause-probe is held by the team watchdog (hold e5a14f3c-5c8a-4f6f-9bcc-cde572128aec since 2026-09-15T16:42:30.782Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work",
+    "update": "team pause-probe is held by the team watchdog (hold e5a14f3c-5c8a-4f6f-9bcc-cde572128aec since 2026-09-15T16:42:30.782Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+  },
+  "idempotence": {
+    "holdChanged": false,
+    "secondResume": {
+      "resumed": false,
+      "reason": "not-held",
+      "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T163526Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+    }
+  },
+  "checks": [
+    {
+      "id": "A1 control: without a hold the member IS dispatched",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "A2 held: nothing is dispatched while the hold is present",
+      "ok": true,
+      "detail": {
+        "deliveries": 0
+      }
+    },
+    {
+      "id": "A2 held: the decline is a NAMED watchdog line",
+      "ok": true,
+      "detail": {
+        "lines": [
+          "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:42:30.760Z: silence)",
+          "agent-teams: dispatch declined for pause-probe/Architect: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:42:30.760Z: silence)"
+        ]
+      }
+    },
+    {
+      "id": "A2 held: the decline names the hold id and reason",
+      "ok": true,
+      "detail": {
+        "first": "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold hold-a2 since 2026-09-15T16:42:30.760Z: silence)"
+      }
+    },
+    {
+      "id": "A2 held: the team record is byte-identical after the decline",
+      "ok": true
+    },
+    {
+      "id": "A3 held: the pooled task is untouched too",
+      "ok": true
+    },
+    {
+      "id": "A3 held: both tasks still pending",
+      "ok": true,
+      "detail": [
+        "pending",
+        "pending"
+      ]
+    },
+    {
+      "id": "B preservation: the adopted record's bytes are unchanged by the hold",
+      "ok": true
+    },
+    {
+      "id": "B preservation: status/attemptId/attempt/output/handoffId all survive",
+      "ok": true,
+      "detail": {
+        "before": {
+          "status": "in_progress",
+          "attemptId": "att-live"
+        },
+        "after": {
+          "status": "in_progress",
+          "attemptId": "att-live"
+        }
+      }
+    },
+    {
+      "id": "B preservation: no task was cancelled",
+      "ok": true
+    },
+    {
+      "id": "C1 contract: the {holdId,at,reason} spelling also enforces",
+      "ok": true,
+      "detail": {
+        "first": "agent-teams: dispatch declined for pause-probe/*: the team is held by the team watchdog (hold hold-view-spelling since 2026-09-15T16:42:30.762Z: silence)"
+      }
+    },
+    {
+      "id": "C2 fail-open: a corrupt hold file does NOT block dispatch",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "C3 fail-open: no hold file => dispatch behaves exactly as before",
+      "ok": true
+    },
+    {
+      "id": "C4 cache: clearing the file is observed without a restart",
+      "ok": true,
+      "detail": {
+        "heldDeliveries": 0,
+        "afterClear": 1
+      }
+    },
+    {
+      "id": "E0 tools: claim/update/hold/resume are all registered",
+      "ok": true,
+      "detail": {
+        "registered": [
+          "agent_teams_claim_task",
+          "agent_teams_update_task",
+          "session-watchdog-hold",
+          "session-watchdog-resume",
+          "session-watchdog-status"
+        ]
+      }
+    },
+    {
+      "id": "D1 the plugin's own session-watchdog-hold writes the durable hold",
+      "ok": true,
+      "detail": {
+        "applied": true,
+        "hold": {
+          "id": "e5a14f3c-5c8a-4f6f-9bcc-cde572128aec",
+          "teamId": "pause-probe",
+          "since": 1789490550782,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "sceneAt": 0
+        },
+        "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T163526Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json",
+        "changed": true
+      }
+    },
+    {
+      "id": "E1 claim_task is refused with a named watchdog reason",
+      "ok": true,
+      "detail": {
+        "error": "team pause-probe is held by the team watchdog (hold e5a14f3c-5c8a-4f6f-9bcc-cde572128aec since 2026-09-15T16:42:30.782Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+      }
+    },
+    {
+      "id": "E2 update_task is refused with a named watchdog reason",
+      "ok": true,
+      "detail": {
+        "error": "team pause-probe is held by the team watchdog (hold e5a14f3c-5c8a-4f6f-9bcc-cde572128aec since 2026-09-15T16:42:30.782Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+      }
+    },
+    {
+      "id": "E3 the refusals changed NO record byte",
+      "ok": true
+    },
+    {
+      "id": "D2 the dispatch gate and the tool boundary read ONE hold",
+      "ok": true
+    },
+    {
+      "id": "F1 a second hold on an already-held team writes no second hold and interrupts nothing",
+      "ok": true,
+      "detail": {
+        "changed": false,
+        "holdId": "e5a14f3c-5c8a-4f6f-9bcc-cde572128aec"
+      }
+    },
+    {
+      "id": "D4 session-watchdog-resume clears the hold",
+      "ok": true,
+      "detail": {
+        "resumed": true,
+        "hold": {
+          "id": "e5a14f3c-5c8a-4f6f-9bcc-cde572128aec",
+          "teamId": "pause-probe",
+          "since": 1789490550782,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "sceneAt": 0
+        },
+        "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T163526Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+      }
+    },
+    {
+      "id": "D5 dispatch resumes through the existing kick machinery after the resume",
+      "ok": true,
+      "detail": {
+        "deliveries": 1
+      }
+    },
+    {
+      "id": "D6 the resumed delivery carries a live attempt of its own",
+      "ok": true,
+      "detail": {
+        "attemptId": "0e1d3a29-448c-4b08-a061-6a1c07c162bb",
+        "status": "claimed"
+      }
+    },
+    {
+      "id": "E4 after the resume the tool boundary no longer reports the hold",
+      "ok": true,
+      "detail": {
+        "error": "(allowed)"
+      }
+    },
+    {
+      "id": "F2 a resume for a non-held team is a {resumed:false, reason:'not-held'} no-op",
+      "ok": true,
+      "detail": {
+        "resumed": false,
+        "reason": "not-held",
+        "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T163526Z/raw/ws/.mpd/team/watchdog/hold/pause-probe.json"
+      }
+    },
+    {
+      "id": "D7 a still-claimed attempt is frozen while held and RE-ARMED by the resume",
+      "ok": true,
+      "detail": {
+        "whileHeld": {
+          "status": "in_progress",
+          "attemptId": "att-live-2",
+          "attempt": 2,
+          "output": "kept"
+        },
+        "afterResume": {
+          "status": "claimed",
+          "attemptId": "aeaed160-b2a2-4869-bd0d-5addf3e3e484",
+          "attempt": 3
+        }
+      }
+    }
+  ],
+  "ok": true
+}

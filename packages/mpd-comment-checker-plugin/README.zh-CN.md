@@ -35,6 +35,6 @@ post-edit 钩子（默认关闭）。
 ## 构建 / 测试
 
 ```sh
-bun build src/index.ts --outdir dist --target node --format esm
+bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
 bun test     # skipped automatically when the binary is absent
 ```

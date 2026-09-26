@@ -1,0 +1,13 @@
+### baseline
+[patch-agent-teams-fixes] already applied: 96 mpd delta region(s) across 10 adopted file(s)
+### EDIT (top-level new region) -> --write-registry
+  inserted a TOP-LEVEL region above line 23: export const CAPTAIN_KEY = 'captain'; (outside all 6 region spans)
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (97 regions)
+### --check after regeneration
+[patch-agent-teams-fixes] already applied: 97 mpd delta region(s) across 10 adopted file(s)
+  probe id occurrences in the registry: 2
+
+### TRAP ARM — edit INSIDE coverage-name-match WITHOUT regenerating (must REDDEN)
+  edited inside the region body
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta coverage-name-match" in packages/mpd-agent-teams-plugin/lib/quality-gates.js (lines 666-689) no longer matches this script's registered block — first difference at line 673; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it
+exit=1

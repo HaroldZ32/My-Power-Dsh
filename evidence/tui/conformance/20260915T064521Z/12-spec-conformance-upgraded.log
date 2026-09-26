@@ -1,0 +1,10 @@
+$ MPD_TUI_SPEC_ROOT=.mpd/recon/spec-root DSH_STD_ROOT=<built tree> bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --sandbox-root .mpd/recon/t9-clean
+# upgrade attempt: the checkout's vendor/dsh-std is unbuilt; this root is assembled in-workspace (7 payload libs + 4 built from source)
+[tui-spec-conformance] PRIMARY suite root /root/dshProj/my-power-dsh/.mpd/recon/spec-root @ c582254
+[tui-spec-conformance] three-way identity reproduced=true
+[tui-spec-conformance] pinned-cli -> status=0
+[tui-spec-conformance] pinned-suite -> status=1
+[tui-spec-conformance] requirements: BASE-STD-001=pass TUI-PKG-001=pass TUI-PKG-002=pass TUI-PRIVATE-001=pass TUI-HOST-001=pass TUI-OBS-001=pass TUI-TRUST-001=pass
+[tui-spec-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-15T07-04-29.343Z
+[tui-spec-conformance] PASS: pinned inputs digested; suite ran; per-requirement statuses recorded
+[exit 0]

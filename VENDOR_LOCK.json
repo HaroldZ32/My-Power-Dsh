@@ -17,9 +17,9 @@
   "assets": {
     "_note": "skills corpus and agent-teams _deps closure: fileCount+treeSha (sorted relpath + per-file sha256 aggregation) double gate — verified by scripts/verify-vendor.mjs; dist: sha256 gate",
     "skills": {
-      "fileCount": 301,
-      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576"
+      "fileCount": 324,
+      "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
+      "treeSha": "9f1455aa301ca3df1909746eeee6ba3a45ab476493b470e8d49c173b70a41a32"
     },
     "packages/mpd-agent-teams-plugin/_deps": {
       "fileCount": 635,
@@ -39,7 +39,7 @@
     "packages/mpd-mcp-lsp/dist/cli.js": {
       "fileCount": 1,
       "source": "built offline via scripts/build-mcp.mjs from packages/lsp-daemon",
-      "sha256": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148"
+      "sha256": "555d6bf2b940ea2c76c0154092e78ba1517d608a2aa5c7c84568f70f123b3720"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -48,5 +48,5 @@
     }
   },
   "verification": "node scripts/verify-vendor.mjs: commit/version mismatch is a blocker; stats drift is a warning; asset counts are a blocker",
-  "lockedAt": "2026-09-14T15:42:19Z"
+  "lockedAt": "2026-09-15T09:52:10Z"
 }

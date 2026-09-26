@@ -1,0 +1,9 @@
+--- /tmp/t21-revb2-scratch/a8/runA/revisions/checker.mjs	2026-09-17 22:36:57.544219525 +0800
++++ /tmp/t21-revb2-scratch/a8/runB/revisions/checker.mjs	2026-09-17 22:36:57.687223106 +0800
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env node
+-// ARM CHANGE A
++// ARM CHANGE B
+ 
+ // t72 docs-claims checker — the DURABLE home of the t9/t21 checker, moved out of the evidence
+ // tree by T-72. Every repo path, line anchor, directory and command the three adaptation

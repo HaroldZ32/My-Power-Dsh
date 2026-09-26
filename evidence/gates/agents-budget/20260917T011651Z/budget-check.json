@@ -1,0 +1,51 @@
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "before",
+      "path": "/root/dshProj/my-power-dsh/evidence/gates/agents-budget/20260917T011651Z/AGENTS.md.before",
+      "sourceBytes": 78283,
+      "renderedBytes": 65536,
+      "underBudget": true,
+      "truncated": true,
+      "omitted": [],
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 78283,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    },
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 42954,
+      "renderedBytes": 43258,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    },
+    {
+      "label": "oversized_control",
+      "path": "/root/dshProj/my-power-dsh/evidence/gates/agents-budget/20260917T011651Z/oversized-control.md",
+      "sourceBytes": 67704,
+      "renderedBytes": 65536,
+      "underBudget": true,
+      "truncated": true,
+      "omitted": [],
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 67704,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    }
+  ]
+}

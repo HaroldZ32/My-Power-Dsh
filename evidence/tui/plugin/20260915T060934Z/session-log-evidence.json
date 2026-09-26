@@ -1,0 +1,95 @@
+{
+  "note": "decoded from the concatenated-zstd session store; every hit is a real durable record from the mount runs",
+  "hits": [
+    {
+      "session": "ad576397-8c3b-4f8e-8fa3-2dde0a4463af",
+      "mtime": "2026-09-15T06:22:31.634Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "fde9ed3d-0ab3-4ca6-9e8c-dab28d676c88",
+      "mtime": "2026-09-15T06:22:21.340Z",
+      "commandsRun": 1,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "f2b681c5-49e9-4da8-8181-bd763b006ea6",
+      "mtime": "2026-09-15T06:21:27.135Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "9e596f7c-df36-4d69-9dab-41e67cfc282f",
+      "mtime": "2026-09-15T06:20:25.786Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "afb62cdb-0bdf-458b-be83-68f0b3593a7e",
+      "mtime": "2026-09-15T06:19:28.823Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 0
+    },
+    {
+      "session": "cbeb7af4-00b9-4bec-b9c3-14fac66e767f",
+      "mtime": "2026-09-15T06:18:29.072Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "ab0c9a62-aa93-4b2d-be57-9ffe13902a8f",
+      "mtime": "2026-09-15T06:17:33.524Z",
+      "commandsRun": 1,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "5816714c-cae1-456d-8f25-f0ca4bc99c74",
+      "mtime": "2026-09-15T06:17:10.009Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 0
+    },
+    {
+      "session": "b1a5ca70-55f8-4539-84f8-7544e9cd9a27",
+      "mtime": "2026-09-15T06:15:37.594Z",
+      "commandsRun": 1,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    },
+    {
+      "session": "97c09ec9-4f76-4a34-ac8e-e2367d2ad377",
+      "mtime": "2026-09-15T06:15:20.569Z",
+      "commandsRun": 2,
+      "commandNames": [
+        "mpd"
+      ],
+      "boardOpenedEvents": 1
+    }
+  ]
+}

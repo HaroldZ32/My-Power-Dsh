@@ -1,0 +1,523 @@
+{
+  "case": "install-deps/repair-r2/ledger",
+  "ok": true,
+  "guardBodySha256": "c7472a32a58680908fc830a306fd0e2dbd1eee6f021b54ab0be50635c7bf7a47",
+  "patchSha256AtMeasurement": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+  "measuredAtUtc": "2026-09-20T03:54:27.122Z",
+  "compositions": [
+    {
+      "name": "bundle-only-web",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "expectDecision": "ENABLED",
+      "expectServed": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3411 --no-open",
+        "logPath": "/tmp/mpd-r2-bundle-only-web-CohIFN/web.log",
+        "port": 3411,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+        ],
+        "guardDecision": "ENABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3411/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "aggregate-first",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@linxin666/dsh-web-all",
+        "@mpd-dsh/mpd"
+      ],
+      "mirrorAgg": true,
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "web-ui-better-sidebar",
+            "disabledRaw": null,
+            "enabled": true
+          },
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": [
+          "web-ui-better-sidebar"
+        ]
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3412 --no-open",
+        "logPath": "/tmp/mpd-r2-aggregate-first-46hd8s/web.log",
+        "port": 3412,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3412/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "aggregate-after",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "@linxin666/dsh-web-all"
+      ],
+      "mirrorAgg": true,
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "web-ui-better-sidebar",
+            "disabledRaw": null,
+            "enabled": true
+          }
+        ],
+        "literalEnabled": [
+          "web-ui-better-sidebar"
+        ]
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3413 --no-open",
+        "logPath": "/tmp/mpd-r2-aggregate-after-1d07Xi/web.log",
+        "port": 3413,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3413/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "profile-layer-mount",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "profilePatch": "- insert:\n    - id: user-sidebar-probe\n      name: 'dsh-better-sidebar'\n",
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "fatalMode": "F3 (profile patch layer)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "user-sidebar-probe",
+            "disabledRaw": null,
+            "enabled": true
+          }
+        ],
+        "literalEnabled": [
+          "user-sidebar-probe"
+        ]
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3414 --no-open",
+        "logPath": "/tmp/mpd-r2-profile-layer-mount-e1p0mf/web.log",
+        "port": 3414,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/mpd-r2-profile-layer-mount-e1p0mf/dsh/profiles/w/cordis.patch.yml already mounts it"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3414/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "home-layer-mount",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "homePatch": "- insert:\n    - id: home-sidebar-probe\n      name: 'dsh-better-sidebar'\n",
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "fatalMode": "F3 (home patch layer)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "home-sidebar-probe",
+            "disabledRaw": null,
+            "enabled": true
+          }
+        ],
+        "literalEnabled": [
+          "home-sidebar-probe"
+        ]
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3415 --no-open",
+        "logPath": "/tmp/mpd-r2-home-layer-mount-JZ07cA/web.log",
+        "port": 3415,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/mpd-r2-home-layer-mount-JZ07cA/dsh/cordis.patch.yml already mounts it"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3415/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "overlay-mount",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "overlay": "- insert:\n    - id: overlay-sidebar-probe\n      name: 'dsh-better-sidebar'\n",
+      "overlaySpelling": "--patch",
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "fatalMode": "F3 (--patch overlay)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --patch /tmp/mpd-r2-overlay-mount-cH2ZDm/overlay.yml --port 3416 --no-open",
+        "logPath": "/tmp/mpd-r2-overlay-mount-cH2ZDm/web.log",
+        "port": 3416,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/mpd-r2-overlay-mount-cH2ZDm/overlay.yml already mounts it"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3416/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "overlay-equals-mount",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "overlay": "- insert:\n    - id: overlay-eq-sidebar-probe\n      name: 'dsh-better-sidebar'\n",
+      "overlaySpelling": "--patch=",
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "fatalMode": "F3 (--patch= overlay)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --patch=/tmp/mpd-r2-overlay-equals-mount-7yFz69/overlay.yml --port 3417 --no-open",
+        "logPath": "/tmp/mpd-r2-overlay-equals-mount-7yFz69/web.log",
+        "port": 3417,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/mpd-r2-overlay-equals-mount-7yFz69/overlay.yml already mounts it"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3417/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    },
+    {
+      "name": "dsh-tui",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "profileName": "dsh-tui",
+      "homeName": "dshhome",
+      "mirrorTui": true,
+      "tui": true,
+      "expectDecision": "DISABLED",
+      "fatalMode": "F2 (non-web plane)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL dsh-tui mounting boot in tmux",
+        "booted": true,
+        "failures": [],
+        "guardLines": [
+          "\u001b[?2004l\r[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition\r"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": []
+      },
+      "served": false,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-r2-dsh-tui-vtKZ85-ws--"
+        ]
+      },
+      "ok": true
+    },
+    {
+      "name": "package-absent",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "stage": true,
+      "expectDecision": "DISABLED",
+      "expectServed": false,
+      "fatalMode": "F1 (unresolvable)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "literalEnabled": []
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --port 3418 --no-open",
+        "logPath": "/tmp/mpd-r2-package-absent-EC7QlP/web.log",
+        "port": 3418,
+        "booted": true,
+        "servedSidebarClient": false,
+        "sidebarRoute": {
+          "status": 404,
+          "body": ""
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3418/?token[redacted:43ch]"
+        ]
+      },
+      "served": false,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    }
+  ]
+}

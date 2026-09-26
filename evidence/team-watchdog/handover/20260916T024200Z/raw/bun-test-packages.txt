@@ -1,0 +1,8 @@
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 732 pass
+ 0 fail
+ 5253 expect() calls
+Ran 732 tests across 138 files. [23.22s]

@@ -1,0 +1,18 @@
+{
+  "mutant": "restart-needed",
+  "method": "the same live scenario against a scratch copy of src/engine.ts with the one-line overlay seeded back out",
+  "reading": {
+    "label": "seeded-revert",
+    "mountedValue": 90000,
+    "fileValue": 900000,
+    "sameInstanceValue": 90000,
+    "sameInstance": true,
+    "fileApplied": true,
+    "liveLayer": "file",
+    "restartRequired": true,
+    "liveWithoutRestart": false
+  },
+  "liveAssertionWouldExit": 1,
+  "detected": true,
+  "finishedAt": "2026-09-17T07:42:42.748Z"
+}

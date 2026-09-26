@@ -378,9 +378,19 @@ function cleanLegacyCopies(ctx: Ctx, corpus: string, presets: string, config: Co
   if (config.skipPresets !== true) {
     const presetsStamp = join(harnessHome(), ".agent-presets", ".mpd-presets-version")
     if (existsSync(presetsStamp)) {
+      // Preset IDs this bundle ships, in BOTH shipped shapes. Harness 0.1.7-rc.2 replaced the
+      // directory model (`presets/<id>/preset.yml` + `agent.cordis.yml`) with ONE PATCH FILE per
+      // preset (`presets/<id>.patch.yml`), so a raw `readdirSync` now yields `mpd.patch.yml` and
+      // matched nothing — measured 2026-09-27: the legacy `$DSH_HOME/.agent-presets/mpd` copy
+      // survived a boot that was supposed to remove it, and
+      // `legacy home-copy migration > removes only stamped bundle copies and leaves user content
+      // alone` went red. Both spellings are recognised here because the copies being migrated were
+      // written under the OLD one and a later release could ship either.
       let ids: string[] = []
       try {
-        ids = readdirSync(presets).filter((id) => id === "mpd" || id.startsWith("mpd-"))
+        ids = readdirSync(presets)
+          .map((entry) => (entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry))
+          .filter((id) => id === "mpd" || id.startsWith("mpd-"))
       } catch { ids = [] }
       for (const id of ids) {
         const target = join(harnessHome(), ".agent-presets", id)

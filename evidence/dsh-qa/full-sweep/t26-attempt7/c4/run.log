@@ -1,0 +1,84 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c4
+[mpd-qa:(only)] PASS case=preset-conformance evidence=evidence/dsh-qa/preset-conformance/2026-09-17T04-38-13.944Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c4/lanes/preset-conformance.log ms=81418
+[mpd-qa:(only)] FAIL case=bundle-lifecycle reason=exit-1 exit=1 evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-39-35.384Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c4/lanes/bundle-lifecycle.log ms=39415
+[mpd-qa:(only)] summary selected=2 pass=1 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c4
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T04:38:13.830Z",
+  "finishedAt": "2026-09-17T04:40:14.688Z",
+  "durationMs": 120858,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "preset-conformance",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 81418,
+      "command": "bun skills/dsh-qa/scripts/preset-conformance.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/preset-conformance.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/preset-conformance/2026-09-17T04-38-13.944Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c4/lanes/preset-conformance.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "bundle-lifecycle",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 39415,
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-39-35.384Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c4/lanes/bundle-lifecycle.log",
+      "outputTail": [
+        "  install: {\"ok\":true,\"exit\":0,\"dependency\":\"link:/root/dshProj/my-power-dsh\",\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\",\"@mpd-dsh/mpd\"],\"oneCommand\":\"dsh plugin --profile w add <repo root>\"}",
+        "  composed: {\"ok\":true,\"exit\":0}",
+        "  boot: {\"ok\":false,\"http\":true,\"corpus\":\"/root/dshProj/my-power-dsh/skills\",\"preset\":null,\"trust\":null,\"bundleReal\":\"/root/dshProj/my-power-dsh\",\"adapterSeams\":null}",
+        "  noHomeCopy: {\"ok\":true,\"skills\":[],\"presets\":[]}",
+        "  layerDurability: {\"ok\":true,\"exit\":0,\"dependency\":true,\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\",\"@mpd-dsh/mpd\"]}",
+        "  uninstall: {\"ok\":true,\"exit\":0,\"bundles\":[\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\"],\"residue\":[],\"mpdState\":[]}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}
+[c4 exit=1] 2026-09-17T04:40:14Z

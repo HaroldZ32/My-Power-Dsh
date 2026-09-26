@@ -1,0 +1,426 @@
+{
+  "name": "upstream-orchestration-align",
+  "id": "upstream-orchestration-align",
+  "description": "Align the bundle (my-power-dsh) with upstream oh-my-openagent v5.0.0-beta.62: AUDIT the orchestration surface (roster/role routing, modelchain, spawn, team dispatch) against upstream's documented + implemented contracts, then IMPLEMENT the routing change — upstream's typed route-resolution outcome (resolved | disabled | not_found | model_unavailable, with attempted_chain + missing_providers) replacing the bundle's silent fallback to the `sisyphus` chain, and the exactly-one-route-source rule (no ad-hoc `model` override alongside a `role`). ENVIRONMENT: the bundle at /root/dshProj/my-power-dsh and upstream at /root/dshProj/oh-my-openagent are BOTH READ-ONLY mounts; all deliverables must be materialized in the session workspace /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws as a working copy + an apply-ready patch.",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-8fd453e2-2e7b-4251-abf5-5b9c0789573d",
+  "createdAt": 1789699081491,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789699081491
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789699081491,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Audit the orchestration surface and freeze the routing contract",
+      "description": "GOAL: produce the evidence-backed audit of the BUNDLE's orchestration surface against UPSTREAM, and freeze the exact routing contract that t2 must implement.\n\nTREES (both READ-ONLY mounts — never attempt to write to them):\n- bundle: /root/dshProj/my-power-dsh\n- upstream: /root/dshProj/oh-my-openagent (v5.0.0-beta.62, HEAD d1557a4b4)\n- session workspace (the ONLY writable tree): /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws\n\nSTEP 1 — AUDIT (the \"orchestration surface\"). Enumerate the bundle's orchestration/delegation constructs and map each to its upstream counterpart, each with file:line evidence on BOTH sides. At minimum cover:\n  (a) roster + role resolution: packages/mpd-roles-plugin/src/{index.ts,roles.data.ts}\n  (b) route resolution: packages/mpd-modelchain-plugin/src/index.ts\n  (c) spawn surface: mpd_role_spawn / mpd_role_persona in packages/mpd-roles-plugin/src/index.ts\n  (d) team dispatch: packages/mpd-agent-teams-plugin/ + presets/mpd/agent.cordis.yml\n  (e) upstream reference: docs/guide/orchestration.md, docs/guide/agent-model-matching.md, packages/senpi-task/src/category/{types.ts,resolver.ts,fallback-chains.ts,builtins.ts}, and the category tests (gating.test.ts, dead-chain.test.ts, resolve-category-boundary.test.ts, category-routing-policy.test.ts).\n\nSTEP 2 — FREEZE THE ROUTING CONTRACT. Upstream resolves a route to a TYPED TOTAL OUTCOME, never a silent substitution:\n  resolved | disabled | not_found | model_unavailable\nwith model_unavailable carrying attemptedModel, availableModels, availableCategories, nearestFallback, and (dead-chain case) attempted_chain + missing_providers.\nThe captain's reading of the divergence to CONFIRM OR CORRECT with evidence:\n  - packages/mpd-modelchain-plugin/src/index.ts:70-76 (resolveRole) substitutes DEFAULT_CHAINS.sisyphus for ANY unknown role and for an empty chain — a silent cross-specialist substitution the caller cannot detect;\n  - the mpd_modelchain_resolve tool (same file, ~:100-119) defaults a missing role to \"sisyphus\" and returns a bare {provider,model,chain} with no outcome discriminant;\n  - packages/mpd-modelchain-plugin/test/modelchain.test.ts:22 PINS the silent fallback;\n  - mpd_role_spawn parameters (~packages/mpd-roles-plugin/src/index.ts:430) accept an ad-hoc `model` alongside `role`, whereas upstream rejects `model` alongside `category` (docs/guide/orchestration.md, \"Categories + Skills\") so the configured chain cannot be bypassed;\n  - the roles surface already refuses an unknown role loudly (roleOf/roleSurface path) — the asymmetry with resolveRole is part of the finding.\nIf the evidence supports a DIFFERENT or ADDITIONAL routing change better than the above, say so explicitly and cite it; the freeze, not the captain's reading, governs t2.\n\nACCEPTANCE (this task is judged on these):\n1. The audit is attached as an artifact (update_task artifact) at evidence/audit/orchestration-surface-routing.md in the session workspace — a read-only seat may only write under evidence/**.\n2. EVERY factual claim carries bundle path:line AND upstream path:line (or states plainly that one side has no counterpart).\n3. The frozen contract names each outcome kind, its exact fields, and the precise trigger for each; where upstream has a canonical name (resolved/not_found/model_unavailable/attempted_chain/missing_providers) that name is used.\n4. The bundle's CURRENT behaviour is stated with the citing line for: unknown role, empty chain, malformed chain entry, missing role argument, and role+model passed together.\n5. A short \"not verified / open\" section names anything the audit could not ground from the trees. No speculation presented as fact.\n6. A verdict field states whether the captain's reading is CONFIRMED or CORRECTED.\nDELIVERABLE: evidence/audit/orchestration-surface-routing.md",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789699114208,
+      "updatedAt": 1789699114208,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Audit the bundle's orchestration surface (roster, route resolution, spawn, team dispatch) against upstream oh-my-openagent beta.62 and freeze the exact routing contract that the implementation task must satisfy, with file:line evidence on both sides.",
+      "outOfScope": [
+        "worktree/**",
+        "deliverables/**",
+        "evidence/implementation/**",
+        "evidence/verification/**",
+        "evidence/review/**",
+        "evidence/integration/**"
+      ],
+      "acceptance": [
+        "Audit artifact attached at evidence/audit/orchestration-surface-routing.md in the session workspace",
+        "Every factual claim carries bundle path:line AND upstream path:line, or states that the counterpart is absent",
+        "Frozen contract names each outcome kind, its fields, and the trigger for each, using upstream's canonical names where they exist",
+        "Bundle's current behaviour cited with line numbers for: unknown role, empty chain, malformed chain entry, missing role argument, role+model together",
+        "An explicit 'not verified / open' section lists anything not grounded in the trees",
+        "An explicit verdict states CONFIRMED or CORRECTED for the captain's reading of the routing divergence"
+      ],
+      "deliverables": [
+        "evidence/audit/orchestration-surface-routing.md"
+      ],
+      "coverageOf": [
+        "audit the orchestration surface",
+        "freeze the routing contract the implementation must satisfy"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Implement the upstream-aligned routing change in a workspace working copy",
+      "description": "GOAL: implement the routing change frozen by t1, in a workspace working copy — upstream's typed route-resolution outcome instead of the bundle's silent substitution, plus the exactly-one-route-source rule. Follow t1's frozen contract for exact kind/field names; where t1 CONFIRMS the captain's reading, the mandatory core is: resolved | not_found | model_unavailable (+ attempted_chain / missing_providers for a dead chain), never a silent fallback.\n\nSTEP 0 — MATERIALIZE (the source trees are READ-ONLY mounts; never write to /root/dshProj):\nCreate the working copy under the session workspace /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws/worktree, preserving repo-relative layout, by copying exactly these three packages from the bundle (they are the complete import closure; node builtins are the only externals):\n  cp -r /root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin  worktree/packages/\n  cp -r /root/dshProj/my-power-dsh/packages/mpd-roles-plugin      worktree/packages/\n  cp -r /root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin worktree/packages/\nThen confirm the baseline is green BEFORE changing anything: `cd worktree && bun test packages/mpd-modelchain-plugin/test packages/mpd-roles-plugin/test` (bun 1.3.14 is on PATH; no node_modules are needed).\n\nSTEP 1 — IMPLEMENT (edit only worktree/**):\n  (a) route resolution, worktree/packages/mpd-modelchain-plugin/src/index.ts: replace the silent substitution in resolveRole (bundle lines 70-76) with t1's typed outcome. An unknown role must be REPORTED (not_found) with the available role list; a chain that cannot resolve must be model_unavailable with attempted_chain + missing_providers; a malformed chain entry must be sanitized, never thrown.\n  (b) the mpd_modelchain_resolve tool (~:100-119): stop defaulting a missing role to \"sisyphus\"; return the typed outcome so a caller can always tell resolved from unavailable.\n  (c) the spawn surface, worktree/packages/mpd-roles-plugin/src/index.ts (~:429-440): an ad-hoc `model` passed alongside `role` must not silently bypass the configured chain — reject or report it by name per t1's freeze. Keep the existing loud refusal of an unknown role.\n  (d) Add the regression suite worktree/packages/mpd-modelchain-plugin/test/routing-outcome.test.ts — one test per acceptance criterion below, each named for the behaviour it pins, each exercising the exported function or the registered tool (the existing tests show both patterns).\n  (e) Replace the old pin at worktree/packages/mpd-modelchain-plugin/test/modelchain.test.ts:22 (expect(resolveRole(\"unknown-role\", {}).provider).toBe(\"deepseek-official\")) with the new contract's assertion. Keep every other assertion intact.\n  Preserve the public surface: same exported names, same tool names, same roster data. Do NOT port upstream's category system, senpi-task, or model-core — this is the routing CONTRACT, not the whole delegation architecture. No unrelated refactors or renames.\n\nSTEP 2 — VERIFY before completing: run the three verify commands and paste each command with its exit code and the tail of its raw output into the completion payload. Report honestly; a red you cannot fix is a failure, not a rounded-up pass.\n\nCONSTRAINTS: never write outside the session workspace; never modify /root/dshProj/**; the working copy is a COPY, so a rewrite of the copied sources is expected and correct.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 0,
+      "createdAt": 1789699126529,
+      "updatedAt": 1789699126529,
+      "kind": "implementation",
+      "round": 1,
+      "objective": "Implement the routing change frozen by t1 in the workspace working copy: route resolution returns upstream's typed total outcome (resolved | not_found | model_unavailable with attempted_chain + missing_providers) instead of silently substituting the sisyphus chain, and a role-routed spawn cannot silently bypass the configured chain with an ad-hoc model.",
+      "inScope": [
+        "worktree/**",
+        "evidence/implementation/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "deliverables/**",
+        "evidence/audit/**",
+        "evidence/verification/**",
+        "evidence/review/**",
+        "evidence/integration/**"
+      ],
+      "acceptance": [
+        "An unknown role yields an outcome explicitly distinguishable from a resolved route, names the requested role and the available roles, and NEVER returns the sisyphus chain",
+        "An empty or unresolvable chain yields an outcome carrying the attempted chain and the missing providers",
+        "A malformed chain entry yields a sanitized outcome instead of a throw",
+        "A resolvable role still returns the roster chain and is marked as resolved",
+        "Passing `model` alongside `role` to the spawn surface cannot silently bypass the configured chain — it is rejected or reported by name",
+        "The assertion at packages/mpd-modelchain-plugin/test/modelchain.test.ts:22 that pinned the silent substitution is replaced by an assertion of the new contract",
+        "Every pre-existing test that does not encode the old silent-substitution behaviour still passes",
+        "mpd_role_spawn's loud refusal of an unknown role is preserved",
+        "No file under /root/dshProj (the read-only bundle and upstream trees) is modified"
+      ],
+      "verify": [
+        "cd worktree && bun test packages/mpd-modelchain-plugin/test packages/mpd-roles-plugin/test",
+        "cd worktree && bun test packages/mpd-modelchain-plugin/test/routing-outcome.test.ts"
+      ],
+      "deliverables": [
+        "worktree/packages/mpd-modelchain-plugin/src/index.ts",
+        "worktree/packages/mpd-modelchain-plugin/test/routing-outcome.test.ts",
+        "worktree/packages/mpd-roles-plugin/src/index.ts"
+      ],
+      "nonGoals": [
+        "Porting upstream's category system, senpi-task, or model-core",
+        "Renaming or restructuring existing tools, roles, or packages",
+        "Editing anything under /root/dshProj (read-only reference trees)",
+        "Rewriting unrelated docs or adding unrelated tests"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Independently verify the routing change against the frozen contract",
+      "description": "GOAL: independently verify the routing change (t2) against t1's frozen contract by EXECUTION, and record falsifiable evidence. You are the adversary of the implementation, not its echo: a probe that cannot fail proves nothing.\n\nCONTEXT: session workspace /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws. The implementation lives in worktree/ (a copy of three packages from the read-only bundle /root/dshProj/my-power-dsh). bun 1.3.14 is on PATH. Never write outside evidence/verification/ and never touch /root/dshProj/**.\n\nMETHOD:\n1. Read t1's frozen contract (its artifact) and t2's completion payload. Note every claim you must falsify.\n2. Re-run the implementation's verify commands yourself and capture raw output.\n3. Write and run your OWN probes in evidence/verification/ (a small .mjs/.ts driver plus a log) — do not merely re-run the implementer's tests:\n   - unknown role -> not_found with the available roles; the sisyphus chain must NOT come back;\n   - a role whose chain is empty/unresolvable -> model_unavailable carrying attempted_chain + missing_providers;\n   - a malformed chain entry -> a sanitized outcome, never a thrown exception;\n   - `model` passed alongside `role` on the spawn surface -> rejected/reported, with the configured chain not silently bypassed;\n   - a resolvable role -> resolved, with the roster's chain.\n4. NEGATIVE CONTROL (load-bearing): copy the PRE-CHANGE sources (from /root/dshProj/my-power-dsh, read-only) into evidence/verification/pre-change/ and run the same unknown-role probe against them; it must return the sisyphus chain. If it does not, your battery is not falsifiable and you must say so — that is a FAIL of this task, not a pass.\n5. Check the implementation did not widen its blast radius: confirm the read-only trees are untouched and that no unrelated file in worktree/ changed beyond the routing surface (e.g. by diffing worktree/ against the bundle sources path by path and listing every differing file).\n6. Record everything in the deliverable; state explicitly for each acceptance criterion whether it PASSED or FAILED with the raw evidence behind it.\n\nIf you find a genuine defect, say FAILED and name it precisely (file, line, command, observed vs expected). Do not fix it — the repair path belongs to another seat.",
+      "status": "pending",
+      "assignee": "Junior Engineer",
+      "dependencies": [
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789699134417,
+      "updatedAt": 1789699134417,
+      "kind": "verification",
+      "round": 1,
+      "objective": "Independently verify by execution that the routing change satisfies t1's frozen contract, that each outcome is genuinely reachable, and that the probe battery is falsifiable against the pre-change behaviour.",
+      "inScope": [
+        "evidence/verification/**"
+      ],
+      "outOfScope": [
+        "worktree/**",
+        "deliverables/**",
+        "evidence/audit/**",
+        "evidence/implementation/**",
+        "evidence/review/**",
+        "evidence/integration/**",
+        "/root/dshProj/**"
+      ],
+      "acceptance": [
+        "Raw evidence under evidence/verification/ records every probe with its exact command, exit code, and output tail",
+        "One adversarial probe per frozen outcome: unknown role (not_found, naming the available roles), empty/dead chain (model_unavailable with attempted_chain + missing_providers), malformed chain entry (sanitized outcome, no throw), and role+model together (rejected or reported)",
+        "A negative control proves the battery is FALSIFIABLE: the same unknown-role probe executed against the pre-change sources returns the sisyphus chain, so the battery genuinely fails on the old behaviour",
+        "The implementation's own verify commands are re-executed independently and their results reported verbatim, not restated from the implementer's claim",
+        "Anything that could not be reproduced is reported as not reproduced rather than asserted"
+      ],
+      "verify": [
+        "cd worktree && bun test packages/mpd-modelchain-plugin/test packages/mpd-roles-plugin/test"
+      ],
+      "deliverables": [
+        "evidence/verification/routing-change-verification.md"
+      ],
+      "nonGoals": [
+        "Editing the implementation under worktree/**",
+        "Fixing any defect you find (report it instead)",
+        "Editing anything under /root/dshProj/**"
+      ]
+    },
+    {
+      "id": "t4",
+      "subject": "Review the routing change against the frozen upstream contract",
+      "description": "GOAL: adversarial correctness/risk review of the routing implementation (t2) against t1's frozen contract. You are reviewing the LATEST implementation bytes, not the plan and not the implementer's summary. You produce findings; you do not fix anything.\n\nCONTEXT: session workspace /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws; the implementation is in worktree/; both /root/dshProj trees are READ-ONLY references. You may write only under evidence/review/**.\n\nREVIEW CHECKS (each must be answered with evidence, not opinion):\n1. Contract conformance: for every outcome kind in the frozen contract, is the trigger implemented, reachable, and correctly distinguished? Look for a path where an unresolvable role can still yield a usable route with no signal — the original defect's shape.\n2. Silent-substitution elimination: is there ANY remaining code path (including the tool's argument defaults and the roster/service lookup order) that returns one specialist's chain for another specialist's name?\n3. Exactly-one-route-source: can an ad-hoc `model` still bypass the configured chain on the spawn surface — including through a case/whitespace/empty-string variant of the argument?\n4. Falsifiability: does the new regression suite actually fail against the pre-change sources, or does it pass vacuously? Judge the mechanism, not the claim.\n5. Blast radius: list every file that differs from the read-only bundle copy and confirm each difference is justified by the contract. Flag any unrelated edit, rename, or removed assertion.\n6. Risk: any caller-visible behaviour change that is not covered by the contract and could break another consumer of mpd_modelchain_resolve / mpd_role_spawn.\n\nRULES: approve-by-default when the remaining items are notes; return needs_revision only for a verified blocker or a real contract violation, with the citing file:line and the required fix. Any finding you raise must be reproducible from the worktree as it stands.",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t3",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789699143307,
+      "updatedAt": 1789699143307,
+      "kind": "review",
+      "round": 1,
+      "objective": "Review the latest routing implementation against t1's frozen upstream contract: correctness, elimination of the silent substitution, the exactly-one-route-source rule, falsifiability of the regression suite, and blast radius, with file:line evidence.",
+      "inScope": [
+        "evidence/review/**"
+      ],
+      "outOfScope": [
+        "worktree/**",
+        "deliverables/**",
+        "evidence/audit/**",
+        "evidence/implementation/**",
+        "evidence/verification/**",
+        "evidence/integration/**",
+        "/root/dshProj/**"
+      ],
+      "acceptance": [
+        "Every finding carries an id, severity, problem, requiredFix, and a worktree file:line",
+        "The review explicitly judges: elimination of the silent substitution, the exactly-one-route-source rule, blast radius (no unrelated change), and whether t3's negative control is genuinely falsifiable",
+        "The review names the evidence it read (t1 artifact, t2 payload, t3 artifact) and states any claim it could not verify independently"
+      ],
+      "deliverables": [
+        "evidence/review/routing-change-review-r1.md"
+      ],
+      "nonGoals": [
+        "Fixing anything you find (report it)",
+        "Re-implementing or restructuring the change",
+        "Editing worktree/** or /root/dshProj/**"
+      ],
+      "reviewedTaskId": "t2"
+    },
+    {
+      "id": "t5",
+      "subject": "Integrate the routing change into an apply-ready patch and delivery record",
+      "description": "GOAL: turn the verified, reviewed routing change into a delivery package that a human can apply to the real bundle in one command, and write the delivery record.\n\nCONTEXT: session workspace /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws. The bundle /root/dshProj/my-power-dsh is a READ-ONLY mount (kernel-level `ro`), so the change CANNOT be committed there — the deliverable is an apply-ready patch plus its record. You may write only under deliverables/** and evidence/integration/**.\n\nSTEPS:\n1. Collect inputs: t1's audit artifact (evidence/audit/), t2's changed-path list, t3's verification artifact (evidence/verification/), t4's verdict and findings (evidence/review/). Stop and report if t4 is not a pass.\n2. Produce deliverables/routing-change.patch as a unified diff of ONLY the implementation-changed files, with bundle-relative paths. Generate it with `git diff --no-index` (or diff -u with explicit a/ b/ prefixes) comparing, for each changed file, the read-only bundle copy against the worktree file — e.g. from a scratch dir under evidence/integration/, copy the bundle's original files and the worktree's changed files into two mirrored trees (orig/ and new/) and run `git diff --no-index --src-prefix=a/ --dst-prefix=b/ orig new` with paths rewritten to packages/... . The patch MUST apply from the bundle root.\n3. Prove it: run the check-apply against the read-only bundle (check mode only reads), and independently apply the patch to a fresh copy of the three packages and diff the result against worktree/ (expect no differences).\n4. Write deliverables/README.md: what changed and why (one paragraph), the frozen contract's outcome kinds, the exact apply command, the exact verify commands, the evidence paths, the review verdict, and the environment constraint.\n5. Report in the completion payload: the patch's sha256, the file list, the check-apply result with its exit code, and the reproduction result.\n\nDo NOT claim the bundle was modified. Do NOT touch /root/dshProj/** outside read-only access and git check-apply.",
+      "status": "pending",
+      "assignee": "Lead",
+      "dependencies": [
+        "t4"
+      ],
+      "attempt": 0,
+      "createdAt": 1789699149671,
+      "updatedAt": 1789699149671,
+      "kind": "integration",
+      "round": 1,
+      "objective": "Integrate the verified and reviewed routing change into an apply-ready patch against the read-only bundle plus a delivery record with the exact apply and verify commands.",
+      "inScope": [
+        "deliverables/**",
+        "evidence/integration/**"
+      ],
+      "outOfScope": [
+        "worktree/**",
+        "evidence/audit/**",
+        "evidence/implementation/**",
+        "evidence/verification/**",
+        "evidence/review/**",
+        "/root/dshProj/**"
+      ],
+      "acceptance": [
+        "deliverables/routing-change.patch is a unified diff with bundle-relative paths and passes a check-apply against the read-only bundle: git -c safe.directory=/root/dshProj/my-power-dsh -C /root/dshProj/my-power-dsh apply --check <abs patch path> exits 0",
+        "Applying the patch to a fresh copy of the three packages reproduces the worktree sources byte-for-byte, with the recomputation command stated",
+        "The patch contains ONLY the implementation-changed files (each listed), with no evidence, audit, or generated file included",
+        "deliverables/README.md names the audit path, the frozen contract, the verification evidence path, the review verdict, the exact apply command, the exact verify commands, and the read-only environment constraint",
+        "The delivery record states plainly that the bundle was NOT modified (it is a read-only mount) and that the change ships as an apply-ready patch"
+      ],
+      "verify": [
+        "cd worktree && bun test packages/mpd-modelchain-plugin/test packages/mpd-roles-plugin/test",
+        "git -c safe.directory=/root/dshProj/my-power-dsh -C /root/dshProj/my-power-dsh apply --check /tmp/mpd-sst-gKDeht/side/soft-complex/0/ws/deliverables/routing-change.patch"
+      ],
+      "deliverables": [
+        "deliverables/routing-change.patch",
+        "deliverables/README.md"
+      ],
+      "nonGoals": [
+        "Modifying the read-only bundle or upstream trees",
+        "Re-opening the implementation or the review verdict",
+        "Adding features beyond the frozen routing contract"
+      ]
+    }
+  ],
+  "taskSeq": 5,
+  "revision": 6
+}

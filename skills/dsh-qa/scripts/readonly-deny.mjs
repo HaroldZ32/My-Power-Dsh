@@ -47,6 +47,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const SLUG = "readonly-deny"
@@ -128,7 +131,13 @@ function selfTest() {
   // tools the AGENT PLANE composes, and `tool-str-replace-editor` — though its package ships in the
   // runtime closure — is absent from every preset, so `str_replace_editor` never registers. The other
   // name has no package at all. Both conclusions are checked here so the reasoning is executable.
-  const presets = ["agent.cordis.yml", "preset.yml"].map((f) => join(repoRoot, "presets", "mpd", f)).filter(existsSync).map((f) => readFileSync(f, "utf8")).join("\n")
+  // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list
+  // inside the `preset-mpd` row, declared by the manifest's second bundle patch —
+  // there is no `presets/mpd/` directory any more. Read the DECLARED source
+  // (lib/preset-source.mjs) rather than a path: a moved preset must redden this
+  // case, not silently assert over an empty string.
+  const presets = readMpdPresetSource(repoRoot)
+  if (presets === "") fail("self-test: no declared bundle patch declares the `preset-mpd` row — the composition audit has no subject")
   checks.push(["the agent plane does not compose tool-str-replace-editor", !presets.includes("str-replace-editor")])
   checks.push(["the agent plane does not compose any apply-patch tool", !presets.includes("apply-patch") && !presets.includes("apply_patch")])
   // Path-independent: the harness closure may live in the workspace or in the global install that
@@ -136,7 +145,14 @@ function selfTest() {
   const closureCandidates = [join(repoRoot, "node_modules", "@deepseek-ai")]
   try {
     const bin = spawnSyncPath()
-    if (bin) closureCandidates.push(join(dirname(bin), "..", "lib", "node_modules", "@deepseek-ai", "dsh", "node_modules", "@deepseek-ai"))
+    if (bin) {
+      // Two hosted layouts, both derived from the launcher's own directory: a POSIX global
+      // install keeps the package at <prefix>/lib/node_modules/... , npm on Windows at
+      // <prefix>/node_modules/... (the \dsh.cmd shim sits directly in the npm prefix).
+      const prefix = dirname(bin)
+      closureCandidates.push(join(prefix, "..", "lib", "node_modules", "@deepseek-ai", "dsh", "node_modules", "@deepseek-ai"))
+      closureCandidates.push(join(prefix, "node_modules", "@deepseek-ai", "dsh", "node_modules", "@deepseek-ai"))
+    }
   } catch { /* optional probe */ }
   const closure = closureCandidates.find((p) => existsSync(join(p, "dsh-tool-str-replace-editor")))
   checks.push(["the harness really ships a str-replace-editor package (row not composed != tool absent)", Boolean(closure)])
@@ -159,16 +175,34 @@ function selfTest() {
   console.log("[" + SLUG + " self-test] ok: " + checks.length + " checks")
 }
 
-/** Resolve the `dsh` binary path without a shell dependency. */
+/**
+ * Resolve the `dsh` launcher WITHOUT a shell. `sh -c "command -v dsh"` is a POSIX-only shape:
+ * on Windows the `sh` that answers is Git Bash / MSYS and prints a POSIX path
+ * (`/c/Users/<user>/AppData/Roaming/npm/dsh`) that node cannot use. The PATH scan is the
+ * platform-native equivalent (see preset-conformance.mjs for the same helper).
+ */
 function spawnSyncPath() {
-  try { return execFileSync("sh", ["-c", "command -v dsh"], { encoding: "utf8" }).trim() } catch { return "" }
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")
+  const names = process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh.bat", "dsh"] : ["dsh"]
+  for (const dir of dirs) {
+    if (dir === "") continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return ""
 }
 
 function runAsync(cmd, args, opts = {}) {
   // The stub server runs INSIDE this process, so the dsh child must be started asynchronously:
   // a synchronous spawn blocks the event loop and the child can never reach the stub.
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
+    // `cmd` may be the bare launcher name ("dsh"): see lib/dsh-launcher.mjs for why that is not
+    // portable on win32 (npm installs a `.cmd` shim; node refuses it without a shell).
+    const spec = cmd === "dsh" ? dshCommand(args, opts.env ?? process.env) : { command: cmd, args }
+    if (spec === null) { resolve({ status: -1, out: DSH_MISSING }); return }
+    const child = spawn(spec.command, spec.args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
     let out = ""
     child.stdout.on("data", (d) => { out += d })
     child.stderr.on("data", (d) => { out += d })
@@ -236,7 +270,7 @@ function makeSandbox(tag) {
   const ws = join(runHome, "ws")
   mkdirSync(ws, { recursive: true })
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  if (existsSync(creds)) cpSync(creds, join(dshHome, ".credentials.yaml"))
+  seedSandboxCredentials(dshHome, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(dshHome, "settings.yaml"))
   if (join(dshHome).startsWith(homedir() + "/.dsh")) fail("isolation assertion: DSH_HOME points at the real home")

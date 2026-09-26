@@ -83,13 +83,23 @@ test("svn backend wiring with fake svn CLIs", async () => {
   const fakeBin = join(dir, "fakebin")
   mkdirSync(fakeBin, { recursive: true })
   const svnLog = join(fakeBin, "svn.log")
-  writeFileSync(join(fakeBin, "svnadmin"), "#!/bin/sh\necho \"$*\" >> " + svnLog + "\nif [ \"$1\" = create ]; then mkdir -p \"$2/db\"; fi\nexit 0\n")
-  writeFileSync(join(fakeBin, "svn"), "#!/bin/sh\necho \"$*\" >> " + svnLog + "\ncase \"$1\" in\ncheckout) mkdir -p \"$3/.svn\";;\nadd|commit) :;;\nesac\nexit 0\n")
-  const chmod = await import("node:fs/promises")
-  await chmod.chmod(join(fakeBin, "svnadmin"), 0o755)
-  await chmod.chmod(join(fakeBin, "svn"), 0o755)
+  // The fake CLIs must be the PLATFORM's own kind of executable. The `#!/bin/sh` fixtures below
+  // are invisible to a Windows spawn (measured: `spawn error: Executable not found in $PATH:
+  // "svnadmin"`), so win32 gets the same two shims as batch files with the same protocol.
+  if (process.platform === "win32") {
+    writeFileSync(join(fakeBin, "svnadmin.cmd"), "@echo off\r\necho %* >> \"" + svnLog + "\"\r\nif \"%1\"==\"create\" mkdir \"%2\\db\"\r\nexit /b 0\r\n")
+    writeFileSync(join(fakeBin, "svn.cmd"), "@echo off\r\necho %* >> \"" + svnLog + "\"\r\nif \"%1\"==\"checkout\" mkdir \"%3\\.svn\"\r\nexit /b 0\r\n")
+  } else {
+    writeFileSync(join(fakeBin, "svnadmin"), "#!/bin/sh\necho \"$*\" >> " + svnLog + "\nif [ \"$1\" = create ]; then mkdir -p \"$2/db\"; fi\nexit 0\n")
+    writeFileSync(join(fakeBin, "svn"), "#!/bin/sh\necho \"$*\" >> " + svnLog + "\ncase \"$1\" in\ncheckout) mkdir -p \"$3/.svn\";;\nadd|commit) :;;\nesac\nexit 0\n")
+    const chmod = await import("node:fs/promises")
+    await chmod.chmod(join(fakeBin, "svnadmin"), 0o755)
+    await chmod.chmod(join(fakeBin, "svn"), 0o755)
+  }
   const oldPath = process.env.PATH
-  process.env.PATH = fakeBin + ":" + oldPath
+  // The PATH separator is platform-specific (win32 uses ";"): ":" produced a single, unrunnable
+  // entry on Windows, so the real system PATH disappeared from the child's environment.
+  process.env.PATH = fakeBin + (process.platform === "win32" ? ";" : ":") + oldPath
   const { tools, restore } = makePlugin(dir, { vcs: "svn", dir: ".mpd", agentSlug: "t2" })
   const write = tools.find((t) => t.name === "mpd_memory_write")
   const res = await write.execute({ title: "svn note", content: "svn content" }, {})

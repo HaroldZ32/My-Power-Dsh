@@ -1,0 +1,10 @@
+$ dsh-tui   # with stdout piped (not a TTY)
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EROFS: read-only file system, open '/root/.dsh/profiles/dsh-tui/cordis.yml'
+    at writeFileSync (node:fs:2422:20)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:209:2)
+    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:233:18)
+exit=1

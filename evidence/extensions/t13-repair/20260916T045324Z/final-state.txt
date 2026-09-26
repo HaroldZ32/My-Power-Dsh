@@ -1,0 +1,25 @@
+t13 final state — 2026-09-16T04:56:01Z
+HEAD: 8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+
+=== git status --porcelain ===
+ M VENDOR_LOCK.json
+ M scripts/pack-mpd.mjs
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/
+?? evidence/extensions/extension-lifecycle/2026-09-16T04-54-42.210Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-44-32.737Z/
+?? evidence/extensions/extension-mcp-bridge/2026-09-16T04-54-24.090Z/
+?? evidence/extensions/t13-repair/
+?? evidence/extensions/t7-verify/20260916T044344Z/
+
+=== sha256 of the four changed tracked files ===
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6  VENDOR_LOCK.json
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76  skills/dsh-qa/SKILL.md
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9  skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+
+=== the SKILL.md diff of the corpus (single skills writer) ===
+ skills/dsh-qa/SKILL.md                         |  4 +--
+ skills/dsh-qa/scripts/extension-mcp-bridge.mjs | 41 +++++++++++++++++++-------
+ 2 files changed, 32 insertions(+), 13 deletions(-)

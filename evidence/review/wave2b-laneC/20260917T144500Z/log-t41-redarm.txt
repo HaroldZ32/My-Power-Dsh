@@ -1,0 +1,14 @@
+{
+  "baseline_passed": true,
+  "pinned_passed": true,
+  "negative_control_reddened": true,
+  "pinned_entry_status": "MISSING",
+  "others_still_ok": [
+    "node=ok",
+    "codegraph=ok",
+    "lsp=ok",
+    "git-bash=ok",
+    "comment-checker=ok"
+  ],
+  "failed_arms": []
+}

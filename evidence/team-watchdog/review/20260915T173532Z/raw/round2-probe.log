@@ -1,0 +1,155 @@
+{
+ "candidateShape": "teamId,taskId,attemptId,assignee,memberKey,lastSeen,lastKind,everStampedForTask",
+ "crossTeam": {
+  "keyA": "team-a\u0000t1\u0000",
+  "keyB": "team-b\u0000t1\u0000",
+  "seq": [
+   {
+    "tick": 0,
+    "A": [
+     "warn:1:team-a"
+    ]
+   },
+   {
+    "tick": 0,
+    "B": [
+     "warn:1:team-b"
+    ]
+   },
+   {
+    "tick": 1,
+    "A": [
+     "warn:2:team-a"
+    ]
+   },
+   {
+    "tick": 1,
+    "B": [
+     "warn:2:team-b"
+    ]
+   },
+   {
+    "tick": 2,
+    "A": [
+     "escalate:3:team-a"
+    ]
+   },
+   {
+    "tick": 2,
+    "B": [
+     "escalate:3:team-b"
+    ]
+   },
+   {
+    "tick": 3,
+    "A": []
+   },
+   {
+    "tick": 3,
+    "B": []
+   }
+  ],
+  "escalated": [
+   "team-a\u0000t1\u0000",
+   "team-b\u0000t1\u0000"
+  ]
+ },
+ "turnEnd": {
+  "lastKind": "turn-end",
+  "decisions": [
+   [],
+   [],
+   [],
+   []
+  ],
+  "escalated": []
+ },
+ "oneEscalateNoFourthWarn": [
+  [
+   "warn:1"
+  ],
+  [
+   "warn:2"
+  ],
+  [
+   "escalate:3"
+  ],
+  [],
+  []
+ ],
+ "newAttemptStartsClean": {
+  "old": [
+   "warn:1"
+  ],
+  "fresh": [
+   "warn:1"
+  ]
+ },
+ "flapping": {
+  "seq": [
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none",
+   "warn",
+   "none"
+  ],
+  "escalated": []
+ },
+ "frozenThresholds": {
+  "threshold": 90000,
+  "streakToEscalate": 3,
+  "atThreshold": [],
+  "justOver": [
+   "warn"
+  ]
+ },
+ "neverStarted": {
+  "lastSeen": null,
+  "everStamped": false,
+  "decisions": [
+   [
+    "never-started"
+   ],
+   []
+  ]
+ },
+ "w11_2": {
+  "otherAttempt": {
+   "teamId": "t",
+   "taskId": "t1",
+   "attemptId": "att-2",
+   "assignee": "Architect",
+   "memberKey": "architect",
+   "lastSeen": null,
+   "lastKind": null,
+   "everStampedForTask": false
+  },
+  "sameAttempt": {
+   "teamId": "t",
+   "taskId": "t1",
+   "attemptId": "att-2",
+   "assignee": "Architect",
+   "memberKey": "architect",
+   "lastSeen": 222,
+   "lastKind": "step",
+   "everStampedForTask": true
+  },
+  "attemptless": {
+   "teamId": "t",
+   "taskId": "t1",
+   "attemptId": "att-2",
+   "assignee": "Architect",
+   "memberKey": "architect",
+   "lastSeen": 333,
+   "lastKind": "step",
+   "everStampedForTask": true
+  }
+ }
+}

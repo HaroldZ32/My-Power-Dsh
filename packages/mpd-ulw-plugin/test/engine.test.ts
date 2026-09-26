@@ -1,10 +1,14 @@
 import { test, expect } from "bun:test"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
-import { join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
+// The HARNESS'S OWN output validator, vendored in the adopted plugin's runtime closure and
+// imported by RELATIVE path (never a bare host specifier): the DECLARED output schema is
+// checked here exactly as the harness checks a tool result at runtime.
+import { assertSupportedJsonSchema, validateJsonSchemaValue } from "../../mpd-agent-teams-plugin/_deps/dsh-tools/lib/index.js"
 
-function makeCtx() {
+function makeCtx(overrides: Record<string, any> = {}) {
   const tools: any[] = []
   const calls: string[] = []
   const spawns: any[] = []
@@ -14,7 +18,10 @@ function makeCtx() {
     "-r1": { structured: { status: "complete", wave: "d1", summary: "done", evidence: ["utils.txt exists"], nextSteps: [], blocker: "", criteria: [{ key: "1", label: "create file", state: "clean", evidence: ["e"] }] } },
     "-r2": { structured: { status: "continue", wave: "d2", summary: "noop", evidence: [], nextSteps: ["x"], blocker: "", criteria: [] } },
     "-verify0": { structured: { verdict: "approve", concerns: [] } },
-    "-gate": { structured: { lanes: [{ lane: "code quality", verdict: "PASS", evidence: "ok" }, { lane: "hands-on QA", verdict: "PASS", evidence: "ok" }, { lane: "goal verification", verdict: "PASS", evidence: "ok" }] } }
+    "-gate": { structured: { lanes: [{ lane: "code quality", verdict: "PASS", evidence: "ok" }, { lane: "hands-on QA", verdict: "PASS", evidence: "ok" }, { lane: "goal verification", verdict: "PASS", evidence: "ok" }] } },
+    // A caller may override ONE canned arm (e.g. a gate lane verdict FAIL) without
+    // disturbing the shared defaults the other tests rely on as positive controls.
+    ...overrides
   }
   const ctx: any = {
     tools: {
@@ -55,10 +62,42 @@ test("engine policy: plan -> round -> verify -> quality gate with ledger", async
   expect(state.status).toBe("complete")
   expect(state.criteria.length).toBe(1)
   expect(state.criteria[0].state).toBe("clean")
-  const ledger = readFileSync(join(stateDir, res.stateFile.split("/").slice(-2, -1)[0], "ledger.jsonl"), "utf8")
+  // dirname/basename, never split("/"): a native win32 path has no "/" to split on, and the
+  // POSIX spelling fed `join()` an `undefined` segment (ERR_INVALID_ARG_TYPE).
+  const ledger = readFileSync(join(stateDir, basename(dirname(res.stateFile)), "ledger.jsonl"), "utf8")
   expect(ledger).toContain("verification")
   expect(ledger).toContain("quality-code quality")
   expect(ledger).toContain("quality-goal verification")
+})
+
+// NEGATIVE CONTROL for the run above (t9 review finding): a quality gate lane that verdicts
+// FAIL must BLOCK the run — `complete` can never be reported over a failed lane — and the
+// failing lane is stamped in the ledger. The completed run above stays the positive control.
+test("quality gate: a FAIL lane blocks completion and stamps the ledger row", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-ulw-gate-fail-"))
+  const planDir = join(dir, "plans")
+  const stateDir = join(dir, "state")
+  mkdirSync(planDir, { recursive: true })
+  const { ctx, tools } = makeCtx({
+    "-gate": { structured: { lanes: [
+      { lane: "code quality", verdict: "PASS", evidence: "ok" },
+      { lane: "hands-on QA", verdict: "FAIL", evidence: "measured a real defect" },
+      { lane: "goal verification", verdict: "PASS", evidence: "ok" }
+    ] } }
+  })
+  apply(ctx, { planDir, stateDir, provider: "deepseek-official", model: "deepseek-v4-flash" })
+  const tool = tools.find((t) => t.name === "mpd_ultrawork")
+  const res = await tool.execute({ objective: "create utils.txt with alpha/beta/gamma", tier: "light", plan: true, strictReview: true, maxRounds: 2 }, { agent: {} })
+  expect(res.status).toBe("blocked")
+  // The other gates still ran and approved: the FAIL lane alone is what blocks.
+  expect(res.verdict).toBe("approve")
+  expect(res.ledger.find((lane: any) => lane.lane === "hands-on QA")?.verdict).toBe("FAIL")
+  const state = JSON.parse(readFileSync(res.stateFile, "utf8"))
+  expect(state.status).toBe("blocked")
+  const ledger = readFileSync(join(stateDir, basename(dirname(res.stateFile)), "ledger.jsonl"), "utf8")
+  expect(ledger).toContain('"lane":"quality-hands-on QA","verdict":"FAIL"')
+  expect(ledger).toContain('"lane":"quality-code quality","verdict":"PASS"')
+  expect(ledger).toContain('"lane":"quality-goal verification","verdict":"PASS"')
 })
 
 test("engine alias and 2-fruitless-waves stop", async () => {
@@ -71,7 +110,7 @@ test("engine alias and 2-fruitless-waves stop", async () => {
   const tool = tools.find((t) => t.name === "mpd_ultrawork")
   const res = await tool.execute({ objective: "noop objective", tier: "light", plan: false, maxRounds: 5 }, { agent: {} })
   // rounds r1 complete+clean (canned) -> complete; fruitless path not reached in this stub,
-  // but the alias must exist and return the B3 shape.
+  // but the alias must exist and return the same result fields as mpd_ultrawork.
   const alias = tools.find((t) => t.name === "mpd_ulw")
   expect(alias).toBeTruthy()
   expect(res.status).toBe("complete")
@@ -104,4 +143,62 @@ test("DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro fo
   expect(rp).toContain("Durable state:")
   expect(rp).toContain("Recent handoff:")
   expect(rp).not.toContain("Previous handoff:")
+  // The autonomy policy is NOT folded into the child-round directive: the session-start
+  // gate never qualifies a child session, so a team clause there would instruct a
+  // subagent to do what the platform forbids (requirements contract §3).
+  expect(rp).not.toContain('approval="automatic"')
+  expect(rp).not.toContain("TRIAGE FIRST")
+})
+
+// The t16 defect class: a DECLARED output schema that REJECTS the engine's own result. The
+// schema said `planFile: {type:"string"}` while the engine returned null for every
+// plan=false run, so the harness refused the result with `"value.planFile" must be a
+// string`. These tests bind the declared schema OBJECT to REAL engine results, so the
+// declaration and the value can never drift apart unnoticed again.
+test("the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-ulw-schema-"))
+  const planDir = join(dir, "plans")
+  const stateDir = join(dir, "state")
+  mkdirSync(planDir, { recursive: true })
+  const { ctx, tools } = makeCtx()
+  apply(ctx, { planDir, stateDir, provider: "deepseek-official", model: "deepseek-v4-flash" })
+  const tool = tools.find((t) => t.name === "mpd_ultrawork")
+  const schema = tool.output.schema // THE DECLARED OBJECT — the same reference, never a copy
+  expect(() => assertSupportedJsonSchema(schema)).not.toThrow()
+  // plan=false is the /ulw command default and the alias path: no plan file exists, and
+  // `planFile` is deliberately absent from `required`, so the key is OMITTED.
+  const light = await tool.execute({ objective: "noop objective", tier: "light", plan: false, maxRounds: 1 }, { agent: {} })
+  expect("planFile" in light).toBe(false)
+  expect(validateJsonSchemaValue(schema, light)).toEqual([])
+  // plan=true writes one and reports its path.
+  const planned = await tool.execute({ objective: "noop planned", tier: "light", plan: true, maxRounds: 1 }, { agent: {} })
+  expect(typeof planned.planFile).toBe("string")
+  expect(validateJsonSchemaValue(schema, planned)).toEqual([])
+  // NEGATIVE CONTROL: the validator really does police this property, so the empty
+  // violation lists above are meaningful — the retired null shape is rejected by the
+  // harness's own wording.
+  const retired = validateJsonSchemaValue(schema, { ...light, planFile: null })
+  expect(retired.length).toBe(1)
+  expect(String(retired[0])).toContain("planFile")
+})
+
+test("the mpd_ulw alias path (hardcoded plan=false) is exercised and its result matches its DECLARED schema", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-ulw-schema-alias-"))
+  const planDir = join(dir, "plans")
+  const stateDir = join(dir, "state")
+  mkdirSync(planDir, { recursive: true })
+  const { ctx, tools } = makeCtx()
+  apply(ctx, { planDir, stateDir, provider: "deepseek-official", model: "deepseek-v4-flash" })
+  const alias = tools.find((t) => t.name === "mpd_ulw")
+  expect(alias).toBeTruthy()
+  const schema = alias.output.schema // THE DECLARED OBJECT — the same reference
+  expect(() => assertSupportedJsonSchema(schema)).not.toThrow()
+  // The alias hardcodes plan=false, which is exactly the path that handed callers an
+  // invalid result before t16.
+  const result = await alias.execute({ objective: "noop alias", maxRounds: 1 }, { agent: {} })
+  expect(validateJsonSchemaValue(schema, result)).toEqual([])
+  expect(typeof result.status).toBe("string")
+  expect(typeof result.rounds).toBe("number")
+  expect(typeof result.finalReport).toBe("string")
+  expect(typeof result.stateFile).toBe("string")
 })

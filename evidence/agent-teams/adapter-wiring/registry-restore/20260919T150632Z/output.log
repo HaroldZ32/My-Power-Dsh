@@ -1,0 +1,34 @@
+# t6 registry-restore evidence — started 2026-09-19T15:06:32Z
+
+## settled-hash sandwich (start == end proves no lane edited while we measured)
+f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3  scripts/patch-agent-teams-fixes.mjs
+7cfbd1e5adca619937794b2fd5bc52eed259572700327c8943910cb6ef5e56c5  packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+
+### verify 1: bun test packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+ 21 pass
+ 0 fail
+ 1508 expect() calls
+Ran 21 tests across 81 files. [23.42s]
+exit=0
+
+### verify 2: bun test packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+ 9 pass
+ 0 fail
+ 52 expect() calls
+Ran 9 tests across 81 files. [9.93s]
+exit=0
+
+### verify 3: node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+
+## sha256 pins at 2026-09-19T15:07:08Z
+ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b  packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+3bf538b4fbb6e023826604143b6ebaf6c6d0668909d1015dcb3b575eb213e551  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3  scripts/patch-agent-teams-fixes.mjs
+7cfbd1e5adca619937794b2fd5bc52eed259572700327c8943910cb6ef5e56c5  packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+
+## settled-hash sandwich (end)
+f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3  scripts/patch-agent-teams-fixes.mjs
+7cfbd1e5adca619937794b2fd5bc52eed259572700327c8943910cb6ef5e56c5  packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+SETTLED: start == end

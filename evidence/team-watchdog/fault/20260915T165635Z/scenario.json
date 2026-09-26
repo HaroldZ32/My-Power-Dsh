@@ -1,0 +1,215 @@
+{
+  "injectedScenarios": {
+    "member-stops-stepping": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attemptId": "att-1"
+          }
+        ]
+      },
+      "injection": "three step stamps at base+0/+1000/+2000, then NO further stamp (the turn stops stepping)",
+      "ticks": [
+        {
+          "at": "lastStamp + 89_000",
+          "expect": "no decision"
+        },
+        {
+          "at": "lastStamp + 90_001",
+          "expect": "one WARN"
+        }
+      ]
+    },
+    "captain-wedge": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t9",
+            "status": "in_progress",
+            "assignee": "captain",
+            "attempt": 1,
+            "attemptId": "att-cap"
+          },
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attemptId": "att-1"
+          }
+        ]
+      },
+      "injection": "the CAPTAIN holds t9, stamps once at base, then goes silent; the member keeps stamping (not a candidate); NO agent turn is driven — only the process-level tick",
+      "ticks": [
+        {
+          "at": "base + 90_001",
+          "expect": "one WARN attributed to memberKey 'captain'"
+        }
+      ]
+    },
+    "warn-90s": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attemptId": "att-1"
+          }
+        ]
+      },
+      "injection": "one step stamp at base, then silence; ticks at base+89_999 (below the frozen 90 000) and base+90_001 (above it)",
+      "ticks": [
+        {
+          "at": "base + 89_999",
+          "expect": "no decision"
+        },
+        {
+          "at": "base + 90_001",
+          "expect": "exactly ONE WARN with a snapshot"
+        }
+      ]
+    },
+    "escalate-3x": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attemptId": "att-1"
+          }
+        ]
+      },
+      "injection": "one step stamp at base, then three consecutive ticks at +90_001/+105_001/+120_001, then a fourth at +135_001",
+      "ticks": [
+        {
+          "at": "3 ticks",
+          "expect": "warn, warn, escalate"
+        },
+        {
+          "at": "4th tick",
+          "expect": "NOTHING (no fourth WARN, no second ESCALATE)"
+        }
+      ]
+    },
+    "pause-preserves": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 3,
+            "attemptId": "att-live",
+            "output": "partial result",
+            "handoffId": "handoff-1"
+          }
+        ]
+      },
+      "injection": "the hold lands through the plugin's own session-watchdog-hold action while t1 is in flight",
+      "ticks": [
+        {
+          "at": "held kick",
+          "expect": "0 deliveries, the record byte-identical"
+        },
+        {
+          "at": "after session-watchdog-resume",
+          "expect": "dispatch resumes"
+        }
+      ]
+    },
+    "pause-preserves-halt-control": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 3,
+            "attemptId": "att-live",
+            "output": "partial result",
+            "handoffId": "handoff-1"
+          }
+        ]
+      },
+      "injection": "the SAME fixture, but the pause is performed by the REAL adopted haltTeamWork (the mass-cancel path) — imported, not stubbed",
+      "ticks": [
+        {
+          "at": "after haltTeamWork",
+          "expect": "t1 is CANCELLED, cancelledTasks >= 1, the record CHANGED"
+        }
+      ]
+    },
+    "scene-restore": {
+      "team": {
+        "id": "fault-probe",
+        "phase": "running",
+        "members": [
+          "Architect"
+        ],
+        "tasks": [
+          {
+            "id": "t1",
+            "status": "in_progress",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attemptId": "att-1"
+          }
+        ]
+      },
+      "injection": "silence to ESCALATE, then read the scene/hold/incidents back with plain fs (a fresh-process shape)",
+      "ticks": [
+        {
+          "at": "3 ticks",
+          "expect": "a scene + a hold + 3 incidents on disk, parsed without the plugin's reader"
+        }
+      ]
+    }
+  },
+  "clock": {
+    "base": 1700000000000
+  },
+  "frozen": {
+    "warnSilenceMs": 90000,
+    "tickIntervalMs": 15000,
+    "warnStreakToEscalate": 3,
+    "actionOnEscalate": "pause"
+  }
+}

@@ -9,6 +9,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { credentialDescriptor, credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const JOB = "List the files in the current working directory (first use the bash tool with pwd and ls), then answer only: which tools you called and how many files are in the directory."
@@ -29,7 +31,7 @@ const FIXTURE_ROW = "- id: agent-default-model\n  config:\n    provider: deepsee
 // consumed whole (no `<baseUrl>/node_modules/<abs-repo>` splice — the wave-3
 // QA-harness fidelity defect), so no CLI/binary env pin is pre-set here either.
 const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
-const BASEURL_PREFIX = '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\\/\\//, "").replace(/\\/+$/, "") : "") + '
+const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
@@ -59,8 +61,8 @@ function runReal() {
   let failed = false
   for (const [key, t] of Object.entries(TRACKS)) {
     const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-    if (existsSync(creds)) cpSync(creds, join(sandbox, ".credentials.yaml"))
-    else { console.error("[llm-dual-track] missing credentials: " + creds); failed = true; continue }
+    const credential = seedSandboxCredentials(sandbox, { credentialsFile: creds })
+    if (!credential.present) { console.error("[llm-dual-track] missing credentials: " + JSON.stringify(credentialDescriptor(credential))); failed = true; continue }
     // Copy the live settings too: the gateway provider chain (llm-pi-ai +
     // agent-default-model) lives there; without it headless falls back to the
     // base deepseek-official route and dies MISSING_CREDENTIAL.
@@ -74,12 +76,13 @@ function runReal() {
     for (const p of patchArgs) args.push("--patch", p)
     args.push(JOB)
     const t0 = Date.now()
-    const env = { ...process.env, DSH_HOME: sandbox }
+    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
     if (env.DSH_HOME !== sandbox) { console.error("[llm-dual-track] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // Workspace isolation: the session workspace is the spawn cwd, so boot inside a
     // sandbox workspace (DSH_HOME alone does not isolate workspace-scoped state).
     const ws = sandboxWorkspace(sandbox)
-    const run = spawnSync("dsh", args, { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
+    const runSpec = dshCommand(args, env)
+    const run = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
     assertSessionsSandboxed(sandbox, sandbox, { label: "llm-dual-track/" + key })
     const ms = Date.now() - t0
     const out = (run.stdout || "") + (run.stderr || "")

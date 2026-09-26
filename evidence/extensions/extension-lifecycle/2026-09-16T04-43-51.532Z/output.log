@@ -1,0 +1,98 @@
+=== install ===
+ams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              reasoning_effort: max
+              role: orchestration / integration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              reasoning_effort: max
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== main arm (exit 0, 10371ms) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-f804p7/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] Shared daemon unavailable; serving this session in-process (degraded).
+lifecycle-main-done
+
+
+=== failure arm (exit 0) ===
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-f804p7/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-f804p7/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+lifecycle-failure-done
+
+
+=== session-a (cwd=/tmp/mpd-extension-lifecycle-f804p7/ws-a) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-f804p7/ws-a
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+isolation-session-a
+
+
+=== session-b (cwd=/tmp/mpd-extension-lifecycle-f804p7/ws-b) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-f804p7/ws-b
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+isolation-session-b
+
+
+=== decoy-cwd-control (cwd=/tmp/mpd-extension-lifecycle-f804p7/decoy) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-f804p7/decoy
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+isolation-decoy-cwd-control
+
+
+=== packed arm (pack exit 1) ===
+[pack-mpd] FAIL: the patch mounts packages/mpd-team-watchdog-plugin/dist/index.js but the packed tree has no such file
+

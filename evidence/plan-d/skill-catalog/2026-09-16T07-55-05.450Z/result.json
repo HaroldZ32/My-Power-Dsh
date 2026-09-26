@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "count": 0,
+      "path": "/tmp/mpd-skill-QmQtZk/skills"
+    },
+    "noPresetCopy": {
+      "ok": true,
+      "path": "/tmp/mpd-skill-QmQtZk/.agent-presets"
+    },
+    "servedFromBundle": {
+      "ok": true,
+      "path": "/root/dshProj/my-power-dsh/dist/mpd-package/skills"
+    },
+    "catalog": {
+      "ok": true,
+      "total": 18,
+      "bundled": 18,
+      "expected": 18,
+      "fixture": {
+        "state": "ok",
+        "name": "svn-master",
+        "base": "/root/dshProj/my-power-dsh/dist/mpd-package/skills/svn-master",
+        "bytes": 5210
+      },
+      "exit": 0
+    }
+  }
+}

@@ -20,18 +20,16 @@ dist/mpd-package/
 # workspace-scoped runtime state (team/memory/plans/config) — never committed
 .mpd/
 
-# RTL phase-1 scratch: research clones (.research/) and the workspace-local cocotb venv (.venv-rtl/, .venv*)
+# local scratch: research clones (.research/) and workspace-local virtualenvs (.venv*)
 .research/
-.venv-rtl/
 .venv*/
 
-# verilator/cocotb build artifacts (never commit compiled objects)
+# compiled build artifacts (never commit objects)
 .sim_build/
 sim_build/
 obj_dir/
 *.o
 *.a
-simv_iverilog
 compile.log
 .review-tmp2/
 .review-tmp*/
@@ -45,3 +43,49 @@ __pycache__/
 # files, and one command regenerates any artifact:
 #   node evidence/mpd-naming/wave2/raw/build-repro.mjs <artifact> --apply-scrub --compare
 evidence/**/raw/scratch/
+
+# Sandbox WORKING AREAS that lanes create inside their own evidence dir. They hold an isolated
+# DSH home, a sandbox HOME, the fixture workspace and a package store — machine-generated
+# hundreds of MB that a lane regenerates on every run (measured 2026-09-15: 291 MB / 5308 files
+# under evidence/mpd-bridge/dual-path/sandbox alone). The EVIDENCE is REPORT.md + raw/ beside it,
+# never this: committing a store snapshot would bloat the repository for no information.
+# NO trailing slash, on purpose: a `sandbox` that is a SYMLINK (measured 2026-09-19:
+# evidence/web-card-catalog/20260918T073000Z/sandbox -> ../20260918T055042Z/sandbox) is not a
+# directory to git, so the directory-only `evidence/**/sandbox/` left it untracked and one
+# `git add -A` would have committed a link into machine state that is itself ignored.
+evidence/**/sandbox
+
+# Packed-tree BUILD PRODUCTS that a lane regenerates on demand. The t70 packer harness writes a FULL
+# artifact (18 MB / 1190 files) under its own evidence dir to prove the closure gate against a fresh
+# pack without touching the canonical one; what stays committed is the file list + hashes beside it
+# (`scratch-artifact-*.files.txt`) and the pinned regeneration command. Same policy as the two rules
+# above — measured 2026-09-17.
+evidence/**/scratch-artifact*/
+evidence/**/scratch-control*/
+
+# REGENERABLE copies of a BUILD PRODUCT inside a lane's evidence. A lane that proves the closure/pack gate
+# copies a whole packed tree under `raw/final/` to read it; the artifact itself is gitignored
+# (`dist/mpd-package/`), and the copy carries no information that the file list + hashes beside it do not.
+# Measured 2026-09-17: 2,410 tracked `raw/final/` paths = 10.68 MB of packed blob bytes, and the whole
+# `/raw/` set = 4,582 paths / 28.55 MB, inside a `.git` of 265 MB. Same policy as the three rules above.
+# FORWARD-ONLY and deliberate: wave 1 landed with those 2,410 paths ALREADY tracked and they STAY — removing
+# them post-merge would mutate the delivered record, and rewriting the commit would dangle the hashes its own
+# evidence cites by name (captain's ruling, 2026-09-17). A genuine non-regenerable record that must live at
+# this exact path: `git add -f <path>`.
+evidence/**/raw/final/
+
+# QA SCRATCH ROOTS at the repository root, ignored BY SHAPE (T-77), not by name. The QA drivers create
+# throwaway roots beside the checkout; measured 2026-09-17 in skills/dsh-qa/scripts/**: `.qa-reloc`,
+# `.qa-web-client`, `.qa-shipped-path`, and on disk also `.qa-t15-dir`, `.qa-t17-*`, `.qa-t21-dir`,
+# `.qa-run-stamp`. The older rules named a few of them individually, so a NEW scratch root was
+# machine-generated-but-visible and `git add .` would stage it — the landmine T-77 names. The pattern
+# below is root-anchored and family-wide: any top-level `.qa-*` path is scratch, whatever it is called.
+# It covers BOTH shapes the drivers actually produce — measured 2026-09-17: directories (`.qa-reloc`,
+# `.qa-t15-dir`) and stamp FILES (`.qa-run-stamp`, `.qa-t17-final`, `.qa-before-dir`); a directory-only
+# pattern (`/.qa-*/`) left every stamp file visible, which is why the pattern carries no trailing slash.
+# It deliberately does NOT match a near-miss that merely shares the prefix without the `.qa-` boundary
+# (`/.quarantine-probe`, `/.qaXYZ/`, `qa-scratch/`) — those stay visible, which is the point of a SHAPE
+# rather than a longer name list. PREREQUISITE, recorded rather than assumed: the drivers' scratch-root
+# CONVENTION is lane D's (plan §4.2); the shape here is DERIVED by measuring the drivers it must cover, and
+# it can only ever ignore root paths that already begin `.qa-`.
+/.qa-*

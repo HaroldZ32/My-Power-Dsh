@@ -1,0 +1,22 @@
+### HEAL-SUITE READING (the captain's note 2), taken by the reviewer
+### baseline — the heal suite at the current revision, in the mirror
+
+ 21 pass
+ 0 fail
+ 1038 expect() calls
+Ran 21 tests across 1 file. [11.12s]
+
+### THE TRAP ARM — split the acceptance-name-match region (end marker moved INSIDE the function)
+  region end marker moved inside acceptanceCovered (region SPLITS the function)
+--write-registry:
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (96 regions)
+--check AFTER regeneration (the trap: expect GREEN):
+[patch-agent-teams-fixes] already applied: 96 mpd delta region(s) across 10 adopted file(s)
+exit=0
+### the heal suite under the SPLIT region (expect RED):
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [41.17ms]
+
+ 21 pass
+ 0 fail
+ 1038 expect() calls
+Ran 21 tests across 1 file. [9.29s]

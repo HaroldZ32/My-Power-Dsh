@@ -1,0 +1,8 @@
+verify-prober — item 2 (verifier-owned mutation)
+  ok   positive-exit — exit 0; [verify-debranding-full] probe list written to evidence/extensions/verify-skills/20260916T064350Z/raw/prober-positive.json
+  ok   positive-probe-list-complete — probes=26 list=26 findings=0 kinds=[skills,flows,roles,mcp] fields/kinds={"skills":["name","description"],"flows":["id","title","description","whenToUse"],"roles":["name","description","persona"],"mcp":["serverName","transport","command","args"]}
+  ok   mutation-applied — roles[0].name "Code Reviewer" -> "Code ReviewerX" (exactly one byte added) in a TEMP copy; the real example is untouched
+  ok   negative-exit — mutated example: exit 1 (must be 1)
+  ok   negative-reported-as-finding — findings=1; the finding names the mutated value: true
+  ok   negative-names-field — the finding names roles.name: true
+  ok   prober-selftest — exit 0; [verify-debranding-full] self-test PASS - mutation (mcp.serverName — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1) | [verify-debranding-full]

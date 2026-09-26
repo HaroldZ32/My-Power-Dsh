@@ -1,0 +1,25 @@
+arm bundle-only (composition 1) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]
+  composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+  load: booted=true signatures=[] route=405 servedSidebarClient=true
+  guard: "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+arm bundle-only -> PASS
+arm aggregate-first (composition 2) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@linxin666/dsh-web-all","@mpd-dsh/mpd"]
+  composition: exit=0 sidebarRows=[{"id":"web-ui-better-sidebar","disabledRaw":null,"enabled":true},{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+  load: booted=true signatures=[] route=405 servedSidebarClient=true
+  guard: "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+arm aggregate-first -> PASS
+arm mpd-first-aggregate-after (composition 3) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd","@linxin666/dsh-web-all"]
+  composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false},{"id":"web-ui-better-sidebar","disabledRaw":null,"enabled":true}]
+  load: booted=true signatures=[] route=405 servedSidebarClient=true
+  guard: "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+arm mpd-first-aggregate-after -> PASS
+arm tui-plane (composition 4) bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"]
+  composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+  load: booted=true signatures=[] failures=[]
+  guard: "\u001b[?2004l\r[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition\r"
+arm tui-plane -> PASS
+arm package-absent (composition 5) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]
+  composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+  load: booted=true signatures=[] route=404 servedSidebarClient=false
+  guard: "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+arm package-absent -> PASS

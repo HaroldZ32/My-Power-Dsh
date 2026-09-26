@@ -1,0 +1,55 @@
+{
+  "schema": "laneB/review-wave2b-laneD/1",
+  "captured_at": "2026-09-17T14:59:09.400Z",
+  "reviewed_task": "t18",
+  "verdict": "needs_revision",
+  "findings": [
+    {
+      "id": "R-D-F1",
+      "severity": "blocker",
+      "file": "skills/dsh-qa/scripts/{mount-assert,agent-teams-adopt,workmate-library,bundle-lifecycle,team-route-rewire}.mjs",
+      "problem": "the T-69 wrapper rewrite references an UNDEFINED identifier REPO (the files bind repoRoot or nothing at all). Reproduced by running the lane's own declared --only selection: exit 1, 5 FAIL, and every failing lane's log carries `ReferenceError: REPO is not defined`; mount-assert's stack names the lane's new line in main(). Static pair: `join(REPO` uses at HEAD = 0 for four of the five (bundle-lifecycle's only pre-edit hit is a comment), and NO file defines a REPO binding.",
+      "requiredFix": "replace join(REPO, ...) with the file's own repoRoot (or import/bind REPO) in the five files, then re-run the declared --only selection and keep the new reading"
+    },
+    {
+      "id": "R-D-F2",
+      "severity": "high",
+      "file": "evidence/dsh-qa/wave2b-laneD/20260917T143544Z/README.md + lanes-only.log",
+      "problem": "the evidence explains the subset red as a missing-prerequisite / UNAVAILABLE class, but the red is the lane's own ReferenceError in five lanes; and the kept lanes-only.log ran only 3 case lines (wave2b-lane-d, workmate-team-member, session-start-team) rather than the 10 declared, so the declared selection was never fully executed as evidence.",
+      "requiredFix": "after F1, run the FULL declared selection, keep the log with its case count, and state the cause of any remaining red in its own words"
+    },
+    {
+      "id": "R-D-F3",
+      "severity": "medium",
+      "file": "skills/dsh-qa/scripts/*.mjs arms",
+      "problem": "the arms do not cover the edited path: all eleven modified drivers' --self-test exit 0 while five crash in main(); the T-69 arm only asserts the SCANNER on a raw-flag fixture, never that a rewritten call site runs.",
+      "requiredFix": "add an arm that EXECUTES one rewritten call site (or a static check that every join(REPO/… ) resolves to a defined binding) so the rewrite is falsifiable"
+    },
+    {
+      "id": "R-D-F4",
+      "severity": "low",
+      "file": "README.md §3",
+      "problem": "the lock-asserting lane kept out of --only is not NAMED in the lane's own evidence (it is named in the frozen acceptance), so a reader of the evidence alone cannot see which lane was excluded and why.",
+      "requiredFix": "name agent-teams-messaging beside the exclusion in the evidence"
+    }
+  ],
+  "verified": {
+    "single_writer": "exactly one task holds a corpus pattern (t18, skills/**)",
+    "repin_owed": "VENDOR_LOCK.json unmodified; repin-vendor --check exit 1; computed (LF) 234010aeb8e3.../324 re-derived by me and identical to the lane's preview",
+    "union_rule": "14 distinct corpus paths (13 M + 1 ??), all shas reproduced 14/14, no duplicates",
+    "check_drift": "exit 0, 46 discovered / 46 listed / 0 unlisted / 19 outside, required=10",
+    "t80": "54 files, 2 claim sets, 0 violations",
+    "lane_d_driver": "bun --self-test exit 0, 7/7 arms",
+    "test_qa_absent": true,
+    "lock_lane_excluded": "agent-teams-messaging"
+  },
+  "bounds": [
+    "T-25 live store reading not taken (no --store)",
+    "session-start-team 300s timeout unattributed",
+    "corpus digest read once at this moment"
+  ],
+  "digests": {
+    "REPRODUCTION.md": "d31b2ecc441e7396",
+    "lanes-only.log": "c34204feda30ecb1"
+  }
+}

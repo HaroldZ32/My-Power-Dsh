@@ -1,0 +1,28 @@
+=== settle check start 2026-09-17T01:21:03Z ===
+14714ccfba7f2cd8a05de2b86a86e7ff750bb15b00cea0f06b6dd6110ea3fd2d  AGENTS.md
+04589f94a2ed2130ed8accbadadba639283a4ce6baeac8e9618d2b5588c4faca  agent-references/agent-teams-deltas.md
+48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331  agent-references/index.md
+5671bf5d2641dd79ff28ad40a050e7cf92089ec4ebb0e4128f3d699d6691efa2  agent-references/troubleshooting.md
+=== settle check end 2026-09-17T01:21:53Z ===
+14714ccfba7f2cd8a05de2b86a86e7ff750bb15b00cea0f06b6dd6110ea3fd2d  AGENTS.md
+04589f94a2ed2130ed8accbadadba639283a4ce6baeac8e9618d2b5588c4faca  agent-references/agent-teams-deltas.md
+48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331  agent-references/index.md
+5671bf5d2641dd79ff28ad40a050e7cf92089ec4ebb0e4128f3d699d6691efa2  agent-references/troubleshooting.md
+--- budget re-check on settled content ---
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 42954,
+      "renderedBytes": 43258,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    }
+  ]
+}

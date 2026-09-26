@@ -1,0 +1,54 @@
+### t58 CENSUS — candidate-row discovery per id (distinctive tokens, not generic vocabulary) (2026-09-17T03:17:20Z) ###
+HEAD 646d801  file sha256 f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955  lines 69
+--- T-21  (distinctive-token hits; grep -c '<id>' = 1) ---
+  line 15  id_on_row=1  opens: 15:| an adopted-plugin / plugin-module edit does not show up in a running session (e.g. `agent_
+--- T-23  (distinctive-token hits; grep -c '<id>' = 2) ---
+  line 16  id_on_row=1  opens: 16:| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | eve
+  line 17  id_on_row=1  opens: 17:| long background work started with `nohup … &` inside a bash call dies mid-run | the file
+--- T-24  (distinctive-token hits; grep -c '<id>' = 1) ---
+  line 29  id_on_row=1  opens: 29:| bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log
+--- T-26  (distinctive-token hits; grep -c '<id>' = 1) ---
+  line 30  id_on_row=1  opens: 30:| a write fails with `[sandbox: file access denied under workspace-write mode]` | the file s
+--- T-43  (distinctive-token hits; grep -c '<id>' = 1) ---
+  line 31  id_on_row=1  opens: 31:| a QA/verification run refuses to touch the workmate library (`403 real-home-refused`) | th
+  line 54  id_on_row=0  opens: 54:| an archived workmate must come back | archive-first delete moved it to `~/.mpd/workmate/.a
+
+### CLASSIFICATION DECISIONS (candidate -> verdict) ###
+  T-21: row 15 = symptom, ID PRESENT. rows 43/45/68 = declared NOT-this-friction (reasons in result.json).
+  T-23: rows 16 + 17 = BOTH symptom rows, both ID PRESENT (t56 + t52). no others.
+  T-24: row 29 = symptom, ID PRESENT. no others.
+  T-26: row 30 = symptom, ID PRESENT. rows 22/25/31/32 = declared DIFFERENT frictions (share sandbox/HOME vocabulary).
+  T-43: row 31 = symptom, ID PRESENT but INLINE ('that is the T-43 guard doing its job'), not trailing. rows 52/53/54 = workmate-domain rows; 54 is the closest call and is DECLARED AMBIGUOUS, left alone.
+
+### per-id grep -c reading BEFORE and AFTER this census (no edit was made) ###
+  T-21  before=1..? measured now=1   (unchanged: 1)
+  T-23  before=1..? measured now=2   (unchanged: 2)
+  T-24  before=1..? measured now=1   (unchanged: 1)
+  T-26  before=1..? measured now=1   (unchanged: 1)
+  T-43  before=1..? measured now=1   (unchanged: 1)
+  file sha256 now: f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955
+  lines now: 69   bytes now: 35548
+
+### the only rows that describe a harness-close friction's symptom, quoted by opening words ###
+  line 15  | an adopted-plugin / plugin-module edit does not show up in a running session (e.g. `agent_teams_update_task` still ans
+  line 16  | a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRE
+  line 17  | long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-wit
+  line 29  | bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern. `node scripts/mpd
+  line 30  | a write fails with `[sandbox: file access denied under workspace-write mode]` | the file sandbox is WORKSPACE-WRITE (T
+  line 31  | a QA/verification run refuses to touch the workmate library (`403 real-home-refused`) | that is the T-43 guard doing i
+
+### declared-adjacent rows (share vocabulary, different friction) — opening words ###
+  line 22  | `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml` — copy it; live-LLM cases also ne
+  line 25  | codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp — use
+  line 32  | a sandboxed profile copy boots with `cannot resolve profile bundle "@mpd-dsh/mpd"` | the installed profile's
+  line 43  | installed presets stale / agents miss tools (e.g. bash) | the profile points at an old bundle — for a chec
+  line 45  | skills missing in a session | the corpus is served, not copied: check the boot log for `[mpd-bootstrap] skil
+  line 52  | `mpd_workmate_*` reports "mpdRoles service unavailable" | the `mpd-roles` plugin row is not mounted (e.g. a 
+  line 53  | `mpd_workmate_rename` / `mpd_workmate_delete` is refused "is in use by …" (409 `in-use`) | the gate found 
+  line 54  | an archived workmate must come back | archive-first delete moved it to `~/.mpd/workmate/.archive/<key>-<stam
+  line 68  | task creation is refused `inScope overlaps <task> at <paths>` | the validator checks the new task's `inScope
+
+### verify gate ###
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+verify:docs exit=0

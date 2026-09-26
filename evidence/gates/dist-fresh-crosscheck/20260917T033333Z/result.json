@@ -1,0 +1,43 @@
+{
+  "task": "cross-check (no task id; message-driven verification)",
+  "agent": "docs-gate-engineer",
+  "date": "2026-09-17T03:33:35Z",
+  "trigger": "platform-engineer's 03:12Z message: my routed workmate-dist staleness finding is a PRE-t48 snapshot; t48 rebuilt at 10:54:37 +0800; package-dir byte gap is 34–528 B across their 13 targets (their t44 prose '58-74 B' was wrong and self-corrected)",
+  "verdict": "CONFIRMED — platform-engineer's reading reproduced independently by me, byte for byte",
+  "command": "node scripts/verify-dist-fresh.mjs --json",
+  "exitCode": 0,
+  "counts": { "targets": 20, "fresh": 20, "findings": 0, "notCovered": 7, "ok": true, "durationMs": 1048 },
+  "summary_line": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 1048ms",
+  "disputed_target": {
+    "src": "packages/mpd-workmate-plugin/src/index.ts",
+    "dist": "packages/mpd-workmate-plugin/dist/index.js",
+    "status": "FRESH",
+    "committedSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+    "builtSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+    "secondBuildSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+    "committedBytes": 55875,
+    "dist_mtime": "2026-09-17 10:54:37 +0800",
+    "src_mtime": "2026-09-17 10:31:00 +0800"
+  },
+  "lane_byproduct_crossconfirmation": {
+    "packages/mpd-ext-plugin/dist/index.js": { "status": "FRESH", "sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a", "bytes": 152855 },
+    "packages/mpd-ext-plugin/dist/sdk.js": { "status": "FRESH", "sha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195", "bytes": 1708 },
+    "note": "the round-trip pair the manual's §6 build-form sentence rests on (t45/t60) is reproduced by an independent gate run"
+  },
+  "reconciliation_four_steps": [
+    "13 — pre-t44 (12 clean-at-HEAD + watchdog mid-edit)",
+    "0 — t44 bulk rebuild ~02:19Z",
+    "1 — t23's src edit 02:31Z; my routed finding was TRUE at 02:44:50Z (recorded as CURRENT in evidence/gates/dist-rebuild/20260917T021906Z/verify-gates-post-t44.log: workmate 54,704 B 401573a0… != 55,875 B 6b1715d0…)",
+    "0 — t48 rebuild at 02:54:37Z; read 0 stale / 20 fresh, findings 0, notCovered 7, ok true"
+  ],
+  "magnitude_correction_ripple_into_my_lane": {
+    "grep": "grep -n '\\-276\\|58-74\\|58–74\\|528 B\\|34–528' AGENTS.md agent-references/*.md EXTENSIONS-FOR-AGENTS.md → no matches",
+    "conclusion": "my lane states the package-dir trap qualitatively and quantifies it in LINE-COMMENT COUNTS (26 differing lines, 24 after dropping the first), which the byte-gap law 34–528 B does not touch; my single byte figure (mpd-ext-plugin −276 B) was re-confirmed by platform-engineer against their 13-target measurement"
+  },
+  "artifacts": [
+    "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/verify-dist-fresh.json.log (raw driver JSON + exit code)",
+    "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/output.log (decisive lines, three-way hash agreement, reconciliation, ripple check)",
+    "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/result.json (this file)"
+  ],
+  "scope": "read-only verification: the gate rebuilds into temp dirs; no packages/** write, no git write"
+}

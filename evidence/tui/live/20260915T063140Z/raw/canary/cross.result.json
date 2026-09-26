@@ -1,0 +1,28 @@
+{
+  "arm": "one boot, both probes: the implementer's probe9 vs my canary",
+  "tmuxFailures": [],
+  "probe9_seen_boardOpened": {
+    "pane": false,
+    "log": false
+  },
+  "probe9_fresh_neverUsedBefore9": {
+    "pane": true,
+    "log": true
+  },
+  "probe9_fresh_plain9": {
+    "pane": true,
+    "log": true
+  },
+  "mine_known_0710": {
+    "pane": true,
+    "log": true
+  },
+  "mine_plain_0710": {
+    "pane": true,
+    "log": true
+  },
+  "commandTextSeen": {
+    "pane": false,
+    "log": true
+  }
+}

@@ -1,0 +1,197 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the pre-step listener DELEGATES: the decision reaches the harness unchanged [10.63ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the listener delegates DOWNSTREAM: a later listener still runs and its decision wins [2.15ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > NEGATIVE CONTROL: the retired shape really does clobber the decision [0.89ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > no listener we install returns a value on a non-waterfall dispatch (emit/serial) [1.54ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > a THROWING stamp still delegates: a heartbeat failure never vetoes the step [1.79ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [0.66ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.60ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.68ms]
+(pass) heartbeat store > the tool pair: the PRE hook opens the call (tool-start), the POST hook closes it (tool) [1.00ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [2.32ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [15.40ms]
+(pass) heartbeat store > r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence [0.93ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.46ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.80ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.60ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=1 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [1.81ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [1.28ms]
+[mpd-team-watchdog] ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=none hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.30ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.25ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [1.09ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.32ms]
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-urfUAB/.mpd/team/watchdog/scene/team-a/20260916T023308Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-urfUAB/.mpd/team/watchdog/scene/team-a/20260916T023308Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-urfUAB/.mpd/team/watchdog/scene/team-a/20260916T023308Z-escalate.json
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [6.77ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-XVDfFv/.mpd/team/watchdog/scene/team-a/20260916T023208Z-warn.json
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [1.68ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.59ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [1.46ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.55ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+(pass) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [2.32ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=120000 tickIntervalMs=60000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.46ms]
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [1.43ms]
+(pass) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.71ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-DZqoBr/.mpd/team/watchdog/scene/team-a/20260916T023308Z-warn.json
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.17ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.75ms]
+[mpd-team-watchdog] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.38ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives beside team.json and never changes a byte of it [0.61ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.40ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.34ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.43ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.34ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.70ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.35ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [1.00ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.08ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.08ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.09ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.10ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.05ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.24ms]
+(pass) the machine > a new attemptId starts a clean streak [0.10ms]
+(pass) the machine > any recent stamp resets the streak [0.05ms]
+(pass) the machine > a claimed task whose owner never stamped is never-started, and never escalates [0.08ms]
+(pass) the machine > a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates [0.07ms]
+(pass) the machine > a stale streak is RESET by the boundary (the completed turn cannot spend it later) [0.12ms]
+(pass) the machine > W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick [0.44ms]
+(pass) the machine > W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent) [0.11ms]
+(pass) the machine > a disabled watchdog observes nothing [0.06ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-5RucBm/.mpd/team/watchdog/scene/team-a/20260916T023308Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-5RucBm/.mpd/team/watchdog/scene/team-a/20260916T023308Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-5RucBm/.mpd/team/watchdog/scene/team-a/20260916T023308Z-escalate.json
+(pass) the machine over a real team record > WARN then ESCALATE land on disk with the hold applied through the tool seam [3.03ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=20000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-qfwA8S/.mpd/team/watchdog/scene/team-a/20260916T023208Z-warn.json
+(pass) the machine over a real team record > a live knob change is picked up without a restart [1.74ms]
+
+packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts:
+(pass) r6 — the in-flight derivation (pure) > a start with no completion is in flight; its completion closes it [0.18ms]
+(pass) r6 — the in-flight derivation (pure) > callId pairing: a completed sibling cannot clear a still-running call [0.05ms]
+(pass) r6 — the in-flight derivation (pure) > a harness build without callIds falls back to the newest-stamp rule [0.04ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > 3x the threshold inside ONE call produces NO warn, NO escalate and NO hold [0.23ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > FALSIFIER: toolInFlightMaxMs 0 restores the pre-r6 escalation for the SAME input [0.13ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > past the bound the entry STOPS suppressing: one tool-expired report, never an escalate [0.13ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > the WEDGE case is untouched: no in-flight entry still warns then escalates once [0.10ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > a finished tool call is NOT in flight: the call that COMPLETED does not suppress [0.07ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=302ms streak=1 hold=not-requested scene=/tmp/watchdog-test-NKSnQ1/.mpd/team/watchdog/scene/team-a/20260916T023140Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a member 4x the threshold inside ONE real command gets NO warn, NO escalate and NO hold — and is watched again when it completes [1628.59ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=302ms streak=1 hold=not-requested scene=/tmp/watchdog-test-mOdj7T/.mpd/team/watchdog/scene/team-a/20260916T023141Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a tool that THROWS is closed by its POST (the harness routes tool failures through post-execute) [354.13ms]
+[mpd-team-watchdog-test] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=700ms (since 1789525900726, bound=600ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/tmp/watchdog-test-n2Dr9J/.mpd/team/watchdog/incidents.jsonl
+(pass) r6 — the real engine, a real long command, and the durable store > a PRE with NO POST (a killed call) is bounded: one tool-expired record, no scene, no hold, no repeat [3.95ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-RCzNGS/.mpd/team/watchdog/scene/team-a/20260916T023141Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-RCzNGS/.mpd/team/watchdog/scene/team-a/20260916T023141Z-warn-2.json
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-RCzNGS/.mpd/team/watchdog/scene/team-a/20260916T023141Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > a DENIED call is never marked in flight (nothing to explain, nothing leaked) [4.92ms]
+[mpd-team-watchdog-test] the adapter exposes no pre-tool hook — a long tool call stays indistinguishable from silence (r6 unavailable)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-ppxUGH/.mpd/team/watchdog/scene/team-a/20260916T023141Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-ppxUGH/.mpd/team/watchdog/scene/team-a/20260916T023141Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-ppxUGH/.mpd/team/watchdog/scene/team-a/20260916T023141Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > the SEAM is soft-probed: an adapter without the pre hook warns and keeps the pre-r6 behaviour [3.01ms]
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+(pass) the scene document > carries exactly the AC-5 field set [0.73ms]
+(pass) the scene document > a halted team's adopted flags are carried verbatim beside the watchdog's own hold [0.38ms]
+(pass) the scene document > write -> read round-trips byte-identically and a second identical write changes no bytes [0.68ms]
+(pass) the scene document > a scene file name is unique per incident even inside one millisecond [0.47ms]
+(pass) the scene document > isoBasic is a file-safe timestamp [0.07ms]
+(pass) the scene document > mailboxUnread mirrors the adopted predicate (tombstones and read records are not unread) [0.32ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=none
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=none
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=none
+(pass) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [2.85ms]
+(pass) an unwritable scene location > writeScene returns ok:false instead of throwing [0.37ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [0.42ms]
+(pass) capabilities > reports absent seams without throwing [0.11ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.55ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.11ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.13ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.23ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.22ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.16ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.33ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.24ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.07ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.25ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.38ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.34ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.17ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.45ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.46ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.59ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.18ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.17ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.20ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.47ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.24ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.31ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.20ms]
+(pass) row entry > decision helpers use the harness feedback key [0.10ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [3.68ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.42ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.47ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.30ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.38ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.63ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.33ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [543.08ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [0.94ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [0.99ms]
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts:
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+ 114 pass
+ 0 fail
+ 473 expect() calls
+Ran 114 tests across 18 files. [2.83s]
+exit=0

@@ -1,0 +1,71 @@
+{
+  "task": "t44 — bulk-rebuild the 13 stale package dists so the freshness gate is green",
+  "attempt_id": "ae9312f6-fa8b-4029-8dac-8235808cbd1e",
+  "agent": "platform-engineer",
+  "trigger": "t18's dist-freshness gate's first real run reported 13 of 20 targets STALE; the finding was classified as GENUINE staleness (each consumer dist inlines the shared adapter src) and routed to this task by the captain.",
+  "gate_verdict_DECISIVE": {
+    "command": "node scripts/verify-dist-fresh.mjs",
+    "before": "exit 1 — 13 of 20 targets STALE",
+    "after": "exit 0 — 'ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed'",
+    "log": "output.log (sections 'verify 1/2')"
+  },
+  "before_after_hashes": {
+    "mpd-bootstrap-plugin": {"before": "abcc1cf14d668490bf707f49cd79cb20bdf0dcc95f1886cd1287dd7b6527a4db", "after": "30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7"},
+    "mpd-boulder-plugin": {"before": "d1dcb9139a283cb161b4fbbf854a6616d36b6f57a37825e44f83843fd26b47fa", "after": "8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe"},
+    "mpd-codegraph-plugin": {"before": "209a9c9c46a80b8d905a56a78ad2b987c6789a6dcf3e4478b3ddd748a0d03bf0", "after": "0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6"},
+    "mpd-comment-checker-plugin": {"before": "6dec6aed942ab7a37aff8d5fecdd5273bf1419866037807f85fc4fcf636b2804", "after": "1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c"},
+    "mpd-hashline-plugin": {"before": "b648b5901e368b935d005f1d295e271aea68ab10fa8ba76dba7863387afd8c74", "after": "193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6"},
+    "mpd-memory-plugin": {"before": "b145e9a76d974e565a439b8377fd083628bb4aeb443ee7ac9f9a1a6160975300", "after": "f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70"},
+    "mpd-modelchain-plugin": {"before": "2103df8ee5f4c35ded92d8b98f535a8f6a743f0f5deeaf114a0c19ce4b5f1587", "after": "8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93"},
+    "mpd-qa-roles-probe": {"before": "a49573f146241c6a8ccb618960b34c52cae20ef4b5ed9f666e3b183c1c90b8ef", "after": "a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b"},
+    "mpd-team-compact-plugin": {"before": "bb7f78fb424807a849eb8c12cd9e746fd2a6d6a055cac48e27c93e575d0a2eba", "after": "23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459"},
+    "mpd-team-watchdog-plugin": {"before": "ddb30834942b3b4f755ab88adc1507a3f45b3c5268839c61544471d5eddcd53e", "after": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8"},
+    "mpd-tools-plugin": {"before": "f26afae17afaeb4e8bd248613882e728350d494023e04c22eaf05f02ca9b07e4", "after": "fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75"},
+    "mpd-ulw-plugin": {"before": "b2ad0fb030c9edd0cc83a4a23bb5821ef6f3844c56ed0e0dfe5825801971f280", "after": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce"},
+    "mpd-workmate-plugin": {"before": "e3310eb84f2cb1928ccd3a0739c05f1295bb41d9850deaaa60ff6932a6ee2156", "after": "401573a0173b03db8a6a8fe8dd38e78a9d6d3d6f1aae27de1d5d5f1faec4072a"},
+    "cross_check": "every `before` value equals the committed hash the gate itself printed in its first run, and every `after` value equals the hash the gate printed on the FRESH lines of its green run (output.log)"
+  },
+  "rebuilt": [
+    "packages/mpd-bootstrap-plugin/dist/index.js",
+    "packages/mpd-boulder-plugin/dist/index.js",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-comment-checker-plugin/dist/index.js",
+    "packages/mpd-hashline-plugin/dist/index.js",
+    "packages/mpd-memory-plugin/dist/index.js",
+    "packages/mpd-modelchain-plugin/dist/index.js",
+    "packages/mpd-qa-roles-probe/dist/index.js",
+    "packages/mpd-team-compact-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "packages/mpd-tools-plugin/dist/index.js",
+    "packages/mpd-ulw-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/dist/index.js"
+  ],
+  "build_form_DEVIATION_measured": {
+    "acceptance_parenthetical": "'the canonical per-package command … run from that package's directory'",
+    "tried_first": "cd packages/<p> && bun build src/index.ts --target node --format esm --outfile dist/index.js",
+    "result_of_that_form": "the gate STILL exits 1 on all 13 — those files are 58-74 B SMALLER and start with the banner `// src/index.ts`",
+    "root_cause": "bun build emits the entry path RELATIVE TO CWD as the output's first-line banner; the gate builds every target with cwd = the repo root, so freshness means the banner is `// packages/<p>/src/index.ts`. Measured by comparing a package-dir build (`// src/index.ts`) with a gate-FRESH artifact (`// packages/mpd-dsh-adapter-plugin/src/index.ts`).",
+    "form_that_satisfies_the_gate": "from the repo root: `bun build packages/<p>/src/index.ts --target node --format esm --outfile packages/<p>/dist/index.js` — after which the gate reports 20/20 FRESH",
+    "why_the_gate_governs": "acceptance item 1 is 'the gate's own verdict, not a byte-count argument', and the gate is what §4/§11 run; the parenthetical describes a form that measurably cannot satisfy it",
+    "FOLLOW_UP_FOR_THE_WAVE": "the packages' own `build` scripts use the package-dir form (only mpd-team-watchdog-plugin declares one today: `bun build src/index.ts … --outfile dist/index.js`), so `bun run build` there produces an artifact this gate flags STALE. Either the scripts move to the repo-root form or the gate normalizes the banner — recorded as a gate/scripts disagreement for t18/t33/t37."
+  },
+  "mechanical_only_proof": {
+    "src_settle_baseline": "all 13 src/index.ts sha256 captured BEFORE the rebuild (02:18:50Z) and re-checked identical AFTER it — file: src-after.txt",
+    "scoped_git_status": "for each of the 13 packages, `git status --porcelain -- packages/<p>` shows ONLY `M packages/<p>/dist/index.js` — file: scoped-git-status.txt",
+    "attribution_note": "mpd-team-watchdog-plugin additionally shows src/test/README modifications in the shared tree; those belong to the watchdog lane (t13), NOT to this task — this task wrote only its dist/index.js",
+    "no_src_edits_by_this_task": true
+  },
+  "mechanism_for_the_wave_report": "Each consumer plugin's `dist/index.js` INLINES `packages/mpd-dsh-adapter-plugin/src/index.ts` at build time, so the adapter's evolution (the r6 pre-tool hook, then t12's lazy-resolver additions) silently stale-copies into every consumer until each one is rebuilt. That is why the freshness gate is BINDING (§4/§11) and why the remedy is one bulk rebuild rather than 13 separate defects. Measured illustration before the rebuild: mpd-bootstrap-plugin/dist was 25,707 B / 723 lines while a fresh build of its src was 30,352 B / 856 lines, missing the whole `onPreToolExecute` implementation and the `toolsPreExecute` capability flag.",
+  "sequencing": {
+    "statement": "The captain's wave commit and the packaging lane's re-pack come AFTER this task. A re-pack before it would bake the 13 stale artifacts into `dist/mpd-package/` and then let the byte-identity leg 'confirm' the wrong thing.",
+    "revalidation_rule": "the gate is green at the src hashes recorded here; ANY later edit to one of these 13 packages' src (or to the shared adapter src, which every consumer inlines) re-reddens the corresponding target — re-run `node scripts/verify-dist-fresh.mjs` on the settled tree immediately before the commit."
+  },
+  "verify_results": {
+    "node scripts/verify-dist-fresh.mjs": {"exit": 0, "result": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed (the offline/upstream MCP artifacts, listed by the gate itself)"},
+    "bun run typecheck": {"exit": 0}
+  },
+  "unverified": [
+    "the gate's green holds at the recorded src hashes only; the shared adapter src is inlined by every consumer, so a later adapter edit invalidates all 13 at once",
+    "the pack artifact itself is untouched by this task (dist/mpd-package is out of scope and belongs to the packaging lane's post-rebuild re-pack)"
+  ]
+}

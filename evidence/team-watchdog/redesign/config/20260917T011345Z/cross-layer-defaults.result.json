@@ -1,0 +1,92 @@
+{
+  "root": "/root/dshProj/my-power-dsh",
+  "expected": {
+    "warnSilenceMs": 600000,
+    "tickIntervalMs": 15000,
+    "warnStreakToEscalate": 6,
+    "actionOnEscalate": "warn-only",
+    "toolInFlightMaxMs": 900000,
+    "holdTtlMs": 900000
+  },
+  "layers": {
+    "machine.ts": {
+      "enabled": true,
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    },
+    "settings-schema.ts": {
+      "enabled": true,
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    },
+    "cordis.patch.yml": {
+      "stateDir": ".mpd/team",
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    }
+  },
+  "comparison": [
+    {
+      "knob": "warnSilenceMs",
+      "expected": 600000,
+      "machine.ts": 600000,
+      "settings-schema.ts": 600000,
+      "cordis.patch.yml": 600000,
+      "agrees": true
+    },
+    {
+      "knob": "tickIntervalMs",
+      "expected": 15000,
+      "machine.ts": 15000,
+      "settings-schema.ts": 15000,
+      "cordis.patch.yml": 15000,
+      "agrees": true
+    },
+    {
+      "knob": "warnStreakToEscalate",
+      "expected": 6,
+      "machine.ts": 6,
+      "settings-schema.ts": 6,
+      "cordis.patch.yml": 6,
+      "agrees": true
+    },
+    {
+      "knob": "actionOnEscalate",
+      "expected": "warn-only",
+      "machine.ts": "warn-only",
+      "settings-schema.ts": "warn-only",
+      "cordis.patch.yml": "warn-only",
+      "agrees": true
+    },
+    {
+      "knob": "toolInFlightMaxMs",
+      "expected": 900000,
+      "machine.ts": 900000,
+      "settings-schema.ts": 900000,
+      "cordis.patch.yml": 900000,
+      "agrees": true
+    },
+    {
+      "knob": "holdTtlMs",
+      "expected": 900000,
+      "machine.ts": 900000,
+      "settings-schema.ts": 900000,
+      "cordis.patch.yml": 900000,
+      "agrees": true
+    }
+  ],
+  "verdict": "PASS",
+  "mismatches": []
+}

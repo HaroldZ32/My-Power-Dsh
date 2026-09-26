@@ -24,11 +24,12 @@ import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createServer } from "node:http"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { REPO_ROOT, projectKey, assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { readSessionEvents, findToolCall, recordedToolNames } from "./lib/session-evidence.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 export const REPO = REPO_ROOT
 export const EX_QA_HOME = "mpd-ext-qa"
@@ -210,7 +211,11 @@ export function createSandbox(slug) {
     HOME: runHome,
     DEEPSEEK_API_KEY: "sk-extension-qa-local-stub",
   }
-  if (dshHome.startsWith(join(process.env.HOME ?? "", ".dsh"))) fail(slug + ": isolation assertion — DSH_HOME is the real home")
+  // The real home is `$HOME` on POSIX and `%USERPROFILE%` on win32. With `process.env.HOME ?? ""`
+  // this guard degenerated to `startsWith(".dsh")` - which no absolute temp path can match - so
+  // it silently passed on Windows instead of failing a real-home leak (measured 2026-09-22).
+  const realHome = process.env.HOME || process.env.USERPROFILE || homedir()
+  if (dshHome.startsWith(join(realHome, ".dsh"))) fail(slug + ": isolation assertion — DSH_HOME is the real home")
   return { sandbox, dshHome, runHome, ws, decoy, env }
 }
 
@@ -239,7 +244,11 @@ export function useStubRoute(dshHome, port) {
 
 export function runAsync(cmd, args, opts) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
+    // `cmd` may be the bare launcher name ("dsh"): see lib/dsh-launcher.mjs for why that
+    // is not portable - and why this module resolves it in-process instead.
+    const spec = cmd === "dsh" ? dshCommand(args, opts.env ?? process.env) : { command: cmd, args }
+    if (spec === null) { resolve({ status: -1, out: DSH_MISSING }); return }
+    const child = spawn(spec.command, spec.args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
     let out = ""
     child.stdout.on("data", (piece) => { out += piece })
     child.stderr.on("data", (piece) => { out += piece })
@@ -504,7 +513,7 @@ async function selfTest() {
     check(example.apiVersion === 1, "the shipped example must declare apiVersion 1")
     check(example.enabled === false, "the shipped example must stay disabled by default")
     check(existsSync(join(exampleDir, example.contributes.roles[0].persona)), "the example role persona is missing")
-    check(existsSync(join(exampleDir, "flows", "rtl-triage-flow.json")), "the example flow file is missing")
+    check(existsSync(join(exampleDir, "flows", "change-triage-flow.json")), "the example flow file is missing")
   }
 
   // 4) the boot recipe this module depends on still exists and is wired.

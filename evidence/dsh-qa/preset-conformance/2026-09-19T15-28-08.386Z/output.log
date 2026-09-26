@@ -1,0 +1,117 @@
+--- main boot ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-preset-main-3JYDT4/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-main-3JYDT4/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+Error: credentials-local: invalid document at /tmp/mpd-preset-main-3JYDT4/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+    at parseCredentialsDocument (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+    at LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+    at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+    at file:///tmp/mpd-preset-main-3JYDT4/home/profiles/w/#credentials
+    at file:///tmp/mpd-preset-main-3JYDT4/home/profiles/w/#include
+    at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-main-3JYDT4/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+      at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+      at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+      at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+      at async Proxy.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:227:14)
+      at async mountRootInclude (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1343:20)
+      at async boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1534:3)
+      at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14) {
+    [cause]: Error: failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-main-3JYDT4/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+        at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+        at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+        at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+        at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+        at async Promise.allSettled (index 18)
+        at async EntryGroup.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:97:21)
+        at async Include._apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+      [cause]: Error: credentials-local: invalid document at /tmp/mpd-preset-main-3JYDT4/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+          at parseCredentialsDocument (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+          at LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+          at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+          at file:///tmp/mpd-preset-main-3JYDT4/home/profiles/w/#credentials
+          at file:///tmp/mpd-preset-main-3JYDT4/home/profiles/w/#include
+    }
+  }
+}
+
+Node.js v24.16.0
+
+--- control boot ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-preset-control-ok4HTw/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-control-ok4HTw/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+Error: credentials-local: invalid document at /tmp/mpd-preset-control-ok4HTw/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+    at parseCredentialsDocument (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+    at LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+    at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+    at file:///tmp/mpd-preset-control-ok4HTw/home/profiles/w/#credentials
+    at file:///tmp/mpd-preset-control-ok4HTw/home/profiles/w/#include
+    at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-control-ok4HTw/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+      at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+      at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+      at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+      at async Proxy.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:227:14)
+      at async mountRootInclude (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1343:20)
+      at async boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1534:3)
+      at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14) {
+    [cause]: Error: failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at /tmp/mpd-preset-control-ok4HTw/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+        at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+        at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+        at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+        at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+        at async Promise.allSettled (index 18)
+        at async EntryGroup.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:97:21)
+        at async Include._apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+      [cause]: Error: credentials-local: invalid document at /tmp/mpd-preset-control-ok4HTw/home/.credentials.yaml: DUPLICATE_KEY at line 9, column 1
+          at parseCredentialsDocument (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+          at LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+          at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+          at file:///tmp/mpd-preset-control-ok4HTw/home/profiles/w/#credentials
+          at file:///tmp/mpd-preset-control-ok4HTw/home/profiles/w/#include
+    }
+  }
+}
+
+Node.js v24.16.0

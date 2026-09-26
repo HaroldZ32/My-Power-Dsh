@@ -1,0 +1,4 @@
+4068616ac479a8601874f65eb5cfc04c23b34e39ce890c3acb502a953a09eb9d  scripts/verify-docs-parity.mjs
+b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0  AGENTS.md
+8e1fbb893fcb428b4059bb04cceca6980aec7d8f9f104b3c76a85de2cf13e316  templates/mpd-extension/README.md
+832ad62f8099b20a55ef5914c2b511e90cfc26e049500360dfdbce7bbfb914f5  templates/mpd-extension/README.zh-CN.md

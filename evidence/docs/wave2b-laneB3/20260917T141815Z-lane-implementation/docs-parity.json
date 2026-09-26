@@ -1,0 +1,520 @@
+{
+  "generatedAt": "2026-09-17T14:28:21.682Z",
+  "root": "/root/dshProj/my-power-dsh",
+  "pairs": [
+    {
+      "pair": "README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/architecture.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/development.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/extension-adaptation-report.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/extension-authoring-guide.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/extensions.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/feature-audit.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/index.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/tui-parity.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/tui.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/upstream-parity-ledger.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "docs/user-guide.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "extensions/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "templates/mpd-extension/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-bootstrap-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-boulder-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-bundle/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-bundle-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-codegraph-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-comment-checker-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-config-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-dsh-adapter-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-ext-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-hashline-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-mcp-astgrep/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-mcp-codegraph/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-mcp-gitbash/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-mcp-lsp/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-memory-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-modelchain-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-qa-roles-probe/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-roles-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-team-compact-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-team-watchdog-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-tools-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-tui-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-ulw-plugin/README.md",
+      "ok": true,
+      "problems": []
+    },
+    {
+      "pair": "packages/mpd-workmate-plugin/README.md",
+      "ok": true,
+      "problems": []
+    }
+  ],
+  "violations": [],
+  "checks": [
+    {
+      "pair": "README.md",
+      "id": "pair:README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/architecture.md",
+      "id": "pair:docs/architecture.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/development.md",
+      "id": "pair:docs/development.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/extension-adaptation-report.md",
+      "id": "pair:docs/extension-adaptation-report.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/extension-authoring-guide.md",
+      "id": "pair:docs/extension-authoring-guide.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/extensions.md",
+      "id": "pair:docs/extensions.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/feature-audit.md",
+      "id": "pair:docs/feature-audit.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/index.md",
+      "id": "pair:docs/index.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/tui-parity.md",
+      "id": "pair:docs/tui-parity.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/tui.md",
+      "id": "pair:docs/tui.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/upstream-parity-ledger.md",
+      "id": "pair:docs/upstream-parity-ledger.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "docs/user-guide.md",
+      "id": "pair:docs/user-guide.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "extensions/README.md",
+      "id": "pair:extensions/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "templates/mpd-extension/README.md",
+      "id": "pair:templates/mpd-extension/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-bootstrap-plugin/README.md",
+      "id": "pair:packages/mpd-bootstrap-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-boulder-plugin/README.md",
+      "id": "pair:packages/mpd-boulder-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-bundle/README.md",
+      "id": "pair:packages/mpd-bundle/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-bundle-plugin/README.md",
+      "id": "pair:packages/mpd-bundle-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-codegraph-plugin/README.md",
+      "id": "pair:packages/mpd-codegraph-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-comment-checker-plugin/README.md",
+      "id": "pair:packages/mpd-comment-checker-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-config-plugin/README.md",
+      "id": "pair:packages/mpd-config-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-dsh-adapter-plugin/README.md",
+      "id": "pair:packages/mpd-dsh-adapter-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-ext-plugin/README.md",
+      "id": "pair:packages/mpd-ext-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-hashline-plugin/README.md",
+      "id": "pair:packages/mpd-hashline-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-mcp-astgrep/README.md",
+      "id": "pair:packages/mpd-mcp-astgrep/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-mcp-codegraph/README.md",
+      "id": "pair:packages/mpd-mcp-codegraph/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-mcp-gitbash/README.md",
+      "id": "pair:packages/mpd-mcp-gitbash/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-mcp-lsp/README.md",
+      "id": "pair:packages/mpd-mcp-lsp/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-memory-plugin/README.md",
+      "id": "pair:packages/mpd-memory-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-modelchain-plugin/README.md",
+      "id": "pair:packages/mpd-modelchain-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-qa-roles-probe/README.md",
+      "id": "pair:packages/mpd-qa-roles-probe/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-roles-plugin/README.md",
+      "id": "pair:packages/mpd-roles-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-team-compact-plugin/README.md",
+      "id": "pair:packages/mpd-team-compact-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-team-watchdog-plugin/README.md",
+      "id": "pair:packages/mpd-team-watchdog-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-tools-plugin/README.md",
+      "id": "pair:packages/mpd-tools-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-tui-plugin/README.md",
+      "id": "pair:packages/mpd-tui-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-ulw-plugin/README.md",
+      "id": "pair:packages/mpd-ulw-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "pair": "packages/mpd-workmate-plugin/README.md",
+      "id": "pair:packages/mpd-workmate-plugin/README.md",
+      "ok": true,
+      "detail": "ok"
+    }
+  ],
+  "exemptNotes": [
+    {
+      "path": "docs/bline-report.md",
+      "reason": "prior-phase report (AGENTS.md §3)"
+    },
+    {
+      "path": "docs/decisions.md",
+      "reason": "process record (AGENTS.md §3)"
+    },
+    {
+      "path": "docs/omo-parity-gap.md",
+      "reason": "prior-phase report (AGENTS.md §3)"
+    },
+    {
+      "path": "docs/plan-c.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-d.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-e.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-f.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-team-watchdog-report.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-team-watchdog.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-tui-edition.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/plan-tui-team-surface.md",
+      "reason": "process record (AGENTS.md §3: plan-*.md)"
+    },
+    {
+      "path": "docs/review-p0-p3.md",
+      "reason": "prior-phase report (AGENTS.md §3)"
+    },
+    {
+      "path": "docs/track-a-report.md",
+      "reason": "prior-phase report (AGENTS.md §3)"
+    },
+    {
+      "path": "docs/tui-edition-report.md",
+      "reason": "prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)"
+    },
+    {
+      "path": "docs/ulw-deepseek-optimization.md",
+      "reason": "prior-phase report (AGENTS.md §3)"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/README.md",
+      "reason": "adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker"
+    },
+    {
+      "path": "packages/mpd-mcp-shared",
+      "reason": "ships source and tests only; its README pair is a recorded follow-up"
+    },
+    {
+      "path": "docs/adder4.md",
+      "reason": "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]"
+    },
+    {
+      "path": "docs/cnt8.md",
+      "reason": "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]"
+    }
+  ],
+  "derivedNotes": [
+    {
+      "path": "AGENTS.md",
+      "reason": "2 delta-range claim(s) A1–D42 checked against \"A1–D42\" derived from agent-references/agent-teams-deltas.md"
+    },
+    {
+      "path": "agent-references/index.md",
+      "reason": "1 delta-range claim(s) A1–D42 checked against \"A1–D42\" derived from agent-references/agent-teams-deltas.md"
+    },
+    {
+      "path": "agent-references/agent-teams-deltas.md",
+      "reason": "region-count claim checked: carried **88**/9 vs derived 88/9 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 88)"
+    }
+  ],
+  "ok": true
+}

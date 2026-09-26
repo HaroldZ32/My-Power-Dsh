@@ -1,0 +1,24 @@
+== the canonical gate DOES see it (the test does not) ==
+  STALE: packages/mpd-roles-plugin/dist/index.js — committed packages/mpd-roles-plugin/dist/index.js (39829 B, 7b9fa6a899c79b3b…) != fresh build of packages/mpd-roles-plugin/src/index.ts (39810 B, 38d4a459f64d1dbd…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 1 of 1 targets not fresh (STALE: 1) — 30ms
+EXIT=1
+  STALE: packages/mpd-ext-plugin/dist/index.js — committed packages/mpd-ext-plugin/dist/index.js (152874 B, 840137a6407640c8…) != fresh build of packages/mpd-ext-plugin/src/index.ts (152855 B, f6097fd3383f2fa7…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+  STALE: packages/mpd-ext-plugin/dist/sdk.js — committed packages/mpd-ext-plugin/dist/sdk.js (1727 B, 0b49fecf5e0159ea…) != fresh build of packages/mpd-ext-plugin/src/sdk.ts (1708 B, 4117a1d5d11dbbda…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/sdk.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 2 of 2 targets not fresh (STALE: 2) — 56ms
+EXIT=1

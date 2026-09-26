@@ -1,0 +1,37 @@
+{
+  "slug": "tui-distribution",
+  "ok": true,
+  "steps": {
+    "findings": [],
+    "steps": [
+      {
+        "name": "install",
+        "command": "pnpm install --frozen-lockfile",
+        "status": 0
+      },
+      {
+        "name": "build",
+        "command": "pnpm build",
+        "status": 0
+      },
+      {
+        "name": "check",
+        "command": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe /root/dshProj/my-power-dsh/.mpd/recon/qa/distribution-protocol/packages/conformance/lib/cli.js /root/dshProj/my-power-dsh/dsh-distribution.json",
+        "status": 0
+      }
+    ],
+    "fullyValidated": true,
+    "cliReport": {
+      "valid": true,
+      "complete": true,
+      "issues": [],
+      "unchecked": []
+    }
+  },
+  "descriptor": {
+    "path": "dsh-distribution.json",
+    "id": "urn:dsh:distribution:mpd:my-power-dsh",
+    "version": "0.9.1"
+  },
+  "validation": "the protocol's own CLI validated the descriptor"
+}

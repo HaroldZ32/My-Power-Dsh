@@ -12,6 +12,18 @@
 > `docs/omo-parity-gap.md` is such a record: it is **single-language and untouched** by this wave.
 > It is not superseded — it is cited as input below.
 
+> **BASELINE STATUS — 0.1.7-rc.2.** This ledger froze the `omo-parity-align` wave on the vendored
+> `agent-teams` plugin, which is now **RETIRED from the composition** (no loader row mounts it). Its
+> configuration keys (`sessionTeamPolicy.mode`, `sessionTeamPolicy.autoRoute`), its team
+> tools and its staged-team flow do not exist in a shipped session any more. What SURVIVED the
+> migration, and is what a reader should carry away, is the **gate semantics**: the same frozen
+> predicate `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's
+> first pre-step, its notice keeps the marker `[AgentTeams] Session-start team rule`, and it still
+> **ADVISES — it stages nothing**; only its implementation moved (into `mpd-roles-plugin`, on the
+> official plugin's seams) and the captain now stages with `spawn_teammate` + `team_task_create`.
+> See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
+> record, read as history.
+
 Single source of truth for frozen values: `evidence/omo-align/requirements/frozen-contract.json`
 (captain-owned). Research input: `evidence/omo-align/research/team-vs-mass-ulw/gap.json` (t2) and
 `evidence/omo-align/research/session-policy/output.log` (t3). Requirements gates:
@@ -37,6 +49,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 |---|---|---|
 | `D_FIRST` | Every qualifying session starts with **no team and no team notice** unless a complexity signal fires. | Upstream parity, not local taste: upstream `team_mode.enabled` defaults to `false` (t3 `[U2][U3]`). |
 | `D_AUTOROUTE_SPLIT` | The mechanical gate and the legacy injection mode are **decoupled**: `sessionTeamPolicy.mode` defaults to `off` (existing enum values kept); the new mechanical gate is a separate key `sessionTeamPolicy.autoRoute` (default enabled). | Upstream has **no** complexity heuristic (0 hits for heuristic/threshold in t3); activation upstream is an explicit keyword. The split lets us add a gate without silently changing what `off`/`instruct` mean. |
+| `D_AUTOROUTE_ADVISORY` | A triggered auto-route **stages nothing**: the gate injects ONE advisory notice (same marker `[AgentTeams] Session-start team rule`) that names the fired signals, states that **no team was staged**, and asks the captain to stage one with the official `spawn_teammate` + `team_task_create` (at the time of this wave: the plugin's own create-team tool with `approval="required", profile="mpd"` — it no longer exists) only at the moment the work actually warrants a team — otherwise to continue solo and say so. An explicit `team:`/`!team` flag is likewise only ADVISED; nothing is pre-staged for it. | User clause 4 (2026-09-17): judging complexity must not cost the user a pre-staged team plus an approval step. The advisory wording deliberately says nothing against automatic approval, because a ULW run stages its own team (frozen contract §4.3). |
 | `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.mjs`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
 | `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
 | `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
@@ -70,16 +83,24 @@ multi-clause request such as “Check the test, build the package, verify the ou
 (C2+C3) and therefore DOES route to a team; no rule operating on C alone can separate it from frozen
 complex prompt #1. See §7 `O1` and §8's rate study.
 
-On trigger, the gate stages a team (`profile: mpd`, `approval: required`, name `MPD Default`,
-description “auto-routed by the complexity gate”) — **staged only**, no member spawns before the
-user approves the Web plan — and injects a notice whose wording states the session is *gated*, not
-that a team is mandatory.
+On a trigger the gate now **ADVISES** (`D_AUTOROUTE_ADVISORY`): it stages nothing and injects ONE
+advisory notice (marker `[AgentTeams] Session-start team rule`) naming the fired signals and stating
+that **no team was staged**; the captain stages a team itself with the official
+`spawn_teammate` + `team_task_create` at the moment the work actually warrants
+one, or continues solo and says so. An explicit `team:` / `!team` request is likewise only ADVISED —
+the agent is told to stage, and nothing is pre-staged for it. (At the time of this wave the call was
+the plugin's own create-team tool with `profile: mpd, approval: required`, name `MPD Default`, with
+the Web plan the
+user approved; that tool and that staged-plan flow belong to the retired plugin and do not exist in a
+shipped session.)
 
-**Two-sided test (`testPrompts` in the frozen contract).** Every `simple` prompt must leave
-`.mpd/team` empty and the log free of the startup notice; every `complex` prompt must produce
-exactly one staged team and one notice. A run where either side is not observed is a `FAIL`, and a
-gate that cannot fail this test is not accepted. Both directions must run on the same settled
-revision hash, in a sandboxed workspace (`sandboxWorkspace` + `assertSessionsSandboxed`).
+**Three-way test (`testPrompts` in the frozen contract + this wave's QA case).** Every `simple`
+prompt must leave `.mpd/team` empty and the log free of the startup notice; every `complex` prompt
+that fires a SOFT signal must leave `.mpd/team` empty while carrying exactly one advisory notice;
+an explicit `team:` prompt must still produce exactly one staged team and one notice. A run where
+any side is not observed is a `FAIL`, and a gate that cannot fail this test is not accepted. Every
+side must run on the same settled revision hash, in a sandboxed workspace (`sandboxWorkspace` +
+`assertSessionsSandboxed`).
 
 **Measured trigger rate on REAL ordinary prompts (t37, re-verified by t40).** 20 real ordinary
 prompts (all containing Chinese; 5 session-start — the only stratum the gate actually evaluates —
@@ -117,22 +138,30 @@ this ledger only indexes it.
 > protocol document the freeze cites does **not** exist in this repository, so a local reader can
 > verify the contradiction-free wording above, not the upstream citation.
 
-## 5. Manual entry names (frozen)
+## 5. Manual entry names (as frozen by that wave — see the baseline banner)
 
-Renaming any of these is forbidden; **adding** names is allowed.
+Renaming any of these WAS forbidden at the time; **adding** names was allowed. The team entries below
+describe the retired plugin and are kept as the wave's record.
 
 - Slash commands: `/agent-teams`, `/agent-teams-mpd` (from `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  and `profileCommandName('mpd')`, `lib/command.js:3,24-34,95-111`)
-- Tools: the full `agent_teams_*` set
-- Keys: `profiles.mpd`; preset id `mpd`
+  and `profileCommandName('mpd')`, `lib/command.js:3,24-34,95-111`) — **retired with the plugin; no
+  `/agent-teams` command exists in a shipped session**
+- Tools: the full team-tool set — **retired with the plugin; team work runs on the official
+  `spawn_teammate` / `team_*` tools**
+- Keys: `profiles.mpd` (retired with the plugin); preset id `mpd` (**still shipped**, now declared by
+  the `preset-mpd` row in `presets/mpd.patch.yml`)
 
 ## 6. Text landing points (where the session-start team rule lands)
 
+**These landing points belong to the retired implementation** (they name that plugin's files and its
+`sessionTeamPolicy` block). The gate itself survived the migration into `mpd-roles-plugin`; the
+current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1.
+
 | Id | File | Region |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `provisionedNotice` / `instructNotice` text |
-| `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement |
+| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
+| `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement (RETIRED path; the preset is now `presets/mpd.patch.yml`) |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | the whole `会话启动团队门（强制）` section (same commit as `L4`) |
 | `L6` | `scripts/install-profile.mjs` | row config + its `--self-test` assertion (now pins `mode === "off"` **and** `autoRoute === true`) |
@@ -184,7 +213,7 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.mjs`; registry 46 → 48 regions) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
 | runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
-| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true) |
+| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified at this pre-advisory anchor (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true). **Superseded for the current tree by `D_AUTOROUTE_ADVISORY`:** the complex side must now assert 0 staged teams + one advisory notice and the explicit-flag side must assert exactly one staged team; that re-run belongs to this wave's QA case (`L7`/`L8`) |
 | preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | verified (30 harness rows conform, row parity 31/31) |
 | installer | `node scripts/install-profile.mjs --self-test` | verified (exit 0) |
 | vendor | `node scripts/verify-vendor.mjs` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |

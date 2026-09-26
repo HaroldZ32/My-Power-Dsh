@@ -11,14 +11,118 @@
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { defineTool } from '../_deps/dsh-tools/lib/index.js';
 import { join } from 'node:path';
+//#region mpd-delta artifact-channel-imports (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-09/T-10 (wave 1, t19): the artifact channel is the FIRST file-writing code in this
+// adopted module, and the guard needs path arithmetic + lstat. Two import statements from
+// the same specifier keep the upstream line above byte-untouched (purely ADDITIVE region).
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+//#endregion mpd-delta artifact-channel-imports
 import { randomUUID } from 'node:crypto';
 import { appendTeamEvent, captainSessionOf } from "./events.js";
-import { acknowledgeMailbox, appendMailbox, appendMailboxDeduped, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, clearMailboxToWatermark, createMessage, createTeamDir, decideInterjection, enqueueInterjection, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readInterjections, readPendingInterjections, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, } from "./state.js";
+//#region mpd-delta mailbox-check-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// P1d (t48): the pre-send gate and the read tool use the SAME dedup key and the SAME window the fold
+// uses, so the gate and the fold can never disagree about what a duplicate is.
+import { mailboxDuplicatesFor, MAILBOX_DEDUP_WINDOW_DEFAULT_MS, readMailbox } from "./state.js";
+//#endregion mpd-delta mailbox-check-import
+import { acknowledgeMailbox, appendMailbox, appendMailboxDeduped, archiveTeamDir, beginTaskAttempt, CAPTAIN_KEY, clearMailboxToWatermark, createMessage, createTeamDir, decideInterjection, enqueueInterjection, findTeamByCaptain, findTeamByParticipant, cancelUnfinishedTask, invalidateTaskAttempt, readInterjections, readPendingInterjections, readUnreadMailbox, recordRetiredMemberIds, releaseMailboxDelivery, readTeam, sanitizeKey, transitionError, unsatisfiedDependencies, withTeamLock, writeTeam, removeTeamDir, validateCreateTask, evaluateQualityCompletion, planQualityFollowUp, resumeTeamState, buildCoverageMatrix, canDeclareDelivery, describeQualityLoop, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, resolveCancelledDependencyDeadlocks, normalizeBlankOptionalTaskFields, dependencyStates, describeScopeOwner, scopeOwners, waveOf, nextWave, writeWaveArchive, listWaveArchives, isOpenTaskStatus, contractContradiction, inScopeOverlap, pathMatchesScope, } from "./state.js";
 import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
+//#region mpd-delta unresolved-dependency-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-64 (wave 2b, lane A): the model-facing status must NAME an unresolvable dependency instead of
+// letting it read as an ordinary parked/blocked state. Purely ADDITIVE (a second import from the
+// same specifier), so the upstream line above stays byte-untouched.
+import { unresolvedDependencyNote } from "./state.js";
+//#endregion mpd-delta unresolved-dependency-import
+//#region mpd-delta plan-format-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-42 (wave 2b, lane A): the DAG seed consumes the SAME plan format the session-start path reads, so
+// a plan artifact can seed the team's DAG instead of a second convention living beside it. The import
+// direction is tools.js -> session-start.js while session-start.js imports `initializeProfileTeam`
+// from here: a FUNCTION-LEVEL ESM cycle (both modules only DEFINE at top level and call inside
+// functions), noted rather than hidden, because the alternative is a third module plus a new adopted
+// file in the delta registry for two pure functions.
+import { readPlanSeedSet } from "./session-start.js";
+//#endregion mpd-delta plan-format-import
+//#region mpd-delta capacity-view-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-11 (wave 2b, lane A): the per-member capacity view is FED by the scheduler's own ready-set
+// helper — the row's DELIVERABLE forbids a second implementation of the predicate in the view.
+import { isTaskReady } from "./scheduler.js";
+//#endregion mpd-delta capacity-view-import
+//#region mpd-delta team-revision-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-06 (wave 2b, lane A): the status payload carries the record's token through the ONE reader in
+// `lib/state.js`, so the printed number and the on-disk counter can never be two different rules.
+import { teamRevisionOf } from "./state.js";
+//#endregion mpd-delta team-revision-import
+
 export { steerCaptainReport } from "./members.js";
+//#region mpd-delta deferred-kind-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-13 (wave 2b, t27): the parked-kind predicate, from the module that owns the enum.
+import { isNonDispatchableKind } from "./types.js";
+//#endregion mpd-delta deferred-kind-import
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { installTeamScheduler } from "./scheduler.js";
 import { resolveTeamProfile } from "./profiles.js";
+//#region mpd-delta adapter-subagent-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// D6: the halt path drains children THROUGH the runtime object, so it must resolve that runtime the
+// same way the delivery ladder does — the facade's `subagents` projection carries no
+// `drainContinuableChildren`, and reading it directly would silently downgrade the stop path to the
+// quiescence fallback.
+import { subagentRuntimeOf } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-subagent-runtime-import
+//#region mpd-delta strict-tool-arguments (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-61 (wave 2, lane A) — an UNKNOWN argument name must be LOUD, never a successful no-op.
+//
+// MEASURED (wave 1, `t35`'s post-completion note): the snake-case payload
+// `output_append` (and earlier `acceptance_results` / `commands_run`) was reported as APPLIED
+// while NOTHING was stored — the call returned success, the task record was byte-identical, and
+// the one channel meant to repair an unrecoverable terminal record was silently unavailable.
+// Root cause, read from the adopted code: `defineTool` compiles the flat parameter map with NO
+// `additionalProperties:false` (`_deps/dsh-tools/lib/index.js`, `parameterSchemaSpecToJsonSchema`),
+// so unknown keys pass validation and are simply never read by `execute`.
+//
+// The check is deliberately FIRST in `execute` (before any read, lock or write): a refused call
+// must leave the workspace byte-identical. `UPDATE_TASK_ARGUMENT_NAMES` is the literal list of
+// the tool's declared parameters — the drill arm
+// (`self-fix-tests/strict-task-arguments.test.mjs`) pins it against the registered definition's
+// compiled schema key set, so adding a parameter without extending this list reddens the arm
+// instead of silently disabling the guard for that key.
+export const UPDATE_TASK_ARGUMENT_NAMES = [
+    'task_id',
+    'status',
+    'output',
+    'output_append',
+    'artifact',
+    'replace_output',
+    'attempt_id',
+    'verdict',
+    'findings',
+    'changedPaths',
+    'acceptanceResults',
+    'commandsRun',
+    'amend',
+];
+/**
+ * Refuse an argument object carrying any key the tool does not declare.
+ * @param toolName - the tool's registered name, used in the message.
+ * @param declaredNames - every argument name the tool declares.
+ * @param args - the raw arguments payload, however malformed.
+ * @returns nothing when every key is declared.
+ */
+export function assertKnownToolArguments(toolName, declaredNames, args) {
+    const declared = new Set(declaredNames);
+    const supplied = args === undefined || args === null ? [] : Object.keys(args);
+    const unknown = supplied.filter((key) => !declared.has(key));
+    if (unknown.length === 0) {
+        return;
+    }
+    const named = unknown.map((key) => `"${key}"`).join(', ');
+    throw new Error(
+        `${toolName}: unknown argument name(s) ${named} — the call was REFUSED and NOTHING was stored.`
+        + ` Declared arguments: ${declaredNames.join(', ')}.`
+        + ' A snake_case payload (e.g. "acceptance_results" for "acceptanceResults") used to be'
+        + ' accepted as a successful no-op; rename the key(s) and repeat the call.',
+    );
+}
+//#endregion mpd-delta strict-tool-arguments
 /** The caller agent, or a loud failure for non-agent callers. */
 function requireCaptain(exec) {
     if (!exec.agent) {
@@ -154,17 +258,26 @@ function validateStagedGraph(team, requireRunnable) {
     for (const task of team.tasks)
         visit(task.id);
 }
+//#region mpd-delta deferred-allowance (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-13 (wave 2b, t27): the one-unfinished-task allowance counts WORK, never a parked record. A seat
+ * that holds only a deferred task is still eligible — the deferred row is a placeholder the captain
+ * parked, so it must not make its holder look busy (the reading the T-13 acceptance names).
+ */
 function memberOpenTask(team, memberName, exceptTaskId) {
     return team.tasks.find(task => task.id !== exceptTaskId
         && task.assignee === memberName
+        && !isNonDispatchableKind(task)
         && (task.status === 'claimed' || task.status === 'in_progress'));
 }
 /** Captain work is immediate, not a durable scheduler lane: allow one unfinished takeover at a time. */
 function captainOpenTask(team, exceptTaskId) {
     return team.tasks.find(task => task.id !== exceptTaskId
         && task.assignee === CAPTAIN_KEY
+        && !isNonDispatchableKind(task)
         && !TERMINAL_TASK_STATUSES.includes(task.status));
 }
+//#endregion mpd-delta deferred-allowance
 async function waitForMemberIdle(ctx, member, signal) {
     if (member.id === '')
         return;
@@ -202,7 +315,11 @@ async function stopTeamMemberActivations(ctx, captain, members, signal) {
     // `drainContinuableChildren` is available in the current runtime and releases
     // the selected activation handles. Keep the quiescence fallback for pre-rc.8
     // hosts, where interrupt is the strongest available lifecycle operation.
-    const runtime = ctx.subagents;
+    //#region mpd-delta adapter-subagent-runtime-halt-drain (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // The drain runs on the RUNTIME object (identity-preserving through the adapter), never on the
+    // facade's `subagents` projection: `drainContinuableChildren` exists only on the runtime.
+    const runtime = subagentRuntimeOf(ctx);
+    //#endregion mpd-delta adapter-subagent-runtime-halt-drain
     if (runtime.drainContinuableChildren !== undefined) {
         try {
             await runtime.drainContinuableChildren(captain, memberIds);
@@ -260,17 +377,19 @@ export async function haltTeamWork(input) {
             members: fresh.members.filter((member) => member.id !== '' && member.status !== 'removed').map((member) => ({ ...member })),
         };
     });
+    //#region mpd-delta adapter-cancel-halt (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     // Persist the stop boundary first, then abort the Captain before draining
     // children. Otherwise its current model turn can observe `halted`, call
     // resume, and race the still-running HTTP stop request.
-    input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });
     await stopTeamMemberActivations(input.ctx, input.captain, halted.members, input.signal);
     // Interrupting a child emits a trailing subagent-settled notification. That
     // notification can start a fresh Captain turn after the first cancellation,
     // so close the stop boundary again once every child activation has drained.
     // Queued user input is preserved both times; only runtime-generated work is
     // prevented from silently resuming the halted team.
-    input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });
+    //#endregion mpd-delta adapter-cancel-halt
     return {
         teamName: halted.teamName,
         cancelledTasks: halted.cancelledTasks,
@@ -358,6 +477,25 @@ export function registerAgentTeamsTools(ctx, config) {
                     const subject = mutation.subject.trim();
                     if (subject === '')
                         throw new Error('task subject must not be empty');
+                    //#region mpd-delta edit-plan-add-task-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // T-03 (wave 1, t14): the SAME gate create_task runs, so a staged-plan edit
+                    // can no longer add an unknown kind or an incomplete quality contract and
+                    // persist it as legacy `work`. The refusal text is the gate's own, i.e.
+                    // exactly as loud as create_task's.
+                    const gate = validateCreateTask(fresh, {
+                        subject,
+                        description: trimmedOptional(mutation.description),
+                        dependencies: [...new Set((mutation.dependencies ?? []).map((item) => item.trim()).filter(Boolean))],
+                        assignee: trimmedOptional(mutation.assignee),
+                        kind: mutation.kind,
+                        objective: mutation.objective,
+                        inScope: mutation.inScope,
+                        outOfScope: mutation.outOfScope,
+                        acceptance: mutation.acceptance,
+                        verify: mutation.verify,
+                    });
+                    if (!gate.ok)
+                        throw new Error(gate.error ?? 'edit_plan add_task rejected by quality gates');
                     fresh.taskSeq += 1;
                     const now = Date.now();
                     fresh.tasks.push({
@@ -368,10 +506,16 @@ export function registerAgentTeamsTools(ctx, config) {
                         assignee: trimmedOptional(mutation.assignee),
                         dependencies: [...new Set(mutation.dependencies.map((item) => item.trim()).filter(Boolean))],
                         attempt: 0,
-                        kind: 'work',
+                        kind: mutation.kind ?? 'work',
+                        ...mutation.objective === undefined ? {} : { objective: mutation.objective },
+                        ...mutation.inScope === undefined ? {} : { inScope: [...mutation.inScope] },
+                        ...mutation.outOfScope === undefined ? {} : { outOfScope: [...mutation.outOfScope] },
+                        ...mutation.acceptance === undefined ? {} : { acceptance: [...mutation.acceptance] },
+                        ...mutation.verify === undefined ? {} : { verify: [...mutation.verify] },
                         createdAt: now,
                         updatedAt: now,
                     });
+                    //#endregion mpd-delta edit-plan-add-task-apply
                 }
                 else if (mutation.action === 'remove_task') {
                     const task = requireTask(fresh, mutation.taskId);
@@ -481,13 +625,26 @@ export function registerAgentTeamsTools(ctx, config) {
         // End any planning turn that is still producing tool calls. A plugin
         // follow-up submitted after cancellation is queued as the next turn by the
         // Harness Agent contract, so it cannot race ahead and recreate the team.
-        captain.cancel({ kind: 'user' }, { keepInbox: true });
+        //#region mpd-delta adapter-cancel-feedback (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });
+        //#endregion mpd-delta adapter-cancel-feedback
+        //#region mpd-delta adapter-turn-submit (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // D9: the throw inside this try/catch is part of the flow — `startAgentTurn` forwards
+        // THROWING, and with no adapter it runs the identical `captain.followup(msg)`.
+        //
+        // The try block lives INSIDE the region on purpose: the two regions are then ADJACENT
+        // siblings sharing one seam, which is the only arrangement the delta applier's context-pair
+        // walk-back heals byte-faithfully (measured by
+        // evidence/agent-teams/adapter-wiring/bridge/heal-probe.mjs: with `try {` between the two
+        // regions the heal of this very region refuses, because the sibling inserted before it moves
+        // the registered beforeContext away from the seam).
         try {
-            captain.followup(createUserMessage({
+            ctx.startAgentTurn(captain, createUserMessage({
                 content: [{ type: 'text', text: stagedPlanFeedbackContext(prepared.teamName) }],
                 source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
             }));
         }
+        //#endregion mpd-delta adapter-turn-submit
         catch (error) {
             // Do not leave the durable UI in a false waiting state when the live
             // Captain disappeared between lookup and delivery.
@@ -521,10 +678,15 @@ export function registerAgentTeamsTools(ctx, config) {
         // still-running Captain turn. Without both operations a late model step can
         // observe the missing active team and incorrectly create it again.
         try {
-            captain.inject(createUserMessage({
+            //#region mpd-delta adapter-inject-staged-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // F2: the Agent's `inject(message)` seam is adapter-mediated (throwing verbatim forwarder,
+            // gated on capabilities().agentTurnInject) — NOTE this is the AGENT's inject, not the
+            // cordis `ctx.inject(deps, cb)` dependency seam the facade passes through.
+            ctx.injectAgentMessage(captain, createUserMessage({
                 content: [{ type: 'text', text: stagedPlanDiscardContext(discarded.teamName) }],
                 source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
             }));
+            //#endregion mpd-delta adapter-inject-staged-discard
         }
         catch (error) {
             // The archive is already authoritative. Cancellation still prevents a
@@ -532,7 +694,9 @@ export function registerAgentTeamsTools(ctx, config) {
             // live-delivery warning and must not turn a successful discard into 409.
             ctx.logger.warn(`agent-teams: failed to inject discard context for "${discarded.teamId}": ${String(error)}`);
         }
-        captain.cancel({ kind: 'user' }, { keepInbox: true });
+        //#region mpd-delta adapter-cancel-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });
+        //#endregion mpd-delta adapter-cancel-discard
         return { teamId: discarded.teamId };
     };
     const runtime = {
@@ -735,6 +899,20 @@ export function registerAgentTeamsTools(ctx, config) {
                         description: { type: 'string', description: 'Optional task description.' },
                         assignee: { type: 'string', description: 'Optional task assignee; an empty string moves it to the shared pool.' },
                         dependencies: { type: 'array', items: { type: 'string' }, description: 'Complete replacement dependency list for a task.' },
+                        //#region mpd-delta edit-plan-quality-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                        // T-03 (wave 1, t14): add_task accepted ONLY subject/description/assignee/
+                        // dependencies, so revising a staged plan could not EXPRESS a quality
+                        // contract at all and the apply branch hard-coded `kind: 'work'` — a
+                        // staged quality task was silently downgraded to legacy work. These
+                        // fields carry the contract through the edit and are validated by the
+                        // SAME gate create_task runs (see the apply branch).
+                        kind: { type: 'string', description: 'Task kind for add_task (work, requirement, requirements, implementation, repair, verification, review, integration). Quality kinds require objective/acceptance and — for implementation/repair — inScope.' },
+                        objective: { type: 'string', description: 'Declared objective; required by the quality gate for a quality kind.' },
+                        acceptance: { type: 'array', items: { type: 'string' }, description: 'Complete acceptance list; required by the quality gate for a quality kind.' },
+                        inScope: { type: 'array', items: { type: 'string' }, description: 'Workspace-relative POSIX paths the task may change (implementation/repair).' },
+                        outOfScope: { type: 'array', items: { type: 'string' }, description: 'Paths the task must NOT change.' },
+                        verify: { type: 'array', items: { type: 'string' }, description: 'Verification commands this task must run.' },
+                        //#endregion mpd-delta edit-plan-quality-contract
                         role: { type: 'string', description: 'Optional member role.' },
                         provider: { type: 'string', description: 'Optional member provider; defaults to the current staged route.' },
                         model: { type: 'string', description: 'Optional member model; defaults to the current staged route.' },
@@ -811,6 +989,15 @@ export function registerAgentTeamsTools(ctx, config) {
                         description: operation.description,
                         assignee: operation.assignee,
                         dependencies: operation.dependencies ?? [],
+                        //#region mpd-delta edit-plan-add-task-mutation (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                        // T-03 (wave 1, t14): carry the quality contract into the staged mutation.
+                        kind: operation.kind,
+                        objective: operation.objective,
+                        acceptance: operation.acceptance,
+                        inScope: operation.inScope,
+                        outOfScope: operation.outOfScope,
+                        verify: operation.verify,
+                        //#endregion mpd-delta edit-plan-add-task-mutation
                     };
                 }
                 if (operation.action === 'remove_task') {
@@ -1254,6 +1441,15 @@ export function registerAgentTeamsTools(ctx, config) {
                     throw new Error(`completed task ${task.id} is immutable and cannot be reassigned`);
                 if (task.reassigning === true)
                     throw new Error(`task ${task.id} is already being reassigned`);
+                //#region mpd-delta deferred-reassign-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-13 (wave 2b, t27): reassignment is a DISPATCH verb — it wakes the new owner with
+                // the assignment prompt — so a deferred task must be refused here too, or the row's
+                // "never offered" claim would be false the moment a captain reassigned one.
+                if (isNonDispatchableKind(task)) {
+                    throw new Error(`task ${task.id} has the deferred kind and can never be dispatched: `
+                        + 'it is a parked record; create a new task without the deferred kind to run this work');
+                }
+                //#endregion mpd-delta deferred-reassign-refusal
                 const targetMember = target === CAPTAIN_KEY ? undefined : requireMember(fresh, target);
                 if (target === CAPTAIN_KEY) {
                     const busy = captainOpenTask(fresh, task.id);
@@ -1371,6 +1567,15 @@ export function registerAgentTeamsTools(ctx, config) {
             return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                 const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
                 const task = requireTask(fresh, args.task_id);
+                //#region mpd-delta deferred-claim-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-13 (wave 2b, t27): the readiness predicate keeps the pump from OFFERING a deferred
+                // task; this gate is the tool boundary that keeps a seat from CLAIMING one by name.
+                // Both halves name the kind, so an operator reads why the task is parked.
+                if (isNonDispatchableKind(task)) {
+                    throw new Error(`task ${task.id} has the deferred kind and can never be claimed: `
+                        + 'it is a parked record, not work; claim another ready task, or create one without the deferred kind');
+                }
+                //#endregion mpd-delta deferred-claim-refusal
                 if (task.reassigning === true) {
                     throw new Error(`task ${task.id} is being reassigned; wait for the handoff to finish`);
                 }
@@ -1422,6 +1627,14 @@ export function registerAgentTeamsTools(ctx, config) {
                     throw new Error(`member "${assignee}" is busy with ${busy.id}; finish or reassign it first`);
                 }
                 const attemptId = beginTaskAttempt(task, assignee);
+                //#region mpd-delta claim-contract-version-stamp (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-02 (wave 1, t14): remember the contract REVISION this attempt was claimed
+                // under. A captain (or a member at claim time) can amend a contract while the
+                // attempt keeps living, so `contractVersion` may move ahead of
+                // `attemptContractVersion`; a reviewer sees the pair through
+                // agent_teams_task_contract and knows the attempt worked a STALE revision.
+                task.attemptContractVersion = task.contractVersion ?? 1;
+                //#endregion mpd-delta claim-contract-version-stamp
                 await writeTeam(stateRoot, fresh);
                 appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-updated', {
                     teamId: fresh.id,
@@ -1522,6 +1735,228 @@ export function registerAgentTeamsTools(ctx, config) {
         return false;
     }
     //#endregion mpd-delta update-task-amend-helper
+    //#region mpd-delta path-ownership-tools (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-01 (wave 1, t20): ownership becomes QUERYABLE and REPAIRABLE. Before this, the only way
+    // past an `inScope overlaps <id>` refusal was delete + re-create, which renumbers the task and
+    // downgrades it; the query and the repair below use the refusal's OWN match rule
+    // (`pathMatchesScope`), so the answer can never drift from the gate.
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_path_owner',
+        description: 'READ-ONLY preflight: who owns a workspace path? Lists every write task whose inScope matches it, with the matching patterns, any outOfScope pattern that excludes it, and the repair call to move the path. Use it BEFORE declaring inScope, and to answer "who owns <path>" when a create was refused.',
+        parameters: {
+            path: { type: 'string', description: 'Workspace-relative path, e.g. "packages/foo/src/index.ts" or "packages/foo/src/**".' },
+            open_only: { type: 'boolean', description: 'Only tasks that can still be dispatched (pending/claimed/in_progress).' },
+        },
+        output: {
+            schema: { type: 'object', additionalProperties: true, properties: {} },
+            render: (_args, value) => [{ type: 'text', text: renderScopeOwners(value) }],
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const located = await requireParticipantTeam(workspace, config, caller);
+            const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+            const owners = scopeOwners(team, args.path, { openOnly: args.open_only === true });
+            return {
+                path: String(args.path ?? ''),
+                open_only: args.open_only === true,
+                owners,
+                open_owners: owners.filter((owner) => owner.open),
+                repair: owners.length === 0
+                    ? null
+                    : { tool: 'agent_teams_move_path', path: String(args.path ?? ''), from_task: owners[0].task_id },
+                note: owners.length === 0
+                    ? 'no write task declares this path in scope: the path is free to declare'
+                    : 'a create whose inScope collides with an OPEN owner is refused by the overlap gate; repair it with the move_path call above instead of recreating a task',
+            };
+        },
+    }));
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_move_path',
+        description: 'CAPTAIN ONLY: move ONE path pattern from the task that currently owns it to another task, WITHOUT remove+re-add — both tasks keep their id, status and attempt, so nothing is renumbered or downgraded. The donor loses the pattern from inScope, the target gains it (and any matching outOfScope pattern is carved out so the move is effective). Refuses a path the donor does not own, an unknown or terminal target, and a move that would contradict the target or collide with another open write task.',
+        parameters: {
+            path: { type: 'string', description: 'The exact inScope pattern to move, e.g. "packages/foo/**".' },
+            to_task: { type: 'string', description: 'Task id that should own the pattern.' },
+            from_task: { type: 'string', description: 'Task id that currently owns it. Omit to infer it when exactly ONE open write task matches the path.' },
+        },
+        output: {
+            schema: { type: 'object', additionalProperties: true, properties: {} },
+            render: (_args, value) => [{ type: 'text', text: renderMovePath(value) }],
+        },
+        async execute(args, exec) {
+            const captain = requireCaptain(exec);
+            const workspace = workspaceOf(captain);
+            const stateRoot = stateRootOf(workspace, config);
+            const located = await requireCaptainTeam(workspace, config, captain);
+            return withTeamLock(teamLockKey(stateRoot, located.id), async () => {
+                const fresh = await requireFreshCaptainTeam(stateRoot, located.id, captain.id);
+                const path = String(args.path ?? '').trim();
+                if (path === '')
+                    throw new Error('path is required');
+                const targetId = String(args.to_task ?? '').trim();
+                const target = fresh.tasks.find((task) => task.id === targetId);
+                if (target === undefined)
+                    throw new Error(`to_task "${targetId}" does not exist in team "${fresh.name}"`);
+                if (!isOpenTaskStatus(target.status))
+                    throw new Error(`to_task "${targetId}" is ${target.status}: a moved path must land on a task that can still run`);
+                const matches = fresh.tasks.filter((task) => Array.isArray(task.inScope) && task.inScope.includes(path));
+                if (matches.length === 0)
+                    throw new Error(`no task declares "${path}" in inScope; nothing to move`);
+                let donor = matches[0];
+                if (args.from_task !== undefined && String(args.from_task).trim() !== '') {
+                    const named = matches.find((task) => task.id === String(args.from_task).trim());
+                    if (named === undefined)
+                        throw new Error(`from_task "${String(args.from_task)}" does not declare "${path}" in inScope (owners: ${matches.map((task) => task.id).join(', ')})`);
+                    donor = named;
+                }
+                else if (matches.length > 1) {
+                    throw new Error(`"${path}" is declared by ${matches.length} tasks (${matches.map((task) => task.id).join(', ')}); pass from_task explicitly`);
+                }
+                if (donor.id === target.id)
+                    throw new Error(`"${path}" is already owned by "${donor.id}"`);
+                const donorBefore = donor.inScope.length;
+                const donorScope = donor.inScope.filter((pattern) => pattern !== path);
+                const targetScope = [...(target.inScope ?? [])];
+                if (!targetScope.includes(path))
+                    targetScope.push(path);
+                // The donor's own outOfScope must not exclude what it still owns, and the target's
+                // outOfScope must not silently exclude the path it just gained — carve both.
+                donor.outOfScope = (donor.outOfScope ?? []).filter((pattern) => !targetScope.includes(pattern) || !pathMatchesScope(path, pattern));
+                donor.inScope = donorScope;
+                target.outOfScope = (target.outOfScope ?? []).filter((pattern) => !pathMatchesScope(path, pattern));
+                target.inScope = targetScope;
+                const targetContract = contractContradiction(target.inScope ?? [], target.outOfScope ?? []);
+                if (targetContract !== undefined) {
+                    donor.inScope = donor.inScope.concat(path);
+                    throw new Error(`moving "${path}" to "${target.id}" would contradict its contract: "${targetContract.inScope}" is forbidden by outOfScope "${targetContract.outOfScope}"`);
+                }
+                for (const other of fresh.tasks) {
+                    if (other.id === donor.id || other.id === target.id)
+                        continue;
+                    if (!isOpenTaskStatus(other.status))
+                        continue;
+                    const overlap = inScopeOverlap(target.inScope, other.inScope ?? []);
+                    if (overlap.length > 0)
+                        throw new Error(`moving "${path}" to "${target.id}" would overlap ${describeScopeOwner({ task_id: other.id, subject: other.subject ?? '', status: other.status, assignee: other.assignee ?? '' })} at ${overlap.join(', ')}`);
+                }
+                const now = Date.now();
+                donor.updatedAt = now;
+                target.updatedAt = now;
+                await writeTeam(stateRoot, fresh);
+                return {
+                    moved: true,
+                    path,
+                    from_task: donor.id,
+                    from_scope_after: donor.inScope,
+                    from_scope_size_before: donorBefore,
+                    to_task: target.id,
+                    to_scope_after: target.inScope,
+                    preserved: { ids: [donor.id, target.id], statuses: [donor.status, target.status], attempts: [donor.attemptId ?? '', target.attemptId ?? ''] },
+                    note: 'both tasks kept their id, status and attempt — no remove+re-add',
+                };
+            });
+        },
+    }));
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_rollover',
+        description: 'CAPTAIN ONLY: close the current WAVE of this team and open the next one. Refused while ANY task is non-terminal (a wave rolls over when its work is done, never mid-flight — the refusal names the open ids). On success the closed wave is archived durably under <team>/waves/<label>.json WITH its tasks, the live task list is emptied, and the wave label advances (w1 -> w2). Status shows the label and the archived waves, so the boundary no longer lives in the captain\'s discipline.',
+        parameters: {
+            wave_label: { type: 'string', description: 'Optional label to record for the CLOSED wave (defaults to the current label).' },
+            reason: { type: 'string', description: 'Optional note recorded in the archive record.' },
+        },
+        output: {
+            schema: { type: 'object', additionalProperties: true, properties: {} },
+            render: (_args, value) => [{ type: 'text', text: renderRollover(value) }],
+        },
+        async execute(args, exec) {
+            const captain = requireCaptain(exec);
+            const workspace = workspaceOf(captain);
+            const stateRoot = stateRootOf(workspace, config);
+            const located = await requireCaptainTeam(workspace, config, captain);
+            return withTeamLock(teamLockKey(stateRoot, located.id), async () => {
+                const fresh = await requireFreshCaptainTeam(stateRoot, located.id, captain.id);
+                const current = waveOf(fresh);
+                const open = fresh.tasks.filter((task) => !TERMINAL_TASK_STATUSES.includes(task.status));
+                if (open.length > 0) {
+                    throw new Error(`wave "${current.label}" cannot roll over: ${open.length} task(s) are still non-terminal (${open.map((task) => `${task.id}:${task.status}`).join(', ')}); finish, cancel or reassign them first — a wave boundary never cancels work`);
+                }
+                const now = Date.now();
+                const closedLabel = typeof args.wave_label === 'string' && args.wave_label.trim() !== '' ? args.wave_label.trim() : current.label;
+                const archive = {
+                    team_id: fresh.id,
+                    team_name: fresh.name,
+                    label: closedLabel,
+                    openedAt: current.openedAt,
+                    closedAt: now,
+                    closedBy: captain.id,
+                    ...args.reason === undefined ? {} : { reason: String(args.reason) },
+                    tasks: fresh.tasks,
+                    counts: {
+                        total: fresh.tasks.length,
+                        completed: fresh.tasks.filter((task) => task.status === 'completed').length,
+                        failed: fresh.tasks.filter((task) => task.status === 'failed').length,
+                        cancelled: fresh.tasks.filter((task) => task.status === 'cancelled').length,
+                    },
+                };
+                const archivePath = await writeWaveArchive(stateRoot, fresh.id, archive);
+                const next = nextWave(current, now);
+                fresh.wave = next;
+                fresh.waveHistory = [...(Array.isArray(fresh.waveHistory) ? fresh.waveHistory : []), { label: closedLabel, closedAt: now, archivedTasks: fresh.tasks.length, archive: relative(stateRoot, archivePath).split('\\').join('/') }];
+                fresh.tasks = [];
+                fresh.taskSeq = 0;
+                fresh.updatedAt = now;
+                await writeTeam(stateRoot, fresh);
+                appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-teams/wave-rollover', {
+                    teamId: fresh.id,
+                    closedWave: closedLabel,
+                    nextWave: next.label,
+                    archivedTasks: archive.counts.total,
+                });
+                return {
+                    rolled_over: true,
+                    closed_wave: closedLabel,
+                    next_wave: next.label,
+                    archived_tasks: archive.counts.total,
+                    counts: archive.counts,
+                    archive_path: archivePath,
+                    wave_history: fresh.waveHistory,
+                    note: 'the closed wave\'s tasks live in the archive record; the live list starts empty',
+                };
+            });
+        },
+    }));
+    /** Render the who-owns answer (T-01). */
+    function renderScopeOwners(value) {
+        const owners = Array.isArray(value.owners) ? value.owners : [];
+        if (owners.length === 0) {
+            return `No write task declares "${value.path}" in scope${value.open_only ? ' (open tasks only)' : ''}: the path is free to declare.`;
+        }
+        const lines = [`Owners of "${value.path}"${value.open_only ? ' (open tasks only)' : ''}:`];
+        for (const owner of owners) {
+            lines.push(`  - ${owner.task_id} [${owner.kind}/${owner.status}]${owner.assignee === '' ? '' : ` ${owner.assignee}`}${owner.subject === '' ? '' : ` — ${owner.subject}` } via ${owner.matched.join(', ')}${owner.excluded_by.length > 0 ? ` (also matched by outOfScope ${owner.excluded_by.join(', ')}, so it may NOT write it)` : ''}`);
+        }
+        if (value.repair !== null && value.repair !== undefined) {
+            lines.push(`Repair without remove+re-add: agent_teams_move_path { path: "${value.repair.path}", from_task: "${value.repair.from_task}", to_task: "<the task that should own it>" }`);
+        }
+        return lines.join('\n');
+    }
+    /** Render the move-path result (T-01). */
+    function renderMovePath(value) {
+        if (value.moved !== true) {
+            return `Move refused: ${String(value.error ?? 'unknown reason')}`;
+        }
+        return `Moved "${value.path}" from ${value.from_task} to ${value.to_task}.\n  ${value.from_task} inScope: ${value.from_scope_after.join(', ') || '(none)'}\n  ${value.to_task} inScope: ${value.to_scope_after.join(', ') || '(none)'}\n  ${String(value.note)}`;
+    }
+    /** Render the rollover result (T-12). */
+    function renderRollover(value) {
+        if (value.rolled_over !== true) {
+            return `Rollover refused: ${String(value.error ?? 'unknown reason')}`;
+        }
+        const counts = value.counts ?? {};
+        return `Wave ${value.closed_wave} closed and archived (${value.archived_tasks} task(s): ${counts.completed ?? 0} completed, ${counts.failed ?? 0} failed, ${counts.cancelled ?? 0} cancelled).\n  archive: ${value.archive_path}\n  now working: ${value.next_wave}\n  ${String(value.note)}`;
+    }
+    //#endregion mpd-delta path-ownership-tools
     ctx.tools.register(defineTool({
         name: 'agent_teams_update_task',
         //#region mpd-delta update-task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
@@ -1546,6 +1981,33 @@ export function registerAgentTeamsTools(ctx, config) {
             },
             //#endregion mpd-delta update-task-required-status-param
             output: { type: 'string', description: 'Result summary; set when completing or failing.' },
+            //#region mpd-delta terminal-output-append (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // T-52 (wave 1, t14): a completed task's `output` was immutable, so a summary that
+            // was lost or truncated at completion could never be repaired — measured 2026-09-16,
+            // when a real summary was lost on a terminal task and the only offered remedy was
+            // reassign_task (which re-runs the work and discards the record). This parameter is
+            // an APPEND-ONLY repair: it may only EXTEND the stored output, never replace it, and
+            // it is accepted on a TERMINAL task only. Every other terminal field stays immutable.
+            output_append: { type: 'string', description: 'APPEND-only repair of a TERMINAL task\'s stored output: the text is appended to the existing result summary (never replaces it). Use this when a summary was lost or truncated at completion; supply `output` instead while the task is still running.' },
+            //#endregion mpd-delta terminal-output-append
+            //#region mpd-delta artifact-channel-params (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // T-09/T-10 (wave 1, t19): the FIRST-CLASS artifact channel. A long deliverable no
+            // longer has to fit the result cap (its tail was being dropped), and a READ-ONLY seat
+            // gets a sanctioned evidence write without `write`/`edit`/`bash`. The guards are
+            // mechanical (apply region + helper): workspace-relative only, no `..`, never inside
+            // the team state dir, only regular files, append-or-create so the channel can never
+            // destroy a byte, and a read-only seat may only write under `evidence/**`.
+            artifact: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    path: { type: 'string', required: true },
+                    text: { type: 'string', required: true },
+                },
+                description: 'Attach a LONG deliverable: {path, text} writes the full text to a workspace-relative path and records the path and byte count on the task. Append-or-create (never truncates); a seat whose write/edit/bash are denied may only use evidence/**.',
+            },
+            replace_output: { type: 'boolean', description: 'Confirm that `output` REPLACES an existing stored summary longer than 240 chars. Omit it to be refused loudly and use output_append to extend instead.' },
+            //#endregion mpd-delta artifact-channel-params
             attempt_id: { type: 'string', description: 'Current execution capability returned by claim_task (required for members when present on the task).' },
             verdict: {
                 type: 'string',
@@ -1594,12 +2056,22 @@ export function registerAgentTeamsTools(ctx, config) {
                     additionalProperties: false,
                     properties: {
                         command: { type: 'string', required: true },
-                        status: { type: 'string', enum: ['passed', 'failed'], required: true },
+                        //#region mpd-delta reported-red-schema (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                        // T-84 (wave 2b, lane A): a red the contract requires to be REPORTED is
+                        // expressible without a `failed` command — `reported` + a `reason` label.
+                        status: { type: 'string', enum: ['passed', 'failed', 'reported'], required: true },
+                        reason: { type: 'string' },
+                        //#endregion mpd-delta reported-red-schema
                         exitCode: { type: 'number' },
                         evidence: { type: 'string' },
                     },
                 },
-                description: 'Verification evidence in contract order: {command, status:"passed"|"failed", exitCode?, evidence?}. Supply one item per verify command.',
+                //#region mpd-delta reported-red-description (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-29 (review R7): the SCHEMA admitted `reported` while this model-facing description
+                // still advertised two statuses, so the third was undiscoverable from the surface the
+                // model reads. The label is named here because `reason` is what makes the red auditable.
+                description: 'Verification evidence in contract order: {command, status:"passed"|"failed"|"reported", reason?, exitCode?, evidence?}. Supply one item per verify command. A "reported" entry covers its command WITHOUT failing the task and MUST carry a non-empty "reason" label (it is how a red the contract requires to be REPORTED is recorded); "failed" keeps its full force and still fails the task.',
+                //#endregion mpd-delta reported-red-description
             },
             // S2 (mass-ulw "revision without re-running completed work"): a CAPTAIN may
             // amend a task's definition on a RUNNING team. A real change re-runs the
@@ -1643,6 +2115,12 @@ export function registerAgentTeamsTools(ctx, config) {
                     output: { type: 'string' },
                     attempt: { type: 'number', required: true },
                     attempt_id: { type: 'string' },
+                    //#region mpd-delta artifact-channel-result (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // T-09: the task RESULT records where the full text landed, so a deliverable that
+                    // cannot fit the summary is never "somewhere on disk" the reader cannot name.
+                    artifact_path: { type: 'string' },
+                    artifact_bytes: { type: 'number' },
+                    //#endregion mpd-delta artifact-channel-result
                 },
             },
             render: (args, value) => [{
@@ -1651,6 +2129,12 @@ export function registerAgentTeamsTools(ctx, config) {
                 }],
         },
         async execute(args, exec) {
+            //#region mpd-delta strict-tool-arguments-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // T-61: the FIRST statement of the call path — an unknown argument name is refused
+            // before the caller is resolved, before the team lock and before any write, so a
+            // typo'd payload can never be reported as APPLIED while storing nothing.
+            assertKnownToolArguments('agent_teams_update_task', UPDATE_TASK_ARGUMENT_NAMES, args);
+            //#endregion mpd-delta strict-tool-arguments-apply
             const caller = requireCaptain(exec);
             const workspace = workspaceOf(caller);
             const stateRoot = stateRootOf(workspace, config);
@@ -1658,43 +2142,118 @@ export function registerAgentTeamsTools(ctx, config) {
             const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                 const { team: fresh, identity } = await requireFreshParticipant(stateRoot, team.id, caller.id);
                 const task = requireTask(fresh, args.task_id);
+                //#region mpd-delta update-task-amend-owned-task (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-02 (wave 1, t14): an OWNED task's contract used to be unrepairable from both
+                // ends — the captain had to reassign (a takeover that revokes the live attempt)
+                // before it could correct a wrong acceptance/inScope, and the owner could not amend
+                // at all (the member branch below refused, and the repair workaround "the owner
+                // self-amends at claim time" did not exist). Measured 2026-09-17 on this wave's own
+                // t9: both ends refused. An AMEND is a DEFINITION-only action, so it is allowed on a
+                // member-owned task now; every other captain write on that task still refuses here,
+                // exactly as before. REPLACEMENT-SHAPED: the upstream `if (...)` was rewritten, so a
+                // re-materialize makes the applier REFUSE loudly (file byte-untouched) instead of
+                // silently restoring the old unrepairable guard; remedy = restore the region or
+                // re-author it plus `--write-registry`.
                 if (identity.kind === 'captain'
+                    && args.amend === undefined
                     && task.assignee !== undefined
                     && task.assignee !== CAPTAIN_KEY) {
                     throw new Error(`task ${task.id} is owned by member "${task.assignee}"; call agent_teams_reassign_task with assignee="captain" before takeover`);
                 }
+                //#endregion mpd-delta update-task-amend-owned-task
                 if (identity.kind === 'member') {
                     if (task.assignee !== identity.name) {
                         throw new Error(`task ${task.id} is assigned to "${task.assignee ?? 'nobody'}", not you`);
                     }
+                    //#region mpd-delta member-amend-at-claim-time (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // T-02 (wave 1, t14): a member MAY amend the contract of a task it owns AT CLAIM
+                    // TIME — the one window where the contract has been read but no work has been
+                    // recorded yet, i.e. exactly when a contradictory or wrong acceptance is
+                    // discovered. The amend branch below returns before any status/output write, so
+                    // this cannot lose work; anywhere else (in_progress, terminal) the amendment
+                    // stays a captain action and is refused LOUDLY, never silently ignored
+                    // (wave-4 DEFECT 2 kept: a silent no-op is worse than a refusal).
+                    const amendOnly = args.amend !== undefined
+                        && args.output === undefined && args.verdict === undefined
+                        && args.findings === undefined && args.acceptanceResults === undefined
+                        && args.commandsRun === undefined && args.changedPaths === undefined;
+                    if (args.amend !== undefined && task.status !== 'claimed') {
+                        throw new Error(`task ${task.id} is ${task.status}: a member may amend a contract ONLY at claim time (status "claimed"); ask the captain to amend it otherwise`);
+                    }
+                    //#endregion mpd-delta member-amend-at-claim-time
                     //#region mpd-delta update-task-required-attempt-id (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                     // Wave-2 DEFECT 5: `task.attemptId !== undefined && args.attempt_id !== task.attemptId`
                     // compares an OMITTED attempt_id as unequal, so a payload that dropped the parameter
                     // surfaced as `stale attempt … stop work and request fresh assignment` and cost a
                     // captain reassign cycle while the attempt was actually current. Branch on the
                     // omission FIRST and say the parameter is required; the stale wording stays reserved
-                    // for a present-but-mismatched id.
+                    // for a present-but-mismatched id. T-02 (t14) adds ONE carve-out: an amend-ONLY call
+                    // may omit the id (the amend branch returns before any write, so an omitted
+                    // capability cannot lose work); a SUPPLIED id is still validated below.
                     if (task.attemptId !== undefined && (args.attempt_id === undefined || args.attempt_id === '')) {
-                        throw new Error(`attempt_id is required for task ${task.id}: call agent_teams_claim_task to read the current attempt_id, then repeat this update with attempt_id="<value>"`);
+                        if (amendOnly !== true)
+                            throw new Error(`attempt_id is required for task ${task.id}: call agent_teams_claim_task to read the current attempt_id, then repeat this update with attempt_id="<value>"`);
                     }
                     //#endregion mpd-delta update-task-required-attempt-id
-                    if (task.attemptId !== undefined && args.attempt_id !== task.attemptId) {
+                    if (task.attemptId !== undefined && args.attempt_id !== undefined && args.attempt_id !== '' && args.attempt_id !== task.attemptId) {
                         throw new Error(`stale attempt for task ${task.id}: expected the current attempt_id; stop work and request fresh assignment`);
                     }
-                    //#region mpd-delta update-task-amend-captain-only (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-                    // Wave-4 DEFECT 2 (measured 4x by a member): a member's `amend` was
-                    // ACCEPTED and persisted NOTHING — the amend branches below are gated on
-                    // captain identity and the member branch never read the argument, so the
-                    // tool answered success for a mutation that never happened while the
-                    // task's definition stayed exactly as the captain wrote it. A silent
-                    // no-op on a definition change is worse than a refusal: fail loudly and
-                    // name the only surface that can perform it.
-                    if (args.amend !== undefined) {
-                        throw new Error(`an amendment is an explicit captain action on the task definition: task ${task.id} cannot be amended by a member — ask the captain to amend it (a member's amend is refused, never silently ignored)`);
-                    }
-                    //#endregion mpd-delta update-task-amend-captain-only
                 }
+                //#region mpd-delta artifact-channel-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-09/T-10 (wave 1, t19): the artifact attach is its OWN atomic operation — it
+                // validates, writes the file and records it on the task under the same lock, then
+                // returns. It never touches status/output/verdict, so it is legal on a RUNNING and
+                // on a TERMINAL task alike (repairing the evidence of a finished task is the same
+                // class as T-52's append-only output repair).
+                if (args.artifact !== undefined) {
+                    const record = writeTaskArtifact(workspace, stateRoot, fresh, identity, args.artifact);
+                    task.artifacts = [...(task.artifacts ?? []), record];
+                    task.updatedAt = Date.now();
+                    await writeTeam(stateRoot, fresh);
+                    appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-artifact', {
+                        teamId: fresh.id,
+                        taskId: task.id,
+                        path: record.path,
+                        bytes: record.bytes,
+                        appended: record.appended,
+                    });
+                    return {
+                        task_id: task.id,
+                        status: task.status,
+                        attempt: task.attempt ?? 0,
+                        artifact_path: record.path,
+                        artifact_bytes: record.bytes,
+                        ...task.attemptId === undefined ? {} : { attempt_id: task.attemptId },
+                    };
+                }
+                //#endregion mpd-delta artifact-channel-apply
                 if (TERMINAL_TASK_STATUSES.includes(task.status)) {
+                    //#region mpd-delta terminal-output-append-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // T-52 (wave 1, t14): the ONE terminal mutation that is allowed. The stored
+                    // bytes are never rewritten — the new value STARTS with the old one — so a
+                    // reviewer still reads the original summary and sees exactly what was added.
+                    if (args.output_append !== undefined) {
+                        const appended = args.output_append.trim();
+                        if (appended === '')
+                            throw new Error('output_append must not be blank; omit it to leave the terminal result unchanged');
+                        const before = task.output ?? '';
+                        task.output = before === '' ? appended : `${before}\n\n${appended}`;
+                        task.updatedAt = Date.now();
+                        await writeTeam(stateRoot, fresh);
+                        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-output-appended', {
+                            teamId: fresh.id,
+                            taskId: task.id,
+                            addedChars: appended.length,
+                        });
+                        return {
+                            task_id: task.id,
+                            status: task.status,
+                            attempt: task.attempt ?? 0,
+                            output: task.output,
+                            ...task.attemptId === undefined ? {} : { attempt_id: task.attemptId },
+                        };
+                    }
+                    //#endregion mpd-delta terminal-output-append-apply
                     //#region mpd-delta update-task-amend-terminal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                     // S2: an amendment is an explicit captain action on the DEFINITION, so a
                     // real change is allowed to revive a terminal task (and re-runs its
@@ -1758,6 +2317,21 @@ export function registerAgentTeamsTools(ctx, config) {
                         }
                     }
                     //#endregion mpd-delta update-task-terminal-immutable-fields
+                    //#region mpd-delta terminal-stale-attempt-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // T-79 STATE HALF (wave 2, lane A) — a STALE capability on terminal work.
+                    //
+                    // The three blocks above admit the sanctioned terminal mutations (artifact /
+                    // output_append / amend) and the immutable-field guard refuses a real CHANGE.
+                    // What was left was the idempotent path: a caller presenting a capability that
+                    // no longer exists was answered SUCCESS with the stored record, so a replayed
+                    // ticket (wave 2: `t1` re-sent to its completed seat) got a green answer for an
+                    // attempt that had already ended. A capability that does not match the stored
+                    // one cannot be current on a finished task, so the refusal names the terminal
+                    // status and the stored capability and points at the ONE sanctioned revive.
+                    if (args.attempt_id !== undefined && args.attempt_id !== '' && args.attempt_id !== task.attemptId) {
+                        throw new Error(`task ${task.id} is ${task.status}: the supplied attempt_id "${args.attempt_id}" does not match the stored capability (${task.attemptId ?? 'none'}) — terminal work is never re-armed, so a stale capability cannot update it. Read the record with agent_teams_task_contract, or retry failed/cancelled work with agent_teams_reassign_task (a FRESH attempt id).`);
+                    }
+                    //#endregion mpd-delta terminal-stale-attempt-refusal
                     const sameStatus = args.status === undefined || args.status === task.status;
                     const sameOutput = args.output === undefined || args.output === task.output;
                     if (!sameStatus || !sameOutput) {
@@ -1782,9 +2356,21 @@ export function registerAgentTeamsTools(ctx, config) {
                 // S2 on a non-terminal task: amend the definition and reset ONLY the amended
                 // task plus its transitive dependents, so completed nodes whose inputs did
                 // not change keep their cached results and the scheduler re-runs the rest.
-                if (args.amend !== undefined && identity.kind === 'captain') {
+                // T-02 (wave 1, t14) adds TWO things here:
+                //   * a member may amend AT CLAIM TIME (the member-amend region above admitted
+                //     only status "claimed"), so the gate below admits that one member case;
+                //   * an IN-FLIGHT task (claimed/in_progress) keeps its attempt and its owner:
+                //     invalidating it would be the takeover T-02 exists to remove. Nothing is
+                //     invalidated for an in-flight task because its output does not exist yet —
+                //     the dependents run later, against the amended contract.
+                // Every real amendment is STAMPED (contractVersion/By/At) so a verifier can see
+                // which revision an attempt was claimed under (claim_task stamps
+                // attemptContractVersion, exposed by agent_teams_task_contract).
+                if (args.amend !== undefined
+                    && (identity.kind === 'captain' || (identity.kind === 'member' && task.status === 'claimed'))) {
                     if (amendChangesDefinition(task, args.amend)) {
-                        const invalidated = new Set(amendedInvalidatedIds(fresh.tasks, task.id));
+                        const inflight = task.status === 'claimed' || task.status === 'in_progress';
+                        const invalidated = new Set(inflight ? [] : amendedInvalidatedIds(fresh.tasks, task.id));
                         const invalidatedIds = [];
                         for (const candidate of fresh.tasks) {
                             if (!invalidated.has(candidate.id))
@@ -1813,12 +2399,18 @@ export function registerAgentTeamsTools(ctx, config) {
                             task.inScope = [...args.amend.inScope];
                         if (args.amend.outOfScope !== undefined)
                             task.outOfScope = [...args.amend.outOfScope];
+                        task.contractVersion = (task.contractVersion ?? 1) + 1;
+                        task.contractAmendedAt = Date.now();
+                        task.contractAmendedBy = identity.kind === 'captain' ? CAPTAIN_KEY : identity.name;
                         task.updatedAt = Date.now();
                         await writeTeam(stateRoot, fresh);
                         appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-amended', {
                             teamId: fresh.id,
                             taskId: task.id,
                             invalidatedNodeIds: invalidatedIds,
+                            contractVersion: task.contractVersion,
+                            amendedBy: task.contractAmendedBy,
+                            inflight,
                         });
                         // Wave-4 DEFECT 1 (measured live: the tool call never returned —
                         // "interrupted after it was recorded, but no result durably
@@ -1853,8 +2445,31 @@ export function registerAgentTeamsTools(ctx, config) {
                         throw new Error(transition);
                     task.status = args.status;
                 }
-                if (args.output !== undefined)
+                //#region mpd-delta output-append-any-status (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-46 (wave 1, t19): a LONG deliverable posted in parts was last-write-wins —
+                // measured: a four-part freeze collapsed to `[PART 4/4 …]`, ~24 KB lost while every
+                // participant believed the parts concatenate. `output_append` now EXTENDS the stored
+                // summary on ANY status (the TERMINAL case is handled above and returns), and a
+                // REPLACEMENT that would discard a stored summary longer than 240 chars is refused
+                // unless the caller explicitly confirms it with replace_output: true. REPLACEMENT-
+                // SHAPED: it rewrote the upstream `if (args.output !== undefined) task.output = …`
+                // pair, so a re-materialize makes the applier refuse loudly.
+                if (args.output !== undefined && args.output_append !== undefined)
+                    throw new Error(`task ${task.id}: supply either output (replace) or output_append (extend), not both`);
+                if (args.output_append !== undefined) {
+                    const appended = args.output_append.trim();
+                    if (appended === '')
+                        throw new Error('output_append must not be blank; omit it to leave the result unchanged');
+                    const base = task.output ?? '';
+                    task.output = base === '' ? appended : `${base}\n\n${appended}`;
+                }
+                if (args.output !== undefined) {
+                    const stored = task.output ?? '';
+                    if (stored.length > 240 && !args.output.includes(stored) && args.replace_output !== true)
+                        throw new Error(`task ${task.id} already holds ${stored.length} chars of output: \`output\` REPLACES it (last-write-wins) and would DISCARD that text — repeat the call with output_append to extend it, or with replace_output: true to confirm a real replacement`);
                     task.output = args.output;
+                }
+                //#endregion mpd-delta output-append-any-status
                 if (args.verdict !== undefined)
                     task.verdict = args.verdict;
                 if (findings !== undefined)
@@ -1913,6 +2528,59 @@ export function registerAgentTeamsTools(ctx, config) {
             return updated;
         },
     }));
+    //#region mpd-delta mailbox-check-tool (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    /**
+     * P1d (t48 — the user's read-before-write requirement for the mailbox). The check is PROCESS-LOCAL
+     * and per call: the read tool records what it showed the sender in the same instant, and the send
+     * gate consumes it. It is never persisted and never cached across sessions, so a check made in
+     * another process cannot satisfy a send here.
+     */
+    const mailboxChecks = new Map();
+    const MAILBOX_CHECK_TTL_MS = 10 * 60 * 1000;
+    const checkKeyOf = (callerId, to, content) => `${callerId}\u0000${to}\u0000${content}`;
+    function recordMailboxCheck(callerId, to, content, moment) {
+        mailboxChecks.set(checkKeyOf(callerId, to, content), moment);
+        for (const [key, at] of mailboxChecks) if (moment - at > MAILBOX_CHECK_TTL_MS) mailboxChecks.delete(key);
+    }
+    function hasFreshMailboxCheck(callerId, to, content, now) {
+        const at = mailboxChecks.get(checkKeyOf(callerId, to, content));
+        return at !== undefined && now - at <= MAILBOX_CHECK_TTL_MS;
+    }
+    function consumeMailboxCheck(callerId, to, content) {
+        mailboxChecks.delete(checkKeyOf(callerId, to, content));
+    }
+    ctx.tools.register(defineTool({
+        name: 'agent_teams_mailbox_check',
+        description: 'READ-ONLY pre-send check (P1d): for the caller and the given recipient, report EVERY existing message with the same content at ANY age — id, ts, age, dupCount and whether it is inside the fold window — plus the resolved window and the moment of the check. Run it BEFORE agent_teams_send_message when you may be repeating yourself: the send REFUSES a duplicate that was neither checked nor explicitly confirmed, and names the existing record so the decision stays yours.',
+        parameters: {
+            recipient: { type: 'string', required: true, description: 'The recipient you are about to message: "captain" or a member name.' },
+            content: { type: 'string', required: true, description: 'The exact message text you are about to send (compared verbatim).' },
+        },
+        output: {
+            schema: { type: 'object', additionalProperties: true, properties: {} },
+            render: (_args, value) => [{
+                    type: 'text',
+                    text: `mailbox check → ${value.recipient}: ${value.matches.length} matching record(s); window ${value.window_ms} ms; checked at ${value.checked_at}${value.matches.length === 0 ? ' — nothing to confirm' : ` — ${value.matches.map((match) => `${match.id} (age ${match.age_ms} ms${match.within_fold_window ? ', inside the fold window' : ', older than the window'})`).join('; ')}`}`,
+                }],
+        },
+        async execute(args, exec) {
+            const caller = requireCaptain(exec);
+            const workspace = workspaceOf(caller);
+            const stateRoot = stateRootOf(workspace, config);
+            const located = await requireParticipantTeam(workspace, config, caller);
+            const recipient = args.recipient.trim();
+            const { team, identity } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+            if (recipient !== CAPTAIN_KEY && recipient !== identity.name) requireMember(team, recipient);
+            const windowMs = config.mailboxDedupWindowMs ?? MAILBOX_DEDUP_WINDOW_DEFAULT_MS;
+            const now = Date.now();
+            const existing = await readMailbox(stateRoot, team.id, recipient);
+            const matches = mailboxDuplicatesFor(existing, { from: identity.name, to: recipient, content: args.content, ts: now }, windowMs)
+                .map((match) => ({ ...match, age_ms: now - match.ts }));
+            recordMailboxCheck(caller.id, recipient, args.content, now);
+            return { recipient, window_ms: windowMs, checked_at: new Date(now).toISOString(), matches };
+        },
+    }));
+    //#endregion mpd-delta mailbox-check-tool
     ctx.tools.register(defineTool({
         name: 'agent_teams_send_message',
         description: 'Send a message to the captain or to a teammate. Messages go straight into the recipient\'s mailbox; when the captain agent is online the plugin also schedules live delivery (member recipients get the message as their next turn; a running captain sees it at the nearest model step). No relay is involved: teammates talk to each other directly, exactly like the Claude Code AgentTeams mailbox model.',
@@ -1920,6 +2588,9 @@ export function registerAgentTeamsTools(ctx, config) {
             to: { type: 'string', required: true, description: 'Recipient: "captain" or a member name.' },
             content: { type: 'string', required: true, description: 'The message text.' },
             from: { type: 'string', description: 'Sender (defaults to the caller: the captain, or the calling member).' },
+            // P1d (t48): the ONLY escape from the duplicate gate, and it must be given explicitly — there
+            // is no default, no config key and no environment path that can set it.
+            confirm_duplicate: { type: 'boolean', description: 'Confirm that you are deliberately repeating an existing message. Required when (to, content) already exists and you have not just checked it with agent_teams_mailbox_check; the gate never confirms on your behalf.' },
         },
         output: {
             schema: {
@@ -1951,6 +2622,30 @@ export function registerAgentTeamsTools(ctx, config) {
                 if (args.from !== undefined && args.from !== from) {
                     throw new Error(`agent_teams_send_message: "from" must be your own identity ("${from}"), not "${args.from}"`);
                 }
+                //#region mpd-delta mailbox-send-gate (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // P1d (t48): READ-BEFORE-WRITE for the mailbox — the shape mpd-tools-plugin's B1 guard
+                // already uses. A send that would REPEAT an existing (from,to,content) record is refused
+                // unless the sender confirmed explicitly; the refusal NAMES the record (id, ts, age,
+                // dupCount) and says how to proceed, so the decision stays the sender's. The FOLD stays
+                // the safety net for whatever gets through: it never decides whether a send may proceed.
+                {
+                    const gateWindowMs = config.mailboxDedupWindowMs ?? MAILBOX_DEDUP_WINDOW_DEFAULT_MS;
+                    const gateNow = Date.now();
+                    const gateExisting = await readMailbox(stateRoot, fresh.id, to);
+                    const duplicates = mailboxDuplicatesFor(gateExisting, { from, to, content: args.content, ts: gateNow }, gateWindowMs);
+                    if (duplicates.length > 0 && args.confirm_duplicate !== true) {
+                        const first = duplicates[0];
+                        const already = hasFreshMailboxCheck(caller.id, to, args.content, gateNow);
+                        const more = duplicates.length > 1 ? ` (and ${duplicates.length - 1} more)` : '';
+                        const how = already
+                            ? 'You checked it — retry with confirm_duplicate: true to send anyway; the repeat folds into the existing record.'
+                            : 'Call agent_teams_mailbox_check with this recipient and this content, then retry with confirm_duplicate: true.';
+                        throw new Error(`agent_teams_send_message: this would repeat an existing message to "${to}": ${first.id} (ts ${first.ts}, age ${gateNow - first.ts} ms, dupCount ${first.dup_count})${more}. ${how}`);
+                    }
+                    if (args.confirm_duplicate === true)
+                        consumeMailboxCheck(caller.id, to, args.content);
+                }
+                //#endregion mpd-delta mailbox-send-gate
                 //#region mpd-delta message-payload-ceiling (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                 // configPlane alignment (upstream team_mode.message_payload_max_bytes):
                 // messagePayloadMaxBytes (frozen local default 32768, min 1024) is a REAL
@@ -1975,7 +2670,10 @@ export function registerAgentTeamsTools(ctx, config) {
                     // so the recipient can deliver/act at most once. The record is never
                     // physically deleted and the window/priority live in lib/state.js.
                     const pending = { ...createMessage(from, CAPTAIN_KEY, args.content), deliveryClaimedAt: Date.now() };
-                    const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, CAPTAIN_KEY, pending);
+                    // P1e: resolved PER CALL from the live config (never cached as a module constant).
+                    const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, CAPTAIN_KEY, pending, {
+                        windowMs: config.mailboxDedupWindowMs,
+                    });
                     //#endregion mpd-delta send-dedup-wiring
                     appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
                         teamId: fresh.id,
@@ -1992,9 +2690,13 @@ export function registerAgentTeamsTools(ctx, config) {
                     throw new Error(`team "${fresh.name}" is halted; call agent_teams_resume before waking a member`);
                 }
                 const recipient = requireMember(fresh, to);
+                //#region mpd-delta send-dedup-member-wiring (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
                 // R1 wiring (same rule as the captain path above).
                 const pendingMember = { ...createMessage(from, recipient.name, args.content), deliveryClaimedAt: Date.now() };
-                const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, recipient.name, pendingMember);
+                const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, recipient.name, pendingMember, {
+                    windowMs: config.mailboxDedupWindowMs,
+                });
+                //#endregion mpd-delta send-dedup-member-wiring
                 appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
                     teamId: fresh.id,
                     messageId: message.id,
@@ -2030,10 +2732,13 @@ export function registerAgentTeamsTools(ctx, config) {
             if (prepared.kind === 'captain') {
                 let delivered = 'mailbox';
                 if (captain !== undefined && prepared.identity.kind === 'member') {
-                    delivered = steerCaptainReport(captain, prepared.from, args.content) ? 'live' : 'mailbox';
+                    //#region mpd-delta adapter-steer-send-message-caller (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // F2: same seam as the member-report path — the caller supplies the plugin ctx.
+                    delivered = steerCaptainReport(ctx, captain, prepared.from, args.content) ? 'live' : 'mailbox';
+                    //#endregion mpd-delta adapter-steer-send-message-caller
                 }
                 if (delivered === 'live') {
-                    await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (acknowledgeMailbox(stateRoot, prepared.fresh.id, CAPTAIN_KEY, [prepared.message.id])));
+                    await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (acknowledgeMailbox(stateRoot, prepared.fresh.id, CAPTAIN_KEY, [prepared.message.id], { retentionMs: config.mailboxRetentionMs })));
                 }
                 else {
                     await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (releaseMailboxDelivery(stateRoot, prepared.fresh.id, CAPTAIN_KEY, [prepared.message.id])));
@@ -2049,7 +2754,7 @@ export function registerAgentTeamsTools(ctx, config) {
                 const accepted = await deliverToMember(ctx, captain, prepared.recipient.id, text, exec.signal);
                 delivered = accepted ? 'wake' : 'mailbox';
                 if (accepted) {
-                    await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (acknowledgeMailbox(stateRoot, prepared.fresh.id, prepared.recipient.name, [prepared.message.id])));
+                    await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (acknowledgeMailbox(stateRoot, prepared.fresh.id, prepared.recipient.name, [prepared.message.id], { retentionMs: config.mailboxRetentionMs })));
                 }
             }
             if (delivered === 'mailbox') {
@@ -2063,31 +2768,68 @@ export function registerAgentTeamsTools(ctx, config) {
             };
         },
     }));
+    /**
+     * T-27 (wave 2b, t27): the ONE spelling of "that id does not exist, these do". Both the single-id
+     * refusal and the batch `unresolved` entry use it, so a reader gets the same sentence either way
+     * (and the t41 falsification arm, which neutralises this literal in a scratch copy, still binds
+     * BOTH paths).
+     */
+    function unknownTaskText(team, id) {
+        const known = team.tasks.map((item) => item.id).join(', ');
+        return `task "${id}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`;
+    }
     //#region mpd-delta task-contract (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     ctx.tools.register(defineTool({
         name: 'agent_teams_task_contract',
-        description: 'Read ONE task\'s contract exactly as it was declared: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\'s contract from its subject.',
+        description: 'Read ONE task\'s contract exactly as it was declared, or a BATCH of them in one call: kind/round/objective, inScope/outOfScope, acceptance/verify, dependencies, assignee, attempt id, plus the completion payload it will be judged on. Read-only, works for any status including a task that is already running, and available to the captain and to any member of the team. Use it instead of guessing a running task\'s contract from its subject; pass "task_ids" to read N contracts at once (a batch of one reads exactly like one call, and an id that resolves to nothing is reported as itself, never dropped).',
         parameters: {
-            task_id: { type: 'string', description: 'Task id from the shared task list, e.g. "t4".' },
+            task_id: { type: 'string', description: 'Task id from the shared task list, e.g. "t4" — or a COMMA-SEPARATED LIST of ids ("t4,t5,t6") to read N contracts in ONE call. In list form each contract is returned under its own id, and an id with no task is reported as unresolved rather than dropped; an empty entry is refused. There is deliberately no separate array parameter: the read-only surface keeps its single declared argument.' },
         },
         output: {
             schema: { type: 'object', additionalProperties: true, properties: {} },
-            render: (_args, value) => [{ type: 'text', text: renderTaskContract(value) }],
+            render: (_args, value) => [{ type: 'text', text: Array.isArray(value?.contracts) ? renderTaskContractBatch(value) : renderTaskContract(value) }],
         },
         async execute(args, exec) {
             const caller = requireCaptain(exec);
             const workspace = workspaceOf(caller);
             const stateRoot = stateRootOf(workspace, config);
             const located = await requireParticipantTeam(workspace, config, caller);
-            const taskId = args.task_id?.trim() ?? '';
+            // The batch branch below needs the team, and the single-id path fetches it later, so the
+            // fetch happens here for BOTH shapes (one lock, one read).
+            const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+            // T-27 (wave 2b, t27): the BATCH form. One call reads N contracts; every resolved
+            // contract is the SAME view the single-id call returns (so a batch is never a degraded
+            // shape), and a requested id that resolves to nothing is reported AS ITSELF in
+            // `unresolved` — dropping it would silently answer fewer contracts than were asked for.
+            // The list rides on the SINGLE declared parameter on purpose: the read-only surface is
+            // pinned by `Object.keys(parameters.properties) === ["task_id"]` in
+            // `test/task-contract-tool.test.mjs`, a path this lane does not own, so the batch is
+            // ADDITIVE to the existing argument rather than a second one.
+            const rawId = typeof args.task_id === 'string' ? args.task_id : '';
+            const parts = rawId.split(',');
+            if (parts.length > 1) {
+                const requested = parts.map((id) => id.trim());
+                const blank = requested.indexOf('');
+                if (blank !== -1)
+                    throw new Error(`task_id list entry ${blank + 1} is empty; name a task id in every entry (an empty batch has nothing to read)`);
+                const contracts = [];
+                const unresolved = [];
+                for (const id of requested) {
+                    const found = team.tasks.find((item) => item.id === id);
+                    if (found === undefined) {
+                        unresolved.push({ task_id: id, reason: unknownTaskText(team, id) });
+                        continue;
+                    }
+                    contracts.push(taskContractView(found, team.tasks));
+                }
+                return { requested, contracts, unresolved };
+            }
+            const taskId = rawId.trim();
             if (taskId === '')
                 throw new Error('task_id is required');
-            const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
             const task = team.tasks.find((item) => item.id === taskId);
-            if (task === undefined) {
-                const known = team.tasks.map((item) => item.id).join(', ');
-                throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
-            }
+            if (task === undefined)
+                throw new Error(unknownTaskText(team, taskId));
             return taskContractView(task, team.tasks);
         },
     }));
@@ -2170,16 +2912,47 @@ export function registerAgentTeamsTools(ctx, config) {
             const deliveryCheck = canDeclareDelivery(team);
             const delivery = { ok: deliveryCheck.ok, blockers: [...deliveryCheck.blockers] };
             const loop = describeQualityLoop(team);
+            //#region mpd-delta status-capacity-bind (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            const capacity = memberCapacityView(team);
+            //#endregion mpd-delta status-capacity-bind
+            //#region mpd-delta pause-surface-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // T-19 surface 2 (t21): the ONE pause mechanism is computed ONCE, here, and carried by the
+            // payload, so the rendered line and any structured reader agree by construction. Display
+            // only — see `mpd-delta pause-surface-helper` for the fail-open read and the ruling.
+            const pause = pauseSurfaceOf(ctx, team, workspace, loop.halted === true);
+            //#endregion mpd-delta pause-surface-apply
             const result = {
                 team_id: team.id,
                 team_name: team.name,
                 description: team.description ?? '',
                 phase: team.phase ?? 'running',
+                //#region mpd-delta status-revision-payload (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-06 (wave 2b, lane A): the token THIS snapshot was read at. Two status reads
+                // straddling one transition carry different tokens, so a state printed with a token
+                // cannot be re-read as if it belonged to the writes after it.
+                revision: teamRevisionOf(team),
+                //#endregion mpd-delta status-revision-payload
+                //#region mpd-delta wave-status (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-12 (wave 1, t20): the wave boundary is EXPLICIT state, not captain discipline —
+                // the label is on every status render and the closed waves are listed beside it.
+                wave: {
+                    label: waveOf(team).label,
+                    index: waveOf(team).index,
+                    opened_at: waveOf(team).openedAt,
+                    archived: await listWaveArchives(stateRoot, team.id),
+                },
+                //#endregion mpd-delta wave-status
                 halted: loop.halted,
                 escalated: loop.escalated,
                 loop_state: loop.state,
                 loop_summary: loop.summary,
                 deliverable: loop.deliverable,
+                pause,
+                //#region mpd-delta status-capacity-payload (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // T-11 (wave 2b, lane A): the capacity view reaches the structured reader too, computed
+                // ONCE from the same team record the task lines above were rendered from.
+                capacity,
+                //#endregion mpd-delta status-capacity-payload
                 coverage,
                 delivery,
                 ...team.profile === undefined ? {} : {
@@ -2207,7 +2980,7 @@ export function registerAgentTeamsTools(ctx, config) {
                 ? captainInbox.map(message => message.id)
                 : await readUnreadMailbox(stateRoot, team.id, identity.name).then(messages => messages.map(message => message.id));
             if (acknowledged.length > 0) {
-                await withTeamLock(teamLockKey(stateRoot, team.id), () => (acknowledgeMailbox(stateRoot, team.id, identity.kind === 'captain' ? CAPTAIN_KEY : identity.name, acknowledged)));
+                await withTeamLock(teamLockKey(stateRoot, team.id), () => (acknowledgeMailbox(stateRoot, team.id, identity.kind === 'captain' ? CAPTAIN_KEY : identity.name, acknowledged, { retentionMs: config.mailboxRetentionMs })));
             }
             return result;
         },
@@ -2342,6 +3115,20 @@ export function registerAgentTeamsTools(ctx, config) {
     //   request : any participant, only under its OWN identity
     //   decide  : the captain of THIS team only
     //   clear   : the captain may clear ANY mailbox; a member may clear ONLY its own
+    // (Deliberately NOT its own region: this helper lives INSIDE `mpd-delta interjection-tools`, and a
+    // marker nested in another region is invisible to the writer — t27's measurement, met again here.)
+    /**
+     * P1 (t43, the user's directive): a tool RETURN must be lossless JSON. Measured defect: the clear
+     * tool returned `manifest.cleared.map((record) => record.id)` while `manifest.cleared` is ALREADY an
+     * array of id strings, so every element became `undefined` and the harness refused the whole call
+     * (`invalid output: value is not lossless JSON`) — while the tombstone had ALREADY executed. An
+     * empty mailbox returned `[]` and therefore "worked", which is why it survived: it worked only when
+     * there was nothing to clean. `lossless()` makes the requirement mechanical for all three
+     * interjection tools instead of leaving it to a review to notice a `map` on the wrong shape.
+     */
+    function lossless(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
     ctx.tools.register(defineTool({
         name: 'agent_teams_interject_request',
         description: 'Ask the captain for permission to interject. The request is queued in a separate lane, carries ONLY a summary + reason + location (never the body it wants to deliver), and is NOT delivered to anyone: a pending request is invisible to the scheduler until the captain approves it with agent_teams_interject_decide. Use this when something must be said out of turn so errors are caught in time.',
@@ -2392,13 +3179,15 @@ export function registerAgentTeamsTools(ctx, config) {
                 });
                 return record;
             });
-            return {
+            return lossless({
                 request_id: request.id,
                 from: request.from,
                 status: request.status,
-                expires_at: request.expiresAt,
+                // P1: an `undefined` here would be DROPPED by the harness's JSON round trip, so the
+                // shape is pinned to a number rather than left to the caller's optionality.
+                expires_at: typeof request.expiresAt === 'number' ? request.expiresAt : 0,
                 delivered_to_anyone: false,
-            };
+            });
         },
     }));
     ctx.tools.register(defineTool({
@@ -2450,7 +3239,7 @@ export function registerAgentTeamsTools(ctx, config) {
                     expires_at: typeof record.expiresAt === 'number' ? record.expiresAt : 0,
                 }));
                 if (action === 'list') {
-                    return { action: 'list', pending };
+                    return lossless({ action: 'list', pending });
                 }
                 if (action !== 'decide') {
                     throw new Error(`agent_teams_interject_decide: unknown action "${String(action)}"; the only allowed values are "list" and "decide"`);
@@ -2468,7 +3257,7 @@ export function registerAgentTeamsTools(ctx, config) {
                     requester: decided.from,
                     status: decided.status,
                 });
-                return { action: 'decide', pending, request_id: decided.id, status: decided.status, requester: decided.from };
+                return lossless({ action: 'decide', pending, request_id: decided.id, status: decided.status, requester: decided.from });
             });
         },
     }));
@@ -2478,6 +3267,7 @@ export function registerAgentTeamsTools(ctx, config) {
         parameters: {
             watermark: { type: 'number', required: true, description: 'Clear every record whose ts is <= this value.' },
             agent: { type: 'string', description: 'Which mailbox: "captain" or a member name. Defaults to your own mailbox. A member may only name itself.' },
+            force: { type: 'boolean', description: 'Tombstone even records that were never DELIVERED or never READ. Those are PROTECTED by default (t43): a watermark alone can silently destroy undelivered work, so the caller must opt in explicitly, and the split is reported as tombstoned vs skipped_unread.' },
         },
         output: {
             schema: {
@@ -2486,6 +3276,7 @@ export function registerAgentTeamsTools(ctx, config) {
                 properties: {
                     agent: { type: 'string', required: true },
                     cleared: { type: 'array', required: true, items: { type: 'string' } },
+                    skipped_unread: { type: 'array', items: { type: 'string' } },
                     archived_to: { type: 'string' },
                     unread_after: { type: 'number', required: true },
                 },
@@ -2520,7 +3311,7 @@ export function registerAgentTeamsTools(ctx, config) {
                     // silently clear nothing.
                     requireMember(fresh, target);
                 }
-                const manifest = await clearMailboxToWatermark(stateRoot, fresh.id, target, args.watermark);
+                const manifest = await clearMailboxToWatermark(stateRoot, fresh.id, target, args.watermark, { force: args.force === true });
                 appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/mailbox-cleared', {
                     teamId: fresh.id,
                     agentKey: target,
@@ -2532,12 +3323,15 @@ export function registerAgentTeamsTools(ctx, config) {
                 // not be unread afterwards (this is the assertion the round-2 review asked
                 // to see executed through the tool surface, not only through the primitive).
                 const unreadAfter = await readUnreadMailbox(stateRoot, fresh.id, target);
-                return {
+                return lossless({
                     agent: target,
-                    cleared: manifest.cleared.map((record) => record.id),
+                    // P1: `manifest.cleared` is ALREADY the id array — mapping it produced `undefined`
+                    // elements and the harness refused the value after the clear had executed.
+                    cleared: [...manifest.cleared],
                     ...manifest.sidecar === undefined ? {} : { archived_to: manifest.sidecar },
+                    ...(manifest.skipped_unread ?? []).length === 0 ? {} : { skipped_unread: [...manifest.skipped_unread] },
                     unread_after: unreadAfter.length,
-                };
+                });
             });
         },
     }));
@@ -2547,21 +3341,185 @@ export function registerAgentTeamsTools(ctx, config) {
 // Shared staged/instant profile-team creation, used by the create tool AND by
 // the session-start team policy (lib/session-start.js) so both paths produce
 // byte-identical team state. Exported for that sibling module; not a public API.
+//#region mpd-delta seed-task-drafts (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-42 (wave 2b, lane A): the DAG seed's ONE draft builder — one actual id per seed item (`t<index+1>`)
+ * with the SEED id preserved in `profileSeedId`, so the plan's own identity survives the seed and a
+ * dependency written in seed ids is mapped through `seedToActual` (or left alone when it names an
+ * actual id already). Both the profile's `tasks` convention and a plan artifact's items go through
+ * THIS function, which is what makes the two paths comparable rather than merely similar.
+ * @param templates - the seed items `{ id, subject, assignee?, description?, dependencies }`.
+ * @param seedToActual - seed id -> the actual id the DAG will carry.
+ * @param now - one timestamp for the whole seed.
+ * @returns the draft tasks, in seed order.
+ */
+export function seedTaskDrafts(templates, seedToActual, now) {
+    return templates.map((template, index) => ({
+        id: `t${index + 1}`,
+        profileSeedId: template.id,
+        subject: template.subject,
+        description: template.description,
+        status: 'pending',
+        assignee: template.assignee,
+        dependencies: (template.dependencies ?? []).map((dependency) => seedToActual.get(dependency) ?? dependency),
+        attempt: 0,
+        createdAt: now,
+        updatedAt: now,
+    }));
+}
+//#endregion mpd-delta seed-task-drafts
+//#region mpd-delta team-model-slot-route-helpers (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** How many `teamModels.slot<N>` slots the bundle configures; the config plugin owns the same count. */
+const MAX_TEAM_MODEL_TIER = 4;
+/**
+ * Resolve ONE member template to the route the staging loop calls `resolveMemberLlmSelection` with.
+ * Precedence, by design: an explicit `route` is VERBATIM; else a `tier` reads the configured slot
+ * through the EXISTING mpdConfig service (`get("teamModels.slot<N>")`, whose read path materialises
+ * the four schema defaults on a fresh workspace); else the member's own literals, i.e. today's
+ * captain-derived behaviour unchanged. An unusable slot is a LOUD failure naming the member, the
+ * slot and the fix — it never falls back to another route, to the schema default, or to the member's
+ * literals. `slot` is carried only so a later failure can name the slot; it is not part of a route.
+ * @param ctx - the plugin context (only `ctx.get` is touched).
+ * @param template - one normalized profile member template.
+ * @returns `{ provider, model, reasoningEffort, slot? }` — leaves may be undefined for the literal path.
+ */
+function resolveMemberTemplateRoute(ctx, template) {
+    if (template.route !== undefined) {
+        return { provider: template.route.provider, model: template.route.model, reasoningEffort: template.route.reasoningEffort };
+    }
+    if (template.tier !== undefined) {
+        const slot = `slot${template.tier}`;
+        if (template.tier > MAX_TEAM_MODEL_TIER) {
+            throw new Error(`member "${template.name}" declares tier ${template.tier}, but this bundle configures teamModels.slot1..slot${MAX_TEAM_MODEL_TIER} — use a tier in that range or give the member an explicit route`);
+        }
+        const service = typeof ctx.get === 'function' ? ctx.get('mpdConfig') : undefined;
+        if (service === undefined || typeof service.get !== 'function') {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot} but the mpdConfig service is not available in this composition — enable the mpd-config row, or give the member an explicit route`);
+        }
+        const resolved = service.get(`teamModels.${slot}`);
+        if (resolved === undefined || resolved === null) {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot}, which is NOT configured — declare teamModels.${slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc (or remove the member's tier to keep the captain-derived default)`);
+        }
+        // An empty or whitespace-only leaf is INCOMPLETE, never replaced by the schema default
+        // (a file layer can carry "" past a deep merge), and the effort is REQUIRED here because a
+        // resolved slot always carries one — an empty effort would otherwise be silently dropped.
+        const missing = ['provider', 'model', 'reasoningEffort'].filter((leaf) => typeof resolved[leaf] !== 'string' || resolved[leaf].trim() === '');
+        if (missing.length > 0) {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot}, which is INCOMPLETE (missing ${missing.join(', ')}) — set teamModels.${slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc`);
+        }
+        return { provider: resolved.provider.trim(), model: resolved.model.trim(), reasoningEffort: resolved.reasoningEffort.trim(), slot };
+    }
+    return { provider: template.provider, model: template.model, reasoningEffort: template.reasoningEffort };
+}
+/**
+ * Name the member and the slot on a failure raised while resolving a TIER-routed member's route, so
+ * a broken slot reports WHICH slot is wrong while the underlying dsh-llm text (unknown model, the
+ * available-model list, `UNSUPPORTED_REASONING_EFFORT`) is preserved verbatim in the message. A
+ * member whose route does not come from a slot (explicit `route`, or today's literals) is returned
+ * UNCHANGED — its errors keep their existing wording byte-for-byte.
+ * @param template - the member template being resolved.
+ * @param route - the route returned by {@link resolveMemberTemplateRoute}.
+ * @param error - the caught failure.
+ * @returns the error to throw (the original one for a non-slot route).
+ */
+function memberRouteFailure(template, route, error) {
+    if (route === undefined || route.slot === undefined) {
+        return error;
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    const wrapped = new Error(`member "${template.name}" route from teamModels.${route.slot} failed: ${detail} (fix teamModels.${route.slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)`);
+    if (error instanceof Error) {
+        wrapped.cause = error;
+    }
+    return wrapped;
+}
+/**
+ * Attribute a FAILED batch catalog sweep to the member whose route is at fault. The catalog sweep
+ * itself stays the one batch call it always was (one catalog read per distinct provider on the happy
+ * path); only a failure re-runs it per member, which is what lets the error name the member and the
+ * slot. An abort is never attributed — the cancellation error is rethrown as-is.
+ * @param ctx - the plugin context.
+ * @param templates - the profile's member templates, in selection order.
+ * @param routes - the resolved routes, index-aligned with `templates`.
+ * @param selections - the resolved selections, index-aligned with `templates`.
+ * @param error - the batch failure.
+ * @param signal - the staging cancellation signal.
+ * @returns the error to throw: the attributed one, or `error` unchanged.
+ */
+async function attributeMemberSelectionFailure(ctx, templates, routes, selections, error, signal) {
+    if (signal?.aborted === true) {
+        return error;
+    }
+    for (let index = 0; index < selections.length; index += 1) {
+        try {
+            await validateMemberLlmSelections(ctx, [selections[index]], signal);
+        }
+        catch (single) {
+            return memberRouteFailure(templates[index], routes[index], single);
+        }
+    }
+    return error;
+}
+//#endregion mpd-delta team-model-slot-route-helpers
 export async function initializeProfileTeam(input) {
     const profile = resolveTeamProfile(input.config.profiles, input.profileName, input.config.maxMembers);
+//#region mpd-delta team-model-slot-routes (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // The four configured `teamModels` slots are the DEFAULT route of this roster: a member that
+    // declares `tier: N` takes provider/model/reasoningEffort from
+    // `ctx.get("mpdConfig").get("teamModels.slot<N>")`, a member that declares `route` is used
+    // VERBATIM, and a member with NEITHER keeps today's captain-derived behaviour unchanged (F7).
+    // A slot that cannot be resolved FAILS staging loudly, naming the member, the slot and the fix,
+    // and leaves NO team state behind; nothing silently falls back to another route and no effort is
+    // ever clamped, aliased or replaced (B5/F1-F5). The catalog sweep stays the single batch call it
+    // always was, so the happy path reads each provider's catalog once; only a FAILING batch is
+    // re-run per member, to name the offender's member and slot without touching the happy path.
+    const templates = profile.members;
+    const routes = templates.map((template) => resolveMemberTemplateRoute(input.ctx, template));
     const selections = [];
-    for (const template of profile.members) {
-        selections.push(await resolveMemberLlmSelection(input.ctx, input.captain, {
-            provider: template.provider,
-            model: template.model,
-            defaultModel: input.config.memberModel,
-            reasoningEffort: template.reasoningEffort,
-            fallback: template.fallback ?? profile.fallback ?? input.config.fallback,
-        }, input.exec.signal));
+    for (let index = 0; index < templates.length; index += 1) {
+        const template = templates[index];
+        const route = routes[index];
+        try {
+            selections.push(await resolveMemberLlmSelection(input.ctx, input.captain, {
+                provider: route.provider,
+                model: route.model,
+                defaultModel: input.config.memberModel,
+                reasoningEffort: route.reasoningEffort,
+                fallback: template.fallback ?? profile.fallback ?? input.config.fallback,
+            }, input.exec.signal));
+        }
+        catch (error) {
+            throw memberRouteFailure(template, route, error);
+        }
     }
-    await validateMemberLlmSelections(input.ctx, selections, input.exec.signal);
+    try {
+        await validateMemberLlmSelections(input.ctx, selections, input.exec.signal);
+    }
+    catch (error) {
+        throw await attributeMemberSelectionFailure(input.ctx, templates, routes, selections, error, input.exec.signal);
+    }
+    // `const now` is absorbed into this region so its END sits FLUSH against the NEXT region
+    // (`plan-file-seeds-dag`): the applier computes every context window on the region-stripped
+    // skeleton, so a seam that sits between two lines of a LATER region's before-window breaks that
+    // region's heal (MEASURED: with this seam one line short of the next region, the t2 strip-heal
+    // suite refused `plan-file-seeds-dag` — "the lines before its afterContext window do not match
+    // the registered beforeContext"). Absorbing the single statement keeps the pair stable.
     const now = Date.now();
-    const seedToActual = new Map(profile.tasks.map((template, index) => [template.id, `t${index + 1}`]));
+//#endregion mpd-delta team-model-slot-routes
+    //#region mpd-delta plan-file-seeds-dag (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-42 (wave 2b, lane A): a PLAN ARTIFACT can seed the DAG. The seed items are then the plan's own
+    // items, read by the session-start reader (`readPlanSeedSet`) — the same ids, the same subjects, and
+    // a collision already refused there with the id named — instead of a second convention living beside
+    // the artifact. No plan file given ⇒ the profile's `tasks`, unchanged.
+    let seedTemplates = profile.tasks;
+    if (input.planFile !== undefined) {
+        const planSet = await readPlanSeedSet(workspaceOf(input.captain), input.planFile);
+        if (planSet.ok !== true)
+            throw new Error(`plan seed refused for "${input.planFile}": ${planSet.error}`);
+        seedTemplates = planSet.items.map((item) => ({ id: item.id, subject: item.subject, dependencies: [] }));
+    }
+    //#endregion mpd-delta plan-file-seeds-dag
+    const seedToActual = new Map(seedTemplates.map((template, index) => [template.id, `t${index + 1}`]));
     const draft = {
         name: input.teamName,
         id: input.teamId,
@@ -2578,6 +3536,11 @@ export async function initializeProfileTeam(input) {
         ...profile.reviewPolicy === undefined ? {} : { reviewPolicy: profile.reviewPolicy },
         captainSessionId: input.captain.id,
         createdAt: now,
+        //#region mpd-delta wave-create (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-12 (wave 1, t20): a team is BORN with its wave label written down, not inferred later.
+        wave: { label: 'w1', index: 1, openedAt: now },
+        waveHistory: [],
+        //#endregion mpd-delta wave-create
         ...input.staged ? { phase: 'staged', planReviewState: 'awaiting_review' } : {},
         members: profile.members.map((template, index) => {
             const selection = selections[index];
@@ -2594,19 +3557,8 @@ export async function initializeProfileTeam(input) {
                 status: 'idle',
             };
         }),
-        tasks: profile.tasks.map((template, index) => ({
-            id: `t${index + 1}`,
-            profileSeedId: template.id,
-            subject: template.subject,
-            description: template.description,
-            status: 'pending',
-            assignee: template.assignee,
-            dependencies: template.dependencies.map((dependency) => seedToActual.get(dependency) ?? dependency),
-            attempt: 0,
-            createdAt: now,
-            updatedAt: now,
-        })),
-        taskSeq: profile.tasks.length,
+        tasks: seedTaskDrafts(seedTemplates, seedToActual, now),
+        taskSeq: seedTemplates.length,
     };
     if (input.staged) {
         await createTeamDir(input.stateRoot, draft);
@@ -2721,15 +3673,24 @@ function parseCommandResults(value) {
         if (typeof raw['command'] !== 'string' || raw['command'].trim() === '') {
             throw new Error(`commandsRun[${index}].command is required`);
         }
-        if (raw['status'] !== 'passed' && raw['status'] !== 'failed') {
-            throw new Error(`commandsRun[${index}].status must be passed or failed`);
+        //#region mpd-delta reported-red-parse (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-84 (wave 2b, lane A): the tool path accepts the third status `reported` (a labelled red
+        // the contract requires to be reported) and carries its `reason` into the record; an
+        // unlabelled `reported` is refused, and `failed` keeps its full force in the gate.
+        if (raw['status'] !== 'passed' && raw['status'] !== 'failed' && raw['status'] !== 'reported') {
+            throw new Error(`commandsRun[${index}].status must be passed, failed or reported`);
+        }
+        if (raw['status'] === 'reported' && (typeof raw['reason'] !== 'string' || raw['reason'].trim() === '')) {
+            throw new Error(`commandsRun[${index}].reason is required for a reported command (the red must be labelled)`);
         }
         return {
             command: raw['command'],
             status: raw['status'],
             ...typeof raw['exitCode'] === 'number' ? { exitCode: raw['exitCode'] } : {},
             ...typeof raw['evidence'] === 'string' ? { evidence: raw['evidence'] } : {},
+            ...raw['status'] === 'reported' && typeof raw['reason'] === 'string' ? { reason: raw['reason'] } : {},
         };
+        //#endregion mpd-delta reported-red-parse
     });
 }
 export function applyQualityFollowUp(team, closed) {
@@ -2802,6 +3763,78 @@ function memberRuntime(config) {
     };
 }
 /** Render the status snapshot as compact text for the model. */
+//#region mpd-delta artifact-channel-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** The write-capable names a seat can lose: a seat that denies any of them is READ-ONLY here. */
+const ARTIFACT_WRITE_NAMES = ['write', 'edit', 'bash'];
+/**
+ * T-09/T-10 (wave 1, t19): write ONE artifact and return the record stored on the task.
+ *
+ * Append-or-create on purpose: the channel must never be able to DESTROY a byte, which is
+ * what makes it safe to hand to a seat whose `write`/`edit`/`bash` are denied. The guards
+ * are mechanical and each one has its own refusal: relative path, no `..` segment, inside
+ * the workspace, never inside the team state dir, target absent or a REGULAR file (a
+ * directory, symlink or device is refused), and — for a seat whose own `toolDeny` names a
+ * write-capable tool — only under `evidence/**`.
+ * @param workspace - the calling session's workspace (absolute).
+ * @param stateRoot - the configured team state root (absolute).
+ * @param team - the fresh team record (the member entry carries `toolDeny`).
+ * @param identity - the caller's identity (`captain` or the member name).
+ * @param artifact - the raw `{path, text}` argument.
+ */
+function writeTaskArtifact(workspace, stateRoot, team, identity, artifact) {
+    const rawPath = typeof artifact?.path === 'string' ? artifact.path.trim() : '';
+    const text = typeof artifact?.text === 'string' ? artifact.text : '';
+    if (rawPath === '')
+        throw new Error('artifact.path is required');
+    if (text === '')
+        throw new Error('artifact.text is required (a zero-byte artifact records nothing)');
+    if (isAbsolute(rawPath))
+        throw new Error(`artifact.path must be workspace-relative; got the absolute path "${rawPath}"`);
+    if (rawPath.split(/[\\/]+/).some((segment) => segment === '..'))
+        throw new Error(`artifact.path must not traverse upward (".."): "${rawPath}"`);
+    const root = resolve(workspace);
+    const resolved = resolve(root, rawPath);
+    if (resolved !== root && !resolved.startsWith(root + sep))
+        throw new Error(`artifact.path must stay inside the workspace (${root}); got "${rawPath}"`);
+    const stateAbs = resolve(stateRoot);
+    if (resolved === stateAbs || resolved.startsWith(stateAbs + sep))
+        throw new Error(`artifact.path must not point inside the team state dir (${stateAbs}); team state is not a deliverable store`);
+    const relativePath = relative(root, resolved).split(sep).join('/');
+    const memberEntry = team.members.find((candidate) => candidate.name === identity.name);
+    const denied = new Set(memberEntry?.toolDeny ?? []);
+    const readOnly = identity.kind !== 'captain' && ARTIFACT_WRITE_NAMES.some((name) => denied.has(name));
+    if (readOnly && !relativePath.startsWith('evidence/'))
+        throw new Error(`a READ-ONLY seat (write/edit/bash denied) may write artifacts only under evidence/** — its sanctioned append-only channel; got "${relativePath}"`);
+    let existing = false;
+    try {
+        const stats = lstatSync(resolved);
+        if (!stats.isFile())
+            throw new Error(`artifact.path "${relativePath}" already exists and is not a regular file; the artifact channel never touches directories, symlinks or devices`);
+        existing = true;
+    }
+    catch (error) {
+        if (error?.code !== 'ENOENT')
+            throw error;
+    }
+    const prior = existing ? readFileSync(resolved, 'utf8') : '';
+    mkdirSync(dirname(resolved), { recursive: true });
+    // The lexical check above cannot see a SYMLINKED directory: `evidence/link -> /elsewhere`
+    // resolves lexically inside the workspace and then writes through the link. Re-check the
+    // REAL parent after mkdir, so the containment rule holds for the bytes too.
+    const realParent = realpathSync(dirname(resolved));
+    if (realParent !== root && !realParent.startsWith(root + sep))
+        throw new Error(`artifact.path resolves outside the workspace through a symlinked directory (${realParent}); the artifact channel never writes through a link`);
+    writeFileSync(resolved, existing ? `${prior}\n${text}` : text);
+    return {
+        path: relativePath,
+        bytes: text.length,
+        total_bytes: prior.length + text.length + (existing ? 1 : 0),
+        appended: existing,
+        at: Date.now(),
+        by: identity.kind === 'captain' ? CAPTAIN_KEY : identity.name,
+    };
+}
+//#endregion mpd-delta artifact-channel-helper
 //#region mpd-delta task-contract-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /** A contract list rendered in the SAME spelling the assignment prompt uses. */
 function contractList(value) {
@@ -2827,6 +3860,14 @@ function taskContractView(task, allTasks = []) {
         assignee: task.assignee ?? '',
         attempt: task.attempt ?? 0,
         attempt_id: task.attemptId ?? '',
+        // T-02 (wave 1, t14): the contract REVISION pair. `contract_version` moves whenever the
+        // definition is amended; `attempt_contract_version` is the revision the live attempt was
+        // claimed under (stamped in claim_task). A reviewer compares the two: when they differ,
+        // this attempt is working a revision the captain has since corrected.
+        contract_version: task.contractVersion ?? 1,
+        attempt_contract_version: task.attemptContractVersion ?? 1,
+        ...task.contractAmendedAt === undefined ? {} : { contract_amended_at: task.contractAmendedAt },
+        ...task.contractAmendedBy === undefined ? {} : { contract_amended_by: task.contractAmendedBy },
         dependencies: task.dependencies ?? [],
         // OPT-1: a FAILED dependency does not block the dependent, so the view must
         // carry the failure explicitly or the information would be lost silently.
@@ -2858,6 +3899,9 @@ function renderTaskContract(value) {
     const lines = [
         `Task ${contract.task_id} [${contract.status}] ${contract.kind}${contract.round === undefined ? '' : ` round ${contract.round}`} — ${contract.subject}`,
         `Assignee: ${contract.assignee || 'unassigned'} (attempt ${contract.attempt}${contract.attempt_id === '' ? '' : `, attempt_id ${contract.attempt_id}`})`,
+        // T-02 (t14): the revision pair, rendered so a reviewing seat cannot miss a mid-flight
+        // contract correction. Same revision = the attempt works what the captain declared.
+        `Contract revision: ${contract.contract_version}${contract.attempt_contract_version === contract.contract_version ? '' : ` — AMENDED since this attempt was claimed (claimed under revision ${contract.attempt_contract_version})`}`,
         `Dependencies: ${list(contract.dependencies)}`,
         'Contract:',
         `  Objective: ${contract.objective === '' ? '(none)' : contract.objective}`,
@@ -2881,7 +3925,128 @@ function renderTaskContract(value) {
     ];
     return lines.join('\n');
 }
+/**
+ * T-27 (wave 2b, t27): render a BATCH contract read. Each block is the SAME `renderTaskContract`
+ * spelling the single-id call uses, and every id that resolved to nothing is printed AS ITSELF under
+ * its own heading — the answer always names what was asked for and what came back.
+ */
+function renderTaskContractBatch(value) {
+    const requested = Array.isArray(value?.requested) ? value.requested : [];
+    const contracts = Array.isArray(value?.contracts) ? value.contracts : [];
+    const unresolved = Array.isArray(value?.unresolved) ? value.unresolved : [];
+    const header = `Requested ${requested.length} contract(s) in one call: ${requested.join(', ')} — resolved ${contracts.length}, unresolved ${unresolved.length}.`;
+    const blocks = contracts.map((contract) => renderTaskContract(contract));
+    const missing = unresolved.map((entry) => `UNRESOLVED ${entry.task_id} — ${entry.reason}`);
+    return [header, ...blocks, ...missing].join('\n\n');
+}
 //#endregion mpd-delta task-contract-render
+//#region mpd-delta pause-surface-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-19 surface 2 (wave 2, t21) — ONE pause mechanism on the status surface.
+//
+// THE RULING (user, frozen by t3): "`agent_teams_halt` becomes the SOLE external mechanism; the
+// watchdog's PRESERVING hold is demoted to its internal implementation. Surface, tools and docs
+// expose one mechanism." The wave-1 line here did the opposite: it named the hold as a PEER and
+// deferred to another status surface, so an operator reading it while a hold was set saw
+// `agent-teams halt not active` — a true sentence that reads as "the team is running".
+//
+// The hold is read for DISPLAY ONLY, through the watchdog's own service, using the same cordis
+// inject-free lookup (`ctx.get(name, false)`) the scheduler's own hold reader uses — the reader
+// REGION itself stays out of this file (its id is deliberately not spelled here: `lib/scheduler.js`
+// owns it, and a self-fix pin asserts this file carries no copy). This read gates NOTHING: the tool-boundary guards stay deleted (D25-D26) and
+// the dispatch gate stays in the scheduler, because a hold must stop new dispatch only and must
+// never refuse a member's own claim/update/kick. It is FAIL-OPEN and non-throwing: an absent or
+// throwing reader reports `not-readable`, never a guessed hold.
+//
+// LIVE-VS-DURABLE: the service covers this process's holds and falls back to the durable
+// `watchdog/hold/<teamId>.json` record another process wrote (its own view reports which it used).
+const PAUSE_MECHANISM = 'agent_teams_halt';
+const PRESERVING_HOLD_SERVICE = 'mpdWatchdog';
+/** The one pause mechanism, its state, and the internal hold view behind it. */
+function pauseSurfaceOf(ctx, team, workspace, halted) {
+    const internal = (() => {
+        try {
+            const watchdog = typeof ctx?.get === 'function' ? ctx.get(PRESERVING_HOLD_SERVICE, false) : undefined;
+            const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(team.id, workspace) : undefined;
+            if (view === undefined || view === null)
+                return { state: 'not-readable' };
+            if (view.held !== true)
+                return { state: 'not-held' };
+            return {
+                state: 'held',
+                hold_id: String(view.holdId ?? ''),
+                at: typeof view.at === 'number' ? view.at : 0,
+                reason: String(view.reason ?? ''),
+                source: view.source === undefined ? null : String(view.source),
+            };
+        }
+        catch {
+            return { state: 'not-readable' };
+        }
+    })();
+    return {
+        mechanism: PAUSE_MECHANISM,
+        active: halted === true || internal.state === 'held',
+        halt: halted === true,
+        internal_implementation: {
+            kind: 'team-watchdog-preserving-hold',
+            ...internal,
+            released_by: 'session-watchdog-resume',
+        },
+    };
+}
+/** The internal-implementation clause of the ONE pause line (diagnostics survive the collapse). */
+function describePause(pause) {
+    const internal = pause?.internal_implementation;
+    if (pause === undefined)
+        return 'pause state not carried by this payload';
+    if (internal?.state === 'held') {
+        const since = internal.at > 0 ? new Date(internal.at).toISOString() : 'an unrecorded time';
+        const reason = internal.reason === '' ? '(no reason recorded)' : internal.reason;
+        return `hold ${internal.hold_id === '' ? '(no id)' : internal.hold_id} set since ${since} — ${reason} (released only by its own session-watchdog-resume)`;
+    }
+    if (internal?.state === 'not-held')
+        return 'no hold is set';
+    return 'hold state not readable on this host (the watchdog service is not loaded)';
+}
+//#endregion mpd-delta pause-surface-helper
+//#region mpd-delta member-capacity-view (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-11 (wave 2b, lane A): the per-member NEXT-CLAIMABLE / CAPACITY view.
+ *
+ * The row: "a next-claimable/capacity view per member fed by the scheduler's ready-set helper" — so
+ * every readiness answer below comes from `isTaskReady` (the scheduler's own export, the predicate S3's
+ * resume contract is built on), never from a second copy of the rule. A member is BUSY while it owns a
+ * claimed/in-progress task, and a busy member is never listed as claimable; a member's `blocked` list
+ * names the tasks assigned to it that the predicate refuses, so a chain (t1 -> t2) reads as one ready
+ * task plus one explicitly BLOCKED one instead of as silence.
+ * @param team - the team record.
+ * @returns one row per live member: `{ name, busy_task, next_claimable, blocked, pool }`.
+ */
+export function memberCapacityView(team) {
+    const tasks = team?.tasks ?? [];
+    const members = (team?.members ?? []).filter((member) => member.status !== 'removed');
+    return members.map((member) => {
+        const busy = tasks.find((task) => task.assignee === member.name
+            && (task.status === 'claimed' || task.status === 'in_progress'));
+        const assigned = tasks.filter((task) => task.assignee === member.name && task.status === 'pending');
+        const pooled = tasks.filter((task) => task.assignee === undefined && task.status === 'pending');
+        const readyOf = (list) => list.filter((task) => isTaskReady(tasks, task)).map((task) => task.id);
+        const blockedOf = (list) => list.filter((task) => !isTaskReady(tasks, task)).map((task) => task.id);
+        const ready = [...readyOf(assigned), ...readyOf(pooled)];
+        return {
+            name: member.name,
+            busy_task: busy?.id ?? null,
+            next_claimable: busy !== undefined ? null : ready[0] ?? null,
+            // The row's OWN ready set: the DECISIVE comparison unions these and holds them against the
+            // scheduler's ready set for the same revision, so a second predicate inside the view leaks
+            // a blocked task into THIS list and reddens the arm (measured on the mirror).
+            ready: busy !== undefined ? [] : ready,
+            blocked: blockedOf(assigned),
+            pool: readyOf(pooled),
+        };
+    });
+}
+//#endregion mpd-delta member-capacity-view
 function renderStatus(value) {
     const team = value;
     const flags = [
@@ -2894,6 +4059,18 @@ function renderStatus(value) {
     ].filter((item) => item !== undefined);
     const lines = [
         `Team "${team.team_name}"${team.description ? ` — ${team.description}` : ''}${flags.length > 0 ? ` [${flags.join(', ')}]` : ''}`,
+        //#region mpd-delta wave-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-12 (wave 1, t20): the wave boundary is visible on EVERY status render, with the
+        // closed waves beside it — the captain no longer has to remember which wave it is in.
+        ...(team.wave === undefined ? [] : [`Wave: ${team.wave.label} (open since ${new Date(team.wave.opened_at).toISOString()})${(team.wave.archived ?? []).length === 0 ? '' : ` · archived: ${(team.wave.archived ?? []).map((entry) => `${entry.label}→${entry.archived_tasks} task(s) at ${entry.closed_at === null ? '?' : new Date(entry.closed_at).toISOString()}`).join(', ')}`}`]),
+        //#endregion mpd-delta wave-render
+//#region mpd-delta status-pause-mechanisms (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-19 surface 2 (wave 2, t21) — ONE mechanism, collapsed from the two-peer wording the
+        // wave-1 line carried. `agent_teams_halt` IS the pause mechanism; the team watchdog's
+        // PRESERVING hold is its INTERNAL implementation, and the operator still gets the hold's id
+        // and reason (the diagnostics) instead of being sent to a second status surface.
+        `Pause: agent-teams halt ${team.pause?.active === true ? 'ACTIVE' : 'not active'} (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: ${describePause(team.pause)})`,
+//#endregion mpd-delta status-pause-mechanisms
         ...team.profile === undefined ? [] : [`Profile: ${team.profile.name}${team.profile.task_planning ? ` [${team.profile.task_planning}]` : ''}${team.profile.protocol ? ` — ${team.profile.protocol}` : ''}`],
         ...team.loop_summary ? [`Loop: ${team.loop_state ?? ''} — ${team.loop_summary}`.replace(/^Loop:  — /u, 'Loop: ')] : [],
         `Viewing as: ${team.viewer}`,
@@ -2903,6 +4080,17 @@ function renderStatus(value) {
             const effort = member.reasoning_effort ? ` · reasoning ${member.reasoning_effort}` : '';
             return `  - ${member.name} [${member.role}] ${member.status}/${member.activity}${route}${effort}`;
         }),
+        //#region mpd-delta status-revision-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-06 (wave 2b, lane A): the token is printed BEFORE the task lines, so every task state
+        // below belongs to the revision named here — a stale read is visible instead of assumed.
+        `Revision: ${Number.isSafeInteger(team.revision) ? team.revision : 'unrecorded'} (monotone; every team write moves it)`,
+        //#endregion mpd-delta status-revision-render
+        //#region mpd-delta status-capacity-render (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-11 (wave 2b, lane A): one line per member, ALWAYS — a member with nothing ready prints
+        // `none` (absence printed as absence), and a busy member prints its task instead of a claimable.
+        'Capacity (next claimable per member, from the scheduler\u2019s own ready-set helper):',
+        ...(team.capacity ?? []).map((row) => `  - ${row.name}: next ${row.next_claimable === null || row.next_claimable === undefined ? 'none' : row.next_claimable}${row.busy_task === null || row.busy_task === undefined ? '' : ` · busy ${row.busy_task}`}${row.blocked.length === 0 ? '' : ` · blocked ${row.blocked.join(',')}`}${row.pool.length === 0 ? '' : ` · pool ${row.pool.join(',')}`}`),
+        //#endregion mpd-delta status-capacity-render
         `Tasks (${team.tasks.length}):`,
         ...team.tasks.map((task) => {
             const deps = task.dependencies.length > 0 ? ` (deps: ${task.dependencies.join(',')})` : '';
@@ -2912,7 +4100,10 @@ function renderStatus(value) {
             const kind = task.kind ? ` ${task.kind}` : '';
             const round = task.round === undefined ? '' : ` r${task.round}`;
             const verdict = task.verdict === undefined ? '' : ` verdict ${task.verdict}`;
-            return `  - ${task.id} [${task.status}]${kind}${round}${verdict} attempt ${task.attempt}${handoff}${seed} ${task.subject} → ${task.assignee || 'unassigned'}${deps}${output}`;
+            // T-64 (wave 2b, lane A): an id that names no task is printed AS ITSELF, so an
+            // unresolvable dependency never reads as an ordinary parked/blocked state.
+            const unresolved = unresolvedDependencyNote(task, team.tasks);
+            return `  - ${task.id} [${task.status}]${kind}${round}${verdict} attempt ${task.attempt}${unresolved}${handoff}${seed} ${task.subject} → ${task.assignee || 'unassigned'}${deps}${output}`;
         }),
         ...team.coverage === undefined || team.coverage.length === 0 ? [] : [
             'Coverage:',

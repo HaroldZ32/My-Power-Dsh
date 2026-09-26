@@ -1,0 +1,83 @@
+{
+  "task": "t27 (review r3) — AC-by-AC verdict on the repaired revision, judged against the settled bytes",
+  "seat": "Reviewer",
+  "attempt": 2,
+  "attempt_id": "6bb317bb-6695-488c-b3e1-6baeb6cca8c2",
+  "reviewed_task": "t26",
+  "verdict": "pass",
+  "summary": "PASS. Every in-scope AC (AC1–AC13, AC15, AC16) carries evidence re-measured or re-read on the settled revision (hash read 2026-09-19T16:18:53Z; settle sandwich START==END over 50 s). Round-2's findings are closed BY THE ARTIFACTS: F2 (design EN+zh and the deltas clause now qualify the closure with the counted childCtx residual; R5's pinned count prefix byte-unchanged), F3 (all four spots carry the corrected flags parenthetical and both README lists name 14 flags including commandsRegister, which I re-derived from the bridge's own seam() call sites), F5 (the unannounced scanner edit is declared as t26's own, not reverted, and the new seam.captured-method-call rule gives the exemption a real job with module-scoped arms). F4 is closed by RULES (my probe: late assignment, parenthesized receiver, ctx.get extraction, scoped-ctx extraction all CAUGHT; documented ctx.get(\"mpdDsh\") idiom stays clean). AC14 is CARRIED BY t10 per the captain's ruling and is not a finding. Two non-blocking observations are recorded: inherent scanner residuals with no instance in the tree, and the count sentence's measurement parenthetical moving with its numbers.",
+  "revision": {
+    "read_utc": "2026-09-19T16:18:53Z",
+    "settle_sandwich": "evidence/agent-teams/adapter-wiring/review/round3/logs/settle-sandwich.log — START 16:20:04Z == END 16:21:0xZ over 50 s, identical, 22 files",
+    "hash_table": "evidence/agent-teams/adapter-wiring/review/round3/logs/reviewer-revision-hashes.txt",
+    "changed_since_round2": {
+      "docs/design.md": "91a153031268fdaa09369dd426b033a0bc3c381d1c5ce3832b84423c0aa23fe4",
+      "docs/design.zh-CN.md": "ace6a393173f3afef92bf933a4ce8c3a3d5d1b7963f1da56cf35c5afba2bf692",
+      "agent-references/agent-teams-deltas.md": "2d98f7e9173e18278c078048eae1f83b38ea4de971511aa202ead58e3303c9c1",
+      "packages/mpd-dsh-adapter-plugin/README.md": "420b4894cf4c632fb8e1d3ada4be188957b9169214702aaaa296e59c02e765d9",
+      "packages/mpd-dsh-adapter-plugin/README.zh-CN.md": "c41fa806e7586cd5622edcc696d668572a07e2895e223142b8d76073fe6273af",
+      "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs": "4d8fb3e3b0da2308f4eec468d2b09f796f17962954bd4b87fee06749fec61b2b"
+    },
+    "unchanged_since_round2": {
+      "AGENTS.md": "d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54",
+      "evidence/agent-teams/adapter-wiring/requirements-contract.md": "e4e0b3b24f7778c5fa16fe97397874b0f4ea9862ae223b7ee3da6a3385390dde",
+      "VENDOR_LOCK.json": "fc6f8aa34771faba879a4c448ce837dac506ffb461bd8c0586adbe406e3672fb",
+      "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4",
+      "scripts/patch-agent-teams-fixes.mjs": "f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3",
+      "skills/dsh-qa/scripts/lib/credentials.mjs": "b32f12c7becaf6c6781fbb1d5c3fcdcb1d863c7852258a2b858c224e8d999cfa",
+      "skills/dsh-qa/scripts/agent-teams-dispatch.mjs": "8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c"
+    }
+  },
+  "commands_run": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 151 mpd delta region(s) across 13 adopted file(s)" },
+    { "command": "bun run verify:gates", "status": "passed", "exitCode": 0, "evidence": "logs/verify-gates.log — PASS 5/5 (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance); docs derived note 'carried **151**/13 vs derived 151/13'" },
+    { "command": "bun run test:qa", "status": "passed", "exitCode": 0, "evidence": "logs/test-qa.log — '[test:qa] all self-tests passed'" },
+    { "command": "bun test packages/mpd-agent-teams-plugin packages/mpd-dsh-adapter-plugin", "status": "passed", "exitCode": 0, "evidence": "logs/bun-test-both-packages.log — 461 pass / 0 fail / 5758 expect calls" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "logs/typecheck.log" },
+    { "command": "independent closure census over 18 server files", "status": "passed", "exitCode": 0, "evidence": "logs/closure-census.log — 83 classified sites: 39 facade, 18 in-region, 24 bridge fallback, 2 counted childCtx, 0 UNROUTED" },
+    { "command": "adversarial probe of the t26 scanner rules (rules copied verbatim)", "status": "passed", "exitCode": 0, "evidence": "logs/scanner-probe-v3.log — F4 gaps CAUGHT (late assignment, parenthesized receiver, ctx.get extraction, scoped-ctx extraction); captured-method-call reddens in members.js and is clean in harness-compat; documented ctx.get(\"mpdDsh\") idiom clean" },
+    { "command": "settle sandwich (hash, 50 s, re-hash)", "status": "passed", "exitCode": 0, "evidence": "logs/settle-sandwich.log — START == END, 22 files" },
+    { "command": "(read, not re-run) t8 attempt-7 verification artifacts and result.json", "status": "reported", "reason": "the verification lane's fresh PASSED record on bytes unchanged for the adopted lib", "evidence": "evidence/agent-teams/adapter-wiring/verification/20260919T160002Z/{result.json,ac10-bundle-lifecycle.log,ac10-11-instrumented-boots.log,ac12-preset-conformance.log,ac13-suite-gates.log}" }
+  ],
+  "ac_table": [
+    { "ac": "AC1", "verdict": "PASS", "evidence": "my typecheck exit 0 + adapter surface test green (14 methods / 12 flags); src unchanged e3948553…" },
+    { "ac": "AC2", "verdict": "PASS", "evidence": "Object.is arm green in my run; unchanged bytes" },
+    { "ac": "AC3", "verdict": "PASS", "evidence": "adapter-routing.test.mjs green; lib bytes identical to round 2 (standing evidence review/round2/verdict.md)" },
+    { "ac": "AC4", "verdict": "PASS", "evidence": "adapter-facade.test.mjs green" },
+    { "ac": "AC5", "verdict": "PASS", "evidence": "git status over test/ + self-fix-tests/ shows only ?? entries; suite green 461/0" },
+    { "ac": "AC6", "verdict": "PASS", "evidence": "adapter-tool-parity.test.mjs green (order + canonical + Object.is)" },
+    { "ac": "AC7", "verdict": "PASS", "evidence": "--check exit 0 (151/13); six bridged files byte-identical to round 2 whose hunk check was 36/36 inside regions" },
+    { "ac": "AC8", "verdict": "PASS", "evidence": "mpd-owned-file-restore.test.mjs green; CLI byte-identical f0789ea0… so the round-2 scratch restore stands" },
+    { "ac": "AC9", "verdict": "PASS", "evidence": "docs-parity PASS with derived 151/13 agreement in my run; F2/F3 closed by artifacts (design EN 91a15303 + zh ace6a393; README pair 420b4894/c41fa806 with 14 flags; deltas 2d98f7e9 qualified)" },
+    { "ac": "AC10", "verdict": "PASS", "evidence": "t8 attempt-7 bundle-lifecycle PASS (16-00-10.971Z) + enabled boot 21/21, mounted x1, fallback 0" },
+    { "ac": "AC11", "verdict": "PASS", "evidence": "t8 attempt-7 disabled boot: adapter row 0, absent=1, pending/mounted=0, isolation asserted" },
+    { "ac": "AC12", "verdict": "PASS", "evidence": "t8 attempt-7 --self-test + REAL run PASS exit 0 at 16-01-07.071Z; skills bytes unchanged since" },
+    { "ac": "AC13", "verdict": "PASS", "evidence": "my runs: verify:gates 5/5, typecheck 0, test:qa exit 0, packages 461/0; t8: bun test packages 1152/0, dist/docs/rows exit 0. Bare `bun test` red = captain-accepted environment note (untracked+gitignored scratch copies)" },
+    { "ac": "AC14", "verdict": "CARRIED BY t10", "evidence": "out of this review's scope by the captain's ruling (integration's acceptance item 1 IS AC14); no evidence can exist before t10 runs — NOT a finding" },
+    { "ac": "AC15", "verdict": "PASS", "evidence": "t26 scanner 4d8fb3e3 green in my run; my probe confirms the round-2 gaps closed; census 0 unrouted; AC15's declared bound covers the remaining inherent class" },
+    { "ac": "AC16", "verdict": "PASS", "evidence": "my sandwich START==END over 50 s with the 16:18:53Z hash table; t8 attempt-7 result.json: 24 files, DRIFT->RE-ANCHOR 16:09:11Z == 16:10:01Z" }
+  ],
+  "round2_findings_closure": {
+    "F1": "RESOLVED by the captain's ruling: review rounds are scoped at task level to AC1–AC13/AC15/AC16 and AC14 is carried by t10 (recorded in t26 result item 1 and reflected in this task's contract).",
+    "F2": "CLOSED BY ARTIFACTS — docs/design.md 91a15303… + docs/design.zh-CN.md ace6a393… qualify the closure with the counted setup(childCtx, child) residual in the same change; agent-references/agent-teams-deltas.md 2d98f7e9… qualifies its wave clause; R5's gate-pinned count prefix is byte-unchanged.",
+    "F3": "CLOSED BY ARTIFACTS — all four spots carry the corrected parenthetical (design EN+zh, README EN 420b4894… / zh c41fa806…), and BOTH README lists now name 14 flags in the same order including commandsRegister (I re-derived the 14 from the bridge's seam(name, flag) call sites).",
+    "F4": "CLOSED BY RULES — t26 chose the stronger option: facade.get-extraction, facade.get-destructure, scoped-ctx.extraction, scoped-ctx.destructure plus the broadened facade.alias catch every shape round 2 named; my probe verified each, with clean negative controls.",
+    "F5": "CLOSED BY DECLARATION + A JOB — t26-result.json declares the 16:07:10Z edit as its own (t23 follow-up) and owns packages/mpd-agent-teams-plugin/test/** now; the new seam.captured-method-call rule makes the LADDER_CAPTURES exemption module-scoped and falsifiable (members.js reddens, harness-compat clean).",
+    "F6": "RESOLVED in round 2 (t8's fresh result.json landed)."
+  },
+  "non_blocking_observations": [
+    "Scanner residuals of the inherent class: `const { tools } = agent.ctx` (destructuring the scoped ctx itself) and function-parameter aliases remain outside a line-local rule set; no instance exists in lib/ (targeted grep + census 0 unrouted), and AC15's declared bound covers exactly this class.",
+    "The count sentence's measurement parenthetical moved with its numbers (a new moment/clause on the same line); R5's gate-pinned prefix is unchanged and the derived check agrees, so the docs gate pins what it claims to pin."
+  ],
+  "closure_attack": { "result": "NOT falsified", "method": "independent census re-run on the settled bytes (83 sites / 0 unrouted) plus the targeted grep for the uncovered extraction shapes", "evidence": "review/round3/logs/closure-census.log" },
+  "parity_attack": { "result": "NOT falsified", "method": "unchanged bytes; parity + Object.is + routing tests green in my run; round 2 cited as standing evidence" },
+  "delta_restore_attack": { "result": "NOT falsified", "method": "--check exit 0 on unchanged CLI bytes; round 2's scratch restore stands" },
+  "docs_truthfulness": { "result": "TRUE on the changed surfaces", "method": "read the qualified sentences in EN + zh, the deltas clause, the four flag-wording spots and both 14-name lists; re-derived the flag count from the bridge code; docs gate PASS with derived agreement" },
+  "next_steps": [
+    "t10 integration may now run: AC14 (pack-mpd + verify-pack-closure, freshness read from the expected-after-pack list, never from the exit code) is its acceptance item 1.",
+    "Optional future hardening only: the two inherent scanner residuals of §3, if a future edit ever introduces that shape."
+  ]
+}

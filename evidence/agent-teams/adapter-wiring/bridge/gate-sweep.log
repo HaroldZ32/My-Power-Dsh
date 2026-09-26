@@ -1,0 +1,35 @@
+=== plugin suite ===
+
+ 360 pass
+ 0 fail
+ 5259 expect() calls
+Ran 360 tests across 4374 files. [34.64s]
+=== --check ===
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+=== typecheck ===
+$ tsgo --noEmit
+exit=0
+=== AC5 test-dir status ===
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+=== heal probe ===
+ok   harness-compat.js: strip-heal byte-identical (151 regions)
+ok   mpd-adapter-ctx.js: strip-heal byte-identical (151 regions)
+=== region proof ===
+
+total lines removed outside regions: 58; violations: 0
+=== flag conformance ===
+flags used by the bridge: 14 | all declared by the adapter: true 
+flag-false startAgentTurn -> raw lane: true
+flag-false steerAgentTurn -> raw lane: true
+unusable adapter scope -> built shape: ["context","effect","on","tools"] | context is agent.ctx (Object.is): true
+=== guard-lane crosscheck (their create class, my new bytes) ===
+entries for packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js: 1
+createClassBase("mpd-adapter-ctx.js"): mpd-adapter-ctx.js
+createClassBase("mpd-deltas.js") (must be undefined): undefined
+guard-lane reconstruction byte-identical to the landed file: true
+reconstructed bytes: 26728 | file bytes: 26728

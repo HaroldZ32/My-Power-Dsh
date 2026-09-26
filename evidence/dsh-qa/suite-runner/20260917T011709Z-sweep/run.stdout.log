@@ -1,0 +1,2 @@
+$ node scripts/run-qa-lanes.mjs
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=8bc7f34737e0 lanes=32 evidence=evidence/dsh-qa/suite-runner/2026-09-17T01-17-09.226Z

@@ -1,0 +1,7 @@
+$ bun skills/dsh-qa/scripts/tui-admission.mjs --sandbox-root .mpd/recon/qa
+# manifest digest at lane start: 84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9
+[tui-admission] static result ok=true
+[tui-admission] live /plugins check -> state=waiting_authorization ok=true forbidden=[]
+[tui-admission] ok=true -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-15T06-46-44.391Z
+[tui-admission] PASS: host-parsed, projected, validated, negotiated and live-checked
+[exit 0]

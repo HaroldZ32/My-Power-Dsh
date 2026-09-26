@@ -1,0 +1,20 @@
+{
+  "proof": "REAL boot with the mpd-dsh-adapter row disabled: the fallback branch warns once per row and the tree keeps working",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "overlay": "/root/dshProj/my-power-dsh/evidence/extensions/f1-adapter-identity/20260916T063737Z-repair2/raw/disable-adapter.yml",
+  "adapter_row_applied": 0,
+  "mpd_ext_fallback_warnings": 1,
+  "mpd_roles_fallback_warnings": 1,
+  "fallback_identity_readings": 4,
+  "mpd_ext_summary_lines": 1,
+  "mpd_roles_summary_lines": 1,
+  "four_tool_summary_present": true,
+  "apply_crash_signatures": 0,
+  "install_exit": 0,
+  "boot_exit": 124,
+  "passed": true,
+  "note": "loader-level apply is the load evidence; --dump-config is never used here (it composes rows without executing plugin code)"
+}

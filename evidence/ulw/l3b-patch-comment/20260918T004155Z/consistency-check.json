@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "the gate comment block was found",
+      "ok": true,
+      "detail": "26 comment lines"
+    },
+    {
+      "name": "comment: soft trigger is ADVISORY",
+      "ok": true,
+      "detail": "A triggered SOFT signal is ADVISORY"
+    },
+    {
+      "name": "comment: no team state is created",
+      "ok": true,
+      "detail": "NOTHING is staged (no team state is created)"
+    },
+    {
+      "name": "comment: states no team was staged",
+      "ok": true,
+      "detail": "states that no team was staged"
+    },
+    {
+      "name": "comment: names the on-demand staging call",
+      "ok": true,
+      "detail": "agent_teams_create(approval=\"required\""
+    },
+    {
+      "name": "comment: names profile=\"mpd\"",
+      "ok": true,
+      "detail": "profile=\"mpd\""
+    },
+    {
+      "name": "comment: names the solo half",
+      "ok": true,
+      "detail": "continue solo and say so"
+    },
+    {
+      "name": "comment: frozen predicate",
+      "ok": true,
+      "detail": "explicit flag OR (matchedSignals >= 1)"
+    },
+    {
+      "name": "comment: >= 2 wording is gone",
+      "ok": true,
+      "detail": "no (matchedSignals >= 2)"
+    },
+    {
+      "name": "code: frozen predicate kept",
+      "ok": true,
+      "detail": "input.explicitFlag === true || signals.length >= 1"
+    },
+    {
+      "name": "comment: explicit request still provisions",
+      "ok": true,
+      "detail": "request still PROVISIONS"
+    },
+    {
+      "name": "comment: mode=auto opt-in kept",
+      "ok": true,
+      "detail": "mode=auto keeps the legacy unconditional provisioning"
+    },
+    {
+      "name": "comment: mode=instruct kept",
+      "ok": true,
+      "detail": "mode=instruct keeps the legacy instruction notice"
+    },
+    {
+      "name": "code: advisoryNotice exists and is exported",
+      "ok": true,
+      "detail": "export function advisoryNotice"
+    },
+    {
+      "name": "code: advisory notice says NO team was staged",
+      "ok": true,
+      "detail": "NO team was staged"
+    },
+    {
+      "name": "code: advisory notice names the same call",
+      "ok": true,
+      "detail": "agent_teams_create(approval=\"required\", profile="
+    },
+    {
+      "name": "code: advisory notice names the solo half",
+      "ok": true,
+      "detail": "continue solo"
+    }
+  ]
+}

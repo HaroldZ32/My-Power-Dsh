@@ -1,0 +1,4 @@
+Error: dsh: plugin tree failed to load: failed to apply loader entry dsh-tui (@deepseek-harness-tui/dsh-tui): dsh-tui requires an interactive terminal (stdout must be a TTY).
+Error: dsh-tui requires an interactive terminal (stdout must be a TTY).
+  [cause]: Error: failed to apply loader entry dsh-tui (@deepseek-harness-tui/dsh-tui): dsh-tui requires an interactive terminal (stdout must be a TTY).
+    [cause]: Error: dsh-tui requires an interactive terminal (stdout must be a TTY).

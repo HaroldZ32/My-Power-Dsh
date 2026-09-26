@@ -1,0 +1,134 @@
+{
+  "step": "inject-deps",
+  "chromeBinary": "/root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome",
+  "hostPort": 36509,
+  "hostSessionIds": [
+    "session-ea609c27-5aa5-4bb9-9751-538f24f4b340",
+    "session-6bfce79d-41f9-4636-827e-5d623898783e",
+    "session-8b24bd96-aff4-4250-b636-da74a3d50974",
+    "session-91a796e6-b55d-4c1e-9679-c2430e6a3908",
+    "session-31383684-6f17-4469-8a8a-6d2cc6e32dd1"
+  ],
+  "chromePort": 36387,
+  "makeCurrent": {
+    "before": null,
+    "afterId": "session-ea609c27-5aa5-4bb9-9751-538f24f4b340"
+  },
+  "injectDependencySweep": [
+    {
+      "deps": [
+        "modelDirectories",
+        "sessions"
+      ],
+      "callbackFired": true,
+      "directoryService": "object",
+      "sessionId": "session-ea609c27-5aa5-4bb9-9751-538f24f4b340",
+      "directoryForThrew": true,
+      "error": "cannot get property \"remote.session\" without inject"
+    },
+    {
+      "deps": [
+        "modelDirectories",
+        "sessions",
+        "remote"
+      ],
+      "callbackFired": true,
+      "directoryService": "object",
+      "sessionId": "session-6bfce79d-41f9-4636-827e-5d623898783e",
+      "directoryForThrew": true,
+      "error": "cannot get property \"remote.session\" without inject"
+    },
+    {
+      "deps": [
+        "modelDirectories",
+        "sessions",
+        "remote.session"
+      ],
+      "callbackFired": true,
+      "directoryService": "object",
+      "sessionId": "session-8b24bd96-aff4-4250-b636-da74a3d50974",
+      "directoryForThrew": false,
+      "directoryFound": true,
+      "beforeLoad": {
+        "status": "ready",
+        "groupCount": 2
+      },
+      "afterLoad": {
+        "status": "ready",
+        "groupCount": 2,
+        "groups": [
+          {
+            "id": "deepseek-official",
+            "models": 4
+          },
+          {
+            "id": "opencode-go",
+            "models": 27
+          }
+        ]
+      }
+    },
+    {
+      "deps": [
+        "modelDirectories",
+        "sessions",
+        "remote",
+        "remote.session"
+      ],
+      "callbackFired": true,
+      "directoryService": "object",
+      "sessionId": "session-91a796e6-b55d-4c1e-9679-c2430e6a3908",
+      "directoryForThrew": false,
+      "directoryFound": true,
+      "beforeLoad": {
+        "status": "ready",
+        "groupCount": 2
+      },
+      "afterLoad": {
+        "status": "ready",
+        "groupCount": 2,
+        "groups": [
+          {
+            "id": "deepseek-official",
+            "models": 4
+          },
+          {
+            "id": "opencode-go",
+            "models": 27
+          }
+        ]
+      }
+    },
+    {
+      "deps": [
+        "sessions",
+        "remote",
+        "remote.session"
+      ],
+      "callbackFired": true,
+      "directoryService": "object",
+      "sessionId": "session-31383684-6f17-4469-8a8a-6d2cc6e32dd1",
+      "directoryForThrew": false,
+      "directoryFound": true,
+      "beforeLoad": {
+        "status": "ready",
+        "groupCount": 2
+      },
+      "afterLoad": {
+        "status": "ready",
+        "groupCount": 2,
+        "groups": [
+          {
+            "id": "deepseek-official",
+            "models": 4
+          },
+          {
+            "id": "opencode-go",
+            "models": 27
+          }
+        ]
+      }
+    }
+  ],
+  "ok": true
+}

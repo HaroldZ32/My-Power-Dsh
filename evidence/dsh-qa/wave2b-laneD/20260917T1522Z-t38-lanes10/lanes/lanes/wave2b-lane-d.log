@@ -1,0 +1,8 @@
+[wave2b-lane-d] ok   T-69.raw-flag — raw `dsh --dump-config` invocation(s) in the corpus: none (files scanned 233, prose sites 0, declared exceptions 2)
+[wave2b-lane-d] ok   T-69.call-site-binding — `join(REPO|repoRoot, …)` call sites: 287 in 42 of 54 scanned file(s); UNBOUND: none
+[wave2b-lane-d] ok   T-89.dot-slash — exectued argv tokens without `./`: none; prose/usage occurrences (documented, not violations): 208; the `./` form ./skills/dsh-qa/scripts discovers 54 file(s) (files scanned 54)
+[wave2b-lane-d] ok   T-77.scratch-shape — `.qa-wave2b-lane-d-scratch/keep.txt` ignored=true (pattern: .gitignore:87:/.qa-*); near-miss `qa-wave2b-lane-d-scratch/keep.txt` ignored=false
+[wave2b-lane-d] ok   T-80.header-claims — live: [driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s) | seeded mismatch: exit 1, violations 1 (a claimed-but-unasserted key must redden)
+[wave2b-lane-d] ok   T-25.naive-reader — container frames=2, naive one-shot read=first-frame-only (the failure IS the evidence); docs name the three entry points=true, trap documented=true; real-store reading: unavailable (no --store passed)
+[wave2b-lane-d] ok   T-74.out-discipline — SKILL.md rule sentence present=true; digest pair: not requested
+[wave2b-lane-d] PASS — 7 arm(s), 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/dsh-qa/wave2b-laneD/2026-09-17T15-06-21.308Z/result.json)

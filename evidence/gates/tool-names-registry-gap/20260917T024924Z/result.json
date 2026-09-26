@@ -1,0 +1,44 @@
+{
+  "task": "t39 \u2014 apply BOTH delta-table handoffs to the table's real home + the coupled nonexistent-doc-path fix",
+  "attemptId": "12eef850-d7bc-4348-a6d3-d90ee9a034ee",
+  "measuredAt": "2026-09-17T03:0xZ (edit time)",
+  "changedPaths": [
+    "agent-references/agent-teams-deltas.md",
+    "AGENTS.md",
+    "scripts/verify-docs-parity.mjs",
+    "evidence/gates/tool-names-registry-gap/20260917T024924Z"
+  ],
+  "hashes": {
+    "AGENTS.md": "1eac90f4268b2b34180dcc22\u2026 -> 54b6f31ec6733073366ba92f\u2026 (language-policy + \u00a73 exemption sentences) -> 24b4490e019ada2488fc4974\u2026 (\u00a76 pointer clause 'A1\u2013D26' -> 'A1\u2013D38'; the evidence was first written between the two edits, so the chain is recorded rather than collapsed)",
+    "agent-references/agent-teams-deltas.md": "04589f94a2ed2130ed8accba\u2026 -> 1485be855df9adccc9f7e9c9\u2026",
+    "scripts/verify-docs-parity.mjs": "c252c85b4c01420284f9af0d\u2026 -> f7c51c527a4fc4435cda5791\u2026",
+    "note": "the handed-down pins were my STARTING point; these are MY measured hashes (the re-measure requirement)."
+  },
+  "handoffApplication": {
+    "t9": "D23\u2013D26 (the PRE-t9 design: a 2-region reader + live claim/update guards) was REPLACED by D23\u2013D24 (the surviving dispatch half: reader is scheduler.js ONLY + the kick decline), D25\u2013D26 (REMOVED: claim-task-hold-guard, update-task-hold-guard + lib/tools.js's reader copy) and D27 (status-pause-mechanisms).",
+    "t14": "D28\u2013D37 added as written (D28 amend-owned REPLACEMENT-shaped, D29 member-amend-at-claim-time replacing update-task-amend-captain-only, D30 claim-contract-version-stamp, D31 task-contract-render, D32\u2013D34 edit_plan quality contract, D35\u2013D37 terminal output append); the changed D15 and D16\u2013D18 rows are covered by the D30/D31/D32\u2013D34 entries + the count paragraph's provenance.",
+    "toolNamesRow": "D38 \u2014 the out-of-registry edit in lib/tool-names.js (agent_teams_task_contract in TEAM_TOOL_NAMES AND added to MEMBER_TOOL_NAMES), with the CONSEQUENCE stated: a human re-materialize of the upstream tree reverts both while --check stays green (it verifies registered regions only), plus the wave-2 follow-up pointer (register tool-names.js as a tenth registry file). The row was authored as '\u2014 (marker-less)' by t9; t39 gives it the number D38 and keeps the text.",
+    "conflictResolution": "The two handoffs do NOT conflict on any id, verified against the live registry: t9 removed the two hold guards + the tools.js reader copy; t14 replaced a DIFFERENT id (update-task-amend-captain-only). Checked: all three ids ABSENT; watchdog-hold-reader maps to lib/scheduler.js alone. Stated verbatim in the table as a 'Wave-1 conflict resolution' paragraph."
+  },
+  "countChain": {
+    "measuredAtEdit": "73 regions across 9 adopted files (node scripts/patch-agent-teams-fixes.mjs --check)",
+    "chain": "table said 53 -> t9 51 -> t14 59 -> t19 65 -> t20 71 -> t36's two additive regions 73",
+    "honestBound": "rows for t19/t20/t36's regions are NOT in this table yet (out of t39's scope); the count is ahead of the row list BY DESIGN and the table says so, so a missing row is not inferred from the number."
+  },
+  "coupledFixF3": {
+    "measurement": "`ls docs/` carries neither docs/adder4.md nor docs/cnt8.md, while AGENTS.md named them at :19-20 (language policy) and :174 (\u00a73 layout) and scripts/verify-docs-parity.mjs carried ANTICIPATORY entries for both (reasons + the bookkeeping comment) \u2014 the citation chain pointed at a manual example that did not exist.",
+    "fix": "ONE change, both ends: the manual stops naming the two nonexistent paths (examples dropped, the category kept) and the script keeps its two ENTRIES (so the census is untouched) but re-words the bookkeeping comment + both reasons to say the list is now their single source; the stale 'AGENTS.md \u00a73 names them' citation is gone from both ends.",
+    "censusCheck": "bun run verify:docs = pairs=37 failed=0 violations=0 exempt=17 PASS \u2014 IDENTICAL to the pre-edit baseline (measured before the edit in this task), so this is an exemption-list/comment correction, not a behaviour change; verify:docs --self-test exit 0 (its fixtures still write both paths and still expect them exempt)."
+  },
+  "gates": {
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 \u2014 73 regions across 9 adopted files (unchanged by this task: no region touched)",
+    "bun run verify:docs": "exit 0 \u2014 pairs=37 failed=0 violations=0 exempt=17 PASS",
+    "node scripts/verify-rows-parity.mjs": "exit 0 \u2014 25 row ids match the bundle patch insert list"
+  },
+  "bounds": [
+    "Only AGENTS.md's \u00a76 pointer clause ('A1\u2013D26' -> 'A1\u2013D38') and the two exemption sentences moved; nothing else in the manual.",
+    "agent-references/** is agent-facing English-only content whose discovery the bilingual gate deliberately excludes: NO zh-CN twin added and no file renamed to README.md.",
+    "Auditing every path the manual names is T-66 (wave 2), not this task."
+  ],
+  "tableVerification": "all ten wave-1 rows present (D23\u2013D24, D25\u2013D26, D27, D28, D29, D30, D31, D32\u2013D34, D35\u2013D37, D38) + the '**73** regions' count + the conflict-resolution paragraph; one verification assert of mine was initially wrong (I asserted a '| D37 |' row while the t14 handoff deliberately wrote the range row '| D35\u2013D37 |') \u2014 corrected here, not by editing the table"
+}

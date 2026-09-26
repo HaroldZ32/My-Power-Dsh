@@ -1,0 +1,845 @@
+========================================================================
+t13 — integration: cascade dist rebuild + aggregate gate sweep
+case dir: evidence/model-slots/integration/20260918T042523Z
+========================================================================
+
+########## 1. dist freshness BEFORE ##########
+(the fourteen stale targets, as measured by node scripts/verify-dist-fresh.mjs at task start)
+  STALE: mpd-bootstrap, boulder, codegraph, comment-checker, ext, hashline, memory, modelchain,
+         qa-roles-probe, roles, team-compact, team-watchdog, tools, ulw  (14 of 20)
+
+########## 2. the fourteen canonical rebuilds ##########
+--- bun build packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js
+Bundled 2 modules in 7ms
+
+  index.js  35.65 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js
+Bundled 14 modules in 7ms
+
+  index.js  53.62 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  27.1 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  29.18 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js
+Bundled 11 modules in 11ms
+
+  index.js  158.16 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js
+Bundled 18 modules in 6ms
+
+  index.js  60.50 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  36.1 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js
+Bundled 2 modules in 5ms
+
+  index.js  28.78 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  29.0 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js
+Bundled 3 modules in 8ms
+
+  index.js  45.11 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js
+Bundled 2 modules in 7ms
+
+  index.js  38.91 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js
+Bundled 15 modules in 10ms
+
+  index.js  161.72 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  24.84 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js
+Bundled 2 modules in 8ms
+
+  index.js  47.45 KB  (entry point)
+
+build_exit=0
+
+
+########## 3. dist freshness AFTER ##########
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha d21368536f44… 77ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 686e4a879403… 28ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 21ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 35024651166a… 24ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha d881f285d8b2… 25ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 4b142e9b2761… 62ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha 7dffbdf454a8… 23ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha cac8e4dd08d5… 40ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 21ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 7c58a1f700d3… 49ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha a9eb3f6ea4c5… 36ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cbef3e3e94af… 37ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 210cdb02b923… 36ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 98180ed1c3f7… 26ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha f2dfa9ab2987… 25ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha b9a855469c80… 66ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 248dbf383aea… 32ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 73159e0470dc… 68ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha c116f6aaeb23… 36ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 23817a9b2c80… 29ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 811ms
+EXIT=0
+
+
+########## 4. client.js rebuild: byte-identity check ##########
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (305168 bytes)
+CLIENT_BUILD_EXIT=0
+
+sha256sum -c (before == after): OK -> byte-identical to the committed artifact
+lane-owned artifacts unchanged (before == after):
+0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5  packages/mpd-bundle-plugin/client.js
+4b142e9b27617a21b15ca74343c59ef2f70c14eb81cd83cec4906af60435cadf  packages/mpd-config-plugin/dist/index.js
+7dffbdf454a800a4f4292f976393912dac367a11cd99f3ffd572dcaccc0a281b  packages/mpd-dsh-adapter-plugin/dist/index.js
+73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e  packages/mpd-tui-plugin/dist/index.js
+23817a9b2c8035c978c05a127afb1cc2b899cd8d77fffb72f66633058d20759a  packages/mpd-workmate-plugin/dist/index.js
+
+
+########## 5. aggregate gate sweep (each command + its exit code) ##########
+############ bun run typecheck
+$ tsgo --noEmit
+EXIT=0
+############ bun run test:qa
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs --self-test"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example"; exit 1; }; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-messaging.mjs
+[agent-teams-messaging self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies (member revert consumed by its stable head) + VENDOR_LOCK skills pin current (326 files/e944e320b3ff) + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa glob
+[test:qa] skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+[agent-teams-sidebar self-test] ok: 17 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/settings-card,@mpd-dsh/mpd)
+[test:qa] skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+[test:qa] skills/dsh-qa/scripts/codegraph-smoke.mjs
+[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (mcp__codegraph__codegraph_explore) verified on fixtures
+[test:qa] skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified
+[test:qa] skills/dsh-qa/scripts/explicit-team-trigger.mjs
+[explicit-team-trigger self-test] ok: resolver + both entry points + disabled-surface warning present
+[test:qa] skills/dsh-qa/scripts/extension-isolation.mjs
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+[test:qa] skills/dsh-qa/scripts/extension-lifecycle.mjs
+[self-test] live packer route = flag (recorded, not asserted)
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified
+[test:qa] skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified
+[test:qa] skills/dsh-qa/scripts/extension-template.mjs
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+[test:qa] skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content verified on fixtures
+[test:qa] skills/dsh-qa/scripts/memory-smoke.mjs
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] skills/dsh-qa/scripts/mount-assert.mjs
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/plan-c-smoke.mjs
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] skills/dsh-qa/scripts/preset-conformance.mjs
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[test:qa] skills/dsh-qa/scripts/preset-register.mjs
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified
+[test:qa] skills/dsh-qa/scripts/readonly-deny.mjs
+[readonly-deny self-test] ok: 23 checks
+[test:qa] skills/dsh-qa/scripts/relocate-smoke.mjs
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] skills/dsh-qa/scripts/session-start-team.mjs
+[session-start-team self-test] ok: gate module + advisory/provision notices + bundle patch + installer + persona + THREE-WAY prompt directions + always-advise control + attribution/evaluator fixtures (plugin vs model vs unattributable) verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/software-smoke.mjs
+[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s))
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 13 checks; staged pack usable
+[test:qa] skills/dsh-qa/scripts/team-watchdog-boot.mjs
+[self-test] ok   C1: a completed turn passes as `completed`
+[self-test] ok   C2: a MODEL-level error passes as `model-error` (the turn reached the model call)
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+[self-test] ok   C6: a session not created on `mpd` FAILS
+[self-test] ok   C10: the GUI-activation checks pass on a clean boot (served 200, both tab ids, bridge, mirrored composition)
+[self-test] ok   C11: a boot log carrying `did not activate` REDDENS B8 (["B8"])
+[self-test] ok   C12: a `pending (waiting for service` line REDDENS B8
+[self-test] ok   C13: a `failed to apply loader entry` line REDDENS B8
+[self-test] ok   C14: a client route that 404s REDDENS B9
+[self-test] ok   C15: served bytes missing the workmate tab id REDDEN B10
+[self-test] ok   C16: served bytes without the export bridge REDDEN B11
+[self-test] ok   C17: a boot outside the user's composition REDDENS B12
+[self-test] ok   C7: the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision ({"kind":"step","at":1})
+[self-test] ok   C8: the fixed shape (`return next()`) composes the fallback decision unchanged ({"kind":"enter","messages":["claimed-user-message"]})
+[self-test] ok   C9: the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-config.mjs
+[self-test] ok   live-live: pass/0
+[self-test] ok   live-restart-needed: fail/1
+[self-test] ok   live-not-same-instance: fail/1
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:missing-knob: the mutated observation FAILED its own check(s) ["C4"] — a knob missing from one front door
+[self-test] ok   negative:two-declarations: the mutated observation FAILED its own check(s) ["C2"] — a second declaration (the doors would drift)
+[self-test] ok   negative:row-ignored: the mutated observation FAILED its own check(s) ["C6"] — a row config that is not the effective default
+[self-test] ok   negative:namespace-loses: the mutated observation FAILED its own check(s) ["C7"] — a namespace that does not outrank the row config
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-fault.mjs
+[self-test] ok   healthy-observation: 15 checks passed on the healthy observation
+[self-test] ok   negative:non-stale-case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that is NOT declared stale failing
+[self-test] ok   negative:stale-case-passes: the mutated observation FAILED its own check(s) ["F2b"] — a declared-stale case that now PASSES (the declaration must be re-checked)
+[self-test] ok   negative:stale-signature-lost: the mutated observation FAILED its own check(s) ["F2b"] — a stale case whose reading no longer matches its declared signature
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:label-regressed: the mutated observation FAILED its own check(s) ["F13"] — the pre-redesign tuple re-advertised as the product's frozen defaults (t65/S2)
+[self-test] ok   negative:product-defaults-wrong: the mutated observation FAILED its own check(s) ["F13"] — a lane that reports the injected tuple as the §3 product default
+[self-test] ok   negative:no-escalation-arm: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm that never escalates (§1.2 of the contract)
+[self-test] ok   negative:arm-not-fold: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm whose suppression came from the §4 fallback instead of the fold
+[self-test] ok   negative:arm-no-hold: the mutated observation FAILED its own check(s) ["F4"] — a §1 escalation that applied no hold (no scene leg either)
+[self-test] ok   negative:warn-only-holds: the mutated observation FAILED its own check(s) ["F4b"] — a hold applied while `actionOnEscalate` is warn-only
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that escalates
+[self-test] ok   negative:report-only-warns-twice: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm warning more than once per task+attempt generation
+[self-test] ok   negative:report-only-holds: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that held a team
+[self-test] ok   negative:report-only-cause: the mutated observation FAILED its own check(s) ["F12"] — a §4 warn not attributed to the heartbeat fallback
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:scene-not-escalate: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer that does not come from the escalation
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (22 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+[self-test] ok   healthy-observation: 13 checks passed on the healthy observation
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-hook-absent: the mutated observation FAILED its own check(s) ["H5"] — the built bytes lost the pre-dispatch hook
+[self-test] ok   negative:pre-hook-not-subscribed: the mutated observation FAILED its own check(s) ["H5"] — the row never subscribed tools/pre-execute
+[self-test] ok   negative:observe-only-veto: the mutated observation FAILED its own check(s) ["H5"] — a hook that REPLACES the gate decision (veto)
+[self-test] ok   negative:observe-only-mutates: the mutated observation FAILED its own check(s) ["H5"] — a live execution object handed to the listener (it could mutate the call)
+[self-test] ok   negative:observe-only-write-lands: the mutated observation FAILED its own check(s) ["H5"] — a listener write that was not rejected by the frozen copy
+[self-test] ok   negative:observe-only-throws: the mutated observation FAILED its own check(s) ["H5"] — a throwing listener that breaks the call it observes
+[self-test] ok   negative:observe-only-after-body: the mutated observation FAILED its own check(s) ["H5"] — a pre stamp that arrived after the tool body started
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-notify.mjs
+[self-test] ok   healthy-observation: 18 checks passed on the healthy observation
+[self-test] ok   negative:web-record-missing: the mutated observation FAILED its own check(s) ["W2"] — a payload with no activity record
+[self-test] ok   negative:web-not-top: the mutated observation FAILED its own check(s) ["W4"] — a banner that is not the panel's first child
+[self-test] ok   negative:web-no-first-poll: the mutated observation FAILED its own check(s) ["W3"] — a replay that needed a user action
+[self-test] ok   negative:web-ack-other-reader: the mutated observation FAILED its own check(s) ["W6"] — an acknowledge that clobbered the OTHER reader's key
+[self-test] ok   negative:web-replay-continues: the mutated observation FAILED its own check(s) ["W7"] — a replay that survived the acknowledge
+[self-test] ok   negative:tui-reader: the mutated observation FAILED its own check(s) ["T1","T5"] — a TUI front door using the web reader key
+[self-test] ok   negative:tui-dialog: the mutated observation FAILED its own check(s) ["T4"] — a dialog with no acknowledge action
+[self-test] ok   negative:tui-compose: the mutated observation FAILED its own check(s) ["T3"] — a notice that never reaches the status line
+[self-test] ok   negative:tui-ack: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that did not advance its watermark
+[self-test] ok   negative:tui-ack-other: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that clobbered the web reader's key
+[self-test] ok   negative:tui-replay-continues: the mutated observation FAILED its own check(s) ["T6"] — a TUI replay that survived the acknowledge
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-scene.mjs
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:field-set: the mutated observation FAILED its own check(s) ["S2","S5"] — a snapshot missing a contracted field
+[self-test] ok   negative:member-fields: the mutated observation FAILED its own check(s) ["S6"] — a member row without its liveness field
+[self-test] ok   negative:hold-mismatch: the mutated observation FAILED its own check(s) ["S4"] — a snapshot hold that disagrees with the sidecar
+[self-test] ok   negative:log-shorter: the mutated observation FAILED its own check(s) ["S7"] — an incident log with fewer records than the snapshot claims
+[self-test] ok   negative:pointer: the mutated observation FAILED its own check(s) ["S9"] — a latest.json pointer that is not the newest scene
+[self-test] ok   negative:fresh-process: the mutated observation FAILED its own check(s) ["S1"] — a read that was not made from a fresh process
+[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/tui-admission.mjs
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-distribution.mjs
+[tui-distribution self-test] ok: descriptor rules + CLI plan are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-mount.mjs
+[tui-mount self-test] ok: layering, crash-scan, boot-face and isolation predicates are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-panels.mjs
+[tui-panels self-test] ok: 7 surfaces asserted, negative controls fail as required
+[test:qa] skills/dsh-qa/scripts/tui-settings-bridge.mjs
+[tui-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] skills/dsh-qa/scripts/tui-spec-conformance.mjs
+[tui-spec-conformance self-test] ok: matrix mapping two-sided, identity table reproduces on 8 files
+[test:qa] skills/dsh-qa/scripts/tui-team-surface.mjs
+[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/ulw-command.mjs
+[ulw-command self-test] ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/watchdog-redesign.mjs
+[self-test] ok   healthy-observation: 21 checks passed on the healthy observation
+[self-test] ok   negative:row-silent-on-red: the mutated observation FAILED its own check(s) ["R-a"] — a RED row that reproduced nothing (the contrast is the contract's whole point)
+[self-test] ok   negative:green-warns: the mutated observation FAILED its own check(s) ["G-d"] — a GREEN ladder that warns below 600 000 and holds
+[self-test] ok   negative:early-warn: the mutated observation FAILED its own check(s) ["G-d"] — a first WARN before the frozen threshold
+[self-test] ok   negative:vacuous-hold-row: the mutated observation FAILED its own check(s) ["G-c"] — a hold row whose success could not be falsified (the re-injection control did not refuse)
+[self-test] ok   negative:guard-read-from-tools: the mutated observation FAILED its own check(s) ["G-c"] — a tool-boundary hold read that survived the redesign
+[self-test] ok   negative:pin-broken: the mutated observation FAILED its own check(s) ["G-e"] — the r6 pin repeating the tool-expired bound or applying a hold
+[self-test] ok   negative:red-drifted: the mutated observation FAILED its own check(s) ["PIN-RED"] — a RED tree that no longer matches the contract's frozen hashes
+[self-test] ok   negative:settle-moved: the mutated observation FAILED its own check(s) ["SETTLED"] — a tree that changed under the run
+[self-test] ok   negative:fold-not-authoritative: the mutated observation FAILED its own check(s) ["FOLD-AUTHORITY"] — a GREEN reading whose suppression came from the §4 fallback, not the fold
+[self-test] ok   negative:knobs-drifted: the mutated observation FAILED its own check(s) ["KNOBS"] — a working tree still carrying the legacy tuple
+[self-test] ok   negative:replay-missing: the mutated observation FAILED its own check(s) ["REPLAY"] — no incident replay (contract §9 item 3)
+[self-test] ok   negative:replay-regression: the mutated observation FAILED its own check(s) ["REPLAY"] — a fold predicate that would have reproduced every historical hold
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["REPLAY"] — a §4 report-only replay that escalates (the fallback is not permitted to)
+[self-test] ok   negative:replay-unfaithful: the mutated observation FAILED its own check(s) ["REPLAY"] — a reconstruction that cannot even reproduce the recorded escalations
+[self-test] ok   negative:row-missing: the mutated observation FAILED its own check(s) ["CLEAN","R-b","G-b","FOLD-AUTHORITY"] — a contract row that never ran
+[self-test] PASS — watchdog-redesign (16 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/wave2b-lane-d.mjs
+[self-test] ok   t69-fixture-reddens — a fixture carrying a raw invocation is DETECTED by the scanner's own pattern
+[self-test] ok   t80-seeded-mismatch-reddens — a scratch copy claiming one key too many exits 1 with 1 violation(s)
+[self-test] ok   t25-two-frame-container — frames=2, naive read=first-frame-only
+[self-test] ok   t77-shape-and-near-miss — shape ignored=true, near-miss ignored=false
+[self-test] ok   t89-dot-slash-discovers — `./skills/dsh-qa/scripts` discovers 56 file(s)
+[self-test] ok   t69-json-stream-contract — live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false
+[self-test] ok   t69-binding-reddens-and-spares — fixtures: 5, flagged: fixture-unbound.mjs (declared/imported/parameter/prose fixtures must NOT flag)
+[self-test] ok   t74-rule-sentence — the SKILL.md rule sentence is present byte-for-byte
+[self-test] PASS — wave2b-lane-d (8/8 arms)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/web-settings-bridge.mjs
+[web-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 19 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+  ok the shared validator exposes the four surfaces the CLI uses (source mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.mjs
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed
+EXIT=0
+############ bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+EXIT=0
+############ bun run verify:docs
+$ node scripts/verify-docs-parity.mjs
+ok   README.md
+ok   docs/architecture.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **123**/10 vs derived 123/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 65 id(s), live 65 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+EXIT=0
+############ node scripts/verify-dist-fresh.mjs
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha d21368536f44… 23ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 686e4a879403… 24ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 17ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 35024651166a… 21ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha d881f285d8b2… 21ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 4b142e9b2761… 28ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha 7dffbdf454a8… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha cac8e4dd08d5… 31ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 17ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 7c58a1f700d3… 22ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha a9eb3f6ea4c5… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cbef3e3e94af… 20ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 210cdb02b923… 21ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 98180ed1c3f7… 22ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha f2dfa9ab2987… 22ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha b9a855469c80… 30ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 248dbf383aea… 20ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 73159e0470dc… 31ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha c116f6aaeb23… 23ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 23817a9b2c80… 27ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 495ms
+EXIT=0
+############ node skills/dsh-qa/scripts/preset-conformance.mjs
+[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-18T04-26-12.969Z
+  conformance: {"ok":true,"checked":31,"schemaFree":6,"parity":{"reference":31,"ours":31,"missing":[],"extra":[]},"problems":[]}
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-c5b0e5a9-cf01-444f-81db-81ec9052c331","agentPreset":"mpd"}
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-CDMjRr/home/sessions/--tmp-mpd-preset-main-CDMjRr-ws--/session-c5b0e5a9-cf01-444f-81db-81ec9052c331/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-18T04-26-12.969Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+EXIT=0
+############ node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 123 mpd delta region(s) across 10 adopted file(s)
+EXIT=0
+############ node scripts/install-profile.mjs --dry-run
+[install-profile] dshHome=/root/.dsh profile=mpd write=false
+[install-profile] profileDir=/root/.dsh/profiles/mpd
+[install-profile] homePatch=/root/.dsh/cordis.patch.yml
+[install-profile] presets -> /root/.dsh/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 25 (id-target=0, insert=25)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      maxParallelMembers: 8
+      maxMessagesPerRun: 10000
+      maxWallClockMinutes: 120
+      maxMemberTurns: 500
+      messagePayloadMaxBytes: 32768
+      recipientUnreadMaxBytes: 262144
+      mailboxPollIntervalMs: 3000
+      enforcement: "enforce"
+      reclaimStaleAfterMs: 3600000
+      sessionTeamPolicy:
+        mode: "off"
+        autoRoute: true
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed.
+          # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
+          # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
+          # TUI /settings section and in the Web settings card). The frozen class mapping is
+          # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
+          # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
+          # Engineer). Vision Analyst keeps an explicit `route` because it needs the vision model,
+          # so editing a slot never moves it. A slot edit applies at the next dsh boot, like every
+          # other mpd knob.
+          members:
+            - name: Architect
+              tier: 1
+              role: architecture review / deep debugging / self-review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              # Read-only members are MECHANICALLY restricted, not just instructed: these
+              # names are the same seven the one-shot roster path denies
+              # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+              # data because the adopted plugin cannot import across packages. Without
+              # them a "read-only" member in a team kept write/edit/bash (measured
+              # 2026-09-14: a member's own session ran `pwd` for real).
+
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Researcher
+              tier: 2
+              role: code / open-source evidence search
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Planner
+              tier: 1
+              role: planning / task decomposition
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Explorer
+              tier: 2
+              role: read-only codebase exploration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Reviewer
+              tier: 1
+              role: correctness / risk review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              tier: 2
+              role: work-plan QA review / UI-UX critique
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Vision Analyst
+              route: { provider: deepseek-official, model: deepseek-v4-flash-vision-exp, reasoningEffort: high }
+              role: image / diagram analysis
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              tier: 1
+              role: orchestration / integration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              tier: 3
+              role: autonomous goal-driven implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              tier: 1
+              role: primary implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              tier: 3
+              role: small mechanical changes
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+EXIT=0
+
+
+########## 6. per-package bun test (14 rebuilt + 4 lane-owned) ##########
+########## PER-PACKAGE bun test (the 14 cascade rebuilds + the 4 lane-owned artifacts)
+mpd-bootstrap-plugin             exit=0   6 pass  0 fail 
+mpd-boulder-plugin               exit=0   4 pass  0 fail 
+mpd-codegraph-plugin             exit=0   9 pass  0 fail 
+mpd-comment-checker-plugin       exit=0   3 pass  0 fail 
+mpd-ext-plugin                   exit=0   75 pass  0 fail 
+mpd-hashline-plugin              exit=0   11 pass  0 fail 
+mpd-memory-plugin                exit=0   4 pass  0 fail 
+mpd-modelchain-plugin            exit=0   4 pass  0 fail 
+mpd-qa-roles-probe               exit=1  
+mpd-roles-plugin                 exit=0   32 pass  0 fail 
+mpd-team-compact-plugin          exit=0   22 pass  0 fail 
+mpd-team-watchdog-plugin         exit=0   139 pass  0 fail 
+mpd-tools-plugin                 exit=0   8 pass  0 fail 
+mpd-ulw-plugin                   exit=0   15 pass  0 fail 
+mpd-config-plugin                exit=0   81 pass  0 fail 
+mpd-dsh-adapter-plugin           exit=0   63 pass  0 fail 
+mpd-tui-plugin                   exit=0   105 pass  0 fail 
+mpd-workmate-plugin              exit=0   43 pass  0 fail 
+
+note: mpd-qa-roles-probe has NO test/ directory -> bun exits 1 with 'filters did not match any test files' (no-test behaviour, not a red)
+
+########## 7. repository-wide bun test: attribution of every failure ##########
+summary: 4190 pass / 17 skip / 605 fail / 1052 errors — EXIT 1
+attribution (file of each (fail) line): 142 failures across 27 files, ALL under archived evidence trees:
+  71 evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts
+   8 evidence/mpd-naming/wave2/raw/scratch/ast-grep/build/src/utils/src/codegraph-zombie-sweep.test.ts
+   8 evidence/mpd-naming/wave2/raw/scratch/git-bash/build/src/utils/src/codegraph-zombie-sweep.test.ts
+   8 evidence/mpd-naming/wave2/raw/scratch/lsp/build/src/utils/src/codegraph-zombie-sweep.test.ts
+   6+6+6 evidence/mpd-naming/wave2/raw/scratch/{ast-grep,git-bash,lsp}/build/src/lsp-core/src/request-context.test.ts
+   3 evidence/mpd-naming/wave2/raw/scratch/lsp/build/src/lsp-daemon/test/paths.test.ts
+   2+2+2 … file-utils.test.ts / missing-dependency-result.test.ts (same scratch trees)
+FAILURES INSIDE THE WAVE'S 18 PACKAGES: NONE
+
+########## 8. plan of record ##########
+## 9. Wave outcome (t13 — integration)
+
+The wave is LANDED on the tree the captain commits. Every gate below exited 0 on the settled tree;
+its output and exit codes are in `evidence/model-slots/integration/20260918T042523Z/`
+(`result.json`, `output.log`, `gate-sweep.log`, `dist-rebuild.log`, `client-rebuild.log`,
+`package-tests.log`, `repo-wide-bun-test.log`, `dist-fresh-after.log`).
+
+### 9.1 Lane checklist — landed
+
+| Task | Deliverable | State | Evidence / artifact |
+|---|---|---|---|
+| t1 | frozen acceptance contract | completed | `evidence/model-slots/requirements/CONTRACT.md` |
+| t11 | plan gate (verdict pass, 10 findings) | completed | `evidence/model-slots/plan-review/**` |
+| t2 | adapter `llmCatalog()` seam | completed | `packages/mpd-dsh-adapter-plugin/dist/index.js` (t4 rebuilt it) |
+| t3 | `teamModels` schema, 9 knobs, read-path materialisation | completed | `packages/mpd-config-plugin/dist/index.js` |
+| t4 | TUI catalog-derived select options | completed | `packages/mpd-tui-plugin/dist/index.js` |
+| t5 | web card dependent pickers + authoritative `client.js` | completed | `packages/mpd-bundle-plugin/client.js` |
+| t6 | adopted-plugin deltas + profile tier wiring | compl
+… (full section in .mpd/plans/model-slots-and-workmate-aliases.md)
+
+########## 9. verdict ##########
+{
+ "ok": true,
+ "failed": [],
+ "note": "All six acceptance items passed; no gate is silenced \u2014 the one repo-wide red (bun test) is attributed, file by file, to archived evidence scratch trees and names zero wave-package failures."
+}

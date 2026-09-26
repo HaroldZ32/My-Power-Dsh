@@ -1,0 +1,217 @@
+{
+ "contract": "fix the MPD settings card's caller-scoped catalog acquisition + prove it in a real browser",
+ "timestamp": "20260918T062005Z",
+ "reproducingLane": "../20260918T055042Z (byte-identical, never rewritten)",
+ "edits": [
+  {
+   "file": "packages/mpd-bundle-plugin/src/settings-card.js",
+   "symbol": "createLiveCatalog -> start()",
+   "before": "hostCtx.inject([\"modelDirectories\", \"sessions\"], (scoped) => bind(scoped))",
+   "after": "hostCtx.inject([\"modelDirectories\", \"sessions\", \"remote.session\"], (scoped) => bind(scoped))"
+  },
+  {
+   "file": "packages/mpd-bundle-plugin/src/team-page.js",
+   "symbol": "catalogFiber inside registerTeamSidebarTab",
+   "before": "ctx.inject([\"modelDirectories\"], (catalogCtx) => ...)",
+   "after": "ctx.inject([\"modelDirectories\", \"remote.session\"], (catalogCtx) => ...)",
+   "whyNoSessions": "that page never reads sessions.list (the settings card does)"
+  },
+  {
+   "file": "packages/mpd-bundle-plugin/src/settings-card.js",
+   "symbol": "bindDirectory catch",
+   "before": "swallowed the throw, reason = 'the host resolved no model directory for this session'",
+   "after": "reason appends the rejected seam (capped 160 chars) so the degrade is visible AND named"
+  }
+ ],
+ "harnessChange": {
+  "file": "packages/mpd-bundle-plugin/test/client-harness.mjs",
+  "newExport": "callerScopedService({reads, methods})",
+  "mechanism": "methods receive the CALLER ctx and throw `cannot get property \"<seam>\" without inject` unless the caller's inject list declares every seam in reads; scopedCtx(deps).get() returns the bound view"
+ },
+ "newTests": [
+  {
+   "file": "packages/mpd-bundle-plugin/test/settings-card.test.mjs",
+   "arms": [
+    "T-E live reach (2 providers / 31 models)",
+    "T-F unsatisfiable chain degrades visibly and names the seam",
+    "T-D served-bytes predicate now requires remote.session + negative controls"
+   ]
+  },
+  {
+   "file": "packages/mpd-bundle-plugin/test/team-page.test.mjs",
+   "arms": [
+    "a CALLER-SCOPED modelDirectories reaches the staged team",
+    "an UNSATISFIABLE caller chain degrades the staged card"
+   ]
+  }
+ ],
+ "redGreen": {
+  "preFixArtifactSha256": "d481554e73b6feecc6610b4fc2905cee38575d8cce4eb897ac10232e1af08419",
+  "red": {
+   "command": "bun test ./packages/mpd-bundle-plugin",
+   "result": [
+    " 88 pass",
+    " 4 fail",
+    " 896 expect() calls",
+    "Ran 92 tests across 4 files. [11.34s]"
+   ],
+   "failingArms": [
+    "T-D",
+    "T-E",
+    "T-F",
+    "staged plan approval > a CALLER-SCOPED modelDirectories reaches the staged team"
+   ]
+  },
+  "green": {
+   "command": "bun test ./packages/mpd-bundle-plugin",
+   "result": [
+    " 92 pass",
+    " 0 fail",
+    " 912 expect() calls",
+    "Ran 92 tests across 4 files. [11.31s]"
+   ]
+  }
+ },
+ "artifact": {
+  "path": "packages/mpd-bundle-plugin/client.js",
+  "sha256": "dec392b2ac7586b30a9fd0fbd9666d47bcc7af34bf8e312c5afa0628dbfd5b2b",
+  "bytesOnDisk": 324561,
+  "buildReportedBytes": 319331,
+  "grep": {
+   "oldCardList": 0,
+   "oldTeamList": 0,
+   "SETTINGS_KNOBS": 0,
+   "newCardChain": 1,
+   "newTeamChain": 3
+  },
+  "servedBytes": 324646,
+  "servedSuffixBytes": 85,
+  "servedMarkersFromBrowserRun": {
+   "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=298225212fa7c223-46",
+   "isCombo": false,
+   "status": 200,
+   "bytes": 324646,
+   "cardChain": 1,
+   "teamChain": 3,
+   "preFixCardList": 0,
+   "preFixTeamList": 0,
+   "dataCatalogAttr": 1,
+   "settingsKnobs": 0
+  }
+ },
+ "browserAcceptance": {
+  "driver": "step7-acceptance.mjs",
+  "chrome": null,
+  "phaseA_noSession": "declared fallback — live catalog unavailable (no session is bound)",
+  "sessionBinding": {
+   "method": "EXPLICIT state injection through the app's own sessions store (sessions.list.set) on the captured scoped ctx — NOT a UI drive; the workspace picker is a native dialog headless CDP cannot operate",
+   "hostSessionCreated": "session-2936a258-519a-4db0-b1e3-6d412c3a77d6",
+   "rpcStatus": 200,
+   "injected": {
+    "hasService": true,
+    "beforeId": null,
+    "afterId": "session-2936a258-519a-4db0-b1e3-6d412c3a77d6",
+    "ids": 15
+   }
+  },
+  "statusLine": "live catalog — 2 providers · 31 models",
+  "catalogAttributes": {
+   "data-mpd-catalog-state": "live",
+   "data-mpd-catalog-providers": "2",
+   "data-mpd-catalog-models": "31",
+   "style": "margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"
+  },
+  "slotProviderSelects": [
+   {
+    "key": "teamModels.slot1.provider",
+    "options": [
+     "",
+     "deepseek-official",
+     "opencode-go"
+    ]
+   },
+   {
+    "key": "teamModels.slot2.provider",
+    "options": [
+     "",
+     "deepseek-official",
+     "opencode-go"
+    ]
+   },
+   {
+    "key": "teamModels.slot3.provider",
+    "options": [
+     "",
+     "deepseek-official",
+     "opencode-go"
+    ]
+   }
+  ],
+  "slotModelOptionCounts": [
+   {
+    "key": "teamModels.slot1.model",
+    "options": 32
+   },
+   {
+    "key": "teamModels.slot2.model",
+    "options": 32
+   },
+   {
+    "key": "teamModels.slot3.model",
+    "options": 32
+   }
+  ],
+  "browserCatalog": {
+   "status": 200,
+   "providers": 2,
+   "models": 31,
+   "providerIds": [
+    "deepseek-official",
+    "opencode-go"
+   ]
+  },
+  "consoleTotal": 14,
+  "consoleMpdPrefixed": 0,
+  "verdict": {
+   "servedBytesCarryFix": true,
+   "cardFound": true,
+   "statusLine": "live catalog — 2 providers · 31 models",
+   "liveCatalogLine": true,
+   "catalogStateAttribute": "live",
+   "catalogProvidersAttribute": "2",
+   "catalogModelsAttribute": "31",
+   "slotProviderSelectCount": 3,
+   "distinctSlotProviderValues": [
+    "deepseek-official",
+    "opencode-go"
+   ],
+   "offersMoreThanDeepseekOfficial": true,
+   "cardEmittedMpdConsole": false,
+   "browserCatalog": {
+    "status": 200,
+    "providers": 2,
+    "models": 31,
+    "providerIds": [
+     "deepseek-official",
+     "opencode-go"
+    ]
+   }
+  },
+  "ok": true
+ },
+ "gates": {
+  "bun test packages/mpd-bundle-plugin": "92 pass / 0 fail / 912 expect() calls",
+  "bun test ./packages/mpd-config-plugin": "81 pass / 0 fail / 466 expect() calls",
+  "bun run typecheck": "exit 0",
+  "node scripts/verify-dist-fresh.mjs": "exit 0 - ok: 20/20 targets fresh, 7 NOT COVERED"
+ },
+ "notProved": [
+  "the team-page fix is NOT browser-proven (no staged team exists in the sandbox; directoryForTeam only runs for phase==='staged') - covered offline only",
+  "the session precondition was injected through the app's own sessions.list.set (explicit state injection, NOT a UI drive): the workspace picker is a native dialog headless CDP cannot operate",
+  "the minimal team-page list (no 'sessions') is harness-measured only",
+  "latent duplicate in adopted code: packages/mpd-agent-teams-plugin/lib/client/ActivityPanel.js calls directoryFor unguarded inside a React render with a static inject lacking remote.session - NOT reachable here (team-page.js deliberately does not render ActivityPanel; the adopted client's apply() is never called) and deliberately NOT fixed (a static addition would be page-fatal)",
+  "9 app-level console exceptions (AgentPresetSeatController.currentSession -> cannot get required service \"sessions\" in inactive context) present with and without the fix, no [mpd] marker; not attributed, not explained",
+  "packages/mpd-bundle-plugin/client.js is a derived artifact (T-88): rebuilt here, but the captain owns every git write"
+ ],
+ "gitWriteCommandsRun": false
+}

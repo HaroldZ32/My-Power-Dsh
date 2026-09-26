@@ -1,0 +1,4 @@
+# t24 full audit of the LADDER_CAPTURES exemption — 2026-09-19T16:10:20Z
+findings WITHOUT the exemption (current rules, regions honoured): 0
+non-policy hits WITH the exemption (all should be inside regions or none): 1
+  122 events.on on "scope" — teardown = scope.on('agent/request', () => { throw failure; });

@@ -1,0 +1,23 @@
+=== node scripts/verify-dist-fresh.mjs ===
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 502ms
+EXIT=0
+
+=== bun run verify:rows ===
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+EXIT=0
+
+=== bun run verify:docs ===
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+EXIT=0
+
+=== bun run typecheck ===
+$ tsgo --noEmit
+EXIT=0
+

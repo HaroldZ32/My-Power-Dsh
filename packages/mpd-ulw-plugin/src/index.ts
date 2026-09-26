@@ -1,6 +1,8 @@
 // C2 mpd-ulw-plugin v2: fixed-policy ultrawork engine on the DSH subagent seam.
-// Replaces the B3 loop with the full upstream discipline (waves, gates, ledger)
-// while keeping mpd_ulw as a lightweight compatibility alias.
+// Carries the full upstream discipline (waves, gates, ledger) and keeps mpd_ulw as
+// a lightweight compatibility alias. `/ulw` and `/ultrawork` make the engine
+// directly user-invocable and inject the ULW ACTIVATION DIRECTIVE (the autonomy
+// policy; see ULW_ACTIVATION_DIRECTIVE below).
 // Policy (adapted from upstream ultrawork directive, base 8c57e46):
 //   discovery waves (stop after 2 fruitless), per-criterion PIN -> RED -> GREEN ->
 //   SURFACE -> CLEAN, plan gate, verification gate (max 2 re-reviews), final
@@ -8,7 +10,7 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter, type DshCommandInvocation } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-ulw"
 export const inject = ["tools", "subagents"]
@@ -75,6 +77,31 @@ const DIRECTIVE = [
   "End with ONLY the structured report (status=continue|complete|blocked; wave label; criteria states; evidence; nextSteps; blocker). continue requires nextSteps; complete requires all evidence and empty nextSteps; blocked requires a concrete blocker."
 ].join(String.fromCharCode(10))
 
+// The CHILD-round directive above heads each round child's prompt. The activation
+// directive below is a DIFFERENT text: the user-role message a `/ulw` / `/ultrawork`
+// invocation injects into the INVOKING session, and it carries the ULW autonomy
+// policy. The autonomy clauses must NOT be folded into the child directive: the
+// session-start gate never qualifies a child session, so a team-autonomy clause in a
+// child prompt would instruct a subagent to do what the platform forbids.
+//
+// ONE constant for both injection paths (the command path and the plain-text
+// gesture). The head is byte-stable across invocations and the objective — the only
+// mutable part — is appended last, which is what the DeepSeek V4 prefix cache keys on.
+export const ULW_ACTIVATION_DIRECTIVE = [
+  "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
+  "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
+  "2. GATE: then evaluate the SAME complexity predicate the session-start gate uses — an explicit `team:`/`!team` flag OR any matched signal A-D (A explicit flag; B deliverable verbs; C enumerated steps; D an existing .mpd/plans artifact). Never invent a second predicate.",
+  "3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, stage the team YOURSELF with the OFFICIAL team tools — spawn_teammate({name, description, prompt}) for each roster member, then team_task_create({subject, description, blocked_by?, write_scopes?}) for the DAG — and run it: no user confirmation and no plan review. The retired `agent_teams_*` tools do not exist on this harness; the team's state is the Lead session's own.",
+  "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
+  "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
+  "6. CLOSE OUT ON PROOF: report done only after the verification gate and the quality-gate ledger both approve; otherwise keep working, or report the concrete blocker."
+].join(String.fromCharCode(10))
+
+/** The activation directive for one objective: stable policy head, mutable objective tail. */
+export function activationDirective(objective: string): string {
+  return ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim()
+}
+
 function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // Explicit config (ulw.planDir / ulw.stateDir) wins; otherwise both roots live under the
@@ -91,6 +118,49 @@ function stateRoot(cfg: Config, dsh: DshAdapter, exec?: any): string {
 
 function writeJson(p: string, v: any): void { writeFileSync(p, JSON.stringify(v, null, 2)) }
 
+/** The concatenated text of one message's text blocks (undefined when it carries none). */
+function messageText(message: any): string | undefined {
+  if (!Array.isArray(message?.content)) return undefined
+  const parts = message.content.filter((block: any) => block?.type === "text" && typeof block.text === "string").map((block: any) => block.text)
+  return parts.length === 0 ? undefined : parts.join(String.fromCharCode(10))
+}
+
+/** The ULW gesture, anchored at the START of a message's text: `/ulw …` or `/ultrawork …`. */
+const GESTURE_PATTERN = /^(?:\/ulw|\/ultrawork)(?:[\t\n\r ]+|$)/u
+
+/**
+ * Claim the ULW gesture from a pre-step batch. EVERY user-role message is scanned, never
+ * just the last one: this bundle's composition appends user-role notices AFTER the user's
+ * own prompt (the runtime-context notice and the `<system-reminder>` skill catalog), so
+ * "the last user-role message" is a notice and an anchored gesture would never be seen —
+ * the t15 defect, measured on a real boot whose session log held the raw `/ulw …` prompt
+ * and zero rewrites. A notice can only claim the gesture by literally opening with it.
+ * @returns the claiming message, its text, and the anchored match, or undefined.
+ */
+function claimGesture(messages: any): { message: any; text: string; match: RegExpExecArray } | undefined {
+  if (!Array.isArray(messages)) return undefined
+  for (const message of messages) {
+    if (message?.role !== "user") continue
+    const text = messageText(message)
+    if (text === undefined) continue
+    const match = GESTURE_PATTERN.exec(text.trim())
+    if (match !== null) return { message, text, match }
+  }
+  return undefined
+}
+
+/**
+ * A copy of `message` whose FIRST text block carries `text`. The message identity
+ * (id, role, source) is preserved, mirroring the adopted plugin's marker-consumption
+ * rewrite (`consumeFlagFromMessage`: only text blocks change), and the objective
+ * survives inside `text`.
+ */
+function rewriteMessageText(message: any, text: string): any {
+  const content = Array.isArray(message?.content) ? message.content : []
+  const at = content.findIndex((block: any) => block?.type === "text")
+  if (at < 0) return message
+  return { ...message, content: content.map((block: any, index: number) => (index === at ? { ...block, text } : block)) }
+}
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
@@ -152,7 +222,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, planFile: { type: "string" }, verdict: { type: "string" }, ledger: { type: "array", items: { type: "object" } }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] },
+      schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, planFile: { type: "string", description: "Present only when a plan file was written (plan=true or tier=heavy); absent otherwise" }, verdict: { type: "string" }, ledger: { type: "array", items: { type: "object" } }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] },
       render: (_a: unknown, v: any) => textBlock("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
     },
     execute: async (args: any, exec: any) => {
@@ -296,13 +366,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       state.status = status
       state.verdict = verdict
       writeJson(stateFile, state)
-      return { status, rounds: used, planFile, verdict, ledger: gateLedger, finalReport, stateFile }
+      // `planFile` is emitted ONLY when a plan file exists. The harness's output validator
+      // accepts ONE scalar `type` per property (it rejects `type: [..., "null"]` with
+      // "type arrays are not supported"), and `planFile` is deliberately absent from the
+      // schema's `required` list — so omitting the key is the legal way to say "no plan
+      // file". Returning it as null made EVERY plan=false result invalid (the `/ulw`
+      // default and the hardcoded alias path): `tool "mpd_ultrawork" returned invalid
+      // output: "value.planFile" must be a string` (t16).
+      return { status, rounds: used, ...(planFile === null ? {} : { planFile }), verdict, ledger: gateLedger, finalReport, stateFile }
     }
   })
 
   dsh.registerTool({
     name: "mpd_ulw",
-    description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the B3-shaped result.",
+    description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the same result fields as mpd_ultrawork (status, rounds, finalReport, stateFile).",
     parameters: { type: "object", properties: { objective: { type: "string" }, maxRounds: { type: "integer", description: "1..8" } }, required: ["objective"] },
     output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a: unknown, v: any) => textBlock("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args: any, exec: any) => {
@@ -313,4 +390,62 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       return { status: res.status, rounds: res.rounds, finalReport: res.finalReport, stateFile: res.stateFile }
     }
   })
+
+  // ── clause 2: user-invocable commands, registered through the adapter ───────
+  // The host parses `/ulw` down to the bare name "ulw" and THROWS on a duplicate
+  // name, so the two spellings are two definitions of ONE handler. A handler runs
+  // "without sending the command to the model", so returning {kind:'success'} alone
+  // would start nothing: the handler SUBMITS the activation directive as the
+  // invoking agent's own next user turn, through the adapter's turn seam. Both
+  // seams come from the adapter (AGENTS.md §6) — this plugin never reaches for the
+  // host's command service or its agent surface itself.
+  const ULW_USAGE = "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective"
+  // Per-NAME description: the registry renders each definition's own text, so one shared
+  // string naming `/ultrawork` would read as a self-referential alias on the `ultrawork`
+  // entry (t9 review finding). Each name advertises the OTHER spelling.
+  const ULW_COMMAND_DESCRIPTION = (alias: string) => "Run the ULW discipline for an objective, fully autonomously (identical alias: " + alias + ")"
+  const runUlwCommand = (invocation: DshCommandInvocation) => {
+    const objective = String(invocation?.rawInput ?? "").trim()
+    if (objective === "") return { kind: "error", text: ULW_USAGE }
+    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "plugin", plugin: "mpd-ulw" } })) === true
+    if (!submitted) return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) }
+    return { kind: "success", text: "ULW activated: " + objective }
+  }
+  const commandDisposers = ["ulw", "ultrawork"].map((name) => dsh.registerCommand({ name, description: ULW_COMMAND_DESCRIPTION(name === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }))
+
+  // ── clause 2: the plain-text gesture (headless has no command surface) ──────
+  // Recognised at the plugin's own `agent/pre-step` boundary through the adapter's
+  // event seam. `agent/pre-step` is a cordis WATERFALL: a listener's return value
+  // REPLACES the composed step decision, so this listener delegates to `next()`
+  // FIRST and then returns the (possibly rewritten) decision — never a bare value
+  // (the 2026-09-16 incident: a stamp with no `messages` became the step decision
+  // and killed every turn of every session; see mpd-team-watchdog-plugin engine.ts).
+  // The claim scans EVERY user-role message (t15): looking only at the last one was
+  // green in the one-message unit test while red on a real boot, because the
+  // composition appends its own user-role notices after the prompt.
+  const gestureDispose = dsh.onEvent("agent/pre-step", async (payload: any, next: any) => {
+    const decision = typeof next === "function" ? await next() : undefined
+    try {
+      if (decision === undefined || decision === null || decision.kind === "reject") return decision
+      const messages = Array.isArray(decision.messages) ? decision.messages : (Array.isArray(payload?.messages) ? payload.messages : undefined)
+      if (messages === undefined) return decision
+      const claimed = claimGesture(messages)
+      if (claimed === undefined) return decision
+      const objective = claimed.text.trim().slice(claimed.match[0].length).trim()
+      // A bare `/ulw` carries no objective to run. The command path answers usage;
+      // a gesture has no reply surface, so the step is left untouched.
+      if (objective === "") return decision
+      return { ...decision, messages: messages.map((message: any) => (message === claimed.message ? rewriteMessageText(message, activationDirective(objective)) : message)) }
+    } catch {
+      // A gesture failure must never break the step: the decision composed by
+      // `next()` is returned unchanged, never a veto by accident.
+      return decision
+    }
+  })
+
+  // Cordis owns teardown: hand the host disposers to the plugin's own fiber when the
+  // context offers `effect`, so a teardown unregisters both command names and the
+  // gesture listener (guarded like mpd-team-watchdog-plugin's install()).
+  const disposers = [...commandDisposers, ...(gestureDispose === undefined ? [] : [gestureDispose])]
+  if (typeof ctx.effect === "function") ctx.effect(() => () => { for (const dispose of disposers) dispose() }, "mpd-ulw.commands")
 }

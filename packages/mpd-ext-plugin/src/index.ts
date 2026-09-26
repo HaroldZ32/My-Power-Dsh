@@ -18,7 +18,7 @@
 //   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show
 // There is deliberately NO mpd_ext_reload in v1 — the honest reload is a
 // restart (a plugin-module change is not hot-reloaded anyway).
-import { createDshAdapter, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { MPD_EXT_API_VERSION, type MpdExtLoadError, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
@@ -54,6 +54,55 @@ export const name = "mpd-ext"
 // via ctx.get() — only the seams this row registers through are dependencies.
 export const REQUIRED_SEAMS = ["tools", "skills"] as const
 export const inject: string[] = [...REQUIRED_SEAMS]
+
+/**
+ * CANONICAL NOTE — how a row reaches the ONE shared adapter, and what a miss means.
+ * This is the ONE place that describes it; the sites THIS FIX touched CROSS-REFERENCE it
+ * instead of half-repeating it — mpd-roles (`packages/mpd-roles-plugin/src/index.ts`, its
+ * identity comment) and the bundle patch's row-order bullet
+ * (`packages/mpd-bundle/cordis.patch.yml`).
+ * RESIDUAL, recorded honestly: the OTHER rows that still inline
+ * `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` (the rest of the mpd plugin rows) resolve
+ * EAGERLY at apply and stay silent about it; they are OUTSIDE this fix's scope — only mpd-ext
+ * and mpd-roles use the shared lazy resolver today, and each of those rows would need its own
+ * scoped change with its own mount proof (AGENTS.md §12).
+ *
+ * T-50 — WHY EAGER RESOLUTION WAS WRONG. `ctx.get("mpdDsh")` read ONCE at apply turns a
+ * TRANSIENT miss into a session-long wrong answer: the loader applies sibling rows
+ * CONCURRENTLY and cordis answers `undefined` — never a throw — for a provider whose fiber is
+ * not ACTIVE, so even a correctly ordered tree can miss. The row then builds a SECOND adapter
+ * beside the tree's and keeps it for the whole session, which BYPASSES the mounted adapter (the
+ * one-contact-surface rule, AGENTS.md §6): it does NOT inherit the adapter ROW's config
+ * (`defaultTimeoutMs`, declared by `createDshAdapter(…, { defaultTimeoutMs })`, so tool calls
+ * silently run on the built-in default) and it carries its OWN per-instance caches (the
+ * per-agent compaction-engine memo, `engineCache`). It does NOT double the tree's
+ * guard/waterfall registrations: those are registered THROUGH the harness seams, so they still
+ * happen exactly once each.
+ *
+ * THE FIX — `createLazyDshAdapter(ctx, …)` resolves on EVERY use and caches ONLY a successful
+ * STRICT read, and it distinguishes the two miss modes with a non-strict read:
+ *   · registered but not yet ACTIVE → warned ONCE per row as "provider not yet active", served
+ *     by a temporary adapter, and picked up automatically the moment the fiber activates: NO
+ *     row-order change is needed for that transient miss;
+ *   · not provided in this composition → the ROW ORDER really is the fix (this row must sit
+ *     BELOW `mpd-dsh-adapter`), and only then does that hint appear.
+ * The assertable identity is read at SURFACE time with `dshAdapterIdentity(ctx)`, never cached
+ * at apply: `mounted:mpdDsh` / `pending:provider-not-active` / `fallback:createDshAdapter` land
+ * on the apply-time boot line and on the `adapterIdentity` field of the `mpdExtensions` service.
+ * The healthy mounted path emits NO warning.
+ * HONEST BOUND (T-50): six consecutive clean boots on the correctly ordered tree never opened
+ * this window (t24, 6/6 `adapterIdentity=mounted:mpdDsh`, zero fallback lines), so the change is
+ * justified by the CODE PATH — the loader's concurrent sibling apply plus cordis's non-ACTIVE
+ * `undefined` — and pinned by unit tests that drive the window against the vendored cordis
+ * (`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`), never by an observed failure.
+ * (Pointers here are by SYMBOL, never by line: the line numbers this note used to cite had
+ * drifted by 15-17 lines — T-55.)
+ */
+export {
+  ADAPTER_IDENTITY_FALLBACK,
+  ADAPTER_IDENTITY_MOUNTED,
+  ADAPTER_IDENTITY_PENDING,
+} from "../../mpd-dsh-adapter-plugin/src/index"
 
 export interface MpdExtPluginConfig {
   /** Do not print the one-line apply summary. */
@@ -204,7 +253,11 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
 
   let dsh: DshAdapter
   try {
-    dsh = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+    // LAZY (T-50): NOTHING is resolved here. The facade probes `mpdDsh` on every use and caches
+    // only a successful STRICT read, so a sibling row's provider that is still starting can no
+    // longer hand this row a private adapter for the session (see the CANONICAL NOTE above). The
+    // one-line warning, when it fires, comes from the shared resolver with the honest wording.
+    dsh = createLazyDshAdapter(ctx, { label: "mpd-ext", warn })
   } catch (error) {
     warn("adapter unavailable, extension interface not mounted: " + message(error))
     return
@@ -440,6 +493,8 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
 
   const service = {
     apiVersion: MPD_EXT_API_VERSION,
+    /** Which adapter branch THIS read reaches — read at surface time, never cached at apply (T-50). */
+    adapterIdentity: dshAdapterIdentity(ctx),
     register,
     list: (options: { exec?: unknown } = {}) => snapshot(options?.exec),
     describe: (id: string, options: { exec?: unknown } = {}) => snapshot(options?.exec).extensions.find((entry) => entry.id === String(id ?? "")),
@@ -1013,6 +1068,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   } else if (config.quiet !== true) {
     console.log(
       "[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")"
+      + " | adapterIdentity=" + dshAdapterIdentity(ctx)
       + " | tools: " + registeredToolNames.join(", ")
       + " | skill providers: " + (registeredProviderNames.length === 0 ? "(none: no extension contributes skills or flows)" : registeredProviderNames.join(", "))
       + " | project plane: <session workspace>/.mpd/extensions (per call)",

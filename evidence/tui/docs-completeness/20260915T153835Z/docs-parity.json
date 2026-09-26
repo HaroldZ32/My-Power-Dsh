@@ -1,0 +1,440 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "id": "exists:README.md",
+      "ok": true,
+      "detail": "README.md"
+    },
+    {
+      "id": "exists:README.zh-CN.md",
+      "ok": true,
+      "detail": "README.zh-CN.md"
+    },
+    {
+      "id": "switch:README.md",
+      "ok": true,
+      "detail": "EN header links its zh twin: \"# my-power-dsh |  | **English** | [中文](./README.zh-CN.md)\""
+    },
+    {
+      "id": "switch:README.zh-CN.md",
+      "ok": true,
+      "detail": "zh header links its EN twin: \"# my-power-dsh |  | [English](./README.md) | **中文**\""
+    },
+    {
+      "id": "heading-tree:README.md",
+      "ok": true,
+      "detail": "EN 20 headings [1,2,3,3,3,3,3,3,3,3,3,3,3,2,3,2,2,2,2,2] vs zh 20 [1,2,3,3,3,3,3,3,3,3,3,3,3,2,3,2,2,2,2,2]"
+    },
+    {
+      "id": "exists:docs/user-guide.md",
+      "ok": true,
+      "detail": "docs/user-guide.md"
+    },
+    {
+      "id": "exists:docs/user-guide.zh-CN.md",
+      "ok": true,
+      "detail": "docs/user-guide.zh-CN.md"
+    },
+    {
+      "id": "switch:docs/user-guide.md",
+      "ok": true,
+      "detail": "EN header links its zh twin: \"# User Guide |  | **English** | [中文](user-guide.zh-CN.md)\""
+    },
+    {
+      "id": "switch:docs/user-guide.zh-CN.md",
+      "ok": true,
+      "detail": "zh header links its EN twin: \"# 使用者指南 |  | [English](user-guide.md) | **中文**\""
+    },
+    {
+      "id": "heading-tree:docs/user-guide.md",
+      "ok": true,
+      "detail": "EN 20 headings [1,2,3,3,3,3,2,2,2,2,3,2,2,3,3,3,2,2,2,2] vs zh 20 [1,2,3,3,3,3,2,2,2,2,3,2,2,3,3,3,2,2,2,2]"
+    },
+    {
+      "id": "exists:docs/architecture.md",
+      "ok": true,
+      "detail": "docs/architecture.md"
+    },
+    {
+      "id": "exists:docs/architecture.zh-CN.md",
+      "ok": true,
+      "detail": "docs/architecture.zh-CN.md"
+    },
+    {
+      "id": "switch:docs/architecture.md",
+      "ok": true,
+      "detail": "EN header links its zh twin: \"# Architecture |  | **English** | [中文](architecture.zh-CN.md)\""
+    },
+    {
+      "id": "switch:docs/architecture.zh-CN.md",
+      "ok": true,
+      "detail": "zh header links its EN twin: \"# 架构 |  | **中文** | [English](architecture.md)\""
+    },
+    {
+      "id": "heading-tree:docs/architecture.md",
+      "ok": true,
+      "detail": "EN 16 headings [1,2,2,2,2,2,3,3,3,3,2,2,2,2,2,2] vs zh 16 [1,2,2,2,2,2,3,3,3,3,2,2,2,2,2,2]"
+    },
+    {
+      "id": "exists:docs/development.md",
+      "ok": true,
+      "detail": "docs/development.md"
+    },
+    {
+      "id": "exists:docs/development.zh-CN.md",
+      "ok": true,
+      "detail": "docs/development.zh-CN.md"
+    },
+    {
+      "id": "switch:docs/development.md",
+      "ok": true,
+      "detail": "EN header links its zh twin: \"# Development Guide |  | **English** | [中文](development.zh-CN.md)\""
+    },
+    {
+      "id": "switch:docs/development.zh-CN.md",
+      "ok": true,
+      "detail": "zh header links its EN twin: \"# 开发指南 |  | **中文** | [English](development.md)\""
+    },
+    {
+      "id": "heading-tree:docs/development.md",
+      "ok": true,
+      "detail": "EN 10 headings [1,2,2,2,2,2,2,2,2,2] vs zh 10 [1,2,2,2,2,2,2,2,2,2]"
+    },
+    {
+      "id": "exists:docs/index.md",
+      "ok": true,
+      "detail": "docs/index.md"
+    },
+    {
+      "id": "exists:docs/index.zh-CN.md",
+      "ok": true,
+      "detail": "docs/index.zh-CN.md"
+    },
+    {
+      "id": "switch:docs/index.md",
+      "ok": true,
+      "detail": "EN header links its zh twin: \"# my-power-dsh Documentation |  | **English** | [中文](index.zh-CN.md)\""
+    },
+    {
+      "id": "switch:docs/index.zh-CN.md",
+      "ok": true,
+      "detail": "zh header links its EN twin: \"# my-power-dsh 文档 |  | [English](index.md) | **中文**\""
+    },
+    {
+      "id": "heading-tree:docs/index.md",
+      "ok": true,
+      "detail": "EN 6 headings [1,2,2,2,2,2] vs zh 6 [1,2,2,2,2,2]"
+    },
+    {
+      "id": "marker:docs/user-guide.md:## 7. DSH-TUI edition",
+      "ok": true,
+      "detail": "## 7. DSH-TUI edition"
+    },
+    {
+      "id": "marker:docs/user-guide.md:### 7.1",
+      "ok": true,
+      "detail": "### 7.1"
+    },
+    {
+      "id": "marker:docs/user-guide.md:### 7.2",
+      "ok": true,
+      "detail": "### 7.2"
+    },
+    {
+      "id": "marker:docs/user-guide.md:### 7.3",
+      "ok": true,
+      "detail": "### 7.3"
+    },
+    {
+      "id": "marker:docs/user-guide.md:ambiguous-multi-root",
+      "ok": true,
+      "detail": "ambiguous-multi-root"
+    },
+    {
+      "id": "marker:docs/user-guide.md:no-live-session",
+      "ok": true,
+      "detail": "no-live-session"
+    },
+    {
+      "id": "marker:docs/user-guide.md:after a restart",
+      "ok": true,
+      "detail": "after a restart"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:## 7. DSH-TUI 版本",
+      "ok": true,
+      "detail": "## 7. DSH-TUI 版本"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:### 7.1",
+      "ok": true,
+      "detail": "### 7.1"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:### 7.2",
+      "ok": true,
+      "detail": "### 7.2"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:### 7.3",
+      "ok": true,
+      "detail": "### 7.3"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:ambiguous-multi-root",
+      "ok": true,
+      "detail": "ambiguous-multi-root"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:no-live-session",
+      "ok": true,
+      "detail": "no-live-session"
+    },
+    {
+      "id": "marker:docs/user-guide.zh-CN.md:重启",
+      "ok": true,
+      "detail": "重启"
+    },
+    {
+      "id": "marker:docs/architecture.md:## 7b. TUI edition wiring",
+      "ok": true,
+      "detail": "## 7b. TUI edition wiring"
+    },
+    {
+      "id": "marker:docs/architecture.md:mpd-tui",
+      "ok": true,
+      "detail": "mpd-tui"
+    },
+    {
+      "id": "marker:docs/architecture.md:@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js",
+      "ok": true,
+      "detail": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "id": "marker:docs/architecture.md:tuiSettingsSections",
+      "ok": true,
+      "detail": "tuiSettingsSections"
+    },
+    {
+      "id": "marker:docs/architecture.md:tuiStatus",
+      "ok": true,
+      "detail": "tuiStatus"
+    },
+    {
+      "id": "marker:docs/architecture.md:zero-write",
+      "ok": true,
+      "detail": "zero-write"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:## 7b. TUI 版本接线",
+      "ok": true,
+      "detail": "## 7b. TUI 版本接线"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:mpd-tui",
+      "ok": true,
+      "detail": "mpd-tui"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js",
+      "ok": true,
+      "detail": "@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:tuiSettingsSections",
+      "ok": true,
+      "detail": "tuiSettingsSections"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:tuiStatus",
+      "ok": true,
+      "detail": "tuiStatus"
+    },
+    {
+      "id": "marker:docs/architecture.zh-CN.md:零写入",
+      "ok": true,
+      "detail": "零写入"
+    },
+    {
+      "id": "marker:docs/development.md:tui-mount",
+      "ok": true,
+      "detail": "tui-mount"
+    },
+    {
+      "id": "marker:docs/development.md:tui-panels",
+      "ok": true,
+      "detail": "tui-panels"
+    },
+    {
+      "id": "marker:docs/development.md:tui-admission",
+      "ok": true,
+      "detail": "tui-admission"
+    },
+    {
+      "id": "marker:docs/development.md:tui-distribution",
+      "ok": true,
+      "detail": "tui-distribution"
+    },
+    {
+      "id": "marker:docs/development.md:tui-spec-conformance",
+      "ok": true,
+      "detail": "tui-spec-conformance"
+    },
+    {
+      "id": "marker:docs/development.md:tui-settings-bridge",
+      "ok": true,
+      "detail": "tui-settings-bridge"
+    },
+    {
+      "id": "marker:docs/development.md:pack-mpd.mjs",
+      "ok": true,
+      "detail": "pack-mpd.mjs"
+    },
+    {
+      "id": "marker:docs/development.md:not-claimed",
+      "ok": true,
+      "detail": "not-claimed"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-mount",
+      "ok": true,
+      "detail": "tui-mount"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-panels",
+      "ok": true,
+      "detail": "tui-panels"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-admission",
+      "ok": true,
+      "detail": "tui-admission"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-distribution",
+      "ok": true,
+      "detail": "tui-distribution"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-spec-conformance",
+      "ok": true,
+      "detail": "tui-spec-conformance"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:tui-settings-bridge",
+      "ok": true,
+      "detail": "tui-settings-bridge"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:pack-mpd.mjs",
+      "ok": true,
+      "detail": "pack-mpd.mjs"
+    },
+    {
+      "id": "marker:docs/development.zh-CN.md:not-claimed",
+      "ok": true,
+      "detail": "not-claimed"
+    },
+    {
+      "id": "marker:README.md:### DSH-TUI edition",
+      "ok": true,
+      "detail": "### DSH-TUI edition"
+    },
+    {
+      "id": "marker:README.md:docs/tui.md",
+      "ok": true,
+      "detail": "docs/tui.md"
+    },
+    {
+      "id": "marker:README.md:after a restart",
+      "ok": true,
+      "detail": "after a restart"
+    },
+    {
+      "id": "marker:README.zh-CN.md:### DSH-TUI 版本",
+      "ok": true,
+      "detail": "### DSH-TUI 版本"
+    },
+    {
+      "id": "marker:README.zh-CN.md:docs/tui.md",
+      "ok": true,
+      "detail": "docs/tui.md"
+    },
+    {
+      "id": "marker:README.zh-CN.md:重启",
+      "ok": true,
+      "detail": "重启"
+    },
+    {
+      "id": "marker:docs/index.md:DSH-TUI edition chapter",
+      "ok": true,
+      "detail": "DSH-TUI edition chapter"
+    },
+    {
+      "id": "marker:docs/index.md:TUI edition wiring",
+      "ok": true,
+      "detail": "TUI edition wiring"
+    },
+    {
+      "id": "marker:docs/index.zh-CN.md:DSH-TUI 版本章节",
+      "ok": true,
+      "detail": "DSH-TUI 版本章节"
+    },
+    {
+      "id": "marker:docs/index.zh-CN.md:TUI 版本接线",
+      "ok": true,
+      "detail": "TUI 版本接线"
+    },
+    {
+      "id": "no-rtl-eda:docs/user-guide.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/user-guide.zh-CN.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/architecture.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/architecture.zh-CN.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/development.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/development.zh-CN.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:README.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:README.zh-CN.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/index.md",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "id": "no-rtl-eda:docs/index.zh-CN.md",
+      "ok": true,
+      "detail": "none"
+    }
+  ]
+}

@@ -5,6 +5,9 @@
 // roles-probe.yml template), never shipped in the bundle.
 // Harness seams (preset roster, skill registry) are read through the bundle's
 // shared adapter, so the probe exercises the same surface the plugins do.
+import { existsSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-dsh-qa-roles-probe"
@@ -15,6 +18,26 @@ export const name = "mpd-dsh-qa-roles-probe"
 export const inject = ["agentPresets", "tools"]
 type RolesService = { list(): Array<{ id: string; name?: string }>; get?(key: string): { id: string } | null }
 const ROSTER_IDS = ["oracle", "librarian", "prometheus", "hephaestus", "sisyphus", "sisyphus-junior", "atlas", "explore", "metis", "momus", "multimodal-looker"]
+/**
+ * Preset-resolve poll budget (ms) and step (ms) — the 0.1.7-rc.2 row model.
+ *
+ * MEASURED 2026-09-27 (`bundle-lifecycle`): this probe answered
+ * `PRESET_MPD=fail:Unknown agent preset: mpd` while the preset itself really mounted and
+ * every other boot sub-assertion was green. The deployment default is
+ * `agent-preset-registry`'s `config.default` and the preset is the
+ * `@deepseek-ai/dsh-agent-preset` row whose `config.id` matches, so `resolve("mpd")` reads
+ * the registry's LIVE definition map — and that map is populated when the `preset-mpd`
+ * ROW APPLIES, which the loader does CONCURRENTLY with this overlay-inserted probe row. A
+ * single immediate read therefore races the row it is asking about; a SHORT bounded poll is
+ * the same idiom the tool-registration instrumentation below already uses. The budget stays
+ * small on purpose: this probe runs inside a boot the QA case kills once HTTP answers.
+ */
+const PRESET_RESOLVE_BUDGET_MS = 2000
+const PRESET_RESOLVE_STEP_MS = 100
+/** The registry's own not-found signal; any other failure is real and is rethrown at once. */
+const PRESET_NOT_FOUND = /agent-preset\/not-found|Unknown agent preset/i
+/** Budget (ms) for each tool-registration poll below (see the note at its loop). */
+const TOOL_POLL_BUDGET_MS = 600
 /** One corpus skill the probe loads to prove the provider serves real bodies. */
 const FIXTURE_SKILL = "svn-master"
 /**
@@ -24,15 +47,65 @@ const FIXTURE_SKILL = "svn-master"
  * count would either break on every corpus change or silently stop meaning anything.
  */
 const FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"]
+
+/**
+ * WHERE the mpd preset is served from, in the row model.
+ *
+ * The retired directory preset resolved to a `path` + `trust` on its own record; a row
+ * preset has neither, because it is DECLARED inline by the bundle's preset patch. The
+ * honest answer to the same question is therefore the patch file that declares the row,
+ * derived from this probe's OWN location (the probe is served out of the installed bundle,
+ * so `<bundle>/presets/<name>.patch.yml` is the artifact a relocation moves). `trust` names
+ * the declaring plane: `bundle` (shipped by the installed package) rather than the retired
+ * `system`/`user` root vocabulary.
+ */
+export function presetPatchPath(): { path: string; trust: string } {
+  // FOUR levels up: this module is served as `<bundle>/packages/mpd-qa-roles-probe/dist/index.js`
+  // in BOTH layouts (a checkout install links the repo, a packed install copies the same tree).
+  const bundleRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+  const patch = join(bundleRoot, "presets", "mpd.patch.yml")
+  // Only a path this probe can SEE is reported: a layout that moved the patch (a re-pack
+  // that renames it) answers `unknown` instead of a plausible-looking fiction.
+  return existsSync(patch) ? { path: patch, trust: "bundle" } : { path: "unknown", trust: "unknown" }
+}
+
+/**
+ * Resolve the live preset, retrying ONLY the registry's not-found answer inside a bounded
+ * budget (see {@link PRESET_RESOLVE_BUDGET_MS}). Returns the resolved record plus how many
+ * attempts it took, so the boot log can show the race instead of hiding it.
+ */
+export async function resolveLivePreset(
+  dsh: { resolvePreset(id: string): Promise<{ id: string; path?: string; trust?: string; broken?: string }> },
+  id: string,
+): Promise<{ preset: { id: string; path?: string; trust?: string; broken?: string }; attempts: number }> {
+  const deadline = Date.now() + PRESET_RESOLVE_BUDGET_MS
+  let attempts = 0
+  for (;;) {
+    attempts += 1
+    try {
+      return { preset: await dsh.resolvePreset(id), attempts }
+    } catch (error) {
+      const message = String((error as { message?: unknown })?.message ?? error)
+      if (!PRESET_NOT_FOUND.test(message) || Date.now() + PRESET_RESOLVE_STEP_MS > deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, PRESET_RESOLVE_STEP_MS))
+    }
+  }
+}
+
 export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => any; [k: string]: unknown }): Promise<void> {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   let presetOk = false
   try {
-    const preset = await dsh.resolvePreset("mpd")
+    // BOUNDED POLL, not a single read: the row registers concurrently with this probe (see
+    // the constants above). Only the registry's not-found answer is retried.
+    const { preset, attempts } = await resolveLivePreset(dsh, "mpd")
     presetOk = !preset.broken
     console.log("[roles-probe] PRESET_MPD=" + (presetOk ? "ok" : "broken:" + String(preset.broken)))
-    // PRESET_PATH proves WHERE the preset is served from (bundle dir vs home copy).
-    console.log("[roles-probe] PRESET_PATH=" + String(preset.path ?? "unknown") + " trust=" + String(preset.trust ?? "unknown"))
+    console.log("[roles-probe] PRESET_RESOLVE_POLLS=" + attempts + " id=" + String(preset.id))
+    // PRESET_PATH proves WHERE the preset is served from: in the row model that is the
+    // bundle patch that DECLARES it (the probe derives it from its own installed location).
+    const served = presetPatchPath()
+    console.log("[roles-probe] PRESET_PATH=" + String(preset.path ?? served.path) + " trust=" + String(preset.trust ?? served.trust))
   } catch (e: any) {
     console.log("[roles-probe] PRESET_MPD=fail:" + String(e?.message ?? e))
   }
@@ -91,10 +164,13 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     // The loader applies rows concurrently, so a sibling plugin may not have registered
     // its tools yet when this probe runs. Poll briefly instead of racing: a single
     // immediate read would make this instrumentation flaky and therefore useless.
-    // The budget is deliberately SHORT: three of these loops run in sequence, and a long
-    // one makes the probe stall a boot that would otherwise finish (measured: a 15 s loop
-    // per check kept the whole boot log at 8 lines).
-    const deadline = Date.now() + 3000
+    // The budget is deliberately SHORT: three of these loops run in sequence, a long one
+    // makes the probe stall a boot that would otherwise finish (measured: a 15 s loop per
+    // check kept the whole boot log at 8 lines), and MEASURED 2026-09-27 the QA boot kills
+    // the app ~3.5 s after HTTP answers — a probe still polling then never prints its
+    // verdict, which is what the boot gate reads. 600 ms is ~6x the registration latency
+    // this instrumentation exists to absorb and keeps the verdict inside the window.
+    const deadline = Date.now() + TOOL_POLL_BUDGET_MS
     while (Date.now() < deadline && !LIVE_TOOLS.every(seen)) {
       await new Promise((resolve) => setTimeout(resolve, 250))
     }
@@ -118,7 +194,7 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
       if (typeof tools.has === "function") return tools.has(name)
       return false
     }
-    const deadline = Date.now() + 3000
+    const deadline = Date.now() + TOOL_POLL_BUDGET_MS
     while (Date.now() < deadline && !COMPACT_TOOLS.every(seenTool)) {
       await new Promise((resolve) => setTimeout(resolve, 250))
     }

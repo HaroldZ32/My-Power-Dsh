@@ -1,0 +1,55 @@
+{
+  "task": "t74",
+  "kind": "verification",
+  "agent": "docs-gate-engineer",
+  "attemptId": "0db2d86c-dfb8-4f22-bdea-43e0eada6c36",
+  "date": "2026-09-17T05:38Z",
+  "verdict": "pass",
+  "subject": "the runner's reason LADDER (t73): an action the author cannot verify — the label must name the failing step, not text printed by a passing one",
+  "headline": "INDEPENDENT replay reproduces the fixed label on the RECORDED bytes: `reason=step:archive` with the 401 fence demoted to `alsoDetected`, verdict still fail. The ladder's order is verified in code, the untouched rungs are shown untouched by `--self-test` exit 0 (fx-401 / fx-both / fx-expected-fence), and neutrality is measured, not inherited: the corpus treeSha `68318157…`/323 and VENDOR_LOCK.json are byte-identical across the change with no writer after the runner edit, and the runner's hash pair is `f60ef2b5…` (independently recorded at 01:49:38Z) → `6bea2b38…`/44,774 B.",
+  "independentReplay": {
+    "fixture": "evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay (built by me: my own mini-manifest + my own lane script re-emitting the RECORDED bytes)",
+    "command": "node scripts/run-qa-lanes.mjs --root=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay --manifest=skills/dsh-qa/cases.json --only=replay-adopt --evidence-dir=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out",
+    "output": "FAIL case=replay-adopt reason=step:archive prereq=\"the lane's own evidence marks step `archive` as failed\" signature=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1",
+    "structuredRecord": {
+      "verdict": "fail",
+      "reason": "step:archive",
+      "signature": { "code": "step:archive", "label": "the lane's own evidence marks step `archive` as failed", "file": "../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json", "line": null },
+      "alsoDetected": [ { "code": "unauthorized", "file": "(the lane's own stdout)", "line": 11 } ],
+      "exitCode": 1
+    },
+    "sigFileDrivesIt": "evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json → steps: archive ok=false, webRoute ok=true (the fence is the EXPECTED 401 of a PASSING step)"
+  },
+  "livePassNotTheFix": "--only=agent-teams-adopt is GREEN today (the author measured 77,649 ms); the fix's subject is the LABEL on the recorded failing bytes, so a green lane proves nothing about it and is not counted as the repair's proof here.",
+  "ladder": {
+    "orderInCode": "markers first (pass / prereq-marker → unavailable / FAIL marker → fail / SKIP+nonzero → fail), then RUNG 2 `failingStepFromEvidence(log, root)`, then RUNG 3 `detectSignaturesScoped(log)` over tailRegion(log,200) + the lane's evidence",
+    "selfTest": "node scripts/run-qa-lanes.mjs --self-test → exit 0 — 'classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures'",
+    "untouchedRungsAssertedInsideThatRun": [
+      "fx-401.reason === 'unauthorized' (a 401 is still a REAL failure, never a prerequisite absence)",
+      "fx-both.reason === 'unauthorized' AND alsoDetected[0].code === 'absent-credentials' (the co-detected prerequisite is surfaced, not swallowed)",
+      "fx-expected-fence.reason === 'step:archive' AND signature.code === 'step:archive' AND alsoDetected contains 'unauthorized' AND verdict === 'fail' (the NEW arm proving the discrimination)",
+      "continue-past-failure: 13 lanes, counts {pass:1, unavailable:4, fail:8}, failure at index 0, last lane fx-gate-fail, result.complete === true"
+    ]
+  },
+  "neutrality": {
+    "runnerPair": { "before": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e (evidence/dsh-qa/suite-runner/handover-20260917T015029Z/{output.log:82,result.json:79}, mtime 2026-09-17 01:49:38Z — an INDEPENDENT record)", "after": "6bea2b38de2a4ac76ddb672b25bdc5f226e870bdd45cafb9026ae9e3c9c9ded0 / 44,774 B (measured by me)" },
+    "corpus": "node scripts/repin-vendor.mjs (dry-run) → skills treeSha=68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c fileCount=323 (1 file LF-normalized), 'in sync: no change' — identical to the pre-change reading in the captain's settle pin (skills_files 323)",
+    "vendorLock": "sha256 6ca531d2b20afb19cdc336fa90fcbb7509d2237cfaea62adb2850325d6134992, mtime 2026-09-17 13:24:25 +0800 — the SAME prefix `6ca531d2b20afb19` as the pre-change settle pin (05:25:30Z); no writer since",
+    "noWriterAfterTheChange": "find skills VENDOR_LOCK.json -newermt '2026-09-17 13:29:36' → EMPTY (the runner edit is at 13:29:36 +0800)",
+    "packer": "grep -c run-qa-lanes scripts/pack-mpd.mjs → 0"
+  },
+  "oldLabelPreserved": {
+    "authorsRecord": "evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/result.json carries the OLD label (9 'unauthorized' mentions) beside the new (5 'step:archive') and marks the earlier reading superseded (2 mentions) — nothing deleted",
+    "boardUntouched": "evidence/dsh-qa/full-sweep/t26-attempt7/RED-CLASSIFICATION.md still quotes the historical runner line `verdict=fail reason=unauthorized exit=1 ms=48927` with its signature, and the diagnosis is ADDED as a separate section — the historical label was not rewritten in place"
+  },
+  "acceptance": [
+    { "criterion": "The verifier RE-RUNS the replay itself against the recorded signature file and quotes the command and its output: `reason=step:archive` with the fence only in `alsoDetected` — not read from the author's log.", "status": "passed", "evidence": "My own fixture (built here, my mini-manifest + my lane re-emitting the RECORDED c13 bytes) → `FAIL case=replay-adopt reason=step:archive … signature=…/plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1`; the structured record shows signature.code=step:archive and alsoDetected=[{code:unauthorized,…}]." },
+    { "criterion": "THE LIVE PASS IS EXPLICITLY NOT READ AS THE FIX.", "status": "passed", "evidence": "agent-teams-adopt is green today (author: 77,649 ms). The repair's subject is the label on recorded failing bytes; the verdict states the distinction and counts no green lane as its proof — the replay above is the proof." },
+    { "criterion": "The precedence LADDER holds and the untouched rungs are shown untouched: rung 1 and every verdict rule unchanged, a 401 still a REAL failure (fx-401, fx-both green), and the new arm proves the discrimination.", "status": "passed", "evidence": "Code order: markers → rung 2 (failingStepFromEvidence) → rung 3 (detectSignaturesScoped). `--self-test` exit 0 exercises exactly those assertions (fx-401 reason=unauthorized; fx-both reason=unauthorized with alsoDetected[0]=absent-credentials; fx-expected-fence reason=step:archive, signature.code=step:archive, alsoDetected contains unauthorized, verdict fail; 13-lane continue-past counts)." },
+    { "criterion": "NEUTRALITY measured by the verifier, not inherited: corpus `68318157…`/323 and VENDOR_LOCK.json byte-identical across the change (hash pairs), the packer still never names the runner, the runner's own hash pair recorded.", "status": "passed", "evidence": "Derived re-pin reproduces skills treeSha 68318157…/323 LF ('in sync: no change'); VENDOR_LOCK sha 6ca531d2b20afb19… matches the pre-change settle pin prefix and its mtime (13:24:25) predates the runner edit (13:29:36); `find skills VENDOR_LOCK.json -newermt 13:29:36` → EMPTY; packer grep → 0; runner f60ef2b5… → 6bea2b38…/44,774 B." },
+    { "criterion": "The OLD label is PRESENT in the same record as the new one and marked SUPERSEDED rather than deleted — and the board's historical label is not rewritten in place.", "status": "passed", "evidence": "Author's result.json carries both (9 'unauthorized' / 5 'step:archive' / 2 'superseded'); my board's RED-CLASSIFICATION.md still quotes the historical `reason=unauthorized` line with its signature, with the diagnosis added as its own section." }
+  ],
+  "verify": [ { "command": "node scripts/run-qa-lanes.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures" } ],
+  "scope": "Verification only: I built a fixture under evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/** and wrote nothing else — no runner, lane script, corpus or lock edit (no git write).",
+  "artifacts": ["evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay.log", "…/replay/skills/dsh-qa/{cases.json,scripts/replay-adopt.mjs}", "…/replay/evidence/…/out/{result.json,output.log,lanes/replay-adopt.log}", "…/selftest.log"]
+}

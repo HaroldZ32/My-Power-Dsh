@@ -1,0 +1,124 @@
+t7 anchored re-run (captain's dirty-tree digest requirement)
+
+=== exit codes ===
+extension-lifecycle exit=0 start=2026-09-16T05:03:46Z end=2026-09-16T05:04:23Z cmd=bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
+extension-mcp-bridge exit=0 start=2026-09-16T05:04:23Z end=2026-09-16T05:04:30Z cmd=bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
+extension-isolation-self-test exit=0 start=2026-09-16T05:04:30Z end=2026-09-16T05:04:31Z cmd=bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test
+
+=== FOUR-FILE DIGESTS pre == post == settle ===
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6
+--
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6
+-- settle --
+settle re-pin of the FOUR repair files (>=50s after the run ended 2026-09-16T05:04:31Z)
+2026-09-16T05:05:40Z
+HEAD: 8777e4340f8b4cd0a8d0c0ac683054523d4b5739
+sha256:
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76  skills/dsh-qa/SKILL.md
+3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9  skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6  VENDOR_LOCK.json
+
+=== lane consoles ===
+[extension-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  main: {"ok":true,"exit":0,"durationMs":7362,"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"recordedTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show","skill","mpd_role_persona","mpd_role_spawn"],"calls":{"mpd_ext_list":{"succeeded":true,"reason":"","r
+  failure: {"ok":true,"exit":0,"sessionCompleted":true,"listedHealthy":true,"flowToolStillWorks":true,"reportedProjectRejection":true,"reportedRejections":["qa-bad-json","qa-bad-version"],"cliChecks":{"qa-bad-json":{"exit":1,"tail":"  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a J
+  isolation: {"ok":true,"sessions":{"session-a":{"ok":true,"exit":0,"cwd":"/tmp/mpd-extension-lifecycle-AnVvy8/ws-a","recorded":true,"succeeded":true,"sawExpected":true,"sawForbidden":[],"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"isolation":{"ok":true,"checked":2,"keys":["
+  packed: {"ok":true,"packExit":0,"packedRoot":"/root/dshProj/my-power-dsh/dist/mpd-package","rows":{"mpdExtRowInPackedPatch":true},"assets":{"pluginDist":true,"extensionsAsset":true},"status":"GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)","greenOwner":"t11","note":"no
+  isolationFinal: {"ok":true,"checked":4,"keys":["--tmp-mpd-extension-lifecycle-AnVvy8-decoy--","--tmp-mpd-extension-lifecycle-AnVvy8-ws-b--","--tmp-mpd-extension-lifecycle-AnVvy8-ws-a--","--tmp-mpd-extension-lifecycle-AnVvy8-ws--"]}
+
+[extension-mcp-bridge] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":true,"offered":true,"called":true,"succeeded":true,"reason":"","resultHead":"Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx,
+  dead: {"vacuous":false,"ok":true,"offeredNoTool":true,"headerSawNoTool":true,"reported":true,"stateText":"extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/q
+  hang: {"vacuous":false,"ok":true,"connectTimeoutMs":1500,"durationMs":6995,"offeredNoTool":true,"reported":true,"stateText":"extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-id9Xly/run-hom
+  schema: {"vacuous":false,"ok":true,"goodToolOffered":true,"badInputSkipped":true,"badOutputOffered":true,"badOutputSchemaDropped":true,"reportedReason":true,"stateText":"extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/qa-mcp-schema\nsourc
+  dup: {"vacuous":false,"ok":true,"zeroTools":true,"headerZeroTools":true,"stateText":"extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-id9Xly/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json
+  containment: {"ok":true,"exit":0,"control":{"liveToolOffered":true,"liveCallSucceeded":true},"showCallOrder":["qa-mcp-dead","qa-mcp-schema","qa-mcp-dup","qa-mcp-hang"],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegraph_explore","mc
+
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+
+=== proof map ===
+{
+  "lifecycle": {
+    "mountLine": 37,
+    "header": {
+      "line": 13,
+      "count": 99
+    },
+    "calls": {
+      "mpd_ext_list": {
+        "call": 18,
+        "result": 20,
+        "isError": false
+      },
+      "mpd_ext_show": {
+        "call": 24,
+        "result": 25,
+        "isError": false
+      },
+      "mpd_flow_show": {
+        "call": 34,
+        "result": 35,
+        "isError": false
+      },
+      "skill": {
+        "call": 39,
+        "result": 40,
+        "isError": false
+      },
+      "mpd_role_persona": {
+        "call": 44,
+        "result": 45,
+        "isError": false
+      },
+      "mpd_role_spawn": {
+        "call": 49,
+        "result": 51,
+        "isError": false
+      }
+    },
+    "markers": {
+      "projectId": 20,
+      "userId": 12,
+      "projectRejection": 20,
+      "flowMarker": 35,
+      "skillMarker": 40,
+      "personaMarker": 45,
+      "roleChild": 51
+    },
+    "isolation": {
+      "sessionA": 12,
+      "sessionB": 12,
+      "decoyControl": 12
+    }
+  },
+  "mcpBridge": {
+    "mountLine": 35,
+    "schemaPublishLine": 31,
+    "liveCall": {
+      "call": 39,
+      "result": 40,
+      "isError": false
+    },
+    "header": {
+      "line": 13,
+      "count": 109
+    },
+    "offered": {
+      "liveStatus": true,
+      "schemaBadOutput": true,
+      "schemaBadInput": false,
+      "deadServerTools": 0,
+      "hangServerTools": 0,
+      "dupServerTools": 0
+    }
+  }
+}

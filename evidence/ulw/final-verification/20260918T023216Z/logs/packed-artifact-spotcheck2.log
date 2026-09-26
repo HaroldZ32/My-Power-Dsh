@@ -1,0 +1,29 @@
+### packed patch location
+dist/mpd-package/cordis.patch.yml
+agent-references
+cordis.patch.yml
+docs
+extensions
+EXTENSIONS-FOR-AGENTS.md
+LICENSE.md
+LICENSE-NOTICES.md
+package.json
+packages
+presets
+README.md
+README.zh-CN.md
+scripts
+skills
+templates
+
+### sessionTeamPolicy rows
+packages/mpd-bundle/cordis.patch.yml:390:        sessionTeamPolicy:
+
+### compare packed patch (if found)
+dist/mpd-package/cordis.patch.yml
+a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116  dist/mpd-package/cordis.patch.yml
+a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116  packages/mpd-bundle/cordis.patch.yml
+390:        sessionTeamPolicy:
+391-          mode: off
+392-          autoRoute: true
+393-          profile: mpd

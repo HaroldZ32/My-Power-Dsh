@@ -39,12 +39,12 @@ var MPD_EXT_CONTRACT = {
   projectRejectionReason: "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session"
 };
 export {
-  defineExtension,
-  MPD_EXT_SKILL_NAME_PATTERN,
-  MPD_EXT_SERVER_NAME_PATTERN,
-  MPD_EXT_MANIFEST_FILE,
-  MPD_EXT_ID_PATTERN,
-  MPD_EXT_DEFAULT_RANK,
+  MPD_EXT_API_VERSION,
   MPD_EXT_CONTRACT,
-  MPD_EXT_API_VERSION
+  MPD_EXT_DEFAULT_RANK,
+  MPD_EXT_ID_PATTERN,
+  MPD_EXT_MANIFEST_FILE,
+  MPD_EXT_SERVER_NAME_PATTERN,
+  MPD_EXT_SKILL_NAME_PATTERN,
+  defineExtension
 };

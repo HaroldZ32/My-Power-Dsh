@@ -1,0 +1,91 @@
+{
+  "kind": "correction",
+  "scope": "lane-level index (ONE event, ONE record) — not an amendment of the indexed records",
+  "author": "docs-gate-engineer",
+  "date": "2026-09-17T13:46Z",
+  "event": {
+    "what": "the wave commit + merge checked the tree out at 13:42:47 +0800, rewriting mtimes while every byte stayed identical",
+    "commits": ["684dd3f", "20a635e"],
+    "wave_commit_files": 4299,
+    "merge_diff": "empty (684dd3f..20a635e adds no bytes)",
+    "files_restamped_in_window_134240_to_134255": 4289,
+    "window_membership_is_LIVE_and_predicate_dependent": {
+      "why": "a peer seat counted 4,285 where this record counted 4,289; both readings are honest and the gap is two effects, measured",
+      "readings": [
+        {"who": "this record as filed", "predicate": "-type f -newermt '2026-09-17 13:42:40' ! -newermt '2026-09-17 13:42:55', .git pruned", "moment": "2026-09-17T13:46:01", "count": 4289},
+        {"who": "qa-lane-engineer", "predicate": "-type f -newermt '2026-09-17 13:42:46' ! -newermt '2026-09-17 13:42:48', .git pruned", "moment": "~13:47", "count": 4285},
+        {"who": "both predicates re-run together", "predicate": "the two above, same instant", "moment": "2026-09-17T13:47:33", "count": [4285, 4284]},
+        {"who": "tightest", "predicate": "-type f -newermt '2026-09-17 13:42:47' ! -newermt '2026-09-17 13:42:48'", "moment": "2026-09-17T13:47:47", "count": 4279}
+      ],
+      "bound_difference_is_exactly_one_file": {
+        "file": ".mpd/scratch/merge2.log",
+        "mtime": "2026-09-17 13:42:48.221969848 +0800",
+        "why": "outside the peer's (13:42:46, 13:42:48] bound, inside this record's (13:42:40, 13:42:55] bound",
+        "method": "comm -13 of the two find predicates"
+      },
+      "the_rest_of_the_gap_is_drift": {
+        "explanation": "the measured set is live: the same predicate returns 4,289 at 13:46:01 and 4,285 at 13:47:33",
+        "mechanism_measured": "the wave commit carried 34 files from evidence/wave1-integration/20260917T052400Z/**; the captain is regenerating that directory (9 rewritten since 13:46:40, 25 still carrying the window stamp, 10 shown modified) — every rewrite moves one file OUT of the window"
+      },
+      "stamp_spread_within_the_second": "~0.5 s of internal spread; per-10 ms clusters 239, 188, 167, 165, 161, 158, 143, 141, 131, 123, 121, 119 … — a ±1 s tolerance admits the whole event, so neither predicate needs a winner",
+      "amended_class_lesson": "a count needs its PREDICATE and its MOMENT; where the measured set is live, two honest predicates measured minutes apart cannot agree, and a bare number is not a measurement — the durable form is the digest"
+    },
+    "control": {
+      "untracked_file": ".mpd/mpd.jsonc",
+      "mtime": "2026-09-16 14:35:34 +0800",
+      "interpretation": "untracked ⇒ untouched by the checkout ⇒ this was a checkout of the tracked wave set, not a repo-wide touch and not a writer re-running"
+    }
+  },
+  "superseded_readings": {
+    "form": "any mtime / -newermt reading inside these files now reads a restamped clock value; read as 'as of its own filing, <= 13:42:47'",
+    "files": [
+      "evidence/gates/build-form/20260917T033500Z-t60/result.json",
+      "evidence/gates/build-form/20260917T033500Z-t60/output.log",
+      "evidence/gates/build-form/20260917T040500Z-t66/result.json",
+      "evidence/gates/build-form/20260917T040500Z-t66/output.log",
+      "evidence/gates/build-form-review/20260917T031910Z/result.json",
+      "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/result.json",
+      "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/output.log",
+      "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/twin-scan-packed-vs-checkout.log",
+      "evidence/gates/dist-fresh-crosscheck/20260917T033333Z/UPDATE-20260917T035100Z-dist-drift-three-paths.txt",
+      "evidence/gates/dist-rebuild/20260917T021906Z/verify-gates-post-t44.log",
+      "evidence/gates/cwd-hermetic/20260917T013500Z/result.json",
+      "evidence/gates/cwd-hermetic/20260917T013500Z/output.log",
+      "evidence/gates/troubleshooting-t23-second-row/20260917T031123Z/output.log",
+      "evidence/gates/troubleshooting-t23-second-row/20260917T031123Z/reconstructed-before.md",
+      "evidence/gates/troubleshooting-t23-row/20260917T030350Z/reconstructed-before.md",
+      "evidence/dsh-qa/suite-runner/handover-20260917T015029Z/result.json",
+      "evidence/gates/agents-budget/20260917T011651Z/crossref-audit.json",
+      "evidence/gates/agents-budget/20260917T011651Z/crossref-resolution.json",
+      "evidence/gates/negative-controls/20260917T022119Z/seeded-dist.bak"
+    ],
+    "already_corrected_elsewhere_do_not_double_file": [
+      "evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/correction-20260917T134500Z-mtime-and-revision/",
+      "evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/correction-2026-09-17T05-45-24Z-mtimes-refreshed-by-checkout.md"
+    ],
+    "listing_method": "grep -rl 'mtime\\|newermt' evidence/gates/ evidence/dsh-qa/suite-runner/ (excluding correction-* files), then judged per hit — measured, not remembered"
+  },
+  "surviving_content_identities": {
+    "measured_at": "2026-09-17T13:46Z",
+    "claims_unchanged": true,
+    "files": {
+      "AGENTS.md": {"sha256": "a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa", "bytes": 48641},
+      "EXTENSIONS-FOR-AGENTS.md": {"sha256": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27", "bytes": 15660},
+      "VENDOR_LOCK.json": {"sha256": "6ca531d2b20afb19cdc336fa90fcbb7509d2237cfaea62adb2850325d6134992", "bytes": 3434},
+      "skills/dsh-qa/cases.json": {"sha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e", "bytes": 14542},
+      "packages/mpd-workmate-plugin/dist/index.js": {"sha256": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d"},
+      "packages/mpd-team-watchdog-plugin/dist/index.js": {"sha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8"}
+    },
+    "note": "5a1863b2… is the checkout-side hash that dist-fresh-crosscheck itself recorded, so the drift it reported is still the drift on disk"
+  },
+  "gate_reading_after_checkout": {
+    "command": "node scripts/verify-vendor.mjs",
+    "exit": 0,
+    "output": "asset OK: skills 323 files; PASS",
+    "why_it_matters": "the gate's own output is the form that cannot be reddened by a byte-identical checkout; an ad-hoc recomputation of a gate's digest is not a reading of that gate"
+  },
+  "durable_rule": "A hash of the bytes is a revision identity. An mtime is a moment-bound reading, and a checkout moves it without moving a byte. A gate's own output outranks an ad-hoc recomputation of that gate's digest.",
+  "corollary_for_reviewers": "a `find … -newermt` line that once printed EMPTY prints file names after any checkout of the same tree; that is the checkout, not a reopened writer window. The skills/** single-writer window stayed closed through this event.",
+  "clause_results_unchanged": true,
+  "bound": "digest and count readings are of 2026-09-17T13:43-13:46Z. A further checkout moves mtimes again — never the digests. No indexed record was amended: their conclusions rest on content, and this index is where their times are read correctly."
+}

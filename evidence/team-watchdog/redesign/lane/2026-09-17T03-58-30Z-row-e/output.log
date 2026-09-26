@@ -1,0 +1,14 @@
+[watchdog-redesign] [2026-09-17T03:56:58.110Z] contract §9 rows e — RED /root/dshProj/my-power-dsh/.mpd/red-baseline vs GREEN /root/dshProj/my-power-dsh
+[watchdog-redesign] generations: red=legacy green=fold
+[watchdog-redesign] knobs: red {"warnSilenceMs":90000,"streak":3,"action":"pause"} | green {"warnSilenceMs":600000,"streak":6,"action":"warn-only"}
+[redesign-red] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=910001ms (since 1789617408167, bound=900000ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-30Z-row-e/raw/e-red-k4lat5/.mpd/team/watchdog/incidents.jsonl
+[redesign-green] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=910001ms (since 1789617408179, bound=900000ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-30Z-row-e/raw/e-green-UDBpH5/.mpd/team/watchdog/incidents.jsonl
+[watchdog-redesign] 
+[watchdog-redesign] row (e) a tool call past `toolInFlightMaxMs` — the r6 PIN
+[watchdog-redesign]   required     : exactly ONE `tool-expired`, never a hold (the contract's RED column says r6 was already green)
+[watchdog-redesign]   RED   verdict: PIN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: GREEN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat
+[watchdog-redesign]   row verdict  : red=pin green=green
+[watchdog-redesign] 
+[watchdog-redesign] RED pin (contract §0/A2): machine=fc10fc41 engine=f529ca2c tools=49025f4d channel=(absent) → redPinned=true
+[watchdog-redesign] settled=not requested (--settle-ms 0) | green fingerprint: {"machine":"ce8bd54cba51","engine":"47c24bd678ae","channel":"b9d7acaf6350","tools":"0e0908e5b002"}

@@ -1,0 +1,191 @@
+{
+  "schema": "laneB/post-completion-writer-inventory/1",
+  "captured_at": "2026-09-17T07:45:03.608Z",
+  "what": "every post-pack writer the closure gate's EXPECTED class names, derived from its own output - the inventory the captain asked for in the wave report",
+  "reading": {
+    "closure_exit": 1,
+    "expected_count": 20,
+    "content_line": "content bytes: 1180 file(s) compared, 1160 identical, 0 drift, 20 expected-after-pack",
+    "completeness_line": "completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent",
+    "stamp": "2026-09-17T05:19:48.265Z"
+  },
+  "families": {
+    "lane D (t11, qa-lane-engineer; the single skills writer) - path_owner verified": {
+      "count": 10,
+      "paths": [
+        "skills/dsh-qa/cases.json",
+        "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+        "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+        "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+        "skills/dsh-qa/scripts/web-settings-bridge.mjs"
+      ],
+      "mtimes": [
+        "2026-09-17T07:35:55.372Z",
+        "2026-09-17T07:39:21.293Z",
+        "2026-09-17T07:22:07.621Z",
+        "2026-09-17T07:22:07.082Z",
+        "2026-09-17T07:28:11.309Z",
+        "2026-09-17T07:22:07.214Z",
+        "2026-09-17T07:22:07.303Z",
+        "2026-09-17T07:22:07.511Z",
+        "2026-09-17T07:36:13.124Z",
+        "2026-09-17T07:35:48.586Z"
+      ]
+    },
+    "docs parity family (owner not queried for each path)": {
+      "count": 2,
+      "paths": [
+        "docs/extension-adaptation-report.md",
+        "docs/extension-adaptation-report.zh-CN.md"
+      ],
+      "mtimes": [
+        "2026-09-17T07:36:15.474Z",
+        "2026-09-17T07:36:22.792Z"
+      ]
+    },
+    "lane B3 (t19, docs-parity-engineer) - path_owner verified": {
+      "count": 3,
+      "paths": [
+        "agent-references/agent-teams-deltas.md",
+        "agent-references/index.md",
+        "agent-references/troubleshooting.md"
+      ],
+      "mtimes": [
+        "2026-09-17T07:29:27.471Z",
+        "2026-09-17T07:31:52.235Z",
+        "2026-09-17T07:41:30.516Z"
+      ]
+    },
+    "lane A (t8, agent-teams-engineer) - path_owner verified": {
+      "count": 4,
+      "paths": [
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+        "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+        "packages/mpd-agent-teams-plugin/lib/state.js",
+        "packages/mpd-agent-teams-plugin/lib/tools.js"
+      ],
+      "mtimes": [
+        "2026-09-17T07:26:59.559Z",
+        "2026-09-17T07:20:18.132Z",
+        "2026-09-17T07:21:47.592Z",
+        "2026-09-17T07:23:16.600Z"
+      ]
+    },
+    "lane C (t10, watchdog-engineer) - path_owner verified": {
+      "count": 1,
+      "paths": [
+        "packages/mpd-team-watchdog-plugin/dist/index.js"
+      ],
+      "mtimes": [
+        "2026-09-17T07:40:20.988Z"
+      ]
+    }
+  },
+  "entries": [
+    {
+      "path": "skills/dsh-qa/cases.json",
+      "source_mtime": "2026-09-17T07:35:55.372Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "source_mtime": "2026-09-17T07:39:21.293Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+      "source_mtime": "2026-09-17T07:22:07.621Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+      "source_mtime": "2026-09-17T07:22:07.082Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+      "source_mtime": "2026-09-17T07:28:11.309Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+      "source_mtime": "2026-09-17T07:22:07.214Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+      "source_mtime": "2026-09-17T07:22:07.303Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+      "source_mtime": "2026-09-17T07:22:07.511Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "source_mtime": "2026-09-17T07:36:13.124Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+      "source_mtime": "2026-09-17T07:35:48.586Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "docs/extension-adaptation-report.md",
+      "source_mtime": "2026-09-17T07:36:15.474Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "docs/extension-adaptation-report.zh-CN.md",
+      "source_mtime": "2026-09-17T07:36:22.792Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "agent-references/agent-teams-deltas.md",
+      "source_mtime": "2026-09-17T07:29:27.471Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "agent-references/index.md",
+      "source_mtime": "2026-09-17T07:31:52.235Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "agent-references/troubleshooting.md",
+      "source_mtime": "2026-09-17T07:41:30.516Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "source_mtime": "2026-09-17T07:26:59.559Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "source_mtime": "2026-09-17T07:20:18.132Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "source_mtime": "2026-09-17T07:21:47.592Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "source_mtime": "2026-09-17T07:23:16.600Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    },
+    {
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js",
+      "source_mtime": "2026-09-17T07:40:20.988Z",
+      "stamp": "2026-09-17T05:19:48.265Z"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "task": "AC-5 / AC-10 (scene snapshot + durable hold + incident log, fresh-process read)",
+  "lane": "team-watchdog-scene",
+  "sceneDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe",
+  "observed": {
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb",
+    "freshProcessPid": 79,
+    "readWith": "plain-fs",
+    "latest": {
+      "schemaVersion": 1,
+      "at": 1700000120001,
+      "reason": "escalate",
+      "cause": {
+        "kind": "silence",
+        "ms": 120001
+      },
+      "team": {
+        "id": "fault-probe",
+        "name": "Fault probe",
+        "phase": "running",
+        "halted": null,
+        "haltedAt": null,
+        "hold": {
+          "id": "857ab6ef-f85d-4915-b8d3-6341b4ebafcf",
+          "since": 1789492338679,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1"
+        }
+      },
+      "tasks": [
+        {
+          "id": "t1",
+          "status": "in_progress",
+          "assignee": "Architect",
+          "attempt": 1,
+          "attemptId": "att-1",
+          "lastSeen": 1700000000000,
+          "streak": 0
+        }
+      ],
+      "members": [
+        {
+          "id": "child-architect-fault",
+          "name": "Architect",
+          "status": "idle",
+          "unread": 0,
+          "currentTask": "t1",
+          "lastSeen": 1700000000000
+        }
+      ],
+      "mailbox": {},
+      "parkedAttempts": {
+        "child-architect-fault": "att-1"
+      },
+      "incidents": [
+        {
+          "id": "t1@att-1#1700000090001",
+          "kind": "warn",
+          "at": 1700000090001,
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json"
+        },
+        {
+          "id": "t1@att-1#1700000105001",
+          "kind": "warn",
+          "at": 1700000105001,
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json"
+        }
+      ]
+    },
+    "hold": {
+      "id": "857ab6ef-f85d-4915-b8d3-6341b4ebafcf",
+      "teamId": "fault-probe",
+      "since": 1789492338679,
+      "cause": "silence",
+      "taskId": "t1",
+      "attemptId": "att-1",
+      "sceneAt": 1700000120001
+    },
+    "incidentLog": [
+      {
+        "id": "t1@att-1#1700000090001",
+        "teamId": "fault-probe",
+        "kind": "warn",
+        "at": 1700000090001,
+        "cause": {
+          "kind": "silence",
+          "ms": 90001
+        },
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+        "hold": "not-requested",
+        "acknowledgedBy": []
+      },
+      {
+        "id": "t1@att-1#1700000105001",
+        "teamId": "fault-probe",
+        "kind": "warn",
+        "at": 1700000105001,
+        "cause": {
+          "kind": "silence",
+          "ms": 105001
+        },
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json",
+        "hold": "not-requested",
+        "acknowledgedBy": []
+      },
+      {
+        "id": "t1@att-1#1700000120001",
+        "teamId": "fault-probe",
+        "kind": "escalate",
+        "at": 1700000120001,
+        "cause": {
+          "kind": "silence",
+          "ms": 120001
+        },
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene/raw/ws/fault-t6f2hb/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json",
+        "hold": "applied",
+        "acknowledgedBy": []
+      },
+      {
+        "id": "t1@att-2#1700000290001",
+        "teamId": "fault-probe",
+        "kind": "warn",
+        "at": 1700000290001,
+        "cause": {
+          "kind": "silence",
+          "ms": 90001
+        },
+        "taskId": "t1",
+        "attemptId": "att-2",
+        "scene": null,
+        "hold": "applied",
+        "acknowledgedBy": []
+      }
+    ],
+    "sceneFiles": [
+      "20231114T221450Z-warn.json",
+      "20231114T221505Z-warn.json",
+      "20231114T221520Z-escalate.json",
+      "latest.json"
+    ],
+    "pointerMatchesNewest": true,
+    "team": "fault-probe"
+  },
+  "checks": [
+    {
+      "id": "S1",
+      "ok": true,
+      "detail": "the scene was read by a FRESH process (pid 79 vs lane 67) with plain fs only"
+    },
+    {
+      "id": "S2",
+      "ok": true,
+      "detail": "the snapshot carries the AC-5 field set (missing: [])"
+    },
+    {
+      "id": "S3",
+      "ok": true,
+      "detail": "the escalation snapshot names its reason and the measured silence ({\"reason\":\"escalate\",\"cause\":{\"kind\":\"silence\",\"ms\":120001}})"
+    },
+    {
+      "id": "S4",
+      "ok": true,
+      "detail": "team.hold in the snapshot agrees with the durable hold sidecar ({\"scene\":\"857ab6ef-f85d-4915-b8d3-6341b4ebafcf\",\"sidecar\":\"857ab6ef-f85d-4915-b8d3-6341b4ebafcf\"})"
+    },
+    {
+      "id": "S5",
+      "ok": true,
+      "detail": "the durable parkedAttempts projection is in the snapshot ({\"child-architect-fault\":\"att-1\"})"
+    },
+    {
+      "id": "S6",
+      "ok": true,
+      "detail": "every member row carries id/name/status/unread/currentTask/lastSeen (missing: [])"
+    },
+    {
+      "id": "S7",
+      "ok": true,
+      "detail": "the incident log is append-only and at least as long as the snapshot's own incident list ({\"snapshot\":2,\"log\":4})"
+    },
+    {
+      "id": "S8",
+      "ok": true,
+      "detail": "each incident kept its OWN immutable scene file beside the latest.json pointer ([\"20231114T221450Z-warn.json\",\"20231114T221505Z-warn.json\",\"20231114T221520Z-escalate.json\",\"latest.json\"])"
+    },
+    {
+      "id": "S9",
+      "ok": true,
+      "detail": "latest.json is the pointer a restart reads (its bytes match the newest incident scene)"
+    },
+    {
+      "id": "S10",
+      "ok": true,
+      "detail": "the hold sidecar names the task and attempt it paused ({\"since\":1789492338679,\"taskId\":\"t1\",\"attemptId\":\"att-1\"})"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "The snapshot is the INJECTED silence (the fixture's W-3) — no genuine provider wedge is claimed.",
+    "The scene was produced in-process by the fixture and read from outside with plain fs; the read is what this lane witnesses, not a live host's write."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T171218Z-scene",
+  "finishedAt": "2026-09-15T17:12:18.728Z"
+}

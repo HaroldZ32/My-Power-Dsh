@@ -1,0 +1,1 @@
+REFUSED: /root/dshProj/my-power-dsh/evidence/review/wave2b-laneC/20260917T144500Z/repro-t79/t79-decisive-result.json already exists (immutable evidence). Pass a fresh --out <dir>, or --force to overwrite deliberately.

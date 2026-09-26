@@ -1,0 +1,10 @@
+[session-start-team] ok=false -> /root/dshProj/my-power-dsh/evidence/ulw/l6-verification/20260918T012345Z/session-start-team-2026-09-18T01-29-15.614Z
+  settled: {"ok":true,"rev":"5aa222a144e4238b67453731c5decd806db6db94","gateHash":"4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"}
+  installer: {"ok":true,"exit":0}
+  patchRow: {"ok":true,"hasRow":true}
+  compose: {"ok":true,"exit":0}
+  simpleSide: [{"prompt":"Reply with exactly: hello-ok","expect":"none","exited":0,"teams":0,"stagedTotal":0,"members":0,"spawnedMembers":0,"archivedRecords":0,"archivedByModel":false,"notice":{"any":false,"advisory":0,"provisioned":0,"signals":[]},"isolation":true,"sessionRecords":20,"sessionFrames":7,"problems":[],"ok":true},{"prompt":"What does the git-master skill do? Answer in one sentence.","expect":"none
+  softComplexSide: [{"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","expect":"advise","exited":0,"teams":1,"stagedTotal":1,"staged":"staged","profile":"mpd","members":7,"spawnedMembers":0,"archivedRecords":0,"archivedByModel":false,"notice":{"any":true,"advisory":1,"provisioned":0,"signals":["C"]},"isolation":true,"sessionRecords":268,"sessionFrames":14
+  explicitSide: [{"prompt":"team: fix the flaky test","expect":"provision","exited":0,"teams":1,"stagedTotal":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"archivedRecords":0,"archivedByModel":false,"notice":{"any":true,"advisory":0,"provisioned":1,"signals":[]},"isolation":true,"sessionRecords":71,"sessionFrames":36,"problems":[],"ok":true}]
+  negativeControl: {"ok":true,"teams":0,"stagedTotal":0,"notice":{"any":false,"advisory":0,"provisioned":0},"disarmed":true,"isolation":true,"problems":[]}
+  threeWay: {"ok":false,"simpleTeams":[0,0,0],"simpleNotices":[false,false,false],"softTeams":[1,0],"softAdvisory":[1,1],"softSignals":[["C"],["C"]],"explicitTeams":[1],"explicitActive":[1],"explicitArchived":[0],"explicitProvisioned":[1]}

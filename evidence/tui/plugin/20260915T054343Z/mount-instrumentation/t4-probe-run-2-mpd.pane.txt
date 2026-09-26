@@ -1,0 +1,44 @@
+
+
+                                            ✦ dsh-TUI  v0.10.1
+                                            █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀ █   █
+                                            █   █ █     █     █   █ █     █     █     █ █
+                         ▄▀▄       ▄        █   █ █▀▀▀  █▀▀▀  █▄▄▄▀  ▀▀▀▄ █▀▀▀  █▀▀▀  ██
+                         ▀▀▀▀▄  ▄▄▀▀▀       █   █ █     █     █         █ █     █     █ █
+         ▄▄▄▄▄▄▄▄▄       ▀▀▀▀▀▀▀▀▀▀▀▀       █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █     █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █   █
+       ▄▀▀▀▀▀▀▀▀▀▀▀▀▄▄     ▀▀▀▀▀▀▀▀▀        █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀
+     ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▀▀▀▀▀           █   █ █   █ █   █ ██  █ █     █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀           █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █   █ █   █ █ █   █  ██ █         █     █
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              deepseek-flash · Max effort
+        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             /root/dshProj/my-power-dsh
+           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             Tip: Footer compact on = one merged line; off = metrics left, location right · /tips more tips
+                                            ⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against, so 
+                                            issues are possible; downgrade via npm i -g @deepseek-ai/dsh@0.1.5-rc.1 for stability, or wait 
+                                            for a dsh-tui update.
+
+          Explore the uncharted!
+
+  ❯ /t4probe
+                                                                                                                     
+   turn error · llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (th…
+
+  ❯ /mpd status
+
+   turn error · llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (th…
+
+
+
+
+
+
+
+                                                       
+    Turn error · llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service…
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ❯             CP] Auto-synced 1 file(s) in 39mss                                                                                       ⛶
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+   deepseek-flash · max · my-power-dsh
+                   
+

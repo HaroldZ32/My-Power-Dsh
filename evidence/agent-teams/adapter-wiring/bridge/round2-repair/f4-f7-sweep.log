@@ -1,0 +1,28 @@
+=== t23 follow-up (F4 .call rule + F7 scope note) sweep — read 2026-09-19T16:08:13Z ===
+
+--- bun test packages/mpd-agent-teams-plugin ---
+ 361 pass
+ 0 fail
+ 5277 expect() calls
+Ran 361 tests across 4374 files. [33.15s]
+exit=0
+
+--- node scripts/patch-agent-teams-fixes.mjs --check ---
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+
+--- bun run typecheck ---
+$ tsgo --noEmit
+exit=0
+
+--- git status --porcelain -- test self-fix-tests ---
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+
+--- hashes ---
+d40c230bee54b75be72bf63c50cac053941f2e98242fe4bc69748f46944c9be4  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+2276663e0256d291715b2e4b69da83c99e87e5a810d61f676b7116d5393bde35  evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/result.json
+d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54  AGENTS.md

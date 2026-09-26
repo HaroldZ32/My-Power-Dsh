@@ -1,0 +1,6 @@
+seeded workmate library at evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/home/.mpd/workmate/qa-tui-probe
+model-echo check: checked=0 offenders=0 (must be 0)
+harness command records THIS run: [{"sessionId":"deaf0727-02ea-4334-be13-75a19e4a74b8","commandId":"cmd-c2cf8161-1","kind":"success","text":"mpd workmates (1): qa-tui-probe"},{"sessionId":"deaf0727-02ea-4334-be13-75a19e4a74b8","commandId":"cmd-c2cf8161-2","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered
+negative control ok=false (must be false)
+board-opened events in the sandbox store=1 scene-reported transcript rows=0

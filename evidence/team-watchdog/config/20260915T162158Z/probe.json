@@ -1,0 +1,87 @@
+{
+  "task": "t61 — declare the five watchdog knobs + prove namespace visibility and precedence",
+  "measuredAt": "2026-09-15T16:25:33.701Z",
+  "artifacts": [
+    "packages/mpd-config-plugin/dist/index.js",
+    "packages/mpd-bundle-plugin/client.js",
+    "packages/mpd-tui-plugin/dist/index.js"
+  ],
+  "checks": [
+    {
+      "id": "namespace-registered",
+      "status": "passed",
+      "detail": "settingsRegister(\"mpd\") captured, applies={\"base\":{},\"applies\":\"restart\"}"
+    },
+    {
+      "id": "namespace.watchdog.enabled",
+      "status": "passed",
+      "detail": "default true"
+    },
+    {
+      "id": "namespace.watchdog.warnSilenceMs",
+      "status": "passed",
+      "detail": "default 90000"
+    },
+    {
+      "id": "namespace.watchdog.tickIntervalMs",
+      "status": "passed",
+      "detail": "default 15000"
+    },
+    {
+      "id": "namespace.watchdog.warnStreakToEscalate",
+      "status": "passed",
+      "detail": "default 3"
+    },
+    {
+      "id": "namespace.watchdog.actionOnEscalate",
+      "status": "passed",
+      "detail": "default \"pause\""
+    },
+    {
+      "id": "card.fields-count",
+      "status": "passed",
+      "detail": "11 fields"
+    },
+    {
+      "id": "card.watchdog.enabled",
+      "status": "passed",
+      "detail": "path/label/zh/kind identical (Watchdog enabled / 看门狗启用)"
+    },
+    {
+      "id": "card.watchdog.warnSilenceMs",
+      "status": "passed",
+      "detail": "path/label/zh/kind identical (Silence warning threshold (ms) / 静默告警阈值（毫秒）)"
+    },
+    {
+      "id": "card.watchdog.tickIntervalMs",
+      "status": "passed",
+      "detail": "path/label/zh/kind identical (Watchdog tick interval (ms) / 看门狗轮询间隔（毫秒）)"
+    },
+    {
+      "id": "card.watchdog.warnStreakToEscalate",
+      "status": "passed",
+      "detail": "path/label/zh/kind identical (Warn streak before escalation / 升级前连续告警次数)"
+    },
+    {
+      "id": "card.watchdog.actionOnEscalate",
+      "status": "passed",
+      "detail": "path/label/zh/kind identical (Action on escalation / 升级时的动作)"
+    },
+    {
+      "id": "shared.declaration",
+      "status": "passed",
+      "detail": "11 knobs, watchdog declared"
+    },
+    {
+      "id": "precedence.row-config-not-shadowed",
+      "status": "passed",
+      "detail": "empty namespace -> the row's own values win ({\"enabled\":true,\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\"})"
+    },
+    {
+      "id": "precedence.namespace-overrides-row",
+      "status": "passed",
+      "detail": "explicit namespace value wins (warnSilenceMs 12345 instead of the row's 90000; actionOnEscalate \"warn-only\" instead of \"pause\"), the untouched row value stays (warnStreakToEscalate 3), and the row's own guard still applies: tickIntervalMs was clamped 15000 -> 4115 because it must stay < warnSilenceMs (issue recorded: {\"path\":\"watchdog.tickIntervalMs\",\"problem\":\"must be < watchdog.warnSilenceMs (12345); clamped\",\"fallback\":4115})"
+    }
+  ],
+  "verdict": "passed"
+}

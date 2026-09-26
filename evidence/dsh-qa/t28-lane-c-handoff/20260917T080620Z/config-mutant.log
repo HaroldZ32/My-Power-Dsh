@@ -1,0 +1,4 @@
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/t18-live-vk1sPi/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+[team-watchdog-config] --live (mutant restart-needed) mounted=90000 file=900000 sameInstance=90000 fileApplied=true restartRequired=true
+[team-watchdog-config] liveWithoutRestart: false — liveness LOST: mounted=90000 file=900000 observed=90000 fileApplied=true restartRequired=true
+[team-watchdog-config] mutant restart-needed: DETECTED (the assertion reddened) — /root/dshProj/my-power-dsh/evidence/dsh-qa/t28-lane-c-handoff/20260917T080620Z/mutant/live-result.json

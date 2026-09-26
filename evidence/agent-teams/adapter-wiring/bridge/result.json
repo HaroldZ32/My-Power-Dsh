@@ -1,0 +1,407 @@
+{
+  "lane": "t5 (frozen contract lane t3) \u2014 the agent-teams <-> mpd-dsh-adapter bridge (contract revision 6: F1/F2/F7 implemented)",
+  "seat": "Senior Engineer",
+  "team": "agent-teams-adapter-wiring",
+  "authority": "evidence/agent-teams/adapter-wiring/requirements-contract.md (frozen; revision 6 F1/F2/F7 + the measured \u00a75 region set)",
+  "settledHashes": {
+    "note": "hash -> work -> re-hash; start == end over the 34 s gate run. SUPERSEDES the 15:00:06Z record: the bridge gained (a) the `subagents` flag on subagentRuntime (capability-flag parity with AGENTS.md \u00a76) and (b) the absorbed BR-1 repair from the review lane; the registry was re-derived for both. The other six adopted files are byte-unchanged.",
+    "measuredStartUtc": "2026-09-19T15:13:25Z",
+    "measuredEndUtc": "2026-09-19T15:13:59Z",
+    "files": {
+      "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+      "packages/mpd-agent-teams-plugin/lib/index.js": "3387c26ec897845b26ba5f3acac3e14d75411e0bc209afedbaa312cfdf1f36e8",
+      "packages/mpd-agent-teams-plugin/lib/capabilities.js": "8e6249da18074d125e6a8626f061c98372bcec769deaa866b27612d792249731",
+      "packages/mpd-agent-teams-plugin/lib/harness-compat.js": "22f5d3f7676a6478ad661454fe2678ea78e3a218cc69d34b029495b6b7efd4ab",
+      "packages/mpd-agent-teams-plugin/lib/members.js": "f4b7cb9b086fd23e498e76073e647e5a21c1b7ee17b34bc43c8e7b57ab12c823",
+      "packages/mpd-agent-teams-plugin/lib/command.js": "fcc3bb6bf1fe158d2548a5f755f775fa67a32f4ef6d460b328f9853dc9d8c95e",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "d470e24c9b1d760d27058fd4cbf18f0de43640d778a226c1b3107e0fc2961e1a",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111"
+    },
+    "superseded": {
+      "bridge": "ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b (at 15:00:06Z)",
+      "registry": "3bf538b4fbb6e023826604143b6ebaf6c6d0668909d1015dcb3b575eb213e551 (at 15:00:06Z)"
+    }
+  },
+  "registry": {
+    "regions": 151,
+    "files": 13,
+    "before": {
+      "regions": 123,
+      "files": 10
+    },
+    "afterWiringBatch": {
+      "regions": 146,
+      "files": 13
+    },
+    "keys": [
+      "file",
+      "id",
+      "beforeContext",
+      "afterContext",
+      "block"
+    ],
+    "regionsPerFile": {
+      "quality-gates.js": 18,
+      "tools.js": 73,
+      "session-start.js": 3,
+      "state.js": 11,
+      "scheduler.js": 16,
+      "command.js": 3,
+      "index.js": 5,
+      "members.js": 6,
+      "profiles.js": 4,
+      "types.js": 1,
+      "capabilities.js": 2,
+      "harness-compat.js": 8,
+      "mpd-adapter-ctx.js": 1
+    },
+    "adapterRegionIds": [
+      "mpd-delta adapter-subagent-runtime-import",
+      "mpd-delta adapter-subagent-runtime-halt-drain",
+      "mpd-delta adapter-cancel-halt",
+      "mpd-delta adapter-cancel-feedback",
+      "mpd-delta adapter-turn-submit",
+      "mpd-delta adapter-inject-staged-discard",
+      "mpd-delta adapter-cancel-discard",
+      "mpd-delta adapter-steer-send-message-caller",
+      "mpd-delta adapter-command-turn-submit",
+      "mpd-delta adapter-command-turn-submit-profile",
+      "mpd-delta adapter-facade-import",
+      "mpd-delta adapter-facade-wiring",
+      "mpd-delta adapter-steer-approval-notice",
+      "mpd-delta adapter-delivery-runtime-import",
+      "mpd-delta adapter-steer-captain-report",
+      "mpd-delta adapter-steer-captain-report-caller",
+      "mpd-delta adapter-delivery-runtime",
+      "mpd-delta adapter-agent-scope-import",
+      "mpd-delta adapter-agent-scope",
+      "mpd-delta adapter-subagent-runtime-import",
+      "mpd-delta adapter-subagent-runtime-install",
+      "mpd-delta adapter-subagent-runtime-agent-scope",
+      "mpd-delta adapter-subagent-runtime-agent-scope-setup",
+      "mpd-delta adapter-subagent-runtime-agent-scope-request",
+      "mpd-delta adapter-subagent-runtime-agent-scope-effect",
+      "mpd-delta adapter-subagent-runtime-guard",
+      "mpd-delta adapter-subagent-runtime-agents-lookup",
+      "mpd-delta adapter-ctx-bridge"
+    ],
+    "schemaCheck": {
+      "distinctKeySets": [
+        "afterContext,beforeContext,block,file,id"
+      ],
+      "entriesWithCreateKey": 0,
+      "writer": "node scripts/patch-agent-teams-fixes.mjs --write-registry only (3 runs); --check is read-only; lib/mpd-deltas.js never hand-edited"
+    },
+    "markerCounts": {
+      "measuredAtUtc": "2026-09-19T15:17:01Z",
+      "sixAdoptedFiles": {
+        "adapterIdMarkers": 27,
+        "distinctIds": 26,
+        "duplicateId": "mpd-delta adapter-subagent-runtime-import (carried by harness-compat.js AND tools.js)"
+      },
+      "includingBridgeModule": {
+        "adapterIdMarkers": 28,
+        "distinctIds": 27
+      },
+      "supersededSnapshot": {
+        "regions": 146,
+        "files": 13,
+        "adapterIdMarkers": 23,
+        "distinctIds": 22,
+        "note": "the contract \u00a75 snapshot read at 14:47:20Z, i.e. BEFORE the revision-6 F2 amendment; F2 added five regions and five ids"
+      },
+      "f2AddedRegionIds": [
+        "mpd-delta adapter-steer-approval-notice",
+        "mpd-delta adapter-steer-captain-report",
+        "mpd-delta adapter-steer-captain-report-caller",
+        "mpd-delta adapter-steer-send-message-caller",
+        "mpd-delta adapter-inject-staged-discard"
+      ]
+    }
+  },
+  "bridgeFile": {
+    "path": "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js",
+    "lines": 522,
+    "regions": 1,
+    "layout": "line 1 comment skeleton + ONE mpd-delta region + ONE different trailing comment skeleton + trailing newline",
+    "reconstruction": "beforeContext + block + afterContext + \"\\n\" === file bytes (verified true)",
+    "sha256": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+    "linesNote": "446 newline-terminated source lines (split(\"\\n\") yields 447 elements because of the single trailing newline); region span lines 2..445; one non-region skeleton line on each side",
+    "registryEntry": {
+      "entriesForThisFile": 1,
+      "id": "mpd-delta adapter-ctx-bridge",
+      "keys": [
+        "file",
+        "id",
+        "beforeContext",
+        "afterContext",
+        "block"
+      ],
+      "beforeContextLines": 1,
+      "afterContextLines": 1,
+      "reconstruction": "beforeContext + block + afterContext + \"\\n\" === file bytes (verified in-process straight from MPD_DELTAS, 2026-09-19T15:0xZ)"
+    }
+  },
+  "tests": {
+    "suite": "bun test packages/mpd-agent-teams-plugin -> 350 pass / 0 fail (baseline before this lane: 321 pass / 0 fail)",
+    "newFiles": [
+      {
+        "file": "packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs",
+        "tests": 7,
+        "ac": "AC3 + F2 + F7"
+      },
+      {
+        "file": "packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs",
+        "tests": 15,
+        "ac": "AC4 + F1 + F2"
+      },
+      {
+        "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+        "tests": 5,
+        "ac": "AC15 + F2 Class-B inventory"
+      },
+      {
+        "file": "packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs",
+        "tests": 2,
+        "ac": "AC6"
+      }
+    ],
+    "preExistingModified": []
+  },
+  "acceptance": [
+    {
+      "ac": "AC3",
+      "result": "passed",
+      "evidence": "adapter-routing.test.mjs (7 tests): recording adapter + raw ctx whose seam objects are THROWING proxies; apply() plus the runtime-only consumers record >0 adapter calls per Class-A seam (registerHostTool exactly 21) and ZERO plugin-ctx raw hits; a negative control proves the detector is armed"
+    },
+    {
+      "ac": "AC4",
+      "result": "passed",
+      "evidence": "adapter-facade.test.mjs (15 tests): frozen 16-key property set (14 + the F2 steer/inject members), frozen witness literals, one witness per mode per instance (also across inject-derived scoped facades and the default console sink), PENDING vs ABSENT with per-access re-probe, no re-probe after a hit, fallback lane same receiver/return/throw"
+    },
+    {
+      "ac": "AC5",
+      "result": "passed",
+      "evidence": "350 pass / 0 fail; `git status --porcelain -- .../test .../self-fix-tests` lists only the four NEW untracked files (no ' M ')"
+    },
+    {
+      "ac": "AC6",
+      "result": "passed",
+      "evidence": "adapter-tool-parity.test.mjs (2 tests): 21 definitions identical under canonical serialization in both lanes, same order, Object.is reference passthrough in both lanes"
+    },
+    {
+      "ac": "AC7",
+      "result": "passed",
+      "evidence": "node scripts/patch-agent-teams-fixes.mjs --check -> exit 0, 151 regions / 13 files; region-diff-proof.mjs -> 0 added lines outside regions in every adopted file"
+    },
+    {
+      "ac": "AC15",
+      "result": "passed",
+      "evidence": "adapter-bypass-inventory.test.mjs (5 tests): receiver-aware scan (now covering the F2 steer/inject seams), raw fallbacks only in the bridge, every region registered, frozen ids present, the child-ctx residual counted (5 lines), and the whenIdle Class-B set inventoried exactly (2 sites)"
+    },
+    {
+      "ac": "bridge layout D11",
+      "result": "passed",
+      "evidence": "1 region / 447 lines; skeleton = [line 1, trailing line, '']; reconstruction byte-identical true; sha256 ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b read 2026-09-19T15:00:06Z; strip->heal byte-identical (heal-probe.mjs 13/13)"
+    },
+    {
+      "ac": "region discipline",
+      "result": "passed",
+      "evidence": "region-diff-proof.log: 0 added lines outside regions in the six bridged files; all ten edit-free adopted files byte-identical to HEAD; the landed ids are reported in result.registry.adapterRegionIds and in the task completion payload"
+    },
+    {
+      "ac": "F1 (HIGH)",
+      "result": "passed",
+      "evidence": "adapter-facade.test.mjs F1 three-arm test (mounted / pending / absent-with-a-throwing-proxy + unusable adapter result + plain-object ctx): identical key set, context identity-equal, no property read throws, every member callable; the harness-compat setup region now passes scope.context directly (no ?? guard)"
+    },
+    {
+      "ac": "F2 (MEDIUM)",
+      "result": "passed",
+      "evidence": "bridge members steerAgentTurn/injectAgentMessage gated on capabilities().agentTurnSteer/.agentTurnInject; five new regions at the five call sites (index.js approval notice, members.js steerCaptainReport + its caller, tools.js send_message caller + discardStagedTeam); adapter-facade F2 arm (routing, fallback throw, flag-false degrade) and adapter-routing F2 arm (the REAL steerCaptainReport and the REAL discardStagedTeam on staged on-disk state, throw reaching the caller's catch); whenIdle inventoried as Class B (2 exact sites)"
+    },
+    {
+      "ac": "F7 (MEDIUM)",
+      "result": "passed",
+      "evidence": "the routing test's raw-hit instrument counts only the plugin ctx; the new arm hands the agent a per-agent ctx that THROWS on every read and proves the mounted adapter scope is the path taken (no read of it, counter empty); the childCtx residual stays counted rather than allow-listed and no assertion was weakened"
+    }
+  ],
+  "commands": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exitCode": 0,
+      "observed": "350 pass, 0 fail, 5184 expect() calls (28.64 s); hash sandwich start==end"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "observed": "already applied: 151 mpd delta region(s) across 13 adopted file(s)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "git status --porcelain -- packages/mpd-agent-teams-plugin/test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "exitCode": 0,
+      "observed": "only '?? ' entries (the four new test files); no ' M ' entry"
+    },
+    {
+      "command": "node evidence/agent-teams/adapter-wiring/bridge/heal-probe.mjs",
+      "exitCode": 0,
+      "observed": "13/13 registered files strip every region and heal byte-identically"
+    },
+    {
+      "command": "node evidence/agent-teams/adapter-wiring/bridge/region-diff-proof.mjs",
+      "exitCode": 0,
+      "observed": "0 violations; 58 adopted lines replaced in total, every replacement inside a region"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "observed": "20/20 targets fresh (run before the F1/F2 edits; no packages/*/src changed by this lane)"
+    }
+  ],
+  "deviations": [
+    {
+      "id": "D1",
+      "what": "five <feature>-import regions added",
+      "why": "a module binding cannot live in a function-scoped region; the tree already carries eight regions of exactly this shape (purely additive)"
+    },
+    {
+      "id": "D2",
+      "what": "harness-compat.js maps the frozen '...-agent-scope' concept to four regions (hoist + setup/request/effect)",
+      "why": "the three sites are separated by upstream code; a single region would trap ~24 adopted lines in the registry"
+    },
+    {
+      "id": "D3",
+      "what": "command.js carries adapter-command-turn-submit + adapter-command-turn-submit-profile",
+      "why": "the two followup sites are 19 lines apart (the second lives in the generated-profile command registration)"
+    },
+    {
+      "id": "D4",
+      "what": "the tools.js adapter-turn-submit region contains its try { } block",
+      "why": "MEASURED with heal-probe.mjs: with 'try {' between the two sibling regions the applier refuses to heal the second (the sibling moves the registered beforeContext); adjacent siblings sharing one seam is the arrangement its walk-back supports"
+    },
+    {
+      "id": "D5",
+      "what": "the bridge exports a fourth helper liveAgentOf(ctx, agentId)",
+      "why": "MEASURED: the prescribed ctx.agents?.get?.(...) spelling reddens the pre-existing harness-compat.test.ts retired-member-guard arm (its ctx exposes the registry only via get('agents')); the alternative was a raw fallback in an adopted file or an AC5 violation"
+    },
+    {
+      "id": "D6",
+      "what": "the facade's on() forwards listener options and always returns a disposer",
+      "why": "installInterjectionExpirySweep registers with { global: true, prepend: true }; dropping them would silently change which events the plugin hears (frozen \u00a74 says the fallback is 'always a function')"
+    },
+    {
+      "id": "D7",
+      "what": "steerCaptainReport now takes the plugin ctx as its first parameter (F2 ctx threading)",
+      "why": "the function had no ctx in scope and the Agent's steer seam must be adapter-mediated; its two callers (members.js, tools.js) are updated inside their own regions \u2014 5 new regions, 3 of them the F2 call sites and 2 the ctx threading the amendment implies"
+    }
+  ],
+  "residuals": [
+    {
+      "id": "G1",
+      "what": "members.js childCtx (5 lines incl. the parameter) stays direct",
+      "why": "F7 classifies it as legitimate host-provided per-agent usage: it is the scoped ctx the HOST hands the setup callback, installModelSelection(childCtx, ...) hands it to a VENDORED helper (_deps/dsh-agent, out of scope by D7), and a legacy Alpha.2 childCtx is not guaranteed to be child.ctx \u2014 counted exactly by the inventory test, new uses redden"
+    },
+    {
+      "id": "G2",
+      "what": "RESOLVED by F2: captain.steer / captain.inject are now routed (the earlier residual is closed)",
+      "why": "F2 routed the three sites; whenIdle remains Class B and is inventoried exactly"
+    },
+    {
+      "id": "G3",
+      "what": "witness lines go through console.warn/console.log",
+      "why": "precedent of the sibling rows (mpd-dsh-adapter, mpd-ext, mpd-roles) whose boot witnesses are console lines 'because a headless boot has no logger sink'; AC10/AC11 grep a boot log"
+    },
+    {
+      "id": "G4",
+      "what": "REQUIRED FOLLOW-UP (outside this lane's inScope): packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs builds a RAW ctx and calls the REAL haltTeamWork; the frozen \u00a75 spelling requires a facade-shaped ctx, so its pause-preserves-halt-control leg throws",
+      "why": "measured: {\"threw\":\"input.ctx.cancelAgentTurn is not a function\"} (watchdog-fixture-caller-probe.log); remedy is one line (wrap that ctx with createAgentTeamsCtx({...}, { witness: () => {} })); NOT caught by any wave gate (the fixture is not a *.test.mjs; the watchdog suite is 139 pass / 0 fail)"
+    }
+  ],
+  "artifacts": [
+    "evidence/agent-teams/adapter-wiring/bridge/README.md",
+    "evidence/agent-teams/adapter-wiring/bridge/result.json",
+    "evidence/agent-teams/adapter-wiring/bridge/gate-sweep.log",
+    "evidence/agent-teams/adapter-wiring/bridge/suite-green-baseline.log",
+    "evidence/agent-teams/adapter-wiring/bridge/suite-after-f1f2.log",
+    "evidence/agent-teams/adapter-wiring/bridge/inventory-pre-edit.log",
+    "evidence/agent-teams/adapter-wiring/bridge/inventory-mid-edit.log",
+    "evidence/agent-teams/adapter-wiring/bridge/inventory-after-f1f2.log",
+    "evidence/agent-teams/adapter-wiring/bridge/heal-probe.mjs",
+    "evidence/agent-teams/adapter-wiring/bridge/region-diff-proof.mjs",
+    "evidence/agent-teams/adapter-wiring/bridge/region-diff-proof.log",
+    "evidence/agent-teams/adapter-wiring/bridge/watchdog-fixture-caller-probe.log",
+    "evidence/agent-teams/adapter-wiring/bridge/dist-fresh.log",
+    "evidence/agent-teams/adapter-wiring/bridge/facade-test-debug.log",
+    "evidence/agent-teams/adapter-wiring/bridge/routing-test-debug.log",
+    "evidence/agent-teams/adapter-wiring/bridge/projections/",
+    "evidence/agent-teams/adapter-wiring/bridge/guard-lane-crosscheck.mjs",
+    "evidence/agent-teams/adapter-wiring/bridge/guard-lane-crosscheck.log",
+    "evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.mjs",
+    "evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.log"
+  ],
+  "scopeBoundary": {
+    "scriptsPatched": "none \u2014 `git status --porcelain -- scripts/` is EMPTY; the missing-file create/check behaviour belongs solely to the guard lane (task t6)",
+    "guaranteedForGuardLane": "lib/mpd-adapter-ctx.js = ONE region with exactly one non-region skeleton line on each side; lib/mpd-deltas.js holds exactly ONE entry for it (id mpd-delta adapter-ctx-bridge, the five keys), and that entry alone reconstructs the file by construction",
+    "guardLaneCrossCheck": {
+      "script": "evidence/agent-teams/adapter-wiring/bridge/guard-lane-crosscheck.mjs",
+      "readOnly": true,
+      "observed": {
+        "entriesForThisFile": 1,
+        "createClassBase": "mpd-adapter-ctx.js",
+        "createClassBaseOfRegistry": "undefined",
+        "reconstructionByteIdentical": true,
+        "rebuiltBytes": 22885,
+        "fileBytes": 22885
+      },
+      "note": "run against the guard lane's OWN just-landed createClassBase/reconstructCreateClassFile; this lane did not edit scripts/"
+    }
+  },
+  "adapterSurfaceConformance": {
+    "script": "evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.mjs",
+    "readOnly": true,
+    "flagsUsedByBridge": 14,
+    "allDeclaredByAdapter": true,
+    "observed": {
+      "flagFalseStartAgentTurnUsesRawLane": true,
+      "flagFalseSteerAgentTurnUsesRawLane": true,
+      "unusableAdapterScopeYieldsBuiltShape": true,
+      "contextIdentityWithAgentCtx": true
+    },
+    "note": "a paraphrased flag name would degrade silently (capabilities[name] === undefined, not false); the check proves the names match the shipped DshCapabilities report",
+    "allDeclaredByAdapterSrc": true,
+    "allPresentInShippedDist": true,
+    "fourteenthFlag": "subagents (gates subagentRuntime; the other thirteen are the pre-F2 set + commandsRegister)",
+    "peerCrossCheck": {
+      "lane": "adapter (Deep Worker, t4)",
+      "theirRecord": "evidence/agent-teams/adapter-wiring/adapter/result.json (cross_lane_conformance)",
+      "method": "dist-level key derivation (they reported 13/13 for the pre-`subagents` set)",
+      "thisLane": "adopted the dist-level method and extended it to the current 14"
+    },
+    "log": "evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.log"
+  },
+  "postRuling": {
+    "capabilityFlagParity": {
+      "change": "subagentRuntime now passes the adapter's own `subagents` flag (was presence-gated)",
+      "why": "AGENTS.md \u00a76 states the fourteen mediated methods are each behind their own capabilities() flag; capabilities().subagents === (service !== undefined), so behaviour is unchanged",
+      "verified": "adapter-flag-conformance.mjs -> 14 flags used, all declared by the adapter"
+    },
+    "absorbedRepair": {
+      "id": "BR-1",
+      "origin": "evidence/agent-teams/adapter-wiring/bridge-review/t16-bridge-review.md (review lane)",
+      "what": "scopeShapeFrom now NAMES every member it substitutes with a no-op (ADAPTER_WITNESS.substituted + adapterSubstitutionWitness(members)), reported once per plugin instance; the security-relevant case is tools.restrict (a member that cannot be tool-restricted loses its restriction)",
+      "thisLane": "verified coherence (F1 per-member build, identity context, no throwing read) and re-derived the registry so the entries carry the new bytes; the review lane's BR-1 test arm lives in test/adapter-facade.test.mjs"
+    },
+    "sweep": {
+      "tests": "360 pass / 0 fail (5259 expect() calls)",
+      "check": "exit 0, 151 regions / 13 files",
+      "healProbe": "13/13 byte-identical",
+      "regionProof": "0 violations",
+      "guardLaneCrosscheck": "reconstruction byte-identical (26728 === 26728 bytes)",
+      "typecheck": "exit 0"
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "task": "t27 \u2014 impl-A/2 \u2014 lane A's three remaining PRODUCT-SHAPED rows (T-13, T-27, T-44) per plan amendment A3",
+  "agent": "agent-teams-engineer",
+  "attemptId": "e7ff83cc-68e6-4c02-a0e9-7ae371542aaf",
+  "date": "2026-09-17T14:55Z",
+  "verify_contract": {
+    "command": "bun test ./packages/mpd-agent-teams-plugin",
+    "exit": 0,
+    "result": "269 pass / 0 fail / 2356 expect() calls / 40 files"
+  },
+  "instrument": {
+    "path": "packages/mpd-agent-teams-plugin/self-fix-tests/wave2b-laneA-product-rows.test.mjs",
+    "sha256": "549e7dd6fd720ec24d7baba7a0fe44e42d60d81c71e590aa3e43e7799aa756a7",
+    "arms": 3
+  },
+  "readings_kept": {
+    "before": {
+      "revision": "HEAD lib/ (git archive HEAD packages/mpd-agent-teams-plugin/lib, _deps linked)",
+      "exit": 1,
+      "result": "1 pass / 2 fail \u2014 T-13 RED (no deferred in TASK_KINDS), T-27 RED (the list read as one id), T-44 PASS (deliverable pre-exists)",
+      "evidence": "arm-before.out.txt"
+    },
+    "after": {
+      "revision": "worktree lib/",
+      "exit": 0,
+      "result": "3 pass / 0 fail",
+      "evidence": "arm-after.out.txt"
+    }
+  },
+  "rows": {
+    "T-13": {
+      "deliverable": "deferred task kind that never dispatches, with the enum, the quality predicates and the dispatch filter in agreement",
+      "regions": [
+        "mpd-delta deferred-kind (lib/types.js)",
+        "mpd-delta deferred-kind-import",
+        "mpd-delta deferred-allowance",
+        "mpd-delta deferred-reassign-refusal",
+        "mpd-delta deferred-claim-refusal (lib/tools.js)"
+      ],
+      "modified": [
+        "mpd-delta ready-task-predicate (lib/scheduler.js)"
+      ],
+      "neg_control": "the SAME shape without the kind IS ready and IS claimable",
+      "note": "three dispatch surfaces: isTaskReady (pump), claim_task (by name), reassign_task (wakes the member) + both allowance predicates"
+    },
+    "T-27": {
+      "deliverable": "the contract tool reads a BATCH; N contracts in one call; a missing id appears as itself",
+      "regions": [
+        "mpd-delta task-contract (modified in place)",
+        "mpd-delta task-contract-render (modified in place)"
+      ],
+      "shape": "comma-separated ids in the existing task_id; returns {requested, contracts, unresolved}",
+      "design_decision": "a NEW task_ids array parameter was REJECTED because test/task-contract-tool.test.mjs pins Object.keys(parameters.properties) === ['task_id'] and test/** is not in this lane's write set (measured cost: 266 pass / 3 fail incl. that pin); the batch rides on the one declared argument instead",
+      "second_coupling_fixed": "the batch branch duplicated the '(known tasks: ...)' literal that the t41 falsification arm neutralises in a scratch copy; single-sourced in unknownTaskText(team, id)",
+      "neg_control": "a one-id call deep-equals the single-id call, every element of a multi-id batch deep-equals its own single call, and empty entries / the empty batch are refused"
+    },
+    "T-44": {
+      "deliverable": "a text-surface approval path with the SAME two-phase semantics as the panel path \u2014 ALREADY PRESENT in HEAD (agent_teams_approve, captain-only, wired to the same runtime the Web route calls)",
+      "closed_by": "the reading the acceptance names, not a code change",
+      "arms": [
+        "the text tool approves a staged team (phase running, approvedAt set, planReviewState cleared)",
+        "the resulting record equals the panel path's transition (the runtime route entry) field for field, with the three per-run fields normalised to type tokens",
+        "a NON-captain seat is REFUSED with a reason"
+      ],
+      "neg_control": "the member refusal"
+    }
+  },
+  "registry": {
+    "command": "node scripts/patch-agent-teams-fixes.mjs --write-registry && --check",
+    "check_exit": 0,
+    "count": "93 regions across 10 adopted files",
+    "registry_sha256": "6915cd8ba924ea3daa9c20ab250ae4cabd30264bd7ecbe882b70ea27f3ae18b0",
+    "new_region_ids": [
+      "mpd-delta deferred-kind",
+      "mpd-delta deferred-kind-import",
+      "mpd-delta deferred-allowance",
+      "mpd-delta deferred-reassign-refusal",
+      "mpd-delta deferred-claim-refusal"
+    ],
+    "modified_region_ids": [
+      "mpd-delta ready-task-predicate",
+      "mpd-delta task-contract",
+      "mpd-delta task-contract-render"
+    ],
+    "nested_region_lesson": "--write-registry reported 93 while the nested 'task-contract-batch' marker never appeared: a region nested inside another is invisible to the scanner. Markers removed; the code lives in the enclosing region."
+  },
+  "derived_gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "result": "PASS \u2014 pairs=38 failed=0 violations=0 exempt=19 derived=3; carried **93**/10 vs derived 93/10; D-range claim A1\u2013D42 unchanged",
+    "evidence": "gate-verify-docs.log"
+  },
+  "revisions": {
+    "tools.js": {
+      "head": "6021bf6dfce594ed2f0f855cd4b75decb12cc71abc29d17c3b7775c92e32092d",
+      "worktree": "13ca360fbb19d700ade6b9e12becd77ea524030a4d4f5a66c1d31123210f534e"
+    },
+    "types.js": {
+      "head": "c1d82db9158a4f794b46db5929bdea9df13d71650599adc3e17e862bd26f86bd",
+      "worktree": "8f5fa76fad63ca77492eef500dbfd31964d114caf2c915bcdc0cc187c71f803f"
+    },
+    "scheduler.js": {
+      "head": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+      "worktree": "405d4e364c289299d5074226f17d93c826905a8bed233fe83255b9e227393951"
+    },
+    "mpd-deltas.js": "6915cd8ba924ea3daa9c20ab250ae4cabd30264bd7ecbe882b70ea27f3ae18b0",
+    "agent-teams-deltas.md": "4fd1ef5ccde94957aa3ecf0a17523233ff8dd925abf34851ae9ee17653f3fb31"
+  },
+  "bounds": [
+    "No repo-wide aggregate was run (verify:gates, test:qa, test:qa:all, verify-dist-fresh, typecheck; also not verify-vendor/verify-pack-closure) \u2014 left to integration.",
+    "packages/*/dist/**, dist/mpd-package/**, VENDOR_LOCK.json and .mpd/plans/** are untouched; the plugin ships lib/.",
+    "No test/** write and no hop requested (the batch was redesigned to keep the pin that lives there).",
+    "T-44's panel path is exercised through the runtime function the Web route calls, not by booting the HTTP route; three per-run fields are compared as type tokens.",
+    "T-11 is NOT claimed here, and the other lane-A rows (T-06/T-08/T-14/T-15/T-42/T-92/T-93) stay with their own tasks."
+  ]
+}

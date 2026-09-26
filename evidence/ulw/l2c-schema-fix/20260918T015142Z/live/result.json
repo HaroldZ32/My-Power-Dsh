@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "slug": "l2c-live-schema",
+  "task": "t16",
+  "at": "2026-09-18T01:53:16.308Z",
+  "baseRevision": "5aa222a144e4238b67453731c5decd806db6db94",
+  "sourceHashes": {
+    "packages/mpd-ulw-plugin/src/index.ts": "1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37"
+  },
+  "acceptance": "t16 acceptance 4 — a live bounded call on the installed harness: a plan=false invocation (mpd_ultrawork plan=false AND the mpd_ulw alias) returns a VALID result, read from the harness session log",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "shippedArtifacts": {
+      "measured": [
+        {
+          "rowId": "mpd-ulw",
+          "path": "packages/mpd-ulw-plugin/dist/index.js",
+          "sha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+          "carriesRetiredUnconditionalPlanFile": true,
+          "carriesFixedConditionalPlanFile": false
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "sha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206",
+          "carriesRetiredUnconditionalPlanFile": false,
+          "carriesFixedConditionalPlanFile": false
+        }
+      ],
+      "note": "the shipped mpd-ulw dist predates this repair (T-88): it still emits planFile unconditionally, so a boot of the shipped composition would reproduce the t16 failure. The repair is measured through sandbox builds of the SAME canonical command the integration rebuild uses."
+    },
+    "sandboxBuilds": {
+      "ok": true,
+      "canonicalCommand": "bun build <entry> --target node --format esm --outfile <sandbox>/builds/<row>.js"
+    },
+    "retargetedRows": {
+      "ok": true,
+      "rows": [
+        {
+          "rowId": "mpd-ulw",
+          "from": "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js",
+          "to": "<sandbox>/builds/mpd-ulw.js"
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "from": "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "to": "<sandbox>/builds/mpd-dsh-adapter.js"
+        }
+      ]
+    },
+    "livePlanFalse": {
+      "ok": true,
+      "problems": [],
+      "exit": 0,
+      "crashes": [],
+      "stubRequests": 6,
+      "calls": [
+        {
+          "callId": "call_l2c-live-schema_0",
+          "tool": "mpd_ultrawork",
+          "objective": "qa-l2c-schema-ultrawork",
+          "plan": false,
+          "resultFound": true,
+          "isError": false,
+          "resultTextHead": "ultrawork status=max-rounds rounds=1 verdict=n/a\nround 1: no summary\nstate: /tmp/mpd-l2c-live-schema-84afzh/ws-live/.mpd/ulw/ulw-011971d8/state.json"
+        },
+        {
+          "callId": "call_l2c-live-schema_1",
+          "tool": "mpd_ulw",
+          "objective": "qa-l2c-schema-alias",
+          "plan": null,
+          "resultFound": true,
+          "isError": false,
+          "resultTextHead": "mpd_ulw status=max-rounds rounds=1\nround 1: no summary\nstate: /tmp/mpd-l2c-live-schema-84afzh/ws-live/.mpd/ulw/ulw-77bc0d5d/state.json"
+        }
+      ],
+      "invalidOutputHits": 0,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-l2c-live-schema-84afzh-ws-live--"
+        ]
+      },
+      "sessionsSandboxed": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-l2c-live-schema-84afzh-ws-live--"
+        ]
+      },
+      "note": "the two tool calls are MODEL-INITIATED, so the harness ran its own output validation on each returned value"
+    }
+  }
+}

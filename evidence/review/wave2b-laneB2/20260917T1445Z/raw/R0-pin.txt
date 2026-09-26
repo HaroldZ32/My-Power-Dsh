@@ -1,0 +1,8 @@
+review t21 (rev-B2) attempt 2 — evidence for citation-reviewer
+moment_utc 2026-09-17T14:35:25Z
+== revisions pinned ==
+fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28  ./scripts/check-citations.mjs
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  ./evidence/extensions/docs-claims/check-citations.mjs
+1146 ./scripts/check-citations.mjs
+2026-09-17 22:24:14.368119355 +0800 ./scripts/check-citations.mjs
+== the lane's record claims lines: 1143 ==

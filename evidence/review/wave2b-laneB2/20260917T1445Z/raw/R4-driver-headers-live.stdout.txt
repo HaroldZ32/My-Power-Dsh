@@ -1,0 +1,8 @@
+driver-header claim check (T-80)
+parameters: claims \bA(\d+)\b + \bA(\d+)\s*[–-]\s*A?(\d+)\b (markers \b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b; references (design|acceptance|\bplan\b|§|\bt\d+\b)) · keys add\(\s*"A(\d+)[^"]*" · mode one offline process · unit one driver file · scope ./skills/dsh-qa/scripts/ · moment 2026-09-17T14:35:43.169Z
+
+  ok   driver:skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs — 5 assertion key(s) [A1–A5]; 5 claimed
+  FAIL driver:skills/dsh-qa/scripts/tui-team-surface.mjs — CLAIMED-BUT-UNASSERTED A9 (header phrase: "`add("A…")` calls produce below (the numbering has no A9 arm). A claimed-but-unasserted key, or a")
+[driver-headers] evidence -> evidence/review/wave2b-laneB2/20260917T1445Z/R4-driver-headers-live
+
+[driver-headers] 53 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 1 violation(s)

@@ -1,0 +1,84 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:30:59.271Z",
+  "pattern": "ee9ec16",
+  "scope": "./evidence/review/wave2b-laneB2/20260917T142943Z",
+  "files_scanned": 13,
+  "matches": [
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/output.log",
+      "line": 3,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log:2 — parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/output.log",
+      "line": 4,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json:4 — \"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/output.log",
+      "line": 5,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/output.log",
+      "line": 6,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --ou"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/result.json",
+      "line": 11,
+      "phrase": "\"phrase\": \"parameters: literal string \\\"ee9ec16\\\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-l"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/result.json",
+      "line": 16,
+      "phrase": "\"phrase\": \"\\\"pattern\\\": \\\"ee9ec16\\\",\""
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/result.json",
+      "line": 21,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …\\\", \\\"exit\\\": 0, \\\"matches\\\": 0, \\\"files_scanned\\\""
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/anchor-scan-laneB2/result.json",
+      "line": 26,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …\\\", \\\"exit\\\": 0, \\\"evidence\\\": \\\"0 matches in 11 fil"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/raw/R5-anchor-scan-laneB2.stdout.txt",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/raw/R5-anchor-scan-laneB2.stdout.txt",
+      "line": 3,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log:2 — parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/raw/R5-anchor-scan-laneB2.stdout.txt",
+      "line": 4,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json:4 — \"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/raw/R5-anchor-scan-laneB2.stdout.txt",
+      "line": 5,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --"
+    },
+    {
+      "path": "evidence/review/wave2b-laneB2/20260917T142943Z/raw/R5-anchor-scan-laneB2.stdout.txt",
+      "line": 6,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --ou"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+$ DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome dsh-tui version
+@deepseek-harness-tui/dsh-tui 0.10.1 (launcher)
+profile: （未安装）  /root/dshProj/my-power-dsh/evidence/docs-tui-install/20260916T020818Z/sandbox/home/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+exit=0

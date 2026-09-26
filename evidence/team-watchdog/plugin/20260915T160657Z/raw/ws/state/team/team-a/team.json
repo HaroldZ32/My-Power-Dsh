@@ -1,0 +1,34 @@
+{
+  "id": "team-a",
+  "name": "Team A",
+  "phase": "running",
+  "captainSessionId": "sess-captain",
+  "members": [
+    {
+      "id": "agent-architect",
+      "name": "Architect",
+      "status": "working"
+    },
+    {
+      "id": "agent-senior",
+      "name": "Senior Engineer",
+      "status": "working"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "status": "in_progress",
+      "assignee": "Architect",
+      "attempt": 1,
+      "attemptId": "att-1"
+    },
+    {
+      "id": "t2",
+      "status": "claimed",
+      "assignee": "Senior Engineer",
+      "attempt": 1,
+      "attemptId": "att-2"
+    }
+  ]
+}

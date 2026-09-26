@@ -1,0 +1,81 @@
+{
+  "task": "t23 \u2014 lane F2: harness-owned frictions closed by documentation + helper/guard (T-21, T-23, T-24, T-26, T-43, T-54, T-55)",
+  "attempt_id": "b2f5d43e-f8bc-4bd9-ba88-b34e2bcb8fc2",
+  "agent": "platform-engineer",
+  "user_decision": "2026-09-17: harness-owned items are closed by DOCUMENTATION + a helper/guard, not by fighting the harness.",
+  "helper": {
+    "path": "scripts/mpd-bg.mjs",
+    "sha256": "0b294972b05f5e4eacaded59db316432d8fe9aeee859a23fcbd21fcac8d95ba9",
+    "modes": {
+      "run": "node scripts/mpd-bg.mjs run --log <workspace-path> [--pid <path>] [--cwd <dir>] -- <cmd> [args\u2026] \u2014 opens the log file, hands it to the child as stdout+stderr (NEVER a pipe), prints pid + log path, writes `<log>.pid`, returns immediately; documented to be started INSIDE a managed background job",
+      "probe": "node scripts/mpd-bg.mjs probe <pidfile|pid> \u2014 kernel-only liveness (kill(pid, 0)); RUNNING exit 0 \u00b7 DEAD exit 1 \u00b7 NO-PID-FILE exit 2; it never greps a command line, so the 'probe's own cmdline matches' trap is structurally impossible",
+      "reload-check": "node scripts/mpd-bg.mjs reload-check <module-path> \u2014 RESTART-REQUIRED exit 1 when the module is newer than the newest `<DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/`; FRESH exit 0 when it predates it; NO-LIVE-SESSION exit 0 when this workspace has no session",
+      "check-write": "node scripts/mpd-bg.mjs check-write <path> [--root <dir>] \u2014 INSIDE-WORKSPACE exit 0 \u00b7 outside-workspace exit 1 (names the resolved root)"
+    },
+    "self_test": "node scripts/mpd-bg.mjs --self-test \u2192 13/13 arms PASS (hermetic fixtures: the three reload-check cases incl. the no-false-alarm negative control; both check-write directions; run+probe+complete-log; DEAD after exit; missing pid file; the grandchild-fd case; the static 'never stdio:pipe' pin)"
+  },
+  "t23_long_run_demo": {
+    "command_shape": "node scripts/mpd-bg.mjs run --log evidence/platform/harness-close/20260917T022913Z/demo-long.log -- node -e '<150 s, progress every 15 s>'  (started inside a managed background job)",
+    "observed": "started pid=13; probes at 02:29:28 \u2192 02:31:29 (9 consecutive) reported RUNNING; 02:31:44 DEAD; the log holds 10 progress lines + LONG-DONE (11 lines) and lives in the workspace",
+    "counter_example_MEASURED": "the SAME shape started with `nohup \u2026 &` in one bash call and checked in a LATER call wrote NO marker \u2014 the detached child died with its call's bwrap sandbox (T-23 reproduced; this is what the helper prevents)"
+  },
+  "t43_guard": {
+    "path": "packages/mpd-workmate-plugin/src/index.ts (sha256 c995d0172170507ac2b43c68cf88ec01bc62a500894726875159edfbee02ee57)",
+    "exports_added": [
+      "WORKMATE_ALLOW_REAL_HOME_ENV",
+      "assertMutationSandboxed"
+    ],
+    "rule": "a MUTATION is refused iff `DSH_HOME` is set (isolated/QA shape) AND the resolved library would be the REAL one (HOME absent/empty, or equal to the real home, or not covering the root) \u2014 unless `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1`; error `403 real-home-refused` names the fix. Reads are never guarded; a normal session (DSH_HOME unset) is never refused.",
+    "guarded_entry_points": [
+      "initWorkmate (mpd_workmate_init)",
+      "the mpd_workmate_reflect handler",
+      "renameWorkmate (tool + service + HTTP route)",
+      "deleteWorkmate (tool + service + HTTP route)"
+    ],
+    "cases_run_with_bun": "evidence/platform/harness-close/20260917T022913Z/guard-cases.mjs \u2192 4/4 PASS: negative-1 isolated boot + HOME=<sandbox> allowed (instance really moved); negative-2 normal session (no DSH_HOME) allowed; positive isolated boot + HOME unset refused with `real-home-refused` AND the REAL library listing byte-identical before/after; override env releases the pure assertion (no fs effect)",
+    "existing_suite": "bun test packages/mpd-workmate-plugin \u2192 28 pass / 0 fail (the plugin's own tests set HOME to a temp dir and never set DSH_HOME, so the guard cannot fire there \u2014 that is the 'does not break normal use' half)"
+  },
+  "documentation": {
+    "AGENTS.md": "47,230 B (from ~42,954; budget 65,536) \u2014 \u00a712 now carries ONE pointer line per item (T-21/T-23/T-24/T-26/T-43/T-54/T-55), each naming its rule, its one-command fallback and the reference file",
+    "agent-references/troubleshooting.md": "sha256 67bc579b850d1990825fac83747ea1c88e17000eda019e6314c193ab570db5de \u2014 three existing rows EXTENDED (T-21 restart discipline with reload-check; T-23 nohup/bwrap with the run+probe recipe and the measured 2026-09-17 evidence; T-24 fds with the file-stdio guarantee) and FOUR rows ADDED (T-26 sandbox write refusal + check-write; T-43 the real-home guard with its fix and override; T-54 the same-depth sandbox recipe with its corrected producer \u2014 the harness's `plugin add` RELATIVE link, not install-profile.mjs; T-55 cite symbols not lines)",
+    "pointer_check_F0": "the lane-F pointers resolve 7/7 against disk (AGENTS.md \u2192 the reference file, both Reference Index entries, the helper, the guard, the T-55 target, the T-54 register row)",
+    "english_only": true,
+    "verify_docs": "PASS \u2014 pairs=37 failed=0 violations=0 exempt=17",
+    "pointer_check_METHOD": {
+      "resolver": "filesystem existsSync, NEVER the git index \u2014 a wave's newly added files are untracked (??) until the captain's commit, so a git-index resolver yields a false MISSING for exactly the wave under audit (docs-gate-engineer's trap)",
+      "token_rule": "match full path tokens only; resolve each as written, else `skills/dsh-qa/scripts/<basename>`, else `scripts/<basename>` \u2014 a bare basename in prose is not a token (a naive scripts/*.mjs scan invents ghosts for the lanes the manual writes as skills/dsh-qa/scripts/<case>.mjs)",
+      "re_measure_after_commit": "the same set should still resolve post-commit; the method does not depend on tracking state"
+    },
+    "docs_lane_cross_check": "docs-gate-engineer re-measured the three gate scripts against the working tree (verify-dist-fresh.mjs 30741 B / 30b796c2\u2026, repin-vendor.mjs 31183 B / 707d0f9d\u2026, dump-config.mjs 16217 B / 10f281ad\u2026; package.json aliases verify:dist/verify:gates/repin:vendor/dump-config map to those paths; each runs) and confirms no renames are planned."
+  },
+  "t55_state": "the stale line pointers in the canonical note of packages/mpd-ext-plugin/src/index.ts were already rewritten to SYMBOLS inside t12 (authorized there); verified still present here (`createDshAdapter(\u2026, { defaultTimeoutMs })` at :76, `engineCache` at :78, no surviving `:390`/`:464`), so this task records it rather than re-editing it.",
+  "verify_results": {
+    "bun test packages/mpd-workmate-plugin": {
+      "exit": 0,
+      "result": "28 pass / 0 fail (4 files)"
+    },
+    "bun run typecheck": {
+      "exit": 0
+    },
+    "bun run verify:docs": {
+      "exit": 0,
+      "result": "pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS"
+    },
+    "node scripts/mpd-bg.mjs --self-test": {
+      "exit": 0,
+      "result": "13/13 arms passed \u2014 PASS"
+    }
+  },
+  "residual_ROUTED": {
+    "what": "this task edits packages/mpd-workmate-plugin/src/index.ts (inScope), so its committed dist is now STALE and `node scripts/verify-dist-fresh.mjs` reports exactly 1 of 20 not fresh",
+    "measured": "STALE: packages/mpd-workmate-plugin/dist/index.js \u2014 committed 54704 B / 401573a0173b03db\u2026 != fresh 55875 B / 6b1715d0f8bebda0\u2026; gate exit 1",
+    "why_not_fixed_here": "`packages/mpd-workmate-plugin/dist` is NOT in this task's inScope (only `\u2026/src` is), and a member cannot amend a task's contract \u2014 the same class as t40's adapter dist and t38's count pins",
+    "one_line_fix": "bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js (from the repo root \u2014 the banner trap measured in t44), then node scripts/verify-dist-fresh.mjs \u2192 20/20",
+    "requested": "a one-path follow-up task or an inScope amendment from the captain"
+  },
+  "other_finding_observed": "a sweep of every path token in AGENTS.md finds `docs/adder4.md` and `docs/cnt8.md` named as examples of exempt internal QA docs that do NOT exist on disk \u2014 the same 'a doc names a path that cannot be opened' class as the captain's T-66 gap. `docs/**` is outside this task's inScope; recorded for the docs lane.",
+  "unverified": [
+    "the helper's `run` mode cannot demonstrate survival across a bash CALL boundary by construction (bwrap --die-with-parent kills the sandbox's children) \u2014 the demonstrated shape is 'start it inside a managed background job', and the 150 s run above was started that way",
+    "the T-43 guard's behaviour inside a real mounted dsh boot is not exercised here (it is a pure env/filesystem predicate with 4 in-process cases; a live boot is the QA lanes' surface)"
+  ]
+}

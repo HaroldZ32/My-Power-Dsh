@@ -1,0 +1,3 @@
+### FULL suite run (node scripts/run-qa-lanes.mjs, default suite, all lanes + gates) — started 2026-09-17T01:55:30Z
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=33 evidence=evidence/dsh-qa/suite-runner/2026-09-17T01-55-30.751Z
+[mpd-qa:all] FAIL case=agent-teams-adopt reason=unauthorized prereq="HTTP 401 / unauthorized route" signature=(the lane's own stdout):11 also=absent-credentials exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-55-30.817Z/web.log log=evidence/dsh-qa/suite-runner/2026-09-17T01-55-30.751Z/lanes/agent-teams-adopt.log ms=128961

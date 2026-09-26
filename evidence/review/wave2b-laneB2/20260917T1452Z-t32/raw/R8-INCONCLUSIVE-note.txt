@@ -1,0 +1,1 @@
+FIRST attempt (raw/R8-*) was INCONCLUSIVE: the copy's REPO root lacked evidence/extensions/docs-claims/check-citations.mjs, so the superseded-revision retention threw ENOENT before the record was written. Redone below WITH the fixture root.

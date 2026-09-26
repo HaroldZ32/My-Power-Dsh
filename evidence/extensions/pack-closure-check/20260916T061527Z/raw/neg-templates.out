@@ -1,0 +1,5 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  TEMPLATES - /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs:65 carries a `templates` path literal - the generic template must never be packed
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-referencing-templates.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml

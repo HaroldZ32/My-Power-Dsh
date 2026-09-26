@@ -1,0 +1,18 @@
+=== BEFORE (fixed revision) sha256 ===
+bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee  packages/mpd-ulw-plugin/src/index.ts
+
+=== mutation apply (claimGesture -> retired last-user-message claim) ===
+mutation applied: claimGesture claims the LAST user-role text only (retired t15 behaviour)
+sha256 now fd7bc4204f36dbe28136774123afebe2e0c9d416a90b4524ad19055190a2e612
+
+=== bun test packages/mpd-ulw-plugin on the MUTATED tree (expect the t15 regression test RED) ===
+(fail) the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression) [0.83ms]
+ 11 pass
+ 1 fail
+
+=== mutation restore ===
+restored from /root/dshProj/my-power-dsh/evidence/ulw/l2b-gesture-fix/20260918T011903Z/index.ts.fixed
+sha256 now bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee
+
+=== AFTER (restored) sha256 — must equal the BEFORE line ===
+bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee  packages/mpd-ulw-plugin/src/index.ts

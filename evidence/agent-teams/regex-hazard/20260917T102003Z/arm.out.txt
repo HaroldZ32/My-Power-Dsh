@@ -1,0 +1,6 @@
+=== control.txt (A **B** C) ===
+  grep -cF  : 1
+  grep -c   : 0
+  grep -cE  : 0
+  escaped   : 1
+=== single-quoted operands throughout: the shell never touched an asterisk ===

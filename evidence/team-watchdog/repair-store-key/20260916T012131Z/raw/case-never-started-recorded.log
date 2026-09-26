@@ -1,0 +1,6 @@
+[never-started-recorded] the claimed task was never picked up: no heartbeat file exists for its owner
+[never-started-recorded] tick => [] (recorded once; the second tick repeats nothing: [])
+[never-started-recorded] durable incident: [{"kind":"never-started","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested"}]
+[never-started-recorded] notice: [watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-f0ck8b/.mpd/team/watchdog/incidents.jsonl
+[never-started-recorded] no scene (0), no hold (0), record byte-identical: true
+[never-started-recorded] => T69-ESCALATE-2: the dispatch problem is now RECORDED and NOTICED, not silent — while still never pausing the team

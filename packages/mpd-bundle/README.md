@@ -17,30 +17,35 @@ The bundle ships ONE preset (`mpd`, the main working agent; assets under
 `packages/mpd-bootstrap-plugin/presets/mpd`): it configures `dsh-agent-instructions`
 with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project
 session attempts to read AGENT.md, and it declares native tool presentation. The
-The specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
+specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
 ## Session-start team gate (binding)
 
 A session starts with **NO team** — a team is not a precondition of a session
 (upstream parity: the upstream team mode ships disabled by default). What is enforced
-mechanically by the adopted agent-teams plugin is a **complexity gate**
+mechanically by the adopted agent-teams plugin is an **advisory complexity gate**
 (`sessionTeamPolicy` config, implementation in
 `packages/mpd-agent-teams-plugin/lib/session-start.js`), not prompt guidance alone:
 
 - `mode: off` (the default) means "no auto-provision and no unconditional notice".
   The decoupled mechanical gate is `autoRoute: true` (default enabled).
 - At the session's first pre-step the gate evaluates
-  `trigger = (matchedSignals >= 2) OR explicit flag`:
+  `trigger = explicit flag OR (matchedSignals >= 1)`:
   the explicit flag is a `team:` prefix or `!team` (the marker is consumed, so it
   never reaches the model as goal text), and the soft signals are
   (B) ≥4 distinct deliverable verbs, (C) ≥3 enumerated steps / action verbs /
   clauses, (D) a `.mpd/plans/*.md` artifact for this workspace.
 - **Not triggered** → the session runs solo; no team, no notice.
-- **Triggered** → the staged default team **"MPD Default"** (profile `mpd`,
-  `approval: required` — members are only roster rows and spawn after the user
-  reviews and approves the Web plan) is provisioned, and exactly one startup
-  notice is injected saying the session was routed by the gate (never that a team
-  is mandatory). A session that already has a team (resume) simply stays in it.
+- **Triggered by a soft signal** → the gate **stages nothing**: it injects exactly one
+  advisory notice carrying the marker `[AgentTeams] Session-start team rule`, naming the
+  fired signals and stating that **no team was staged**. The captain stages one with
+  `agent_teams_create(approval="required", profile="mpd")` at the moment the work
+  actually warrants it, or continues solo and says so. A session that already has a team
+  (resume) simply stays in it.
+- **Explicit `team:` / `!team`** → provisioning is unchanged: the staged default team
+  **"MPD Default"** (profile `mpd`, `approval: required` — members are only roster rows
+  and spawn after the user reviews and approves the Web plan) is provisioned with the
+  routed-by-the-gate notice. The `/agent-teams` command stages the same way.
 - Scope: `presets: [mpd]` covers mpd-preset sessions plus sessions without any preset
   (headless direct runs); subagent/member sessions (`parentSession` set) never qualify.
 - The gate runs on the PRE-STEP, **before** the preset's sizing doctrine, so the
@@ -64,3 +69,18 @@ The row also carries the upstream-aligned limits (measured against the upstream
 (min 1024), `mailboxPollIntervalMs: 3000` (min 500), `memberMaxDepth: 1`,
 `stateDir: .mpd/team`, and `enforcement: enforce` (over-limit sends are blocked;
 `observe` logs only — the upstream semantics).
+
+## TUI composition
+
+The same patch also composes the TUI edition: the `mpd-tui` row mounts
+`@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` (that package ships no patch of its own, so
+this row is the only mount and no composition can duplicate the loader entry id).
+
+The preset-selection id-target is `agent-preset-registry` (`@deepseek-ai/dsh-agent-preset-registry`,
+`config.default: mpd`). Harness 0.1.7-rc.2 removed the per-plane preset-root rows this file used to
+target (`agent-presets` / `dsh-tui-agent-presets`, both on the retired
+`@deepseek-ai/dsh-agent-presets` package), so there is now exactly ONE target and it is the registry.
+A composition that carries no such row — the headless profile, or a `dsh-tui` plane that mints a
+differently-named registry row — logs `patch: entry agent-preset-registry not found` and keeps its
+own default; the `mpd` preset itself is declared by the second patch file
+(`presets/mpd.patch.yml`, row `preset-mpd`), which no composition has to opt into separately.

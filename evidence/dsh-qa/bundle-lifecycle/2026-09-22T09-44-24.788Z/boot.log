@@ -1,0 +1,300 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=C:\MyDoc\DshProj\my-power-dsh\.qa-reloc\bundle-lifecycle-2026-09-22T09-44-24.788Z\home\profiles\w\node_modules\@mpd-dsh\mpd\presets\mpd\agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection ABSENT=turnSubmit,compaction,compactionForAgent,agentScope,agentTurnStart,agentTurnCancel,agentTurnSteer,agentTurnInject
+[roles-probe] ADAPTER_TOOL_CALL=fail:unknown tool "mpd_config_get"
+[roles-probe] ROSTER=
+[roles-probe] ROSTER_NAMES=
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[roles-probe] AGENT_TEAMS_TOOLS=0/7 MISSING=agent_teams_interject_request,agent_teams_interject_decide,agent_teams_mailbox_clear,agent_teams_send_message,agent_teams_update_task,mpd_team_compact_run,mpd_team_compact_status
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=false
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+node:os:306
+    throw new ERR_SYSTEM_ERROR(ctx);
+          ^
+
+SystemError [ERR_SYSTEM_ERROR]: A system error occurred: uv_os_get_passwd returned ENOMEM (not enough memory)
+    at userInfo (node:os:306:11)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js:7615:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///C:/MyDoc/DshProj/my-power-dsh/packages/mpd-mcp-codegraph/launch.mjs:66:15 {
+  code: 'ERR_SYSTEM_ERROR',
+  info: {
+    errno: -4057,
+    code: 'ENOMEM',
+    message: 'not enough memory',
+    syscall: 'uv_os_get_passwd'
+  },
+  errno: [Getter/Setter],
+  syscall: [Getter/Setter]
+}
+
+Node.js v24.21.0
+[roles-probe] TEAM_COMPACT_TOOLS=0/2 MISSING=mpd_team_compact_run,mpd_team_compact_status
+[roles-probe] TOOL_PARAM_SCHEMAS=0/0
+[roles-probe] SKILLS=0 BUNDLED=0 SKILL_FIXTURES=0/5 MISSING=ast-grep,dsh-qa,git-master,programming,svn-master
+[roles-probe] SKILL_FIXTURE=missing name=- base=unknown bytes=0
+[roles-probe] FAIL
+1540 | 		await ctx.fiber.dispose();
+1541 | 		const detail = cause instanceof Error ? cause.message : String(cause);
+1542 | 		let deepest = cause;
+1543 | 		while (deepest instanceof Error && deepest.cause !== void 0) deepest = deepest.cause;
+1544 | 		const stack = deepest instanceof AggregateError ? `\n${deepest.stack ?? deepest.message}\n${deepest.errors.map(formatActivationError).join("\n")}` : deepest instanceof Error && deepest !== cause ? `\n${deepest.stack ?? deepest.message}` : "";
+1545 | 		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+                   ^
+error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): loader entries failed to apply
+AggregateError: loader entries failed to apply
+    at update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:101:39)
+    at file:///C:/MyDoc/DshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-22T09-44-24.788Z/home/profiles/w/#include
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+Error
+    at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:524:10)
+    at async init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:505:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:426:48)
+    at async create (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:65:16)
+    at async update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:97:35)
+    at async _apply (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:240:19)
+    at processTicksAndRejections (unknown:7:39)
+      at boot (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-app-boot\lib\index.js:1545:13)
+
+524 | 			throw updateError("import", this.options, error);
+525 | 		}
+526 | 		try {
+527 | 			await this._start(plugin);
+528 | 		} catch (error) {
+529 | 			throw updateError("apply", this.options, error);
+               ^
+error: failed to apply loader entry include (cordis:include): loader entries failed to apply
+      at _init (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:529:10)
+
+ 96 | 		try {
+ 97 | 			const outcomes = await Promise.allSettled(config.map((options) => this.create(options)));
+ 98 | 			if (this.ctx.fiber.uid === null) return;
+ 99 | 			const failures = outcomes.filter((outcome) => outcome.status === "rejected").map((outcome) => outcome.reason);
+100 | 			if (failures.length === 1) throw failures[0];
+101 | 			if (failures.length > 1) throw new AggregateError(failures, "loader entries failed to apply");
+                                            ^
+AggregateError: loader entries failed to apply
+      at update (C:\Users\zhao.yinan\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\cordis-plugin-loader\lib\index.js:101:39)
+
+Bun v1.4.2 (Windows x64)

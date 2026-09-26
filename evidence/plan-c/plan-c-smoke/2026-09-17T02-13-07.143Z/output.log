@@ -1,0 +1,162 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-P9eMzC/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three phases passed. Report:
+
+## 1. Config — `.mpd/mpd.jsonc` + `mpd_config_get`
+
+Wrote `/tmp/mpd-wa-P9eMzC/ws/.mpd/mpd.jsonc` (valid JSONC, double-quoted keys/strings — single quotes would be a parse error):
+
+```json
+{
+  "ulw": { "maxRounds": 4 },
+  "memory": { "vcs": "git" }
+}
+```
+
+`mpd_config_get` key `memory.vcs` → **`"git"`** ✅
+
+Full resolved config also picked up the sibling key: `ulw.maxRounds` = **4** (plus a `watchdog` block from defaults). Project layer overrides applied correctly.
+
+## 2. Boulder — `.mpd/plans/qa.md`
+
+Created the plan file with `# QA` / `## TODOs` / `- [ ] 1. First` / `- [x] 2. Second`, then:
+
+| Call | Result |
+|---|---|
+| `mpd_boulder_start .mpd/plans/qa.md` | `qa-6ce678e7` **(active)** |
+| `mpd_boulder_task_timer` taskKey `1`, action `start` | `1 (running)` |
+| `mpd_boulder_task_timer` taskKey `1`, action `end` | `1 (completed)` |
+| `mpd_boulder_complete qa-6ce678e7` | `status=completed elapsedMs=5783` |
+
+**workId: `qa-6ce678e7` — final status: `completed`** ✅
+Post-completion `mpd_boulder_status`: `active works: []`, and the plan parser reads the checkboxes correctly (`{"total":2,"completed":1,"isComplete":false}` — task 2 is already `[x]`, task 1 is still unchecked in the markdown, which is expected since the timer records elapsed time but does not tick the box).
+
+## 3. Hashline — `note.txt`
+
+- Created with three lines: `first` / `second` / `third`
+- `mpd_hashline_read` returned anchors: `1#KM|first`, `2#BB|second`, `3#SS|third`
+- `mpd_hashline_edit` `replace` at `2#BB` → `second2` (`noop=0, deduped=0`), diff showed exactly one line changed
+- Re-read confirm:
+
+```
+1: first
+2: second2
+3: third
+```
+
+**Final `note.txt` content:**
+```
+first
+second2
+third
+```
+✅ Anchor validation, hash-anchored edit, and drift-free write-back all behaved correctly.
+dsh: reasoning:
+The user is asking me to perform a self-test of the Plan C Wave A tooling with three parts. Let me break this down:
+
+1. Write `.mpd/mpd.jsonc` with `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }`, call `mpd_config_get` with key `memory.vcs`, report the value.
+2. Create `.mpd/plans/qa.md` with '# QA' and '## TODOs' with '- [ ] 1. First' and '- [x] 2. Second', call `mpd_boulder_start` on it, `mpd_boulder_task_timer` start/end for task '1', then `mpd_boulder_complete`.
+3. Create `note.txt` with three lines 'first' 'second' 'third', call `mpd_hashline_read`, then `mpd_hashline_edit` to replace line 2 with 'second2', then read note.txt.
+
+This is a direct tool-exercise task, not AgentTeams work. No skill clearly matches — this is a self-test of MPD tools. Let me just do it.
+
+Let me start with the todo list since it's a multi-step task. Actually, it's 3 discrete steps — worth a todo list.
+
+Let me first check the workspace state, then do the work.
+
+Step 1: write `.mpd/mpd.jsonc`. The path is relative to workspace /tmp/mpd-wa-P9eMzC/ws. Note the config file content: `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }` — this is JSONC, so single quotes might not be valid JSON. Let me write proper JSON with double quotes to be safe, since it's "JSONC" and parse errors would matter. Actually let me write it as valid JSON: `{ "ulw": { "maxRounds": 4 }, "memory": { "vcs": "git" } }`.
+
+Hmm, but the user literally specified the content. JSONC typically allows comments but still requires double quotes for keys/strings. Writing single quotes would likely cause a parse error. I'll write valid JSON with double quotes — the semantics are identical. Let me note that in the report.
+
+Actually, let me try to be faithful but functional. The spirit is the config values. I'll use double quotes and mention it.
+
+Then `mpd_config_get` with key 'memory.vcs'. Then reload? Actually the config get might need a reload — but mpd_config_get says it reads the resolved config (project .mpd/mpd.jsonc merged over user). Let me just call it.
+
+Step 2: create `.mpd/plans/qa.md`:
+```
+# QA
+
+## TODOs
+
+- [ ] 1. First
+- [x] 2. Second
+```
+
+Then `mpd_boulder_start` on `.mpd/plans/qa.md`.
+
+Then `mpd_boulder_task_timer` with workId (from start), taskKey '1', action start then end.
+
+Then `mpd_boulder_complete` (with workId).
+
+Step 3: create note.txt with three lines, `mpd_hashline_read`, then `mpd_hashline_edit` replacing line 2 with 'second2', then read note.txt.
+
+Let me start. First, check the workspace.
+
+Let me do parallel calls where independent: write config file and create plan file and note.txt could all be independent. But I need to read files before writing if they exist. Let me check with ls first.
+
+Let me batch: `ls -la` on workspace to see what exists.
+
+Actually I can use glob to find existing files. Let me just run bash ls.
+
+Let me set up todos first, then explore.
+dsh: reasoning:
+Workspace is basically empty. No `.mpd/mpd.jsonc`, no `.mpd/plans`. Let me create the files.
+
+Step 1: write `.mpd/mpd.jsonc`. Use double quotes for valid JSON/JSONC.
+
+Also need `.mpd/plans/` dir — the write tool should create parent dirs, hopefully. Let me try.
+
+Let me write all three files in parallel — they're independent. Actually, note.txt and qa.md and mpd.jsonc are all independent writes. Let me batch them.
+
+Wait — for hashline_edit, I need to read note.txt first (fs-observation-policy). I'll use mpd_hashline_read which gives anchors. But the fs-observation policy may require a `read` call. Let's see; mpd_hashline_read might count as observation. I'll do `read` too if needed. Actually the policy says "Read the file first (the default fs-observation-policy requires it)". mpd_hashline_read might not register with that policy. To be safe I'll use the `read` tool on note.txt after creating it anyway (I need to report final content, and the final read is required).
+
+Let me batch the three writes.
+dsh: reasoning:
+All three created. Now step 1b: config reload + config_get memory.vcs. The config get reads resolved config from disk — may be cached. Let me call mpd_config_reload first to be safe? The user only asked for mpd_config_get. But to report an accurate value from the file just written, a reload may be needed. Let me call mpd_config_get first (as instructed), and if it doesn't pick up the new file, call reload. Actually let me call both: mpd_config_get key 'memory.vcs' as specified, and also the full config to see resolved files. Hmm, calling reload might be considered extra but it's harmless and improves accuracy.
+
+Let me call mpd_config_get with key 'memory.vcs' first exactly as asked.
+dsh: reasoning:
+The config get returns "git". Let me also verify the whole config to confirm ulw.maxRounds = 4 (as a sanity check, cheap). Optional but useful for the report. Let me do it.
+
+Then proceed to step 2: boulder_start on .mpd/plans/qa.md.
+dsh: reasoning:
+Boulder started: workId `qa-6ce678e7`, status active. Config confirms both keys.
+
+Now: task_timer start for task '1', then end. Then boulder_complete.
+
+Let me also check plan progress via mpd_boulder_plan_progress to confirm the parser reads the checkboxes (good evidence for the self-test). The user didn't ask, but it's cheap and relevant... Actually let me stay focused but adding it gives evidence the plan parsed. I'll call task_timer start first, then end.
+
+Note: task_timer requires workId. workId = qa-6ce678e7. taskKey '1', action 'start'.
+
+Let me batch for '2' as well? No — user only asked for '1'. Stick to spec.
+
+task_timer start and end should be sequential (end after start). They're dependent in the sense that order matters. But since they're separate tool calls in the same block, they'd run in parallel, which could break ordering. Let me do start first, then end.
+dsh: reasoning:
+Timer start/end worked. Now mpd_boulder_complete with workId qa-6ce678e7.
+dsh: reasoning:
+Boulder completed. workId qa-6ce678e7, status completed, elapsedMs 5783.
+
+Now step 3: hashline. note.txt exists. Call mpd_hashline_read to get anchors.
+dsh: reasoning:
+Anchors: line 1 = 1#KM, line 2 = 2#BB, line 3 = 3#SS.
+
+Now mpd_hashline_edit to replace line 2 with 'second2'. Using op 'replace', pos '2#BB', lines 'second2'.
+
+Then read note.txt. Let me first do the edit, then read. Sequential since read must show post-edit content.
+
+Note: the fs-observation policy — hashline_edit is its own tool, should be fine.
+dsh: reasoning:
+Everything worked. Let me finalize the todos and report.
+
+Boulder status shows no active works (completed work archived out of active), plan progress total 2, completed 1.
+
+Let me update the todo list to all completed and give the final report.
+
+Also let me verify the persisted state files quickly for evidence? Optional. Let me quickly check .mpd/boulder.json to report status durably. Actually mpd_boulder_status already gives that. Good enough.
+
+Let me mark todos complete and report.

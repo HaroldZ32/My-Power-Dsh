@@ -36,6 +36,6 @@ and a VCS abstraction with git AND svn backends.
 ## Build / test
 
 ```sh
-bun build src/index.ts --outdir dist --target node --format esm
+bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
 bun test    # git backend (real commits) + svn backend (fake CLI wiring)
 ```

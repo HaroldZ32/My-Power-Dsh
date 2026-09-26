@@ -1,0 +1,49 @@
+{
+  "task": "t27 — repair-round-2: tuiRenderers NOT-CLAIMED disclosure + revision binding (docs, both languages)",
+  "producedBy": "Junior Engineer (attempt 3)",
+  "measuredAt": "2026-09-15T07:09:32.211Z",
+  "revisionBinding": {
+    "dsh-plugin.json": {
+      "sha256": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+      "mtime": "2026-09-15 14:39:35.096372466 +0800"
+    },
+    "packages/mpd-tui-plugin/dist/index.js": {
+      "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+      "bytes": 98883,
+      "mtime": "2026-09-15 14:23:20.169079776 +0800"
+    },
+    "historyChain": [
+      "695f68c4858745cc35544ac77dbdb87907d6991c62f9435661e1fc02264f77ac (t4 build)",
+      "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3 (t21 /settings rebuild)",
+      "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f (DELIVERED; the lanes measured this)"
+    ],
+    "note": "The delivered digests were re-measured live and equal the ones t8/t9 pinned; the two earlier digests are history only and no longer appear inline in either doc (the full chain lives in evidence/tui/docs/20260915T060010Z/REVISION-BINDING.md)."
+  },
+  "docs": {
+    "docs/tui.md": "1afda0fd7a88d8274cf67964f1da63856f1937a2db3d732daa429b7b13807a9c",
+    "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+  },
+  "gates": {
+    "doc-assertion (tuiRenderers disclosure, no 710d3eef, 5dce2563 + 84ed4a5d present, R7/R8 keys, wording)": "passed",
+    "bun run typecheck": "typecheck exit=0",
+    "node scripts/verify-rows-parity.mjs": "24 row ids match (exit 0)",
+    "node skills/dsh-qa/scripts/preset-conformance.mjs": "PASS (31/31 parity, session create 200 agentPreset mpd, bootLog [], negative control RED, exit 0)"
+  },
+  "edits": {
+    "docs/tui.md": [
+      "§1 table: transcript renderers no longer listed as a delivered surface",
+      "§3 table: panels lane status now points at the live lane evidence; tuiRenderers row marked not projected",
+      "§3 paragraph: tuiRenderers given the same explicit not-claimed treatment as tuiPrompt",
+      "§4.2: distribution CLI no longer pending",
+      "§6.2: digest bound to the delivered artifact",
+      "§8: ledger digest described as history + pointer to the revision-binding note",
+      "§9: spec suite no longer pending, blocker recorded",
+      "§10: new NOT-CLAIMED #10 for tuiRenderers with both citations, host-side attribution and the H1/H2 limit",
+      "§11: revision binding + delivered lane evidence per row"
+    ],
+    "docs/tui.zh-CN.md": [
+      "same nine edits, mirrored in Chinese"
+    ]
+  },
+  "forT14": "Carry this binding into the delivery report: manifest sha256 84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9; entry packages/mpd-tui-plugin/dist/index.js sha256 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f (98883 bytes); describe 695f68c4 -> 710d3eef -> 5dce2563 as HISTORY, never as the current artifact."
+}

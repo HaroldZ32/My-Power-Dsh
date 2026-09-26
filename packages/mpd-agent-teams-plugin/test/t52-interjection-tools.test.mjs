@@ -73,7 +73,8 @@ test("t52: the three lane tools are REGISTERED on the shipped surface", () => {
     // no interjection concepts may appear on its schema
     const send = tools.get("agent_teams_send_message")
     const sendProps = Object.keys(send.parameters.properties ?? send.parameters).sort()
-    expect(sendProps).toEqual(["content", "from", "to"])
+    // t48 (P1d): the pre-send gate adds the explicit, non-defaultable escape parameter.
+    expect(sendProps).toEqual(["confirm_duplicate", "content", "from", "to"])
   } finally { cleanup() }
 })
 

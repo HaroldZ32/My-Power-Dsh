@@ -1,0 +1,2 @@
+static admission: ok=true parse=ok validatePlugin=ok controls=["brokenSyntax","optionalWithoutFallback","unknownPermission"]
+static result ok=true

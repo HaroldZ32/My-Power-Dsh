@@ -1,0 +1,48 @@
+### packed tree root listing
+cordis.patch.yml
+extensions
+LICENSE.md
+LICENSE-NOTICES.md
+package.json
+packages
+presets
+README.md
+README.zh-CN.md
+scripts
+skills
+
+### the three assertions (paths checked literally)
+ABSENT   templates
+ABSENT   templates/mpd-extension
+PRESENT  packages/mpd-ext-plugin
+PRESENT  packages/mpd-ext-plugin/dist/index.js
+PRESENT  packages/mpd-roles-plugin/dist/index.js
+PRESENT  extensions
+PRESENT  extensions/mpd-ext-example/mpd-ext.json
+PRESENT  packages
+
+### any 'templates' path anywhere in the packed tree?
+dist/mpd-package/skills/ultimate-browsing/engine/tests/test_playwright_templates.py
+dist/mpd-package/skills/ultimate-browsing/engine/templates
+dist/mpd-package/skills/ultimate-browsing/engine/templates/package.json
+dist/mpd-package/skills/ultimate-browsing/engine/templates/playwright_mobile_chrome.js
+dist/mpd-package/skills/ultimate-browsing/engine/templates/playwright_real_chrome.js
+dist/mpd-package/skills/data-scientist/references/execution-templates.md
+dist/mpd-package/skills/dsh-qa/scripts/extension-template.mjs
+dist/mpd-package/skills/programming/scripts/go/templates
+dist/mpd-package/skills/programming/scripts/go/templates/README.md.tmpl
+dist/mpd-package/skills/programming/scripts/go/templates/.editorconfig
+dist/mpd-package/skills/programming/scripts/go/templates/AGENTS.md.tmpl
+dist/mpd-package/skills/programming/scripts/go/templates/ci.yml
+dist/mpd-package/skills/programming/scripts/go/templates/.golangci.yml
+dist/mpd-package/skills/programming/scripts/go/templates/main.go.tmpl
+dist/mpd-package/skills/programming/scripts/go/templates/Taskfile.yml
+dist/mpd-package/skills/programming/scripts/go/templates/gitignore
+dist/mpd-package/skills/programming/scripts/go/templates/run.go
+dist/mpd-package/skills/programming/scripts/go/templates/config.go
+(empty above = no templates path shipped)
+
+### counts
+plugin package dirs: 24
+extensions entries: 3
+total files: 1136

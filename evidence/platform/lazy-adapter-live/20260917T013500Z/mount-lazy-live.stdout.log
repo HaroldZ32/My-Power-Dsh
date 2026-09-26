@@ -1,0 +1,5 @@
+[A-standard-composition] {"ext":"mounted:mpdDsh","roles":"mounted:mpdDsh","fallback":0,"notYetActive":0}
+[B-red-pre-t12-dist] {"ext":"fallback:createDshAdapter","roles":"fallback:createDshAdapter","fallback":2,"notYetActive":0,"rowOrder":true}
+[C-green-rebuilt-dist] {"ext":"pending:provider-not-active","roles":"pending:provider-not-active","fallback":0,"notYetActive":2,"rowOrder":false}
+[mount-lazy-live] ok=true pass={"A":true,"B":true,"C":true}
+exit=0

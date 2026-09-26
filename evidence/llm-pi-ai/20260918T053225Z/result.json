@@ -1,0 +1,452 @@
+{
+  "case": "llm-pi-ai-mount-feasibility",
+  "question": "Can a `- id: llm-pi-ai / name: '@deepseek-ai/dsh-llm-pi-ai'` row be resolved and applied from the profile composition, and does the user's provider/credential/catalog surface come alive?",
+  "timestamp": "20260918T053225Z",
+  "verdict": "RESOLVED_AND_APPLIED_NO_CHANGE_REQUIRED",
+  "isolation": {
+    "dsh_home": "<repo>/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome (sandbox; asserted)",
+    "sandbox_home": "<repo>/evidence/llm-pi-ai/sandbox/20260918T053225Z/home (sandbox; asserted)",
+    "sandbox_workspace": "<repo>/evidence/llm-pi-ai/sandbox/20260918T053225Z/ws (sandbox; asserted; every dsh spawn ran with --cwd there)",
+    "copies_into_sandbox_once": [
+      "/root/.dsh/settings.yaml",
+      "/root/.dsh/.credentials.yaml",
+      "/root/.dsh/profiles/web (whole profile dir, cp -a)"
+    ],
+    "real_home": "read-only inspection only; no write attempted. A boot pointed at the real DSH_HOME failed EROFS on profiles/web/cordis.yml, which is the sandbox refusing the write (evidence: output.log section refusal).",
+    "note_probe_outside_repo": "The instrumentation plugin ran from a /tmp dir (LLM_PROBE_OUT target inside the sandbox). A probe file placed UNDER the repo makes client-modules resolve @mpd-dsh/mpd from two active Loader sources and refuse the whole composition; that refusal was REPRODUCED on purpose and its exact text is recorded in output.log under the `probe-web-inrepo-refusal` section.",
+    "gitignore_assertion": "git check-ignore -v -> .gitignore:52:evidence/**/sandbox/  covers the credential-bearing copies; git grep of the whole tracked tree for the key value returned nothing."
+  },
+  "environment": {
+    "dsh_binary": "/root/.nvm/versions/node/v24.16.0/bin/dsh",
+    "dsh_version": "0.1.5-rc.1",
+    "node": "v24.16.0",
+    "pi_ai_package_dir": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai",
+    "pi_ai_package_version": "0.1.5-rc.2",
+    "profile": "web",
+    "profile_bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@linxin666/dsh-web-all",
+      "dshmarket",
+      "dsh-cost-meter",
+      "nowledge-mem-deepseek-harness",
+      "@mpd-dsh/mpd"
+    ],
+    "settings_pi_ai_providers": [
+      "opencode-go"
+    ],
+    "settings_extra_providers_found": {
+      "scnet": false
+    },
+    "credential_refs_present": [
+      "client-connection/browser-session",
+      "OPENCODE_GO_API_KEY"
+    ],
+    "composition_fact": "The row is NOT missing: @deepseek-ai/dsh-base/cordis.patch.yml lines 107-108 carry exactly `- id: llm-pi-ai` / `name: '@deepseek-ai/dsh-llm-pi-ai'`, enabled, and no bundle layer in the real profile id-targets or disables it (scanned every bundle cordis.patch.yml).",
+    "resolution_mechanism": "The loader resolves the row's `name` from <DSH_HOME>/profiles/node_modules, healed from the dsh installation's dependency closure; the sandbox boot created that link (240 @deepseek-ai entries) and the real home has the same link: /root/.dsh/profiles/node_modules/@deepseek-ai/dsh-llm-pi-ai."
+  },
+  "experiments": [
+    {
+      "id": "A-composition",
+      "method": "node scripts/dump-config.mjs --profile web (sandbox copy of the real profile)",
+      "result": "exit 0; composition contains `- id: llm-pi-ai` / `name: '@deepseek-ai/dsh-llm-pi-ai'` from the `# == @deepseek-ai/dsh-base` layer, enabled",
+      "caveat": "COMPOSITION ONLY, never a plugin load (AGENTS.md section 4)"
+    },
+    {
+      "id": "B-boot-base-only",
+      "method": "sandbox profile with bundles=[@deepseek-ai/dsh-base] + probe row; NO pi-ai row added by the experiment",
+      "result": {
+        "providerIds": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "modelsPerProvider": {
+          "deepseek-official": [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash-vision-exp"
+          ],
+          "opencode-go": [
+            "minimax-m3",
+            "qwen3.8-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-vision-exp",
+            "deepseek-v4-pro",
+            "glm-5.1",
+            "glm-5.2",
+            "glm-5.3",
+            "glm-5.3-flash",
+            "hy3",
+            "hy4-preview",
+            "kimi-k2.6",
+            "kimi-k2.7-code",
+            "kimi-k3",
+            "longcat-2.0",
+            "mimo-v2.5",
+            "mimo-v2.5-pro",
+            "minimax-m2.7",
+            "omen-alpha",
+            "qwen3.6-plus",
+            "qwen3.7-max",
+            "qwen3.7-plus",
+            "qwen3.8-max",
+            "gpt-5.6-luna",
+            "grok-4.6",
+            "muse-spark-1.2-contributor",
+            "muse-spark-1.3-contributor"
+          ]
+        },
+        "catalogRoutableProviders": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "catalogGroups": [
+          {
+            "id": "deepseek-official",
+            "name": "DeepSeek",
+            "modelCount": 4
+          },
+          {
+            "id": "opencode-go",
+            "name": "opencode-go",
+            "modelCount": 27
+          }
+        ],
+        "catalogFailures": [],
+        "credential": {
+          "servicePresent": true,
+          "OPENCODE_GO_API_KEY": {
+            "resolved": true,
+            "valueLengthClass": "nonempty"
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "C-boot-full-web",
+      "method": "sandbox copy of the REAL web profile (all 7 bundles) + probe row; NO pi-ai row added",
+      "result": {
+        "providerIds": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "modelsPerProvider": {
+          "deepseek-official": [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash-vision-exp"
+          ],
+          "opencode-go": [
+            "minimax-m3",
+            "qwen3.8-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-vision-exp",
+            "deepseek-v4-pro",
+            "glm-5.1",
+            "glm-5.2",
+            "glm-5.3",
+            "glm-5.3-flash",
+            "hy3",
+            "hy4-preview",
+            "kimi-k2.6",
+            "kimi-k2.7-code",
+            "kimi-k3",
+            "longcat-2.0",
+            "mimo-v2.5",
+            "mimo-v2.5-pro",
+            "minimax-m2.7",
+            "omen-alpha",
+            "qwen3.6-plus",
+            "qwen3.7-max",
+            "qwen3.7-plus",
+            "qwen3.8-max",
+            "gpt-5.6-luna",
+            "grok-4.6",
+            "muse-spark-1.2-contributor",
+            "muse-spark-1.3-contributor"
+          ]
+        },
+        "catalogRoutableProviders": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "catalogGroups": [
+          {
+            "id": "deepseek-official",
+            "name": "DeepSeek",
+            "modelCount": 4
+          },
+          {
+            "id": "opencode-go",
+            "name": "opencode-go",
+            "modelCount": 27
+          }
+        ],
+        "catalogFailures": [],
+        "credential": {
+          "servicePresent": true,
+          "OPENCODE_GO_API_KEY": {
+            "resolved": true,
+            "valueLengthClass": "nonempty"
+          }
+        },
+        "errors": []
+      },
+      "equality_with_B": true
+    },
+    {
+      "id": "D-explicit-user-row",
+      "method": "bundles=[@deepseek-ai/dsh-base] + an EXPLICIT user-layer row `- id: llm-pi-ai / name: '@deepseek-ai/dsh-llm-pi-ai'` + probe",
+      "result": {
+        "providerIds": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "modelsPerProvider": {
+          "deepseek-official": [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash-vision-exp"
+          ],
+          "opencode-go": [
+            "minimax-m3",
+            "qwen3.8-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-vision-exp",
+            "deepseek-v4-pro",
+            "glm-5.1",
+            "glm-5.2",
+            "glm-5.3",
+            "glm-5.3-flash",
+            "hy3",
+            "hy4-preview",
+            "kimi-k2.6",
+            "kimi-k2.7-code",
+            "kimi-k3",
+            "longcat-2.0",
+            "mimo-v2.5",
+            "mimo-v2.5-pro",
+            "minimax-m2.7",
+            "omen-alpha",
+            "qwen3.6-plus",
+            "qwen3.7-max",
+            "qwen3.7-plus",
+            "qwen3.8-max",
+            "gpt-5.6-luna",
+            "grok-4.6",
+            "muse-spark-1.2-contributor",
+            "muse-spark-1.3-contributor"
+          ]
+        },
+        "catalogRoutableProviders": [
+          "deepseek-official",
+          "opencode-go"
+        ],
+        "catalogGroups": [
+          {
+            "id": "deepseek-official",
+            "name": "DeepSeek",
+            "modelCount": 4
+          },
+          {
+            "id": "opencode-go",
+            "name": "opencode-go",
+            "modelCount": 27
+          }
+        ],
+        "catalogFailures": [],
+        "credential": {
+          "servicePresent": true,
+          "OPENCODE_GO_API_KEY": {
+            "resolved": true,
+            "valueLengthClass": "nonempty"
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "E-negative-disabled",
+      "method": "same composition with `- id: llm-pi-ai / disabled: true`",
+      "result": {
+        "providerIds": [
+          "deepseek-official"
+        ],
+        "modelsPerProvider": {
+          "deepseek-official": [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash-vision-exp"
+          ]
+        },
+        "catalogRoutableProviders": [
+          "deepseek-official"
+        ],
+        "catalogGroups": [
+          {
+            "id": "deepseek-official",
+            "name": "DeepSeek",
+            "modelCount": 4
+          }
+        ],
+        "catalogFailures": [],
+        "credential": {
+          "servicePresent": true,
+          "OPENCODE_GO_API_KEY": {
+            "resolved": true,
+            "valueLengthClass": "nonempty"
+          }
+        },
+        "errors": []
+      },
+      "conclusion": "provider presence in B/C/D is caused by the llm-pi-ai row; the assertion is falsifiable"
+    },
+    {
+      "id": "F-negative-no-settings",
+      "method": "the explicit row MOUNTED, credentials present, settings.yaml ABSENT",
+      "result": {
+        "providerIds": [
+          "deepseek-official"
+        ],
+        "modelsPerProvider": {
+          "deepseek-official": [
+            "deepseek-flash",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash-vision-exp"
+          ]
+        },
+        "catalogRoutableProviders": [
+          "deepseek-official"
+        ],
+        "catalogGroups": [
+          {
+            "id": "deepseek-official",
+            "name": "DeepSeek",
+            "modelCount": 4
+          }
+        ],
+        "catalogFailures": [],
+        "credential": {
+          "servicePresent": true,
+          "OPENCODE_GO_API_KEY": {
+            "resolved": true,
+            "valueLengthClass": "nonempty"
+          }
+        },
+        "errors": []
+      },
+      "conclusion": "mounting the row alone yields ZERO pi-ai routes; the routes come from the `llm-pi-ai:` settings document. A sandbox boot that forgets to copy settings.yaml shows exactly the one-provider picture the premise describes."
+    },
+    {
+      "id": "G-reproduction-in-repo-probe-refusal",
+      "method": "full web profile with the probe row pointing INSIDE the repo",
+      "result": "boot refused: `package @mpd-dsh/mpd resolves from multiple active Loader sources ... remove one entry` (7 occurrences in the log)",
+      "purpose": "explains why the instrumentation file must live outside the repo; not a fact about the pi-ai row"
+    }
+  ],
+  "answers": {
+    "q1_row_resolved_and_applied": "YES. No resolution error and no apply error: the row is already in @deepseek-ai/dsh-base's patch (enabled) and a boot of the composition registers its routes (opencode-go appears in ctx.llm.listProviders()). The plugin resolves from <DSH_HOME>/profiles/node_modules/@deepseek-ai/dsh-llm-pi-ai -> the install tree. Experiment D adds an EXPLICIT user-layer row with the same id/name and it also resolves and applies with an identical registry.",
+    "q2_registry": {
+      "listProviders": [
+        "deepseek-official (name DeepSeek)",
+        "opencode-go (name opencode-go)"
+      ],
+      "listModels": {
+        "deepseek-official": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ],
+        "opencode-go": [
+          "minimax-m3",
+          "qwen3.8-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "glm-5.1",
+          "glm-5.2",
+          "glm-5.3",
+          "glm-5.3-flash",
+          "hy3",
+          "hy4-preview",
+          "kimi-k2.6",
+          "kimi-k2.7-code",
+          "kimi-k3",
+          "longcat-2.0",
+          "mimo-v2.5",
+          "mimo-v2.5-pro",
+          "minimax-m2.7",
+          "omen-alpha",
+          "qwen3.6-plus",
+          "qwen3.7-max",
+          "qwen3.7-plus",
+          "qwen3.8-max",
+          "gpt-5.6-luna",
+          "grok-4.6",
+          "muse-spark-1.2-contributor",
+          "muse-spark-1.3-contributor"
+        ]
+      }
+    },
+    "q3_credential": {
+      "mechanism": "credentials service resolve(ref) — config resolution only, no network",
+      "OPENCODE_GO_API_KEY_resolved": true,
+      "valueLengthClass": "nonempty",
+      "material_logged": false
+    },
+    "q4_catalog": {
+      "projection": "faithful copy of the host's buildModelCatalog (ctx.llm.listProviders + listModels + resolveModelInfo)",
+      "routableProviders": [
+        "deepseek-official",
+        "opencode-go"
+      ],
+      "groups": [
+        {
+          "id": "deepseek-official",
+          "name": "DeepSeek",
+          "models": 4
+        },
+        {
+          "id": "opencode-go",
+          "name": "opencode-go",
+          "models": 27
+        }
+      ],
+      "failures": []
+    },
+    "q5_enabling_change": "NONE. The user's real environment already satisfies every requirement: the row is mounted by the base bundle, the plugin resolves through <DSH_HOME>/profiles/node_modules, the settings document supplies the routes and the credential ref resolves. No dependency/install step and no patch edit is required. IF a reader still observes one provider, the measured discriminator is experiment F: a boot whose DSH_HOME lacks settings.yaml shows exactly deepseek-official alone."
+  },
+  "api_quota": {
+    "model_calls_issued": 0,
+    "methods_used": [
+      "listProviders",
+      "listModels",
+      "resolveModelInfo",
+      "resolveCallConfig",
+      "credentials.resolve"
+    ],
+    "note": "resolveCallConfig validates model capability only; it does not resolve credentials and performs no provider I/O. No prepareCall/stream/discovery call was made."
+  },
+  "unproven": [
+    "The LIVE process behind http://127.0.0.1:3080 was not instrumented (read-only rule + a remote RPC surface); what the running process currently holds in its registry was NOT measured. Only a FRESH boot of the identical composition was.",
+    "The origin of the 'exactly one provider' observation is not proven; experiment F shows a settings-less boot reproduces that exact picture, which is the strongest available hypothesis.",
+    "Whether the running process would pick up an already-present settings block without a restart (settings is hot-reloaded via installSection, but no live observation was taken).",
+    "No model completion was issued, so provider reachability/validity of the key against the upstream gateway is unproven (out of scope by the quota rule)."
+  ],
+  "secret_scan": {
+    "key_material_in_committed_evidence": false,
+    "key_material_files": [
+      "<sandbox>/dshhome/.credentials.yaml",
+      "<sandbox>/dshhome-nosettings/.credentials.yaml"
+    ],
+    "both_under_gitignored_path": "evidence/llm-pi-ai/sandbox/ (.gitignore:52 evidence/**/sandbox/)",
+    "verifier": "grep -rlF <key> evidence/llm-pi-ai/ excluding sandbox -> 0 files; git grep over the tracked tree -> nothing"
+  }
+}

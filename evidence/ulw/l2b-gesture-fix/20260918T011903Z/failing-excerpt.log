@@ -1,0 +1,42 @@
+### t15 BEFORE-fix reference: the QA lane's real gesture-arm session log (decoded)
+source: evidence/ulw/l5-skills-and-cases/ulw-command-2026-09-18T00-51-38.756Z/raw/arm-gesture.session.decoded.jsonl
+sha256: fcb5564ff710222b331f459d9285ceb11b9fa950e4aad437b57a7c4062a01f24
+ULTRAWORK occurrences: 0
+objective occurrences: 4
+
+### ordered user-role messages of that boot (seq | source.kind | first 160 chars of the text)
+seq 16 | plugin | "Generate the session title from this JSON array of human messages:\n[{\"seq\":8,\"text\":\"/ulw qa-ulw-objective-gesture\"}]"
+
+### the user-role message SEQUENCE of the gesture boot (recursive scan; order as the model request saw it)
+  [1] seq 3 | source=user | "/ulw qa-ulw-objective-gesture"
+  [2] seq 9 | source=plugin | "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: workspace-write. Any available operatio"
+  [3] seq 10 | source=skill-catalog | "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `"
+  [4] seq 14 | source=plugin | "Generate the session title from this JSON array of human messages:\n[{\"seq\":8,\"text\":\"/ulw qa-ulw-objective-gesture\"}]"
+
+### the same session log search AS THE CASE DOES IT (DIRECTIVE_HEAD_RE = /ULTRAWORK ACTIVATION/)
+  rewritten directive found: 0 occurrence(s)  <- BEFORE the fix
+
+### AFTER-fix live gesture arm: evidence/ulw/l2b-gesture-fix/ulw-command-2026-09-18T01-19-36.728Z/raw/arm-gesture.session.decoded.jsonl
+sha256: 734ae333bc23ec14f76a45dc8343a15b351cfccb2b82da9759f00361a772f608
+ULTRAWORK occurrences: 3   (BEFORE the fix: 0)
+objective occurrences: 3
+
+### ordered user-role messages of the FIXED gesture boot (the prompt is now the DIRECTIVE; the notices stay after it)
+  [1] seq 3 | source=user | "/ulw qa-ulw-objective-gesture"
+  [2] seq 8 | source=user | "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)\n1. TRIAGE FIRST: when the objective is unclear, or the task is inve"
+  [3] seq 9 | source=plugin | "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: workspace-write. Any available operatio"
+  [4] seq 10 | source=skill-catalog | "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `"
+  [5] seq 14 | source=plugin | "Generate the session title from this JSON array of human messages:\n[{\"seq\":8,\"text\":\"ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask "
+
+### command arm (must stay green) + every step's ok flag
+  step install ok=true
+  step artifact ok=true
+  step shippedComposition ok=false gating=false
+  step resolvedArtifacts ok=true
+  step gesture ok=true gating=true
+  step stubServed ok=true
+  step workspacesSandboxed ok=true
+  step equivalenceTableTools ok=true
+  step gatedProblems ok=-
+  case ok=true exit-visible gatingProblems=[]
+  command arm: listing=undefined usage=undefined activation=undefined

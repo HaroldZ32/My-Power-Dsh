@@ -1,0 +1,20 @@
+{
+  "control_deliveries": 1,
+  "pure_terminal_deliveries": 0,
+  "recorded_race_deliveries": 0,
+  "stripped_race_deliveries": 1,
+  "named_declines": 1,
+  "composed_tickets": [
+    1,
+    0,
+    1,
+    1
+  ],
+  "ticket_attempt_ids": [
+    "48c3f297-206a-4956-8c0e-6d144a6d5a9b",
+    "251420e9-5066-40f2-a0a0-7a09d4549691"
+  ],
+  "scheduler_sha256": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68"
+}
+T79-HOLDING pid=28 for 9000ms
+T79-DRIVER-EXIT=0

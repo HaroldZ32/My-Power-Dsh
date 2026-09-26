@@ -1,0 +1,5 @@
+{
+  "failedAt": "2026-09-17T08:56:23.978244+00:00",
+  "reason": "--out already holds artifacts (register-partition-check.json, register-partition-check.log); pass --allow-existing to supersede them",
+  "outDir": "/root/dshProj/my-power-dsh/evidence/dsh-qa/register-reconciliation/20260917T085623Z"
+}

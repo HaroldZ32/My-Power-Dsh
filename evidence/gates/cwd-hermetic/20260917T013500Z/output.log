@@ -1,0 +1,86 @@
+# T-57 / lane D3 (t22) — cwd-hermetic config-plugin tests — evidence log
+# workspace: /root/dshProj/my-power-dsh (every command's cwd is stated explicitly)
+# workspace state: `.mpd/mpd.jsonc` PRESENT (2001 B, mtime 2026-09-16 14:35) — the condition that used to redden the suite
+# changed file: packages/mpd-config-plugin/test/settings-wiring.test.ts (441 -> 470 lines); src/ and dist/ untouched by this task
+
+## 1. RED — the pre-fix test, re-materialized from git HEAD (untouched by this task so far)
+# git HEAD still holds the pre-fix file (it was not in `git status --porcelain` before this task)
+$ git show HEAD:packages/mpd-config-plugin/test/settings-wiring.test.ts > packages/mpd-config-plugin/test/settings-wiring.prefix.test.ts
+$ bun test packages/mpd-config-plugin/test/settings-wiring.prefix.test.ts          # cwd = repo root
+exit=1
+2 tests failed:
+(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd()
+(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults)
+ 21 pass
+ 2 fail
+$ cd "$(mktemp -d)" && bun test /root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.prefix.test.ts   # cwd = clean temp dir
+exit=0
+ 23 pass
+ 0 fail
+$ rm packages/mpd-config-plugin/test/settings-wiring.prefix.test.ts
+
+## 2. GREEN — the fixed test
+$ bun test packages/mpd-config-plugin/test/settings-wiring.test.ts                 # cwd = repo root
+exit=0
+ 23 pass
+ 0 fail
+$ cd "$(mktemp -d)" && bun test /root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.test.ts          # cwd = clean temp dir
+exit=0
+ 23 pass
+ 0 fail
+$ bun test packages/mpd-config-plugin                                              # cwd = repo root, whole package
+exit=0
+ 67 pass
+ 0 fail
+
+## 3. Full suite in THIS workspace WITH .mpd/mpd.jsonc present (no clean-cwd workaround)
+$ bun test packages                                                              # cwd = repo root
+BEFORE (pre-fix tree, before-bun-test-packages.log): exit=1   830 pass / 4 fail
+  (fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd()
+  (fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: ...
+  (fail) isolation and front-door parity > the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)      [packages/mpd-bundle-plugin/test/settings-card.test.mjs]
+  (fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome                              [packages/mpd-tui-plugin/test/plugin.test.ts]
+AFTER  (after-bun-test-packages.log):             exit=1   832 pass / 2 fail
+  the 2 cwd-coupled reds are GONE; the 2 residuals are the other lanes' in-flight work, NOT cwd-coupled
+  (proof: the same two files fail from a CLEAN cwd too — residual-failures-clean-cwd.log — and both packages carry
+   uncommitted in-flight modifications from that lane: packages/mpd-bundle-plugin/src/settings-card.js,
+   packages/mpd-tui-plugin/src/settings.ts + dist/index.js)
+
+## 4. NEGATIVE CONTROL — re-seed the coupling the fix removed
+$ bun evidence/gates/cwd-hermetic/20260917T013500Z/make-mutant.mjs "$PWD"
+   -> writes packages/mpd-config-plugin/test/settings-wiring.mutant.test.ts, whose mountRootFixture() creates
+      `.mpd/mpd.jsonc` with a NON-default value ("hashline.maxDiffChars": 35000)
+$ bun test packages/mpd-config-plugin/test/settings-wiring.mutant.test.ts         # cwd = repo root
+exit=1
+2 tests failed:
+(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to the mount-time fallback root
+(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults)
+ 21 pass
+ 2 fail
+$ rm packages/mpd-config-plugin/test/settings-wiring.mutant.test.ts
+$ bun test packages/mpd-config-plugin/test/settings-wiring.test.ts                 # cwd = repo root
+exit=0   23 pass / 0 fail
+=> the two new premise assertions are falsifiable: the ORIGINAL 21/2 signature returns the moment a config file reappears in the resolved mount root.
+
+## 5. TEST-ONLY proof (no behaviour, no schema, no dist)
+$ find packages/mpd-config-plugin/src packages/mpd-config-plugin/dist -type f -exec sha256sum {} \;   # before vs after
+IDENTICAL (src-dist-hashes.before.txt == src-dist-hashes.after.txt)
+$ git diff --stat -- packages/mpd-config-plugin/src
+ packages/mpd-config-plugin/src/settings-schema.ts | 34 +++++++++++++++++++----
+ 1 file changed, 28 insertions(+), 6 deletions(-)
+   ^ PRE-EXISTING and NOT this task's: mtime 2026-09-17 09:12:55 +0800 (before this task's first write), hash-identical
+     across the whole task window, and its content is the other lane's settings-card/knob work.
+$ git diff --stat -- packages/mpd-config-plugin/test packages/mpd-config-plugin/src packages/mpd-config-plugin/dist
+ packages/mpd-config-plugin/dist/index.js           | 12 ++++---     <- pre-existing (same lane as above)
+ packages/mpd-config-plugin/src/settings-schema.ts  | 34 +++++++++++++++----   <- pre-existing
+ packages/mpd-config-plugin/test/settings-wiring.test.ts | 39 +++++++++++++++++++---   <- THIS task
+$ git diff -- packages/mpd-config-plugin/test/settings-wiring.test.ts > test-diff.patch   (98 lines; the exact change)
+
+## 6. Observations / bounds
+- From the repo cwd bun counts the SAME test file twice in its "across N files" figure (23 tests / 2 files vs 23 tests /
+  1 file from a clean cwd; the package prints 8 file entries for 4 test files, 67 tests either way). Test and pass/fail
+  counts are unaffected; not investigated further because it is outside this task's acceptance (recorded so a reviewer
+  does not read it as a hidden coupling).
+- The fix's scope is the TEST harness: the fake adapter's mount-time fallback (`workspaceRoot`) and the two assertions.
+  The plugin's own no-`process.cwd()` rule (src/index.ts:420/451, `resolveTargets` only ever sees live roots) is unchanged
+  and was already correct — the tests were the thing modelling the developer's workspace.

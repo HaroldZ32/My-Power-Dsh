@@ -1,0 +1,128 @@
+{
+  "ok": true,
+  "slug": "ulw-command",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "artifact": {
+      "ok": true,
+      "sources": {
+        "mpd-dsh-adapter": {
+          "source": "shipped",
+          "path": "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "missingInShipped": [],
+          "buildExit": null
+        },
+        "mpd-ulw": {
+          "source": "shipped",
+          "path": "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js",
+          "missingInShipped": [],
+          "buildExit": null
+        }
+      },
+      "shippedMarkers": {
+        "adapter": [
+          "registerCommand",
+          "submitUserTurn"
+        ],
+        "ulw": [
+          "registerCommand",
+          "ULW_ACTIVATION_DIRECTIVE",
+          "usage: /ulw"
+        ]
+      },
+      "pendingIntegrationRebuild": false,
+      "note": "a src-built artifact proves the wave's code on a real boot; the shipped dist carries the same code after the wave's single integration rebuild"
+    },
+    "shippedComposition": {
+      "ok": true,
+      "problems": [],
+      "listing": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "usage": {
+        "commandId": "cmd-7851f1b2-1",
+        "kind": "error",
+        "text": "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective"
+      },
+      "activation": {
+        "commandId": "cmd-7851f1b2-2",
+        "kind": "success",
+        "text": "ULW activated: qa-ulw-objective-command"
+      },
+      "lifecycle": {
+        "runs": [
+          "ulw",
+          "ultrawork"
+        ],
+        "kinds": [
+          "error",
+          "success"
+        ]
+      },
+      "clauses": [
+        "triage",
+        "gate",
+        "team",
+        "loop",
+        "fixOnSight",
+        "closeOut"
+      ],
+      "numbered": 6,
+      "gating": true,
+      "applyFailure": false
+    },
+    "gesture": {
+      "ok": true,
+      "problems": [],
+      "gating": true,
+      "finding": null,
+      "rewritten": true,
+      "clauses": [
+        "triage",
+        "gate",
+        "team",
+        "loop",
+        "fixOnSight",
+        "closeOut"
+      ],
+      "numbered": 6,
+      "commandRuns": 0,
+      "objectiveSeen": true
+    },
+    "stubServed": {
+      "ok": true,
+      "requests": 5
+    },
+    "workspacesSandboxed": {
+      "ok": true,
+      "sandbox": "/tmp/mpd-ulw-command-FRW9Kc",
+      "gatedWorkspace": "/tmp/mpd-ulw-command-FRW9Kc/ws-shipped"
+    },
+    "equivalenceTableTools": {
+      "ok": true,
+      "observed": true,
+      "toolCount": 103,
+      "missing": []
+    },
+    "gatedProblems": []
+  },
+  "crossLaneFindings": [],
+  "env": {
+    "DSH_HOME": "/tmp/mpd-ulw-command-FRW9Kc/dsh-home",
+    "HOME": "/tmp/mpd-ulw-command-FRW9Kc/run-home"
+  },
+  "gatingArm": "shipped",
+  "gatingNote": "steps.shippedComposition (gating=true) and steps.gesture (gating=true) are recorded; a repair of the gesture finding turns its gating flag true"
+}

@@ -1,0 +1,9 @@
+# t9 step 1 — MANIFEST REVISION PIN (precondition from the captain)
+$ date -u +%Y-%m-%dT%H:%M:%SZ  -> 2026-09-15T06:45:21Z
+$ sha256sum dsh-plugin.json
+84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9  dsh-plugin.json
+$ node -e "const m=require('./dsh-plugin.json'); console.log(m.name, m.version, m.id)"
+@mpd-dsh/mpd 0.9.1 com.mpd-dsh.mpd-tui
+
+# expected post-t24 digest per the captain: computed from the file at lane start (this is it)
+# any later change invalidates this lane's verdict -> re-run and record both revisions

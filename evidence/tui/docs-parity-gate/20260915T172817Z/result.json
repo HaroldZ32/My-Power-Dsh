@@ -1,0 +1,54 @@
+{
+  "task": "t76 — repair round 2 of the doc-pair gate (recursive discovery, inverse scan, package-README failure, exemption bookkeeping, scoped wording)",
+  "producedBy": "Junior Engineer (attempt 1)",
+  "measuredAt": "2026-09-15T17:28:17Z",
+  "verdict": "passed",
+  "changes": {
+    "recursiveDiscovery": "scripts/verify-docs-parity.mjs now walks docs/ RECURSIVELY (every *.md at any depth) and extensions/ RECURSIVELY for README.md files; a nested pair can no longer hide. Non-README .md files under extensions/ (extension skills, personas) are ASSETS and are deliberately not asked for a twin — stated in the header.",
+    "inverseScan": "Every *.zh-CN.md discovered (root, docs/ any depth, extensions/ any depth, packages/*/README) must have its non-zh twin; otherwise a violation `zh-CN file has no EN twin (<en> is missing)` is reported and ok is false. An inverse orphan whose EN path is an exempt record stays a printed exemption, per the same exemption map.",
+    "packageWithoutReadme": "A non-exempt package directory with no README is now a VIOLATION (`package-no-readme:<dir>`), so the census cannot stay green while a package is undocumented; packages/mpd-mcp-shared keeps its recorded exemption.",
+    "exemptionBookkeeping": "The header and the exemption reasons now state that 13 of the 15 EXEMPT_LONE_FILES entries are live on this tree while docs/adder4.md and docs/cnt8.md are ANTICIPATORY entries for files AGENTS.md §3 names but which do not exist here — so a future addition of either is exempted by design, and the count is never read as 'N live paths'.",
+    "wording": "AGENTS.md's Language-policy pointer sentence is scoped to what the gate discovers (recursive docs/, extensions/**/README.md, packages/*/README.md, root README) and states the two new violation classes; the §4 Doc-pairs row carries the same scope note."
+  },
+  "selfTest": {
+    "result": "14/14 PASS (was 7)",
+    "newCases": [
+      "recursive discovery: nested docs/ and extensions/ pairs are checked (nesting cannot hide a pair)",
+      "an extensions ASSET (.md that is not a README) is not demanded a twin",
+      "negative: nested pair with a mis-pointed switch link",
+      "negative: a zh-CN file with no EN twin is a VIOLATION (inverse scan)",
+      "an inverse orphan whose EN path is an exempt record is reported as an exemption, not a violation",
+      "negative: a non-exempt package directory without a README is a FAILURE",
+      "the exempt package (mpd-mcp-shared) is a reported note, not a violation"
+    ],
+    "retained": "the clean-tree case, the EVERY-exemption-asserted case (16 exemption paths), the three original mutants, and both exempt-file-gains-a-twin cases"
+  },
+  "census": {
+    "line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 violations=0 exempt=15 — PASS",
+    "exit": 0,
+    "pairs": 34,
+    "violations": 0,
+    "exemptReported": 15,
+    "newlyDiscoveredByRecursion": "no new pairs on the current tree (the recursion is preventive: a nested pair would now be found instead of silently skipped)"
+  },
+  "gates": {
+    "bun scripts/verify-docs-parity.mjs --self-test": "14/14 checks passed — PASS, exit 0",
+    "bun run verify:docs": "pairs=34 failed=0 violations=0 exempt=15 — PASS, exit 0",
+    "bun run typecheck": "exit 0",
+    "bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test": "exit 0"
+  },
+  "t75FindingsAddressed": {
+    "T75-DISCOVER-1": "closed via the recursive walk (docs/ any depth, extensions/**/README.md)",
+    "T75-DISCOVER-2": "closed via the inverse scan for zh-only documents",
+    "packageWithoutReadme": "closed: it is a violation now, not a note",
+    "exemptionCount": "explained in the header and per-entry reasons (13 live + 2 anticipatory)",
+    "wording": "the AGENTS.md pointer is scoped to discovery"
+  },
+  "changedPaths": [
+    "scripts/verify-docs-parity.mjs",
+    "AGENTS.md",
+    "evidence/tui/docs-parity-gate/20260915T172817Z/output.log",
+    "evidence/tui/docs-parity-gate/20260915T172817Z/result.json",
+    "evidence/tui/docs-parity-gate/20260915T172817Z/README.md"
+  ]
+}

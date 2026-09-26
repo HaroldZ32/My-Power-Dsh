@@ -1,0 +1,279 @@
+{
+  "task": "AC-1 / AC-2 (per-step and per-tool heartbeats for members and the captain)",
+  "lane": "team-watchdog-heartbeat",
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws",
+  "heartbeatFiles": {
+    "member": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "captain": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/captain.jsonl",
+    "memberSha256": "d76f5e4317a70c9daa6142f549a0b7c391f0f6e7e7ba47b8aca3b4edb8945c0f",
+    "captainSha256": "959be487e0b258963172f535696c60ef5860f7fb6816660c4390d7f40f9c31b7"
+  },
+  "observed": {
+    "applied": true,
+    "disposers": 6,
+    "events": [
+      "agent/pre-step",
+      "agent/session-start",
+      "agent/turn-stopping",
+      "tools/post-execute",
+      "tools/pre-execute",
+      "settings/updated",
+      "settings/document-updated"
+    ],
+    "memberKinds": [
+      "turn-start",
+      "step",
+      "step",
+      "tool",
+      "turn-end",
+      "turn-start",
+      "step",
+      "step",
+      "tool",
+      "turn-end"
+    ],
+    "memberStamps": [
+      {
+        "kind": "turn-start",
+        "at": 1789525272381,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525272382,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525272382,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "tool",
+        "at": 1789525272382,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "tool": "bash",
+        "callId": "call-1",
+        "ok": true,
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-end",
+        "at": 1789525272383,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-start",
+        "at": 1789525999462,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525999463,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525999463,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "tool",
+        "at": 1789525999463,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "tool": "bash",
+        "callId": "call-1",
+        "ok": true,
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-end",
+        "at": 1789525999464,
+        "member": "Architect",
+        "memberKey": "Architect",
+        "teamId": "heartbeat-probe",
+        "taskId": "t1",
+        "attemptId": "att-1",
+        "turnId": "Architect#1",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      }
+    ],
+    "memberFile": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "captainStamps": [
+      {
+        "kind": "turn-start",
+        "at": 1789525272383,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525272383,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "turn-start",
+        "at": 1789525999464,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      },
+      {
+        "kind": "step",
+        "at": 1789525999464,
+        "member": "captain",
+        "memberKey": "captain",
+        "teamId": "heartbeat-probe",
+        "taskId": null,
+        "attemptId": null,
+        "turnId": "captain#2",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws"
+      }
+    ],
+    "freshProcessPid": 49,
+    "freshProcessRead": true,
+    "postOnly": false,
+    "turnIdsDistinct": true
+  },
+  "checks": [
+    {
+      "id": "H1",
+      "ok": true,
+      "detail": "the mounted row installed its writers (applied=true, disposers=6)"
+    },
+    {
+      "id": "H2:agent/pre-step",
+      "ok": true,
+      "detail": "the row subscribed agent/pre-step"
+    },
+    {
+      "id": "H2:agent/session-start",
+      "ok": true,
+      "detail": "the row subscribed agent/session-start"
+    },
+    {
+      "id": "H2:agent/turn-stopping",
+      "ok": true,
+      "detail": "the row subscribed agent/turn-stopping"
+    },
+    {
+      "id": "H2:tools/post-execute",
+      "ok": true,
+      "detail": "the row subscribed tools/post-execute"
+    },
+    {
+      "id": "H3",
+      "ok": true,
+      "detail": "the member's heartbeat file carries every stamped kind [\"turn-start\",\"step\",\"step\",\"tool\",\"turn-end\",\"turn-start\",\"step\",\"step\",\"tool\",\"turn-end\"]"
+    },
+    {
+      "id": "H4",
+      "ok": true,
+      "detail": "the TOOL stamp is post-completion and carries the tool name + call id ({\"kind\":\"tool\",\"at\":1789525272382,\"member\":\"Architect\",\"memberKey\":\"Architect\",\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"turnId\":\"Architect#1\",\"tool\":\"bash\",\"callId\":\"call-1\",\"ok\":true,\"workspace\":\"/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/raw/sandbox/heartbeat/ws\"})"
+    },
+    {
+      "id": "H5",
+      "ok": false,
+      "detail": "the built bytes expose NO pre-dispatch hook (the tool waterfall subscribed is tools/post-execute; 'tools/pre-execute' absent)"
+    },
+    {
+      "id": "H6",
+      "ok": true,
+      "detail": "the member's step stamp resolves the MEMBER identity, and its file name is the plugin's own sanitized segment ({\"member\":\"Architect\",\"memberKey\":\"Architect\"}, file=architect.jsonl)"
+    },
+    {
+      "id": "H7",
+      "ok": true,
+      "detail": "the member's stamp binds the team, the current task and the attempt ({\"teamId\":\"heartbeat-probe\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"})"
+    },
+    {
+      "id": "H8",
+      "ok": true,
+      "detail": "the CAPTAIN's own turn is stamped under memberKey 'captain' ({\"member\":\"captain\",\"memberKey\":\"captain\"})"
+    },
+    {
+      "id": "H9",
+      "ok": true,
+      "detail": "the stamps were read back by a FRESH process (pid 49 vs lane pid 42)"
+    },
+    {
+      "id": "H10",
+      "ok": true,
+      "detail": "each stamp carries its generation's turnId (member keys stay disjoint)"
+    }
+  ],
+  "ok": false,
+  "notClaimed": [
+    "No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3). The witness is the mounted boot plus the events the host would fire, read back by a fresh process.",
+    "No pre-dispatch tool stamp exists or is claimed (W-9): the tool stamp is POST-completion only."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat",
+  "finishedAt": "2026-09-16T02:33:19.506Z"
+}

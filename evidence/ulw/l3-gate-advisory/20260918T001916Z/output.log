@@ -1,0 +1,167 @@
+### 2026-09-18T00:19:16Z pre-regeneration --check (expected RED: the region body changed)
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta session-start-gate" in packages/mpd-agent-teams-plugin/lib/session-start.js (lines 90-607) no longer matches this script's registered block — first difference at line 404; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it
+[exit=1]
+
+### 2026-09-18T00:19:31Z --write-registry (regenerate lib/mpd-deltas.js from the marked regions)
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (120 regions)
+[exit=0]
+
+### 2026-09-18T00:19:31Z --check (must be 0 after the regeneration, never hand-edited)
+[patch-agent-teams-fixes] already applied: 120 mpd delta region(s) across 10 adopted file(s)
+[exit=0]
+
+### 2026-09-18T00:19:36Z bun test packages/mpd-agent-teams-plugin
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+
+packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+
+ 301 pass
+ 0 fail
+ 2794 expect() calls
+Ran 301 tests across 3888 files. [22.61s]
+[exit=0]
+
+### 2026-09-18T00:20:03Z bun test the two touched case files (named evidence the new assertions ran)
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+
+ 15 pass
+ 0 fail
+ 93 expect() calls
+Ran 15 tests across 162 files. [5.69s]
+[exit=0]
+
+### 2026-09-18T00:20:17Z named case: the new installSessionTeamPolicy assertion alone
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+ 1 pass
+ 10 filtered out
+ 0 fail
+ 10 expect() calls
+Ran 1 test across 81 files. [5.73s]
+[exit=0]
+
+### 2026-09-18T00:20:24Z named case: the advisory notice assertion alone
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+
+ 1 pass
+ 10 filtered out
+ 0 fail
+ 8 expect() calls
+Ran 1 test across 81 files. [5.59s]
+[exit=0]
+
+### 2026-09-18T00:20:33Z bun run typecheck
+$ tsgo --noEmit
+[exit=0]
+
+### 2026-09-18T00:20:51Z node evidence/ulw/l3-gate-advisory/20260918T001916Z/probe.mjs
+[exit=0]
+
+### 2026-09-18T00:21:10Z MUTATION CONTROL — restore the OLD soft-trigger action in place, expect the probe RED, then restore byte-exactly
+[probe exit=1 — 1 is the EXPECTED red for the old behaviour]
+sha256 before=4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8
+sha256 after =4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8
+restored byte-exactly: YES
+[patch-agent-teams-fixes] already applied: 120 mpd delta region(s) across 10 adopted file(s)
+[post-restore --check exit=0]
+
+### 2026-09-18T00:21:16Z registry discipline: the heal/self-fix suites for the regenerated region
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+
+ 37 pass
+ 0 fail
+ 1333 expect() calls
+Ran 37 tests across 162 files. [19.02s]
+[exit=0]
+
+### 2026-09-18T00:21:36Z generated registry carries the new advisory text (never hand-edited)
+1
+[grep exit=0]
+
+### 2026-09-18T00:21:36Z git diff --stat for this lane
+ agent-references/agent-teams-deltas.md             |  2 +-
+ packages/mpd-agent-teams-plugin/lib/index.js       | 12 ++--
+ packages/mpd-agent-teams-plugin/lib/mpd-deltas.js  |  2 +-
+ .../mpd-agent-teams-plugin/lib/session-start.js    | 83 +++++++++++++++++-----
+ .../test/r3-f1-signal-c.test.mjs                   | 18 ++++-
+ .../test/session-start.test.ts                     | 78 ++++++++++++++++++--
+ 6 files changed, 162 insertions(+), 33 deletions(-)
+
+### 2026-09-18T00:22:24Z FINAL settled-hash verification (20s settle window; nothing else writes this lane's paths)
+4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8  packages/mpd-agent-teams-plugin/lib/session-start.js
+5d91a60c4d7605dd2e6dfd0235ff20cf09b970652d51751e3240b634e116cc72  packages/mpd-agent-teams-plugin/lib/index.js
+5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+baafea4603083ddc6be3bc1d7af32045fea81d5638a6ed18a53c2a35132b8803  packages/mpd-agent-teams-plugin/test/session-start.test.ts
+007fd149e0afc54b41e7995444b266e6160278bd93a11e0e7ea42b14b2ee6943  packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs
+a95e84d0fea9b9b45fde707bf7d543a0cadc922bdd654f47ef5150f2c67eff63  agent-references/agent-teams-deltas.md
+--- bun test packages/mpd-agent-teams-plugin
+
+ 301 pass
+ 0 fail
+ 2794 expect() calls
+Ran 301 tests across 3888 files. [22.62s]
+[exit=0]
+--- node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 120 mpd delta region(s) across 10 adopted file(s)
+[exit=0]
+--- bun run typecheck
+$ tsgo --noEmit
+[exit=0]
+--- probe re-run on the settled tree
+[probe exit=0]
+probe ok=true checks=21

@@ -1,0 +1,27 @@
+=== SETTLED SWEEP (contract revision 5) — 2026-09-17T07:45:51Z ===
+--- bun run typecheck (item 8 clause; the earlier cross-lane red is recorded in typecheck-cross-lane.log)
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+--- verify 1
+ 100 pass
+ 1 fail
+ 1399 expect() calls
+Ran 101 tests across 28 files. [10.33s]
+
+--- verify 2
+ 17 pass
+ 0 fail
+ 56 expect() calls
+Ran 17 tests across 4 files. [542.00ms]
+
+--- registry + heal
+[patch-agent-teams-fixes] already applied: 78 mpd delta region(s) across 9 adopted file(s)
+ 0 fail
+ 884 expect() calls
+Ran 21 tests across 2 files. [8.44s]
+
+--- whole plugin suite (regression)
+ 0 fail
+ 2145 expect() calls
+Ran 258 tests across 76 files. [10.35s]

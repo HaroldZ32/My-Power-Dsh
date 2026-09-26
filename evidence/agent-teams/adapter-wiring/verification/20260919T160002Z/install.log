@@ -1,0 +1,15 @@
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd 0.9.1 <- ../../../../..
+
+Done in 155ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.4.2.   │
+   │   Changelog: https://pnpm.io/v/12.4.2   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+

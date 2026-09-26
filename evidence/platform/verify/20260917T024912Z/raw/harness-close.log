@@ -1,0 +1,40 @@
+=== T-23/T-24 helper: one REAL run + probe + probe-after-exit ===
+[mpd-bg] started pid=17 log=/root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/helper.log pidfile=/root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/helper.log.pid
+[mpd-bg] note: start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)
+--- probe while running ---
+[mpd-bg] NO-PID-FILE /root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/helper.pid
+--- probe after exit ---
+[mpd-bg] NO-PID-FILE /root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/helper.pid
+--- log content ---
+HELPER-REAL-RUN-DONE
+
+=== T-21 reload-check + T-26 check-write ===
+[mpd-bg] RESTART-REQUIRED module=packages/mpd-team-watchdog-plugin/dist/index.js mtime=2026-09-17T02:20:15.372Z newest-session=/root/.dsh/sessions/--root-dshProj-my-power-dsh--/35adc693-ce37-4d8e-92c2-6fdddeeedd1e mtime=2026-09-17T02:10:11.323Z — dsh caches plugin modules at session start (T-21): restart dsh before judging this edit
+[mpd-bg] INSIDE-WORKSPACE /root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js (root /root/dshProj/my-power-dsh)
+[mpd-bg] outside-workspace /etc/passwd is outside the session workspace /root/dshProj/my-power-dsh — the file sandbox is workspace-write (T-26); write under the workspace or ask for a declared root
+
+=== T-43 negative case: a normal session is never refused (the plugin's own suite) ===
+ 28 pass
+ 0 fail
+ 333 expect() calls
+Ran 28 tests across 4 files. [363.00ms]
+=== T-23/T-24 helper: probe with the pidfile the helper actually creates (<log>.pid) ===
+[mpd-bg] started pid=15 log=/root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/probe.log pidfile=/root/dshProj/my-power-dsh/evidence/platform/verify/20260917T024912Z/raw/probe.log.pid
+[mpd-bg] note: start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)
+[mpd-bg] RUNNING pid=15
+[mpd-bg] DEAD pid=15
+log: PROBE-JOB-DONE
+
+=== T-50 suites (lazy resolution pinned by tests) ===
+ 0 fail
+ 137 expect() calls
+Ran 42 tests across 2 files. [734.00ms]
+ 0 fail
+ 560 expect() calls
+Ran 74 tests across 6 files. [2.30s]
+ 0 fail
+ 485 expect() calls
+Ran 31 tests across 4 files. [205.00ms]
+=== T-50 bound: the six-clean-boot observation in t12's own evidence ===
+  the register's honest bound: six consecutive clean boots on the correctly ordered tree never opened the window (t24, 6/6 adapterIdentity=mounted:mpdDsh, zero fallback lines) \u2014 so this change is justified by the code
+  (evidence file: evidence/platform/lazy-adapter/20260917T012724Z/result.json )

@@ -1,0 +1,50 @@
+# Independent cross-check of the dist-fresh reading after t48 — 2026-09-17T03:33:33Z
+#
+# Triggered by platform-engineer's message (03:12Z) correcting my ROUTED staleness finding as a
+# PRE-t48 snapshot. This is my own re-measurement, not a restatement of theirs.
+
+$ node scripts/verify-dist-fresh.mjs --json          # generatedAt 2026-09-17T03:33:35.141Z (driver JSON)
+[...JSON, full copy in verify-dist-fresh.json.log...]
+"ok": true, "findings": [], "counts": {...}, targets: 20, notCovered: 7 (the offline/upstream MCP artifacts)
+[summary] [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 1048ms
+[exit=0]
+
+## the disputed target, three-way agreement read from the SAME JSON
+  packages/mpd-workmate-plugin/src/index.ts -> dist/index.js
+    status              : FRESH
+    committedSha256     : 6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85
+    builtSha256         : 6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85
+    secondBuildSha256   : 6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85
+    committedBytes      : 55875
+$ sha256sum packages/mpd-workmate-plugin/dist/index.js
+  6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85  packages/mpd-workmate-plugin/dist/index.js   (55,875 B)
+$ stat -c '%y %n' …
+  2026-09-17 10:54:37 +0800  packages/mpd-workmate-plugin/dist/index.js   <- t48's rebuild
+  2026-09-17 10:31:00 +0800  packages/mpd-workmate-plugin/src/index.ts     <- t23's src edit
+
+## BY-PRODUCT CROSS-CONFIRMATION for my own lane (t45/t60 build-form evidence)
+  packages/mpd-ext-plugin/dist/index.js -> FRESH, f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a, 152,855 B
+  packages/mpd-ext-plugin/dist/sdk.js  -> FRESH, 4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195, 1,708 B
+  == the recorded round-trip pair the manual's §6 build-form sentence rests on ⇒ independently reproduced here.
+
+## RECONCILIATION (four steps, no term dropped)
+  13  pre-t44 (12 clean-at-HEAD + watchdog mid-edit)                       [platform-engineer t44 window]
+   0  t44 bulk rebuild, ~02:19Z                                            evidence/gates/dist-rebuild/20260917T021906Z/
+   1  t23's src edit at 02:31Z (my routed finding was TRUE at 02:44:50Z — recorded as such in that dir's
+      verify-gates-post-t44.log: "CURRENT (02:44:50Z): exit 1 … workmate 54,704 B 401573a0… != 55,875 B 6b1715d0…")
+   0  t48's rebuild at 02:54:37Z                                           evidence/pack-closure/workmate-dist-rebuild/20260917T025436Z/
+  ⇒ current reading to quote: 0 stale / 20 fresh, findings 0, notCovered 7, ok true.
+
+## DOES THE 34–528 B MAGNITUDE CORRECTION RIPPLE INTO MY LANE?  No.
+  $ grep -n '\-276\|58-74\|58–74\|528 B\|34–528' AGENTS.md agent-references/*.md EXTENSIONS-FOR-AGENTS.md
+  (no matches)
+  My lane's files state the package-dir trap QUALITATIVELY ("a package-directory build … is flagged
+  STALE even though it looks sanctioned") and quantify it only in LINE COMMENTS (26 differing lines,
+  24 after dropping the first) — a count of `// <module path>` comment lines, which the byte-gap law
+  does not touch. My one byte figure, the mpd-ext-plugin pair −276 B, was re-confirmed by
+  platform-engineer against their 13-target measurement.
+
+## NO packages/** WRITE BY THIS CROSS-CHECK (the gate rebuilds into a temp dir)
+$ find packages -path '*/dist/*' -name '*.js' -newermt '2026-09-17 11:30:00' -printf '%TY-%Tm-%Td %TH:%TM:%TS  %p\n'
+(empty ⇒ nothing under packages/** was written at/after the cross-check)
+newest dist mtime overall: 2026-09-17 10:54:37.4648011040  packages/mpd-workmate-plugin/dist/index.js

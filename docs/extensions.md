@@ -7,7 +7,7 @@ package — or a plain directory on disk — contributes **skills**, **flows**, 
 **roles** without touching the core bundle. Loader row id `mpd-ext`, cordis service
 `mpdExtensions`.
 
-This guide is written for the plugin author who wants to add an RTL authoring flow, a HarmonyOS
+This guide is written for the plugin author who wants to add an authoring flow, a HarmonyOS
 porting procedure, a skill pack or an MCP server. Every sample below was taken from the shipped
 code (`packages/mpd-ext-plugin`, `extensions/mpd-ext-example`, `scripts/mpd-ext.mjs`) and every
 command was run as printed — see [§12](#12-how-the-samples-in-this-guide-are-verified).
@@ -62,8 +62,8 @@ const ext = ctx.get("mpdExtensions")
 ext?.register(
   defineExtension({
     apiVersion: 1,
-    id: "rtl-verilog",
-    description: "Verilog authoring flows, shipped by the rtl package",
+    id: "authoring-flows",
+    description: "Authoring flows for code changes, shipped by the authoring package",
     contributes: { skills: [{ root: "skills" }], flows: [{ dir: "flows" }] },
   }),
   { root: pkgRoot }, // the directory your assets live under — resolve it from your own
@@ -79,14 +79,14 @@ this harness, and the extension row may legitimately be absent.
 **Data plane** — a directory whose name is the root, with one manifest file:
 
 ```text
-~/.mpd/extensions/rtl-verilog/
+~/.mpd/extensions/authoring-flows/
 ├── mpd-ext.json          # the descriptor (this file defines the root)
 ├── skills/               # { "root": "skills" }
-│   └── rtl-triage/SKILL.md
+│   └── change-triage/SKILL.md
 ├── flows/                # { "dir": "flows" }
-│   └── rtl-triage-flow.json
+│   └── change-triage-flow.json
 ├── personas/             # { "roles": [{ "persona": "personas/…" }] }
-│   └── verilog-reviewer.md
+│   └── code-reviewer.md
 └── server.mjs            # { "mcp": [{ "command": "node", "args": ["server.mjs"] }] }
 ```
 
@@ -140,11 +140,11 @@ nothing). Here a typo is loud.
 
 ```json
 {
-  "serverName": "rtl-lint",
+  "serverName": "lint-mcp",
   "transport": "stdio",
   "command": "node",
   "args": ["server.js"],
-  "env": { "RTL_ROOT": "." },
+  "env": { "PROJECT_ROOT": "." },
   "cwd": ".",
   "toolCallTimeoutMs": 60000,
   "connectTimeoutMs": 10000
@@ -155,10 +155,10 @@ nothing). Here a typo is loud.
 
 ```json
 {
-  "name": "Verilog Reviewer",
-  "description": "Reviews SystemVerilog RTL read-only.",
+  "name": "Code Reviewer",
+  "description": "Reviews a code change read-only before review.",
   "readonly": true,
-  "persona": "personas/verilog-reviewer.md",
+  "persona": "personas/code-reviewer.md",
   "provider": "deepseek-official",
   "model": "deepseek-v4-flash"
 }
@@ -257,15 +257,15 @@ All four kinds, taken verbatim from the shipped reference extension
 ### 5.1 A skill (`skills`)
 
 Manifest line: `"skills": [{ "root": "skills", "rank": 300 }]`, and
-`extensions/mpd-ext-example/skills/rtl-triage/SKILL.md`:
+`extensions/mpd-ext-example/skills/change-triage/SKILL.md`:
 
 ```markdown
 ---
-name: rtl-triage
-description: "Reference extension skill: triage an RTL change before review (what changed, what it touches, which risks deserve a reader). Use when a Verilog/SystemVerilog diff needs a first pass before a human or reviewer looks at it."
+name: change-triage
+description: "Reference extension skill: triage a code change before review (what changed, what it touches, which risks deserve a reader). Use when a code diff needs a first pass before a human or reviewer looks at it."
 ---
 
-# rtl-triage
+# change-triage
 
 …the procedure…
 ```
@@ -278,14 +278,14 @@ legacy spellings and are rejected with the name to use instead.
 ### 5.2 A flow (`flows`)
 
 Manifest line: `"flows": [{ "dir": "flows", "rank": 300 }]`, and
-`extensions/mpd-ext-example/flows/rtl-triage-flow.json` (abridged to its first two steps):
+`extensions/mpd-ext-example/flows/change-triage-flow.json` (abridged to its first two steps):
 
 ```json
 {
-  "id": "rtl-triage-flow",
-  "title": "RTL triage before review",
-  "description": "Walk an RTL change through the reference extension's triage skill, then hand the result to a reviewer. Use before a Verilog/SystemVerilog change is reviewed.",
-  "whenToUse": "Use when a Verilog/SystemVerilog change needs a first pass before review.",
+  "id": "change-triage-flow",
+  "title": "Change triage before review",
+  "description": "Walk a code change through the reference extension's triage skill, then hand the result to a reviewer. Use before a code change is reviewed.",
+  "whenToUse": "Use when a code change needs a first pass before review.",
   "steps": [
     {
       "title": "Collect the change",
@@ -295,7 +295,7 @@ Manifest line: `"flows": [{ "dir": "flows", "rank": 300 }]`, and
     },
     {
       "title": "Apply the triage skill",
-      "detail": "Follow the `rtl-triage` skill: classify functional vs editorial, then name the contract each functional change can break.",
+      "detail": "Follow the `change-triage` skill: classify functional vs editorial, then name the contract each functional change can break.",
       "tool": "read",
       "output": "A ranked list of risks with file and line."
     }
@@ -311,7 +311,7 @@ Manifest item (`extensions/mpd-ext-example/mpd-ext.json`):
 {
   "mcp": [
     {
-      "serverName": "example",
+      "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
       "args": ["server.mjs"],
@@ -333,24 +333,24 @@ Two details authors get wrong:
 
 - **`cwd` is extension-root-relative.** `"cwd": "."` means the extension's own directory, not the
   dsh process's working directory; `command` and `args` are used as authored.
-- **Tool names are derived, not chosen.** A discovered raw tool name `foo` on server `rtl-lint`
-  becomes `mcp__rtl-lint__foo`. Characters outside `[A-Za-z0-9_-]` become `_`, the whole name is
+- **Tool names are derived, not chosen.** A discovered raw tool name `foo` on server `lint-mcp`
+  becomes `mcp__lint-mcp__foo`. Characters outside `[A-Za-z0-9_-]` become `_`, the whole name is
   capped at 64 characters, and **any lossy transformation (sanitising or truncation) appends
   `_<12-hex sha256(serverName + NUL + rawName)>`** so two distinct raw names can never collide.
-  Steps in a flow can then reference `mcp__rtl-lint__foo` as a tool hint.
+  Steps in a flow can then reference `mcp__lint-mcp__foo` as a tool hint.
 
 ### 5.4 A role (`roles`)
 
-Manifest item plus its persona file (`extensions/mpd-ext-example/personas/example-reviewer.md`):
+Manifest item plus its persona file (`extensions/mpd-ext-example/personas/code-reviewer.md`):
 
 ```json
 {
   "roles": [
     {
-      "name": "Example Reviewer",
-      "description": "Reference extension role: reviews a change against the extension contract and reports findings without editing files.",
+      "name": "Code Reviewer",
+      "description": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
       "readonly": true,
-      "persona": "personas/example-reviewer.md"
+      "persona": "personas/code-reviewer.md"
     }
   ]
 }
@@ -369,9 +369,10 @@ row applied after the roster). It then behaves like a base specialist:
   a workmate BASE template;
 - `provider` + `model` (supplied together) become its route; both absent means the roster's default.
 
-**A role never becomes an agent-teams teammate.** The adopted agent-teams `mpd` profile member list
-is static patch configuration (`packages/mpd-bundle/cordis.patch.yml`) and cannot be extended from a
-plugin at runtime. Spawn it one-shot or as a workmate base.
+**A role never becomes a teammate on its own.** The teammate roster is what the Lead creates by name
+with the official `spawn_teammate` tool, which is a model-facing tool call rather than a registration
+surface, so an extension cannot add a member to it from a plugin. Spawn an extension role
+one-shot or as a workmate base.
 
 ## 6. Failure and collision policy
 
@@ -391,7 +392,7 @@ surfaced by `mpd_ext_list` / `mpd_ext_show`. Nothing in the extension interface 
 | a skill name colliding with a lower-ranked provider | the rank ladder decides; the losing candidate is dropped by the harness. Both surfaces are now reported: a collision between two EXTENSIONS is annotated on the loser (`skill surface:` in its error list, naming the winner and both ranks), and every claimed name is checked against the harness's own catalog by `mpd_ext_list` / `mpd_ext_show` (`skillServing.served` / `.notServed`) |
 | an MCP tool name colliding with a live tool | that tool is skipped and recorded; the number of tools that survive from a failed swap is **zero**, never a half-mounted server |
 | an MCP server that is unreachable, hangs or dies | per-server state `connecting`/`connected`/`unavailable`/`failed`/`disabled` plus a stderr tail in `mpd_ext_show`; the boot is neither blocked nor failed |
-| a role name already taken by a base role or by another extension | refused per role, reported in `mpd_roles_list`'s `refused` list and logged once; the roster and the boot keep working |
+| a role name already taken by a base role or by another extension | refused per role and reported on **both** surfaces (a `refused: …` line in the extension's `errors`, and an entry in `mpd_roles_list`'s `refused` list), logged once; the roster and the boot keep working |
 | a role persona file that cannot be read | refused per role, with the path in the reason |
 | two extensions with the same id | first plane wins, the shadowed one is recorded (`shadowed`) |
 
@@ -420,15 +421,15 @@ required because the CLI imports the TypeScript contract sources directly):
 # 1. scaffold a minimal, loadable extension straight into a discovery root.
 #    The user plane is the right root for all four kinds; the project plane
 #    (<workspace>/.mpd/extensions) accepts skills + flows only.
-bun scripts/mpd-ext.mjs scaffold rtl-demo --dir ~/.mpd/extensions
-# [mpd-ext] scaffolded "rtl-demo" at /home/<you>/.mpd/extensions/rtl-demo
+bun scripts/mpd-ext.mjs scaffold demo-ext --dir ~/.mpd/extensions
+# [mpd-ext] scaffolded "demo-ext" at /home/<you>/.mpd/extensions/demo-ext
 #   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
-#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/rtl-demo
+#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/demo-ext
 
 # 2. validate it with the SAME validator the runtime uses (exit 0 = loadable).
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/rtl-demo
-# [mpd-ext] validate /home/<you>/.mpd/extensions/rtl-demo (plane=user)
-#   extension "rtl-demo": loadable
+bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/demo-ext
+# [mpd-ext] validate /home/<you>/.mpd/extensions/demo-ext (plane=user)
+#   extension "demo-ext": loadable
 # [mpd-ext] ok
 
 # 3. see what this host would discover, plane by plane (bundle plane included).
@@ -436,18 +437,18 @@ bun scripts/mpd-ext.mjs list
 
 # 4. edit the manifest: write your real content and set "enabled": true
 #    (a scaffolded extension starts disabled on purpose).
-$EDITOR ~/.mpd/extensions/rtl-demo/mpd-ext.json
+$EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 
 # 5. restart dsh — there is no reload tool in v1; the restart IS the reload.
 
 # 6. use it in a session: ask the model what it sees, then use the content.
-#    mpd_ext_list      -> rtl-demo [user/directory] enabled skills=1 flows=1 ...
-#    mpd_flow_list     -> rtl-demo-flow ...
-#    mpd_roles_list    -> <role name> [..., extension:rtl-demo]
+#    mpd_ext_list      -> demo-ext [user/directory] enabled skills=1 flows=1 ...
+#    mpd_flow_list     -> demo-ext-flow ...
+#    mpd_roles_list    -> <role name> [..., extension:demo-ext]
 ```
 
 Two ways to enable something without editing its manifest: `"enabled": true` in the descriptor, or
-`extensions.enable: ["rtl-demo"]` in `.mpd/mpd.jsonc` (§4.3). A **disabled** extension contributes
+`extensions.enable: ["demo-ext"]` in `.mpd/mpd.jsonc` (§4.3). A **disabled** extension contributes
 nothing anywhere — not skills, not flows, not MCP, not roles — and the CLI's `list` shows the
 manifest's own flag while `mpd_ext_list` shows the *effective* state (so the two can differ when a
 config list overrides the manifest).
@@ -519,8 +520,8 @@ Stated plainly, so nobody discovers them from a failure:
   state machine.
 - **No extension-contributed agent presets** — the preset plane is deliberately out of scope (no
   clean runtime seam).
-- **Extension roles never become agent-teams teammates** — that member list is static patch
-  configuration.
+- **Extension roles never become teammates by themselves** — a teammate exists only when the Lead
+  spawns it by name with the official `spawn_teammate` tool.
 - **No reload** — restart dsh; a failed MCP server is retried on the next boot.
 - **`extensions.*` config is process-level, not per session** (§4.3), because `mpdConfig` is an
   apply-time process-level snapshot.
@@ -528,12 +529,13 @@ Stated plainly, so nobody discovers them from a failure:
   compare extensions, so `mpd_ext_list` / `mpd_ext_show` ask the harness's catalog
   (`ctx.skills.list`) and report each claim as `served` or `notServed`. If that read fails, the
   report says `checked: false` with the reason instead of guessing.
-- **A role refused by the roster is still listed by `mpd_ext_list` as declared** — the roster
-  reports the refusal (`mpd_roles_list.refused`), the extension registry does not; making the two
-  surfaces agree is a follow-up.
+- **A role the roster refuses is reported by both surfaces.** `mpd_ext_list` re-derives the same
+  refusals (`refused: …` lines in the extension's `errors`, produced by `annotateRoleSurfaces` in
+  `src/registry.ts`) and lists only the usable names, so its view matches `mpd_roles_list.refused` —
+  the former follow-up is closed.
 - **No GUI panel, no marketplace, no remote download, no version solving.**
-- The RTL/EDA and HarmonyOS capability surfaces themselves are **not** built here: this release
-  ships the interface that lets them arrive as separate extensions or packages.
+- Language- and domain-specific capability surfaces are **not** built here: this release ships the
+  interface that lets them arrive as separate extensions or packages.
 
 ## 12. How the samples in this guide are verified
 
@@ -544,8 +546,8 @@ Every manifest, asset and command above is taken from, and checked against, the 
 bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
 
 # the workflow of §8, end to end (scaffold -> validate -> enable -> list)
-SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold rtl-demo --dir $SB/.mpd/extensions
-HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/rtl-demo
+SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold demo-ext --dir $SB/.mpd/extensions
+HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/demo-ext
 
 # the CLI's own checks (temp dirs only)
 bun scripts/mpd-ext.mjs --self-test

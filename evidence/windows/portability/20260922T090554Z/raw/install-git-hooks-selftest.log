@@ -1,0 +1,19 @@
+[install-git-hooks] self-test roots: throwaway repos under C:\Users\ZHAO~1.YIN\AppData\Local\Temp
+[install-git-hooks] real hooks dir (read-only snapshot): C:\MyDoc\DshProj\my-power-dsh\.git\hooks\pre-commit (git rev-parse --git-path hooks)
+[install-git-hooks] git: git version 2.55.0
+[install-git-hooks] installed: C:\Users\ZHAO~1.YIN\AppData\Local\Temp\install-git-hooks-a-TtYgqT\.git\hooks\pre-commit
+[install-git-hooks] mode: 0755  bytes: 1971  sha256: a40db39839527ca2036678e769072b54ddcd38e9b9cc3765a9448f3ee7bc33b4
+[install-git-hooks] installed: C:\Users\ZHAO~1.YIN\AppData\Local\Temp\install-git-hooks-b-VqCW3a\.git\hooks\pre-commit
+[install-git-hooks] mode: 0755  bytes: 1971  sha256: a40db39839527ca2036678e769072b54ddcd38e9b9cc3765a9448f3ee7bc33b4
+[install-git-hooks] installed: C:\Users\ZHAO~1.YIN\AppData\Local\Temp\install-git-hooks-c-WkYLue\.git\hooks\pre-commit
+[install-git-hooks] mode: 0755  bytes: 1971  sha256: a40db39839527ca2036678e769072b54ddcd38e9b9cc3765a9448f3ee7bc33b4
+[install-git-hooks] installed: C:\Users\ZHAO~1.YIN\AppData\Local\Temp\install-git-hooks-f-McMKEk\.git\hooks\pre-commit
+[install-git-hooks] mode: 0755  bytes: 1971  sha256: a40db39839527ca2036678e769072b54ddcd38e9b9cc3765a9448f3ee7bc33b4
+[install-git-hooks] self-test census: 6 arm(s)
+[install-git-hooks] arm a-corpus-without-lock-refused: PASS - exit 1; remedy named (3 steps); VENDOR_LOCK.json byte-unchanged (sha256 91e920299938...)
+[install-git-hooks] arm b-corpus-with-lock-passes: PASS - exit 0 with skills/ + VENDOR_LOCK.json staged together
+[install-git-hooks] arm c-non-corpus-passes: PASS - exit 0 for src/app.js + docs/skills-notes.md (prefix match, not substring)
+[install-git-hooks] arm d-empty-or-unwired-hook-detected: PASS - empty + unwired text redden; the unwired stub exits 0 on a corpus commit, so text health is required
+[install-git-hooks] arm e-real-hooks-untouched: PASS - real hooks untouched (missing); 3 install(s), all under C:\Users\ZHAO~1.YIN\AppData\Local\Temp
+[install-git-hooks] arm f-overwrite-refused-without-force: PASS - existing hook refused without --force (file byte-untouched); --force overwrote; sha256 a40db3983952... matches disk
+[install-git-hooks] self-test PASS: 6/6 arms

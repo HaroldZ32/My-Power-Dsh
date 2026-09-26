@@ -1,0 +1,7 @@
+driver-header claim check (T-80)
+parameters: claims \bA(\d+)\b + \bA(\d+)\s*[–-]\s*A?(\d+)\b (markers \b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b; references (design|acceptance|\bplan\b|§|\bt\d+\b)) · keys add\(\s*"A(\d+)[^"]*" · mode one offline process · unit one driver file · scope /tmp/revb2-scratch/e5a · moment 2026-09-17T14:33:26.829Z
+
+  FAIL driver:../../../tmp/revb2-scratch/e5a/claimed-but-unasserted.mjs — CLAIMED-BUT-UNASSERTED A6 (header phrase: "checks A1-A9 (seeded rot: A9 is claimed, never asserted)"); CLAIMED-BUT-UNASSERTED A7 (header phrase: "checks A1-A9 (seeded rot: A9 is claimed, never asserted)"); CLAIMED-BUT-UNASSERTED A8 (header phrase: "checks A1-A9 (seeded rot: A9 is claimed, never asserted)"); CLAIMED-BUT-UNASSERTED A9 (header phrase: "checks A1-A9 (seeded rot: A9 is claimed, never asserted)")
+[driver-headers] evidence -> evidence/review/wave2b-laneB2/20260917T142943Z/seeded-e5a-claimed-but-unasserted
+
+[driver-headers] 1 file(s) scanned, 1 key-producing driver(s), 1 claim set(s), 0 NO-CLAIM-SET, 4 violation(s)

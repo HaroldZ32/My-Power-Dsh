@@ -1,0 +1,9 @@
+-// (immutable evidence: T-53, T-74).
+-  return { claims, references, claimLines }
+-  const { claims, references, claimLines } = parseHeaderClaims(text, { naive })
+-  const naive = process.argv.includes("--naive")
+-    mode: naive ? "driver-headers (naive matcher)" : "driver-headers",
+-  const files = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
+-      if (line.includes(patternArg)) hits.push({ path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) })
+-  const report = { task: "T-90 anchor scan", run_at: runAt, pattern: patternArg, scope: dirArg, files_scanned: files.length, matches: hits }
+-  log(`[anchor-scan] ${matches(hits)} match(es) in ${files.length} file(s) under ${dirArg}`)

@@ -1,0 +1,117 @@
+{
+  "task": "AC-11 (five declared knobs, one declaration, both front doors, row-vs-namespace precedence, live re-read)",
+  "lane": "team-watchdog-config",
+  "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170708Z-config/raw/sandbox/config/ws",
+  "observed": {
+    "declaration": "(4485 B read)",
+    "declarationIsOne": true,
+    "tuiBytes": "(111179 B read)",
+    "webBytes": "(291758 B read)",
+    "sameSetAcrossDoors": true,
+    "rowConfig": {
+      "enabled": true,
+      "warnSilenceMs": 60000,
+      "tickIntervalMs": 5000,
+      "warnStreakToEscalate": 2,
+      "actionOnEscalate": "pause"
+    },
+    "knobsAtMount": {
+      "enabled": true,
+      "warnSilenceMs": 60000,
+      "tickIntervalMs": 5000,
+      "warnStreakToEscalate": 2,
+      "actionOnEscalate": "pause",
+      "issues": []
+    },
+    "rowConfigEffective": true,
+    "namespaceValues": {
+      "warnSilenceMs": 30000,
+      "tickIntervalMs": 40000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause",
+      "enabled": true
+    },
+    "knobsAfterEvent": {
+      "enabled": true,
+      "warnSilenceMs": 30000,
+      "tickIntervalMs": 10000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause",
+      "issues": [
+        {
+          "path": "watchdog.tickIntervalMs",
+          "problem": "must be < watchdog.warnSilenceMs (30000); clamped",
+          "fallback": 10000
+        }
+      ]
+    },
+    "namespaceWins": true,
+    "liveWithoutRestart": true,
+    "clamp": {
+      "requested": 40000,
+      "warnSilenceMs": 30000,
+      "applied": 10000
+    },
+    "clampedBelowSilence": true,
+    "actionOnEscalateIsPause": true
+  },
+  "checks": [
+    {
+      "id": "C1",
+      "ok": true,
+      "detail": "the ONE declaration carries all five knobs (missing: [])"
+    },
+    {
+      "id": "C2",
+      "ok": true,
+      "detail": "the knobs live in exactly ONE declaration (settings-schema.ts) — the front doors derive from it"
+    },
+    {
+      "id": "C3",
+      "ok": true,
+      "detail": "the BUILT TUI bytes carry every knob (missing: [])"
+    },
+    {
+      "id": "C4",
+      "ok": true,
+      "detail": "the BUILT web client bytes carry every knob (missing: [])"
+    },
+    {
+      "id": "C5",
+      "ok": true,
+      "detail": "both front doors expose the SAME five knobs (no knob reachable from one door only)"
+    },
+    {
+      "id": "C6",
+      "ok": true,
+      "detail": "with no `watchdog` section the ROW config is the effective value ({\"enabled\":true,\"warnSilenceMs\":60000,\"tickIntervalMs\":5000,\"warnStreakToEscalate\":2,\"actionOnEscalate\":\"pause\"} → {\"enabled\":true,\"warnSilenceMs\":60000,\"tickIntervalMs\":5000,\"warnStreakToEscalate\":2,\"actionOnEscalate\":\"pause\",\"issues\":[]})"
+    },
+    {
+      "id": "C7",
+      "ok": true,
+      "detail": "the NAMESPACE outranks the row config when a `watchdog` section exists ({\"warnSilenceMs\":30000,\"tickIntervalMs\":40000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\",\"enabled\":true} → {\"enabled\":true,\"warnSilenceMs\":30000,\"tickIntervalMs\":10000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\",\"issues\":[{\"path\":\"watchdog.tickIntervalMs\",\"problem\":\"must be < watchdog.warnSilenceMs (30000); clamped\",\"fallback\":10000}]})"
+    },
+    {
+      "id": "C8",
+      "ok": true,
+      "detail": "the re-read happened LIVE: the same mounted engine reports the new knobs after the document-updated event, with no restart"
+    },
+    {
+      "id": "C9",
+      "ok": true,
+      "detail": "the measured clamp holds: tickIntervalMs 40000 is clamped to 10000, below warnSilenceMs 30000 and equal to the engine's live value 10000"
+    },
+    {
+      "id": "C10",
+      "ok": true,
+      "detail": "the escalation action is the PRESERVING pause everywhere it is declared or resolved ({\"declared\":\"pause\",\"resolved\":\"pause\"})"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "The live re-read is driven through the adapter's own `settings/document-updated` bridge on a stub harness (the host's event, the real row) — not through a live GUI session.",
+    "The clamp is asserted from the running engine's reported knobs, not from a source string."
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170708Z-config",
+  "finishedAt": "2026-09-15T17:07:08.581Z"
+}

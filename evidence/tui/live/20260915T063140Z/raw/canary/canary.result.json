@@ -1,0 +1,14 @@
+{
+  "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z",
+  "canaryModule": "/root/dshProj/my-power-dsh/evidence/tui/live/20260915T063140Z/raw/canary/t8-canary-renderers.mjs",
+  "tmuxFailures": [],
+  "canaryRowRendered": false,
+  "ourRowRendered": false,
+  "boardTitleRendered": true,
+  "statusLineRendered": true,
+  "paneChars": [
+    2218,
+    2957,
+    2867
+  ]
+}

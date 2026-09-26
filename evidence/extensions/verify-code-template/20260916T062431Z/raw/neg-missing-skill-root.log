@@ -1,0 +1,6 @@
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root (plane=user)
+  extension "demo-ext": loadable
+  contributes: 0 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  error contributes.skills[0]: cannot read skills root /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root/skills: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root/skills'
+  pending contributes.mcp[0]: pending: server "demo-ext" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] 1 problem(s) — this extension would not load

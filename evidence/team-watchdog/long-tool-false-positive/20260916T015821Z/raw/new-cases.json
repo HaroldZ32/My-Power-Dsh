@@ -1,0 +1,250 @@
+{
+  "fixture": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs",
+  "casesInFixture": [
+    "dead-team-suppressed",
+    "live-team-never-started",
+    "second-team-dispatch",
+    "disabled-control",
+    "never-started-recorded",
+    "completed-turn-idle",
+    "mid-turn-stall",
+    "member-stops-stepping",
+    "captain-wedge",
+    "warn-90s",
+    "escalate-3x",
+    "pause-preserves",
+    "pause-preserves-halt-control",
+    "scene-restore",
+    "long-tool-no-hold",
+    "long-tool-bound-disabled-control",
+    "completed-tool-not-in-flight",
+    "tool-inflight-expired"
+  ],
+  "r6Cases": [
+    "long-tool-no-hold",
+    "long-tool-bound-disabled-control",
+    "completed-tool-not-in-flight",
+    "tool-inflight-expired"
+  ],
+  "results": [
+    {
+      "case": "long-tool-no-hold",
+      "ok": true,
+      "observation": {
+        "injected": "a REAL 1.6 s command inside ONE tool call, with the member's last stamp 2 windows old",
+        "hammeredWith": "the frozen arithmetic, at 300 ms per window",
+        "reproduced": "the r6 defect: before the fix this SAME shape escalated and PAUSED our own team",
+        "gatePassedThrough": {
+          "kind": "allow"
+        },
+        "realCommand": {
+          "elapsedMs": 1622,
+          "exitStatus": 0
+        },
+        "ticks": [
+          {
+            "silenceFromLastStamp": 509,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          },
+          {
+            "silenceFromLastStamp": 912,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          },
+          {
+            "silenceFromLastStamp": 1313,
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          }
+        ],
+        "kinds": [
+          "",
+          "",
+          ""
+        ],
+        "silenceMsAtLastTick": 1313,
+        "beyondThreeWindows": true,
+        "stampWrittenByThePreHook": [
+          "step",
+          "tool-start"
+        ],
+        "stampStreamAfterCompletion": [
+          "step",
+          "tool-start",
+          "tool"
+        ],
+        "inFlightSuppressed": 3,
+        "stats": {
+          "holdsApplied": 0,
+          "scenes": 0,
+          "incidents": 0,
+          "toolStarts": 1
+        },
+        "hold": null
+      },
+      "lines": [
+        "a REAL command ran 1622 ms (exit 0) inside ONE tool call",
+        "the pre hook stamped [\"step\",\"tool-start\"] and the POST closed it: [\"step\",\"tool-start\",\"tool\"]",
+        "ticks (silence from the member's last real stamp => decisions): [[509,[]],[912,[]],[1313,[]]]",
+        "the LAST tick is 1313 ms past the last stamp, i.e. beyond 3 windows (900 ms): true",
+        "WARNs/ESCALATEs/holds/scenes/incidents: {\"holdsApplied\":0,\"scenes\":0,\"incidents\":0,\"toolStarts\":1} — hold file: null",
+        "observations the in-flight rule explained away: 3",
+        "=> r6: a member working inside a long tool call is NO LONGER PAUSED"
+      ]
+    },
+    {
+      "case": "long-tool-bound-disabled-control",
+      "ok": true,
+      "observation": {
+        "injected": "the SAME real 1.6 s tool call, with the r6 in-flight bound DISABLED (toolInFlightMaxMs: 0)",
+        "gatePassedThrough": {
+          "kind": "allow"
+        },
+        "realCommand": {
+          "elapsedMs": 1622,
+          "exitStatus": 0
+        },
+        "ticks": [
+          {
+            "silenceFromLastStamp": 401,
+            "decisions": [
+              "warn"
+            ],
+            "scenes": 1,
+            "holds": 0
+          },
+          {
+            "silenceFromLastStamp": 805,
+            "decisions": [
+              "warn"
+            ],
+            "scenes": 1,
+            "holds": 0
+          },
+          {
+            "silenceFromLastStamp": 1207,
+            "decisions": [
+              "escalate"
+            ],
+            "scenes": 1,
+            "holds": 1
+          }
+        ],
+        "kinds": [
+          "warn",
+          "warn",
+          "escalate"
+        ],
+        "stampWrittenByThePreHook": [
+          "step",
+          "tool-start"
+        ],
+        "inFlightSuppressed": 0,
+        "stats": {
+          "holdsApplied": 1,
+          "scenes": 3
+        },
+        "hold": {
+          "id": "793d1941-8b42-4cc2-ae9a-ab518d59c693",
+          "taskId": "t1",
+          "attemptId": "att-1"
+        }
+      },
+      "lines": [
+        "the pre hook STILL stamps tool-start ([\"step\",\"tool-start\"]) — the rule is what is disabled, not the observation",
+        "ticks => [\"warn\",\"warn\",\"escalate\"] (warn, warn, escalate) and a hold: {\"id\":\"793d1941-8b42-4cc2-ae9a-ab518d59c693\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"}",
+        "=> FALSIFIER: with the bound disabled the same scenario holds the team, so the silence in `long-tool-no-hold` is the RULE, not a vacuous fixture"
+      ]
+    },
+    {
+      "case": "completed-tool-not-in-flight",
+      "ok": true,
+      "observation": {
+        "injected": "a tool-start PAIRED with its tool completion (the call is closed), then silence",
+        "kinds": [
+          "warn",
+          "warn",
+          "escalate"
+        ],
+        "inFlightSuppressed": 0,
+        "stats": {
+          "holdsApplied": 1,
+          "scenes": 3
+        },
+        "hold": {
+          "id": "826c4b0f-0df1-464a-b1b0-a19737d7ccdd",
+          "taskId": "t1"
+        }
+      },
+      "lines": [
+        "the newest stamp is the COMPLETION of call-done-1, so nothing is in flight",
+        "ticks => [\"warn\",\"warn\",\"escalate\"] + a hold: {\"id\":\"826c4b0f-0df1-464a-b1b0-a19737d7ccdd\",\"taskId\":\"t1\"}",
+        "=> a completed tool call buys no silence: the wedge rule still fires (in-flight suppressions: 0)"
+      ]
+    },
+    {
+      "case": "tool-inflight-expired",
+      "ok": true,
+      "observation": {
+        "injected": "a `tool-start` with NO completion at all, bound toolInFlightMaxMs=600",
+        "insideBound": {
+          "decisions": [],
+          "holds": 0
+        },
+        "pastBound": {
+          "decisions": [],
+          "scenes": 0,
+          "holds": 0
+        },
+        "incidentCount": 1,
+        "incidents": [
+          {
+            "kind": "tool-expired",
+            "taskId": "t1",
+            "attemptId": "att-1",
+            "scene": null,
+            "hold": "not-requested",
+            "cause": {
+              "kind": "tool-expired",
+              "ms": 700,
+              "tool": "bash"
+            }
+          }
+        ],
+        "noRepeatOnALaterTick": true,
+        "toolExpiredReports": 1,
+        "stats": {
+          "holdsApplied": 0,
+          "scenes": 0,
+          "toolStarts": 0
+        },
+        "machine": {
+          "toolExpired": [
+            "fault-probe\u0000t1\u0000att-1"
+          ],
+          "inFlightSuppressed": 1
+        },
+        "hold": null
+      },
+      "lines": [
+        "inside the bound (500 ms): {\"decisions\":[],\"holds\":0} — still explained activity",
+        "past the bound (700 ms > 600 ms): {\"decisions\":[],\"scenes\":0,\"holds\":0} — the entry STOPS suppressing",
+        "durable report: [{\"kind\":\"tool-expired\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"scene\":null,\"hold\":\"not-requested\",\"cause\":{\"kind\":\"tool-expired\",\"ms\":700,\"tool\":\"bash\"}}]",
+        "reported ONCE (a later tick at 60 s adds nothing): true",
+        "holds/scenes: {\"holdsApplied\":0,\"scenes\":0,\"toolStarts\":0} hold file: null",
+        "=> the handover is bounded and fail-open: a killed tool can never leave a member permanently un-watchable, and the bound never PAUSES a team"
+      ]
+    }
+  ],
+  "notClaimed": [
+    "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+    "The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.",
+    "No live dsh host, no model credential, no network: the fixture never boots a session.",
+    "`haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it."
+  ],
+  "ok": true
+}

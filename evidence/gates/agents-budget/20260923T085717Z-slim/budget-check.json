@@ -1,0 +1,56 @@
+{
+  "maxBytes": 65536,
+  "renderer": "C:\\Users\\zhao.yinan\\AppData\\Roaming\\npm\\node_modules\\@deepseek-ai\\dsh\\node_modules\\@deepseek-ai\\dsh-agent-instructions\\lib\\index.js",
+  "results": [
+    {
+      "label": "before",
+      "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\gates\\agents-budget\\20260923T085717Z-slim\\AGENTS.md.before",
+      "sourceBytes": 64424,
+      "rawSourceBytes": 64424,
+      "eolAsRead": "lf",
+      "renderedBytes": 64728,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    },
+    {
+      "label": "post",
+      "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\AGENTS.md",
+      "sourceBytes": 56653,
+      "rawSourceBytes": 56653,
+      "eolAsRead": "lf",
+      "renderedBytes": 56957,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    },
+    {
+      "label": "control",
+      "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\gates\\agents-budget\\20260917T011651Z\\oversized-control.md",
+      "sourceBytes": 67704,
+      "rawSourceBytes": 67704,
+      "eolAsRead": "lf",
+      "renderedBytes": 65536,
+      "truncated": true,
+      "omitted": [],
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 67704,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    }
+  ],
+  "checks": {
+    "post_renders_full_content": true,
+    "post_under_budget": true,
+    "post_eol_is_lf": true,
+    "negative_control_is_red": true
+  },
+  "verdict": "PASS",
+  "failedChecks": []
+}

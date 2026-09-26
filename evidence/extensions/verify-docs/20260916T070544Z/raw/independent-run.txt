@@ -1,0 +1,13 @@
+t12 attempt 2 — independent docs verifier
+repo /root/dshProj/my-power-dsh
+
+  ok   links:targets+anchors — 112 relative link(s), 6 with an anchor, 0 unresolved
+  ok   citations:independent-scan — 56 live line-anchor citation(s) in scope, 2 quoted-historical token(s) recorded separately, 4 unattributed continuation(s), 0 flagged
+  ok   citations:semantic-samples — 41 hand-picked anchor(s) checked against their cited line content, 0 mismatch(es)
+  ok   split:headings — 20 machine heading(s) vs 27 human heading(s), 0 shared
+  ok   split:paragraphs — 17 machine paragraph(s) (>= 80 chars) vs 27 human paragraph(s), 0 duplicated
+  ok   skeleton:extracted — json block with id "for-agents-skeleton" parsed (31 lines)
+  ok   skeleton:validates — mpd-ext validate over the extracted skeleton → exit 0; [mpd-ext] validate /tmp/t12b-verify-OQODQi/for-agents-skeleton (plane=user) |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) | [mpd-ext] ok
+  ok   skeleton:negative-control — same skeleton with its declared persona file deleted → exit 1 (must be non-zero);   pending contributes.mcp[0]: pending: server "for-agents-skeleton" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] 2 problem(s) — this extension would not load
+
+[t12 attempt 2 independent] 8/8 checks passed

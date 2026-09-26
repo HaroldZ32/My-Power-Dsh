@@ -1,0 +1,84 @@
+--- bun build packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js
+Bundled 2 modules in 7ms
+
+  index.js  35.65 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js
+Bundled 14 modules in 7ms
+
+  index.js  53.62 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  27.1 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  29.18 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js
+Bundled 11 modules in 11ms
+
+  index.js  158.16 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js
+Bundled 18 modules in 6ms
+
+  index.js  60.50 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  36.1 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js
+Bundled 2 modules in 5ms
+
+  index.js  28.78 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  29.0 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js
+Bundled 3 modules in 8ms
+
+  index.js  45.11 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js
+Bundled 2 modules in 7ms
+
+  index.js  38.91 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js
+Bundled 15 modules in 10ms
+
+  index.js  161.72 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js
+Bundled 2 modules in 6ms
+
+  index.js  24.84 KB  (entry point)
+
+build_exit=0
+--- bun build packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js
+Bundled 2 modules in 8ms
+
+  index.js  47.45 KB  (entry point)
+
+build_exit=0

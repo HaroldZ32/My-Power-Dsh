@@ -1,0 +1,484 @@
+{
+  "pre": {
+    "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\gates\\agents-budget\\20260923T085717Z-slim\\AGENTS.md.before",
+    "bytes": 64424,
+    "lines": 740
+  },
+  "post": {
+    "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\AGENTS.md",
+    "bytes": 56653,
+    "lines": 666
+  },
+  "savedBytes": 7771,
+  "savedPercent": 12.1,
+  "budget": 65536,
+  "postHeadroomBytes": 8883,
+  "numberedSectionsPre": 13,
+  "numberedSectionsPost": 13,
+  "missingSections": [],
+  "contracts": [
+    {
+      "id": "adopted-namespace-exception",
+      "needle": "Adopted plugins keep their plugin ids and tool names",
+      "why": "skills/dsh-qa/scripts/agent-teams-adopt.mjs asserts this exact substring",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "delta-range-pointer",
+      "needle": "A1–D42",
+      "why": "scripts/verify-docs-parity.mjs derives A1–D<n> from the registry table and reddens a stale site",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "reference-index-heading",
+      "needle": "## Reference Index (on-demand)",
+      "why": "the on-demand band's only in-manual entry point",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "single-git-writer",
+      "needle": "ONE git writer per working tree — binding.",
+      "why": "the captain's git-serialization rule",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "captain-standing-rules",
+      "needle": "**The captain's standing rules (user-set, 2026-09-16)**",
+      "why": "user-set standing rules",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "adapter-binding-rule",
+      "needle": "**Harness seams go through `mpd-dsh-adapter` — binding.**",
+      "why": "the one-contact-surface rule (§6)",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "adapter-resolve-idiom",
+      "needle": "ctx.get(\"mpdDsh\")",
+      "why": "the resolve idiom every plugin copies",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "adapter-closure-closed",
+      "needle": "The adopted-plugin exception is CLOSED",
+      "why": "the closure claim + its counted residual",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "counted-residual-5-lines",
+      "needle": "5 counted lines",
+      "why": "test/adapter-bypass-inventory.test.mjs asserts exactly those lines",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "delta-registry-derived",
+      "needle": "regenerate it with `--write-registry`, never",
+      "why": "the registry is derived, never hand-edited",
+      "present": true,
+      "presentLiteral": false
+    },
+    {
+      "id": "replacement-shaped-refusal",
+      "needle": "REPLACEMENT-shaped",
+      "why": "the applier's refusal class after a human re-materialize",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "readonly-deny-list",
+      "needle": "read-only discipline is the exported deny list",
+      "why": "the seven-name deny list the roster exports",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "deny-name-str-replace-editor",
+      "needle": "str_replace_editor",
+      "why": "the DO-NOT-RE-ADD rule for the deny list",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "regional-region-count-warning",
+      "needle": "numbers move",
+      "why": "R5: the FIXED docs regex on the deltas doc",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "pack-closure-bound",
+      "needle": "expected-after-pack",
+      "why": "the freshness discriminator of the closure gate",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "dump-config-composition-only",
+      "needle": "COMPOSITION ONLY",
+      "why": "the composition-vs-load rule (§4/§7)",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "lang-policy-exempt-marker",
+      "needle": "docs-parity: exempt",
+      "why": "the in-file exemption the docs gate derives",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "anticipatory-adder4",
+      "needle": "docs/adder4.md",
+      "why": "the declared ANTICIPATORY class (rot guard)",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "anticipatory-cnt8",
+      "needle": "docs/cnt8.md",
+      "why": "the declared ANTICIPATORY class (rot guard)",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "plan-glob-class",
+      "needle": "docs/plan-*.md",
+      "why": "the docs gate's declared GLOB exemption class",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "state-root-precedence",
+      "needle": "session header cwd",
+      "why": "the workspace-root precedence every plugin must honor",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "env-key-sg",
+      "needle": "MPD_AST_GREP_SG_PATH",
+      "why": "read by upstream vendored code — never renamed",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "env-key-codegraph",
+      "needle": "MPD_CODEGRAPH_BIN",
+      "why": "read by upstream vendored code — never renamed",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "env-key-workmate-home",
+      "needle": "MPD_DSH_WORKMATE_ALLOW_REAL_HOME",
+      "why": "the deliberate real-home escape hatch (T-43)",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t88-derived-surfaces",
+      "needle": "T-88",
+      "why": "derived surfaces declared at plan time",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t90-durable-anchors",
+      "needle": "T-90",
+      "why": "the artifact-path anchor rule",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t91-pack-closure",
+      "needle": "T-91",
+      "why": "the pack-closure bound",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t66-manual-paths",
+      "needle": "verify-manual-paths",
+      "why": "the gate that audits THIS manual",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t22-troubleshooting-pointer",
+      "needle": "agent-references/troubleshooting.md",
+      "why": "the moved §12 body",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "t22-deltas-pointer",
+      "needle": "agent-references/agent-teams-deltas.md",
+      "why": "the moved §6 delta registry",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "gates-table",
+      "needle": "| Gate | Command | When |",
+      "why": "the binding gate table",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "principles-heading",
+      "needle": "## 2. Principles",
+      "why": "the six principles",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "tools-api",
+      "needle": "dsh.registerTool(",
+      "why": "the tool registration contract",
+      "present": true,
+      "presentLiteral": true
+    },
+    {
+      "id": "workspace-root-helper",
+      "needle": "dsh.workspaceRoot(exec)",
+      "why": "the ONE state-root helper",
+      "present": true,
+      "presentLiteral": true
+    }
+  ],
+  "contractsMissing": [],
+  "contractsPresentOnlyAfterReflow": [
+    "delta-registry-derived"
+  ],
+  "tokenCensus": {
+    "preDistinct": 528,
+    "leftTheManual": 33,
+    "movedToReferences": 6,
+    "acceptedWithReason": 27,
+    "dropped": 0
+  },
+  "tokenLoss": [
+    {
+      "token": "--root-dshProj-my-power-dsh--",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "illustrative sample of the session-dir key; the rule it illustrates (assertSessionsSandboxed) stays in the same sentence"
+    },
+    {
+      "token": "…/20260910T132303Z-mount/mount-proof.result.json",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "IMPROVED, not lost: the elided spelling was replaced by the FULL path `evidence/workmate/rename-delete-core/20260910T132303Z-mount/mount-proof.result.json`, which is what makes the citation auditable by verify-manual-paths (an elision is only an under-report bucket there)"
+    },
+    {
+      "token": "…T14-45-59.644Z",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the second of two timestamped dirs for the false-red reading; the case name and the case-family dir `evidence/dsh-qa/codegraph/` are still cited"
+    },
+    {
+      "token": "../<path>",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "same rule as `./<path>` (kept in words)"
+    },
+    {
+      "token": "./<path>",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the link-resolution rule is kept in words: a `./`- or `../`-spelled target resolves from the LINKING file's own directory"
+    },
+    {
+      "token": "/<path>",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "same rule as `./<path>` (kept in words: a ROOT-relative `/`-spelled one resolves against the REPO ROOT)"
+    },
+    {
+      "token": "/mcp__…/",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the concrete assertion example; the rule it illustrates (asserting a tool NAME against the model's ANSWER is wrong in BOTH directions) is kept"
+    },
+    {
+      "token": "<bundle>/packages/mpd-ext-plugin/dist/validator.js",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "§3 tree comment; the ext package README holds the contract and §3 now states the tree is a map, not a specification"
+    },
+    {
+      "token": "<workspace>/.mpd/team-compact/<teamId>/",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "§3 tree comment (same map rule as above)"
+    },
+    {
+      "token": "<workspace>/.mpd/team/watchdog/",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "§3 tree comment (same map rule as above)"
+    },
+    {
+      "token": "1 changed path(s) not covered by inScope: …/dist/index.js is undeclared",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "shortened to the message prefix `1 changed path(s) not covered by inScope`; the refusal it quotes and the rule it taught (T-88) are both kept"
+    },
+    {
+      "token": "cancelAgentTurn",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method; the manual keeps the `agentTurn*`/`subagent*` family names and names `packages/mpd-dsh-adapter-plugin` as the ONE surface that defines them"
+    },
+    {
+      "token": "docs/agent/**",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the register's literal suggestion; the binding rule it corrected (an English-only agent document belongs OUTSIDE docs/) is kept"
+    },
+    {
+      "token": "evidence/dsh-qa/codegraph/2026-09-14T08-56-10.102Z",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "replaced by the case-FAMILY dir `evidence/dsh-qa/codegraph/`, which exists and still anchors the reading"
+    },
+    {
+      "token": "hephaestus",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "illustrative roster id; the rule (a roster id is refused with a names-only error) is kept"
+    },
+    {
+      "token": "injectAgentMessage",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "interruptAgent",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "mcp__<server>__<raw>",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "§3 tree comment; the naming-parity rule lives in the ext package README"
+    },
+    {
+      "token": "re-anchors the comparison for a reviewer mutating a COPY). The closure gate's own",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "NOT a token: a MIS-PAIRED code span created by line-wrapping in the OLD file (the opening backtick of `` `--pack-stamp `` sat at a line end, so the span ran to the NEXT backtick). The sentence's words are fully present in the new manual; only the backtick pairing changed, which is why it cannot be found as a string"
+    },
+    {
+      "token": "renamedFrom",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the rename semantics are kept (the directory name IS the instance key, which is what makes a rename a directory move); the field name lives in the workmate README"
+    },
+    {
+      "token": "rewriteFile",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "the operative behaviour is kept (it rewrites bare import specifiers in place); the function name lives in the script"
+    },
+    {
+      "token": "skillServing",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "§3 tree comment (same map rule)"
+    },
+    {
+      "token": "startAgentTurn",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "startContinuableAgent",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "steerAgentTurn",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "subagentProvider",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "subagentProviders",
+      "status": "accepted",
+      "inReferences": [],
+      "reason": "adapter seam method (same family decision as `cancelAgentTurn`)"
+    },
+    {
+      "token": "@nanmicoder/dsh-agent-teams",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/troubleshooting.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    },
+    {
+      "token": "adaptation_list",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/agent-teams-deltas.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    },
+    {
+      "token": "evidence/docs-overhaul/SUMMARY.md",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/troubleshooting.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    },
+    {
+      "token": "evidence/wave2/adopted-tooling/result.json",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/agent-teams-deltas.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    },
+    {
+      "token": "inputSchema",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/troubleshooting.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    },
+    {
+      "token": "packages/mpd-agent-teams-plugin/lib/index.js",
+      "status": "moved",
+      "inReferences": [
+        "agent-references/troubleshooting.md"
+      ],
+      "reason": "still carried by the on-demand reference(s) listed"
+    }
+  ],
+  "failedChecks": [],
+  "verdict": "PASS"
+}

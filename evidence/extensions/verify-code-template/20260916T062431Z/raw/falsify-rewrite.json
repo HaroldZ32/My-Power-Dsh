@@ -1,0 +1,109 @@
+{
+  "driver": "falsify-preset-rewrite.mjs",
+  "method": "reverse the rewrite this verifier derives (template id -> copy id) and compare file-by-file; then mutate the template and require detection",
+  "template": "templates/mpd-extension",
+  "checks": [
+    {
+      "id": "with-mcp.scaffold-exit-0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "id": "with-mcp.file-set-matches-derived-expectation",
+      "ok": true,
+      "detail": "{\"missing\":[],\"extra\":[]}"
+    },
+    {
+      "id": "with-mcp.every-file-byte-equal-modulo-rewrite",
+      "ok": true,
+      "detail": "{\"differing\":[],\"files\":7}"
+    },
+    {
+      "id": "with-mcp.no-placeholder-left",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "default.scaffold-exit-0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "id": "default.drops-server.mjs",
+      "ok": true,
+      "detail": "still present: []"
+    },
+    {
+      "id": "default.drops-the-mcp-block",
+      "ok": true,
+      "detail": "kinds: [\"flows\",\"roles\",\"skills\"]"
+    },
+    {
+      "id": "default.copy-still-validates",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "id": "falsifier.fresh-copy-has-zero-differences",
+      "ok": true,
+      "detail": "baseline differing=[]"
+    },
+    {
+      "id": "falsifier.one-tampered-byte-is-detected",
+      "ok": true,
+      "detail": "differing=[\"skills/demo-ext-skill/SKILL.md\"]"
+    },
+    {
+      "id": "missing-template.exits-nonzero",
+      "ok": true,
+      "detail": "exit=1"
+    },
+    {
+      "id": "missing-template.says-what-is-missing",
+      "ok": true,
+      "detail": "mpd-ext scaffold: the template \"/tmp/t10-rewrite-1uUMBJ/fake-root/templates/mpd-extension\" is missing — it is the only source of this command's output"
+    },
+    {
+      "id": "missing-template.does-not-create-a-copy",
+      "ok": true,
+      "detail": "copy created: false"
+    }
+  ],
+  "results": {
+    "withMcp": {
+      "templateFiles": 7,
+      "copyFiles": 7,
+      "missing": [],
+      "extra": [],
+      "differing": [],
+      "leftovers": []
+    },
+    "default": {
+      "templateFiles": 7,
+      "copyFiles": 6,
+      "missing": [
+        "server.mjs"
+      ],
+      "extra": [],
+      "differing": [
+        "mpd-ext.json"
+      ],
+      "leftovers": []
+    },
+    "tampered": {
+      "templateFiles": 7,
+      "copyFiles": 7,
+      "missing": [],
+      "extra": [],
+      "differing": [
+        "skills/demo-ext-skill/SKILL.md"
+      ],
+      "leftovers": []
+    },
+    "missingTemplate": {
+      "exit": 1,
+      "output": "mpd-ext scaffold: the template \"/tmp/t10-rewrite-1uUMBJ/fake-root/templates/mpd-extension\" is missing — it is the only source of this command's output\n",
+      "copyCreated": false
+    }
+  }
+}

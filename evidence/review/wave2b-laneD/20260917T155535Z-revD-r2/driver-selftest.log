@@ -1,0 +1,9 @@
+[self-test] ok   t69-fixture-reddens — a fixture carrying a raw invocation is DETECTED by the scanner's own pattern
+[self-test] ok   t80-seeded-mismatch-reddens — a scratch copy claiming one key too many exits 1 with 1 violation(s)
+[self-test] ok   t25-two-frame-container — frames=2, naive read=first-frame-only
+[self-test] ok   t77-shape-and-near-miss — shape ignored=true, near-miss ignored=false
+[self-test] ok   t89-dot-slash-discovers — `./skills/dsh-qa/scripts` discovers 54 file(s)
+[self-test] ok   t69-json-stream-contract — live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false
+[self-test] ok   t69-binding-reddens-and-spares — fixtures: 5, flagged: fixture-unbound.mjs (declared/imported/parameter/prose fixtures must NOT flag)
+[self-test] ok   t74-rule-sentence — the SKILL.md rule sentence is present byte-for-byte
+[self-test] PASS — wave2b-lane-d (8/8 arms)

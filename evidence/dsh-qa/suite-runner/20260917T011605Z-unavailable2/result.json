@@ -1,0 +1,53 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "8bc7f34737e036af1b7bdf1a5b6c2f7233ba4bfea860e566db24cf8ebaf4e16c",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T01:16:57.837Z",
+  "finishedAt": "2026-09-17T01:16:57.966Z",
+  "durationMs": 129,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "tui-mount",
+      "kind": "lane",
+      "verdict": "unavailable",
+      "reason": "absent-fixture",
+      "note": "missing prerequisite reported as FAIL under the strict --no-skip the suite passes",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 126,
+      "command": "bun skills/dsh-qa/scripts/tui-mount.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/tui-mount.mjs",
+      "marker": {
+        "kind": "FAIL",
+        "lane": "real",
+        "reason": "absent-fixture",
+        "prereq": "tui profile in the sandbox root",
+        "remedy": "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install"
+      },
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/suite-runner/20260917T011605Z-unavailable2/lanes/tui-mount.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 1,
+    "fail": 0
+  },
+  "exitCode": 2
+}

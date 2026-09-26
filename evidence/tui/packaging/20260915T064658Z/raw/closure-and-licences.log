@@ -1,0 +1,11 @@
+=== (3b) deterministic resolution check against the PACKED tree ===
+OK   packages/mpd-mcp-astgrep/launch.mjs imports ../mpd-mcp-shared/bin-resolve.mjs -> exists=true
+OK   packages/mpd-mcp-codegraph/launch.mjs imports ../mpd-mcp-shared/bin-resolve.mjs -> exists=true
+OK   packages/mpd-mcp-codegraph/launch.mjs imports ./daemon-policy.mjs -> exists=true
+unresolved specifiers: 0
+exit=0
+
+=== (4) licence completeness in the packed tree ===
+LICENSE                    packed=yes
+NODE-RUNTIME-LICENSES.md   packed=yes
+NOTICE                     packed=yes

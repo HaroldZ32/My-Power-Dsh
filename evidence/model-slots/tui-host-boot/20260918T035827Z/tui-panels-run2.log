@@ -1,0 +1,9 @@
+[tui-panels] seeded workmate library at evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/home/.mpd/workmate/qa-tui-probe
+[tui-panels] model-echo check: checked=0 offenders=0 (must be 0)
+[tui-panels] harness command records THIS run: [{"sessionId":"deaf0727-02ea-4334-be13-75a19e4a74b8","commandId":"cmd-c2cf8161-1","kind":"success","text":"mpd workmates (1): qa-tui-probe"},{"sessionId":"deaf0727-02ea-4334-be13-75a19e4a74b8","commandId":"cmd-c2cf8161-2","kind":"success"}]
+[tui-panels] surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered
+[tui-panels] negative control ok=false (must be false)
+[tui-panels] board-opened events in the sandbox store=1 scene-reported transcript rows=0
+[tui-panels] ok=false -> /root/dshProj/my-power-dsh/evidence/tui/lanes/2026-09-18T04-02-10.663Z
+[tui-panels] FAIL: [{"surface":"tuiRenderers","step":"renderer","source":"pane","keys":["Escape"],"waitMs":6000,"pattern":"/board opened via/","label":"the log-only event rendered a transcript row","requiredPatterns":["/board opened via/"],"missingPatterns":["/board opened via/"],"rendered":false,"sourceChars":3986,"paneChars":3986},{"surface":"tuiSettingsSections","step":"settings","source":"pane","keys":["/settings","Enter"],"waitMs":8000,"pattern":"/MPD 插件包|MPD bundle/","allPatterns":[{},{},{},{}],"label":"the /settings section rendered WITH its bridge+restart+never-lost disclosure","requiredPatterns":["/MPD 插件包|MPD bundle/","/a save writes <workspace>\\/\\.mpd\\/mpd\\.jsonc for the live session workspace\\(s\\)/","/takes effect for the mpd plugins after a restart/","/never lost/"],"missingPatterns":["/never lost/"],"rendered":false,"sourceChars":9820,"paneChars":9820}]
+TUI_PANELS_EXIT=1

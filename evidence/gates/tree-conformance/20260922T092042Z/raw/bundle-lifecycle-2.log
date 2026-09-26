@@ -1,0 +1,7 @@
+[bundle-lifecycle] ok=false -> C:\MyDoc\DshProj\my-power-dsh\evidence\dsh-qa\bundle-lifecycle\2026-09-22T09-44-24.788Z
+  install: {"ok":true,"exit":0,"dependency":"link:C:/MyDoc/DshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":false,"http":false,"corpus":null,"preset":"C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\bundle-lifecycle-2026-09-22T09-44-24.788Z\\home\\profiles\\w\\node_modules\\@mpd-dsh\\mpd\\presets\\mpd\\agent.cordis.yml","trust":"system","bundleReal":"C:\\MyDoc\\D
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":false,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":["C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\bundle-lifecycle-2026-09-22T09-44-24.788Z\\home\\profiles\\w\\node_modules\\@mpd-dsh"],"mpdState":[]}

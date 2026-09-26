@@ -1,0 +1,124 @@
+{
+  "task": "t21 — Make the TUI /settings section truthful about the unbridged mpd.jsonc knobs",
+  "attempt": 1,
+  "attemptId": "658e8ea7-d095-4e80-a090-c98daad5a376",
+  "producedBy": "Senior Engineer",
+  "timestamp": "20260915T060032Z",
+  "artifact": {
+    "entry": "packages/mpd-tui-plugin/dist/index.js",
+    "bytes": 93650,
+    "sha256": "710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3"
+  },
+  "onScreenDisclosure": {
+    "marker": "does not rewrite .mpd/mpd.jsonc",
+    "registeredSectionNs": "mpd",
+    "fields": [
+      {
+        "path": "hashline.maxDiffChars",
+        "hint": "mpd.jsonc hashline.maxDiffChars — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      },
+      {
+        "path": "commentChecker.autoCheck",
+        "hint": "mpd.jsonc commentChecker.autoCheck — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      },
+      {
+        "path": "ulw.maxRounds",
+        "hint": "mpd.jsonc ulw.maxRounds — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      },
+      {
+        "path": "memory.vcs",
+        "hint": "mpd.jsonc memory.vcs — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      },
+      {
+        "path": "team.stateDir",
+        "hint": "mpd.jsonc team.stateDir — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      },
+      {
+        "path": "boulder.dir",
+        "hint": "mpd.jsonc boulder.dir — not bridged: a save here does not rewrite .mpd/mpd.jsonc"
+      }
+    ],
+    "maxHintCells": 93,
+    "note": "every hint names its real mpd.jsonc key AND states the unbridged marker; TuiSettingsSection has no free-text body slot (title + title translations only), so the per-field hint is the only place a user can read it — the option the t21 contract explicitly allows"
+  },
+  "commands": [
+    {
+      "command": "rm -rf packages/mpd-tui-plugin/dist && bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exitCode": 0,
+      "log": "build.log",
+      "evidence": "rebuilt from the final src: 93650 bytes, sha256 710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3"
+    },
+    {
+      "command": "node evidence/tui/plugin-followup/20260915T060032Z/probe-disclosure.mjs",
+      "exitCode": 0,
+      "log": "disclosure.json",
+      "evidence": "applies the BUILT entry to a capture context: 6/6 registered hints carry the marker (0 failures)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "log": "typecheck.log",
+      "evidence": "tsgo --noEmit exit 0"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exitCode": 0,
+      "log": "test.log",
+      "evidence": "31 tests: 31 pass, 0 fail, 276 assertions (2 new disclosure assertions)"
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "Every field hint and the section description in src/settings.ts states, in the place the user actually reads, that a saved edit is NOT bridged to .mpd/mpd.jsonc.",
+      "status": "passed",
+      "evidence": "src/settings.ts exports UNBRIDGED_MARKER and builds all 6 hints through one knobHint() helper; the shipped-artifact probe prints the registered hints as \"mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc\". TuiSettingsSection carries no section-level free-text slot (title + title translations only), so the per-field marker is the available on-screen place — allowed by the contract wording."
+    },
+    {
+      "criterion": "No functional claim of writing the config layer remains in the rendered metadata, the package READMEs or the packaged skill; the bridge stays a NAMED follow-up in both READMEs.",
+      "status": "passed",
+      "evidence": "README.md + README.zh-CN.md NOT CLAIMED #2 now name the follow-up mpd-settings-bridge and state that the same disclosure appears on screen; the seam table row and skills/mpd-tui/SKILL.md both say the section is NOT bridged."
+    },
+    {
+      "criterion": "A test asserts the unbridged marker is present in the field metadata the section registers, so a future edit cannot silently drop the disclosure.",
+      "status": "passed",
+      "evidence": "test/plugin.test.ts: the full-composition test asserts every registered field hint contains the marker, plus a dedicated suite over SETTINGS_FIELDS and the marker text."
+    },
+    {
+      "criterion": "dist/index.js is rebuilt from the final src and the new size + sha256 are recorded in evidence, with the bundle row still resolving to that artifact.",
+      "status": "passed",
+      "evidence": "build.log (93650 bytes, sha256 710d3eef…) plus disclosure-and-row.log (the cordis.patch.yml row id: mpd-tui still names @mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js; hash matches the build) plus disclosure.json (same hash read back from the loaded artifact)."
+    },
+    {
+      "criterion": "bun run typecheck exits 0 and bun test packages/mpd-tui-plugin passes.",
+      "status": "passed",
+      "evidence": "typecheck.log [exit 0]; test.log 31 pass / 0 fail / [exit 0]."
+    },
+    {
+      "criterion": "Nothing outside the listed inScope paths is modified, and no git write command is run.",
+      "status": "passed",
+      "evidence": "changed paths are exactly src/settings.ts, test/plugin.test.ts, README.md, README.zh-CN.md, skills/mpd-tui/SKILL.md, dist/index.js and evidence/tui/plugin-followup/20260915T060032Z/** — all within the t21 inScope list; no git command was run in this task."
+    }
+  ],
+  "changedPaths": [
+    "evidence/tui/plugin-followup/20260915T060032Z/build.log",
+    "evidence/tui/plugin-followup/20260915T060032Z/disclosure-and-row.log",
+    "evidence/tui/plugin-followup/20260915T060032Z/disclosure.err",
+    "evidence/tui/plugin-followup/20260915T060032Z/disclosure.json",
+    "evidence/tui/plugin-followup/20260915T060032Z/hint-budget.json",
+    "evidence/tui/plugin-followup/20260915T060032Z/probe-disclosure.mjs",
+    "evidence/tui/plugin-followup/20260915T060032Z/result.json",
+    "evidence/tui/plugin-followup/20260915T060032Z/test.log",
+    "evidence/tui/plugin-followup/20260915T060032Z/typecheck.log",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md",
+    "packages/mpd-tui-plugin/src/settings.ts",
+    "packages/mpd-tui-plugin/test/plugin.test.ts"
+  ],
+  "carriesForward": [
+    "NOT fixed here (outside t21 scope, reported to the captain as a blocker): the plugin is INERT in a real dsh-tui boot — a row applied without inject cannot reach any service via ctx.get(id,false); the repair is one ctx.inject([id], scoped => …) per seam. Evidence: evidence/tui/plugin/20260915T054343Z/mount-instrumentation/FINDING.md.",
+    "NOT fixed here (outside t21 scope): t3 conventions deltas in this package — status key must be mpd-tui (src/status.ts uses mpd), themes/mpd-tui.json still uses the template legacy claude/claudeShimmer keys and must be re-keyed to accent/accentShimmer, the /mpd command semantics (bare=picker, <value>=direct), and the scene flexGrow/useTerminalSize detail.",
+    "The t4 evidence result.json records the pre-t21 artifact hash (695f68c4…); this task rebuilt dist per its acceptance, so 710d3eef… is the current artifact. The bundle row path is unchanged in both."
+  ]
+}

@@ -1,0 +1,1448 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [2.36ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.20ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.25ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.17ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.28ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.13ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.42ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.53ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle> [0.07ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [80.06ms]
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [4.99ms]
+(pass) engine alias and 2-fruitless-waves stop [0.64ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [1.00ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [28.40ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [114.21ms]
+(pass) both vcs: commits to git and svn [145.85ms]
+(pass) svn backend wiring with fake svn CLIs [10.70ms]
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-hQinbL/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > one registration, applies:'restart', and the base is the FILE layer — never the resolved value [10.87ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > a refused registration names the host's reason and leaves the TUI fallback to own it [0.41ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-0lq5fv/ws, /tmp/mpd-wiring-FH533l/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-0lq5fv/ws, /tmp/mpd-wiring-FH533l/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-0lq5fv/ws, /tmp/mpd-wiring-FH533l/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-0lq5fv/ws","/tmp/mpd-wiring-FH533l/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace [1.30ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-NwKos3/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > L3 outranks the file layers, and a missing L3 key falls back to the file [1.34ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-aIvSUo/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > the in-namespace marker never becomes config and never reaches the file [0.77ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) read-in precedence (design §1.1/§10.4, U12) > with the namespace unserved the file layers still resolve (degraded, not fatal) [0.55ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge WROTE: {"writtenTo":["/tmp/mpd-wiring-4vNWNl/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/tmp/mpd-wiring-4vNWNl/ws","file":"/tmp/mpd-wiring-4vNWNl/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-4vNWNl/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > U1/A2: one live root — a front-door edit rewrites exactly that file, comments intact [1.91ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).
+[mpd-config] settings bridge: saved to settings — not yet written to any .mpd/mpd.jsonc (no live session). Start a session in the intended workspace to persist it.
+[mpd-config] settings bridge no-live-session: {"writtenTo":[],"skipped":"no-live-session","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U13: zero live roots writes NOTHING anywhere and says so [0.37ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-B6bg5O/ws, /tmp/mpd-wiring-ZoAXtc/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-B6bg5O/ws, /tmp/mpd-wiring-ZoAXtc/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-B6bg5O/ws, /tmp/mpd-wiring-ZoAXtc/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-B6bg5O/ws","/tmp/mpd-wiring-ZoAXtc/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U14 must-fail-on-fanout: two live roots REFUSE, name both, and touch no file [0.79ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > A6 negative control: the switch disables the FILE write only, never the value [0.54ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the design's flat key (`writeBack:false`) disables it too, and both spellings are reported [0.75ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off) [0.53ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-qxMQ9X/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a provider reload is a READ-IN only: it never echoes into a file write [1.21ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-ykN915/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a raw-section change with NO new leaf writes nothing (the loop gate) [0.68ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-2IxW9S/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=5).
+(pass) migration (design §6, U15) > a pre-seeded user section migrates into the file once and records the marker [4.68ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) migration (design §6, U15) > idempotence: a second boot at the recorded revision writes nothing [2.03ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).
+(pass) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to the mount-time fallback root [1.78ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-i2dMuK/ws, /tmp/mpd-wiring-UVLGVf/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-i2dMuK/ws, /tmp/mpd-wiring-UVLGVf/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+(pass) migration (design §6, U15) > two live roots defer the migration with the ambiguous reason, not a guess [1.77ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration did NOT complete (unparsable unparsable for /tmp/mpd-wiring-yVFNBQ/ws/.mpd/mpd.jsonc); the settings document is left untouched so nothing is lost.
+(pass) migration (design §6, U15) > a refusing target aborts the migration loudly and leaves the document alone [2.13ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge WROTE: {"writtenTo":["/tmp/mpd-wiring-l7ixLW/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/tmp/mpd-wiring-l7ixLW/ws","file":"/tmp/mpd-wiring-l7ixLW/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":6}
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-l7ixLW/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=5).
+[mpd-config] settings bridge: a file edit won — cleared the overlapping settings override(s) ulw.maxRounds so the file's new value applies.
+(pass) the §1.2 clearing rule (a fresh FILE edit wins over a stale override) > a file value the bridge recorded is unset from the user section under the revision fence [3.22ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ONE live root: the base is that workspace's file (a file value that differs from the schema default) [0.66ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.31ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-xYL5ik/ws, /tmp/mpd-wiring-YVksFw/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > N live roots: NO base is invented, the ambiguity is surfaced, and the schema defaults stand [0.80ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.98ms]
+(pass) stripJsonc keeps comments inside strings [0.11ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.23ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [2.05ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [1.18ms]
+
+packages/mpd-config-plugin/test/bridge.test.ts:
+(pass) target set (design §A.1 — never a guessed root) > U14: exactly one live root is written; two live roots REFUSE and name both candidates [0.29ms]
+(pass) target set (design §A.1 — never a guessed root) > U14 (must-fail-if-fanout): two live roots touch NO file, the settings write is untouched [0.69ms]
+(pass) target set (design §A.1 — never a guessed root) > zero live roots writes NOTHING anywhere and reports no-live-session [0.08ms]
+(pass) target set (design §A.1 — never a guessed root) > the negative-control switch refuses to write even with a live root [0.18ms]
+(pass) happy paths > U1: a live root gets the value written with comments, order and trailing commas intact [0.53ms]
+(pass) happy paths > U11: a missing target is created with the header comment, and a repeat run is unchanged [0.70ms]
+(pass) happy paths > the writer reports per root when handed several targets (the DECIDER never hands it more than one) [0.93ms]
+(pass) loud failure paths (design §B.2/§7) > U10: a read-only target is reported denied, byte-untouched, and names the file [0.29ms]
+(pass) loud failure paths (design §B.2/§7) > U9: an unparsable target is skipped without writing a byte [0.64ms]
+(pass) loud failure paths (design §B.2/§7) > a duplicate key in the target refuses with both line numbers and no write [0.51ms]
+(pass) loud failure paths (design §B.2/§7) > U8: a human edit landing mid-write ends as conflict, leaving the human's bytes [0.61ms]
+(pass) section leaves and the change diff > a front-door edit yields only the added/changed leaves; a reset yields none [0.23ms]
+(pass) section leaves and the change diff > U12 helper: an unchanged section produces no write (the deep-equal gate cannot drop a raw change) [0.08ms]
+(pass) leavesFromSection > only declared paths become leaves, and absent paths are skipped [0.15ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated leaf key is WRITTEN (last occurrence) and the per-root result carries the loud note [0.60ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated INTERMEDIATE is still refused byte-untouched [0.34ms]
+
+packages/mpd-config-plugin/test/jsonc-edit.test.ts:
+(pass) U1 byte fidelity > only the edited value span changes; comments, order, trailing comma and final newline survive [0.78ms]
+(pass) U1 byte fidelity > an identical edit is a byte-level no-op (idempotence, U11) [0.15ms]
+(pass) U2 escapes and decoded keys (E1) > a neighbouring escaped string is untouched and a dotted key matches decoded text [0.16ms]
+(pass) U3/E6 nested insert > a missing intermediate object is materialised and appended as the LAST member [0.17ms]
+(pass) U3/E6 nested insert > a missing leaf inside an existing object is appended as the last member [0.11ms]
+(pass) U3/E6 nested insert > without the insert option a missing path refuses and returns no text [0.08ms]
+(pass) U4/E3 deletion span arithmetic > deleting the only member leaves valid JSONC with no dangling comma [0.76ms]
+(pass) U4/E3 deletion span arithmetic > deleting a middle member keeps the remaining members valid and ordered [0.19ms]
+(pass) U5 arrays (E4) > replace, append and delete an element, including deleting to an empty array [0.78ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: the LAST occurrence is updated, the first is byte-identical, and the note names every line [0.27ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a top-level duplicated leaf behaves the same way (the design's U6 fixture) [0.13ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a single occurrence carries NO note (nothing to warn about) [0.08ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset: EVERY occurrence is removed, so the key is genuinely gone from the parsed document [0.20ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset via the DELETE sentinel removes every occurrence too [0.12ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > a duplicated INTERMEDIATE still refuses as `ambiguous-intermediate`, byte-untouched, for BOTH set and unset [0.20ms]
+(pass) U7 CRLF (E7) > existing endings are preserved and an inserted line uses CRLF [0.29ms]
+(pass) E3 trailing-comma style on insert > a document that uses a trailing comma does not gain a dangling or doubled comma [0.17ms]
+(pass) U9 unparsable (E9) > a malformed document refuses with 'unparsable' and returns no text [0.36ms]
+(pass) reader parity > stripJsoncText tolerates comments and trailing commas exactly like the shipped reader [0.06ms]
+(pass) regression: the shipped reader's trailing-comma probe (found by these tests) > a trailing comma followed by a comment no longer breaks JSON.parse [0.06ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan proves the exact value span and reports the comma/eol facts [0.24ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan refuses with the named reasons instead of guessing [0.11ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.15ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [1.00ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.50ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.31ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.32ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.46ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.37ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [103.96ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.42ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.17ms]
+(pass) persona assets exist for every role and contain real instructions [0.72ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.14ms]
+(pass) normalizeRoleKey: team-style normal names resolve to the same role as their id [0.60ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) a one-shot spawn is labelled with the team-style normal name, not the id [2.35ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) no surface advertises an upstream alias: names plus what a role does [4.57ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) the roster tool payloads carry no id field (an alias is not part of a result) [1.86ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [2.39ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) mpd_role_persona returns the extracted persona text under the role's NAME [1.23ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [3.18ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) mpd_roles_list returns the full roster summary [0.87ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.99ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.06ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [0.50ms]
+(pass) the built dist renders no role as `Name (upstream-alias)` [0.83ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [0.33ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a real mpd-ext registration joins the roster with its owning extension [18.62ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: resolved PER CALL — later registration and disabled extensions take effect next call [5.27ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a name colliding with a base role or another extension is refused loudly, never fatally [6.35ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: usable as a workmate BASE template (real mpd_workmate_init) [5.62ms]
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [3.08ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [3.13ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.40ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [4.60ms]
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [1.36ms]
+(pass) O-1 apply-time project root > a session workspace (exec-less DSH_WORKSPACE_ROOT) beats the process cwd [0.74ms]
+(pass) O-1 apply-time project root > the explicit project-cwd override wins over the session workspace [0.80ms]
+(pass) O-1 apply-time project root > the status line names the session workspace, and the home skip still applies [0.41ms]
+(pass) O-1 call-time /mpd-codegraph handler > resolves the invocation's session workspace, not the apply-time root [0.88ms]
+(pass) O-1 call-time /mpd-codegraph handler > returns the harness CommandResult shape (kind), never the legacy success flag [0.41ms]
+(pass) O-1 call-time /mpd-codegraph handler > re-resolves per invocation: two sessions, two targets [0.45ms]
+
+packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:
+(pass) a staged plan is never a dispatch problem > 12 pending assigned tasks, no attempt and no stamp: NO record, NO console line, NO hold [9.88ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): team mpd-default carries no session id for task owner Planner — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=att-t1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t2 member=Planner attempt=att-t2 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t3 member=Planner attempt=att-t3 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t4 member=Planner attempt=att-t4 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t5 member=Planner attempt=att-t5 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t6 member=Planner attempt=att-t6 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t7 member=Planner attempt=att-t7 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t8 member=Planner attempt=att-t8 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t9 member=Planner attempt=att-t9 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t10 member=Planner attempt=att-t10 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t11 member=Planner attempt=att-t11 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t12 member=Planner attempt=att-t12 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-LBUTV5/.mpd/team/watchdog/incidents.jsonl
+(pass) a staged plan is never a dispatch problem > CONTROL: the same record WITH dispatch attempts still reports every never-started task [5.80ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): team mpd-default carries no session id for task owner Planner — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Im4qsH/.mpd/team/watchdog/incidents.jsonl
+(pass) a staged plan is never a dispatch problem > a REVOKED generation (attempt cleared, one old stamp) stays observable — and only that task does [1.26ms]
+(pass) candidateFor applies the precondition > an un-dispatched task is not a candidate; a dispatched one is [0.14ms]
+(pass) candidateFor applies the precondition > a stamp for the task keeps it observable even without a live attempt [0.14ms]
+(pass) candidateFor applies the precondition > an EARLIER generation's stamp still proves the task was worked on; another TEAM's does not [0.26ms]
+
+packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts:
+(pass) §1 — the four states, folded from the record stream > an open step with no committed answer is OUTSTANDING, and it carries the clock [1.40ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: the same list WITH its step/end is no longer OUTSTANDING [0.13ms]
+(pass) §1 — the four states, folded from the record stream > an answered step with an unmatched tool/call is IN-FLIGHT [0.22ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: dropping the answer makes it OUTSTANDING; adding the result makes it ALIVE [0.26ms]
+(pass) §1 — the four states, folded from the record stream > a turn that has not closed is ALIVE, and a CLOSED turn is PARKED [0.16ms]
+(pass) §1 — the four states, folded from the record stream > a completed step stays ALIVE forever: 24 h of age changes nothing [0.22ms]
+(pass) §1 — the four states, folded from the record stream > the assistant-stream START frame is the §2 enrichment: OUTSTANDING flips to ALIVE [0.21ms]
+(pass) §1 — the four states, folded from the record stream > NO CHANNEL EVIDENCE is not PARKED: it is null (the §4 degradation seam) [0.21ms]
+(pass) §1 — the four states, folded from the record stream > an unknown (extension) event type changes no verdict [0.19ms]
+(pass) §1 — the four states, folded from the record stream > the answer may be an `assistant/attempt` (a plugin-merged extension type) [0.09ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > PARKED and ALIVE never warn, however long the watchdog looks [0.30ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > OUTSTANDING warns only after warnSilenceMs SINCE THE REQUEST BECAME OUTSTANDING [0.20ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen ladder: six consecutive OUTSTANDING observations after the first warn [0.42ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > an OUTSTANDING request that becomes ALIVE resets the streak (no stale escalation) [0.16ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > IN-FLIGHT past toolInFlightMaxMs is reported ONCE and never held [0.22ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §4: with NO channel evidence the heartbeat rule WARNs exactly once and never escalates [0.20ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §1 rule 5: a candidate that never stamped is never-started, never a warn [0.10ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen §3 defaults are exactly the contract's table [0.07ms]
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the pre-step listener DELEGATES: the decision reaches the harness unchanged [10.13ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the listener delegates DOWNSTREAM: a later listener still runs and its decision wins [2.12ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > NEGATIVE CONTROL: the retired shape really does clobber the decision [0.82ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > no listener we install returns a value on a non-waterfall dispatch (emit/serial) [1.55ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > a THROWING stamp still delegates: a heartbeat failure never vetoes the step [4.52ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [0.91ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.66ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.63ms]
+(pass) heartbeat store > the tool pair: the PRE hook opens the call (tool-start), the POST hook closes it (tool) [1.03ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [2.31ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [19.17ms]
+(pass) heartbeat store > r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence [0.84ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.40ms]
+
+packages/mpd-team-watchdog-plugin/test/predicate.test.ts:
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > 12 simulated minutes of an uncommitted streaming answer: NO warn, NO hold, NO write [2.53ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-1FMLvN/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn.json
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > the same 12 minutes WITHOUT the enrichment stays OUTSTANDING (§1 rule 3's stated asymmetry) [4.03ms]
+(pass) §9 row (b) — a member between turns is PARKED, not silent > a closed turn with a STALE previous-generation stamp: NO warn, NO hold, and PARKED is named [1.18ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn-2.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600003ms streak=3 hold=not-requested scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn-3.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600004ms streak=4 hold=not-requested scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn-4.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600005ms streak=5 hold=not-requested scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn-5.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600006ms streak=6 hold=applied scene=/tmp/watchdog-test-PEtB4h/.mpd/team/watchdog/scene/team-a/20260917T090502Z-escalate.json
+(pass) §9 row (d) — an OUTSTANDING request: the frozen ladder, end to end > first WARN only after 600 s, then ESCALATE on the sixth observation, and the hold lands [7.28ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-F2tZYY/.mpd/team/watchdog/scene/team-a/20260917T090502Z-warn.json
+(pass) §4 degradation — the heartbeat fallback reports once and never pauses > no channel evidence at all: ONE warn (cause silence-heartbeat), no hold, source named [5.05ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.87ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.66ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=1 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [3.69ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [0.90ms]
+[mpd-team-watchdog] ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=none hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.37ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.31ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [0.94ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.35ms]
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-XstEer/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-XstEer/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-XstEer/.mpd/team/watchdog/scene/team-a/20260917T085632Z-escalate.json
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [7.85ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-9Sie0Q/.mpd/team/watchdog/scene/team-a/20260917T085532Z-warn.json
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [2.04ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.42ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [1.45ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.59ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+(pass) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [1.53ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=120000 tickIntervalMs=60000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.52ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [2.37ms]
+(pass) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.65ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-pNBCN3/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn.json
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.47ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.87ms]
+[mpd-team-watchdog] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.42ms]
+
+packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts:
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > RED-first: a stamp PREDATING the record's createdAt is not this generation's work [0.26ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > the same candidate is reported `never-started`, and never escalates [0.25ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > a stamp AT OR AFTER createdAt IS this generation: silence still warns and escalates [0.30ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > an ABSENT createdAt stays permissive (§0/A3 — the r7 convention, pinned) [0.09ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > approvedAt counts too: the floor is the NEWER of the two [0.06ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-6VBLdl/.mpd/team/watchdog/incidents.jsonl
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > ENGINE: the measured leak shape (a day-old stamp, record created now) holds nothing [2.13ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-AnbPli/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-AnbPli/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-AnbPli/.mpd/team/watchdog/scene/team-a/20260917T085632Z-escalate.json
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the resolved knob's TTL travels with a hold the ENGINE persists [2.71ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-ifnAfJ/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=ttl age=1000ms ttl=1000ms since=1789635302210 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-ifnAfJ/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > TTL path: the hold releases itself, writes the incident, and touches no team byte [2.06ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=activity age=200ms ttl=none since=1789635302212 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-fao72L/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > ACTIVITY path: a stamp earned AFTER the hold disproves the wedge [1.72ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-lMx9xD/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > another team's stamp cannot release this team's hold [1.03ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=4242 predicate=channel enrichment=on
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the HOLD tool carries ttl_ms and inherits the resolved knob when omitted [0.67ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > a legacy hold with no ttlMs reads as 0 (no bound is ever invented) [0.25ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > halted and held render as ONE pause mechanism with the hold as its implementation (T-19 ruling) [2.40ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > a team with no pause renders as not paused, and NO new resume verb was added [0.53ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > the derivation reads the record alone [0.25ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: OUTSTANDING + blocked dependency is PARKED — no warn, no hold, no scene [2.48ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=1 hold=not-requested scene=/tmp/watchdog-test-TH5k8L/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn.json
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: the suppression is DERIVED, not sticky — finishing the dependency warns again [2.12ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > knobReadings is pure: difference ⇒ restartRequired, equality ⇒ silence [0.25ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-Oxm3aa/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Oxm3aa/.mpd/team/watchdog/incidents.jsonl
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > ENGINE: one warning per process, naming the file value and the live value [1.84ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-3d4eL4/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=7200000 file=900000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > the status view prints the per-knob table with restartRequired [1.40ms]
+
+packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [142.25ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [65.05ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [76.06ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [9.97ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [0.29ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [22.76ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [68.09ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [166.20ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=700000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-QtjFD6/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=700000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [5.46ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-ErWXVq/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [32.97ms]
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism [0.58ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [0.86ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives beside team.json and never changes a byte of it [0.84ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.28ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.33ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.46ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.18ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.89ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.47ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [1.20ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.10ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.08ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.07ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.08ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.04ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.29ms]
+(pass) the machine > a new attemptId starts a clean streak [0.16ms]
+(pass) the machine > any recent stamp resets the streak [0.11ms]
+(pass) the machine > a claimed task whose owner never stamped is never-started, and never escalates [0.08ms]
+(pass) the machine > a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates [0.07ms]
+(pass) the machine > a stale streak is RESET by the boundary (the completed turn cannot spend it later) [0.16ms]
+(pass) the machine > W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick [0.34ms]
+(pass) the machine > W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent) [0.07ms]
+(pass) the machine > a disabled watchdog observes nothing [0.04ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-0HYSVJ/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-0HYSVJ/.mpd/team/watchdog/scene/team-a/20260917T085632Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-0HYSVJ/.mpd/team/watchdog/scene/team-a/20260917T085632Z-escalate.json
+(pass) the machine over a real team record > WARN then ESCALATE land on disk with the hold applied through the tool seam [3.50ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=20000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-Lffdyh/.mpd/team/watchdog/scene/team-a/20260917T085532Z-warn.json
+(pass) the machine over a real team record > a live knob change is picked up without a restart [1.88ms]
+
+packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts:
+(pass) r6 — the in-flight derivation (pure) > a start with no completion is in flight; its completion closes it [0.34ms]
+(pass) r6 — the in-flight derivation (pure) > callId pairing: a completed sibling cannot clear a still-running call [0.07ms]
+(pass) r6 — the in-flight derivation (pure) > a harness build without callIds falls back to the newest-stamp rule [0.05ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > 3x the threshold inside ONE call produces NO warn, NO escalate and NO hold [0.36ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > FALSIFIER: toolInFlightMaxMs 0 restores the pre-r6 escalation for the SAME input [0.19ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > past the bound the entry STOPS suppressing: one tool-expired report, never an escalate [0.13ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > the WEDGE case is untouched: no in-flight entry still warns then escalates once [0.10ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > a finished tool call is NOT in flight: the call that COMPLETED does not suppress [0.09ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-tbMFBc/.mpd/team/watchdog/scene/team-a/20260917T085504Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a member 4x the threshold inside ONE real command gets NO warn, NO escalate and NO hold — and is watched again when it completes [1650.33ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=302ms streak=1 hold=not-requested scene=/tmp/watchdog-test-aBfkpX/.mpd/team/watchdog/scene/team-a/20260917T085505Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a tool that THROWS is closed by its POST (the harness routes tool failures through post-execute) [356.81ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=700ms (since 1789635304862, bound=600ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/tmp/watchdog-test-IKuF0E/.mpd/team/watchdog/incidents.jsonl
+(pass) r6 — the real engine, a real long command, and the durable store > a PRE with NO POST (a killed call) is bounded: one tool-expired record, no scene, no hold, no repeat [6.42ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-Qr9k8Q/.mpd/team/watchdog/scene/team-a/20260917T085505Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-Qr9k8Q/.mpd/team/watchdog/scene/team-a/20260917T085505Z-warn-2.json
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-Qr9k8Q/.mpd/team/watchdog/scene/team-a/20260917T085505Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > a DENIED call is never marked in flight (nothing to explain, nothing leaked) [6.88ms]
+[mpd-team-watchdog-test] the adapter exposes no pre-tool hook — a long tool call stays indistinguishable from silence (r6 unavailable)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-nbGS0y/.mpd/team/watchdog/scene/team-a/20260917T085505Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-nbGS0y/.mpd/team/watchdog/scene/team-a/20260917T085505Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-nbGS0y/.mpd/team/watchdog/scene/team-a/20260917T085505Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > the SEAM is soft-probed: an adapter without the pre hook warns and keeps the pre-r6 behaviour [4.24ms]
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+(pass) the scene document > carries exactly the AC-5 field set [0.74ms]
+(pass) the scene document > a halted team's adopted flags are carried verbatim beside the watchdog's own hold [0.48ms]
+(pass) the scene document > write -> read round-trips byte-identically and a second identical write changes no bytes [0.99ms]
+(pass) the scene document > a scene file name is unique per incident even inside one millisecond [3.82ms]
+(pass) the scene document > isoBasic is a file-safe timestamp [0.12ms]
+(pass) the scene document > mailboxUnread mirrors the adopted predicate (tombstones and read records are not unread) [0.37ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=none
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=none
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=none
+(pass) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [3.20ms]
+(pass) an unwritable scene location > writeScene returns ok:false instead of throwing [0.29ms]
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.19ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.09ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [3.52ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [0.93ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.76ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [1.04ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [0.77ms]
+(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [151.93ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.76ms]
+
+packages/mpd-ext-plugin/test/core.test.ts:
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [7.08ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] FATAL: the harness seams this row registers through are unavailable (toolsRegister=false, skillsProvider=false) — the four tools and the skills provider will NOT be registered in this session. This row must declare inject: ["tools","skills"].
+[mpd-ext] skill provider for "mpd-ext-example" not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] project-plane skill provider not registered: mpd-dsh-adapter: harness service "skills" is unavailable — cannot register a skill provider
+[mpd-ext] tool "mpd_ext_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_list"
+[mpd-ext] tool "mpd_ext_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_ext_show"
+[mpd-ext] tool "mpd_flow_list" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_list"
+[mpd-ext] tool "mpd_flow_show" not registered: mpd-dsh-adapter: harness service "tools" is unavailable — cannot register tool "mpd_flow_show"
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] skill provider for "hostile" not registered: skills seam gone
+[mpd-ext] skill provider for "mpd-ext-example" not registered: skills seam gone
+[mpd-ext] project-plane skill provider not registered: skills seam gone
+[mpd-ext] tool "mpd_ext_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_ext_show" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_list" not registered: tools seam gone
+[mpd-ext] tool "mpd_flow_show" not registered: tools seam gone
+[mpd-ext] FATAL: only 0/4 tools registered (missing: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show) — the extension interface is NOT usable in this session; the row declares inject: ["tools","skills"], so check the harness seams above
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [7.40ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) the four tools emit values that satisfy their own output schemas [16.25ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [4.49ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [0.52ms]
+(pass) role provider/model must be paired and persona must stay inside the root [0.19ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [0.23ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [5.67ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+[mpd-ext] bad-json (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/bad-json/mpd-ext.json) rejected: invalid JSON: JSON Parse error: Expected '}'
+[mpd-ext] bad-version (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+[mpd-ext] no-id (/tmp/mpd-ext-ws-8JIe8W/.mpd/extensions/no-id/mpd-ext.json) rejected: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [7.03ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) the project plane is re-read per call and never leaks across workspaces [2.83ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [4.05ms]
+(pass) the provider pre-validates at emit time too, and reports the skip to the owner [0.33ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [0.92ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) the project-plane skill provider resolves per call from provider.list({ cwd }) [1.63ms]
+(pass) a skill provider never throws out of list()/get() when discovery fails [1.69ms]
+(pass) provider names are unique by construction [0.19ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [0.38ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [0.99ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) config is read lazily per use: disable/enable are honoured after apply [7.94ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [0.34ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [33.10ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) a missing mpdConfig degrades to the documented defaults [7.09ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [5.56ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) describe() answers the frozen descriptor shape for a known extension [4.81ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) one broken extension of each kind leaves the good ones working [6.14ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [20.89ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [4.60ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [5.39ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [4.47ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [12.13ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [15.67ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [10.27ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [4.87ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [5.34ms]
+(pass) discoverPlane never throws for a missing root [0.21ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) t16: the ext report and the ROSTER agree about a PROJECT-plane role (nothing usable, same reason) [5.35ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks [9.16ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F4: a claim the catalog resolves to a NON-extension provider is reported as not served [5.22ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] skill candidate skipped: duplicate name "style-check" inside provider "mpd-ext:project-plane"
+(pass) F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it [6.64ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd()) [5.05ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F5: a host-wide extension is still served when the caller names no workspace [1.37ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor [5.31ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed [5.65ms]
+(pass) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [0.43ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [2.39ms]
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [11.76ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.37ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [160.72ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [138.31ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] extension "with-mcp" mcp server "srv" unavailable: mcp-client(srv): initialize timed out after 500ms
+[mpd-ext] extension "fixture-ext" mcp server "fixture": 1 tool(s) published
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [65.25ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-ext] extension "half-ext" mcp server "fixture" unavailable: mcp-client(fixture): the server process exited (code=3, signal=null)
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [115.33ms]
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [148.07ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [467.19ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [86.60ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [119.04ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [86.52ms]
+(pass) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [104.43ms]
+(pass) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [80.98ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [88.22ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [342.44ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [103.75ms]
+(pass) a disabled extension never spawns a child and reports state disabled [1.19ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.73ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [86.83ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [89.40ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.90ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.40ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.18ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.16ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.03ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.30ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.03ms]
+(pass) workmate page > renders the library from the host routes [14.06ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.11ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.35ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.09ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [1.70ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.73ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.26ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.09ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [26.36ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [38.33ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [24.32ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [19.33ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [21.22ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [23.76ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [17.43ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.89ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [3.20ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [14.46ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.07ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [1.31ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [3.26ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [1.74ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [14.61ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.80ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [10.21ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [6.05ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [13.95ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [9.68ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [8.76ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [9.91ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.90ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [9.00ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [5.81ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [8.05ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [6.44ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [8.63ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [10.48ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [11.81ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [14.49ms]
+(pass) auto-open policy > opens the tab once, with NO content seed, for a team that appears after the baseline [2710.49ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2706.99ms]
+[mpd-ext] extension "declare-all" mcp server "lint-mcp" unavailable: mcp-client(lint-mcp): initialize timed out after 10000ms
+(pass) auto-open policy > the plugin switch turns auto-open off [2708.10ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2708.23ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [2.11ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [1.61ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.78ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.55ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.87ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [1.07ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [0.81ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.64ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.27ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams [0.44ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.08ms]
+(pass) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.27ms]
+(pass) the registration only happens when the settings scope is served > settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate [2.43ms]
+(pass) the registration only happens when the settings scope is served > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.15ms]
+(pass) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the section (provideService wakes the fiber) [1.16ms]
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [6.57ms]
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [14.23ms]
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [2.14ms]
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [5.26ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.75ms]
+(pass) isolation and front-door parity > the card's thirteen fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) [1.21ms]
+
+packages/mpd-team-compact-plugin/test/compaction.test.mjs:
+(pass) t48 F6 HINGE: every drive goes to the MEMBER's own scoped engine, never a host-plane one [3.25ms]
+(pass) t48 F6 IDENTITY: the member engine and the host-plane engine are DIFFERENT objects [0.25ms]
+(pass) t48 CAPTAIN EXCLUSION: the captain session is never driven [0.52ms]
+(pass) t48 NEGATIVE CONTROL: a team with ONE non-terminal task is REFUSED, nothing is driven [0.46ms]
+(pass) t48 NEGATIVE CONTROL: an empty task list is NOT 'finished' [0.34ms]
+(pass) t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout outcome) [5.24ms]
+(pass) t48 BARRIER: an idle member is compacted once every member is idle [0.53ms]
+(pass) t48 NULL IS NOT AN ERROR: a null result is recorded as no-safe-range [0.55ms]
+(pass) t48 F5: an engine failure code and the lifecycle error class are classified DIFFERENTLY [0.40ms]
+(pass) t48 F5: a lifecycle error mid-pass is recorded against the member and does not abort the pass [0.59ms]
+(pass) t48 STAGED: a member with no session id is skipped EXPLICITLY, never silently [0.54ms]
+(pass) t48 NOT-LIVE: a dormant team is recorded, not ignored [0.40ms]
+(pass) t48 AUDIT: written under .mpd/team-compact and NEVER under .mpd/team [0.74ms]
+(pass) t48 AUDIT: a second pass is a second FILE — an earlier destructive pass is never hidden [0.44ms]
+(pass) t48 TERMINAL SET: taken from the owning plugin, not re-declared [0.37ms]
+(pass) t48: listTeamIds ignores the archive directory and dotfiles [0.34ms]
+(pass) t48: a malformed team record reads as undefined, never a throw [0.34ms]
+(pass) t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never messages a member [0.51ms]
+(pass) t48 plugin: apply() registers both tools and subscribes to BOTH triggers [0.40ms]
+(pass) t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-throwing [0.63ms]
+(pass) t48 plugin: every registered tool declares an OBJECT-ROOTED parameters schema [0.26ms]
+(pass) write-on-change: sameAuditOutcome is true only for an identical outcome [0.21ms]
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [2.29ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.68ms]
+(pass) state projection > a broken team record is reported as a note, not as a crash [0.72ms]
+(pass) state projection > the status line is one bounded line [0.66ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.13ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.09ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.16ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [0.95ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.47ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.70ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.31ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.14ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.38ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.35ms]
+(pass) log-only event registration > a throwing session.append is contained [0.10ms]
+[mpd-tui-test] info
+[mpd-tui-test] warn
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [0.82ms]
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+(pass) watchdog front door — notice composition > the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed [3.34ms]
+(pass) watchdog front door — notice composition > watchdogNotice states the live condition and the replay separately; composeNotices joins providers [0.13ms]
+(pass) watchdog front door — notice composition > heldTeams reads the durable hold index through the service, not a cache [0.46ms]
+(pass) watchdog front door — dialog and acknowledge > the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark [0.94ms]
+(pass) watchdog front door — dialog and acknowledge > a second start does not surface an acknowledged incident (the replay is watermark-driven) [0.78ms]
+(pass) watchdog front door — dialog and acknowledge > choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN [0.66ms]
+(pass) watchdog front door — dialog and acknowledge > the attach-time replay runs once, when BOTH the service and the dialog seam are composed [0.48ms]
+(pass) watchdog front door — dialog and acknowledge > no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog) [0.36ms]
+(pass) watchdog front door — dialog and acknowledge > readWatchdogView is a live read through the service (and empty without one) [0.43ms]
+(pass) watchdog front door — the absent-service path > with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw [0.79ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from a real record on disk) > renders the staged roster, the task DAG, counts and mail from the file [4.65ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the depth walk and the failed-dependency marking match the panel's own semantics [0.77ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.40ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a corrupt / absent / cyclic record renders an empty state and never throws [0.81ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the REAL record of this session's own team projects without a hand-built object [0.17ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the board gains exactly the two T3 rows [3.88ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.80ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [1.25ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.82ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.90ms]
+(pass) surface T1 — the team workflow > a staged team opens the plan surface and `p` reaches the board [1.31ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [1.31ms]
+(pass) surface T1 — the team workflow > N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there) [1.13ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [4.23ms]
+(pass) surface T2 — the plan approval > shows the staged plan, the action block and an EMPTY confirmation echo [1.64ms]
+(pass) surface T2 — the plan approval > the precondition failure states the phase and offers only Esc [0.55ms]
+(pass) surface T2 — the plan approval > the precondition failure is READ-ONLY: no chord can mutate a non-staged team [1.16ms]
+(pass) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.59ms]
+(pass) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [4.12ms]
+(pass) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [4.39ms]
+(pass) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [5.51ms]
+(pass) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [3.02ms]
+(pass) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [4.24ms]
+(pass) surface T2 — the plan approval > the echo is empty again after an `r` refresh (no prefill, no carry-over) [2.88ms]
+(pass) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [2.83ms]
+(pass) surface T2 — the plan approval > BSpace is the only editing key [1.02ms]
+(pass) surface T2 — the plan approval > discard is two-step: one Ctrl+D arms, a second inside the window calls the tool [1.90ms]
+(pass) surface T2 — the plan approval > any other key clears the discard arm [3.30ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [2.28ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.69ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.55ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.34ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a tool error carrying ESC/OSC does NOT survive into the rendered row [2.70ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team DIRECTORY name cannot reach a rendered row [1.19ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [0.95ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a refused approve KEEPS the echo [2.45ms]
+(pass) §4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3) > a successful approve CONSUMES the echo [2.36ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > the verdict renders even though the record has LEFT the staged phase [5.42ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a COMMITTED discard reports its own verdict [1.32ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > with NO settled outcome the precondition failure is UNCHANGED (no verdict row) [0.48ms]
+(pass) t8 — a COMMITTED approval is confirmed on screen (t3's F1) > a REFUSED call in the non-usable branch reports the refusal, never a success [2.39ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.73ms]
+(pass) package invariants > the built dist carries the two scene ids and no write primitive [1.13ms]
+(pass) package invariants > the frozen tool names are the adopted ones [0.06ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.57ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.05ms]
+(pass) plugin contract > every config key has a default in the schema [0.81ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.27ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.24ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [35.65ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.52ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.40ms]
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [18.23ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [15.18ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.32ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.59ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.38ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.51ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.41ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [18.72ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.21ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [23.01ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [14.27ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [32.35ms]
+(pass) settings section disclosure (t21) > every mpd.jsonc-referencing hint states that a save is NOT bridged [0.22ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.07ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [9.38ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [37.51ms]
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present: it registers, the TUI skips its fallback and says so [1.32ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present but its registration still pending: the fallback still yields (deterministic owner check) [0.40ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.44ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.79ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs:
+(pass) T-01: `who owns <path>` names the owner and is READ-ONLY [11.15ms]
+(pass) T-01: an overlapping create is refused NAMING the owner, and after the move the same create can be declared [16.16ms]
+(pass) T-01: the move refuses a path the donor does not own, an unknown target, a terminal target and an ambiguous donor [6.56ms]
+(pass) T-12: rollover REFUSES while a task is non-terminal, naming the open ids [4.43ms]
+(pass) T-12: rollover archives the closed wave WITH its tasks, advances the label, and status shows both [12.16ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-semantics.test.mjs:
+(pass) B5: a directory pattern covers its contents WITHOUT a trailing slash [0.26ms]
+(pass) B5: trailing slash and non-trailing slash are equivalent [0.13ms]
+(pass) B5: exact file patterns still match exactly, siblings and suffixes do not [0.08ms]
+(pass) B5: root pattern matches everything; illegal/absolute patterns never match [0.07ms]
+(pass) B5: classifyChangedPath — directory inScope covers files, outOfScope wins [0.33ms]
+(pass) B6: completion reports ALL undeclared paths at once with the owning task id and a fix hint [0.56ms]
+(pass) B6: completion passes when a directory pattern (no trailing slash) covers every changed path [0.13ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs:
+(pass) DEFECT 1: a declared glob covers the files beneath it [2.01ms]
+(pass) DEFECT 1 negative control: globs do not over-match [0.17ms]
+(pass) DEFECT 1: every no-wildcard declaration keeps the pre-delta B5 semantics [0.14ms]
+(pass) DEFECT 1: the completion gate accepts a glob-declared changedPath and still rejects an undeclared one [0.30ms]
+(pass) DEFECT 2 reproduction: the pre-fix generator listed one path in BOTH lists [0.21ms]
+(pass) DEFECT 2 fix: the finding's required path is CARVED OUT of the inherited prohibition [0.41ms]
+(pass) DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the required edit is in scope [0.52ms]
+(pass) DEFECT 2 falsifiability: the contradiction guard must not reject legitimate carve-outs [0.14ms]
+(pass) DEFECT 2 falsifiability: the write-task overlap guard is a real may-two-writers-touch-it relation [0.25ms]
+(pass) durability: the guard refuses when a delta region is missing (observed failure) [6.58ms]
+(pass) durability: the guard is idempotent on the real tree and restores a stripped tree [457.54ms]
+(pass) F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region [104.28ms]
+(pass) F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a broken module [3.91ms]
+(pass) F3: a clean (region-carrying) tree still heals successfully [181.78ms]
+(pass) F4: stripping every region and healing reproduces the canonical file byte-for-byte [191.26ms]
+(pass) F4: the anchor-indent class is gone with the line keys [0.30ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs:
+(pass) T-81: a repair on an OPEN source does NOT acquire the deadlock edge, and is claimable at once [1.48ms]
+(pass) T-81 regression control: a review of an OPEN source still wires the edge [0.17ms]
+(pass) T-81 negative control: with the pre-fix unconditional edge, the SAME fixture PARKS [10.43ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs:
+(pass) T-46: a long deliverable is EXTENDED by output_append, and a byte-dropping replacement is loud [11.46ms]
+(pass) T-09: the artifact channel carries the full text, records it on the task, and guards the path [10.45ms]
+(pass) T-10: a read-only seat writes ONLY under evidence/**, append-or-create; a writer seat is not restricted there [11.31ms]
+(pass) T-05: the spawn welcome states what is CLAIMABLE, never a blocked task as pending work [0.45ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs:
+(pass) T-79(a): the compose's ROTATION PRIMITIVE refuses terminal work, naming the status [0.49ms]
+(pass) T-79(b): the real scheduler, in-process, never re-arms or delivers a TERMINAL task [4.92ms]
+(pass) T-79(c): the sanctioned revive path survives — reassign_task re-opens with a FRESH id [5.72ms]
+(pass) T-79(d): a STALE capability on terminal work is REFUSED (captain's idempotent path) [4.91ms]
+(pass) T-79 negative control: with both guards removed, the SAME calls rotate and answer success [45.93ms]
+(pass) T-79 restart leg: a FRESH PROCESS sees the same refusal (the restart-based re-observation) [60.59ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:
+(pass) T-07 positive control: a READY task still reaches its assignee (no blanket refusal) [3.73ms]
+(pass) T-07 regression: a TERMINAL task is never delivered, and a refused dispatch never writes a status onto it [2.34ms]
+(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.20ms]
+(pass) T-07: the delivery-boundary re-check is REGISTERED (a re-materialize cannot silently drop it) [0.44ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs:
+(pass) T-61: an unknown snake_case argument name is REFUSED, named, and stores NOTHING [4.34ms]
+(pass) T-61 control: every DECLARED argument name still works (a guard that refuses everything is red) [5.63ms]
+(pass) T-61 drift pin: the declared-name list EQUALS the registered tool's compiled schema keys [2.41ms]
+(pass) T-61 negative control: with the guard call removed, the SAME payload succeeds and stores nothing [37.12ms]
+(pass) T-61 append channel (ii): the registered schema carries the key and a TERMINAL append GROWS the bytes [3.88ms]
+(pass) T-61 append channel (i): the wave-1 shape is a STALE-SCHEMA drop — success returned, nothing stored [0.80ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/dispatch-stall-region.test.mjs:
+(pass) t13: every dispatch-stall edit is region-registered (nothing unmarked survives a strip) [1.30ms]
+(pass) t13: a re-materialized scheduler.js (upstream guard restored) is REFUSED byte-untouched [121.80ms]
+(pass) t13: stripping every scheduler.js region heals byte-for-byte back to the canonical file [179.57ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs:
+(pass) D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own [1.83ms]
+(pass) D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write) [19.00ms]
+(pass) D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL [32.09ms]
+(pass) T-49: the contract tool is a MEMBER tool in BOTH deny computations [2.22ms]
+(pass) T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation [8.39ms]
+(pass) T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold [4.87ms]
+(pass) t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING the known ids — both FALSIFIABLE [37.17ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs:
+(pass) a pooled write task is LEFT IN THE POOL for a read-only member and reported [0.35ms]
+(pass) a write-capable member still gets the pooled write task (the guard is not a blanket refusal) [0.12ms]
+(pass) a member whose deny blocks nothing relevant is unaffected by an unrelated deny entry [0.09ms]
+(pass) an EXPLICIT assignment is still dispatched to a restricted member, and says so [0.13ms]
+(pass) a member's own ready task outranks a pooled task it could also run [0.11ms]
+(pass) nothing executable is left: undefined, and every withheld candidate is reported [0.32ms]
+(pass) the guard is region-registered and its replacement is REFUSED after a re-materialize [116.72ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs:
+(pass) Fix1: review auto-wires reviewedTaskId into dependencies (premature dispatch) [1.63ms]
+(pass) Fix1: repair auto-wires sourceTaskId into dependencies (REQUALIFIED by T-81: terminal sources only) [0.45ms]
+(pass) Fix2 + OPT-1: cancelled and FAILED deps are non-blocking; pending still blocks [0.17ms]
+(pass) Fix2: pending dependents blocked only by cancelled deps are cascaded (no deadlock) [0.35ms]
+(pass) Fix3: planQualityFollowUp links reasonTaskId and reason reaches the repair prompt [1.44ms]
+(pass) Fix4: reject without a completed source notifies the captain only (no repair, no escalation) [0.12ms]
+(pass) Fix4: genuine reject of a completed source still escalates [0.07ms]
+(pass) Fix3b: reasonTaskId / reassignReason survive task validation [0.10ms]
+(pass) Fix3c: assignmentPrompt renders reassignReason and captain guidance digest [0.22ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+(pass) t2: strip-healing ALL adopted files from the same state is byte-identical [321.97ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [227.76ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [147.58ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [4120.45ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.28ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.17ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [6.69ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [30.32ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [30.23ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [989.86ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.60ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [4.12ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [437.12ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [5.98ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [394.49ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [160.82ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.70ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [205.99ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [572.02ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [15.87ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [31.03ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs:
+(pass) T-02: a captain amends a member-owned IN-FLIGHT contract without a takeover — the attempt survives [8.85ms]
+(pass) T-02: a member amends its OWN contract at claim time WITHOUT an attempt_id; elsewhere it stays refused [6.83ms]
+(pass) T-03: edit_plan.add_task carries the full quality contract through the same gate as create_task [9.00ms]
+(pass) T-52: a terminal output is repaired APPEND-ONLY; every other terminal write and a running append stay refused [8.34ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs:
+(pass) T-73: the deterministic probe — a composed ticket no longer WIPES the stored deliverable [3.41ms]
+(pass) T-73 negative control: with the new condition neutralised, the SAME fixture is WIPED [29.05ms]
+(pass) T-73 control: a HANDOVER still clears (the fix is not 'never clear') [0.29ms]
+(pass) T-73 control: a PENDING task's first dispatch still clears (a NEW generation) [1.33ms]
+(pass) T-73 ∩ T-79: the SAME function still refuses terminal work, and the terminal deliverable is untouched [0.95ms]
+(pass) T-73: the region is REGISTERED in the delta registry and lives in state.js [0.24ms]
+
+packages/mpd-agent-teams-plugin/test/opt1-failed-dependency.test.mjs:
+(pass) OPT-1: a FAILED dependency no longer blocks its dependent (three-state) [0.12ms]
+(pass) OPT-1 reverse control: a RUNNING dependency still blocks exactly as before [0.14ms]
+(pass) OPT-1: B stays CLAIMABLE after A fails, and its view names the failed dependency [6.01ms]
+(pass) OPT-1: the captain-takeover path (reassign_task) also stops blocking on a failed dep [9.70ms]
+(pass) OPT-1: B dispatches within the scheduler readiness path after A fails [0.19ms]
+(pass) OPT-1: after A is retried to completed, B proceeds on the dependency result [7.55ms]
+
+packages/mpd-agent-teams-plugin/test/opt2-residual-and-ordering.test.mjs:
+{
+  "workspace": "/root/dshProj/my-power-dsh",
+  "stateRoot": "/root/dshProj/my-power-dsh/.mpd/team",
+  "apply": false,
+  "scanned": 7,
+  "reclaimable": 0,
+  "reclaimed": 0,
+  "manifest": [
+    {
+      "teamId": "mpd-default",
+      "phase": "staged",
+      "tasks": 11,
+      "approved": false,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "friction-p2-wave",
+      "phase": "running",
+      "tasks": 36,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "agent-teams-sidebar-migration",
+      "phase": "running",
+      "tasks": 10,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-d92bc69a",
+      "phase": "running",
+      "tasks": 32,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-e1f54e18",
+      "phase": "running",
+      "tasks": 18,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-db53f0d4",
+      "phase": "running",
+      "tasks": 54,
+      "approved": true,
+      "residual": false,
+      "archived": false
+    },
+    {
+      "teamId": "mpd-default-84e50f06",
+      "phase": "staged",
+      "tasks": 8,
+      "approved": false,
+      "residual": false,
+      "archived": false
+    }
+  ]
+}
+[reclaim-staged-teams] DRY RUN: 0 residual of 7 live team(s) (nothing changed)
+(pass) OPT-2 classification: only empty staged unapproved teams are residual [1.46ms]
+(pass) OPT-2: reclamation archives residue, protects live teams, and emits a manifest [44.97ms]
+(pass) OPT-2: a dry run reclaims nothing [43.68ms]
+(pass) OPT-2 ordering: the preset puts the gate BEFORE the sizing doctrine [0.28ms]
+
+packages/mpd-agent-teams-plugin/test/workmate-key.test.ts:
+(pass) workmateKey maps the five multi-word roster members to kebab keys [1.59ms]
+(pass) workmateKey mirrors sanitizeName edge cases [0.08ms]
+
+packages/mpd-agent-teams-plugin/test/r3-auto-reclaim.test.mjs:
+(pass) R3 assertion 1: three stale empty staged teams are ARCHIVED, not deleted [3.66ms]
+(pass) R3 assertion 2: staged-with-tasks, approved, and running teams are byte-identical [1.57ms]
+(pass) R3 assertion 3: the calling session's OWN stale staged team is never archived [2.56ms]
+(pass) R3: a FRESH staged team is not residue (age threshold is real) [0.94ms]
+(pass) R3 assertion (contract): threshold 0 DISABLES the age gate but still protects live work [3.84ms]
+(pass) R3: the threshold comes from config with a 1 h default [2.89ms]
+(pass) F2 (t22 finalisation): panel view and contract view agree, and a claimable dependent is not blocked [4.88ms]
+
+packages/mpd-agent-teams-plugin/test/session-start.test.ts:
+(pass) policyEnabled: off disables unless the autoRoute gate is enabled [2.15ms]
+(pass) policyQualifies: child sessions never qualify [0.28ms]
+(pass) policyQualifies: allow-list scoping and preset-less coverage [0.08ms]
+(pass) availableTeamId: free base, deterministic per-captain suffix, exhaustion [1.83ms]
+(pass) notices carry the startup marker, mention the team, and are user-role messages [0.74ms]
+(pass) complexity gate: both directions on the frozen prompt sets [1.10ms]
+(pass) explicit flag is consumed out of the goal text [0.14ms]
+(pass) routeDecision: off+autoRoute gates, auto/instruct keep the legacy paths [0.85ms]
+(pass) spliceNotice inserts after the last claimed message and preserves the decision [0.46ms]
+
+packages/mpd-agent-teams-plugin/test/t49-send-dedup-wiring.test.mjs:
+(pass) R1 WIRING: two identical agent_teams_send_message calls -> ONE durable record (at-most-once) [10.39ms]
+(pass) R1 WIRING NEGATIVE CONTROL: different content is NOT folded [4.37ms]
+(pass) R1 WIRING: the captain path dedups too (both append sites are wired) [4.69ms]
+(pass) R1 WIRING: two identical sends with live delivery DOWN -> the scheduler delivers exactly ONCE [9.92ms]
+(pass) R1 SEAM: the scheduler's last delivery gate drops CLEARED tombstones [7.45ms]
+(pass) R1 WIRING: two identical sends -> exactly ONE delivery and exactly ONE task assignment [11.78ms]
+(pass) R1 WIRING: a duplicate send AFTER an acknowledged delivery cannot re-open it [4.97ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-diagnostics.test.mjs:
+(pass) DEFECT 5: an OMITTED attempt_id is reported as required, never as stale ownership [5.69ms]
+(pass) DEFECT 5: a PRESENT but mismatched attempt_id still reports stale ownership [3.88ms]
+(pass) DEFECT 6: an omitted status is rejected instead of silently persisting the rest [2.95ms]
+(pass) DEFECT 6: a blank or out-of-enum status is refused loudly, never persisted [3.24ms]
+(pass) DEFECT 6: the tool contract marks status required and documents the minimal terminal call [3.07ms]
+(pass) the happy path still works: status + current attempt_id completes the task [7.61ms]
+
+packages/mpd-agent-teams-plugin/test/t53-dormant-expiry.test.mjs:
+(pass) R1 DORMANT: a past-due request is expired and its requester TOLD without any scheduler kick [3.05ms]
+(pass) R1 DORMANT NEGATIVE CONTROL: a request still inside its TTL is left ALONE [2.91ms]
+(pass) R1 DORMANT NEGATIVE CONTROL: an empty/absent state root is a no-op, never a throw [0.96ms]
+(pass) R1 DORMANT: the sweep is ONCE PER SESSION, not once per step [5.38ms]
+(pass) R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the session's own workspace) [1.50ms]
+(pass) R1 DORMANT: a failing sweep degrades to a warning and still returns the decision [0.88ms]
+(pass) R1 DORMANT: room left for the durable side effect — the notice is an ordinary record [1.42ms]
+
+packages/mpd-agent-teams-plugin/test/r1-message-channel.test.mjs:
+(pass) R1 dedup: N identical sends in the window fold to ONE record with dupCount=N [1.73ms]
+(pass) R1 dedup NEGATIVE CONTROL: same content, different from/to is NOT folded [0.91ms]
+(pass) R1 dedup: a send OUTSIDE the 60 s window is a new record (window is real) [0.80ms]
+(pass) R1 clear: archive-first tombstone + recoverable sidecar + audit event [3.44ms]
+(pass) R1 clear NEGATIVE CONTROL: no hard-delete path — cleared bytes survive on disk [1.07ms]
+(pass) R1 interjection: pending requests are NOT deliverable unread (negative control on the read path) [0.96ms]
+(pass) R1 interjection: TTL silence is a DENY (status expired) [1.23ms]
+(pass) R1 interjection: approval is recorded and cannot be re-decided [2.37ms]
+(pass) REPAIR V1: a request WITHOUT content is NORMALIZED (never silently invisible) [1.05ms]
+(pass) REPAIR V1: the content fallback priority is summary -> reason -> location [1.03ms]
+(pass) REPAIR V1: identity is REQUIRED and rejected loudly, naming the field [0.67ms]
+(pass) REPAIR V1: decide distinguishes MALFORMED-but-present from truly ABSENT [1.16ms]
+(pass) REPAIR V1: a normalized request still expires on captain silence (default DENY usable) [1.16ms]
+(pass) R1 SEAM: after a clear -> 0 unread and 0 deliverable (tombstones never re-open) [1.68ms]
+(pass) R1 SEAM: a clear cannot RE-OPEN an acknowledged record [3.73ms]
+(pass) R1: the decision vocabulary is CLOSED — anything but approved|rejected is named loudly [1.95ms]
+(pass) R1: an APPROVED interjection is re-posted as an ORDINARY message to the requester [1.49ms]
+(pass) R1: expiry notifies the requesting member with an ordinary message [1.01ms]
+
+packages/mpd-agent-teams-plugin/test/export-bridge.test.mjs:
+(pass) adopted client export bridge > registers under the adopted module id and keeps apply/inject [0.15ms]
+(pass) adopted client export bridge > exposes every bridged symbol at load time [0.16ms]
+(pass) adopted client export bridge > exports the panel CSS-module class map, not a renamed copy [0.09ms]
+(pass) adopted client export bridge > carries every class the sidebar page renders, and the adopted archivedWrap quirk [0.19ms]
+(pass) adopted client export bridge > locale dictionaries and monitor store survive the bridge [0.09ms]
+(pass) adopted client export bridge > the bridge is purely additive: exports grow by exactly the pinned list [1.64ms]
+(pass) adopted client export bridge > re-running the bridge is a no-op that leaves the file byte-identical [1.88ms]
+(pass) adopted client export bridge > drift guard: an unknown symbol is reported as undeclared [1.01ms]
+(pass) adopted client export bridge > a re-vendor re-applies the bridge [0.07ms]
+
+packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs:
+(pass) F2: a dependent of a FAILED dependency is NOT rendered blocked in the panel view [1.27ms]
+(pass) F2: panel view and task-contract view agree on the same team record [4.27ms]
+(pass) F5: the schema default stateDir is the frozen .mpd/team [0.47ms]
+(pass) F6: TEAM_TOOL_NAMES carries the frozen 14-name manual-entry set [0.51ms]
+
+packages/mpd-agent-teams-plugin/test/r3-f1-signal-c.test.mjs:
+(pass) F1: C requires its own 2-of-3 majority, and never appears as C1/C2/C3 top-level signals [0.24ms]
+(pass) F1: no route from C1/C2/C3 as separate signals (the pre-fix false-positive shape) [0.11ms]
+(pass) F1: the frozen two-sided prompt set still behaves 3 silent / 3 complex [1.52ms]
+(pass) F1: a plan artifact is its own soft signal and reaches the gate [0.11ms]
+
+packages/mpd-agent-teams-plugin/test/member-readonly-deny.test.mjs:
+(pass) the profile parser normalizes `toolDeny` and rejects non-lists or empty entries [1.50ms]
+(pass) the member spawn passes the member's deny list to the harness, merged with the captain-only denial [0.76ms]
+(pass) the shipped `mpd` profile marks exactly the six read-only members with the canonical names [0.42ms]
+(pass) `agent_teams_add_member` exposes `toolDeny` so a runtime-added member can be read-only too [2.60ms]
+
+packages/mpd-agent-teams-plugin/test/backports.test.ts:
+(pass) withTeamLock: settled locks release their queue entry > a completed lock leaves no queue entry behind [0.24ms]
+(pass) withTeamLock: settled locks release their queue entry > a rejected mutation still releases its entry [0.30ms]
+(pass) withTeamLock: settled locks release their queue entry > serialization is preserved and the last waiter cleans up [10.62ms]
+(pass) blank optional task fields are normalized to absent > blank scalars are dropped and blank list entries are filtered [0.13ms]
+(pass) blank optional task fields are normalized to absent > non-blank values pass through untouched [0.04ms]
+(pass) blank optional task fields are normalized to absent > a legacy dirty record still loads instead of bricking the team [0.85ms]
+(pass) Web routes: authentication fence and bounded body > a missing Connection service fails closed with 503 [0.50ms]
+(pass) Web routes: authentication fence and bounded body > a rejected request never reaches the handler [0.17ms]
+(pass) Web routes: authentication fence and bounded body > an admitted request runs the route handler unchanged [0.18ms]
+(pass) Web routes: authentication fence and bounded body > readJsonRequest parses objects and refuses arrays, bad JSON, and oversized bodies [3.09ms]
+
+packages/mpd-agent-teams-plugin/test/dispatch-stall-regression.test.mjs:
+(pass) the approval-time kick delivers a ready root task to a member whose spawn turn is still running [3.59ms]
+(pass) a second kick while the member is mid-turn does not duplicate the queued assignment, and says why [1.74ms]
+(pass) the member's own idle edge after the queued assignment does not deliver it twice [123.35ms]
+(pass) an idle edge that resolves no team logs the miss instead of returning silently [6.07ms]
+
+packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs:
+(pass) DEFECT 3: a RUNNING task's contract is readable and matches what was declared [4.86ms]
+(pass) DEFECT 3: the full agent-teams tool surface registers, with the contract tool among it [3.95ms]
+(pass) DEFECT 3: the read-only surface is available to a member too and rejects unknown ids [4.93ms]
+
+packages/mpd-agent-teams-plugin/test/r4-explicit-team.test.mjs:
+(pass) R4: with no team yet the PLUGIN stages one (approval=required, zero members spawned) [5.89ms]
+(pass) R4 ask-first: an existing STAGED team yields an inquiry, never a second team [1.25ms]
+(pass) R4 silent-failure: an AMBIGUOUS session (two teams) warns instead of guessing [1.54ms]
+(pass) R4 silent-failure: a missing profile roster warns instead of staying quiet [0.39ms]
+
+packages/mpd-agent-teams-plugin/test/capabilities.test.ts:
+(pass) agent-scoped AgentTeams instructions > the captain gets the activation prompt, the member gets member rules [0.93ms]
+(pass) agent-scoped AgentTeams instructions > a member is denied every captain-only business tool [0.25ms]
+(pass) agent-scoped AgentTeams instructions > cold-resumed members are recognized from the durable retired index [0.39ms]
+(pass) agent-scoped AgentTeams instructions > a live team record decides membership without any spawn filter [0.62ms]
+(pass) agent-scoped AgentTeams instructions > damaged state warns and falls back to the captain protocol instead of throwing [0.36ms]
+(pass) agent-scoped AgentTeams instructions > agents created after install are attached on agent/session-start [0.23ms]
+
+packages/mpd-agent-teams-plugin/test/harness-compat.test.ts:
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: the public prompt seam carries the team turn as a queued turn [0.44ms]
+(pass) queueMemberPrompt: delivery follows the host generation > 0.1.5-rc.2 host: public sendMessage is never used for team work [0.15ms]
+(pass) queueMemberPrompt: delivery follows the host generation > Alpha.5 … 0.1.2-rc.1 host: the symbol-keyed FIFO queue still carries the turn [0.32ms]
+(pass) queueMemberPrompt: delivery follows the host generation > legacy host: the receiver-bound followup still wins when present [0.24ms]
+(pass) queueMemberPrompt: delivery follows the host generation > neither contract: refuses instead of silently dropping the turn [0.24ms]
+(pass) deliverToMember: the scheduler's wakeup path > 0.1.5-rc.2 runtime delivers through the public prompt seam and reports success [0.21ms]
+(pass) deliverToMember: the scheduler's wakeup path > a host without any delivery contract reports failure instead of throwing [0.21ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > legacy host registers the seam directly, never the session-start listener [0.10ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > 0.1.5-rc.2 host: setup receives the live Agent and never reads childCtx.agent [0.57ms]
+(pass) installContinuableMemberSetup: setup follows the host generation > a host without either seam degrades with a warning instead of aborting apply() [0.10ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > prefers the modern ownEvents() [0.09ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > legacy session logs are sliced at seedLength [0.07ms]
+(pass) sessionOwnEvents: child history excludes the inherited prefix > an unreadable log is refused loudly [0.06ms]
+(pass) retired-member guard covers every resumable face > 0.1.5-rc.2 host: the public prompt seam rejects a retired member and passes others [0.93ms]
+(pass) retired-member guard covers every resumable face > Alpha.5 … 0.1.2-rc.1 host: the FIFO queue rejects a retired member and passes others [0.44ms]
+(pass) retired-member guard covers every resumable face > legacy host: followup is guarded without inventing the method [0.38ms]
+(pass) retired-member guard covers every resumable face > a runtime with no delivery face no longer pretends to guard one [0.15ms]
+
+packages/mpd-agent-teams-plugin/test/t52-root-registration.test.mjs:
+(pass) t52 COMPOSITION ROOT: apply() resolves a past-due request even with the team policy OFF [6.83ms]
+(pass) t52 COMPOSITION ROOT NEGATIVE CONTROL: with no apply() the request stays pending [0.60ms]
+
+packages/mpd-agent-teams-plugin/test/t52-interjection-tools.test.mjs:
+(pass) t52: the three lane tools are REGISTERED on the shipped surface [4.49ms]
+(pass) t52 CHAIN: member requests -> captain sees pending -> approves -> ordinary record for the requester [6.34ms]
+(pass) t52 CHAIN: the approval reaches the REQUESTER's own session at the next idle edge — addressed, once, and nowhere else [7.70ms]
+(pass) t52 CHAIN: the requester's own lane then records the approval once it is collected [4.64ms]
+(pass) t52 AUTHZ: a MEMBER cannot decide — refused loudly, with a reason [2.94ms]
+(pass) t52 AUTHZ: the decision vocabulary is closed AT THE TOOL BOUNDARY [3.43ms]
+(pass) t52 AUTHZ: a member may clear ONLY its own mailbox [7.04ms]
+(pass) t52 AUTHZ+F3: the captain may clear ANY mailbox, and a cleared record is not unread after [4.41ms]
+(pass) t52 AUTHZ: the captain cannot clear a mailbox that does not exist [3.55ms]
+(pass) t52 BOUNDARY: the request carries identity from the CALLER, never from an argument [4.18ms]
+
+packages/mpd-agent-teams-plugin/test/scheduler-dispatch.test.ts:
+(pass) scheduler dispatch across a dependency boundary > the first batch is delivered and dependents stay parked [3.98ms]
+(pass) scheduler dispatch across a dependency boundary > completing the first batch dispatches the next batch to its idle members [3.89ms]
+(pass) scheduler dispatch across a dependency boundary > a member's idle edge delivers its own newly unblocked task [5.89ms]
+(pass) scheduler dispatch across a dependency boundary > a real delivery failure is reported, not swallowed as success [5.99ms]
+
+packages/mpd-agent-teams-plugin/test/update-task-amend-lock-and-guards.test.mjs:
+(pass) captain amend on a RUNNING task settles instead of self-deadlocking the team lock [8.20ms]
+(pass) a MEMBER's amend is refused loudly instead of silently persisting nothing [3.52ms]
+(pass) a terminal task refuses EVERY field change loudly, not just status/output [3.42ms]
+(pass) a PENDING task is amendable (status enum accepts pending) and the amendment persists [3.85ms]
+(pass) inScope/outOfScope are amendable by the captain (contract repair without a fail-and-re-run) [7.31ms]
+
+packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:
+(pass) S2: amending a definition re-runs the amended task and its TRANSITIVE DEPENDENTS only [6.19ms]
+(pass) S2 falsifiability: a NO-OP amendment does not re-run anything [6.79ms]
+(pass) S3: the scheduler's REAL readiness predicate never re-dispatches terminal work [0.62ms]
+(pass) S4: a bounded notice reaches a RUNNING member without restarting its attempt [4.24ms]
+(pass) S1: a terminal failed task is retryable and completed siblings keep their results [4.70ms]
+
+packages/mpd-boulder-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [1.49ms]
+(pass) start, timer, complete lifecycle [2.63ms]
+(pass) plan progress parses TODOs and verification wave [0.89ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [1.16ms]
+
+packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [48.16ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: HOME unset + DSH_HOME -> REFUSED [49.72ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [47.22ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + explicit override -> ALLOWED [49.58ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [43.30ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: HOME unset + DSH_HOME -> REFUSED [43.30ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [43.39ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + explicit override -> ALLOWED [41.64ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > CONTROL: a one-sided arm table is reported as HIDING the defect (the t23 failure shape) [0.37ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > FALSIFIABILITY: the same arms FAIL against the pre-fix predicate (homedir() follows $HOME) [52.48ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > the artifact under test is the package's own dist (no src/dist write from this suite) [0.12ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [2.04ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [5.45ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.96ms]
+(pass) workmate library root is under HOME and not in cwd [0.42ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [4.27ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [4.92ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.77ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [2.40ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.85ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [1.01ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [1.13ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [1.01ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.37ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.68ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.66ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [1.01ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [1.60ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [2.64ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.71ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [1.98ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [1.12ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.10ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [3.76ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [4.84ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.91ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [14.47ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [5.18ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [1.22ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [0.44ms]
+(pass) capabilities > reports absent seams without throwing [0.11ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.37ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.08ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.10ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.18ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.15ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.14ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.26ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.17ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.34ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.33ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.25ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.11ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.38ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.37ms]
+(pass) tool plane > executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given [0.22ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.34ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.16ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.20ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.15ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.37ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.18ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.28ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.13ms]
+(pass) row entry > decision helpers use the harness feedback key [0.08ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [2.68ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.33ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.54ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.29ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.39ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.61ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.39ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [540.60ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [1.04ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [1.12ms]
+(pass) lazy mpdDsh resolution (T-50) > a transient miss is served temporarily, warned honestly, and is NOT cached for the session [0.40ms]
+(pass) lazy mpdDsh resolution (T-50) > a strict success is cached; a miss is retried on every use [0.18ms]
+(pass) lazy mpdDsh resolution (T-50) > a clean boot never warns and reports the mounted identity [0.08ms]
+(pass) lazy mpdDsh resolution (T-50) > a provably absent provider keeps the row-order hint — and only that case does [0.16ms]
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [3.16ms]
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts:
+(pass) DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers [1.65ms]
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [0.43ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.68ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.34ms]
+
+packages/mpd-mcp-codegraph/test/daemon-policy.test.mjs:
+(pass) parseDaemonSetting: truthy, falsy, unset and invalid stay distinguishable [1.55ms]
+(pass) default (no env): serve in-process, and the reason names the measured failure [0.16ms]
+(pass) MPD_CODEGRAPH_DAEMON=1 keeps upstream's shared daemon (no opt-out pinned) [0.19ms]
+(pass) MPD_CODEGRAPH_DAEMON=0 pins the opt-out explicitly [0.11ms]
+(pass) an explicit CODEGRAPH_NO_DAEMON=1 is respected and never overridden [0.08ms]
+(pass) an unrecognized value warns and falls back to the safe default [0.11ms]
+(pass) the default emits exactly ONE informational line (never stdout) [0.07ms]
+(pass) launch.mjs applies the policy before importing the vendored serve.js [0.09ms]
+(pass) the vendored bridge forwards CODEGRAPH_NO_DAEMON to the child env [0.79ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [1.89ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.20ms]
+(pass) write-guard denies silent overwrite of differing content [0.12ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [4.28ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [1.22ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.16ms]
+(pass) truncation keeps head and tail slices plus the banner [0.13ms]
+(pass) truncation passes through outputs within the budget unchanged [0.19ms]
+
+packages/mpd-hashline-plugin/test/hashline.test.ts:
+(pass) hashline view shows LINE#HASH|content [0.72ms]
+(pass) anchored replace on plain content [2.03ms]
+(pass) mismatched anchor throws [0.79ms]
+(pass) append and prepend anchored [0.33ms]
+(pass) replace range with end anchor [0.54ms]
+(pass) unified diff shape [0.44ms]
+
+packages/mpd-hashline-plugin/test/tool-schema.test.ts:
+(pass) no registered hashline schema uses a type ARRAY (parameters or output) [2.58ms]
+(pass) edit.lines is a oneOf union of the string and array-of-string shapes [0.14ms]
+(pass) read then edit works with lines as a single string AND as an array of strings [1.79ms]
+(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.33ms]
+(pass) the guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [1.48ms]
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [5.22ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [2.66ms]
+[mpd-bootstrap] skill corpus served from /tmp/mpd-corpus-VeDj1U (provider mpd-bundle, bundle 0.9.1)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [2.61ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-bootstrap] legacy home-copy cleanup skipped (config)
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.79ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [1.66ms]
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.53ms]
+
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+(pass) binary resolves from toolchain [2.11ms]
+(pass) comment file triggers detection (exit 2) [31.16ms]
+(pass) clean file passes (exit 0) [4.30ms]
+
+ 919 pass
+ 0 fail
+ 6514 expect() calls
+Ran 919 tests across 87 files. [29.88s]

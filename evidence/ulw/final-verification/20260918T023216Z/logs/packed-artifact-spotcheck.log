@@ -1,0 +1,11 @@
+### packed vs repo byte identity for the wave's decisive shipped files
+IDENTICAL  packages/mpd-ulw-plugin/dist/index.js  9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710
+IDENTICAL  packages/mpd-dsh-adapter-plugin/dist/index.js  400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8
+IDENTICAL  packages/mpd-agent-teams-plugin/lib/session-start.js  4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8
+IDENTICAL  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js  5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d
+IDENTICAL  presets/mpd/agent.cordis.yml  ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b
+DIFF/ABSENT packages/mpd-bundle/cordis.patch.yml  packed= repo=a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116
+
+### the packed gate text a user sees (preset session-team policy row)
+
+### same in the repo preset (must be byte-identical above)

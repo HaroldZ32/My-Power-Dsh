@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "at": "2026-09-17T02:52:10.578Z",
+  "plugin": "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin",
+  "cases": [
+    {
+      "id": "T-48/D2: the real claim_task tool exists",
+      "ok": true,
+      "detail": "function"
+    },
+    {
+      "id": "D2: claim_task SUCCEEDS while a working hold is live",
+      "ok": true,
+      "detail": "status=claimed attempt=e68306bb"
+    },
+    {
+      "id": "D2: update_task SUCCEEDS while the same hold is live",
+      "ok": true,
+      "detail": "status=in_progress"
+    },
+    {
+      "id": "D2: the durable record really moved",
+      "ok": true,
+      "detail": "status=in_progress"
+    },
+    {
+      "id": "D2: every hold read came from the DISPATCH half (scheduler.js), none from the tool boundary",
+      "ok": true,
+      "detail": "reads=1 nonScheduler=0"
+    },
+    {
+      "id": "T-46: output_append extends a TERMINAL task's summary with a >8 KB document",
+      "ok": true,
+      "detail": "before=23B after=9537B prefixKept=true"
+    },
+    {
+      "id": "T-46: a byte-dropping plain `output` replacement is REFUSED and the bytes survive",
+      "ok": true,
+      "detail": "refusal=terminal task t2 is immutable: output would change; use agent_teams_reassign_task to retry"
+    },
+    {
+      "id": "T-09: the artifact channel returns artifact_path + artifact_bytes",
+      "ok": true,
+      "detail": "path=evidence/t25/artifact.md bytes=9045"
+    },
+    {
+      "id": "T-09: the artifact file on disk holds the FULL text (byte-exact)",
+      "ok": true,
+      "detail": "disk=9045B expected=9045B"
+    },
+    {
+      "id": "T-49: agent_teams_task_contract is a MEMBER tool name",
+      "ok": true,
+      "detail": "memberTools=6"
+    },
+    {
+      "id": "T-49: the contract tool answers a member call with the declared contract",
+      "ok": true,
+      "detail": "view={\"task_id\":\"t2\",\"subject\":\"terminal append probe\",\"kind\":\"work\",\"status\":\"completed\",\"assignee\":\"Architect\",\"attempt\":1,"
+    }
+  ]
+}

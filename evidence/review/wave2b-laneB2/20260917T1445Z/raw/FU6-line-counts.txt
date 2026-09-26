@@ -1,0 +1,8 @@
+== FU-6 line counts, moment 2026-09-17T14:40:18Z ==
+wc -l  scripts/check-citations.mjs                 : 1146
+non-empty lines (grep -c .) same file              : 1095
+python split('\n') length same file               : 1147
+wc -l  evidence/extensions/docs-claims/check-citations.mjs (frozen): 562
+wc -l  the lane's retained revisions/checker.mjs    : 1146
+python split('\n') the lane's retained checker.mjs  : 1147
+the lane's record field                            : 1143

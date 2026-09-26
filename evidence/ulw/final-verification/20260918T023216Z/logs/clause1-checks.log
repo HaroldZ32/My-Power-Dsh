@@ -1,0 +1,27 @@
+### C1.1 no stale B3 label in AGENTS.md
+grep_exit=1 (1 = clean)
+
+### C1.2 no 'B3-shaped' in src+dist
+grep_exit=1 (1 = clean)
+
+### C1.3 canonical repo-root build form present in BOTH README twins
+packages/mpd-ulw-plugin/README.md:64:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+packages/mpd-ulw-plugin/README.zh-CN.md:46:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+grep_exit=0
+
+### C1.3b retired package-dir form gone
+grep_exit=1 (1 = clean)
+
+### C1.4 foreign-host residue
+grep_exit=1 (1 = clean)
+
+### C1.5 feature-audit claim
+grep_exit=1 (1 = clean)
+
+### ulw-* host residue sweep (Go/git phases, foreign-host names) across the ulw-* skills
+skills/ulw-research/SKILL.md:8:Translate any OpenCode/Codex-only tool name to its DeepSeek Harness equivalent:
+skills/ulw-research/SKILL.md:10:| OpenCode/Codex example | DSH tool to use |
+skills/ulw-research/ATTRIBUTION.md:4:the oh-my-openagent project. One design idea is adapted from a third-party project,
+skills/ulw-research/ATTRIBUTION.md:24:  runtime-agnostic prompt + message-text contract, because the Codex Light edition has
+skills/ulw-execute/SKILL.md:12:Translate any OpenCode/Codex-only tool name in an inherited example to its DeepSeek Harness equivalent:
+skills/ulw-execute/SKILL.md:14:| OpenCode/Codex example | DSH tool to use |

@@ -1,0 +1,213 @@
+{
+  "type": "aside",
+  "props": {
+    "className": "aYQbCq_panel",
+    "style": {
+      "position": "relative",
+      "top": "auto",
+      "left": "auto",
+      "width": "100%",
+      "height": "100%",
+      "minHeight": 0,
+      "maxHeight": "none",
+      "flex": "1 1 auto",
+      "transform": "none",
+      "willChange": "auto",
+      "animation": "none",
+      "border": "none",
+      "borderRadius": 0,
+      "background": "transparent",
+      "boxShadow": "none",
+      "backdropFilter": "none",
+      "WebkitBackdropFilter": "none"
+    },
+    "data-agent-teams-page": true,
+    "data-agent-teams-activity": true,
+    "data-team-count": "0",
+    "data-watchdog-stuck": "1",
+    "data-watchdog-reader": "web-panel",
+    "data-watchdog-replay": "1",
+    "data-compact": true,
+    "aria-label": "AgentTeams activity panel",
+    "children": [
+      {
+        "type": "div",
+        "props": {
+          "style": {
+            "display": "flex",
+            "flexDirection": "column",
+            "gap": 4,
+            "padding": "8px 10px",
+            "borderBottom": "1px solid rgba(220,120,60,0.45)",
+            "background": "rgba(220,120,60,0.14)",
+            "fontSize": 12,
+            "lineHeight": 1.45,
+            "fontFamily": "system-ui, sans-serif",
+            "color": "inherit"
+          },
+          "data-watchdog-banner": "incident",
+          "data-watchdog-stuck": "1",
+          "data-watchdog-team": "alpha",
+          "data-watchdog-kind": "held",
+          "data-watchdog-cause": "silence for 120000 ms",
+          "data-watchdog-hold": "hold-alpha-1",
+          "data-watchdog-incident": "inc-1",
+          "data-watchdog-reader": "web-panel",
+          "data-watchdog-replay": "1",
+          "data-watchdog-unread": "1",
+          "role": "status",
+          "children": [
+            {
+              "type": "span",
+              "props": {
+                "style": {
+                  "fontWeight": 600
+                },
+                "children": "Team paused by the watchdog: alpha (silence for 120000 ms)"
+              }
+            },
+            {
+              "type": "span",
+              "props": {
+                "children": "task t9 · attempt a1 · since 4:13:20 PM"
+              }
+            },
+            null,
+            {
+              "type": "button",
+              "props": {
+                "type": "button",
+                "style": {
+                  "alignSelf": "flex-start",
+                  "marginTop": 2,
+                  "padding": "2px 8px",
+                  "fontSize": 12,
+                  "cursor": "pointer",
+                  "border": "1px solid rgba(220,120,60,0.6)",
+                  "borderRadius": 4,
+                  "background": "transparent",
+                  "color": "inherit"
+                },
+                "data-watchdog-ack": "1",
+                "onClick": "[fn]",
+                "children": "Acknowledge"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "header",
+        "props": {
+          "className": "aYQbCq_panelHead",
+          "children": [
+            {
+              "type": "span",
+              "props": {
+                "className": "aYQbCq_panelTitle",
+                "children": [
+                  "AgentTeams activity",
+                  {
+                    "type": "span",
+                    "props": {
+                      "className": "aYQbCq_panelDot",
+                      "data-busy": false,
+                      "aria-hidden": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "span",
+              "props": {
+                "className": "aYQbCq_panelControls",
+                "children": {
+                  "type": "button",
+                  "props": {
+                    "type": "button",
+                    "className": "aYQbCq_iconButton",
+                    "data-control": "collapse",
+                    "onClick": "[fn]",
+                    "aria-label": "Collapse activity panel",
+                    "title": "Collapse activity panel",
+                    "children": {
+                      "props": {}
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "div",
+        "props": {
+          "className": "aYQbCq_teams",
+          "children": [
+            {
+              "type": "div",
+              "key": "watchdog-record:inc-1",
+              "props": {
+                "style": {
+                  "display": "flex",
+                  "flexDirection": "column",
+                  "gap": 2,
+                  "padding": "6px 10px",
+                  "borderLeft": "3px solid rgba(220,120,60,0.7)",
+                  "background": "rgba(220,120,60,0.07)",
+                  "fontSize": 12,
+                  "lineHeight": 1.4,
+                  "fontFamily": "system-ui, sans-serif",
+                  "color": "inherit"
+                },
+                "data-watchdog-activity": "inc-1",
+                "data-watchdog-team": "alpha",
+                "data-watchdog-kind": "escalate",
+                "data-watchdog-cause": "silence for 120000 ms",
+                "data-watchdog-at": "1789460000000",
+                "data-watchdog-ack-required": "1",
+                "children": [
+                  {
+                    "type": "span",
+                    "props": {
+                      "style": {
+                        "fontWeight": 600
+                      },
+                      "children": "Activity record — escalated (paused)"
+                    }
+                  },
+                  {
+                    "type": "span",
+                    "props": {
+                      "children": "alpha · silence for 120000 ms"
+                    }
+                  },
+                  {
+                    "type": "span",
+                    "props": {
+                      "style": {
+                        "opacity": 0.75
+                      },
+                      "children": "4:13:20 PM · Unacknowledged: it replays on every load until you acknowledge it."
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "span",
+              "key": "empty",
+              "props": {
+                "className": "aYQbCq_emptyHint",
+                "data-agent-teams-empty": true,
+                "children": "No team activity"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

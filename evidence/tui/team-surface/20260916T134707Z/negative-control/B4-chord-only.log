@@ -1,0 +1,126 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from a real record on disk) > renders the staged roster, the task DAG, counts and mail from the file [6.92ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the depth walk and the failed-dependency marking match the panel's own semantics [0.88ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.47ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a corrupt / absent / cyclic record renders an empty state and never throws [1.07ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the REAL record of this session's own team projects without a hand-built object [13.04ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the board gains exactly the two T3 rows [2.07ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.92ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [1.16ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.76ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.83ms]
+(pass) surface T1 — the team workflow > a staged team opens the plan surface and `p` reaches the board [0.97ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [1.13ms]
+(pass) surface T1 — the team workflow > N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there) [0.99ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [2.33ms]
+(pass) surface T2 — the plan approval > shows the staged plan, the action block and an EMPTY confirmation echo [1.28ms]
+(pass) surface T2 — the plan approval > the precondition failure states the phase and offers only Esc [0.47ms]
+(pass) surface T2 — the plan approval > the precondition failure is READ-ONLY: no chord can mutate a non-staged team [1.00ms]
+(pass) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.35ms]
+(pass) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [2.08ms]
+651 |     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+652 |     pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+653 |     // The executor is awaited; the settlement is visible on the next render.
+654 |     await Bun.sleep(0)
+655 |     const text = render(kit, components[PLAN_SCENE_ID])
+656 |     expect(calls).toEqual([{ teamId: "mpd-fixture-1", confirmation: "approve mpd-fixture-1", captainSessionId: "sess-1" }])
+                        ^
+error: expect(received).toEqual(expected)
+
+- [
+-   {
+-     "captainSessionId": "sess-1",
+-     "confirmation": "approve mpd-fixture-1",
+-     "teamId": "mpd-fixture-1",
+-   },
+- ]
++ []
+
+- Expected  - 7
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:656:19)
+(fail) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [1.96ms]
+668 |     render(kit, components[PLAN_SCENE_ID])
+669 |     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+670 |     pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+671 |     await Bun.sleep(0)
+672 |     const text = render(kit, components[PLAN_SCENE_ID])
+673 |     expect(text).toContain("approve failed: team is already running")
+                       ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "approve failed: team is already running"
+Received: "MPD plan approval — Fixture Team · 100x30\nteam       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review\nmembers    2 · tasks 3 · links 1\nrunnable   yes\nedits      none (the TUI has no inline plan editors)\n\nroster\n  Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/2\n  Reviewer · correctness review · deepseek-official/deepseek-v4-flash · idle · 0/0\n\ntasks\nt1 [requirements] freeze the contract · completed @Architect\n  t2 [implementation] build it · pending @Architect deps=t1\nt3 [-] no kind here · failed\n\napproval needs the exact team id typed below, then Ctrl+X\nconfirm    approve mpd-fiture-1\nrequired   approve mpd-fixture-1\nrunnable   yes\nconfirmation does not match this team\n\nto change this plan: press Esc and tell the captain what to change in the chat\nCtrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:673:18)
+(fail) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [1.83ms]
+681 |     render(kit, components[PLAN_SCENE_ID])
+682 |     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+683 |     pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+684 |     await Bun.sleep(0)
+685 |     const text = render(kit, components[PLAN_SCENE_ID])
+686 |     expect(text).toContain(`approve failed: ${APPROVE_TOOL} is not registered in this composition`)
+                       ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "approve failed: agent_teams_approve is not registered in this composition"
+Received: "MPD plan approval — Fixture Team · 100x30\nteam       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review\nmembers    2 · tasks 3 · links 1\nrunnable   yes\nedits      none (the TUI has no inline plan editors)\n\nroster\n  Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/2\n  Reviewer · correctness review · deepseek-official/deepseek-v4-flash · idle · 0/0\n\ntasks\nt1 [requirements] freeze the contract · completed @Architect\n  t2 [implementation] build it · pending @Architect deps=t1\nt3 [-] no kind here · failed\n\napproval needs the exact team id typed below, then Ctrl+X\nconfirm    approve mpd-fiture-1\nrequired   approve mpd-fixture-1\nrunnable   yes\nconfirmation does not match this team\n\nto change this plan: press Esc and tell the captain what to change in the chat\nCtrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:686:18)
+(fail) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [1.83ms]
+707 |     }
+708 |     const { kit, components } = mountScenes(workspace, { actions })
+709 |     render(kit, components[PLAN_SCENE_ID])
+710 |     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+711 |     const working = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+712 |     expect(working).toContain("working…")
+                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "working…"
+Received: "MPD plan approval — Fixture Team · 100x30\nteam       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review\nmembers    2 · tasks 3 · links 1\nrunnable   yes\nedits      none (the TUI has no inline plan editors)\n\nroster\n  Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/2\n  Reviewer · correctness review · deepseek-official/deepseek-v4-flash · idle · 0/0\n\ntasks\nt1 [requirements] freeze the contract · completed @Architect\n  t2 [implementation] build it · pending @Architect deps=t1\nt3 [-] no kind here · failed\n\napproval needs the exact team id typed below, then Ctrl+X\nconfirm    approve mpd-fiture-1\nrequired   approve mpd-fixture-1\nrunnable   yes\nconfirmation does not match this team\n\nto change this plan: press Esc and tell the captain what to change in the chat\nCtrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:712:21)
+(fail) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [1.81ms]
+(pass) surface T2 — the plan approval > the echo is empty again after an `r` refresh (no prefill, no carry-over) [1.72ms]
+740 |     // An empty echo: `r` is the refresh key, and the echo stays empty.
+741 |     expect(pressAndRender(kit, components[PLAN_SCENE_ID], "r")).toContain("confirm    \n")
+742 |     // Once consent input starts, every printable key — `r` included — is appended,
+743 |     // otherwise `approve <teamId>` (which contains `r`) could never be typed.
+744 |     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+745 |     expect(render(kit, components[PLAN_SCENE_ID])).toContain("confirm    approve mpd-fixture-1")
+                                                         ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "confirm    approve mpd-fixture-1"
+Received: "MPD plan approval — Fixture Team · 100x30\nteam       Fixture Team (mpd-fixture-1) · phase staged · review awaiting_review\nmembers    2 · tasks 3 · links 1\nrunnable   yes\nedits      none (the TUI has no inline plan editors)\n\nroster\n  Architect · architecture review · deepseek-official/deepseek-v4-flash · idle · 1/2\n  Reviewer · correctness review · deepseek-official/deepseek-v4-flash · idle · 0/0\n\ntasks\nt1 [requirements] freeze the contract · completed @Architect\n  t2 [implementation] build it · pending @Architect deps=t1\nt3 [-] no kind here · failed\n\napproval needs the exact team id typed below, then Ctrl+X\nconfirm    approve mpd-fiture-1\nrequired   approve mpd-fixture-1\nrunnable   yes\nconfirmation does not match this team\n\nto change this plan: press Esc and tell the captain what to change in the chat\nCtrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:745:52)
+(fail) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [1.73ms]
+(pass) surface T2 — the plan approval > BSpace is the only editing key [1.18ms]
+(pass) surface T2 — the plan approval > discard is two-step: one Ctrl+D arms, a second inside the window calls the tool [2.21ms]
+(pass) surface T2 — the plan approval > any other key clears the discard arm [2.05ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [1.43ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.62ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.52ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.68ms]
+(pass) package invariants > the built dist carries the two scene ids and no write primitive [0.97ms]
+(pass) package invariants > the frozen tool names are the adopted ones [0.06ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.68ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+
+5 tests failed:
+(fail) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [1.96ms]
+(fail) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [1.83ms]
+(fail) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [1.83ms]
+(fail) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [1.81ms]
+(fail) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [1.73ms]
+
+ 30 pass
+ 5 fail
+ 166 expect() calls
+Ran 35 tests across 2 files. [212.00ms]

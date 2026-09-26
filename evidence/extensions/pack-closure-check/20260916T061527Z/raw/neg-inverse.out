@@ -1,0 +1,6 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  INVERSE [mpd-phantom-plugin] - the packer lists mpd-phantom-plugin but packages/mpd-phantom-plugin does not exist
+  offending packages: mpd-phantom-plugin
+  packer: /root/dshProj/my-power-dsh/evidence/extensions/pack-closure-check/20260916T061527Z/raw/packer-with-phantom-entry.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml

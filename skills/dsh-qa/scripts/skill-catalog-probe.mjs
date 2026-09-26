@@ -14,6 +14,8 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, 
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK = "Call the skill tool with name 'svn-master' (the exact skill name from the session skill catalog), then reply in one line what this skill governs."
@@ -84,7 +86,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-d", "skill-catalog", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-skill-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // The live provider chain lives in settings.yaml (llm-pi-ai gateway providers);
   // without it the headless boot falls back to the base deepseek-official route
   // and fails with MISSING_CREDENTIAL (AGENTS.md §7).
@@ -98,7 +100,7 @@ async function runReal() {
   // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
   const userHome = join(sandbox, "userhome")
   mkdirSync(userHome, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: userHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: userHome  })
   const staged = join(repoRoot, "dist", "mpd-package")
   const profileDir = join(sandbox, "profiles", "t")
   mkdirSync(profileDir, { recursive: true })
@@ -110,15 +112,17 @@ async function runReal() {
   const manifest = JSON.parse(readFileSync(join(profileDir, "package.json"), "utf8"))
   manifest.dsh.profile.bundles.push("@mpd-dsh/mpd")
   writeFileSync(join(profileDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
-  // Boot overlay: insert the headless profile's agent-presets row rooted at the
-  // INSTALLED bundle (headless has no stock roster row) and mount the QA probe
-  // that reads the live catalog. The bundle's own rows all stay enabled.
+  // Boot overlay: mount ONLY the QA probe that reads the live catalog. The bundle
+  // is added as a profile layer above, so its OWN patch array supplies the
+  // `agent-preset-registry` id-target and the `preset-mpd` row — 0.1.7-rc.2 has no
+  // preset ROOT to insert, and the retired `@deepseek-ai/dsh-agent-presets` row
+  // would now fail to resolve and take the boot down with it.
   const overlay = join(sandbox, "qa-probe.yml")
   const installedBundle = join(profileDir, "node_modules", "@mpd-dsh", "mpd")
   writeFileSync(overlay, "- insert:\n"
-    + "    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n        roots:\n          - path: " + JSON.stringify(join(installedBundle, "presets")) + "\n            trust: system\n"
     + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
-  const live = spawnSync("dsh", ["--profile", "t", "--patch", overlay, "ok"], { env, cwd: ws, encoding: "utf8", timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
+  const liveSpec = dshCommand(["--profile", "t", "--patch", overlay, "ok"], env)
+  const live = liveSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(liveSpec.command, liveSpec.args, { env, cwd: ws, encoding: "utf8", timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   // bundle-served model: the corpus is NOT copied into the harness home …
   const userSkills = join(sandbox, "skills")

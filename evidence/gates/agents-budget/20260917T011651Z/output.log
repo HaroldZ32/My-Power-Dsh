@@ -1,0 +1,71 @@
+=== [20260917T011651Z] T-22 instruction-budget gate ===
+--- 1. wc -c AGENTS.md ---
+42954 AGENTS.md
+exit=0
+--- 2. harness renderer: before snapshot vs current vs synthetic oversized control ---
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "before",
+      "path": "/root/dshProj/my-power-dsh/evidence/gates/agents-budget/20260917T011651Z/AGENTS.md.before",
+      "sourceBytes": 78283,
+      "renderedBytes": 65536,
+      "underBudget": true,
+      "truncated": true,
+      "omitted": [],
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 78283,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    },
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 42954,
+      "renderedBytes": 43258,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    },
+    {
+      "label": "oversized_control",
+      "path": "/root/dshProj/my-power-dsh/evidence/gates/agents-budget/20260917T011651Z/oversized-control.md",
+      "sourceBytes": 67704,
+      "renderedBytes": 65536,
+      "underBudget": true,
+      "truncated": true,
+      "omitted": [],
+      "truncatedRecords": [
+        {
+          "displayPath": "AGENTS.md",
+          "originalBytes": 67704,
+          "includedBytes": 65143
+        }
+      ],
+      "verdict": "RED (truncated)"
+    }
+  ]
+}
+exit=0
+--- 3. move audit (line-segment coverage proof) ---
+exit=0
+      "found": true
+    }
+  ],
+  "verdict": "PASS (no rule dropped; every segment located)"
+}
+--- 4. bun run verify:docs ---
+exit=0
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+--- 5. node scripts/verify-rows-parity.mjs ---
+exit=0
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)

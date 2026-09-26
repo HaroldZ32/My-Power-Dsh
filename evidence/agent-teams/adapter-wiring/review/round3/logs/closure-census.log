@@ -1,0 +1,25 @@
+# independent closure census — 18 server files inspected
+classified sites: 83   UNROUTED: 5
+classification counts: {
+ "FACADE(ctx)": 39,
+ "inside-mpd-delta-region": 18,
+ "counted-childCtx-residual": 2,
+ "bridge-fallback-column": 24
+}
+
+# the counted childCtx residual lines (must be exactly the 5 members.js lines the test asserts)
+  members.js:383 const disposeFailure = childCtx.on('agent/error', async (payload) => {
+  members.js:434 const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {
+
+# non-facade sites INSIDE regions, per file (permitted by RULE 1: the facade cannot cover them)
+  tools.js: 14
+  capabilities.js: 1
+  session-start.js: 2
+  harness-compat.js: 1
+
+# UNROUTED sites (a receiver the facade cannot cover, outside any region)
+  tools.js:2354 seam-member on "args" — const commandsRun = parseCommandResults(args.commandsRun);
+  tools.js:2482 seam-member on "task" — task.commandsRun = commandsRun;
+  quality-gates.js:799 seam-member on "update" — const commands = update.commandsRun ?? task.commandsRun;
+  quality-gates.js:799 seam-member on "task" — const commands = update.commandsRun ?? task.commandsRun;
+  web-routes.js:60 events.on on "req" — req.on('data', onData);

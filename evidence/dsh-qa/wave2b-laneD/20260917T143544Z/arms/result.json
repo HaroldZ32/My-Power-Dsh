@@ -1,0 +1,573 @@
+{
+  "slug": "wave2b-lane-d",
+  "suite": "wave2b lane D corpus arms",
+  "moment": "2026-09-17T14:39:14.532Z",
+  "only": null,
+  "checks": [
+    {
+      "id": "T-69.raw-flag",
+      "ok": false,
+      "detail": "raw `dsh --dump-config` invocation(s) in the corpus: skills/dsh-qa/scripts/wave2b-lane-d.mjs:45, skills/dsh-qa/scripts/wave2b-lane-d.mjs:242, skills/dsh-qa/scripts/wave2b-lane-d.mjs:248, skills/dsh-qa/scripts/bundle-lifecycle.mjs:115, skills/dsh-qa/scripts/bundle-lifecycle.mjs:178, skills/dsh-qa/scripts/bundle-lifecycle.mjs:194, skills/dsh-qa/scripts/team-route-rewire.mjs:157, skills/dsh-qa/scripts/mount-assert.mjs:47, skills/dsh-qa/scripts/lib/tui-lane.mjs:284, skills/dsh-qa/scripts/agent-teams-adopt.mjs:119, skills/dsh-qa/scripts/workmate-library.mjs:138 (files scanned 233, prose sites 0, declared exceptions 1)"
+    },
+    {
+      "id": "T-89.dot-slash",
+      "ok": false,
+      "detail": "path-qualified commands without `./`: skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:34, skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:35, skills/dsh-qa/scripts/tui-panels.mjs:23, skills/dsh-qa/scripts/tui-panels.mjs:26, skills/dsh-qa/scripts/tui-panels.mjs:27, skills/dsh-qa/scripts/software-smoke.mjs:47, skills/dsh-qa/scripts/software-smoke.mjs:48, skills/dsh-qa/scripts/software-smoke.mjs:86, skills/dsh-qa/scripts/software-smoke.mjs:239, skills/dsh-qa/scripts/software-smoke.mjs:239, skills/dsh-qa/scripts/software-smoke.mjs:242, skills/dsh-qa/scripts/tui-team-surface.mjs:38, skills/dsh-qa/scripts/tui-team-surface.mjs:41, skills/dsh-qa/scripts/tui-team-surface.mjs:42, skills/dsh-qa/scripts/tui-team-surface.mjs:583, skills/dsh-qa/scripts/tui-team-surface.mjs:910, skills/dsh-qa/scripts/tui-distribution.mjs:16, skills/dsh-qa/scripts/tui-distribution.mjs:17, skills/dsh-qa/scripts/tui-settings-bridge.mjs:21, skills/dsh-qa/scripts/tui-settings-bridge.mjs:22, skills/dsh-qa/scripts/team-watchdog-scene.mjs:16, skills/dsh-qa/scripts/team-watchdog-scene.mjs:17, skills/dsh-qa/scripts/tui-mount.mjs:19, skills/dsh-qa/scripts/tui-mount.mjs:22, skills/dsh-qa/scripts/tui-mount.mjs:23, skills/dsh-qa/scripts/team-watchdog-boot.mjs:31, skills/dsh-qa/scripts/team-watchdog-boot.mjs:32, skills/dsh-qa/scripts/team-watchdog-notify.mjs:20, skills/dsh-qa/scripts/team-watchdog-notify.mjs:21, skills/dsh-qa/scripts/codegraph-smoke.mjs:85, skills/dsh-qa/scripts/relocate-smoke.mjs:10, skills/dsh-qa/scripts/relocate-smoke.mjs:23, skills/dsh-qa/scripts/skill-catalog-probe.mjs:11, skills/dsh-qa/scripts/skill-catalog-probe.mjs:24, skills/dsh-qa/scripts/skill-catalog-probe.mjs:72, skills/dsh-qa/scripts/bundle-lifecycle.mjs:96, skills/dsh-qa/scripts/web-settings-bridge.mjs:28, skills/dsh-qa/scripts/web-settings-bridge.mjs:29, skills/dsh-qa/scripts/team-route-rewire.mjs:19, skills/dsh-qa/scripts/team-route-rewire.mjs:33, skills/dsh-qa/scripts/team-watchdog-fault.mjs:36, skills/dsh-qa/scripts/team-watchdog-fault.mjs:37, skills/dsh-qa/scripts/extension-template.mjs:7, skills/dsh-qa/scripts/extension-template.mjs:375, skills/dsh-qa/scripts/watchdog-redesign.mjs:38, skills/dsh-qa/scripts/watchdog-redesign.mjs:39, skills/dsh-qa/scripts/watchdog-redesign.mjs:40, skills/dsh-qa/scripts/tui-admission.mjs:19, skills/dsh-qa/scripts/tui-admission.mjs:22, skills/dsh-qa/scripts/tui-admission.mjs:23, skills/dsh-qa/scripts/tui-spec-conformance.mjs:21, skills/dsh-qa/scripts/tui-spec-conformance.mjs:22, skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:48, skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:49, skills/dsh-qa/scripts/lib/tui-lane.mjs:470, skills/dsh-qa/scripts/team-watchdog-config.mjs:22, skills/dsh-qa/scripts/team-watchdog-config.mjs:23, skills/dsh-qa/scripts/extension-mcp-bridge.mjs:39, skills/dsh-qa/scripts/extension-mcp-bridge.mjs:246, skills/dsh-qa/scripts/mcp-call.mjs:102; the `./` form ./skills/dsh-qa/scripts discovers 54 file(s) (files scanned 54)"
+    },
+    {
+      "id": "T-77.scratch-shape",
+      "ok": true,
+      "detail": "`.qa-wave2b-lane-d-scratch/keep.txt` ignored=true (pattern: .gitignore:87:/.qa-*); near-miss `qa-wave2b-lane-d-scratch/keep.txt` ignored=false"
+    },
+    {
+      "id": "T-80.header-claims",
+      "ok": true,
+      "detail": "live: [driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s) | seeded mismatch: exit 1, violations 1 (a claimed-but-unasserted key must redden)"
+    },
+    {
+      "id": "T-25.naive-reader",
+      "ok": true,
+      "detail": "container frames=2, naive one-shot read=first-frame-only (the failure IS the evidence); docs name the three entry points=true, trap documented=true; real-store reading: unavailable (no --store passed)"
+    },
+    {
+      "id": "T-74.out-discipline",
+      "ok": true,
+      "detail": "SKILL.md rule sentence present=true; digest pair: not requested"
+    }
+  ],
+  "readings": [
+    {
+      "id": "T-69.raw-flag",
+      "check": {
+        "id": "T-69.raw-flag",
+        "ok": false,
+        "detail": "raw `dsh --dump-config` invocation(s) in the corpus: skills/dsh-qa/scripts/wave2b-lane-d.mjs:45, skills/dsh-qa/scripts/wave2b-lane-d.mjs:242, skills/dsh-qa/scripts/wave2b-lane-d.mjs:248, skills/dsh-qa/scripts/bundle-lifecycle.mjs:115, skills/dsh-qa/scripts/bundle-lifecycle.mjs:178, skills/dsh-qa/scripts/bundle-lifecycle.mjs:194, skills/dsh-qa/scripts/team-route-rewire.mjs:157, skills/dsh-qa/scripts/mount-assert.mjs:47, skills/dsh-qa/scripts/lib/tui-lane.mjs:284, skills/dsh-qa/scripts/agent-teams-adopt.mjs:119, skills/dsh-qa/scripts/workmate-library.mjs:138 (files scanned 233, prose sites 0, declared exceptions 1)"
+      },
+      "scan": {
+        "filesScanned": 233,
+        "sites": [
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:45",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const RAW_FLAG = /\"--dump-config\"/g"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:242",
+            "kind": "invocation",
+            "covered": false,
+            "line": "writeFileSync(join(box, \"raw.mjs\"), 'const dump = spawnSync(\"dsh\", [\"--profile\", \"p\", \"--dump-config\"])\\n')"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:248",
+            "kind": "invocation",
+            "covered": false,
+            "line": "check(\"t69-fixture-reddens\", RAW_FLAG.test(text) || /\"--dump-config\"/.test(text), \"a fixture carrying a raw invocation i"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:115",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dumpAfterInstall = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:178",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dumpAfterPlain = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:194",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dumpAfter = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:157",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dump = runSync(\"dsh\", [\"--profile\", \"t\", \"--dump-config\"], { timeout: 120000 })"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:47",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const run = spawnSync(\"dsh\", [\"--profile\", \"headless\", \"--dump-config\"], { env, encoding: \"utf8\", maxBuffer: 64 * 1024 *"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:284",
+            "kind": "invocation",
+            "covered": false,
+            "line": "return runInSandbox(root, \"dsh\", [\"--profile\", \"dsh-tui\", \"--dump-config\", ...extraArgs], { timeoutMs: 180_000 })"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:119",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dump = runSync(\"dsh\", [\"--profile\", \"mpd-headless\", \"--dump-config\"], { timeout: 120000 })"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:138",
+            "kind": "invocation",
+            "covered": false,
+            "line": "const dump = runSync(\"dsh\", [\"--profile\", \"mpd-headless\", \"--dump-config\"], { timeout: 120000 })"
+          }
+        ],
+        "exceptions": [
+          "skills/dsh-qa/SKILL.md"
+        ]
+      },
+      "rawInvocations": [
+        {
+          "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:45",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const RAW_FLAG = /\"--dump-config\"/g"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:242",
+          "kind": "invocation",
+          "covered": false,
+          "line": "writeFileSync(join(box, \"raw.mjs\"), 'const dump = spawnSync(\"dsh\", [\"--profile\", \"p\", \"--dump-config\"])\\n')"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:248",
+          "kind": "invocation",
+          "covered": false,
+          "line": "check(\"t69-fixture-reddens\", RAW_FLAG.test(text) || /\"--dump-config\"/.test(text), \"a fixture carrying a raw invocation i"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:115",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dumpAfterInstall = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:178",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dumpAfterPlain = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:194",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dumpAfter = runSync(\"dsh\", [\"--profile\", \"w\", \"--dump-config\"], env)"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:157",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dump = runSync(\"dsh\", [\"--profile\", \"t\", \"--dump-config\"], { timeout: 120000 })"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/mount-assert.mjs:47",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const run = spawnSync(\"dsh\", [\"--profile\", \"headless\", \"--dump-config\"], { env, encoding: \"utf8\", maxBuffer: 64 * 1024 *"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:284",
+          "kind": "invocation",
+          "covered": false,
+          "line": "return runInSandbox(root, \"dsh\", [\"--profile\", \"dsh-tui\", \"--dump-config\", ...extraArgs], { timeoutMs: 180_000 })"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:119",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dump = runSync(\"dsh\", [\"--profile\", \"mpd-headless\", \"--dump-config\"], { timeout: 120000 })"
+        },
+        {
+          "site": "skills/dsh-qa/scripts/workmate-library.mjs:138",
+          "kind": "invocation",
+          "covered": false,
+          "line": "const dump = runSync(\"dsh\", [\"--profile\", \"mpd-headless\", \"--dump-config\"], { timeout: 120000 })"
+        }
+      ]
+    },
+    {
+      "id": "T-89.dot-slash",
+      "check": {
+        "id": "T-89.dot-slash",
+        "ok": false,
+        "detail": "path-qualified commands without `./`: skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:34, skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:35, skills/dsh-qa/scripts/tui-panels.mjs:23, skills/dsh-qa/scripts/tui-panels.mjs:26, skills/dsh-qa/scripts/tui-panels.mjs:27, skills/dsh-qa/scripts/software-smoke.mjs:47, skills/dsh-qa/scripts/software-smoke.mjs:48, skills/dsh-qa/scripts/software-smoke.mjs:86, skills/dsh-qa/scripts/software-smoke.mjs:239, skills/dsh-qa/scripts/software-smoke.mjs:239, skills/dsh-qa/scripts/software-smoke.mjs:242, skills/dsh-qa/scripts/tui-team-surface.mjs:38, skills/dsh-qa/scripts/tui-team-surface.mjs:41, skills/dsh-qa/scripts/tui-team-surface.mjs:42, skills/dsh-qa/scripts/tui-team-surface.mjs:583, skills/dsh-qa/scripts/tui-team-surface.mjs:910, skills/dsh-qa/scripts/tui-distribution.mjs:16, skills/dsh-qa/scripts/tui-distribution.mjs:17, skills/dsh-qa/scripts/tui-settings-bridge.mjs:21, skills/dsh-qa/scripts/tui-settings-bridge.mjs:22, skills/dsh-qa/scripts/team-watchdog-scene.mjs:16, skills/dsh-qa/scripts/team-watchdog-scene.mjs:17, skills/dsh-qa/scripts/tui-mount.mjs:19, skills/dsh-qa/scripts/tui-mount.mjs:22, skills/dsh-qa/scripts/tui-mount.mjs:23, skills/dsh-qa/scripts/team-watchdog-boot.mjs:31, skills/dsh-qa/scripts/team-watchdog-boot.mjs:32, skills/dsh-qa/scripts/team-watchdog-notify.mjs:20, skills/dsh-qa/scripts/team-watchdog-notify.mjs:21, skills/dsh-qa/scripts/codegraph-smoke.mjs:85, skills/dsh-qa/scripts/relocate-smoke.mjs:10, skills/dsh-qa/scripts/relocate-smoke.mjs:23, skills/dsh-qa/scripts/skill-catalog-probe.mjs:11, skills/dsh-qa/scripts/skill-catalog-probe.mjs:24, skills/dsh-qa/scripts/skill-catalog-probe.mjs:72, skills/dsh-qa/scripts/bundle-lifecycle.mjs:96, skills/dsh-qa/scripts/web-settings-bridge.mjs:28, skills/dsh-qa/scripts/web-settings-bridge.mjs:29, skills/dsh-qa/scripts/team-route-rewire.mjs:19, skills/dsh-qa/scripts/team-route-rewire.mjs:33, skills/dsh-qa/scripts/team-watchdog-fault.mjs:36, skills/dsh-qa/scripts/team-watchdog-fault.mjs:37, skills/dsh-qa/scripts/extension-template.mjs:7, skills/dsh-qa/scripts/extension-template.mjs:375, skills/dsh-qa/scripts/watchdog-redesign.mjs:38, skills/dsh-qa/scripts/watchdog-redesign.mjs:39, skills/dsh-qa/scripts/watchdog-redesign.mjs:40, skills/dsh-qa/scripts/tui-admission.mjs:19, skills/dsh-qa/scripts/tui-admission.mjs:22, skills/dsh-qa/scripts/tui-admission.mjs:23, skills/dsh-qa/scripts/tui-spec-conformance.mjs:21, skills/dsh-qa/scripts/tui-spec-conformance.mjs:22, skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:48, skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:49, skills/dsh-qa/scripts/lib/tui-lane.mjs:470, skills/dsh-qa/scripts/team-watchdog-config.mjs:22, skills/dsh-qa/scripts/team-watchdog-config.mjs:23, skills/dsh-qa/scripts/extension-mcp-bridge.mjs:39, skills/dsh-qa/scripts/extension-mcp-bridge.mjs:246, skills/dsh-qa/scripts/mcp-call.mjs:102; the `./` form ./skills/dsh-qa/scripts discovers 54 file(s) (files scanned 54)"
+      },
+      "scan": {
+        "filesScanned": 54,
+        "offenders": [
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:34",
+            "token": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:35",
+            "token": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:23",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "// PREREQ: absent-fixture tui profile in the sandbox root \"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-r"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:26",
+            "token": "skills/dsh-qa/scripts/tui-panels.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-panels.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:27",
+            "token": "skills/dsh-qa/scripts/tui-panels.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-panels.mjs [--sandbox-root <dir>] [--control]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:47",
+            "token": "nim.mjs",
+            "line": "\"// usage: node nim.mjs move --piles 3,4,5 [--seed N]   -> \\\"move <pileIndex> <count>\\\" | \\\"move none\\\"\","
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:48",
+            "token": "nim.mjs",
+            "line": "\"//        node nim.mjs play [--seed N]                 -> one transcript line per ply + \\\"winner P1|P2\\\"\","
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:86",
+            "token": "nim.mjs",
+            "line": "\"  if (p === null) { console.error(\\\"usage: node nim.mjs move --piles a,b,c [--seed N]\\\"); process.exit(2) }\","
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:239",
+            "token": "nim.mjs",
+            "line": "\"node nim.mjs play --seed 7 > play-a.txt 2>&1; node nim.mjs play --seed 7 > play-b.txt 2>&1;\","
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:239",
+            "token": "nim.mjs",
+            "line": "\"node nim.mjs play --seed 7 > play-a.txt 2>&1; node nim.mjs play --seed 7 > play-b.txt 2>&1;\","
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:242",
+            "token": "nim.mjs",
+            "line": "'for p in 3,4,5 1,2,3 7,5,3 2,2,0; do echo \"PROBE $p\"; node nim.mjs move --piles $p --seed 7; done',"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:38",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "// PREREQ: absent-fixture tui profile in the sandbox root \"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-r"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:41",
+            "token": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-team-surface.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:42",
+            "token": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-team-surface.mjs [--sandbox-root <dir>] [--no-skip] [--profile-source <warm"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:583",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "{ code: \"absent-fixture\", probe: \"a dsh-tui profile in the sandbox root (or a warm source to seed one from)\", "
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:910",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "emitMarker(strict ? \"FAIL\" : \"SKIP\", SLUG, \"absent-fixture\", \"tui profile in the sandbox root\", \"bun skills/ds"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:16",
+            "token": "skills/dsh-qa/scripts/tui-distribution.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-distribution.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:17",
+            "token": "skills/dsh-qa/scripts/tui-distribution.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-distribution.mjs [--sandbox-root <dir>] [--skip-build]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-settings-bridge.mjs:21",
+            "token": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-settings-bridge.mjs:22",
+            "token": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-settings-bridge.mjs [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-scene.mjs:16",
+            "token": "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-scene.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-scene.mjs:17",
+            "token": "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-scene.mjs [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:19",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "// PREREQ: absent-fixture tui profile in the sandbox root \"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-r"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:22",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-mount.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:23",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-mount.mjs [--sandbox-root <dir>] [--fresh] [--install]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:31",
+            "token": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-boot.mjs --self-test     # offline, fast, no dsh"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:32",
+            "token": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-boot.mjs [--out <dir>]   # REAL boot (heavy)"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-notify.mjs:20",
+            "token": "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-notify.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-notify.mjs:21",
+            "token": "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-notify.mjs --surface web|tui|both [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:85",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "if (!existsSync(staged)) { console.error(\"[codegraph-smoke] missing staged bundle; run node scripts/pack-mpd.m"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:10",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:23",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "const PACK_PREREQ = { reason: \"absent-staged-pack\", prereq: \"dist/mpd-package/package.json\", remedy: \"node scr"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:11",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:24",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "const PACK_PREREQ = { reason: \"absent-staged-pack\", prereq: \"dist/mpd-package/package.json\", remedy: \"node scr"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:72",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "if (!existsSync(marker)) { console.error(\"[skill-catalog-probe self-test] FAIL: staged skill corpus incomplete"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:96",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "// No `node scripts/pack-mpd.mjs` anywhere: the repo root IS the bundle package."
+          },
+          {
+            "site": "skills/dsh-qa/scripts/web-settings-bridge.mjs:28",
+            "token": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/web-settings-bridge.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/web-settings-bridge.mjs:29",
+            "token": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/web-settings-bridge.mjs [--out <dir>] [--keep]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:19",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "// PREREQ: absent-staged-pack dist/mpd-package/package.json node scripts/pack-mpd.mjs"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:33",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "const PACK_PREREQ = { reason: \"absent-staged-pack\", prereq: \"dist/mpd-package/package.json\", remedy: \"node scr"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:36",
+            "token": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-fault.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:37",
+            "token": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-fault.mjs [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:7",
+            "token": "scripts/mpd-ext.mjs",
+            "line": "//      copied by the developer CLI (`bun scripts/mpd-ext.mjs scaffold <name> --dir"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:375",
+            "token": "scripts/mpd-ext.mjs",
+            "line": "subject: \"templates/mpd-extension copied by `bun scripts/mpd-ext.mjs scaffold \" + EXT_NAME + \" --with-mcp` int"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:38",
+            "token": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/watchdog-redesign.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:39",
+            "token": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/watchdog-redesign.mjs --help"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:40",
+            "token": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/watchdog-redesign.mjs [--red <tree>] [--green <tree>] [--row a,c]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:19",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "// PREREQ: absent-fixture tui profile in the sandbox root \"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-r"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:22",
+            "token": "skills/dsh-qa/scripts/tui-admission.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-admission.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:23",
+            "token": "skills/dsh-qa/scripts/tui-admission.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-admission.mjs [--sandbox-root <dir>] [--static-only]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:21",
+            "token": "skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:22",
+            "token": "skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-spec-conformance.mjs [--sandbox-root <dir>] [--suite-only]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:48",
+            "token": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-settings-bridge.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:49",
+            "token": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/tui-settings-bridge.mjs [--out <dir>] [--keep]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:470",
+            "token": "skills/dsh-qa/scripts/tui-mount.mjs",
+            "line": "{ code: \"absent-fixture\", probe: \"tui profile in the sandbox root\", remedy: \"bun skills/dsh-qa/scripts/tui-mou"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:22",
+            "token": "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-config.mjs --self-test"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:23",
+            "token": "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+            "line": "//   bun skills/dsh-qa/scripts/team-watchdog-config.mjs [--out <dir>]"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:39",
+            "token": "scripts/build-mcp.mjs",
+            "line": "// PREREQ: absent-fixture packages/mpd-mcp-lsp/dist/cli.js \"node scripts/build-mcp.mjs --with-lsp (repo's own "
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:246",
+            "token": "scripts/build-mcp.mjs",
+            "line": "{ code: \"absent-fixture\", probe: \"packages/mpd-mcp-lsp/dist/cli.js\", remedy: \"node scripts/build-mcp.mjs --wit"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:102",
+            "token": "scripts/pack-mpd.mjs",
+            "line": "if (!existsSync(staged)) { console.error(\"[mcp-call] missing staged bundle; run node scripts/pack-mpd.mjs firs"
+          }
+        ]
+      },
+      "discovered": {
+        "glob": "./skills/dsh-qa/scripts",
+        "count": 54,
+        "exists": true
+      }
+    },
+    {
+      "id": "T-77.scratch-shape",
+      "check": {
+        "id": "T-77.scratch-shape",
+        "ok": true,
+        "detail": "`.qa-wave2b-lane-d-scratch/keep.txt` ignored=true (pattern: .gitignore:87:/.qa-*); near-miss `qa-wave2b-lane-d-scratch/keep.txt` ignored=false"
+      },
+      "result": {
+        "exit": 0,
+        "ignored": [
+          ".qa-wave2b-lane-d-scratch/keep.txt"
+        ],
+        "raw": ".gitignore:87:/.qa-*\t.qa-wave2b-lane-d-scratch/keep.txt"
+      }
+    },
+    {
+      "id": "T-80.header-claims",
+      "check": {
+        "id": "T-80.header-claims",
+        "ok": true,
+        "detail": "live: [driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s) | seeded mismatch: exit 1, violations 1 (a claimed-but-unasserted key must redden)"
+      },
+      "live": {
+        "exit": 0,
+        "summary": "[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)",
+        "violations": 0,
+        "claimSets": 2,
+        "noClaim": 1,
+        "out": "driver-header claim check (T-80)\nparameters: claims \\bA(\\d+)\\b + \\bA(\\d+)\\s*[\\u2013-]\\s*A?(\\d+)\\b (markers \\b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\\b; references (design|acceptance|\\bplan\\b|\\u00A7|\\bt\\d+\\b)) · keys add\\(\\s*\"A(\\d+)[^\"]*\" · mode one offline process · unit one driver file · scope ./skills/dsh-qa/scripts · moment 2026-09-17T14:39:13.344Z\n\n  ok   driver:skills/dsh-qa/scripts/tui-team-surface.mjs — 9 assertion key(s) [A1–A10]; 9 claimed\n  ok   driver:skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs — 5 assertion key(s) [A1–A5]; 5 claimed\n\n[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)\n"
+      },
+      "seeded": {
+        "exit": 1,
+        "summary": "[driver-headers] 1 file(s) scanned, 1 key-producing driver(s), 1 claim set(s), 0 NO-CLAIM-SET, 1 violation(s)",
+        "violations": 1,
+        "claimSets": 1,
+        "noClaim": 1,
+        "out": "driver-header claim check (T-80)\nparameters: claims \\bA(\\d+)\\b + \\bA(\\d+)\\s*[\\u2013-]\\s*A?(\\d+)\\b (markers \\b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\\b; references (design|acceptance|\\bplan\\b|\\u00A7|\\bt\\d+\\b)) · keys add\\(\\s*\"A(\\d+)[^\"]*\" · mode one offline process · unit one driver file · scope /tmp/lane-d-t80-VQRhie · moment 2026-09-17T14:39:13.964Z\n\n  FAIL driver:../../../tmp/lane-d-t80-VQRhie/settings-bridge-lane.mjs — CLAIMED-BUT-UNASSERTED A6 (header phrase: \"CLAIM SET (T-80): this driver CLAIMS the assertion keys A1–A6 — the same keys its own\")\n\n[driver-headers] 1 file(s) scanned, 1 key-producing driver(s), 1 claim set(s), 0 NO-CLAIM-SET, 1 violation(s)\n"
+      }
+    },
+    {
+      "id": "T-25.naive-reader",
+      "check": {
+        "id": "T-25.naive-reader",
+        "ok": true,
+        "detail": "container frames=2, naive one-shot read=first-frame-only (the failure IS the evidence); docs name the three entry points=true, trap documented=true; real-store reading: unavailable (no --store passed)"
+      },
+      "shape": {
+        "file": "/tmp/lane-d-t25-MoWgWT/session.frame",
+        "frames": 2,
+        "naive": "first-frame-only"
+      },
+      "real": null,
+      "docBytes": 48710
+    },
+    {
+      "id": "T-74.out-discipline",
+      "check": {
+        "id": "T-74.out-discipline",
+        "ok": true,
+        "detail": "SKILL.md rule sentence present=true; digest pair: not requested"
+      },
+      "pair": null,
+      "rulePresent": true
+    }
+  ],
+  "ok": false
+}

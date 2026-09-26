@@ -1,0 +1,226 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-56f4d969-c7a0-4aa6-920a-3bf46864cde0",
+  "createdAt": 1789657787870,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789657787870
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789657787870,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Audit the orchestration surface and name the routing change to implement",
+      "description": "Read-only recon. Inputs, already gathered but to be re-verified independently:\n- Bundle (READ-ONLY, do not attempt writes): /root/dshProj/my-power-dsh — packages/mpd-agent-teams-plugin, pinned @mpd-dsh/agent-teams@0.1.16-rc.3-mpd on branch dev (11 ahead of origin/dev).\n- Upstream clone (readable): /tmp/mpd-sst-zFuP4C/side/complex/0/ws/upstream — NanmiCoder/dsh-agent-teams, tag v0.1.20 checked out; compare with `git log --oneline v0.1.16-rc.3..v0.1.20` (28 commits).\n- Adoption mechanism: lib/mpd-deltas.js delta-region registry (96 regions / 10 adopted files) + scripts/vendor-agent-teams.mjs and scripts/patch-agent-teams-fixes.mjs.\n- Captain's draft findings: /tmp/mpd-sst-zFuP4C/side/complex/0/ws/ORCHESTRATION-SURFACE-AUDIT.md — treat as a hypothesis to confirm or correct, never as authority.\nDeliver a ranked, file:line- and commit-backed answer to \"what is the routing change?\", covering at least: the session-start complexity gate (lib/session-start.js), member LLM route resolution (provider/model/reasoning_effort/fallback), and upstream's host-tool-registry name resolution (c805260 / PR #167). For each candidate, state whether it is adoptable and what it would touch. Do not edit any file.",
+      "status": "pending",
+      "assignee": "Explorer",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789658103140,
+      "updatedAt": 1789658103140,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Produce an evidence-backed audit of the orchestration surface of the adopted agent-teams plugin at /root/dshProj/my-power-dsh and of its drift against upstream NanmiCoder/dsh-agent-teams v0.1.20, and resolve the request's ambiguity by naming and ranking every candidate referent for \"the routing change\" so an implementation task can be contracted from the audit.",
+      "acceptance": [
+        "Enumerates the orchestration surface: the adopted agent-teams files (lib/scheduler.js, lib/state.js, lib/tools.js, lib/types.js, lib/quality-gates.js, lib/members.js, lib/session-start.js, lib/profiles.js), the delta registry lib/mpd-deltas.js, and the vendoring scripts.",
+        "Names every candidate referent for 'the routing change' with file:line or upstream commit sha, ranked, and states which one the evidence best supports.",
+        "Reports the measured drift between the pinned base (0.1.16-rc.3-mpd) and upstream v0.1.20, classifying the 28 commits by orchestration surface and citing the v0.1.17-v0.1.20 release notes.",
+        "States explicitly whether each candidate change is applicable given the bundle is mounted read-only and the session workspace is empty, and what write access it would need.",
+        "Every claim is backed by a file:line, a command with its output, or a commit sha; no unsupported claim."
+      ],
+      "deliverables": [
+        "Ranked audit returned in the task completion output (read-only seat: file writes are denied, so the report is the output payload)"
+      ],
+      "nonGoals": [
+        "Do not implement any change",
+        "Do not edit the bundle or any file",
+        "Do not clone or fetch the network unless a cited claim needs it"
+      ]
+    }
+  ],
+  "taskSeq": 1
+}

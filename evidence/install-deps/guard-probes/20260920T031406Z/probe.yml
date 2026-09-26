@@ -1,0 +1,14 @@
+# CAPTAIN PROBE OVERLAY — every row is force-disabled; the !!js body only reports.
+- insert:
+    - id: probe-entries
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE-ENTRIES ' + JSON.stringify([...ctx.loader.entries()].map((e) => e.options.id + '|' + e.options.name + '|' + (e.disabled ? 'D' : 'E')))), true)"
+    - id: probe-internal
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE-INTERNAL ' + JSON.stringify({hasLoader: typeof ctx.loader, hasInternal: typeof (ctx.loader && ctx.loader.internal), internalKeys: (ctx.loader && ctx.loader.internal) ? Object.keys(ctx.loader.internal).slice(0, 20) : null, version: ctx.loader && ctx.loader.internal ? ctx.loader.internal.version : null, resolveSync: ctx.loader && ctx.loader.internal ? typeof ctx.loader.internal.resolveSync : 'n/a'})), true)"
+    - id: probe-resolve
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(() => { const out = { baseUrl: typeof baseUrl === 'string' ? baseUrl : String(baseUrl), attempts: [] }; const probe = (label, fn) => { try { out.attempts.push([label, String(fn())]) } catch (e) { out.attempts.push([label, 'THROW: ' + e.message]) } }; const L = ctx.loader; if (L && L.internal && typeof L.internal.resolveSync === 'function') { probe('sync(spec,base)', () => L.internal.resolveSync('dsh-better-sidebar', baseUrl)); probe('sync(base,spec)', () => L.internal.resolveSync(baseUrl, 'dsh-better-sidebar')); probe('sync(spec,url)', () => L.internal.resolveSync('dsh-better-sidebar', new URL(baseUrl))); probe('sync(missing,base)', () => L.internal.resolveSync('definitely-not-a-package-xyz', baseUrl)) } else { probe('no-resolveSync', () => 'unavailable') } probe('ctx.get webServer', () => String(typeof ctx.get === 'function' ? (ctx.get('webServer') !== undefined) : 'no-ctx.get')); probe('ctx.get sessions', () => String(typeof ctx.get === 'function' ? (ctx.get('sessions') !== undefined) : 'no-ctx.get')); console.warn('PROBE-RESOLVE ' + JSON.stringify(out)); return true })()"
+    - id: probe-globals
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE-GLOBALS ' + JSON.stringify({process: typeof process, requireFn: typeof require, createRequire: typeof createRequire, globalThis: typeof globalThis, webServerService: typeof ctx.get === 'function' ? String(ctx.get('webServer') !== undefined) : 'n/a'})), true)"

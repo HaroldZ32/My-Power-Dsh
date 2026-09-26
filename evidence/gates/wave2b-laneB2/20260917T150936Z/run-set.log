@@ -1,0 +1,28 @@
+=== t41 run set — 2026-09-17T15:09:36Z ===
+-- revision --
+453d3d7f499fc5660a9dc733584c59033326d5e3ce69e72439ce0da4f217f354  scripts/check-citations.mjs
+1307 scripts/check-citations.mjs
+
+-- 1: verify A — node scripts/check-citations.mjs --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2: verify B — --self-test --
+exit=0
+
+[docs-claims] 25/25 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3: T-80 live scan (no current corpus number may change) --
+exit=0
+[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)
+split: {"skills/dsh-qa/scripts/":{"files":46,"key_producers":1,"keys":9,"claims":9,"violations":0,"no_claim_set":0},"skills/dsh-qa/scripts/lib/":{"files":8,"key_producers":1,"keys":5,"claims":5,"violations":0,"no_claim_set":0}}
+claim_set_parsed: 2 | violations: 0 | third_direction: 2 reference LINE(s) carry 5 A<n> token(s) (A1, A2, A3, A4, A
+units_sweep.seeded: per_directory_split[].keys, per_directory_split[].claims, per_directory_split[].violations
+units_sweep.read: 8 fields
+
+-- 4: T-80 arms (3 fixture + the seeded counterexample) --
+exit=0
+[driver-headers self-test] 4/4 arms passed (3 fixture arms + the seeded directory-scope counterexample)
+-- final hash --
+453d3d7f499fc5660a9dc733584c59033326d5e3ce69e72439ce0da4f217f354  scripts/check-citations.mjs

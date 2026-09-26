@@ -1,0 +1,33 @@
+== post-commit verification (2026-09-15T07:34:03Z) ==
+
+-- branch/tip --
+feature/tui-edition
+145dfde13794a996559161482672581b8e6464a7
+
+-- working tree --
+1
+(0 = clean)
+
+-- files in the commit --
+ 786 files changed, 62514 insertions(+), 15 deletions(-)
+
+-- verify-vendor on the committed tree --
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 307 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0
+
+-- the frozen anchors as committed --
+84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9  -
+5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f  -
+
+-- AGENTS.md pairing rule: skills change and re-pin in ONE commit --
+7
+1

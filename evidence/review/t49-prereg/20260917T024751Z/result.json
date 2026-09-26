@@ -1,0 +1,53 @@
+{
+  "purpose": "Pre-registration for t49 (review of t47): pin the checker/helper/doc hashes BEFORE judging the repair, and prove the mandated re-run can avoid writing into another task's window.",
+  "measuredAt": "20260917T024751Z",
+  "notTheBeforeState": "This is a MID-REPAIR reading (t47 in_progress at capture). t47's own evidence must carry the raw RED; this file is only the review-side revision pin.",
+  "pinned": [
+    {
+      "alias": "checker",
+      "path": "evidence/extensions/docs-claims/check-citations.mjs",
+      "sha256": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83"
+    },
+    {
+      "alias": "checker_helper",
+      "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+      "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976"
+    },
+    {
+      "alias": "guide_en",
+      "path": "docs/extension-authoring-guide.md",
+      "sha256": "1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80"
+    },
+    {
+      "alias": "guide_zh",
+      "path": "docs/extension-authoring-guide.zh-CN.md",
+      "sha256": "dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35"
+    },
+    {
+      "alias": "report_en",
+      "path": "docs/extension-adaptation-report.md",
+      "sha256": "b6f5db6b428a64550182c091d68e27668ff0f0c3c775e4b291b50b4faf3a2ef0"
+    },
+    {
+      "alias": "report_zh",
+      "path": "docs/extension-adaptation-report.zh-CN.md",
+      "sha256": "85b5f9e415cc405b2c6f81ea04f5684c2eca6cbec178a09ab2b77e6f404e3549"
+    }
+  ],
+  "checkerRunThisReview": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=evidence/review/t49-prereg/20260917T024751Z/checker-baseline",
+    "exit": 1,
+    "reading": "11/12 checks passed, 1 failed, 241 citation(s) resolved, 0 pending, 12 illustrative",
+    "onlyFailure": "citations:EXTENSIONS-FOR-AGENTS.md \u2014 doc line 24: the cited line/range does not carry the claim `EXPECTED_TOOLS` (packages/mpd-ext-plugin/src/index.ts:548)",
+    "interpretation": "The four docs/extension-* files are currently ABSENT from the FAIL list; the single failure is the t43 residual the t47/t49 contracts already expect."
+  },
+  "writeCollisionFinding": {
+    "observed": "A bare checker run writes a fresh runs/run-<ts>/ directory under evidence/extensions/docs-claims/ (resolveOutputDir(OUT_EXPLICIT, HERE, 'run')). A foreign run dir run-2026-09-17T02-47-39.054Z appeared 12s before this capture \u2014 evidence/extensions/docs-claims is t21's IN-PROGRESS inScope (t21 in_progress attempt 1) and t47's outOfScope.",
+    "verifiedMitigation": "With --out=<dir> the runs/ listing was byte-identical before and after (last entry run-2026-09-17T02-47-39.054Z in both snapshots) and all outputs landed under evidence/review/t49-prereg/20260917T024751Z/checker-baseline/.",
+    "recommendation": "t49's re-run must use --out=<review evidence dir>; the literal bare command would write into another member's declared write window."
+  },
+  "concurrencyFinding": {
+    "risk": "t49 must confirm the checker was NOT touched to make the red disappear, but the checker AND its helper sit in t21's ACTIVE inScope (t21 in_progress attempt 1; check-citations.mjs mtime 2026-09-17 10:34 +0800). A green measured before a legitimate t21 edit and re-run after it would compare different revisions \u2014 the same class of failure t49 exists to catch, arriving via a concurrent writer rather than a cheat.",
+    "mitigation": "t47 must record the checker+helper hashes in its evidence; t49 compares its own pins above against t47's record and flags ANY drift as a finding, not a pass."
+  }
+}

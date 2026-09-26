@@ -1,0 +1,20 @@
+$ node scripts/verify-vendor.mjs && node scripts/verify-dist-fresh.mjs && bun run verify:rows && bun run verify:docs && node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] FAIL - asset skills count drifted: 322 vs 319
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+error: script "verify:gates" exited with code 1
+
+## POST-COMPLETION READINGS — the green expired, both are recorded (added 2026-09-17T02:45:49Z)
+· CERTIFICATION (02:19-02:20Z): 'ok: 20/20 targets fresh (each rebuilt twice, byte-identical)' — independently reproduced by docs-gate-engineer (--json targets:20 fresh:20 findings:0 notCovered:7). True at that moment.
+· CURRENT (02:44:50Z): exit 1, 'FAIL - 1 of 20 targets not fresh (STALE: 1)' — --json {targets:20,fresh:19,findings:1,notCovered:7,ok:false}
+  the single STALE: packages/mpd-workmate-plugin/dist/index.js (54704 B, 401573a0173b03db…) != fresh build (55875 B, 6b1715d0f8bebda0…)
+  cause: the t23 T-43 guard edited packages/mpd-workmate-plugin/src/index.ts at 02:31:00Z (mtime 10:31:00 +0800) while its dist is OUTSIDE t23's inScope; that dist was last built at 02:20:15Z (10:20:15 +0800) by this task.
+  fix, routed to the captain: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js   (run FROM THE REPO ROOT — the cwd/banner rule measured in this task)
+  lesson: a dist-freshness green is only valid at the src hashes it measured; any later src edit expires it silently.

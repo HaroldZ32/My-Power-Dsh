@@ -1,0 +1,155 @@
+{
+  "task": "t27 — tuiRenderers NOT-CLAIMED disclosure + revision binding",
+  "measuredAt": "2026-09-15T09:49:18.443Z",
+  "checks": [
+    {
+      "id": "docs/tui.md.names-surface",
+      "status": "passed",
+      "detail": "tuiRenderers named"
+    },
+    {
+      "id": "docs/tui.md.cites-lane-result",
+      "status": "passed",
+      "detail": "cites \"tuiRenderers\": false"
+    },
+    {
+      "id": "docs/tui.md.cites-verify-line",
+      "status": "passed",
+      "detail": "cites T8-LIVE-VERIFY.md:19"
+    },
+    {
+      "id": "docs/tui.md.six-of-seven-and-item-10",
+      "status": "passed",
+      "detail": "6-of-7 statement + NOT-CLAIMED #10 present"
+    },
+    {
+      "id": "docs/tui.md.h1-h2-limit",
+      "status": "passed",
+      "detail": "H1/H2 recorded as unverified"
+    },
+    {
+      "id": "docs/tui.md.no-superseded-digest",
+      "status": "passed",
+      "detail": "710d3eef absent"
+    },
+    {
+      "id": "docs/tui.md.delivered-digest",
+      "status": "passed",
+      "detail": "5dce2563 present"
+    },
+    {
+      "id": "docs/tui.md.manifest-digest",
+      "status": "passed",
+      "detail": "84ed4a5d present"
+    },
+    {
+      "id": "docs/tui.md.points-at-chain",
+      "status": "passed",
+      "detail": "points at the revision-binding note"
+    },
+    {
+      "id": "docs/tui.md.switch-link",
+      "status": "passed",
+      "detail": "language switch link present"
+    },
+    {
+      "id": "docs/tui.md.not-claimed-keys",
+      "status": "passed",
+      "detail": "R8 keys present"
+    },
+    {
+      "id": "docs/tui.md.wording",
+      "status": "passed",
+      "detail": "0 forbidden phrases"
+    },
+    {
+      "id": "docs/tui.md.required-vocabulary",
+      "status": "passed",
+      "detail": "required vocabulary present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.names-surface",
+      "status": "passed",
+      "detail": "tuiRenderers named"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.cites-lane-result",
+      "status": "passed",
+      "detail": "cites \"tuiRenderers\": false"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.cites-verify-line",
+      "status": "passed",
+      "detail": "cites T8-LIVE-VERIFY.md:19"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.six-of-seven-and-item-10",
+      "status": "passed",
+      "detail": "6-of-7 statement + NOT-CLAIMED #10 present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.h1-h2-limit",
+      "status": "passed",
+      "detail": "H1/H2 recorded as unverified"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.no-superseded-digest",
+      "status": "passed",
+      "detail": "710d3eef absent"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.delivered-digest",
+      "status": "passed",
+      "detail": "5dce2563 present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.manifest-digest",
+      "status": "passed",
+      "detail": "84ed4a5d present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.points-at-chain",
+      "status": "passed",
+      "detail": "points at the revision-binding note"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.switch-link",
+      "status": "passed",
+      "detail": "language switch link present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.not-claimed-keys",
+      "status": "passed",
+      "detail": "R8 keys present"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.wording",
+      "status": "passed",
+      "detail": "0 forbidden phrases"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.required-vocabulary",
+      "status": "passed",
+      "detail": "required vocabulary present"
+    },
+    {
+      "id": "docs/tui.md.panels-not-pending",
+      "status": "passed",
+      "detail": "panels lane no longer pending"
+    },
+    {
+      "id": "docs/tui.zh-CN.md.panels-not-pending",
+      "status": "passed",
+      "detail": "panels lane no longer pending"
+    }
+  ],
+  "digests": {
+    "docs/tui.md": "ee99c11ea97332f8329f87c3e20a0bd5ab09a14c31e221ec000b0884c9149b31",
+    "docs/tui.zh-CN.md": "63f282fa12a63d94a97cc76aa2fc916a9038d5645b39f336ffe7437e31733b76",
+    "dsh-plugin.json": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+    "packages/mpd-tui-plugin/dist/index.js": "cf4b3813a344c9d5fd58d12ec74af1f062d14b5f562affb59ae514178745de14",
+    "evidence/tui/docs/20260915T060010Z/REVISION-BINDING.md": "76b40ed18e30c694c5f933c5829714aa5211acca222d95e71192ebda17e9bff0"
+  },
+  "checker": "node evidence/tui/docs/20260915T060010Z/descriptor-check.mjs",
+  "verdict": "passed"
+}

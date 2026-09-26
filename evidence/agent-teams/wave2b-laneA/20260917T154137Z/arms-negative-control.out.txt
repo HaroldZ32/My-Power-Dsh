@@ -1,0 +1,20 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t48-mailbox-gate.test.mjs:
+40 |     const { stateRoot, captain, tools } = fixture()
+41 |     const send = tools.get("agent_teams_send_message")
+42 |     const first = await send.execute({ to: MEMBER, content: "identical payload" }, { agent: captain })
+43 |     expect(first.message_id).toBeTypeOf("string")
+44 |     const refusal = await refusalOf(send.execute({ to: MEMBER, content: "identical payload" }, { agent: captain }))
+45 |     expect(refusal).toMatch(/would repeat an existing message/)
+                         ^
+error: Received value must be a string: undefined
+      at <anonymous> (/tmp/t48-neg/packages/mpd-agent-teams-plugin/self-fix-tests/t48-mailbox-gate.test.mjs:45:21)
+(fail) P1d: an UNCHECKED identical send is REFUSED, and the refusal NAMES the record with its age [32.13ms]
+(pass) P1d: the READ tool reports the match at ANY age with id/ts/age/dupCount, the window and the moment [9.01ms]
+(pass) P1d: checked-and-confirmed is ALLOWED and FOLDS; different content is NEVER blocked; the escape is explicit only [15.76ms]
+
+ 2 pass
+ 1 fail
+ 18 expect() calls
+Ran 3 tests across 1 file. [181.00ms]

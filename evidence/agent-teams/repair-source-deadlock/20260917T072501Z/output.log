@@ -1,0 +1,28 @@
+{
+  "driver": "repair-source-deadlock/pre-fix (HEAD lib)",
+  "headCommit": "c826f16",
+  "variants": [
+    {
+      "label": "HEAD (pre-fix)",
+      "ok": true,
+      "error": null,
+      "repairDependencies": [
+        "A"
+      ],
+      "sourceTaskIdKept": "A",
+      "unsatisfiedForRepair": [
+        "A"
+      ],
+      "dispatchableNow": false
+    },
+    {
+      "label": "fixed tree",
+      "ok": true,
+      "error": null,
+      "repairDependencies": [],
+      "sourceTaskIdKept": "A",
+      "unsatisfiedForRepair": [],
+      "dispatchableNow": true
+    }
+  ]
+}

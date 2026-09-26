@@ -1,0 +1,36 @@
+{
+  "task": "t22",
+  "attempt_id": "8f7682c9-b2b8-425c-a205-5f789340cc45",
+  "lane": "qa-credentials-repair",
+  "generated_at_utc": "2026-09-19T15:57:53.663Z",
+  "v1_fix": {
+    "file": "skills/dsh-qa/scripts/lib/credentials.mjs",
+    "change": "mergeRefsEntry matches EVERY top-level `refs:` shape: a SINGLE-LINE inline mapping (`refs: {}`, `refs: { K: \"v\" }`) is edited INSIDE the braces so existing entries survive verbatim, a trailing comma is tolerated, and any non-editable form (multi-line flow / alias / scalar / list) is REFUSED LOUDLY instead of emitting a second top-level key.",
+    "reproducer_before_after": "the verification lane's credentials-merge-repro.mjs, UNMODIFIED bytes: before (pre-fix source restored from HEAD in a temp tree) inline `refs: {}` -> 2 top-level refs keys, exit 0 (that script's \"defect present\" signal); after (real tree) -> 1 and control 1, exit 1.",
+    "shapes_proof": "shapes-proof.mjs -> 16/16 checks, exit 0.",
+    "secret_hygiene": "counts/shapes only, no value read/printed/logged/committed; secret-shape scan over the captured logs = 0 hits; shape-only measurement of the operator file: 8 lines, 1 top-level refs, 0 bare, 1 inline."
+  },
+  "AMENDMENT_OUTCOME": {
+    "granted": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs added to inScope; two stale STATIC assertions updated to the post-bridge spellings with intent PRESERVED and STRENGTHENED (see qa-assertions.diff).",
+    "check_1": "now requires the bridge import `{ subagentRuntimeOf } from \"./mpd-adapter-ctx.js\"`, the call `await queueMemberPrompt(subagentRuntimeOf(ctx), captain, brandedSessionId(childId),` AND the ABSENCE of the pre-bridge `await queueMemberPrompt(ctx.subagents,` — so a regression to the raw projection reddens; the sibling checks (`no ctx.subagents.followup`, the modern prompt-seam check) are untouched.",
+    "check_2": "now requires `const scope = agentScopeOf(ctx, agent);`, `revoke = scope.tools.restrict({` AND the deny filter expression VERBATIM (`deny: TEAM_TOOL_NAMES.filter(name => !MEMBER_TOOL_NAMES.includes(name)),`), with the tool-names assertions kept — deliberately not relaxed to a bare `restrict({` substring that would pass on any refactor.",
+    "dispatch_self_test": "bun skills/dsh-qa/scripts/agent-teams-dispatch.mjs --self-test -> exit 0, \"ok: 14 checks\" (was \"FAIL: 2 of 14\")."
+  },
+  "ATTRIBUTION_CORRECTION": {
+    "statement": "The agent-teams-dispatch \"2/14\" was NEVER the credentials parse error. It was two stale source-literal assertions that went red with the bridge rewiring.",
+    "measurement": "read-only `git show HEAD:` vs the working tree: check1 HEAD=true NOW=false; check2 HEAD=true NOW=false — both were GREEN before this wave, so the red is wave-caused (stale literals), not pre-existing and not credentials.",
+    "credentials_cause_is_gone": "the REAL preset-conformance run is exit 0 PASS now (it was exit 1 on the DUPLICATE_KEY boot abort), and the reproducer shows 2 -> 1 top-level refs keys.",
+    "intents_hold": "the same audited runtime object still reaches the delivery ladder, and the same captain-only deny filter still runs on the per-agent tools object — a stale-assertion update, not a functional regression."
+  },
+  "gates": {
+    "node skills/dsh-qa/scripts/preset-conformance.mjs": "exit 0, PASS — conformance ok, 31 checked, parity reference 31 / ours 31, missing [] extra [] problems [], sessionCreate 200 agentPreset mpd, negativeControl fires.",
+    "bun run test:qa": "exit 1 MEASURED, and the ONLY remaining failure is the pre-re-pin VENDOR_LOCK staleness: agent-teams-messaging -> \"VENDOR_LOCK skills asset is stale: lock=326/e944e320b3ff tree=326/82f38bd828bc (re-pin in the same commit, AGENTS.md §9)\". That is the designed signal for the step this contract assigns to the CAPTAIN, and this lane is forbidden to run it. agent-teams-dispatch is green inside that run.",
+    "per-script sweep (all-qa-scripts.log)": "the test:qa loop short-circuits at the first failure, so every script was also run INDIVIDUALLY: 47 of 48 exit 0, the sole non-zero being agent-teams-messaging for the VENDOR_LOCK reason above; both ext-CLI steps exit 0. No other QA case is red."
+  },
+  "hashes_measured_at_utc": "2026-09-19T15:57:53Z",
+  "hashes": {
+    "skills/dsh-qa/scripts/lib/credentials.mjs": "b32f12c7becaf6c6781fbb1d5c3fcdcb1d863c7852258a2b858c224e8d999cfa",
+    "skills/dsh-qa/scripts/agent-teams-dispatch.mjs": "8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c"
+  },
+  "repin_note": "the wave's ONE VENDOR_LOCK.json re-pin is the CAPTAIN's next step in the same commit as these skills edits (lock=326/e944e320b3ff -> the tree hash 326/82f38bd828bc); this lane did not run it and touched no other corpus file."
+}

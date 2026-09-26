@@ -1,0 +1,31 @@
+--- R6 acceptance names (required vs provided kept separate) ---
+OK   the nine-item payload still completes  :: {"ok":true}
+OK   a WRONG 9th name (right count) is REFUSED  :: {"ok":false,"error":"implementation completion requires passed acceptanceResults for every acceptance item — no entry for item-9; nearest provided: \"item-9-UNDER-A-DIFFERENT-NAME\" (matched 8 of 9)"}
+OK   ...and the refusal NAMES the near-miss  :: implementation completion requires passed acceptanceResults for every acceptance item — no entry for item-9; nearest provided: "item-9-UNDER-A-DIFFERENT-NAME" (matched 8 of 9)
+OK   case paraphrase (ITEM-9) is ACCEPTED — declared tolerance
+OK   trailing punctuation (item-9.) is ACCEPTED — declared tolerance
+OK   whitespace paraphrase (" item-9 ") is ACCEPTED — declared tolerance
+OK   INTERNAL punctuation (item9) is REFUSED — not the same string
+OK   a duplicated provided name cannot cover two required names  :: {"ok":false,"error":"implementation completion requires passed acceptanceResults for every acceptance item — no entry for A (matched 1 of 2)"}
+OK   two required, ONE provided entry: refused  :: {"ok":false,"error":"implementation completion requires passed acceptanceResults for every acceptance item — no entry for b (matched 1 of 2)"}
+OK   the same name twice provided for two distinct required: refused  :: {"ok":false,"error":"implementation completion requires passed acceptanceResults for every acceptance item — no entry for b (matched 1 of 2)"}
+   one item unpaid -> implementation completion requires passed acceptanceResults for every acceptance item — not passed: item-9 (matched 8 of 9)
+--- R5 verify commands ---
+OK   round 1's hole: a WRONG-named `reported` entry is now REFUSED  :: {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command — no entry for bun run x; nearest provided: \"A COMPLETELY DIFFERENT COMMAND\" (matched 0 of 1
+OK   the legitimate labelled red still completes
+OK   a case paraphrase of the command is ACCEPTED (declared tolerance)
+OK   a wrong-named PASSED entry is REFUSED too  :: {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command — no entry for bun run x; nearest provided: \"other\" (matched 0 of 1)"}
+OK   a FAILED command still fails the task  :: {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+OK   an omitted commandsRun is still refused
+--- R3 cycles ---
+OK   LINEAR chain: no cycle reported  :: []
+OK   2-cycle members are NAMED  :: ["c2","c1"]
+OK   the note prints the cycle AS ITSELF  ::  [unresolved dep: cycle c1→c2→c1]
+OK   3-cycle is reported  :: ["a","b","c"]
+OK   SELF-dependency is a cycle  :: ["s"]
+OK   DIAMOND is NOT a cycle (no false positive)  :: []
+OK   a phantom id is still named
+BAD  a cycle THROUGH a direct dependency is named (A's own view)  :: []
+   T's view (deps=['A'], whose subtree deadlocks B<->C): []  note=
+
+ADVERSARIAL FAILURES: 1

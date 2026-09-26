@@ -1,0 +1,30 @@
+T-83 clause-1 RE-MEASUREMENT on the SETTLED revision (contract revision 8)
+tree: 2026-09-17T07:40:01Z  | packer sha 95d55ab9fda96baf  | manifest sha 5dcaffb99b9153cf
+
+--- (A) THE PREDICATE, re-run over all 45 drivers: does the driver (or the shared lib it calls) parse an output target? ---
+drivers total: 45
+inline --out parsers (5): extension-lifecycle.mjs, team-watchdog-boot.mjs, tui-settings-bridge.mjs, watchdog-redesign.mjs, web-settings-bridge.mjs
+drivers importing a lib whose arm parses --out (8): team-watchdog-config.mjs, team-watchdog-fault.mjs, team-watchdog-heartbeat.mjs, team-watchdog-notify.mjs, team-watchdog-scene.mjs, tui-settings-bridge.mjs, watchdog-redesign.mjs, web-settings-bridge.mjs
+
+--- (B) THE FROZEN LIST (9) with per-lane evidence + load-bearing proof ---
+declared required: 9
+  team-watchdog-boot       import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-boot.mjs
+  team-watchdog-config     import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-config.mjs
+  team-watchdog-fault      import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-fault.mjs
+  team-watchdog-heartbeat  import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+  team-watchdog-notify     import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-notify.mjs
+  team-watchdog-scene      import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/team-watchdog-scene.mjs
+  tui-settings-bridge      import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/tui-settings-bridge.mjs
+  watchdog-redesign        import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/watchdog-redesign.mjs
+  web-settings-bridge      import=1 refuseOverwrite=1 exitOnRefusal=1  skills/dsh-qa/scripts/web-settings-bridge.mjs
+exempt: 36
+
+--- (C) clause 2: tui-team-surface — direct writes and their targets ---
+42:import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+151:  writeFileSync(file, JSON.stringify(record, null, 2) + "\n")
+153:    writeFileSync(join(dir, "inbox", "captain.jsonl"), JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }) + "\n")
+473:        writeFileSync(join(dir, "team.json"), "{ this is not JSON at all")
+507:  writeFileSync(join(outDir, "negative-control", "control.json"), JSON.stringify(control, null, 2) + "\n")
+508:  writeFileSync(join(outDir, "negative-control", "control.log"),
+  -> every direct write above is a FIXTURE write into a sandbox/ws/root temp dir (writeTeamFixture + malformed-record setup);
+     the EVIDENCE target is a STAMPED subdir: 792:  const outDir = join(EVIDENCE_ROOT, stamp)

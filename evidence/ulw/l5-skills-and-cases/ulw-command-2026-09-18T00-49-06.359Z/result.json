@@ -1,0 +1,173 @@
+{
+  "ok": false,
+  "slug": "ulw-command",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "artifact": {
+      "ok": true,
+      "sources": {
+        "mpd-dsh-adapter": {
+          "source": "src-built",
+          "path": "/tmp/mpd-ulw-command-90HMZp/src-build/mpd-dsh-adapter.js",
+          "missingInShipped": [
+            "registerCommand",
+            "submitUserTurn"
+          ],
+          "buildExit": 0
+        },
+        "mpd-ulw": {
+          "source": "src-built",
+          "path": "/tmp/mpd-ulw-command-90HMZp/src-build/mpd-ulw.js",
+          "missingInShipped": [
+            "registerCommand",
+            "ULW_ACTIVATION_DIRECTIVE",
+            "usage: /ulw"
+          ],
+          "buildExit": 0
+        }
+      },
+      "shippedMarkers": {
+        "adapter": [
+          "registerCommand",
+          "submitUserTurn"
+        ],
+        "ulw": [
+          "registerCommand",
+          "ULW_ACTIVATION_DIRECTIVE",
+          "usage: /ulw"
+        ]
+      },
+      "pendingIntegrationRebuild": true,
+      "note": "a src-built artifact proves the wave's code on a real boot; the shipped dist carries the same code after the wave's single integration rebuild"
+    },
+    "shippedComposition": {
+      "ok": false,
+      "problems": [
+        "the live command registry does not list ulw",
+        "the live command registry does not list ultrawork",
+        "the empty invocation did not resolve (the name is not registered)",
+        "the non-empty invocation did not resolve (the name is not registered)",
+        "the session log carries no command/run for ulw",
+        "the session log carries no command/run for ultrawork",
+        "the session log carries no command/done of kind 'error' (the empty invocation)",
+        "the session log carries no command/done of kind 'success' (the started run)",
+        "no injected directive message was found in the session log",
+        "the injected directive is missing clause 'triage'",
+        "the injected directive is missing clause 'gate'",
+        "the injected directive is missing clause 'team'",
+        "the injected directive is missing clause 'loop'",
+        "the injected directive is missing clause 'fixOnSight'",
+        "the injected directive is missing clause 'closeOut'",
+        "the injected directive carries only 0 numbered clause(s)",
+        "the injected directive does not carry the head sentence ('noQuestions')",
+        "the injected directive does not carry OBJECTIVE: qa-ulw-objective-command"
+      ],
+      "listing": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan"
+      ],
+      "usage": null,
+      "activation": null,
+      "lifecycle": {
+        "runs": [],
+        "kinds": []
+      },
+      "clauses": [],
+      "numbered": 0,
+      "gating": false,
+      "applyFailure": false
+    },
+    "resolvedArtifacts": {
+      "ok": true,
+      "problems": [],
+      "listing": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "usage": {
+        "commandId": "cmd-9a85f267-1",
+        "kind": "error",
+        "text": "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective"
+      },
+      "activation": {
+        "commandId": "cmd-9a85f267-2",
+        "kind": "success",
+        "text": "ULW activated: qa-ulw-objective-command"
+      },
+      "lifecycle": {
+        "runs": [
+          "ulw",
+          "ultrawork"
+        ],
+        "kinds": [
+          "error",
+          "success"
+        ]
+      },
+      "clauses": [
+        "triage",
+        "gate",
+        "team",
+        "loop",
+        "fixOnSight",
+        "closeOut"
+      ],
+      "numbered": 6
+    },
+    "gesture": {
+      "ok": false,
+      "problems": [
+        "the injected directive is missing clause 'triage'",
+        "the injected directive is missing clause 'gate'",
+        "the injected directive is missing clause 'team'",
+        "the injected directive is missing clause 'loop'",
+        "the injected directive is missing clause 'fixOnSight'",
+        "the injected directive is missing clause 'closeOut'",
+        "the injected directive carries only 0 numbered clause(s)",
+        "the injected directive does not carry the head sentence ('noQuestions')",
+        "the injected directive does not carry OBJECTIVE: qa-ulw-objective-gesture"
+      ],
+      "clauses": [],
+      "numbered": 0,
+      "commandRuns": 0
+    },
+    "stubServed": {
+      "ok": true,
+      "requests": 7
+    },
+    "workspacesSandboxed": {
+      "ok": true,
+      "sandbox": "/tmp/mpd-ulw-command-90HMZp",
+      "gatedWorkspace": "/tmp/mpd-ulw-command-90HMZp/ws-resolved"
+    },
+    "equivalenceTableTools": {
+      "ok": true,
+      "observed": true,
+      "toolCount": 103,
+      "missing": []
+    },
+    "gatedProblems": []
+  },
+  "env": {
+    "DSH_HOME": "/tmp/mpd-ulw-command-90HMZp/dsh-home",
+    "HOME": "/tmp/mpd-ulw-command-90HMZp/run-home"
+  },
+  "gatingArm": "resolved (src-built artifacts)"
+}

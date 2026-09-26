@@ -1,0 +1,5 @@
+[tui-distribution] structural findings=[]
+[tui-distribution] protocol repo copied to .mpd/recon/qa/tui-lanes/tui-distribution/distribution-protocol
+[tui-distribution] install -> status=127
+[tui-distribution] fullyValidated=false blocker=/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-distribution/pnpm-home/store/v11/links/@pnpm/exe/11.21.0/14840bab9ff4b8ee042fbed23004afe9d5ee9f7909673a32db14ec562fec1dda/bin/../node_modules/@pn
+[tui-distribution] FAIL: the measured artifact changed DURING the run (409a5c21c6ea -> 39af7ab10884); this result describes neither revision

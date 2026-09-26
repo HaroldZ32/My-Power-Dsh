@@ -1,0 +1,10 @@
+=== preset-conformance (web/host plane; live session create) ===
+[preset-conformance] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-15T06-17-46.006Z
+  conformance: {"ok":true,"checked":31,"schemaFree":6,"parity":{"reference":31,"ours":31,"missing":[],"extra":[]},"problems":[]}
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-262f732e-0294-4d3f-a9b0-440fc40c8a33","agentPreset":"mpd"}
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-ZvYQwU/home/sessions/--tmp-mpd-preset-main-ZvYQwU-ws--/session-262f732e-0294-4d3f-a9b0-440fc40c8a33/session.v3.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"agent-presets: preset \"mpd\" failed to mount: failed to apply loader entry persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix) (/tmp/mpd-preset-control-2026-09-15T06-17-46.006Z/mpd/agent.cordis.yml)
+[preset-conformance] PASS
+exit=0

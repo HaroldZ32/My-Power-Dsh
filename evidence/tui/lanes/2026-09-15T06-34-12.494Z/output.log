@@ -1,0 +1,6 @@
+sandbox root=/root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z explicit=true warm=true fresh=false
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+statusLine=true counters=true crashes=[]
+session keys created=["--root-dshProj-my-power-dsh-.mpd-recon-qa-t8-reviewer-20260915T063140Z-ws--"] inherited=[]
+preset=mpd session=2bad946f-86ba-4231-a8a1-900e845d5d1d isolationOffenders=0

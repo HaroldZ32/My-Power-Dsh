@@ -1,0 +1,12 @@
+{
+  "when": "2026-09-15T06:33:09.681Z",
+  "steps": [
+    "command registered",
+    "renderers inject fired",
+    "A registered: function",
+    "A effect wired",
+    "B registered: function",
+    "appended A",
+    "appended B"
+  ]
+}

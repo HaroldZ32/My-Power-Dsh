@@ -1,0 +1,15 @@
+[card] W2a=ok W2b=ok W2c=ok W2d=ok W2e=ok | W3 NOT-CLAIMED (no browser)
+[static] S1=ok S2=ok S3=ok
+[boot] main: /tmp/mpd-settings-bridge-root-MVYnwB (port 39321)
+[boot] cookie=present log=evidence/mpd-bridge/implementation/20260915T080138Z/lane-web/raw/boot-main.log
+[session] one: status=200 transport=none
+[mutate] one root: status=200 {"ok":true,"value":{"ns":"mpd","schema":{"uid":20,"refs":{"1":{"type":"number","meta":{"default":20000}},"2":{"type":"object","meta":{"default":{}},"dict":{"maxDiffChars":1}},"4":{"type":"boolean","meta":{"default":true}},"5":{"type":"object","meta":{"default":{}},"dict":{"autoCheck":4}},"7":{"type":"number","meta":{"default":6}},"8":{"type":"object","meta":{"default":{}},"dict":{"maxRounds":7}},"9":{"type":"const","meta":{},"value":"git"},"10":{"type":"const","meta":{},"value":"svn"},"12":{"type":"union","meta":{"default":"git"},"list":[9,10]},"13":{"type":"object","meta":{"default":{}},"dict":{"vcs":12}},"15":{"type":"string","meta":{"default":".mpd/team"}},"16":{"type":"object","meta":{"default":{}},"dict":{"stateDir":15}},"18":{"type":"string","meta":{"default":".mpd"}},"19":{"type":"object","meta":{"default":{}},"dict":{"dir":18}},"20":{"type":"object","meta":{"default":{}},"dict":{"hashline":2,"commentChecker":5,"ulw":8,"memory":13,"team":16,"boulder":19}}}},"value":{"hashline":{"maxDiffChars":31415},"commentChecker":{"autoCheck":true},"ulw":{"maxRounds":6},"memory":{"vcs":"git"},"team":{"stateDir":".mpd/team"},"boulder":{"dir":".mpd"}},"base":{"hashline":{"maxDiffChars":35000},"ulw":{"maxRounds":6}},"user":{"hashline":{"maxDiffChars":31415}},"applies":"restart","secrets":[],"revision":1}}
+[write] W1=ok W2=ok W3=ok W4=ok W5=ok W6=ok W7=ok W8=ok W9=ok W10=ok W11=ok W12=ok W13=ok
+[session] two: status=200 transport=none
+[mutate] two roots: status=200 "ok"
+[ambiguous] A1=ok A2=ok A3=ok A4=ok A5=ok
+[boot] disabled control: /tmp/mpd-settings-bridge-disabled-qMIZdR (port 36033)
+[session] disabled control: status=200 transport=none
+[mutate] disabled control: status=200 "ok"
+[disabled] D1=ok D2=ok D3=ok D4=ok
+[negative control] injected fan-out fault -> verdict red as required

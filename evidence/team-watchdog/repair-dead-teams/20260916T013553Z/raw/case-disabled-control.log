@@ -1,0 +1,6 @@
+[disabled-control] the watchdog row is DISABLED (knobs.enabled=false): every tick reports skipped=["disabled","disabled","disabled","disabled"]
+[disabled-control] no WARN, no ESCALATE: [[],[],[],[]]
+[disabled-control] scenes 0, incidents 0, holds 0
+[disabled-control] on disk: scene dir exists=false, holds=[], incidents file=false
+[disabled-control] the team record is byte-identical: true
+[disabled-control] => the negative control is falsifiable at the FIXTURE level (AC-10)

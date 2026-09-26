@@ -1,0 +1,65 @@
+fix(bundle): install and mount the bundle's own plugin dependency (the sidebar host)
+
+DEFECT
+  `dsh plugin --profile <p> add <bundle>` installed the bundle but none of the plugins it
+  depends on. The bundle's two Web GUI surfaces (the AgentTeams tab and the Workmates tab)
+  are SIDEBAR-ONLY — no fallback anywhere — and their host, `dsh-better-sidebar`, was
+  declared nowhere and mounted nowhere. On a clean install the sidebar therefore could not
+  display at all: a bundle-only profile composed ZERO better-sidebar rows
+  (evidence/install-deps/red-baseline/20260920T030832Z/, captain-measured), and the client's
+  `ctx.inject(['betterSidebar'], …)` simply never fired.
+
+ROOT CAUSE (three parts, all measured on dsh 0.1.5-rc.1)
+  1. The bundle manifest carried NO runtime `dependencies` block at all.
+  2. `dsh plugin` reconciles only the PROFILE manifest's own dependencies into
+     `dsh.profile.bundles` (`lib/plugin-Ddi42qoW.js#reconcilePlugins`), so a dependency of a
+     BUNDLE never becomes a layer and the sidebar bundle's own mounting patch never applies.
+  3. The bundle patch inserted no sidebar row.
+
+FIX (both halves)
+  * DECLARE: `dependencies: { "dsh-better-sidebar": "0.19.0-alpha.1" }` in the bundle
+    manifest, carried into the packed manifest by `scripts/pack-mpd.mjs#writeManifest`.
+    `dsh-app-boot#healProfileModuleFallback` symlinks the dependency closure of every
+    non-installation bundle layer into `<profile>/node_modules` BEFORE the loader builds the
+    tree, so the declaration is what makes the row resolvable. The packer's now-corrected
+    comment states BOTH halves (pnpm does not link a bundle's transitive deps; the harness
+    healer does).
+  * MOUNT: ONE new insert row (`id: mpd-better-sidebar`, `name: dsh-better-sidebar`) with a
+    `disabled: !!js` guard. `dsh-client-modules` discovers a plugin's browser half from LOADER
+    ENTRIES, so this single row delivers the server half AND the real sidebar UI.
+
+THE GUARD (the risky part — four failure modes are FATAL, not cosmetic)
+  `assertEntriesLoaded` (unresolvable enabled entry), `assertEntriesActivated` (enabled entry
+  left PENDING: the sidebar injects webServer/sessions/webRuntime/tools, and webServer/
+  webRuntime do not exist on the dsh-tui plane) and `webserver: duplicate prefix route` (two
+  mounts registering /sidebar/api) all take the whole tree down. The shipped guard therefore:
+   1. requires the package to be resolvable from `<profile>/node_modules`;
+   2. disables when the sidebar is itself a declared bundle layer;
+   3. scans EVERY composed patch source — each declared bundle layer's `dsh.bundle.patch`,
+      `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml` and every `--patch`
+      overlay recovered from `process.argv` (both spellings) — and disables when one of them
+      really MOUNTS the package (comments stripped; a candidate counts as a mount unless it
+      carries a literal `disabled: true`; unknown/`!!js` values and unparseable shapes count
+      as mounts);
+   4. fails closed on the web plane (an enabled `@deepseek-ai/dsh-host-webserver` entry).
+  Any throw returns TRUE (disabled), with one log line per distinct decision. The bias is
+  stated in the row comment: a false disable costs the sidebar, a false enable kills the boot.
+
+EVIDENCE (evidence/install-deps/)
+  red-baseline/ (the pre-fix RED: 0 sidebar rows) · requirements/ (AC-1…AC-10 + inventory:
+  the must-install set is exactly {dsh-better-sidebar}) · guard-probes/ (the measured
+  `!!js`/loader facts the guard is built on) · implementation/ · repair-r2/ · repair-f1/ ·
+  captain-cross-check/ (the captain's own boots, incl. the F3 reproduction and its closure) ·
+  review/ + RESULT2.md + RESULT3.md (three review rounds, round 1 found the high defect) ·
+  verification/ (the independent 10-arm matrix incl. the REAL `dsh plugin add` arm) ·
+  verification-final/ · qa-case/ · qa-lane-drift/ · integration/.
+  The permanent QA case is `skills/dsh-qa/scripts/install-dependencies.mjs` (lane
+  `install-dependencies`), whose arms separate the COMPOSITION claim from the LOAD claim.
+
+CARRIED BOUNDS (named, not hidden)
+  R6 the legacy installer mirrors the row id and does not dedupe inserts (pre-existing);
+  R8 the round-1 fiber-count probe witness is unavailable by construction (a probe overlay
+  naming the package now correctly disables our row) — substitute witnesses are the served
+  client, /sidebar/api and a one-enabled-row dump; a sidebar mounted from CODE rather than a
+  patch stays invisible to a declaration scan; and the legacy installer writes the row without
+  installing the package (degrades to "no sidebar" with the boot green).

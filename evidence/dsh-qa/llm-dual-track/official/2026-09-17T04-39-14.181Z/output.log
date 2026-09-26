@@ -1,0 +1,20 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-I9fqUJ/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+**Tools called:** `bash` (3 invocations — `pwd && ls`, `ls -A | wc -l`, `ls -la`).
+
+**Files in the directory:** 0 files — the working directory `/tmp/mpd-dsh-qa-I9fqUJ/ws` contains no regular files, only 2 hidden directories: `.codegraph/` and `.mpd/`.
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh: reasoning:
+The directory is empty — ls produced no output. Let me verify with ls -a to give an accurate count. But the user asked to only answer which tools and how many files. The directory appears empty. Let me double-check with ls -a since ls showed nothing.
+
+Actually the user's instruction: "first use the bash tool with pwd and ls". I did that. But to answer "how many files are in the directory" accurately, I should confirm. Let me run ls -a quickly — that's still the bash tool. Hmm, but the instruction says answer only which tools and how many files. Running one more bash call is fine and helps accuracy. But it might add a tool call that I need to report. I'll do it since accuracy matters.
+
+Actually, output shows only the pwd line, no ls output — directory empty (ls of empty dir prints nothing). I'll report 0 files. Let me verify quickly.
+dsh: reasoning:
+Hmm, ls -A | wc -l returned 2. So there are 2 hidden entries. Earlier `pwd && ls` printed nothing after the pwd line because ls (without -A) hides dotfiles. Let me see what they are.

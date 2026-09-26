@@ -1,0 +1,10 @@
+- insert:
+    - id: probe3-a
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(() => { const E = [...ctx.loader.entries()]; const ids = E.map((e) => String(e.options.id)); const rep = { sees_b: ids.includes('probe3-b'), sees_c_from_later_layer: ids.includes('probe3-c'), sees_own: ids.includes('probe3-a'), sidebar_rows: E.filter((e) => e.options.name === 'dsh-better-sidebar').map((e) => String(e.options.id) + ':' + (e.options.disabled === true ? 'literal-disabled' : typeof e.options.disabled)), total: E.length }; const guard = (() => { const hasOther = E.some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'mpd-better-sidebar' && e.options.disabled !== true); const hasWeb = E.some((e) => e.options.name === '@deepseek-ai/dsh-host-webserver' && e.options.disabled !== true); return { hasOther: hasOther, hasWeb: hasWeb, disabledResult: hasOther || !hasWeb } })(); rep.guard = guard; console.warn('PROBE3-A ' + JSON.stringify(rep)); return true })()"
+    - id: probe3-b
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE3-B evaluated'), true)"
+    - id: fake-sidebar
+      name: 'dsh-better-sidebar'
+      disabled: !!js "(console.warn('PROBE3-FAKE evaluated'), true)"

@@ -1,0 +1,84 @@
+{
+  "task": "t16",
+  "kind": "repair",
+  "lane": "L2c",
+  "member": "ulw-engineer",
+  "attempt": 1,
+  "attemptId": "f3e7bdc0-1a01-410a-abc8-80f976980e69",
+  "baseRevision": "5aa222a",
+  "branch": "dev",
+  "capturedAtUtc": "20260918T015142Z",
+  "sourceFinding": "t2 verifier finding L6-F2 (high), evidence/ulw/l6-verification/20260918T012345Z/result.json (sha256 e2407d6a95d489fb1c749a44585db641ec003c5414a51658ab3fd8d49c029a68), output.log line 90 (sha256 7a5999b56b7a82e62345d7191de33a5256544a8b4a055f706067b04fa080c90a)",
+  "defect": {
+    "symptom": "every plan=false mpd_ultrawork call failed at the harness output boundary: `Error: tool \"mpd_ultrawork\" returned invalid output: \"value.planFile\" must be a string` (quoted verbatim in failing-excerpt.log)",
+    "rootCause": "the declared output schema said `planFile: { type: \"string\" }` while the engine returned `planFile: string | null` — null whenever plan=false, which is the /ulw command default",
+    "blastRadius": "plan=false is the default for the user-invocable /ulw path; mpd_ulw is a compatibility alias over the same engine"
+  },
+  "designDecision": {
+    "chosen": "OMIT the `planFile` key when it is null (conditional spread in the return), keeping `planFile: { type: \"string\" }` and leaving it out of `required` — plus a schema `description` stating when it is present.",
+    "whyNotNullableType": "The verifier's requiredFix offered `planFile: { type: [\"string\",\"null\"] }` as one option. The INSTALLED harness validator does not support type arrays: its own source (dsh-tools/lib/index.js, checkSchemaNode) says `${path}.type must be a single type string (type arrays are not supported)`, and the vendored copy of the same validator REJECTS that schema at author time (measured — see validator-measurement.log). Declaring it would have replaced a value violation with an author-schema violation.",
+    "measuredValidator": {
+      "planFile: null": "[\"value.planFile\" must be a string]",
+      "planFile absent": "[] (valid — planFile is not in required)",
+      "planFile: \"<path>\"": "[] (valid)",
+      "type: [\"string\",\"null\"]": "REJECTED at author level: unsupported JSON schema: … properties.planFile.type must be a single type string"
+    }
+  },
+  "fix": {
+    "file": "packages/mpd-ulw-plugin/src/index.ts",
+    "change": "the engine's return becomes `{ status, rounds: used, ...(planFile === null ? {} : { planFile }), verdict, ledger: gateLedger, finalReport, stateFile }` (documented in place), and the declared schema's `planFile` gains a description: present only when a plan file was written. No other behaviour changed.",
+    "invariants": [
+      "plan=true still returns the plan path as a string",
+      "state.json on disk still records planFile (null when none) — only the TOOL RESULT shape changed",
+      "the mpd_ulw alias and the render functions are untouched"
+    ]
+  },
+  "mutationControl": {
+    "purpose": "prove the new declared-schema test is falsifiable",
+    "script": "evidence/ulw/l2c-schema-fix/20260918T015142Z/mutation-control.mjs",
+    "log": "evidence/ulw/l2c-schema-fix/20260918T015142Z/mutation-control.log",
+    "result": "with the RETIRED unconditional return restored, the suite is 13 pass / 1 fail — the failing test being 'the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results'; file restored byte-exactly (sha256 1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37 before and after)",
+    "mutatedSha256": "44a48b4f82cb91016d231ef3c16459cba8a494beb349c27dd1d7816116ad1ae1"
+  },
+  "acceptance": [
+    {
+      "criterion": "The declared output schema accepts the engine's own plan=false result (planFile null) — either by allowing null for that property or by omitting the key when null — so a plan=false run no longer produces `tool \"mpd_ultrawork\" returned invalid output: \"value.planFile\" must be a string`",
+      "status": "passed",
+      "evidence": "The engine now omits `planFile` when it is null; the declared schema keeps `planFile: { type: \"string\" }` (already absent from `required`), so declaration and value agree. Unit proof: the real plan=false result validates with `validateJsonSchemaValue(schema, light) === []` (harness's own validator, imported copy). Live proof: the model-initiated plan=false call recorded `isError=false` and the session log carries 0 occurrences of `returned invalid output` (live/result.json steps.livePlanFalse.invalidOutputHits = 0)."
+    },
+    {
+      "criterion": "A unit test validates a REAL engine result for plan=false AND for plan=true against the DECLARED schema object (not a hand-written shape and not a copy of it), so the two can never drift apart unnoticed again",
+      "status": "passed",
+      "evidence": "'the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results' (test/engine.test.ts): takes `tools.find(t => t.name === \"mpd_ultrawork\").output.schema` — the DECLARED object reference, never a copy — asserts it passes `assertSupportedJsonSchema`, runs the engine for plan=false (asserts the key is ABSENT) and plan=true (asserts a string path), and validates BOTH real results with the harness's own `validateJsonSchemaValue`, expecting []. NEGATIVE CONTROL: the same validator rejects the retired `{...light, planFile: null}` shape with exactly 1 violation naming planFile, so the empty lists are meaningful."
+    },
+    {
+      "criterion": "The mpd_ulw alias path (which hardcodes plan=false) is exercised and passes",
+      "status": "passed",
+      "evidence": "Unit: 'the mpd_ulw alias path (hardcoded plan=false) is exercised and its result matches its DECLARED schema' executes the alias tool, validates its result against the alias's own declared schema ([]) and asserts the four returned fields' types. Live: the same boot issued a model-initiated mpd_ulw call (`{\"objective\":\"qa-l2c-schema-alias\",\"maxRounds\":1}`) whose recorded result is `isError=false`. HONEST NOTE: the alias returns a NARROW object (status/rounds/finalReport/stateFile) and never carried planFile, so its own result was already schema-valid; the DISCRIMINATING path for this defect is mpd_ultrawork with plan=false, which the same boot exercised and which the unit test pins."
+    },
+    {
+      "criterion": "A live bounded call on the installed harness proves the fixed path: an mpd_ulw / plan=false invocation returns a VALID result, evidenced from the harness session log (tool call + non-error result); if the live half cannot run, record a labelled `reported` entry with the reason — never a green",
+      "status": "passed",
+      "evidence": "evidence/ulw/l2c-schema-fix/20260918T015142Z/live/{result.json, output.log, raw/arm-live-plan-false.session.decoded.jsonl} (log sha256 d22e1283227117d5d7479d0d02339d491231e6d48293f5871dbc5842006a321f). Boot exit 0, no apply-crash signature, stub-served model step, isolated DSH_HOME + HOME + sandbox workspace (sessions key only `--tmp-mpd-l2c-live-schema-84afzh-ws-live--`). Two MODEL-INITIATED calls recorded (so the harness ran its own output validation): mpd_ultrawork `{\"objective\":\"qa-l2c-schema-ultrawork\",\"tier\":\"light\",\"plan\":false,\"maxRounds\":1}` -> isError=false, rendered 'ultrawork status=max-rounds rounds=1 verdict=n/a …'; mpd_ulw `{\"objective\":\"qa-l2c-schema-alias\",\"maxRounds\":1}` -> isError=false. `returned invalid output` occurrences in the whole log: 0 (before the fix every plan=false result produced one)."
+    },
+    {
+      "criterion": "bun test packages/mpd-ulw-plugin and bun run typecheck are green; evidence under evidence/ulw/l2c-schema-fix/**",
+      "status": "passed",
+      "evidence": "bun test packages/mpd-ulw-plugin: 14 pass / 0 fail (12 before this repair; +2 schema tests). bun run typecheck: exit 0. Evidence tree: evidence/ulw/l2c-schema-fix/20260918T015142Z/{result.json (this file), output.log, failing-excerpt.log (the verifier's verbatim finding + the live log anchors), validator-measurement.log, mutation-control.{mjs,log}, live-mpd-ulw.{mjs,log}, index.ts.fixed, live/**}."
+    }
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-ulw-plugin", "status": "passed", "exitCode": 0, "evidence": "14 pass / 0 fail (engine.test.ts 5 + commands.test.ts 9)" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics" },
+    { "command": "node evidence/ulw/l2c-schema-fix/20260918T015142Z/live-mpd-ulw.mjs", "status": "passed", "exitCode": 0, "evidence": "bounded live boot (extra evidence for acceptance 4): plan=false tool results non-error on the installed harness" }
+  ],
+  "fileHashesSha256": {
+    "packages/mpd-ulw-plugin/src/index.ts": "1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37",
+    "packages/mpd-ulw-plugin/test/engine.test.ts": "a8638c36bea638e647fb0d39303792df58023b1a2f52253dbe0a876e0e392493"
+  },
+  "honestNotes": [
+    "dist/** untouched by rule (out of scope, T-88): the SHIPPED packages/mpd-ulw-plugin/dist/index.js (sha256 24122dae82a78f8f…) still carries the RETIRED unconditional `planFile` return (measured, steps.shippedArtifacts.carriesRetiredUnconditionalPlanFile=true), so a boot of the shipped composition would still reproduce the defect. The live boot therefore used SANDBOX BUILDS of the canonical repo-root bun build command for the two affected rows (ids kept), and only t8's integration rebuild makes the shipped artifact carry the fix.",
+    "The schema-validity claim is a statement about the harness's validator as INSTALLED (measured: one scalar type per property, type arrays rejected) — if a future harness adds type-array support, the omission remains valid (planFile is not required), so the repair is forward-compatible either way.",
+    "No git write command was run; skills/** was read only (the QA scripts and the verifier's evidence were used as-is, never edited)."
+  ]
+}

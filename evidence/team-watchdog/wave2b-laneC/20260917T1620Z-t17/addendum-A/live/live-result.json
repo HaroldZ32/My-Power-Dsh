@@ -1,0 +1,28 @@
+{
+  "assertion": "--live (T-18)",
+  "ruling": "the knobs must be TRULY live in-process (knobs are DATA, so T-21's module-cache limit does not apply), plus a `--live` assertion as a regression pin.",
+  "legs": [
+    "in-process mount",
+    "on-disk .mpd/mpd.jsonc write",
+    "same-instance readback on the next tick"
+  ],
+  "tree": "shipped",
+  "reading": {
+    "label": "shipped",
+    "mountedValue": 90000,
+    "fileValue": 900000,
+    "sameInstanceValue": 900000,
+    "sameInstance": true,
+    "fileApplied": true,
+    "liveLayer": "file",
+    "restartRequired": false,
+    "liveWithoutRestart": true
+  },
+  "verdict": {
+    "verdict": "pass",
+    "exitCode": 0,
+    "detail": "the same instance reported the on-disk value with no restart"
+  },
+  "sourceHash": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+  "finishedAt": "2026-09-17T14:31:41.424Z"
+}

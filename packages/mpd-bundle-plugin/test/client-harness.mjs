@@ -134,6 +134,46 @@ export function createHookRuntime() {
   };
 }
 
+/**
+ * A CALLER-SCOPED service, bound the way cordis binds one: the service's own `ctx` resolves to the
+ * context that ASKED for the service, so a method that reads a dotted seam (`this.ctx.remote.session`)
+ * is rejected unless the CALLER declared that inject. That is the MEASURED live failure behind the
+ * settings card's one-provider defect: the host's model-directory resolver declares
+ * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
+ * `directoryFor()`, so a card that injected only `["modelDirectories","sessions"]` got
+ * `cannot get property "remote.session" without inject` and silently rendered its declared lists.
+ *
+ * `reads` names the dotted seams the methods read (each must be in the CALLER's inject list);
+ * `methods` receive the caller's ctx as their FIRST argument, the way `this.ctx` would, so a method
+ * can only read what the caller declared. A method called with a missing seam throws that exact
+ * error, so a test that asserts a LIVE result proves the chain was satisfied at the call site.
+ */
+export function callerScopedService({ reads = [], methods = {} } = {}) {
+  return { __mpdCallerScoped: { reads: [...reads], methods: { ...methods } } };
+}
+
+/**
+ * Bind a caller-scoped descriptor to the inject list of the ctx that resolved it: the returned view
+ * carries the same non-method fields and method wrappers that THROW when a declared read is absent.
+ * A plain service (no descriptor) passes through untouched, so existing fixtures are unaffected.
+ */
+function bindCallerScoped(value, deps) {
+  const descriptor = value === null || typeof value !== "object" ? undefined : value.__mpdCallerScoped;
+  if (descriptor === undefined) return value;
+  const bound = {};
+  for (const [name, field] of Object.entries(value)) {
+    if (name !== "__mpdCallerScoped") bound[name] = field;
+  }
+  for (const [name, method] of Object.entries(descriptor.methods)) {
+    bound[name] = (...args) => {
+      const missing = descriptor.reads.find((read) => !deps.includes(read));
+      if (missing !== undefined) throw new Error('cannot get property "' + missing + '" without inject');
+      return method({ deps: [...deps] }, ...args);
+    };
+  }
+  return bound;
+}
+
 /** Records how the page drives the sidebar's expand-on-content-open path. */
 export function createCalls() {
   return { registerTab: [], registerFileViewer: [], effects: [], fetched: [], locale: [], openTab: [], pollStarts: [] };
@@ -267,15 +307,33 @@ export function createHarness(options = {}) {
    * modelled by default (the tests call `provideSidebar()` afterwards); `sidebarAtApply`
    * pre-registers it and `withoutSidebar` never provides it at all.
    */
-  const sidebarService = {
-    registerTab: (descriptor) => { calls.registerTab.push(descriptor); return () => {}; },
-    registerFileViewer: (descriptor) => { calls.registerFileViewer.push(descriptor); return () => {}; },
-    // Auto-open capture: the page must expand the panel with a CONTENT seed.
-    openTab: (seed, scope) => { calls.openTab.push({ seed, scope }); },
-    isTabEnabled: (id) => !disabledTabs.includes(id),
-    getTabs: () => [],
-    getSnapshot: () => ({ prefs: { pluginSettings: options.pluginSettings ?? {} } }),
+  /**
+   * Build ONE sidebar service. A remount hands the pages a FRESH service with an EMPTY tab
+   * registry — that is the shape a test must be able to produce, which is why this is a factory
+   * and not a single object.
+   */
+  const createSidebarService = () => {
+    const tabs = new Map();
+    return {
+      // Faithful to dsh-better-sidebar 0.19.1: `registerTab` THROWS on a duplicate id and
+      // `getTab(id)` answers the descriptor. Both matter here — the production registrar checks
+      // `getTab` before registering, so a re-fire must be provably harmless instead of throwing.
+      registerTab: (descriptor) => {
+        if (tabs.has(descriptor.id)) throw new Error('[dsh-better-sidebar] tab type "' + descriptor.id + '" already registered');
+        tabs.set(descriptor.id, descriptor);
+        calls.registerTab.push(descriptor);
+        return () => { if (tabs.get(descriptor.id) === descriptor) tabs.delete(descriptor.id); };
+      },
+      registerFileViewer: (descriptor) => { calls.registerFileViewer.push(descriptor); return () => {}; },
+      // Auto-open capture: the page must expand the panel with a CONTENT seed.
+      openTab: (seed, scope) => { calls.openTab.push({ seed, scope }); },
+      isTabEnabled: (id) => !disabledTabs.includes(id),
+      getTabs: () => [...tabs.values()],
+      getTab: (id) => tabs.get(id),
+      getSnapshot: () => ({ prefs: { pluginSettings: options.pluginSettings ?? {} } }),
+    };
   };
+  const sidebarService = createSidebarService();
   const sidebarProvided = options.withoutSidebar !== true;
   if (options.sidebarAtApply === true && sidebarProvided) registry.set("betterSidebar", sidebarService);
   /**
@@ -285,14 +343,55 @@ export function createHarness(options = {}) {
    * during apply() answers undefined, which is exactly the live failure this models.
    */
   const pendingInjections = [];
+  /**
+   * PROBE-INVISIBLE services: the exact shape of the live defect. A `hiddenServices` entry is
+   * NOT in `registry`, so a bare `ctx.get(name)` probe answers undefined — only an injection
+   * whose deps NAME it resolves, and that injection's callback receives a SCOPED ctx whose
+   * `get` does see it. That is cordis' actual rule (a service provided by another plugin's
+   * fiber is invisible to a plain probe, and `notify()` only re-evaluates fibers that DECLARE
+   * the dependency), and it is what makes T-A falsifiable: on a bare-probe implementation the
+   * pickers fall back even though the service exists and an injection can reach it.
+   */
+  const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
+  const scopedCtx = (deps) => ({
+    ...ctx,
+    // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
+    // caller-scoped method reading a seam the caller never declared throws (the measured live
+    // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
+    // fixture can also prove the chain on a probe-visible service.
+    get: (name) => {
+      if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
+      return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
+    },
+  });
   const runInjections = () => {
     for (const entry of [...pendingInjections]) {
-      if (entry.disposed || !entry.deps.every((dep) => registry.has(dep))) continue;
-      pendingInjections.splice(pendingInjections.indexOf(entry), 1);
+      if (entry.disposed) continue;
+      const values = entry.deps.map((dep) => (registry.has(dep) ? registry.get(dep) : hidden.get(dep)));
+      // An unsatisfied dependency parks the fiber; the entry is NOT dropped, because cordis
+      // re-evaluates every fiber that DECLARES a dependency when its provider rebinds.
+      if (values.some((value) => value === undefined)) continue;
+      // A REBIND is a remount: the same deps naming a NEW service value must re-run the
+      // callback (that is the documented `ctx.inject` behaviour the sidebar pages rely on).
+      if (entry.fired === true && values.every((value, at) => value === entry.values[at])) continue;
+      entry.fired = true;
+      entry.values = values;
       calls.injected = calls.injected ?? [];
       calls.injected.push(entry.deps);
-      entry.cb(ctx);
+      entry.cb(scopedCtx(entry.deps));
     }
+  };
+  /**
+   * Re-run every live injection against its CURRENT service values. A provider rebind re-fires
+   * the callback even when the same service object is bound again, so a case needs to be able to
+   * drive that re-fire explicitly instead of hoping a changed value causes one.
+   */
+  const refireInjections = () => {
+    for (const entry of pendingInjections) {
+      entry.fired = false;
+      entry.values = undefined;
+    }
+    runInjections();
   };
   const ctx = {
     get: (name) => (registry.has(name) ? registry.get(name) : undefined),
@@ -314,8 +413,27 @@ export function createHarness(options = {}) {
       } };
     },
     slots: {
-      inject: (key, cb) => { calls.slots = calls.slots ?? []; calls.slots.push(key); cb(); return () => {}; },
-      register: (definition) => { calls.slotsRegistered = calls.slotsRegistered ?? []; calls.slotsRegistered.push(definition); return () => {}; },
+      // The host's own cards pass a GENERATOR to `slots.inject` (`function* () { yield
+      // ctx.slots.register(...) }`), and the slot machinery drives it so the yielded
+      // registrations/disposers are collected. The double models both shapes.
+      inject: (key, cb) => {
+        calls.slots = calls.slots ?? [];
+        calls.slots.push(key);
+        const returned = cb();
+        if (returned !== null && returned !== undefined && typeof returned.next === "function") {
+          let step = returned.next();
+          while (step.done !== true) {
+            calls.slotYields = calls.slotYields ?? [];
+            calls.slotYields.push(step.value);
+            step = returned.next();
+          }
+        }
+        return () => {};
+      },
+      // `slots.register(options, component)` — the host's keyed-slot shape (its own cards pass the
+      // options object and the component separately). The component is recorded too, so an offline
+      // test can render a registered card in the hook runtime.
+      register: (definition, component) => { calls.slotsRegistered = calls.slotsRegistered ?? []; calls.slotsRegistered.push({ ...definition, component }); return () => {}; },
     },
     // The dictionaries ride along: capturing only the namespace made the zh/en key-parity
     // assertion (contract §L A7) impossible offline. `calls.locale` stays the namespace list;
@@ -386,6 +504,8 @@ export function createHarness(options = {}) {
   };
   return {
     ctx, require, fetchImpl, calls, registry, hooks, adoptedStub, primitives, sidebarService, sidebarProvided,
+    createSidebarService,
+    refireInjections,
     /** Publish the sidebar service the way its own plugin fiber does — after apply(). */
     provideSidebar: () => {
       if (!sidebarProvided) return false;

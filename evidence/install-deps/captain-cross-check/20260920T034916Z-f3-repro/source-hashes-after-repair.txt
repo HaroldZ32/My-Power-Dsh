@@ -1,0 +1,2 @@
+# read at 2026-09-20T04:04:54Z
+e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e  packages/mpd-bundle/cordis.patch.yml

@@ -1,0 +1,42 @@
+t29 SOURCE MATERIAL handed over by the lane-A author (watchdog-engineer). This is NOT a verdict and must not be cited as an acceptance reading for t29.
+revision: 646d8018a44bffb2d6e1c30afa090056f81b911e (fix/todo-register-p1) at 2026-09-17T03:10:34.269Z
+
+RE-RUNNABLE DRIVERS (each drives BOTH trees: .mpd/red-baseline and the working tree, with an injected clock):
+  node evidence/team-watchdog/redesign/core/20260917T013000Z/rows-driver.mjs         # section 9 rows (a)(b)(d)
+  node evidence/team-watchdog/redesign/holds/20260917T020000Z/rows-bf-driver.mjs     # section 9 rows (b)(f)
+  node evidence/team-watchdog/redesign/config/20260917T011345Z/cross-layer-defaults.mjs  # three-layer knob agreement + negative control
+  skills/dsh-qa/scripts/team-watchdog-boot.mjs --out <your own evidence dir>         # real mounted boot (isolated DSH_HOME + sandbox HOME)
+
+SETTLED-HASH READINGS FROM THE AUTHOR'S RUNS (re-measure; do not inherit):
+  core:  settleMs=50000 settled=true redMatchesContract={machine:true,engine:true,tools:true} greenMatchesContract={machine:false,engine:false,tools:false} ok=true
+  holds row (b): RED '91000:warn, 181000:warn, 271000:escalate + hold on disk'  vs  GREEN 'every tick empty, no hold, dependencyParked=4, fold a1: OUTSTANDING'
+  holds row (f): RED '1000:warn, 2000:warn, 3000:escalate + hold on disk'       vs  GREEN 'every tick empty, no hold, neverStarted=1'
+
+FROZEN HASHES AT HANDOFF (material only):
+  ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41  packages/mpd-team-watchdog-plugin/src/machine.ts
+  47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694  packages/mpd-team-watchdog-plugin/src/engine.ts
+  b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84  packages/mpd-team-watchdog-plugin/src/channel.ts
+  c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168  packages/mpd-team-watchdog-plugin/src/team.ts
+  0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js
+
+GAPS THE VERIFIER MUST CLOSE THEMSELVES (found absent, not assumed present):
+  1. D2 in-process proof over the real adopted tools (deliveriesWhileHeld === 0) - not under redesign/**; older hits predate the redesign.
+  2. the 85-incident replay + the count of historical escalations the new predicate would produce - no dedicated artifact.
+  3. a live-rate bound - state your own window.
+
+BOUND: any writer to the five lane-A sources / the watchdog dist / the adopted lib invalidates the fingerprints; re-measure before judging.
+
+=== SETTLE RE-CHECK of the lane-A fingerprints, 2026-09-17T03:19:42Z (handover recorded them at 03:10:34Z) ===
+  ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41  packages/mpd-team-watchdog-plugin/src/machine.ts
+  47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694  packages/mpd-team-watchdog-plugin/src/engine.ts
+  b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84  packages/mpd-team-watchdog-plugin/src/channel.ts
+  c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168  packages/mpd-team-watchdog-plugin/src/team.ts
+  0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js
+  7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8  packages/mpd-team-watchdog-plugin/dist/index.js
+  expected (source): ce8bd54c… machine, 47c24bd6… engine, b9d7acaf… channel, c3f49511… team, 0e0908e5… tools
+  => a comparison line the verifier can run: identical hashes mean the lane has been hash-stable since the handover, so t13's settle holds across this window
+--- who, if anyone, has written a lane-A file since the handover instant? ---
+  (empty = no lane-A writer since the handover)
+
+SETTLE RE-CHECK (added 2026-09-17T03:19:42Z, at the verifier's request via packaging-engineer): the five lane-A source fingerprints are UNCHANGED from the handover record — machine ce8bd54c…, engine 47c24bd6…, channel b9d7acaf…, team c3f49511…, adopted lib/tools.js 0e0908e5… — and NO file under packages/mpd-team-watchdog-plugin/** or packages/mpd-agent-teams-plugin/lib/** has been written since the handover instant (find -newermt '2026-09-17T03:10:34Z' → empty). Newly recorded for the verifier: packages/mpd-team-watchdog-plugin/dist/index.js = 7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8 (and the freshness gate read 20/20 fresh at 03:00-03:01Z, so the dist matches its source).
+A verifier can re-run this in one command: sha256sum on the six paths above and compare; identical source hashes mean the lane has been hash-stable since 03:10:34Z. This is a STARTING POINT to re-measure, never a verdict.

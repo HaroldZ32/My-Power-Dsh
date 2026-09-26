@@ -1,0 +1,44 @@
+=== install ===
+r. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              reasoning_effort: max
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== mcp arm (exit 0, 6150ms) ===
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-mcp-bridge-cTSQya/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-ext] extension "qa-mcp-dead" mcp server "qa_mcp_dead" unavailable: mcp-client(qa_mcp_dead): cannot start "/nonexistent/mpd-ext-qa-missing-binary": spawn /nonexistent/mpd-ext-qa-missing-binary ENOENT
+[mpd-ext] extension "qa-mcp-live" mcp server "qa_mcp_live": 8 tool(s) published
+[mpd-ext] extension "qa-mcp-schema" mcp server "qa_mcp_schema": 2 tool(s) published, 1 skipped, 1 downgraded
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-ext] extension "qa-mcp-stderr" mcp server "qa_mcp_stderr" unavailable: mcp-client(qa_mcp_stderr): the server process exited (code=1, signal=null)
+[mpd-ext] extension "qa-mcp-dup" mcp server "qa_mcp_dup" unavailable: server "qa_mcp_dup" listed tool "dup_tool" more than once — invalid tool list
+[mpd-ext] extension "qa-mcp-hang" mcp server "qa_mcp_hang" unavailable: mcp-client(qa_mcp_hang): initialize timed out after 1500ms
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-mcp-live, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+mcp-bridge-done
+[mpd-ext] extension "qa-mcp-live" mcp server "qa_mcp_live" failed: the server process exited (code=null, signal=SIGTERM)
+[mpd-ext] extension "qa-mcp-schema" mcp server "qa_mcp_schema" failed: the server process exited (code=0, signal=null)
+

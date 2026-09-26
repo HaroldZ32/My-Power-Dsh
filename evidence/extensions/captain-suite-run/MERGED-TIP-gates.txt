@@ -1,0 +1,186 @@
+merged tip: adbdc32 (dev)
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 318 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+PASS  verify-vendor
+ok   README.md
+ok   docs/architecture.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS
+PASS  verify-docs-parity
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+PASS  verify-rows-parity
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.mjs
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (52 checks)
+PASS  mpd-ext self-test
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+PASS  validate example
+[mpd-ext] validate /root/dshProj/my-power-dsh/templates/mpd-extension (plane=user)
+  extension "mpd-extension-template": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+PASS  validate template
+[verify-pack-closure] self-test PASS - positive-control (real tree, exit 0) (exit 0) :: [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+[verify-pack-closure] self-test PASS - negative-control (F-T7-1 omission, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (inverse drift, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (two offenders, both named) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (zero-subject degraded run, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 18 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (templates path literal, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS: 6/6 arms
+PASS  closure self-test
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+PASS  closure check
+[pack-mpd] modes normalized: 1136 files (644: 1124, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package
+PASS  pack
+[bundle-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-16T08-24-36.128Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"http":true,"corpus":"/root/dshProj/my-power-dsh/skills","preset":"/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-16T08-24-36.128Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml","trust":"system","bundleReal":"
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+PASS  lane bundle-lifecycle
+[extension-template] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-template/2026-09-16T08-24-52.624Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  scaffold: {"ok":true,"exit":0,"root":"/tmp/mpd-extension-template-3NkDA0/run-home/.mpd/extensions/qa-template","templateId":"mpd-extension-template","templateEnabledFlagInRepo":false,"sandboxEnabledFlag":true,"copyFiles":["README.md","README.zh-CN.md","flows/qa-template-flow.json","mpd-ext.json","personas/qa-
+  skill: {"ok":true,"called":true,"succeeded":true,"sawHeading":true,"resultHead":"<skill_content name=\"qa-template-skill\">\n<skill_resources>\nBase directory for this skill: /tmp/mpd-extension-template-3NkDA0/run-home/.mpd/extensions/qa-template/skills/qa-template-skill\nResolve relat"}
+  flow: {"ok":true,"called":true,"succeeded":true,"sawFlowId":true,"sawSkillCrossReference":true,"resultHead":"qa-template flow (qa-template-flow, extension qa-template)\nThe qa-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mp
+  role: {"ok":true,"personaCalled":true,"personaSucceeded":true,"spawnCalled":true,"spawnSucceeded":true,"sawRoleName":true,"childAnswered":true,"personaHead":"persona qa-template reviewer (1358 chars):\nYou are the qa-template reviewer, a read-only role contributed by the\nqa-template extension. You exist 
+  mcp: {"ok":true,"tool":"mcp__qa-template__describe_extension","offeredInRequest":true,"offeredInHeader":true,"called":true,"succeeded":true,"servedManifest":true,"servedOwnRoot":true,"servedFourKinds":true,"resultHead":"{\n  \"id\": \"qa-template\",\n  \"root\": \"/tmp/mpd-extension-template-3NkDA0/run-h
+  listed: {"ok":true,"sawCopy":true,"resultHead":"mpd extensions: 2 (0 shadowed, 0 rejected)\n- qa-template [user/directory] enabled skills=1 flows=1 mcp=1 roles=1 (roles: qa-template reviewer)\n- mpd-ext-example [bundle/directory] disabled skills=1 flows=1 mcp=1 roles=0\n    not served: change-triage, change
+  containment: {"ok":true,"exit":0,"durationMs":5630,"crashSignatures":[],"offeredTemplateTools":["mcp__qa-template__describe_extension"],"isolation":{"ok":true,"checked":1,"keys":["--tmp-mpd-extension-template-3NkDA0-ws--"]}}
+  isolationFinal: {"ok":true,"checked":1,"keys":["--tmp-mpd-extension-template-3NkDA0-ws--"]}
+PASS  lane extension-template
+[extension-lifecycle] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-16T08-24-58.560Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  main: {"ok":true,"exit":0,"durationMs":5919,"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"recordedTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show","skill","mpd_role_persona","mpd_role_spawn"],"calls":{"mpd_ext_list":{"succeeded":true,"reason":"","r
+  failure: {"ok":true,"exit":0,"sessionCompleted":true,"listedHealthy":true,"flowToolStillWorks":true,"reportedProjectRejection":true,"reportedRejections":["qa-bad-json","qa-bad-version"],"cliChecks":{"qa-bad-json":{"exit":1,"tail":"  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a J
+  isolation: {"ok":true,"sessions":{"session-a":{"ok":true,"exit":0,"cwd":"/tmp/mpd-extension-lifecycle-Jttk99/ws-a","recorded":true,"succeeded":true,"sawExpected":true,"sawForbidden":[],"offeredExtTools":["mpd_ext_list","mpd_ext_show","mpd_flow_list","mpd_flow_show"],"isolation":{"ok":true,"checked":2,"keys":["
+  packed: {"ok":true,"packExit":0,"packedRoot":"/root/dshProj/my-power-dsh/dist/mpd-package","rows":{"mpdExtRowInPackedPatch":true},"assets":{"pluginDist":true,"extensionsAsset":true},"negativeControl":{"falsifiable":true,"packerExitGated":true,"trees":{"closed":{"hasRow":true,"hasPlugin":true,"hasExtensions"
+  isolationFinal: {"ok":true,"checked":4,"keys":["--tmp-mpd-extension-lifecycle-Jttk99-decoy--","--tmp-mpd-extension-lifecycle-Jttk99-ws-b--","--tmp-mpd-extension-lifecycle-Jttk99-ws-a--","--tmp-mpd-extension-lifecycle-Jttk99-ws--"]}
+PASS  lane extension-lifecycle
+[extension-mcp-bridge] ok=true -> /root/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-16T08-25-24.757Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":true,"offered":true,"called":true,"succeeded":true,"reason":"","resultHead":"Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx,
+  dead: {"vacuous":false,"ok":true,"offeredNoTool":true,"headerSawNoTool":true,"reported":true,"stateText":"extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/q
+  hang: {"vacuous":false,"ok":true,"connectTimeoutMs":1500,"durationMs":5806,"offeredNoTool":true,"reported":true,"stateText":"extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-hom
+  schema: {"vacuous":false,"ok":true,"goodToolOffered":true,"badInputSkipped":true,"badOutputOffered":true,"badOutputSchemaDropped":true,"reportedReason":true,"stateText":"extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/qa-mcp-schema\nsourc
+  dup: {"vacuous":false,"ok":true,"zeroTools":true,"headerZeroTools":true,"stateText":"extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-vRz7lA/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json
+  stderr: {"vacuous":false,"ok":true,"cap":2000,"floodLength":3053,"reportedTailLength":2000,"headDropped":true,"tailKept":true,"reported":true,"tailHead":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","stateHead":"extension qa-mcp-stderr [user/directory] enabled\nroot: /tm
+  containment: {"ok":true,"exit":0,"control":{"liveToolOffered":true,"liveCallSucceeded":true},"showCallOrder":["qa-mcp-dead","qa-mcp-schema","qa-mcp-dup","qa-mcp-hang","qa-mcp-stderr"],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegr
+PASS  lane extension-mcp-bridge

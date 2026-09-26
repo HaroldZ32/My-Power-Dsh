@@ -1,0 +1,75 @@
+{
+  "slug": "tui-team-surface-repair2",
+  "task": "t6 (repair, round 2)",
+  "title": "Repair round 2 — closes t4's F1/F2/F3 on the TUI team-workflow + plan-approval surfaces",
+  "producedAt": "2026-09-16T14:01:35Z",
+  "contract": ".mpd/plans/tui-team-surface.md (t1, frozen) + the t4 review findings",
+  "revision": {
+    "note": "sha256 of every artifact this repair produced or changed, measured after the final rebuild",
+    "files": {
+      "packages/mpd-tui-plugin/src/scenes.ts": "sha256:1ab4529a8f43776383fbee62b7169c25dbafb19645f3a751cc900fb71223dfd0",
+      "packages/mpd-tui-plugin/src/team-state.ts": "sha256:79bef0d2553414f39ccf096c749ef06b0abbda366740d71806b2f155c06f5b12",
+      "packages/mpd-tui-plugin/dist/index.js": "sha256:409a5c21c6ea41af64d32573fd010cb7bcb85092d71b1727f9d1b5dc199b7184",
+      "packages/mpd-tui-plugin/test/team-surface.test.ts": "sha256:4bc717f47b29c9c6222711d92595dfeee18b7dbc854f6e8f6c6b74c466aa089b"
+    }
+  },
+  "repairs": [
+    {
+      "finding": "F1 (medium) — §9.4 sanitization not implemented; `safeLine` was an identity passthrough",
+      "fix": "`safeLine` is now THE render boundary: `clampCells(stripControl(raw), SCENE_ROW_MAX_CELLS=4000)`, exported, and applied to EVERY string handed to `ui.Text` (title, meta, every body row, notice, empty state, busy and footer) in all three scenes. stripControl+clampCells rather than scalarText: scalarText also COLLAPSES whitespace, which would destroy the DAG's depth indentation (§3.1 item 4) and the roster indent. Both untrusted directions are covered — the tool error text (model-authored) and the record/directory name feeding the problem notes.",
+      "tests": [
+        "safeLine strips C0/C1 (ESC, BEL, OSC), keeps the visible remainder, preserves indentation, clamps at the cell budget, never throws on hostile types",
+        "MEASURED negative control: a tool error `\\u001b[31mRED\\u001b[0m\\u001b]0;pwned\\u0007 plain` renders as `approve failed: … pwned … plain` with NO \\u001b / \\u0007 / \\u009b anywhere in the rendered text (this is exactly the probe t4 ran, now asserted in the suite)",
+        "MEASURED second direction: a team directory literally named `bad\\u001bname\\u0007` renders on the board with no control character"
+      ]
+    },
+    {
+      "finding": "F2 (low) — §3.1 item 4 DAG order was record order, not depth-then-creation",
+      "fix": "The projection sorts ONCE, in `readTeamWorkflow`, after depths are computed: `depth` ascending, the record's own array index as the creation-order tiebreak (the adopted plugin appends tasks in creation order; the durable record carries no per-task timestamp). Both renderers iterate the sorted array, so `teamWorkflowLines` and `planProjectionLines` cannot drift.",
+      "tests": [
+        "a hostile record order [child(d1), parent(d0), peer(d0), grandchild(d2)] projects to [parent, peer, child, grandchild] and BOTH renderers emit exactly that sequence",
+        "depth still indents the rows (child 2 spaces, grandchild 4)",
+        "the real record's task SET is unchanged and the projected order is provably depth-non-decreasing"
+      ]
+    },
+    {
+      "finding": "F3 (low) — §4.5 'the echo stays' violated: the echo was cleared in `finally` on every outcome",
+      "fix": "`setEcho(\"\")` moved out of `finally` into the success branch of both `runApprove` and `runDiscard`; the refusal path keeps the echo and the scene stays open, exactly as §4.5 pins. The local mismatch path already kept it.",
+      "tests": [
+        "a REFUSED approve renders `approve failed: team is already running` AND still shows `confirm    approve mpd-fixture-1`",
+        "a SUCCESSFUL approve renders `approved: …` with an empty `confirm    ` row"
+      ]
+    }
+  ],
+  "falsifiability": {
+    "driver": "evidence/tui/team-surface/20260916T140135Z/negative-control.mjs",
+    "record": "evidence/tui/team-surface/20260916T140135Z/negative-control/result.json",
+    "result": "NINE mutations, each applied to the real source and each making the surface suite RED, with the source restored byte-identical (sha256) every time and the final suite green",
+    "barriers": {
+      "B1-separate-surface": 2,
+      "B2-phrase-gate": 4,
+      "B3-no-prefill": 2,
+      "B4-chord-only": 16,
+      "B5-single-flight": 2,
+      "B6-precondition-read-only": 2
+    },
+    "repairs": {
+      "R1-9.4-render-boundary": 6,
+      "R2-dag-depth-order": 6,
+      "R3-echo-kept-on-refusal": 2
+    },
+    "failedTestsUnit": "number of (fail) lines the mutated run produced"
+  },
+  "gates": "evidence/tui/team-surface/20260916T140135Z/gates.result.json (+ per-gate logs in this directory)",
+  "gateSummary": {
+    "bun-test-packages": "797 tests: repo-cwd 795 pass / 2 fail, clean-cwd 797 pass / 0 fail. The 2 reds are the PRE-EXISTING non-hermetic mpd-config assertions on <cwd>/.mpd/mpd.jsonc (untouched package), covered by the captain's standing WAIVED-GATE ruling — the clean-cwd invocation is the recorded replacement, both readings kept.",
+    "typecheck": "exit 0",
+    "tui-mount": "exit 0 (SKIP: no dsh-tui/tmux TTY in this sandbox)",
+    "tui-panels": "exit 0 (SKIP: same prereq)",
+    "tui-spec-conformance": "exit 0 (ok=true, all 7 pinned requirements pass)"
+  },
+  "deliberatelyNotChanged": [
+    "The residual t4 recorded under (c): an UNBOUNDED `dependencies` array can still make the projection throw deep inside the depth walk (Math.max spread) and degrade to 'team state unreadable' rather than the §5.5 bounded note. It is CONTAINED (the last-net try/catch, no crash) and it is NOT in this repair contract; a dependency cap would also touch the frozen cap list (§5.5), so it is left for the captain to scope as its own change.",
+    "No change to the frozen surfaces, keystrokes, phrases, scene ids or the adapter seam: the repair is limited to the ONE render boundary, the projection's ordering and the echo lifecycle."
+  ]
+}

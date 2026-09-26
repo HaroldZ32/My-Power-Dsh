@@ -1,0 +1,18 @@
+=== BEFORE (t18 revision) sha256 ===
+1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea  packages/mpd-ulw-plugin/src/index.ts
+
+=== mutation apply (blocking rule neutralized) ===
+mutation applied: a FAIL quality-gate lane no longer blocks the run
+sha256 now a144142f39cf1abf1736ea6c725fd240e8e21beb2b63d0ae07972eb4b1e5c067
+
+=== bun test packages/mpd-ulw-plugin on the MUTATED tree (expect the blocked-gate test RED) ===
+(fail) quality gate: a FAIL lane blocks completion and stamps the ledger row [0.98ms]
+ 14 pass
+ 1 fail
+
+=== mutation restore ===
+restored from /root/dshProj/my-power-dsh/evidence/ulw/l2d-review-repairs/t18-20260918T015650Z/index.ts.t18fixed
+sha256 now 1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea
+
+=== AFTER (restored) sha256 — must equal the BEFORE line ===
+1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea  packages/mpd-ulw-plugin/src/index.ts

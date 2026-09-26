@@ -1,14 +1,26 @@
 // packages/mpd-workmate-plugin/src/index.ts
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { homedir, userInfo } from "node:os";
+import { join, resolve as resolve2, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function userMessage(input) {
+  const content = textBlock(input?.text);
+  for (const block of content)
+    Object.freeze(block);
+  Object.freeze(content);
+  const source = { kind: "user", ...input?.source ?? {} };
+  Object.freeze(source);
+  const message = { id: randomUUID(), role: "user", content, source };
+  return Object.freeze(message);
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
@@ -49,6 +61,108 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+function scopeOfAgentContext(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  const kind = typeof context;
+  if (kind !== "object" && kind !== "function")
+    return;
+  let on;
+  let effect;
+  let restrict;
+  try {
+    const scoped = context;
+    on = scoped.on;
+    effect = scoped.effect;
+    restrict = scoped.tools?.restrict;
+  } catch {
+    return;
+  }
+  if (typeof on !== "function" || typeof effect !== "function" || typeof restrict !== "function")
+    return;
+  const tools = context.tools;
+  return {
+    context,
+    tools: { restrict: (filter) => restrict.call(tools, filter) },
+    on: (event, handler) => on.call(context, event, handler),
+    effect: (fn, label) => effect.call(context, fn, label)
+  };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   const service = (serviceName) => {
@@ -132,6 +246,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -145,8 +350,12 @@ function createDshAdapter(ctx, config = {}) {
       const subagents = service("subagents");
       const skills = service("skills");
       const presets = service("agentPresets");
+      const commands = service("commands");
       const agents = service("agents");
       const compaction = service("compaction");
+      const llmService = service("llm");
+      const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -161,16 +370,39 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        commands: commands !== undefined,
+        commandsRegister: typeof commands?.register === "function",
+        turnSubmit: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function"),
+        toolsRegisterHost: typeof tools?.register === "function",
+        subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
+        subagentsContinuable: typeof subagents?.startContinuable === "function",
+        subagentsInterrupt: typeof subagents?.interrupt === "function",
+        llmListModels: typeof llmService?.listModels === "function",
+        llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
+        systemPromptSection: typeof systemPrompt?.section === "function",
+        agentScope: liveAgents().some((candidate) => scopeOfAgentContext(candidate) !== undefined),
+        agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
+        agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
+        agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -179,6 +411,26 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
+    llmListModels(provider) {
+      const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
+      if (typeof llm.listModels !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
+      return llm.listModels.call(llm, provider);
+    },
+    llmResolveCallConfig(config2, signal) {
+      const llm = requireService("llm", "cannot resolve a call config");
+      if (typeof llm.resolveCallConfig !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
+      return llm.resolveCallConfig.call(llm, config2, signal);
+    },
+    registerHostTool(definition) {
+      const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const registered = tools.register(definition);
+      return typeof registered === "function" ? registered : noop;
+    },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -202,11 +454,47 @@ function createDshAdapter(ctx, config = {}) {
           dispose();
       };
     },
+    registerCommand(definition) {
+      const commands = service("commands");
+      if (commands === undefined || commands === null || typeof commands.register !== "function")
+        return noop;
+      const registered = commands.register({
+        name: definition?.name,
+        description: definition?.description,
+        ...definition?.input === undefined ? {} : { input: definition.input },
+        handler: (invocation) => {
+          const host = invocation ?? { rawInput: "" };
+          return definition.handler({
+            ...host,
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+          });
+        }
+      });
+      return typeof registered === "function" ? registered : noop;
+    },
+    registerPromptSection(section) {
+      const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
+      if (typeof systemPrompt.section !== "function")
+        throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
@@ -215,6 +503,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -246,7 +548,8 @@ function createDshAdapter(ctx, config = {}) {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,
-          ...signal === undefined ? {} : { signal }
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
         });
         const isError = raw?.isError === true;
         if (isError) {
@@ -285,6 +588,154 @@ function createDshAdapter(ctx, config = {}) {
         stopReason: result.stopReason ?? null
       };
     },
+    subagentRuntime() {
+      return service("subagents");
+    },
+    subagentProvider(name) {
+      const subagents = service("subagents");
+      const getProvider = subagents?.getProvider;
+      if (typeof getProvider !== "function")
+        return;
+      return getProvider.call(subagents, name);
+    },
+    subagentProviders() {
+      const subagents = service("subagents");
+      const list = subagents?.list;
+      if (typeof list !== "function")
+        return [];
+      const names = list.call(subagents);
+      return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+    },
+    startContinuableAgent(spec) {
+      const subagents = requireService("subagents", "cannot start a continuable agent");
+      if (typeof subagents.startContinuable !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
+      return subagents.startContinuable.call(subagents, spec);
+    },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
+    interruptAgent(targetSessionId, authority) {
+      const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
+      if (typeof subagents.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
+      subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
+    },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
       if (typeof skills.registerProvider !== "function")
@@ -306,7 +757,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -315,7 +766,174 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
     },
-    text: textBlock
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
+    },
+    text: textBlock,
+    userMessage,
+    agentScope(agent) {
+      return scopeOfAgentContext(agent);
+    },
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
+      followup.call(agent, message2);
+    },
+    cancelAgentTurn(agent, cause, options) {
+      const cancel = agent?.cancel;
+      if (typeof cancel !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
+      cancel.call(agent, cause, options);
+    },
+    steerAgentTurn(agent, message2) {
+      const steer = agent?.steer;
+      if (typeof steer !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
+      steer.call(agent, message2);
+    },
+    injectAgentMessage(agent, message2) {
+      const inject = agent?.inject;
+      if (typeof inject !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
+      inject.call(agent, message2);
+    },
+    submitUserTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        return false;
+      try {
+        followup.call(agent, message2);
+        return true;
+      } catch {
+        return false;
+      }
+    }
   };
   return adapter;
 }
@@ -381,6 +999,44 @@ function homeDir() {
 function workmateRoot() {
   return join(homeDir(), ".mpd", "workmate");
 }
+var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
+function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertMutationSandboxed(operation) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1")
+    return;
+  const root = workmateRoot();
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
+}
 function wmDir(name2) {
   const key = sanitizeName(name2);
   if (key === "")
@@ -409,6 +1065,11 @@ function readMeta(dir) {
   } catch {
     return null;
   }
+}
+function publicMeta(meta) {
+  const out = { ...meta };
+  delete out.baseId;
+  return out;
 }
 function writeJson(path, value) {
   mkdirSync(join(path, ".."), { recursive: true });
@@ -683,6 +1344,7 @@ function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
   writeFileSync(path, `${baseName}-based workmate "${newKey}".` + raw.slice(prefix.length));
 }
 function renameWorkmate(nameArg, newNameArg, teamRoots) {
+  assertMutationSandboxed("rename a workmate");
   const oldKey = nameKey(nameArg, "name");
   const newKey = nameKey(newNameArg, "new_name");
   if (newKey === oldKey)
@@ -711,6 +1373,7 @@ function renameWorkmate(nameArg, newNameArg, teamRoots) {
   return { ok: true, name: newKey, from: oldKey, renamedFrom };
 }
 function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
+  assertMutationSandboxed("delete a workmate");
   const key = nameKey(nameArg, "name");
   const purge = purgeArg === true;
   if (purge && String(confirmArg ?? "") !== key) {
@@ -749,28 +1412,37 @@ function apply(ctx) {
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
+  function normalizeBaseKey(s) {
+    return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  }
   function resolveBase(key) {
     const roles = rolesService();
     if (!roles)
       throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)");
     const k = String(key ?? "").trim();
     if (!k)
-      throw new Error("mpd_workmate: base required (roster id or normal name)");
-    const direct = roles.get(k);
-    if (direct)
-      return { id: direct.id, name: direct.name, description: direct.description, readonly: Boolean(direct.readonly), provider: direct.chain?.[0]?.provider ?? "deepseek-official", model: direct.chain?.[0]?.model ?? "", persona: String(direct.persona ?? "") };
-    const byName = roles.list().find((r) => String(r.name).toLowerCase() === k.toLowerCase());
-    if (byName)
-      return { id: byName.id, name: byName.name, description: byName.description, readonly: Boolean(byName.readonly), provider: byName.chain?.[0]?.provider ?? "deepseek-official", model: byName.chain?.[0]?.model ?? "", persona: String(byName.persona ?? "") };
-    throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`);
+      throw new Error(`mpd_workmate: base required (the specialist's functional name, e.g. "Deep Worker")`);
+    const all = typeof roles.list === "function" ? roles.list() : [];
+    const wanted = normalizeBaseKey(k);
+    const base = all.find((r) => normalizeBaseKey(String(r?.name ?? "")) === wanted);
+    if (!base) {
+      const names = all.map((r) => String(r?.name ?? "")).filter((n) => n !== "");
+      throw new Error(`mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (${names.join(", ")})`);
+    }
+    return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: base.chain?.[0]?.provider ?? "deepseek-official", model: base.chain?.[0]?.model ?? "", persona: String(base.persona ?? "") };
   }
   function initWorkmate(baseKey, nameArg, noteArg) {
+    assertMutationSandboxed("initialize a workmate");
     const base = resolveBase(baseKey);
     const given = sanitizeName(nameArg);
     let name2 = given;
     if (!name2) {
-      const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1;
-      name2 = `${base.id}-${n}`;
+      const slug = sanitizeName(base.name) || "workmate";
+      const existing = listInstances();
+      let n = existing.filter((i) => i.meta.baseId === base.id).length + 1;
+      while (existing.some((i) => i.name === `${slug}-${n}`))
+        n += 1;
+      name2 = `${slug}-${n}`;
     }
     const dir = wmDir(name2);
     if (existsSync(dir))
@@ -786,14 +1458,14 @@ function apply(ctx) {
     writeFileSync(join(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
-    return { name: name2, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+    return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
   }
   const workmateLibrary = {
-    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
+    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
     get: (name2) => {
       try {
         const { meta, key } = ensureInstance(name2);
-        return { ...meta, name: key, note: readNote(key) };
+        return { ...publicMeta(meta), name: key, note: readNote(key) };
       } catch {
         return null;
       }
@@ -801,7 +1473,7 @@ function apply(ctx) {
     read: (name2) => {
       try {
         const { meta, key } = ensureInstance(name2);
-        return { ...meta, name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
+        return { ...publicMeta(meta), name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
       } catch {
         return null;
       }
@@ -818,15 +1490,15 @@ function apply(ctx) {
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
       return { workmates: list, count: list.length };
     }
   });
   dsh.registerTool({
     name: "mpd_workmate_init",
-    description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = roster id or normal name (mpd_roles_list). The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
-    parameters: { type: "object", properties: { base: { type: "string", description: 'roster id or normal name (e.g. hephaestus or "Deep Worker")' }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, baseId: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
+    description: `Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. "Deep Worker". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.`,
+    parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
     execute: async (args) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   });
@@ -886,6 +1558,7 @@ Work with the tools your role requires (read-only workmates must never modify an
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
     execute: async (args) => {
+      assertMutationSandboxed("reflect a workmate");
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
       const outcome = String(args?.outcome ?? "").trim();
@@ -923,7 +1596,7 @@ ${capText(outcome, 1200)}`);
       const matches = listInstances().map(({ name: name2, meta, note }) => {
         const memoryTail = readMemory(name2, 600);
         const score = scoreMatch(task, { note, baseName: meta.baseName, description: meta.description, memoryTail });
-        return { name: name2, score: Math.round(score * 100) / 100, baseName: meta.baseName, baseId: meta.baseId, readonly: meta.readonly, uses: meta.uses, note };
+        return { name: name2, score: Math.round(score * 100) / 100, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, note };
       }).sort((a, b) => b.score - a.score);
       const best = matches[0];
       const matched = !!best && best.score >= MATCH_THRESHOLD;
@@ -978,7 +1651,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
       kind: "exact",
       path: "/plugins/mpd-workmate/list",
       handler: async (_req, res) => {
-        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ workmates: list }));
       }
@@ -990,7 +1663,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
         const roles = ctx.get ? ctx.get("mpdRoles") : undefined;
         let bases = [];
         try {
-          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r) => ({ id: String(r.id), name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }));
+          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r) => ({ name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }));
         } catch (e) {
           res.writeHead(500, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify({ error: String(e?.message ?? e) }));
@@ -1093,21 +1766,23 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
   }
 }
 export {
-  scoreMatch,
-  sanitizeName,
-  renameWorkmate,
-  nameKey,
-  name,
-  inject,
-  deleteWorkmate,
-  capText,
-  busyTeams,
-  autoNote,
-  apply,
-  WorkmateError,
-  READONLY_DENY,
-  PERSONA_CAP,
-  NOTE_CAP,
+  MATCH_THRESHOLD,
   MEMORY_CAP,
-  MATCH_THRESHOLD
+  NOTE_CAP,
+  PERSONA_CAP,
+  READONLY_DENY,
+  WORKMATE_ALLOW_REAL_HOME_ENV,
+  WorkmateError,
+  apply,
+  assertMutationSandboxed,
+  autoNote,
+  busyTeams,
+  capText,
+  deleteWorkmate,
+  inject,
+  name,
+  nameKey,
+  renameWorkmate,
+  sanitizeName,
+  scoreMatch
 };

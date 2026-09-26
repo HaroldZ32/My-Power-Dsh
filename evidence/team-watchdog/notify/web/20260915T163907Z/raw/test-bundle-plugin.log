@@ -1,0 +1,90 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.43ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.23ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.24ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.03ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.36ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.04ms]
+(pass) workmate page > renders the library from the host routes [8.27ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.25ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.33ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.12ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [1.30ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.83ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.26ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.08ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [20.43ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [28.75ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [16.01ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [15.93ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [16.20ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [15.62ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [13.57ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.87ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.50ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.84ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.15ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [0.86ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.69ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.84ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [8.32ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.69ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [5.84ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [6.59ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [11.76ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [5.57ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [5.57ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [6.36ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.58ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [5.49ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [6.07ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [5.64ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [5.96ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [6.91ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [6.13ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [6.91ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [8.03ms]
+(pass) auto-open policy > opens the tab once, with NO content seed, for a team that appears after the baseline [2709.90ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2707.20ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.98ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.74ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [2.03ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [1.46ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.88ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.71ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [1.04ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [1.20ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+(pass) W2 (static): the BUILT and served client carries the registration > the shipped client registers the card into the keyed slot with key 'mpd' and a locale [0.93ms]
+(pass) W2 (static): the BUILT and served client carries the registration > the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams [0.71ms]
+(pass) W2 (static): the BUILT and served client carries the registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.15ms]
+(pass) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.69ms]
+(pass) the registration only happens when the settings scope is served > settingsScope at apply -> one entry keyed by the namespace, carrying a locale and an inject face [3.62ms]
+(pass) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the card (provideService wakes the fiber) [1.81ms]
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [6.82ms]
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [3.17ms]
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [3.44ms]
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [4.69ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [1.16ms]
+(pass) isolation and front-door parity > the card's eleven fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) [1.61ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+
+ 68 pass
+ 0 fail
+ 567 expect() calls
+Ran 68 tests across 8 files. [11.29s]

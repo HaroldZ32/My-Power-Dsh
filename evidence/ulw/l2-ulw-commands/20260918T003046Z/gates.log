@@ -1,0 +1,31 @@
+## contract §1 falsifiable gates (L2 half)
+-- C1.2 src: B3-shaped (expect no match)
+NO-MATCH src (dist is S5/integration: rebuilt by t8)
+-- label-shaped B3 in the package excluding dist (expect only the 2 explanatory README sentences)
+packages/mpd-ulw-plugin/README.zh-CN.md:4:Plan C / C2 — 在 DSH subagent seam 上的固定策略 ultrawork 引擎（v2，取代 B3 loop；`mpd_ulw` 仍以轻量兼容别名形式存在）。
+packages/mpd-ulw-plugin/README.md:5:replaces the B3 loop; `mpd_ulw` remains as a lightweight compatibility alias).
+-- C1.3 canonical build command present in BOTH READMEs
+packages/mpd-ulw-plugin/README.md:64:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+packages/mpd-ulw-plugin/README.zh-CN.md:46:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+-- C1.3 stale package-directory form absent from BOTH READMEs
+NO-MATCH README pair
+-- C2.5 no direct command service use in the plugin source
+NO-MATCH seam discipline
+-- no bare host-package import in the plugin source
+NO-MATCH host import
+
+## sha256 of changed files
+c06ec6645422b0d185a81727043bab9beeeeb4700f452546674e3f3036c4a5de  packages/mpd-ulw-plugin/src/index.ts
+01e602a988e4e7d934103538fb76cc79025524f334a89f4040d8ad7536106031  packages/mpd-ulw-plugin/test/engine.test.ts
+cdb12585b42a114c9cf5e8875099f28145e5ea1b960da57f52cb44e8a875a146  packages/mpd-ulw-plugin/test/commands.test.ts
+d043e187e1c718118bb6b7b59e397711b7bb9b9a67cec92d20f68a320571159c  packages/mpd-ulw-plugin/README.md
+635108e772a7875403063c63c0f0e5930b5db0b21c01aad6298cf5a7196a9749  packages/mpd-ulw-plugin/README.zh-CN.md
+1793a88ede02d76b307aa642ab861b6e334659cdd6764cb3842d7b6304fcfcde  packages/mpd-ulw-plugin/package.json
+
+## git status (my lane only)
+ M packages/mpd-ulw-plugin/README.md
+ M packages/mpd-ulw-plugin/README.zh-CN.md
+ M packages/mpd-ulw-plugin/package.json
+ M packages/mpd-ulw-plugin/src/index.ts
+ M packages/mpd-ulw-plugin/test/engine.test.ts
+?? packages/mpd-ulw-plugin/test/commands.test.ts

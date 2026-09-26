@@ -1,0 +1,17 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "retiredVocabulary": 0,
+    "signals": []
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "Reply with exactly: hello-ok",
+  "problems": []
+}

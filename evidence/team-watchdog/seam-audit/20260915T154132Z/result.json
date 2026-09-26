@@ -1,0 +1,22 @@
+{
+  "task": "w2",
+  "author": "Explorer",
+  "source_task": "t53",
+  "persisted_by": "Lead (t56)",
+  "path": "evidence/team-watchdog/seam-audit/20260915T154132Z/REPORT.md",
+  "bytes": 10217,
+  "sha256": "c6d72fa42f863b5a33e9a1c55953865713b8f7ba756ffa16abaa706873ffe779",
+  "verbatim": true,
+  "repo_revision": "ebd1fa7d5015bea5a907c5f4292d369a2dc613fc",
+  "transcribed_at": "20260915T154132Z",
+  "body_bytes": 9559,
+  "body_sha256": "4e89f50c3db92c0f1519369edbd5b40bcb48c6da546c09fd8c948f76dd5c7c53",
+  "provenance_header_complete": true,
+  "verbatim_recheck": "body after the provenance header is byte-identical to the source task's completion output (checked by evidence/team-watchdog/design/verify-verbatim.mjs)",
+  "notes": "seam audit (w2) text taken from t53's completion payload in .mpd/team/mpd-default/team.json (9480 chars); body written unmodified, provenance header added by t56. No source, skills/**, VENDOR_LOCK.json or package.json touched.",
+  "verified_by_command": "node evidence/team-watchdog/design/verify-verbatim.mjs",
+  "verification_log": "evidence/team-watchdog/seam-audit/20260915T154132Z/VERBATIM-CHECK.log",
+  "checker_sha256": "318c17d272fa19a29fffdf83d0e52c2d81242fe33aadf623c13a013a9774f84c",
+  "header_bytes": 658,
+  "trailing_bytes_note": "the source completion payload does not end with a newline; the persisted body reproduces it exactly (no byte added, none removed)"
+}

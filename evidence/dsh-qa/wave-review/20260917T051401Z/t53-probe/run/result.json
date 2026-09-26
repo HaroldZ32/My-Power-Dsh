@@ -1,0 +1,1740 @@
+{
+  "task": "AC-3 / AC-4 / AC-9 / AC-10 / AC-17 (injected silence) + §1 escalation end-to-end + §4 report-only pin (t65)",
+  "lane": "team-watchdog-fault",
+  "root": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws",
+  "observed": {
+    "cases": [
+      {
+        "case": "dead-team-suppressed",
+        "ok": true,
+        "observation": {
+          "injected": "a record ten days stale (with a ten-day-old stamp), no live agent for it",
+          "boundDisabledWouldWarn": [
+            "warn"
+          ],
+          "boundDisabledSkippedTeams": 0,
+          "recordActivityAgeMs": 864000000,
+          "decisions": [],
+          "decisionsRecorded": [],
+          "scenesWritten": 0,
+          "holdsApplied": 0,
+          "neverStartedCounted": 0,
+          "skippedTeams": 1,
+          "consoleLinesEmitted": [],
+          "debugLines": [
+            "[mpd-team-watchdog] skipping team fault-probe (phase running, 1 task(s)) has no live agent and its newest activity is 864000000ms old (> 86400000ms grace): a dead record, not a dispatch problem"
+          ]
+        },
+        "lines": [
+          "the record's newest activity is 864000000 ms old (ten days) and no live agent exists for it",
+          "decisions [] · incidents [] · scenes 0 · holds 0",
+          "CONSOLE lines emitted during the tick: [] (silent to the user)",
+          "debug channel: [\"[mpd-team-watchdog] skipping team fault-probe (phase running, 1 task(s)) has no live agent and its newest activity is 864000000ms old (> 86400000ms grace): a dead record, not a dispatch problem\"]",
+          "FALSIFIER: with the bound disabled (deadTeamGraceMs 0) the SAME record is ticked and warns: [\"warn\"] — so the silence above is the gate, not a vacuous fixture",
+          "=> a dead record is skipped, not reported, on EVERY decision path (r4)"
+        ]
+      },
+      {
+        "case": "live-team-never-started",
+        "ok": true,
+        "observation": {
+          "injected": "a stale record whose member IS live, with a claimed task that never stamped",
+          "recordActivityAgeMs": 864000000,
+          "skippedTeams": 0,
+          "neverStartedCounted": 1,
+          "warnDecisions": [],
+          "incidents": [
+            {
+              "kind": "never-started",
+              "taskId": "t1",
+              "scene": null,
+              "hold": "not-requested"
+            }
+          ],
+          "notices": 1,
+          "debugLines": []
+        },
+        "lines": [
+          "the record is STALE (ten days) but its member resolves to a LIVE agent, so the team IS ticked (skippedTeams 0)",
+          "a claimed task that never stamped is still recorded ONCE: [{\"kind\":\"never-started\",\"taskId\":\"t1\",\"scene\":null,\"hold\":\"not-requested\"}] with 1 notice line(s)",
+          "no WARN/ESCALATE was manufactured: []",
+          "debug skip lines (expected none): []",
+          "=> AC-2's never-started record path is intact (r4)"
+        ]
+      },
+      {
+        "case": "second-team-dispatch",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "holdApplied": true,
+          "holdsOnDisk": [
+            "fault-probe.json"
+          ],
+          "deliveriesToHeldTeam": 0,
+          "deliveriesToNeighbourTeam": 1,
+          "heldTeamDeclined": true,
+          "declineLines": [
+            "agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold e8858559-d430-4997-9f16-abd5366e770e since 2026-09-17T05:21:15.231Z: silence)"
+          ],
+          "neighbourRecordByteIdentical": false,
+          "neighbourTaskStatus": "claimed",
+          "neighbourHalted": false
+        },
+        "lines": [
+          "team fault-probe is HELD through the plugin's own action: true (holds on disk: [\"fault-probe.json\"])",
+          "deliveries in the same window — held team: 0, NEIGHBOUR team: 1",
+          "the held team's decline: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold e8858559-d430-4997-9f16-abd5366e770e since 2026-09-17T05:21:15.231Z: silence)",
+          "the neighbour kept dispatching: task status claimed, halted=false",
+          "=> the hold is TEAM-scoped: a neighbour in the same workspace is untouched (AC-7)"
+        ]
+      },
+      {
+        "case": "disabled-control",
+        "ok": true,
+        "observation": {
+          "injected": "silence, watchdog DISABLED (row config enabled:false)",
+          "knobsEnabled": false,
+          "ticks": [
+            {
+              "silenceMs": 90001,
+              "skipped": "disabled",
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 180001,
+              "skipped": "disabled",
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 270001,
+              "skipped": "disabled",
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 360001,
+              "skipped": "disabled",
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "everyTickSkippedDisabled": true,
+          "stats": {
+            "ticks": 4,
+            "scenes": 0,
+            "incidents": 0,
+            "holdsApplied": 0,
+            "neverStarted": 0
+          },
+          "sceneDirExists": false,
+          "holdDirContents": [],
+          "incidentsFileExists": false,
+          "heartbeatStillWritten": 1,
+          "recordByteIdentical": true
+        },
+        "lines": [
+          "the watchdog row is DISABLED (knobs.enabled=false): every tick reports skipped=[\"disabled\",\"disabled\",\"disabled\",\"disabled\"]",
+          "no WARN, no ESCALATE: [[],[],[],[]]",
+          "scenes 0, incidents 0, holds 0",
+          "on disk: scene dir exists=false, holds=[], incidents file=false",
+          "the team record is byte-identical: true",
+          "=> the negative control is falsifiable at the FIXTURE level (AC-10)"
+        ]
+      },
+      {
+        "case": "never-started-recorded",
+        "ok": true,
+        "observation": {
+          "injected": "no heartbeat ever written for the claimed task",
+          "decisions": [],
+          "decisionsOnSecondTick": [],
+          "incidents": [
+            {
+              "kind": "never-started",
+              "taskId": "t1",
+              "attemptId": "att-1",
+              "scene": null,
+              "hold": "not-requested"
+            }
+          ],
+          "recordedKind": "never-started",
+          "recordedSceneIsNull": true,
+          "noticeLines": [
+            "[watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-bbnzi9/.mpd/team/watchdog/incidents.jsonl"
+          ],
+          "noticeIsNotOnlyALogLine": true,
+          "scenesWritten": 0,
+          "holdsApplied": 0,
+          "neverStartedCounted": 1,
+          "recordByteIdentical": true
+        },
+        "lines": [
+          "the claimed task was never picked up: no heartbeat file exists for its owner",
+          "tick => [] (recorded once; the second tick repeats nothing: [])",
+          "durable incident: [{\"kind\":\"never-started\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"scene\":null,\"hold\":\"not-requested\"}]",
+          "notice: [watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-bbnzi9/.mpd/team/watchdog/incidents.jsonl",
+          "no scene (0), no hold (0), record byte-identical: true",
+          "=> T69-ESCALATE-2: the dispatch problem is now RECORDED and NOTICED, not silent — while still never pausing the team"
+        ]
+      },
+      {
+        "case": "completed-turn-idle",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "newestStampKind": "turn-end",
+          "ticks": [
+            {
+              "silenceMs": 90001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 180001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 270001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "beyondTwiceTheThreshold": true,
+          "decisions": [],
+          "scenesWritten": 0,
+          "incidents": 0,
+          "holdsApplied": 0,
+          "recordByteIdentical": true
+        },
+        "lines": [
+          "the member COMPLETED its turn: the newest stamp for t1/att-1 is `turn-end` at 1700000002500",
+          "ticks at silence 90001/180001/270001 ms (the last is > 2x the frozen 90000)",
+          "decisions: [] — NO WARN, NO ESCALATE",
+          "scenes 0, incidents 0, holds 0, record byte-identical: true",
+          "=> a completed turn with no re-dispatch is a healthy idle member, not a wedge (T69-ESCALATE-1 fixed)"
+        ]
+      },
+      {
+        "case": "mid-turn-stall",
+        "ok": false,
+        "observation": {
+          "injected": "silence",
+          "newestStampKind": "step",
+          "ticks": [
+            {
+              "silenceMs": 90001,
+              "decisions": [
+                "warn"
+              ],
+              "scenes": 1,
+              "holds": 0
+            },
+            {
+              "silenceMs": 180001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceMs": 270001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "decisions": [
+            "warn"
+          ],
+          "scenesWritten": 1,
+          "incidents": 1,
+          "holdsApplied": 0,
+          "hold": null
+        },
+        "lines": [
+          "the member STALLED mid-turn: the newest stamp for t1/att-1 is still a `step` at 1700000002000",
+          "ticks at silence 90001/180001/270001 ms",
+          "decisions: [\"warn\"] — the wedge STILL escalates",
+          "hold applied: 0 null",
+          "=> the boundary fix does not silence the fault the wave exists for"
+        ]
+      },
+      {
+        "case": "member-stops-stepping",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "stamps": [
+            1700000000000,
+            1700000001000,
+            1700000002000
+          ],
+          "distinctStampTimes": 3,
+          "lastStampAt": 1700000002000,
+          "tickBelowThreshold": {
+            "silenceMs": 89000,
+            "decisions": []
+          },
+          "tickAboveThreshold": {
+            "silenceMs": 90001,
+            "decisions": [
+              "warn"
+            ]
+          },
+          "measuredFromLastStamp": true
+        },
+        "lines": [
+          "the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping",
+          "silence is measured from the LAST stamp (1700000002000)",
+          "tick at +89 000 => decisions [] (below the frozen 90 000 threshold)",
+          "tick at +90 001 => decisions [\"warn\"] (the fault is observed)"
+        ]
+      },
+      {
+        "case": "captain-wedge",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "agentTurnsDriven": 0,
+          "decisions": [
+            {
+              "type": "warn",
+              "assignee": "captain",
+              "memberKey": "captain",
+              "taskId": "t9",
+              "silenceMs": 90001
+            }
+          ],
+          "captainFlagged": true,
+          "memberFlagged": false,
+          "scenesWritten": 1,
+          "incidents": 1,
+          "holdServicePublished": true
+        },
+        "lines": [
+          "NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)",
+          "the captain's own silence is flagged: [{\"type\":\"warn\",\"assignee\":\"captain\",\"memberKey\":\"captain\",\"taskId\":\"t9\",\"silenceMs\":90001}]",
+          "the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false",
+          "scene written: 1, incident recorded: 1"
+        ]
+      },
+      {
+        "case": "warn-90s",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "rootsTicked": [
+            "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-bdny1x"
+          ],
+          "heartbeatFiles": [
+            "architect.jsonl"
+          ],
+          "frozenKnobsUsed": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3
+          },
+          "knobsAreTheFrozenDefaults": true,
+          "belowThreshold": {
+            "at": 1700000089999,
+            "decisions": 0
+          },
+          "aboveThreshold": {
+            "at": 1700000090001,
+            "warnCount": 1,
+            "silenceMs": 90001
+          },
+          "warnLatencyWithinThresholdPlus5s": true,
+          "snapshot": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-bdny1x/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+          "snapshotFields": {
+            "schemaVersion": 1,
+            "reason": "warn",
+            "cause": {
+              "kind": "silence",
+              "ms": 90001
+            },
+            "tasks": 1,
+            "members": 1
+          },
+          "scenesWritten": 1
+        },
+        "lines": [
+          "frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3",
+          "tick at silence 89999 ms => 0 decision(s)",
+          "tick at silence 90001 ms => exactly 1 WARN",
+          "snapshot: /root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-bdny1x/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+          "snapshot fields: {\"schemaVersion\":1,\"reason\":\"warn\",\"cause\":{\"kind\":\"silence\",\"ms\":90001},\"tasks\":1,\"members\":1}"
+        ]
+      },
+      {
+        "case": "escalate-3x",
+        "ok": false,
+        "observation": {
+          "injected": "silence",
+          "ticks": [
+            {
+              "at": 1700000090001,
+              "decisions": [
+                {
+                  "type": "warn",
+                  "streak": 1,
+                  "silenceMs": 90001
+                }
+              ],
+              "scenes": 1,
+              "holds": 0
+            },
+            {
+              "at": 1700000105001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "at": 1700000120001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "at": 1700000135001,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "kinds": [
+            "warn",
+            "",
+            "",
+            ""
+          ],
+          "exactlyOneEscalatePerTaskAttempt": false,
+          "noFourthWarn": true,
+          "warnPredecessorsRecordedWithSnapshots": false,
+          "incidents": [
+            {
+              "kind": "warn",
+              "scene": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-oam0qt/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+              "hold": "not-requested"
+            }
+          ],
+          "hold": null,
+          "holdAppliedOnce": false,
+          "stats": {
+            "scenes": 1,
+            "incidents": 1,
+            "holdsApplied": 0
+          },
+          "retryWithNewAttemptId": {
+            "stamps": 1,
+            "decisions": [
+              {
+                "type": "warn",
+                "streak": 1
+              }
+            ]
+          }
+        },
+        "lines": [
+          "tick sequence => [\"warn\",\"\",\"\",\"\"] (warn, warn, escalate, NOTHING)",
+          "exactly one ESCALATE for the task+attempt, no fourth WARN: true",
+          "predecessors recorded as WARNs with snapshot paths: false",
+          "hold applied once: false null",
+          "retry with a NEW attemptId starts a clean streak: [{\"type\":\"warn\",\"streak\":1}]"
+        ]
+      },
+      {
+        "case": "pause-preserves",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "holdApplied": true,
+          "sha256UnchangedAcrossHeldKicks": true,
+          "sha256AfterResume": "changed (the re-arm minted the next attempt)",
+          "deliveriesWhileHeld": 0,
+          "declineLines": [
+            "agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 97fdf513-a26b-4526-858f-c0e57ed05d70 since 2026-09-17T05:21:15.262Z: silence)",
+            "agent-teams: dispatch declined for fault-probe/Architect: the team is held by the team watchdog (hold 97fdf513-a26b-4526-858f-c0e57ed05d70 since 2026-09-17T05:21:15.262Z: silence)"
+          ],
+          "before": {
+            "status": "in_progress",
+            "attemptId": "att-live",
+            "attempt": 3,
+            "output": "partial result",
+            "handoffId": "handoff-1"
+          },
+          "after": {
+            "status": "in_progress",
+            "attemptId": "att-live",
+            "attempt": 3,
+            "output": "partial result",
+            "handoffId": "handoff-1"
+          },
+          "cancelled": false,
+          "resumed": true,
+          "deliveriesAfterResume": 1,
+          "preserved": true
+        },
+        "lines": [
+          "the hold landed through the plugin's own action while t1 was in flight: true",
+          "sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))",
+          "deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 97fdf513-a26b-4526-858f-c0e57ed05d70 since 2026-09-17T05:21:15.262Z: silence))",
+          "task after the hold: {\"status\":\"in_progress\",\"attemptId\":\"att-live\",\"attempt\":3,\"output\":\"partial result\",\"handoffId\":\"handoff-1\"}",
+          "resume cleared the hold and dispatch resumed: true / deliveries 1"
+        ]
+      },
+      {
+        "case": "pause-preserves-halt-control",
+        "ok": true,
+        "observation": {
+          "injected": "silence",
+          "mechanism": "haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed",
+          "cancelledTasks": 1,
+          "alreadyHalted": false,
+          "halted": true,
+          "sha256Changed": true,
+          "before": {
+            "status": "in_progress",
+            "attemptId": "att-live",
+            "output": "partial result",
+            "handoffId": "handoff-1"
+          },
+          "after": {
+            "status": "cancelled",
+            "attemptId": null,
+            "output": "Stopped from the captain chat.",
+            "handoffId": null
+          },
+          "cancelled": true,
+          "wouldReddenAC17": true
+        },
+        "lines": [
+          "the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1",
+          "t1: {\"status\":\"in_progress\",\"attemptId\":\"att-live\",\"output\":\"partial result\",\"handoffId\":\"handoff-1\"}  =>  {\"status\":\"cancelled\",\"attemptId\":null,\"output\":\"Stopped from the captain chat.\",\"handoffId\":null}",
+          "sha256(team.json) CHANGED: true (this is what reddens AC-17)",
+          "AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1"
+        ]
+      },
+      {
+        "case": "scene-restore",
+        "ok": false,
+        "observation": {
+          "threw": "ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-kgv5r6/.mpd/team/watchdog/hold/fault-probe.json'"
+        },
+        "lines": [
+          "case threw: ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/fault-kgv5r6/.mpd/team/watchdog/hold/fault-probe.json'"
+        ]
+      },
+      {
+        "case": "long-tool-no-hold",
+        "ok": true,
+        "observation": {
+          "injected": "a REAL 1.6 s command inside ONE tool call, with the member's last stamp 2 windows old",
+          "hammeredWith": "the frozen arithmetic, at 300 ms per window",
+          "reproduced": "the r6 defect: before the fix this SAME shape escalated and PAUSED our own team",
+          "gatePassedThrough": {
+            "kind": "allow"
+          },
+          "realCommand": {
+            "elapsedMs": 1637,
+            "exitStatus": 0
+          },
+          "ticks": [
+            {
+              "silenceFromLastStamp": 405,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceFromLastStamp": 807,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceFromLastStamp": 1208,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "kinds": [
+            "",
+            "",
+            ""
+          ],
+          "silenceMsAtLastTick": 1208,
+          "beyondThreeWindows": true,
+          "stampWrittenByThePreHook": [
+            "step",
+            "tool-start"
+          ],
+          "stampStreamAfterCompletion": [
+            "step",
+            "tool-start",
+            "tool"
+          ],
+          "inFlightSuppressed": 3,
+          "stats": {
+            "holdsApplied": 0,
+            "scenes": 0,
+            "incidents": 0,
+            "toolStarts": 1
+          },
+          "hold": null
+        },
+        "lines": [
+          "a REAL command ran 1637 ms (exit 0) inside ONE tool call",
+          "the pre hook stamped [\"step\",\"tool-start\"] and the POST closed it: [\"step\",\"tool-start\",\"tool\"]",
+          "ticks (silence from the member's last real stamp => decisions): [[405,[]],[807,[]],[1208,[]]]",
+          "the LAST tick is 1208 ms past the last stamp, i.e. beyond 3 windows (900 ms): true",
+          "WARNs/ESCALATEs/holds/scenes/incidents: {\"holdsApplied\":0,\"scenes\":0,\"incidents\":0,\"toolStarts\":1} — hold file: null",
+          "observations the in-flight rule explained away: 3",
+          "=> r6: a member working inside a long tool call is NO LONGER PAUSED"
+        ]
+      },
+      {
+        "case": "long-tool-bound-disabled-control",
+        "ok": false,
+        "observation": {
+          "injected": "the SAME real 1.6 s tool call, with the r6 in-flight bound DISABLED (toolInFlightMaxMs: 0)",
+          "gatePassedThrough": {
+            "kind": "allow"
+          },
+          "realCommand": {
+            "elapsedMs": 1640,
+            "exitStatus": 0
+          },
+          "ticks": [
+            {
+              "silenceFromLastStamp": 403,
+              "decisions": [
+                "warn"
+              ],
+              "scenes": 1,
+              "holds": 0
+            },
+            {
+              "silenceFromLastStamp": 805,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            },
+            {
+              "silenceFromLastStamp": 1206,
+              "decisions": [],
+              "scenes": 0,
+              "holds": 0
+            }
+          ],
+          "kinds": [
+            "warn",
+            "",
+            ""
+          ],
+          "stampWrittenByThePreHook": [
+            "step",
+            "tool-start"
+          ],
+          "inFlightSuppressed": 0,
+          "stats": {
+            "holdsApplied": 0,
+            "scenes": 1
+          },
+          "hold": null
+        },
+        "lines": [
+          "the pre hook STILL stamps tool-start ([\"step\",\"tool-start\"]) — the rule is what is disabled, not the observation",
+          "ticks => [\"warn\",\"\",\"\"] (warn, warn, escalate) and a hold: null",
+          "=> FALSIFIER: with the bound disabled the same scenario holds the team, so the silence in `long-tool-no-hold` is the RULE, not a vacuous fixture"
+        ]
+      },
+      {
+        "case": "completed-tool-not-in-flight",
+        "ok": false,
+        "observation": {
+          "injected": "a tool-start PAIRED with its tool completion (the call is closed), then silence",
+          "kinds": [
+            "warn",
+            "",
+            ""
+          ],
+          "inFlightSuppressed": 0,
+          "stats": {
+            "holdsApplied": 0,
+            "scenes": 1
+          },
+          "hold": null
+        },
+        "lines": [
+          "the newest stamp is the COMPLETION of call-done-1, so nothing is in flight",
+          "ticks => [\"warn\",\"\",\"\"] + a hold: null",
+          "=> a completed tool call buys no silence: the wedge rule still fires (in-flight suppressions: 0)"
+        ]
+      },
+      {
+        "case": "tool-inflight-expired",
+        "ok": true,
+        "observation": {
+          "injected": "a `tool-start` with NO completion at all, bound toolInFlightMaxMs=600",
+          "insideBound": {
+            "decisions": [],
+            "holds": 0
+          },
+          "pastBound": {
+            "decisions": [],
+            "scenes": 0,
+            "holds": 0
+          },
+          "incidentCount": 1,
+          "incidents": [
+            {
+              "kind": "tool-expired",
+              "taskId": "t1",
+              "attemptId": "att-1",
+              "scene": null,
+              "hold": "not-requested",
+              "cause": {
+                "kind": "tool-expired",
+                "ms": 700,
+                "tool": "bash"
+              }
+            }
+          ],
+          "noRepeatOnALaterTick": true,
+          "toolExpiredReports": 1,
+          "stats": {
+            "holdsApplied": 0,
+            "scenes": 0,
+            "toolStarts": 0
+          },
+          "machine": {
+            "toolExpired": [
+              "fault-probe\u0000t1\u0000att-1"
+            ],
+            "inFlightSuppressed": 1
+          },
+          "hold": null
+        },
+        "lines": [
+          "inside the bound (500 ms): {\"decisions\":[],\"holds\":0} — still explained activity",
+          "past the bound (700 ms > 600 ms): {\"decisions\":[],\"scenes\":0,\"holds\":0} — the entry STOPS suppressing",
+          "durable report: [{\"kind\":\"tool-expired\",\"taskId\":\"t1\",\"attemptId\":\"att-1\",\"scene\":null,\"hold\":\"not-requested\",\"cause\":{\"kind\":\"tool-expired\",\"ms\":700,\"tool\":\"bash\"}}]",
+          "reported ONCE (a later tick at 60 s adds nothing): true",
+          "holds/scenes: {\"holdsApplied\":0,\"scenes\":0,\"toolStarts\":0} hold file: null",
+          "=> the handover is bounded and fail-open: a killed tool can never leave a member permanently un-watchable, and the bound never PAUSES a team"
+        ]
+      }
+    ],
+    "expectedCases": [
+      "dead-team-suppressed",
+      "live-team-never-started",
+      "second-team-dispatch",
+      "disabled-control",
+      "never-started-recorded",
+      "completed-turn-idle",
+      "mid-turn-stall",
+      "member-stops-stepping",
+      "captain-wedge",
+      "warn-90s",
+      "escalate-3x",
+      "pause-preserves",
+      "pause-preserves-halt-control",
+      "scene-restore",
+      "long-tool-no-hold",
+      "long-tool-bound-disabled-control",
+      "completed-tool-not-in-flight",
+      "tool-inflight-expired"
+    ],
+    "staleFixtureCases": [
+      "escalate-3x",
+      "scene-restore",
+      "mid-turn-stall",
+      "long-tool-bound-disabled-control",
+      "completed-tool-not-in-flight"
+    ],
+    "notClaimedSource": [
+      "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+      "The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.",
+      "No live dsh host, no model credential, no network: the fixture never boots a session.",
+      "`haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it."
+    ],
+    "notClaimedEchoed": [
+      "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+      "The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.",
+      "No live dsh host, no model credential, no network: the fixture never boots a session.",
+      "`haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it."
+    ],
+    "fixtureSha256": "c3294141837a886c9e163b60f38f84fd7bf44b8f69323c468e5ea5112614fd58",
+    "frozen": {
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause"
+    },
+    "scenarios": {
+      "dead-team-suppressed": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "claimed",
+              "assignee": "Architect"
+            }
+          ]
+        },
+        "injection": "a record whose newest activity is ten days old, with no live agent for it",
+        "ticks": [
+          {
+            "at": "CLOCK.base",
+            "expect": "0 decisions, 0 incidents, 0 console lines; one debug skip line naming the grace bound"
+          }
+        ]
+      },
+      "live-team-never-started": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "claimed",
+              "assignee": "Architect"
+            }
+          ]
+        },
+        "injection": "the SAME stale record, but the member resolves to a LIVE agent",
+        "ticks": [
+          {
+            "at": "CLOCK.base",
+            "expect": "the team IS ticked; the never-started task is recorded once and noticed (AC-2 intact)"
+          }
+        ]
+      },
+      "second-team-dispatch": {
+        "team": {
+          "id": "fault-probe + fault-neighbour",
+          "phase": "running",
+          "members": [
+            "Architect",
+            "Reviewer"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "pending",
+              "assignee": "Architect"
+            },
+            {
+              "id": "t1",
+              "status": "pending",
+              "assignee": "Reviewer"
+            }
+          ]
+        },
+        "injection": "one team is HELD through the plugin's own action; the neighbour team in the SAME workspace is untouched",
+        "ticks": [
+          {
+            "at": "the same window",
+            "expect": "0 deliveries to the held team, 1 to the neighbour; the neighbour's record moves only because it was DISPATCHED"
+          }
+        ]
+      },
+      "disabled-control": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "the same silence scenario with the watchdog row DISABLED (enabled:false)",
+        "ticks": [
+          {
+            "at": "4 ticks past the frozen thresholds",
+            "expect": "no WARN, no scene, no incident, no hold; every tick skipped 'disabled'"
+          }
+        ]
+      },
+      "never-started-recorded": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "claimed",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "a CLAIMED task with NO heartbeat file for its owner, ever",
+        "ticks": [
+          {
+            "at": "warnSilenceMs + 1",
+            "expect": "one never-started decision, RECORDED as an incident (kind never-started, scene null) + a notice; NO scene, NO hold"
+          }
+        ]
+      },
+      "completed-turn-idle": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "three step stamps, then a `turn-end` as the NEWEST stamp; the member is never re-dispatched",
+        "ticks": [
+          {
+            "at": "> 2x warnSilenceMs after the turn end",
+            "expect": "NO decision, no scene, no incident, no hold — a completed turn is idle, not wedged"
+          }
+        ]
+      },
+      "mid-turn-stall": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "the SAME shape but the newest stamp is still a `step` (the turn began and never ended)",
+        "ticks": [
+          {
+            "at": "3 ticks",
+            "expect": "warn, warn, escalate + a hold — the wedge must STILL escalate"
+          }
+        ]
+      },
+      "member-stops-stepping": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "three step stamps at base+0/+1000/+2000, then NO further stamp (the turn stops stepping)",
+        "ticks": [
+          {
+            "at": "lastStamp + 89_000",
+            "expect": "no decision"
+          },
+          {
+            "at": "lastStamp + 90_001",
+            "expect": "one WARN"
+          }
+        ]
+      },
+      "captain-wedge": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t9",
+              "status": "in_progress",
+              "assignee": "captain",
+              "attempt": 1,
+              "attemptId": "att-cap"
+            },
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "the CAPTAIN holds t9, stamps once at base, then goes silent; the member keeps stamping (not a candidate); NO agent turn is driven — only the process-level tick",
+        "ticks": [
+          {
+            "at": "base + 90_001",
+            "expect": "one WARN attributed to memberKey 'captain'"
+          }
+        ]
+      },
+      "warn-90s": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "one step stamp at base, then silence; ticks at base+89_999 (below the frozen 90 000) and base+90_001 (above it)",
+        "ticks": [
+          {
+            "at": "base + 89_999",
+            "expect": "no decision"
+          },
+          {
+            "at": "base + 90_001",
+            "expect": "exactly ONE WARN with a snapshot"
+          }
+        ]
+      },
+      "escalate-3x": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "one step stamp at base, then three consecutive ticks at +90_001/+105_001/+120_001, then a fourth at +135_001",
+        "ticks": [
+          {
+            "at": "3 ticks",
+            "expect": "warn, warn, escalate"
+          },
+          {
+            "at": "4th tick",
+            "expect": "NOTHING (no fourth WARN, no second ESCALATE)"
+          }
+        ]
+      },
+      "pause-preserves": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 3,
+              "attemptId": "att-live",
+              "output": "partial result",
+              "handoffId": "handoff-1"
+            }
+          ]
+        },
+        "injection": "the hold lands through the plugin's own session-watchdog-hold action while t1 is in flight",
+        "ticks": [
+          {
+            "at": "held kick",
+            "expect": "0 deliveries, the record byte-identical"
+          },
+          {
+            "at": "after session-watchdog-resume",
+            "expect": "dispatch resumes"
+          }
+        ]
+      },
+      "pause-preserves-halt-control": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 3,
+              "attemptId": "att-live",
+              "output": "partial result",
+              "handoffId": "handoff-1"
+            }
+          ]
+        },
+        "injection": "the SAME fixture, but the pause is performed by the REAL adopted haltTeamWork (the mass-cancel path) — imported, not stubbed",
+        "ticks": [
+          {
+            "at": "after haltTeamWork",
+            "expect": "t1 is CANCELLED, cancelledTasks >= 1, the record CHANGED"
+          }
+        ]
+      },
+      "scene-restore": {
+        "team": {
+          "id": "fault-probe",
+          "phase": "running",
+          "members": [
+            "Architect"
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1"
+            }
+          ]
+        },
+        "injection": "silence to ESCALATE, then read the scene/hold/incidents back with plain fs (a fresh-process shape)",
+        "ticks": [
+          {
+            "at": "3 ticks",
+            "expect": "a scene + a hold + 3 incidents on disk, parsed without the plugin's reader"
+          }
+        ]
+      }
+    },
+    "escalationArm": {
+      "arm": "pause",
+      "workspace": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/arm-pause-7qjsk1",
+      "knobs": {
+        "warnSilenceMs": 600000,
+        "warnStreakToEscalate": 6,
+        "actionOnEscalate": "pause"
+      },
+      "foldSubscribed": true,
+      "folded": true,
+      "predicate": {
+        "source": "channel",
+        "states": {
+          "session-architect": "OUTSTANDING"
+        },
+        "events": 2
+      },
+      "ticks": [
+        {
+          "offset": 600001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 1,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 615001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 2,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 630001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 3,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 645001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 4,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 660001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 5,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 675001,
+          "decisions": [
+            {
+              "type": "escalate",
+              "cause": "silence-channel",
+              "streak": 6,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [
+            "redesign-probe"
+          ],
+          "scenes": 1
+        },
+        {
+          "offset": 690001,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        },
+        {
+          "offset": 705001,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        }
+      ],
+      "kinds": [
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "escalate"
+      ],
+      "warnCauses": [
+        "silence-channel",
+        "silence-channel",
+        "silence-channel",
+        "silence-channel",
+        "silence-channel"
+      ],
+      "sceneFiles": [
+        "20260917T053118Z-warn.json",
+        "20260917T053133Z-warn.json",
+        "20260917T053148Z-warn.json",
+        "20260917T053203Z-warn.json",
+        "20260917T053218Z-warn.json",
+        "20260917T053233Z-escalate.json",
+        "latest.json"
+      ],
+      "holdFileExists": true,
+      "hold": {
+        "id": "346b9488-a61c-44bd-97c8-cf397f1836e2",
+        "teamId": "redesign-probe",
+        "since": 1789622478564,
+        "cause": "silence",
+        "taskId": "t1",
+        "attemptId": "att-arm-1",
+        "sceneAt": 1789623153559,
+        "ttlMs": 900000
+      },
+      "stats": {
+        "ticks": 8,
+        "tickErrors": 0,
+        "tickSkips": 0,
+        "heartbeatWrites": 0,
+        "heartbeatFailures": 0,
+        "rotations": 0,
+        "scenes": 6,
+        "sceneFailures": 0,
+        "holdsApplied": 1,
+        "holdsFailed": 0,
+        "incidents": 6,
+        "incidentFailures": 0,
+        "neverStarted": 0,
+        "skippedTeams": 0,
+        "toolStarts": 0,
+        "toolExpired": 0,
+        "channelEvents": 2,
+        "channelFallbacks": 0,
+        "streamFrames": 0,
+        "channelDetached": 0,
+        "channelDependencyBlocked": 0,
+        "holdsAutoReleased": 0,
+        "holdsAutoReleaseFailures": 0,
+        "lastError": null
+      }
+    },
+    "warnOnlyArm": {
+      "arm": "warn-only",
+      "workspace": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/arm-warn-only-r8952p",
+      "knobs": {
+        "warnSilenceMs": 600000,
+        "warnStreakToEscalate": 6,
+        "actionOnEscalate": "warn-only"
+      },
+      "foldSubscribed": true,
+      "folded": true,
+      "predicate": {
+        "source": "channel",
+        "states": {
+          "session-architect": "OUTSTANDING"
+        },
+        "events": 2
+      },
+      "ticks": [
+        {
+          "offset": 600001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 1,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 615001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 2,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 630001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 3,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 645001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 4,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 660001,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-channel",
+              "streak": 5,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 675001,
+          "decisions": [
+            {
+              "type": "escalate",
+              "cause": "silence-channel",
+              "streak": 6,
+              "state": "OUTSTANDING"
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 690001,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        },
+        {
+          "offset": 705001,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        }
+      ],
+      "kinds": [
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "escalate"
+      ],
+      "warnCauses": [
+        "silence-channel",
+        "silence-channel",
+        "silence-channel",
+        "silence-channel",
+        "silence-channel"
+      ],
+      "sceneFiles": [
+        "20260917T053118Z-warn.json",
+        "20260917T053133Z-warn.json",
+        "20260917T053148Z-warn.json",
+        "20260917T053203Z-warn.json",
+        "20260917T053218Z-warn.json",
+        "20260917T053233Z-escalate.json",
+        "latest.json"
+      ],
+      "holdFileExists": false,
+      "hold": null,
+      "stats": {
+        "ticks": 8,
+        "tickErrors": 0,
+        "tickSkips": 0,
+        "heartbeatWrites": 0,
+        "heartbeatFailures": 0,
+        "rotations": 0,
+        "scenes": 6,
+        "sceneFailures": 0,
+        "holdsApplied": 0,
+        "holdsFailed": 0,
+        "incidents": 6,
+        "incidentFailures": 0,
+        "neverStarted": 0,
+        "skippedTeams": 0,
+        "toolStarts": 0,
+        "toolExpired": 0,
+        "channelEvents": 2,
+        "channelFallbacks": 0,
+        "streamFrames": 0,
+        "channelDetached": 0,
+        "channelDependencyBlocked": 0,
+        "holdsAutoReleased": 0,
+        "holdsAutoReleaseFailures": 0,
+        "lastError": null
+      }
+    },
+    "reportOnlyArm": {
+      "arm": "pause",
+      "workspace": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/arm-pause-gwhsrj",
+      "knobs": {
+        "warnSilenceMs": 600000,
+        "warnStreakToEscalate": 6,
+        "actionOnEscalate": "pause"
+      },
+      "foldSubscribed": false,
+      "folded": false,
+      "predicate": {
+        "source": "heartbeat",
+        "states": {},
+        "events": 0
+      },
+      "ticks": [
+        {
+          "offset": 601000,
+          "decisions": [
+            {
+              "type": "warn",
+              "cause": "silence-heartbeat",
+              "streak": 1,
+              "state": null
+            }
+          ],
+          "holds": [],
+          "scenes": 1
+        },
+        {
+          "offset": 1200000,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        },
+        {
+          "offset": 1800000,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        },
+        {
+          "offset": 2400000,
+          "decisions": [],
+          "holds": [],
+          "scenes": 0
+        }
+      ],
+      "kinds": [
+        "warn"
+      ],
+      "warnCauses": [
+        "silence-heartbeat"
+      ],
+      "sceneFiles": [
+        "20260917T053119Z-warn.json",
+        "latest.json"
+      ],
+      "holdFileExists": false,
+      "hold": null,
+      "stats": {
+        "ticks": 4,
+        "tickErrors": 0,
+        "tickSkips": 0,
+        "heartbeatWrites": 0,
+        "heartbeatFailures": 0,
+        "rotations": 0,
+        "scenes": 1,
+        "sceneFailures": 0,
+        "holdsApplied": 0,
+        "holdsFailed": 0,
+        "incidents": 1,
+        "incidentFailures": 0,
+        "neverStarted": 0,
+        "skippedTeams": 0,
+        "toolStarts": 0,
+        "toolExpired": 0,
+        "channelEvents": 0,
+        "channelFallbacks": 4,
+        "streamFrames": 0,
+        "channelDetached": 0,
+        "channelDependencyBlocked": 0,
+        "holdsAutoReleased": 0,
+        "holdsAutoReleaseFailures": 0,
+        "lastError": null
+      }
+    },
+    "sceneLeg": {
+      "readWith": "plain fs + JSON.parse (no plugin reader) — the fresh-process shape",
+      "sceneFiles": [
+        "20260917T053118Z-warn.json",
+        "20260917T053133Z-warn.json",
+        "20260917T053148Z-warn.json",
+        "20260917T053203Z-warn.json",
+        "20260917T053218Z-warn.json",
+        "20260917T053233Z-escalate.json",
+        "latest.json"
+      ],
+      "latestReason": "escalate",
+      "pointerHoldId": "346b9488-a61c-44bd-97c8-cf397f1836e2",
+      "sidecarHoldId": "346b9488-a61c-44bd-97c8-cf397f1836e2",
+      "holdMatch": true,
+      "incidentKinds": [
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "warn",
+        "escalate"
+      ],
+      "escalatedIncident": {
+        "id": "t1@att-arm-1#1789623153559",
+        "teamId": "redesign-probe",
+        "kind": "escalate",
+        "at": 1789623153559,
+        "cause": {
+          "kind": "silence-channel",
+          "ms": 675001
+        },
+        "taskId": "t1",
+        "attemptId": "att-arm-1",
+        "scene": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run/raw/ws/arm-pause-7qjsk1/.mpd/team/watchdog/scene/redesign-probe/20260917T053233Z-escalate.json",
+        "hold": "applied",
+        "acknowledgedBy": []
+      },
+      "holdFileExists": true
+    },
+    "labels": {
+      "fixtureTuple": {
+        "warnSilenceMs": 90000,
+        "tickIntervalMs": 15000,
+        "warnStreakToEscalate": 3,
+        "actionOnEscalate": "pause"
+      },
+      "fixtureTupleIsPreRedesign": true,
+      "fixtureTupleLabel": "the fixture's OWN injected row config ({\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\"}) — the PRE-REDESIGN tuple, NOT the product default",
+      "productDefaults": {
+        "warnSilenceMs": 600000,
+        "tickIntervalMs": 15000,
+        "warnStreakToEscalate": 6,
+        "actionOnEscalate": "warn-only"
+      },
+      "section3IsProductDefault": true,
+      "productDefaultsLabel": "FROZEN CONTRACT §3 — {\"warnSilenceMs\":600000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":6,\"actionOnEscalate\":\"warn-only\"}"
+    },
+    "laneLimits": [
+      "the in-lane §1/§4 arms mount the REAL built row on a STUB ctx (the same shape the verified fixture uses): services, agents, logger, tools are simulated; the engine, machine, store, hold path and scene writer are real modules",
+      "the arm's ticks are MANUAL (`report.engine.tickOnce(now)` with an injected clock); no wall clock is waited on",
+      "the fixture's five declared-stale cases are REPORTED with their readings, never treated as passes"
+    ]
+  },
+  "checks": [
+    {
+      "id": "F1",
+      "ok": true,
+      "detail": "every fixture case ran (18 results for 18 cases: dead-team-suppressed, live-team-never-started, second-team-dispatch, disabled-control, never-started-recorded, completed-turn-idle, mid-turn-stall, member-stops-stepping, captain-wedge, warn-90s, escalate-3x, pause-preserves, pause-preserves-halt-control, scene-restore, long-tool-no-hold, long-tool-bound-disabled-control, completed-tool-not-in-flight, tool-inflight-expired)"
+    },
+    {
+      "id": "F2",
+      "ok": true,
+      "detail": "every fixture case that does NOT encode a pre-redesign expectation passed (stale, declared: [\"mid-turn-stall\",\"escalate-3x\",\"scene-restore\",\"long-tool-bound-disabled-control\",\"completed-tool-not-in-flight\"]; unexpected failures: [])"
+    },
+    {
+      "id": "F2b",
+      "ok": true,
+      "detail": "each declared-stale fixture case STILL fails with its recorded signature (no `session/event` in the fixture ⇒ `fold.view(sessionId) === null` ⇒ `heartbeatFallback: true` ⇒ §4 report-only, which can never escalate or hold): [{\"name\":\"escalate-3x\",\"ran\":true,\"failed\":true,\"staleSignatureHolds\":true,\"why\":\"pre-redesign expectation vs report-only behaviour\"},{\"name\":\"scene-restore\",\"ran\":true,\"failed\":true,\"staleSignatureHolds\":true,\"why\":\"pre-redesign expectation vs report-only behaviour\"},{\"name\":\"mid-turn-stall\",\"ran\":true,\"failed\":true,\"staleSignatureHolds\":true,\"why\":\"pre-redesign expectation vs report-only behaviour\"},{\"name\":\"long-tool-bound-disabled-control\",\"ran\":true,\"failed\":true,\"staleSignatureHolds\":true,\"why\":\"pre-redesign expectation vs report-only behaviour\"},{\"name\":\"completed-tool-not-in-flight\",\"ran\":true,\"failed\":true,\"staleSignatureHolds\":true,\"why\":\"pre-redesign expectation vs report-only behaviour\"}]"
+    },
+    {
+      "id": "F11",
+      "ok": true,
+      "detail": "the member case measures silence FROM its last stamp: {\"stamps\":3,\"above\":[\"warn\"]}"
+    },
+    {
+      "id": "F3",
+      "ok": true,
+      "detail": "the 90 s boundary is exact AND the knobs that ran are the FIXTURE'S INJECTED PRE-REDESIGN tuple ({\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\"}), not the product default: {\"below\":{\"at\":1700000089999,\"decisions\":0},\"above\":{\"at\":1700000090001,\"warnCount\":1,\"silenceMs\":90001}}"
+    },
+    {
+      "id": "F4",
+      "ok": true,
+      "detail": "§1 LADDER END-TO-END on a real-shaped team (members as OBJECTS with ids) with FOLDED events (turn/start + step/start, no answer): the fold says OUTSTANDING, [\"warn\",\"warn\",\"warn\",\"warn\",\"warn\",\"escalate\"] escalates and a hold sidecar is written ({\"hold\":\"redesign-probe\",\"scenes\":7,\"stats\":1})"
+    },
+    {
+      "id": "F4b",
+      "ok": true,
+      "detail": "the §3 DEFAULT `warn-only` escalates and applies NO hold (kinds [\"warn\",\"warn\",\"warn\",\"warn\",\"warn\",\"escalate\"], holdFile false) — the hold path is opt-in"
+    },
+    {
+      "id": "F5",
+      "ok": true,
+      "detail": "the CAPTAIN's own silence is attributed to memberKey 'captain' while the still-stepping member is NOT flagged ({\"captain\":true,\"member\":false})"
+    },
+    {
+      "id": "F6",
+      "ok": true,
+      "detail": "the pause PRESERVES: team.json byte-unchanged across the held kicks, ZERO deliveries while held, nothing cancelled ({\"unchanged\":true,\"deliveries\":0,\"preserved\":true,\"declines\":2})"
+    },
+    {
+      "id": "F7",
+      "ok": true,
+      "detail": "after the resume dispatch works again (1 deliveries)"
+    },
+    {
+      "id": "F8",
+      "ok": true,
+      "detail": "AC-17 CONTRAST: the halt control CALLS the real haltTeamWork (\"haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed\") — it cancels 1 task(s), the record CHANGES (true) and the fixture itself marks wouldReddenAC17=true"
+    },
+    {
+      "id": "F9",
+      "ok": true,
+      "detail": "the scene restore leg re-reads the scene + hold + incidents with plain fs from the §1 ARM's hold: {\"reason\":\"escalate\",\"holdMatch\":true,\"incidentKinds\":[\"warn\",\"warn\",\"warn\",\"warn\",\"warn\",\"escalate\"],\"readWith\":\"plain fs + JSON.parse (no plugin reader) — the fresh-process shape\"}"
+    },
+    {
+      "id": "F10",
+      "ok": true,
+      "detail": "the fixture's NOT_CLAIMED entries are repeated VERBATIM (4 entries, byte-identical)"
+    },
+    {
+      "id": "F12",
+      "ok": true,
+      "detail": "§4 REPORT-ONLY pinned: with no fold evidence the engine warns at most ONCE per task+attempt generation (cause `silence-heartbeat`) and NEVER escalates or holds — {\"ticks\":[\"warn\"],\"warns\":1,\"causes\":[\"silence-heartbeat\"],\"holdsApplied\":0,\"holdFile\":false}"
+    },
+    {
+      "id": "F13",
+      "ok": true,
+      "detail": "the labels are the corrected ones: the injected tuple is declared as the fixture's own pre-redesign config and §3's 600 000/6/warn-only as the product default — {\"warnSilenceMs\":600000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":6,\"actionOnEscalate\":\"warn-only\"}"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.",
+    "The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.",
+    "No live dsh host, no model credential, no network: the fixture never boots a session.",
+    "`haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it.",
+    "the in-lane §1/§4 arms mount the REAL built row on a STUB ctx (the same shape the verified fixture uses): services, agents, logger, tools are simulated; the engine, machine, store, hold path and scene writer are real modules",
+    "the arm's ticks are MANUAL (`report.engine.tickOnce(now)` with an injected clock); no wall clock is waited on",
+    "the fixture's five declared-stale cases are REPORTED with their readings, never treated as passes"
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/t53-probe/run",
+  "finishedAt": "2026-09-17T05:21:18.580Z"
+}

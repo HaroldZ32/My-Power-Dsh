@@ -1,0 +1,143 @@
+{
+  "task": "t9 (contract lane t7) — review round 1: AC-by-AC verdict on the settled revision",
+  "seat": "Reviewer",
+  "attempt": 6,
+  "attempt_id": "37ff551f-ba49-4590-aa3d-ed76a369fe3e",
+  "verdict": "needs_revision",
+  "summary": "14 ACs PASS, AC13 FAIL, AC14 UNPROVEN. The closure, parity, delta-restore and docs-count claims were attacked and NOT falsified on the bytes inspected; AC12 was FAIL at first read and PASSES on post-fix evidence t22 landed inside the review window (two real preset-conformance runs, both ok:true). The failure is the wave's own out-of-scope skills/** repair: the un-re-pinned VENDOR_LOCK now reddens three acceptance commands (verify-vendor, verify:gates, test:qa), and AC14 belongs to the still-blocked integration lane.",
+  "revision": {
+    "read_utc": "2026-09-19T15:55:40Z",
+    "recheck_utc": "2026-09-19T15:57:28Z",
+    "hash_table": "evidence/agent-teams/adapter-wiring/review/logs/reviewer-revision-hashes.txt",
+    "settle_sandwich": "evidence/agent-teams/adapter-wiring/review/logs/settle-sandwich.log (2 reads 50 s apart identical; 22-file set == t8 end-c)",
+    "load_bearing": {
+      "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4",
+      "scripts/patch-agent-teams-fixes.mjs": "f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3",
+      "AGENTS.md": "bdd440cb9826323c9f8d60d4d5c6d94e139c08d542397f1f02426a7c6af9b2a9",
+      "docs/design.md": "5de54a335699702605ce6173ac2a5a41ecaef96025d5b4290fd52270060f701d",
+      "docs/design.zh-CN.md": "dfd17369c12ca9ae2ae8920cd89b04a43cbbbc65c87361b4747d61abf30e761b",
+      "agent-references/agent-teams-deltas.md": "a1ea21c0bdcffcfbb182a9e24434f7150496340ab8c7f39521cd83d2a267534c",
+      "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs": "b4c9ceb879b290a179c593f83d72973a58bd10e04ee19374abe462d166ae6c58",
+      "skills/dsh-qa/scripts/lib/credentials.mjs": "b32f12c7becaf6c6781fbb1d5c3fcdcb1d863c7852258a2b858c224e8d999cfa",
+      "skills/dsh-qa/scripts/agent-teams-dispatch.mjs": "8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c"
+    },
+    "movement_note": "the tree moved DURING the review: skills/dsh-qa/scripts/lib/credentials.mjs at 15:50:19Z (after t8's 15:46:52Z settled set and after this review claimed t9 at 15:48:02Z) and skills/dsh-qa/scripts/agent-teams-dispatch.mjs at 15:55:51Z. Nothing else in the product/test/doc set moved. AC12 was FAIL at my first read and PASSES on evidence that landed at 15:51:13Z/15:56:05Z; AC13 stays FAIL and F1 got stronger (2 files, 3 red commands)."
+  },
+  "evidence_newly_reviewed": {
+    "AC12_post_fix_real_runs": [
+      "evidence/dsh-qa/preset-conformance/2026-09-19T15-51-13.529Z/{result.json,output.log} ok:true PASS",
+      "evidence/dsh-qa/preset-conformance/2026-09-19T15-56-05.060Z/{result.json,output.log} ok:true PASS (auth, sessionCreate 200 agentPreset mpd, sessionHeader, bootLog signatures [], negativeControl fires)"
+    ],
+    "t22_repair_evidence": "evidence/agent-teams/qa-credentials-repair/20260919T155032Z/{result.json,reproducer-before.log,reproducer-after.log,shapes-proof.mjs,shapes-proof.log,dispatch-selftest.log,dispatch-selftest-after.log,preset-conformance.log,test-qa.log}",
+    "test_qa_red_witness": "evidence/agent-teams/qa-credentials-repair/20260919T155032Z/test-qa.log — '[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=326/e944e320b3ff tree=326/82f38bd828bc (re-pin in the same commit, AGENTS.md §9)'"
+  },
+  "commands_run": [
+    { "command": "node scripts/verify-vendor.mjs", "status": "failed", "exitCode": 1, "evidence": "FAIL - asset skills treeSha mismatch; run twice (15:52Z, 15:57:16Z)" },
+    { "command": "bun run verify:gates", "status": "failed", "exitCode": 1, "evidence": "logs/verify-gates.log and logs/verify-gates-second.log — 'FAIL - 1/5 member gate(s) failed: vendor (exit=1)'; dist-fresh/rows/docs/preset-conformance --self-test all PASS" },
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exit": 0, "evidence": "already applied: 151 mpd delta region(s) across 13 adopted file(s)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exit": 0, "evidence": "logs/bun-test-agent-teams-package.log — 360 pass / 0 fail / 5259 expect calls" },
+    { "command": "bun test (5 new files: 4 bridge tests + adapter surface test)", "status": "passed", "exit": 0, "evidence": "67 pass / 0 fail / 2176 expect calls" },
+    { "command": "bun run typecheck", "status": "passed", "exit": 0, "evidence": "logs/typecheck.log" },
+    { "command": "scratch-tree --check / --write on a missing bridge (mktemp copy of lib + CLI)", "status": "passed", "exit": 0, "evidence": "check exit 1 loud-by-name with ZERO ENOENT; --write exit 0; restored sha256 == checked-in 01fd9125…; control: missing quality-gates.js named, --write exit 1, file NOT created" },
+    { "command": "scratch-tree --write-registry byte-identity", "status": "passed", "exit": 0, "evidence": "regenerated mpd-deltas.js sha256 == checked-in 456a297b… (registry is derived, not hand-edited; RULE A accepts the bridge)" },
+    { "command": "region/hunk discipline checker over the six bridged files", "status": "passed", "exit": 0, "evidence": "logs/region-hunk-check.log — 36 hunks, 0 changed lines outside an mpd-delta span" },
+    { "command": "independent closure census (logs/closure-census.mjs)", "status": "passed", "exit": 0, "evidence": "83 seam sites: 39 facade, 18 in-region, 24 bridge fallback, 2 counted childCtx; 0 unrouted; the 5 raw hits of the broad regex are data fields and req.on" },
+    { "command": "adversarial probe of the AC15 scanner rules (logs/scanner-probe.mjs)", "status": "reported", "reason": "scanner-power measurement", "evidence": "alias/destructure/bracket/Reflect.get/get.call/childCtx-line all EVADE; plain agent.ctx.on(), captain.followup(), ctx.subagents value use are DETECTED — finding F4" }
+  ],
+  "ac_table": [
+    { "ac": "AC1", "verdict": "PASS", "evidence": "typecheck exit 0 + FROZEN_SURFACE/FROZEN_FLAGS green + src/index.ts read" },
+    { "ac": "AC2", "verdict": "PASS", "evidence": "adapter-agent-teams-surface.test.ts Object.is arm (green in my run)" },
+    { "ac": "AC3", "verdict": "PASS", "evidence": "adapter-routing.test.mjs green; throwing raw ctx; rawHits [] + negative-control arm" },
+    { "ac": "AC4", "verdict": "PASS", "evidence": "adapter-facade.test.mjs green (modal witness semantics)" },
+    { "ac": "AC5", "verdict": "PASS", "evidence": "git status shows only untracked new tests; package suite 360/0" },
+    { "ac": "AC6", "verdict": "PASS", "evidence": "adapter-tool-parity.test.mjs green; order + canonical form + Object.is arm" },
+    { "ac": "AC7", "verdict": "PASS", "evidence": "--check exit 0; 36/36 hunks inside regions; registry census 151/13 with 5 keys and 0 create keys; scratch --write-registry byte-identical" },
+    { "ac": "AC8", "verdict": "PASS", "evidence": "own scratch-tree experiment (loud --check, byte-faithful --write, non-mpd control never created)" },
+    { "ac": "AC9", "verdict": "PASS", "evidence": "verify:docs PASS with the derived 151/13 adjudication; four doc surfaces read; findings F5/F6 are precision issues only" },
+    { "ac": "AC10", "verdict": "PASS", "evidence": "bundle-lifecycle (unmodified) PASS + boot.log mounted witness; lane's instrumented boot 21/21; finding F7 records the evidence scope" },
+    { "ac": "AC11", "verdict": "PASS", "evidence": "adapter-disabled-result.json — absent=1, mounted=0, pending=0, 21/21 tools, isolation asserted" },
+    { "ac": "AC12", "verdict": "PASS", "evidence": "post-fix REAL runs green at 15:51:13Z and 15:56:05Z (ok:true, PASS); --self-test green; finding F2 resolved with a residual hardening ask" },
+    { "ac": "AC13", "verdict": "FAIL", "evidence": "three reds: my verify-vendor runs (2x, exit 1), my verify:gates runs (2x, vendor member), and bun run test:qa (agent-teams-messaging VENDOR_LOCK-freshness check per t22's test-qa.log); bare bun test red pre-existing (V-2)" },
+    { "ac": "AC14", "verdict": "UNPROVEN", "evidence": "integration lane t10 blocked; no pack/closure evidence" },
+    { "ac": "AC15", "verdict": "PASS", "evidence": "scanner test green + my independent census found 0 unrouted seam sites; F4 records the scanner's bounded power" },
+    { "ac": "AC16", "verdict": "PASS", "evidence": "t8 settled set + my own 50 s sandwich identical and matching end-c" }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "file": "skills/dsh-qa/scripts/lib/credentials.mjs",
+      "problem": "The wave's own V-1 repair edited TWO skills files (skills/dsh-qa/scripts/lib/credentials.mjs b32f12c7… mtime 15:50:19Z; skills/dsh-qa/scripts/agent-teams-dispatch.mjs 8da2a61b… mtime 15:55:51Z) although the contract forbids touching skills/** in this wave (D7/§8), and VENDOR_LOCK.json was not re-pinned. One fact therefore reddens THREE acceptance commands: node scripts/verify-vendor.mjs ('asset skills treeSha mismatch', my runs at 15:52Z and 15:57:16Z), bun run verify:gates ('1/5 member gate(s) failed: vendor', both my runs), and bun run test:qa ('[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=326/e944e320b3ff tree=326/82f38bd828bc', t22's own test-qa.log). AC13 cannot pass and the wave must not merge in this state.",
+      "requiredFix": "Land the wave's single sanctioned re-pin in the SAME commit as the skills changes (node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step — captain-only step), then re-run BOTH bun run verify:gates and bun run test:qa; or revert the skills edits and take the V-1 repair in its own wave. Reconcile the contract's 'skills/** MUST NOT be touched' line (D7/§8) with the created t22 in the same change so plan and tree agree."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "resolved": true,
+      "file": "skills/dsh-qa/scripts/lib/credentials.mjs",
+      "problem": "At first read AC12 had no post-fix evidence (t8's real run exit 1, V-1). During the review window t22 landed the fix plus TWO real preset-conformance runs, both ok:true and PASS (evidence/dsh-qa/preset-conformance/2026-09-19T15-51-13.529Z and …/15-56-05.060Z), a before/after reproducer, a 16-check shapes proof and a test:qa log (evidence/agent-teams/qa-credentials-repair/20260919T155032Z/). AC12 therefore passes.",
+      "requiredFix": "Residual hardening only: promote the one-off 16-check shapes proof (bare refs:, single-line inline mapping, loud refusal of multi-line/non-mapping) into a permanent case --self-test arm so a regression of mergeRefsEntry cannot land invisibly."
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "file": "evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/result.json",
+      "problem": "The verification lane's stored verdict is FAILED (AC12/AC13 red) and its 22-file hash set predates the skills/** edit that now reddens verify:gates; the result's own attempt_note says a repaired revision needs a fresh attempt. Citing it as evidence for the current revision is stale.",
+      "requiredFix": "After t22 and the re-pin settle, dispatch a fresh verification attempt that re-runs AC12/AC13/AC16 and the boot arms on the new hashes, and anchor the wave's AC12/AC13 evidence to those hashes."
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+      "problem": "AC15's scanner power is bounded: with the test's own rules, an alias of agent.ctx used later, a destructured on/restrict, a bracket member (agent.ctx['tools']), Reflect.get(ctx,'agents'), ctx.get.call(ctx,'agents'), and ANY seam on a line that also mentions childCtx all evade the scan. The tree exploits none of these (my census found 0 unrouted sites), so the closure holds today, but the test's sentence claims more than its power.",
+      "requiredFix": "Extend the rule set with the alias/destructure/bracket shapes and narrow the childCtx skip to the five known lines (scan those lines for the seam rules) instead of skipping every line that mentions the identifier."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "file": "AGENTS.md",
+      "problem": "Two absolute sentences overstate the closure against the wave's own counted bypass: AGENTS.md §1 'every harness seam it touches goes through the mounted mpdDsh service' and docs/design.md §6b 'reaches every harness seam through this adapter'. The adapter's agentScope deliberately returns context === agent.ctx, so members.js:383 and members.js:434 subscribe with raw childCtx.on(...) even when the adapter is mounted (the §6 residual).",
+      "requiredFix": "Qualify both sentences with the counted residual (e.g. 'except the counted setup(childCtx, child) residual named in §6') or move the residual pointer into the same sentence; also name the two raw childCtx.on subscriptions in the R-class explanation, which currently motivates only the vendored-helper line."
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "file": "AGENTS.md",
+      "problem": "'FOURTEEN adapter methods ... each behind its own capabilities() flag' (AGENTS.md §6, docs/design.md §6b, adapter README intro) is not literally true: 14 methods carry 12 new flags, subagentProvider/subagentProviders share subagentsProvider, and subagentRuntime gates on the pre-existing subagents flag.",
+      "requiredFix": "Reword to 'each behind a capabilities() flag (one flag may cover two methods; subagentRuntime reuses the existing subagents flag)' so a reader counting flags against methods is not misled."
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "file": "evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/result.json",
+      "problem": "AC10's named mounting boot cannot witness the five agent-object flags: ADAPTER_SEAMS reports agentScope/agentTurnStart/Cancel/Steer/Inject ABSENT because they are live-registry probes and the boot has no live agent, and the 21-tool count comes from the lane's own instrumented probe while the named unmodified case reports AGENT_TEAMS_TOOLS=7/7. The AC still passes on unit + hostile-ctx evidence, but the boot's scope must not be over-read.",
+      "requiredFix": "State the live-registry scope limitation in the verification result (or add a boot arm with a live agent) so AC10's evidence is not read as a witness for the five flags."
+    }
+  ],
+  "closure_attack": {
+    "result": "NOT falsified",
+    "method": "independent census over 18 lib server files + alias/destructure/bracket/Reflect/dynamic greps + composition-root consumer tracing (index.js facade assignment at the top of apply; inject wrapping; harnessCtx escapes nowhere)",
+    "evidence": "logs/closure-census.log, logs/adversarial-closure-scan.log",
+    "residual_found": "exactly the documented set: the counted setup(childCtx, child) lines (two of them raw childCtx.on subscriptions), the Class-B whenIdle sites, and the bridge's own fallback column"
+  },
+  "parity_attack": {
+    "result": "NOT falsified",
+    "method": "re-read of adapter-tool-parity.test.mjs (order + canonical form + Object.is) and of the adapter's registerHostTool/capabilities surface; ran both files green"
+  },
+  "delta_restore_attack": {
+    "result": "NOT falsified; independently reproduced",
+    "method": "scratch mktemp tree with the real CLI and real lib: check/write on a missing bridge, a non-mpd control, and --write-registry byte-identity"
+  },
+  "docs_truthfulness": {
+    "result": "substantially TRUE with two precision findings (F5, F6)",
+    "method": "read all four surfaces, checked R5's count sentence against git show HEAD and the gate's fixed regex, and ran verify:docs (PASS, derived count agrees 151/13)"
+  },
+  "what_unblocks": [
+    "t22 completes; the captain lands the wave's single vendor re-pin and reconciles the contract's skills clause (F1); bun run verify:gates AND bun run test:qa re-run green",
+    "a fresh verification attempt on the settled post-re-pin hashes shows the sweep green (F3)",
+    "t10 integration then supplies AC14's pack-closure evidence (freshness read from the expected-after-pack list, never from the exit code)"
+  ]
+}

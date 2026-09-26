@@ -33,6 +33,13 @@ Offline-built MCP server that serves the CodeGraph tool surface
   vendor gate (`scripts/verify-vendor.mjs`), so a marked delta there would either fail
   the gate or turn it into a self-attestation
   (`evidence/wave3/registry-redesign/t1-decision-record.txt` §A4).
+- **A LOAD failure of the prebuilt degrades too (host defect, measured 2026-09-22)**: the artifact
+  evaluates `var ACCOUNT_HOME_DIR = userInfo().homedir` at MODULE LOAD, so on a host where libuv's
+  `uv_os_get_passwd` fails it throws `SystemError: ... ENOMEM` before it can answer one frame - and a
+  dying MCP child took the whole bundle's boot down with it (the web app never served). `launch.mjs`
+  therefore wraps the `import` and, on failure, answers the handshake itself as the UNAVAILABLE server
+  (0 tools, the reason on stderr, exit 0), so the session boots and the cause stays readable. Same
+  rule as above: the delta lives in the launcher, never in the sha-pinned prebuilt.
 - **Shared-daemon policy (`daemon-policy.mjs`)**: the adopted server can serve a session from a
   per-project-root SHARED daemon (`<projectRoot>/.codegraph/daemon.{sock,pid}`) or from its own
   in-process engine. The daemon is lost for reasons the session cannot control — upstream reaps it

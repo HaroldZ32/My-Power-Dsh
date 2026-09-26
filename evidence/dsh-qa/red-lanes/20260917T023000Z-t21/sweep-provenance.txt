@@ -1,0 +1,32 @@
+SWEEP PROVENANCE — measured, not inherited (recorded for t26 by qa-lane-engineer, 2026-09-17T02:47Z)
+
+WHY THIS FILE EXISTS
+The captain's correction (measured by the docs lane) says the handover's "01:55Z full sweep" did NOT
+continue past its first lanes. That is confirmed below from disk. t26 (lane C verification) must NOT
+inherit a "full run" verdict from it, and must run its own sweep as a MANAGED background job
+(AGENTS.md §12: a detached child dies with the call that started it — never `nohup`).
+
+CENSUS (every directory under evidence/dsh-qa/suite-runner/, read from each dir's own result.json):
+
+  2026-09-17T01-19-11.082Z  complete: true   33/33  pass=21 unavailable=0 fail=12  finishedAt 01:43:47Z  exit 1
+      -> THE LAST COMPLETE SWEEP (qa-lane-engineer, attempt 1 of t15). It predates the t17 credential
+         plumbing and the t21 lane fixes, so its 12 failures are NOT a current verdict — t26 must re-run.
+  2026-09-17T01-55-30.751Z  complete: FALSE   1/33  pass=0  unavailable=0 fail=1   finishedAt null      exit 1
+      -> THE HANDOVER'S "FULL SWEEP": died after its first lane (~2 minutes in; the log stopped growing).
+         NOT inheritable — no full-run verdict exists here. (The captain reported 2 lane records; this
+         directory's own result.json holds 1 recorded lane; either way `complete: false` is decisive.)
+  2026-09-17T01-50-42.783Z  complete: true    1/1   pass=1
+  2026-09-17T01-50-53.982Z  complete: true    2/2   pass=1 unavailable=1        (PASS then UNAVAILABLE, exit 2)
+  2026-09-17T01-51-10.628Z  complete: true    1/1   pass=1
+  2026-09-17T01-52-44.275Z  complete: true    2/2   pass=1 fail=1               (PASS then FAIL unauthorized, exit 1)
+      -> the handover's four SUBSET runs: real continue-past-failure demonstrations, not sweeps.
+  earlier auxiliary dirs (arms/unavailable/verify/sweep shell logs) are subsets or shell wrappers.
+
+RULES THIS RECORD CARRIES FORWARD
+1. A run's own `result.json` is the only completeness witness: `complete: true` + `finishedAt` +
+   `lanes == selected`. A directory with `complete: false` is evidence of an INTERRUPTION, never of a
+   verdict.
+2. The runner writes incrementally (result.json + output.log after every entry), which is exactly why
+   an interrupted run leaves a half-record instead of nothing — read `complete` before citing one.
+3. The sweep is long and spawns `dsh` children: start it with the bash tool's managed background mode
+   and stdio to FILES (the runner already redirects each lane's stdio to its own log file).

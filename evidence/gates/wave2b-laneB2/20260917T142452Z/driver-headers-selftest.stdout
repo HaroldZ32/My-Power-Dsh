@@ -1,0 +1,6 @@
+driver-header claim check — self-test (T-80 fixture arms)
+  ok   t80-matching — exit 0 (expected 0)
+  ok   t80-claimed-but-unasserted — exit 1 (expected 1); the key and the driver PATH must both be named
+  ok   t80-extra-key-near-miss — exit 1 (expected 1); the key and the driver PATH must both be named
+
+[driver-headers self-test] 3/3 arms passed

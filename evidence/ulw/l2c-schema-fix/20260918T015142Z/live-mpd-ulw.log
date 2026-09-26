@@ -1,0 +1,36 @@
+$ node scripts/install-profile.mjs --yes --dsh-home /tmp/mpd-l2c-live-schema-84afzh/dsh-home --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[artifacts] shipped state:
+[
+  {
+    "rowId": "mpd-ulw",
+    "path": "packages/mpd-ulw-plugin/dist/index.js",
+    "sha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+    "carriesRetiredUnconditionalPlanFile": true,
+    "carriesFixedConditionalPlanFile": false
+  },
+  {
+    "rowId": "mpd-dsh-adapter",
+    "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "sha256"
+$ bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile /tmp/mpd-l2c-live-schema-84afzh/builds/mpd-ulw.js
+[[exit=0]]
+$ bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile /tmp/mpd-l2c-live-schema-84afzh/builds/mpd-dsh-adapter.js
+[[exit=0]]
+[patch] retargeted rows (ids kept): [{"rowId":"mpd-ulw","from":"/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js","to":"<sandbox>/builds/mpd-ulw.js"},{"rowId":"mpd-dsh-adapter","from":"/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js","to":"<sandbox>/builds/mpd-dsh-adapter.js"}]
+[live] $ dsh --profile mpd-headless "Call the mpd_ultrawork tool, then the mpd_ulw tool, then reply with exactly QA-STUB-L2C-USER-DONE." (cwd /tmp/mpd-l2c-live-schema-84afzh/ws-live)
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-l2c-live-schema-84afzh/ws-live
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved 
+[l2c-live-schema] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/l2c-schema-fix/20260918T015142Z/live
+  install: {"ok":true,"exit":0}
+  shippedArtifacts: {"measured":[{"rowId":"mpd-ulw","path":"packages/mpd-ulw-plugin/dist/index.js","sha256":"24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce","carriesRetiredUnconditionalPlanFile":true,"carriesFixedConditionalPlanFile":false},{"rowId":"mpd-dsh-adapter","path":"packages/mpd-dsh-adapter-p
+  sandboxBuilds: {"ok":true,"canonicalCommand":"bun build <entry> --target node --format esm --outfile <sandbox>/builds/<row>.js"}
+  retargetedRows: {"ok":true,"rows":[{"rowId":"mpd-ulw","from":"/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js","to":"<sandbox>/builds/mpd-ulw.js"},{"rowId":"mpd-dsh-adapter","from":"/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js","to":"<sandbox>/builds/mpd-dsh-adapter.js"}
+  livePlanFalse: {"ok":true,"problems":[],"exit":0,"crashes":[],"stubRequests":6,"calls":[{"callId":"call_l2c-live-schema_0","tool":"mpd_ultrawork","objective":"qa-l2c-schema-ultrawork","plan":false,"resultFound":true,"isError":false,"resultTextHead":"ultrawork status=max-rounds rounds=1 verdict=n/a\nround 1: no sum
+[l2c-live-schema] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/l2c-schema-fix/20260918T015142Z/live
+  install: {"ok":true,"exit":0}
+  shippedArtifacts: {"measured":[{"rowId":"mpd-ulw","path":"packages/mpd-ulw-plugin/dist/index.js","sha256":"24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce","carriesRetiredUnconditionalPlanFile":true,"carriesFixedConditionalPlanFile":false},{"rowId":"mpd-dsh-adapter","path":"packages/mpd-dsh-adapter-plugin/dist/index.js"
+  sandboxBuilds: {"ok":true,"canonicalCommand":"bun build <entry> --target node --format esm --outfile <sandbox>/builds/<row>.js"}
+  retargetedRows: {"ok":true,"rows":[{"rowId":"mpd-ulw","from":"/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js","to":"<sandbox>/builds/mpd-ulw.js"},{"rowId":"mpd-dsh-adapter","from":"/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js","to":"<sandbox>/builds/mpd-dsh-adapter.js"}]}
+  livePlanFalse: {"ok":true,"problems":[],"exit":0,"crashes":[],"stubRequests":6,"calls":[{"callId":"call_l2c-live-schema_0","tool":"mpd_ultrawork","objective":"qa-l2c-schema-ultrawork","plan":false,"resultFound":true,"isError":false,"resultTextHead":"ultrawork status=max-rounds rounds=1 verdict=n/a\nround 1: no summary\nstate: /tmp/mp

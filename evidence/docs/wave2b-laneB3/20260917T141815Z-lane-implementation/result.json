@@ -1,0 +1,64 @@
+{
+  "task": "t16 — wave-2b lane B3 (docs & doctrine): 6 rows + 2 packed-file edits, pre-pack",
+  "attempt_id": "7c3927d3-f634-400d-9e79-1c7e7c85e6b5",
+  "owner": "docs-parity-engineer (lane B3)",
+  "head": "ca78033",
+  "generated_at": "2026-09-17T14:29:22.135Z",
+  "rows": {
+    "T-28": "POLICY SENTENCE landed in the AGENTS.md Language policy: `agent-references/**` is the agent-facing English-only band the docs gate deliberately does NOT discover; the register shape `docs/agent/**` is explicitly NOT used, and that substitution is stated. Census proof: no agent-references/ path among the checked pairs.",
+    "T-29": "DECLARED classification in scripts/verify-docs-parity.mjs: bands `docs/**` and `*/README.md` (extensions + templates) plus the promotion marker `<!-- docs-parity: doc -->`, which makes any *.md a doc wherever it lives. `templates/**` joined discovery, so the template pair is now POLICED; a misplaced promoted doc reddens; an unmarked non-README *.md stays an ASSET. Self-test arms: 3 (policed pair, asset stays asset, promoted doc reddens).",
+    "T-30": "Exemptions are DERIVED from the file: the in-file marker `<!-- docs-parity: exempt <reason> -->`, the declared `docs/plan-*.md` pattern, and a tiny provenance map for bytes that must stay verbatim. The seven previously-mapped docs carry their own marker now; the TWO ANTICIPATORY paths are printed as their own class, so an exemption for a file that does not exist can never rot silently. Self-test arms: 3 (marker exempts, unmarked violates, anticipatory reported).",
+    "T-47": "The templates/mpd-extension README PAIR quotes ALL 13 manifest field values verbatim (EN + zh-CN, same change), and section 6 was corrected from memory to measurement. Prober: BEFORE 2/13 quoted / 11 not-quoted -> AFTER 13/13 quoted / 0 not-quoted / 0 findings; prober --self-test 5/5 including the mutation arm.",
+    "T-91": "AGENTS.md gains the Pack-closure row in the §4 gate table, the post-t26 BOUND paragraph (freshness read from the `expected-after-pack` membership at the re-pack, timestamp order, `--pack-stamp`; the closure gate's own self-test arms are the operative evidence), and §11 names the gate in the release sweep. Amendment A5 applied: AGENTS.md is NOT packed (packer comment read at scripts/pack-mpd.mjs:128) while `templates/**` IS in ROOT_ASSET_DIRS.",
+    "T-90": "Doctrine landed in AGENTS.md §7: an ARTIFACT PATH is the anchor, the relay is secondary, a mailbox id is provenance rather than an anchor; the copy-the-quoted-bytes operational half; the CLASS clause and the calibration bound (31 of 31 shape-scan hits were false positives).",
+    "T-88": "Doctrine landed in AGENTS.md §7: derived surfaces (`packages/*/dist/**`, `dist/mpd-package/**`, `VENDOR_LOCK.json`, `.mpd/plans/**`) are DECLARED on the integration task at CREATION; the mid-wave escape is a HOP (one message, the exact amendment text, no work attached); a LANE must not declare a `dist/**` pattern for itself (the platform inScope-overlap refusal is quoted)."
+  },
+  "packer_readings": {
+    "templates packed?": "MEASURED: `templates` IS in scripts/pack-mpd.mjs ROOT_ASSET_DIRS (symbol read there), and dist/mpd-package/templates/mpd-extension exists in the canonical artifact.",
+    "AGENTS.md packed?": "MEASURED FALSE: the packer comment at scripts/pack-mpd.mjs:128 — AGENTS.md deliberately stays out of the artifact (amendment A5)."
+  },
+  "readings": {
+    "gate_live": "node scripts/verify-docs-parity.mjs exit 0 — pairs=38 failed=0 violations=0 exempt=19 derived=3 PASS (14:28:21Z, HEAD ca78033)",
+    "gate_selftest": "node scripts/verify-docs-parity.mjs --self-test exit 0 — 27/27 checks (6 new T-29/T-30 arms)",
+    "census": "--json census: pairs 38, violations 0, exemptNotes 19, ok true",
+    "budget": "node ./evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs agents=AGENTS.md -> GREEN (full content injected); AGENTS.md 53,283 B against maxBytes 65,536",
+    "prober_before": "13 field-probes, quoted 2, not-quoted 11 (debranding-before.json)",
+    "prober_after": "13 field-probes, quoted 13, not-quoted 0, 0 findings (debranding-after.json); --self-test 5/5",
+    "closure_selftest_red": "node scripts/verify-pack-closure.mjs --self-test exit 1 — 33/34 arms; the failing arm is the negative control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1) which returned exit 0. CROSS-LANE RED: that gate is lane B write set, NOT this lane; recorded here per A2.1 and routed to lane B / integration, NOT in this lane verify list."
+  },
+  "changed_paths": [
+    "scripts/verify-docs-parity.mjs",
+    "AGENTS.md",
+    "templates/mpd-extension/README.md",
+    "templates/mpd-extension/README.zh-CN.md",
+    "docs/decisions.md",
+    "docs/bline-report.md",
+    "docs/omo-parity-gap.md",
+    "docs/review-p0-p3.md",
+    "docs/track-a-report.md",
+    "docs/ulw-deepseek-optimization.md",
+    "docs/tui-edition-report.md"
+  ],
+  "note": "The seven docs/** edits are the T-30 markers (one comment line, first line of each file). All seven are process records exempt from the bilingual rule; none gained a twin and none needed one.",
+  "a6_re_take": {
+    "at": "2026-09-17T14:31:55Z",
+    "head": "ca78033",
+    "why": "Contract revision 2 (amendment A6) added agent-references/index.md to this lane write set AFTER completion; the captain asked for a re-read and a re-take rather than an inherited value.",
+    "readings": {
+      "AGENTS.md pointer": "2 x A1-D42",
+      "agent-references/index.md pointer": "A1-D42",
+      "derived range (deriveDeltaRange)": "A1-D42 (45 table ids)",
+      "count sentence": "The live registry is **88** regions across **9** adopted files",
+      "registry (lib/mpd-deltas.js)": "88 entries / 9 files",
+      "verify command": "node scripts/verify-docs-parity.mjs -> exit 0, pairs=38 failed=0 violations=0 exempt=19 derived=3 PASS"
+    },
+    "outcome": "CONSISTENT — no write was needed on the newly-scoped path. The re-take was performed at the write moment, not inherited: the registry had moved 81 -> 88 and the sentence had already followed it.",
+    "hashes": {
+      "agent-references/index.md": "adec21da1ac178a5e61859ddd70b1d8d6fa83999645382e698e3ad068b1b6478 (unchanged since the wave-2a fix)",
+      "AGENTS.md": "b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0",
+      "lib/mpd-deltas.js": "6ceff2ef931ba43cb9eebd70c2cb9a3e620b39480bc152c47816b60ceaeb4196",
+      "agent-references/agent-teams-deltas.md": "a2120d45fca43ef1c8636b9335c89fdb4b84603b23944e9c38af8e2306c79df4"
+    },
+    "standing_risk": "The index.md pointer and the count sentence are DERIVED values: another lane A --write-registry that mints a NEW D-row moves the range (index.md + AGENTS.md would then need a re-take, and index.md is this lane path); a region COUNT change alone moves the sentence, which is lane A file."
+  }
+}

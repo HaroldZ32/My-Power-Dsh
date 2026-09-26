@@ -1,0 +1,37 @@
+{
+  "task": "packaging-engineer / lane E — seeded negative control for the strongest omission shape: a WHOLLY ABSENT package directory in the packed artifact",
+  "measuredAtUtc": "2026-09-17T03:52:48Z (first run) and 2026-09-17T03:53:0xZ (logged re-run, see output.log)",
+  "hostOffset": "+0800",
+  "readonlyAgainstTheRepo": true,
+  "question": "Do either of the two omission instruments see a package directory that is ABSENT in the packed artifact?",
+  "method": "seeded control on a COPY: `cp -a dist/mpd-package <tmp>/pack`, then `rm -rf <tmp>/pack/packages/mpd-team-compact-plugin` (a declared PLUGIN_PKG, 3 files), then run both instruments against the copy. Original artifact verified intact afterwards (3 files before and after).",
+  "results": {
+    "instrument_v3_packed_twin_scan": {
+      "revision": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs sha256_16 fa2a256ac575f9bb (9,101 B, mtime 2026-09-17T03:46:34Z)",
+      "output": { "identical": 1179, "drift": 3, "missing": ["skills/dsh-qa/scripts/watchdog-redesign.mjs"], "ok": false },
+      "mentionsOfTheRemovedPackage": 0,
+      "reading": "the only trace of the removal is the identical counter falling 1182 -> 1179 (the 3 removed files). NO finding names the absent package, and `ok` is already false for unrelated reasons, so a green/red verdict cannot carry this shape either."
+    },
+    "my_closure_gate": {
+      "command": "node scripts/verify-pack-closure.mjs --packed <copy> --source-root . --require-packed",
+      "exitCode": 0,
+      "verdictLine": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: <copy> (378 asset files); agent references 3/3",
+      "mentionsOfTheRemovedPackage": 0,
+      "reading": "exit 0, i.e. PASS, while the copy lacks one of the 18 packages whose existence the same run's verdict line asserts. The sentence '18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist' is SOURCE-rooted, so it prints green over a pack that is missing one of them."
+    }
+  },
+  "conclusion": "CONFIRMED SHARED BLIND SPOT: both instruments enumerate package directories from the PACK, so a package that never arrives produces no row in either direction. This is the strongest form of the omission class lane E exists to make loud, and it is silent today in both instruments.",
+  "whyItHappens": {
+    "packed-twin-scan.mjs": "the reverse pass enumerates the ROOT ASSET dirs from the SOURCE (`for (const root of shippedRoots(repo))`) but the package dirs from the PACK (`for (const pkg of readdirSync(<pack>/packages))`, ~lines 89-93). The asymmetry is exactly why the control's new skills file IS caught (`skills/dsh-qa/scripts/watchdog-redesign.mjs`) while a missing package is not.",
+    "verify-pack-closure.mjs": "the PLUGIN_PKGS/MCP_PKGS lists are parsed from the packer source and their entries are asserted to exist in the SOURCE tree (static half); the packed half covers ROOT_ASSET_DIRS non-emptiness, the template manifest, docs/templates/agent-references set equality, the manifest files[] <-> tree relation, REQUIRED_REFERENCE_FILES and the CLI validator entry - never the declared packages against the packed tree."
+  },
+  "minimalFixes": {
+    "mine_verify_pack_closure": "in the packed half, for each entry of PLUGIN_PKGS union MCP_PKGS (the lists are already parsed) plus the adopted first-class package, assert `<packed>/packages/<pkg>` exists and holds >= 1 file; report the existing PACKED-MISSING kind otherwise. ~10 lines, no new parsing.",
+    "theirs_packed_twin_scan": "derive the package list from the SOURCE (`repo/packages/*`, intersected with the packer's declared lists) instead of from the pack, so a wholly absent package becomes a `missing` row like any added-late file."
+  },
+  "sideFinding": {
+    "newMissingEntryInTheLiveTree": "skills/dsh-qa/scripts/watchdog-redesign.mjs is absent from the CURRENT artifact - a file that landed after the pack (the expected last `skills/**` writer, t63/t65), caught by the reverse pass because `skills/**` IS source-enumerated. The re-pack closes it; no action needed beyond the pack staying last."
+  },
+  "bounds": "one package removed from a copy; the other 23 package dirs and every other byte untouched; the control does not claim anything about a PARTIAL package (that shape is covered by the reverse pass's per-file walk of pack-present packages); no repository writes - the scratch copy lived under /tmp and was removed.",
+  "reproduce": "cp -a dist/mpd-package $(mktemp -d)/pack && rm -rf <that>/pack/packages/mpd-team-compact-plugin && node evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs --pack <that>/pack --repo . --json && node scripts/verify-pack-closure.mjs --packed <that>/pack --source-root . --require-packed"
+}

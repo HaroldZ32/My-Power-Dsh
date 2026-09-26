@@ -1,0 +1,4 @@
+d9fafd356f206c26838b9d119daa7cf04f41d499924cdd356529e5e1b45e7199  packages/mpd-agent-teams-plugin/lib/tool-names.js
+0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js
+b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js
+ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c  packages/mpd-agent-teams-plugin/lib/capabilities.js

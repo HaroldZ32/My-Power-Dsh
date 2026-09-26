@@ -1,0 +1,74 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-1zMPu5",
+  "wmHome": "/tmp/mpd-wm-home-fpD4eh",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 2,
+      "retryNotes": [
+        "attempt 1 did not complete the flow (unproven tools: mpd_workmate_init,mpd_workmate_spawn,mpd_workmate_reflect; files present: false) — retrying once"
+      ]
+    },
+    "flow": {
+      "ok": false,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [
+        "mpd_workmate_init: the harness recorded 1 call(s) to mpd_workmate_init but every recorded result is an ERROR",
+        "mpd_workmate_spawn: the harness recorded 1 call(s) to mpd_workmate_spawn but every recorded result is an ERROR",
+        "mpd_workmate_reflect: the harness recorded 1 call(s) to mpd_workmate_reflect but every recorded result is an ERROR"
+      ],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "es not exist. I must report the contents — it doesn't exist, so I report the absence. Should I create it? The user asked for \"the contents of the note card\". Creating it myself would be fabricating tool output. Better: report that it doesn't exist because init was refused, and give the exact path and the ls error. That is the honest report. Writing a note.md myself would misrepresent state (and the file policy is workspace-write; $HOME is outside the workspace, so the write would likely be denied anyway). |  | Let me also mention the remediation options clearly (set HOME to sandbox, or MPD_DSH"
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-fpD4eh/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-fpD4eh",
+      "sandboxRoot": "/tmp/mpd-wm-home-fpD4eh/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

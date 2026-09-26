@@ -1,0 +1,127 @@
+{
+  "task": "t24 (review r2) — AC-by-AC verdict on the repaired revision",
+  "seat": "Reviewer",
+  "attempt": 2,
+  "attempt_id": "ee7b886d-c5fd-435a-8249-18eea58f719b",
+  "reviewed_task": "t23",
+  "verdict": "needs_revision",
+  "summary": "15 ACs PASS, AC14 UNPROVEN, no AC fails on its own substance. The round-1 blockers are closed: the single re-pin landed (verify:vendor PASS, verify:gates 5/5, test:qa exit 0), F2's evidence landed, the scanner was hardened (the four shapes I demonstrated are now caught), and AGENTS.md's two overstated sentences were corrected. The verification lane's fresh attempt-7 result.json landed mid-review with a PASSED verdict for its lane and a re-anchored settled hash set (F6 resolved). The only blocking item is AC14 (pack + closure), whose owner lane t10 is blocked BY this review — a review cannot certify evidence that can only be produced after it. Remaining findings: two docs surfaces still carry the absolute closure sentence, the flags wording was fixed in one of five places (and the README's flag list omits commandsRegister), the hardened scanner keeps narrow gaps, and an unannounced edit to the guarded scanner test landed mid-review.",
+  "revision": {
+    "read_utc": "2026-09-19T16:06:07Z",
+    "settle_sandwich": "evidence/agent-teams/adapter-wiring/review/round2/logs/settle-sandwich.log — START == END over 50 s and identical to the 16:06:07Z read for every file except the scanner test movement below",
+    "hash_table": "evidence/agent-teams/adapter-wiring/review/round2/logs/reviewer-revision-hashes.txt",
+    "movement_during_review": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs 7898fd03526a36c0… (16:06:07Z read) -> d40c230bee54b75b… at 16:07:10Z (adds the LADDER_CAPTURES exemption; no open task owns the path — finding F5). Nothing else in the wave's file set moved.",
+    "load_bearing": {
+      "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4",
+      "scripts/patch-agent-teams-fixes.mjs": "f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3",
+      "AGENTS.md": "d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54",
+      "VENDOR_LOCK.json": "fc6f8aa34771faba879a4c448ce837dac506ffb461bd8c0586adbe406e3672fb",
+      "docs/design.md": "5de54a335699702605ce6173ac2a5a41ecaef96025d5b4290fd52270060f701d",
+      "docs/design.zh-CN.md": "dfd17369c12ca9ae2ae8920cd89b04a43cbbbc65c87361b4747d61abf30e761b",
+      "agent-references/agent-teams-deltas.md": "a1ea21c0bdcffcfbb182a9e24434f7150496340ab8c7f39521cd83d2a267534c",
+      "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs": "d40c230bee54b75be72bf63c50cac053941f2e98242fe4bc69748f46944c9be4",
+      "skills/dsh-qa/scripts/lib/credentials.mjs": "b32f12c7becaf6c6781fbb1d5c3fcdcb1d863c7852258a2b858c224e8d999cfa",
+      "skills/dsh-qa/scripts/agent-teams-dispatch.mjs": "8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c",
+      "evidence/agent-teams/adapter-wiring/requirements-contract.md": "e4e0b3b24f7778c5fa16fe97397874b0f4ea9862ae223b7ee3da6a3385390dde"
+    }
+  },
+  "commands_run": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "logs/../round2/logs — 'already applied: 151 mpd delta region(s) across 13 adopted file(s)'" },
+    { "command": "bun run verify:gates", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/verify-gates.log — PASS 5/5 members (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance)" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/typecheck.log" },
+    { "command": "bun test packages/mpd-agent-teams-plugin packages/mpd-dsh-adapter-plugin", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/bun-test-both-packages.log (461 pass / 0 fail) and the re-run on the moved test file (bun-test-both-packages-rerun.log)" },
+    { "command": "bun test packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs", "status": "passed", "exitCode": 0, "evidence": "6 pass / 0 fail / 1712 expects on the hardened revision d40c230b…" },
+    { "command": "independent closure census over 18 server files", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/closure-census.log — 83 sites: 39 facade, 18 in-region, 24 bridge fallback, 2 counted childCtx, 0 UNROUTED" },
+    { "command": "adversarial probe of the hardened scanner rules", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/scanner-probe-v2.log — the four round-1 shapes now CAUGHT; residual gaps enumerated (F4)" },
+    { "command": "audit of the new LADDER_CAPTURES exemption", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/ladder-captures-audit.log — suppresses NOTHING on the current bytes; the pre-edit rule set also produced 0 findings" },
+    { "command": "settle sandwich (hash, 50 s, re-hash)", "status": "passed", "exitCode": 0, "evidence": "review/round2/logs/settle-sandwich.log — START == END; identical to the 16:06:07Z read except the scanner-test movement" },
+    { "command": "(read, not re-run) t8 attempt-7 verification logs and its final result.json", "status": "reported", "reason": "the verification lane's fresh evidence, read by me at its own exit codes and folded into AC10-AC13/AC16", "evidence": "evidence/agent-teams/adapter-wiring/verification/20260919T160002Z/{ac13-static-gates.log,ac13-suite-gates.log,ac12-preset-conformance.log,ac10-bundle-lifecycle.log,ac10-11-instrumented-boots.log,ac-three-arm-and-bridge-tests.log,result.json} — all exit 0; result.json landed 16:10Z with verdict PASSED for its lane and the 24-file RE-ANCHORED settle (16:09:11Z == 16:10:01Z)" }
+  ],
+  "ac_table": [
+    { "ac": "AC1", "verdict": "PASS", "evidence": "adapter surface test (14 methods/12 flags) + typecheck exit 0 + unchanged src read" },
+    { "ac": "AC2", "verdict": "PASS", "evidence": "Object.is arm against the real tools.register" },
+    { "ac": "AC3", "verdict": "PASS", "evidence": "adapter-routing.test.mjs green (rawHits [], negative control)" },
+    { "ac": "AC4", "verdict": "PASS", "evidence": "adapter-facade.test.mjs green" },
+    { "ac": "AC5", "verdict": "PASS", "evidence": "git status shows only ?? new tests; package suite green" },
+    { "ac": "AC6", "verdict": "PASS", "evidence": "adapter-tool-parity.test.mjs green (order + canonical + Object.is)" },
+    { "ac": "AC7", "verdict": "PASS", "evidence": "--check exit 0; six bridged files byte-identical to the round-1 read whose hunk check was 36/36 inside regions" },
+    { "ac": "AC8", "verdict": "PASS", "evidence": "round-1 scratch-tree restore on unchanged CLI bytes + mpd-owned-file-restore.test.mjs green" },
+    { "ac": "AC9", "verdict": "PASS", "evidence": "verify:docs PASS with derived 151/13 agreement; AGENTS.md corrections verified; F2/F3 record the remaining four spots" },
+    { "ac": "AC10", "verdict": "PASS", "evidence": "t8 attempt-7 bundle-lifecycle PASS (16-00-10.971Z) + enabled instrumented boot 21/21" },
+    { "ac": "AC11", "verdict": "PASS", "evidence": "t8 attempt-7 disabled boot: adapter row 0, absent=1, pending/mounted=0, isolation asserted" },
+    { "ac": "AC12", "verdict": "PASS", "evidence": "t8 attempt-7 real preset-conformance PASS at 16-01-07.071Z + --self-test green" },
+    { "ac": "AC13", "verdict": "PASS", "evidence": "my verify:gates 5/5; t8 fresh: bun test packages 1152/0, typecheck 0, dist/docs/rows 0, test:qa exit 0 (captain artifact item1-gates.log). Qualification: bare `bun test` stays red on the 411 UNTRACKED+GITIGNORED scratch test copies under evidence/mpd-naming/wave2/raw/scratch/**, accepted by the captain as an environment note; the sanctioned scope is `bun test packages`" },
+    { "ac": "AC14", "verdict": "UNPROVEN", "evidence": "no pack/closure evidence; owner t10 blocked by this review — finding F1" },
+    { "ac": "AC15", "verdict": "PASS", "evidence": "hardened scanner green + my census 0 unrouted + contract-declared bound; F4/F5 record gaps and the unannounced edit" },
+    { "ac": "AC16", "verdict": "PASS", "evidence": "t8 attempt-7 result.json (landed 16:10Z, PASSED): 24-file DRIFT->RE-ANCHOR, start2 16:09:11Z == end 16:10:01Z, docs gates re-run on the settled revision; my own sandwich START==END == my 16:06:07Z read" }
+  ],
+  "residuals_r1_r5": {
+    "R1": "TRUE — registerHostTool resolves tools from the adapter's own ctx and registers there (adapter row's fiber owns it)",
+    "R2": "TRUE — guardSubagentDelivery reads and PATCHES the object subagentRuntimeOf(ctx) returns (descriptor capture/restore)",
+    "R3": "TRUE — lib/client.js unchanged; scripts/patch-agent-teams-client.mjs exists and is referenced by build-mpd-client.mjs",
+    "R4": "TRUE — liveAgents() -> [], liveAgent() degrades, onEvent catches and returns undefined",
+    "R5": "TRUE — the count sentence keeps HEAD's exact wording (only 123/10 -> 151/13 moved); the gate regex matches and the derived note agrees 151/13"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "file": "evidence/agent-teams/adapter-wiring/requirements-contract.md",
+      "problem": "AC14 (packed artifact refreshed and closure-proven) has no evidence on this revision, and its owner lane t10 (integration) is blocked by THIS review, so the review cannot certify an AC whose evidence can only be produced after it. Strictly applied, the acceptance rule 'pass only when the latest revision on disk supports every AC' therefore forces needs_revision even though no AC fails on its substance.",
+      "requiredFix": "Captain's decision, one of: (a) amend this review's contract to scope review rounds to AC1–AC13/AC15/AC16 and carry AC14 in t10's own acceptance (matches the profile's stage order requirements → implementation → verification → review → integration), enabling a later review round to pass; or (b) keep the strict reading and accept a round-3 review after t10 runs pack-mpd + verify-pack-closure."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "file": "docs/design.md",
+      "problem": "docs/design.md ('reaches every harness seam through this adapter') and docs/design.zh-CN.md ('现在每个 Harness 接缝都经由本适配器') still carry the absolute closure sentence; agent-references/agent-teams-deltas.md carries the same clause in its wave paragraph. t23 fixed AGENTS.md §1/§6 only. Each sentence is followed by the pointer to AGENTS.md §6's residual set, so a careful reader is routed — but the acceptance makes an overstating sentence a finding.",
+      "requiredFix": "Qualify the two design sentences (EN + zh-CN in the same change) with the counted setup(childCtx, child) residual, and optionally the deltas sentence."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "file": "packages/mpd-dsh-adapter-plugin/README.md",
+      "problem": "The flags wording was corrected in AGENTS.md only. docs/design.md, docs/design.zh-CN.md and both adapter READMEs still say each of the fourteen methods carries 'its own' capabilities() flag. The README pair's 13-name flag list is also incomplete: the bridge gates commands.register on commandsRegister (a pre-existing flag), so the number of flags the bridge actually branches on is 14 — the same correction t8's fresh result records (capability_flags_used_by_the_bridge = 14).",
+      "requiredFix": "Reuse AGENTS.md's parenthetical — 'each behind a capabilities() flag (one flag may cover two methods; subagentRuntime reuses the existing subagents flag)' — in the four remaining spots and add commandsRegister to the README pair's list."
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+      "problem": "The hardened scanner still has named narrow gaps, measured with the test's own rules: a late assignment (`let a; a = ctx.agents;`), a parenthesized receiver (`(ctx).agents`), a ctx.get extraction (`const g = ctx.get; g('agents')`), a scoped-ctx member extraction (`const t = agent.ctx.tools;` then `t.restrict(...)`) and function-parameter aliases all evade. No instance exists in the tree (my census: 0 unrouted) and AC15 now declares the scanner a bounded heuristic, so this is recorded rather than blocking.",
+      "requiredFix": "Optional hardening: add a `ctx.get` extraction rule and a `.ctx.<member>` extraction rule (not only the three call forms), or state these shapes in AC15's declared bound."
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+      "problem": "An UNANNOUNCED edit to the guarded scanner test landed during this review: hash 7898fd03526a36c0… (my 16:06:07Z read) became d40c230bee54b75b… at 16:07:10Z, adding the LADDER_CAPTURES exemption. No task open at that moment owns the path (t23 completed ~16:04Z; t24 is this read-only review; t8's declared scope is evidence/**). My audit shows the exemption suppresses NOTHING on the current bytes, so it fixes no observed failure, while it DOES widen the harness-compat.js exemption to five receiver names for every rule.",
+      "requiredFix": "Declare the edit's owning task/author (and, if it came from the verification lane, note that the path was outside its inScope), or revert it and land it under a task that owns the file; if kept, add a falsifiability arm for the `prompt.call(runtime, …)` shape it anticipates."
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "resolved": true,
+      "file": "evidence/agent-teams/adapter-wiring/verification/20260919T160002Z/result.json",
+      "problem": "At my first read (16:10Z) t8's fresh attempt directory held the logs and start.txt but no result.json, so AC16's named anchor still resolved to the OLD pre-re-pin FAILED verdict. The file landed while this review was running: verdict PASSED for the verification lane, with the 24-file DRIFT->RE-ANCHOR record (start2 16:09:11Z == end 16:10:01Z) and the docs gates re-run on the settled revision.",
+      "requiredFix": "None remaining — AC16's anchor now points at fresh, settled evidence. Recorded so a reader can see the evidence arrived late rather than never."
+    }
+  ],
+  "closure_attack": {
+    "result": "NOT falsified",
+    "method": "independent census over 18 server files on the current bytes (0 unrouted), alias/destructure/bracket/Reflect/dynamic greps, composition-root consumer tracing, plus an adversarial probe of the hardened scanner rules",
+    "evidence": "review/round2/logs/closure-census.log, review/round2/logs/scanner-probe-v2.log, review/round2/logs/ladder-captures-audit.log"
+  },
+  "parity_attack": { "result": "NOT falsified", "method": "unchanged bytes since round 1; parity/Object.is tests green in my re-run" },
+  "delta_restore_attack": { "result": "NOT falsified", "method": "--check exit 0 on unchanged CLI bytes; round-1 scratch restore stands" },
+  "docs_truthfulness": { "result": "substantially TRUE with F2/F3 residue", "method": "read AGENTS.md (fixed), design EN+zh, deltas doc, adapter README pair; verify:docs PASS with derived count agreement" },
+  "what_unblocks": [
+    "Resolve F1 (contract amendment scoping AC14 to the integration lane, or a round-3 review after t10) — the ONLY blocking item",
+    "Fold F2/F3 into one small docs repair (design EN + zh-CN + the two adapter READMEs)",
+    "Declare or revert the F5 edit; have t8 land result.json (F6)",
+    "Then t10 integration produces AC14's evidence (freshness read from the expected-after-pack list, never from the exit code)"
+  ]
+}

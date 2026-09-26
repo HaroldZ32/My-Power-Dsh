@@ -1,0 +1,90 @@
+# t68 — EXTENSIONS-FOR-AGENTS.md: every line-number anchor → symbol-first (T-55 / T-72)
+# attempt_id 563878de-8644-4ab7-8d94-7ff92c47426e · kind=implementation · inScope: EXTENSIONS-FOR-AGENTS.md + evidence/extensions/**
+# cwd = /root/dshProj/my-power-dsh. Driver revision used for every reading:
+#   evidence/extensions/docs-claims/check-citations.mjs sha256 dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c (30,345 B)
+
+================================================================================
+## 1. WHAT WAS CONVERTED — 12 lines / 14 distinct `path:line` tokens / 13 spans
+================================================================================
+$ grep -nE '\.(ts|js|mjs|yml|json|md):[0-9]+' EXTENSIONS-FOR-AGENTS.md
+→ 12 LINES (12, 23, 24, 25, 26, 27, 36, 42, 116, 117, 141, 233); 14 distinct tokens
+  (the captain's 12 = the LINE count; the token count is 14 because lines 25 and 36 each carry two).
+Converted spans and the SYMBOL each one now names (every symbol verified to exist in the cited file):
+
+| line | was | symbol now cited (path unchanged) |
+|---|---|---|
+| 12  | `MPD_EXT_CONTRACT`, `…/sdk.ts:113-146` | `MPD_EXT_CONTRACT` (range dropped; the constant IS the block) |
+| 23  | wrapper `safeRegisterTool`, `…/index.ts:521` | `safeRegisterTool` (local wrapper, declared in the file) |
+| 24  | `mpd_ext_list`, `…/index.ts:699` | `mpd_ext_list` (registered tool name in the file) |
+| 25  | `mpd_ext_show` `:791`; `mpd_flow_list` `:914` | `mpd_ext_show`, `mpd_flow_list` (line numbers dropped) |
+| 26  | `mpd_flow_show`, `…/index.ts:968` | `mpd_flow_show` |
+| 27  | (`EXPECTED_TOOLS`, `…/index.ts:532`) | `EXPECTED_TOOLS` (local const declaring the gated list) |
+| 36  | (`childEnv`, `…/mcp-client.ts:99-117`) | `childEnv` (exported function) |
+| 36  | (`publicToolName`, `…/mcp-client.ts:129-135`) | `publicToolName` (exported function) |
+| 42  | (`enabled`, `…/registry.ts:583` …) | **`validateDescriptor`** — `enabled` is a descriptor KEY, not a symbol the file declares; the enclosing export at registry.ts:530 is what normalizes it |
+| 116 | (`projectRejectionReason`, `…/sdk.ts:144-145`; | `projectRejectionReason` (property of the frozen contract) |
+| 117 | `refuseHostKind`, `…/registry.ts:678-685`) | `refuseHostKind` (local const, the refusal) |
+| 141 | `McpServerState`, `…/mcp.ts:34` | `McpServerState` (exported type at mcp.ts:34) |
+| 233 | `docs/extensions.md:524` | `docs/extensions.md`, section 11 "v1 limits and follow-ups" (heading at :513; doc-to-doc ⇒ heading, no line) |
+
+Not one pointer was removed without a resolving symbol in its place (the contract's rule).
+
+================================================================================
+## 2. THE EDIT — one asserted, single-writer pass, minimal and confined
+================================================================================
+before: 9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb  15,684 B
+after : 5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27  15,660 B  (−24 B)
+Every replacement asserted unique before writing (13/13 matched; the first attempt ABORTED on a
+line-wrap mismatch — `(`enabled`,` / newline / `…registry.ts:583`` — and was re-run with the wrapped
+form, so no partial write ever landed).
+
+================================================================================
+## 3. CHECKER — arm count + resolved count, BEFORE and AFTER (delta auditable)
+================================================================================
+BEFORE  (run-2026-09-17T04-30-29.971Z): 12/12 passed · citations_checked 249 · content_verified 46 ·
+        **symbol_only_anchors_verified 0** · without_a_claim 0 · pending 0
+        `citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; …), 0 unresolved`
+AFTER   (run-2026-09-17T04-32-08.100Z): 12/12 passed · citations_checked 249 · content_verified 49 ·
+        **symbol_only_anchors_verified 17** · without_a_claim 0 · pending 0
+        `citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; …), 0 unresolved`
+⇒ the line-less route went 0 → 17 verified; the file's citation total and checked count are UNCHANGED
+(59/55), so the conversion re-routed existing citations rather than inventing or deleting any.
+
+================================================================================
+## 4. NEGATIVE CONTROL — an invented symbol MUST fail (falsifiable, not asserted)
+================================================================================
+$ python3: replace `safeRegisterTool` → `safeRegisterToolXYZ` (1 site)      # sha 3fd99ba0c162eb6e…
+$ node evidence/extensions/docs-claims/check-citations.mjs                 # exit 1 (expected)
+  FAIL citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) …, **7 unresolved**: doc line 23: the
+  cited file does not contain the claim `safeRegisterToolXYZ` (packages/mpd-ext-plugin/src/index.ts) |
+  doc line 24: … | doc line 25: … | doc line 26: …
+$ cp after-keep.md EXTENSIONS-FOR-AGENTS.md && sha256sum → 5d935524b7db27ea… (restored byte-exact)
+⇒ the resolution arm is reachable in the failing direction on THIS file, which is what makes the
+  passing reading above evidence rather than prose.
+
+================================================================================
+## 5. REVERSE-SUBSTITUTION IDENTITY (minimal-change proof)
+================================================================================
+Reversing all 13 spans in a COPY reproduces the recorded pre-edit identity byte-for-byte:
+  candidate sha 9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb  15,684 B
+  recorded      9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb  15,684 B   MATCH ✓
+Artefact kept: REVERSED-pre-t68.md (same directory).
+
+================================================================================
+## 6. THE CONTRACT'S FOUR VERIFY COMMANDS (final bytes)
+================================================================================
+$ ! grep -qE '\.(ts|js|mjs|yml|json|md):[0-9]+' EXTENSIONS-FOR-AGENTS.md      → exit 0
+$ node evidence/extensions/docs-claims/check-citations.mjs                    → exit 0, 12/12, 249 resolved
+$ bun run verify:docs    → exit 0  [verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS
+$ bun run verify:rows    → exit 0  [verify-rows-parity] ok: 25 row ids match the bundle patch insert list
+(raw: final-verify.log in this directory)
+
+================================================================================
+## 7. SCOPE / COMPLIANCE
+================================================================================
+- inScope touched: `EXTENSIONS-FOR-AGENTS.md` + `evidence/extensions/**` (checker run dirs land under
+  `evidence/extensions/docs-claims/runs/**`, inside the contract's inScope).
+- outOfScope untouched: `skills/**`, `packages/**`, `docs/**` (read only, to identify the section heading
+  and the cited symbols), `AGENTS.md`, `VENDOR_LOCK.json`.
+- The file is agent-facing English-only; no `*.zh-CN.md` pair exists or is required for it, and no doc
+  pair was touched. No git write.

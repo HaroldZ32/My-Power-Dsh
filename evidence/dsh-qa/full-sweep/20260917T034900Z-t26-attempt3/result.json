@@ -1,0 +1,77 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+  "suite": "all",
+  "selected": 33,
+  "startedAt": "2026-09-17T03:44:01.770Z",
+  "finishedAt": null,
+  "durationMs": null,
+  "complete": false,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 110503,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T03-44-01.860Z/web.log",
+      "logPath": "evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3/lanes/agent-teams-adopt.log",
+      "outputTail": [],
+      "suite": "all"
+    },
+    {
+      "case": "agent-teams-dispatch",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 934665,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-dispatch.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/agent-teams-dispatch/2026-09-17T03-45-52.361Z",
+      "logPath": "evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3/lanes/agent-teams-dispatch.log",
+      "outputTail": [
+        "  installer: {\"ok\":true,\"exit\":0}",
+        "  captainRun: {\"ok\":true,\"exit\":0,\"tail\":\"ser can approve it via the Web UI? That seems helpful and within my authority? Rule 3 says the plan must be staged by me: create + members + tasks, then \\\"tell the user the Web plan is ready, then end this turn.\\\" But the user didn't ask for that and said \\\"nothing else\\\"",
+        "  tasks: {\"total\":0}",
+        "  memberAssignments: {\"count\":0,\"sessions\":1,\"labels\":[]}",
+        "  secondBatchDispatched: {\"ok\":false}",
+        "  assignmentDelivery: {\"ok\":false}"
+      ],
+      "suite": "all"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

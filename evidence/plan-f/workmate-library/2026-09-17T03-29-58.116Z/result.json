@@ -1,0 +1,74 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-7lbrOS",
+  "wmHome": "/tmp/mpd-wm-home-NAC0K3",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 2,
+      "retryNotes": [
+        "attempt 1 did not complete the flow (unproven tools: mpd_workmate_init,mpd_workmate_spawn,mpd_workmate_reflect; files present: false) — retrying once"
+      ]
+    },
+    "flow": {
+      "ok": false,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": false
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [
+        "mpd_workmate_init: the harness recorded 1 call(s) to mpd_workmate_init but every recorded result is an ERROR",
+        "mpd_workmate_spawn: the harness recorded 1 call(s) to mpd_workmate_spawn but every recorded result is an ERROR",
+        "mpd_workmate_reflect: the harness recorded 1 call(s) to mpd_workmate_reflect but every recorded result is an ERROR"
+      ],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "spawn alice → Error: no workmate named \"alice\" — run mpd_workmate_init first | 4) mpd_workmate_reflect → REFUSED with same guard | 5) mpd_workmate_match → NO MATCH (threshold 0.35) |  | Root cause (brief): guard in packages/mpd-workmate-plugin/src/index.ts — symbol assertMutationSandboxed (also in live dist) compares resolve(HOME) !== resolve(homedir()); on POSIX homedir() reads $HOME at process start, so the predicate is tautologically false when HOME is set at spawn — the guard cannot distinguish a sandbox HOME from the real home and refuses the very recipe its message prescribes. This is th"
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-NAC0K3/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-NAC0K3",
+      "sandboxRoot": "/tmp/mpd-wm-home-NAC0K3/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

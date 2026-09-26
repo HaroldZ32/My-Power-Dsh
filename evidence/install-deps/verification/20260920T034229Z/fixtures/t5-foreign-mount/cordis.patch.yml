@@ -1,0 +1,5 @@
+# t5 falsification fixture: a FOREIGN layer that mounts dsh-better-sidebar, appearing AFTER
+# @mpd-dsh/mpd in dsh.profile.bundles.
+- insert:
+    - id: t5-foreign-sidebar
+      name: 'dsh-better-sidebar'

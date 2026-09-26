@@ -1,0 +1,47 @@
+[adapter-disabled] {
+  "install": {
+    "ok": true,
+    "status": 0
+  },
+  "adapterRowProvided": {
+    "ok": true,
+    "occurrences": 1
+  },
+  "fallbackWitnesses": {
+    "ok": true,
+    "absent": 0,
+    "pending": 0,
+    "mounted": 1
+  },
+  "mountedWitness": {
+    "ok": true,
+    "occurrences": 1
+  },
+  "tools21": {
+    "ok": true,
+    "line": "VERIF_AGENT_TEAMS_TOOLS=21/21"
+  },
+  "scopeShape": {
+    "ok": true,
+    "members": "context,effect,on,tools",
+    "identity": "true"
+  },
+  "f1Signature": {
+    "ok": true,
+    "occurrences": 0
+  },
+  "br1Witness": {
+    "lines": 0
+  },
+  "presetProbe": {
+    "verdict": "PASS"
+  },
+  "isolation": {
+    "dshHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T15-25-57.832Z/home",
+    "userHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T15-25-57.832Z/userhome",
+    "workspace": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T15-25-57.832Z/ws",
+    "sessionsSandboxed": true
+  }
+}
+[adapter-disabled] PASS
+EXIT=0

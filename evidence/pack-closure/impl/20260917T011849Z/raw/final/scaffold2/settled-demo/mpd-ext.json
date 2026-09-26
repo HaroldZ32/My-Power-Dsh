@@ -1,0 +1,28 @@
+{
+  "apiVersion": 1,
+  "id": "settled-demo",
+  "description": "The settled-demo extension. Replace this sentence with what the extension contributes and when an agent should reach for it.",
+  "enabled": false,
+  "contributes": {
+    "skills": [
+      {
+        "root": "skills",
+        "rank": 300
+      }
+    ],
+    "flows": [
+      {
+        "dir": "flows",
+        "rank": 300
+      }
+    ],
+    "roles": [
+      {
+        "name": "settled-demo reviewer",
+        "description": "Read-only reviewer contributed by the settled-demo extension: checks a change against this extension's own contract and reports findings with evidence.",
+        "readonly": true,
+        "persona": "personas/settled-demo-reviewer.md"
+      }
+    ]
+  }
+}

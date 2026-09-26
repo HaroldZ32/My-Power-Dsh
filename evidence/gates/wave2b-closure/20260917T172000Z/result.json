@@ -1,0 +1,273 @@
+{
+  "task": "t59",
+  "run_at": "2026-09-17T17:05:00.955Z",
+  "derivation": {
+    "plan_ids": 36,
+    "closed_2a": 19,
+    "rolling": 35,
+    "rolling_ids": [
+      "T-06",
+      "T-08",
+      "T-11",
+      "T-13",
+      "T-14",
+      "T-15",
+      "T-27",
+      "T-42",
+      "T-44",
+      "T-64",
+      "T-84",
+      "T-87",
+      "T-92",
+      "T-93",
+      "T-66",
+      "T-68",
+      "T-70",
+      "T-71",
+      "T-77",
+      "T-88",
+      "T-34",
+      "T-41",
+      "T-78",
+      "T-80",
+      "T-82",
+      "T-28",
+      "T-29",
+      "T-30",
+      "T-47",
+      "T-91",
+      "T-90",
+      "T-25",
+      "T-89",
+      "T-69",
+      "T-74"
+    ]
+  },
+  "rows_present": 35,
+  "missing_rows": [],
+  "pointers": [
+    {
+      "id": "T-06",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-08",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-11",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-13",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-14",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-15",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-25",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-27",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-28",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-29",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-30",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-34",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-41",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-42",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-44",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-47",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-64",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-66",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-67",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-68",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-69",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-70",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-71",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-74",
+      "pointer": "evidence/gates/wave2b-laneB2/20260917T150936Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-77",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-78",
+      "pointer": "evidence/gates/wave2b-laneB2/20260917T150936Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-79",
+      "pointer": "evidence/review/wave2b-laneC/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-80",
+      "pointer": "evidence/gates/wave2b-laneB2/20260917T150936Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-82",
+      "pointer": "evidence/gates/wave2b-laneB2/20260917T150936Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-84",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-87",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-88",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-89",
+      "pointer": "evidence/gates/wave2b-laneB/20260917T170101Z-routing-refusal-t25/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-90",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-91",
+      "pointer": "evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-92",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T165932Z/",
+      "kind": "directory",
+      "ok": true
+    },
+    {
+      "id": "T-93",
+      "pointer": "evidence/agent-teams/wave2b-laneA/20260917T160558Z/T-93-register-row.md",
+      "kind": "file",
+      "ok": true
+    }
+  ],
+  "unresolved_count": 0
+}

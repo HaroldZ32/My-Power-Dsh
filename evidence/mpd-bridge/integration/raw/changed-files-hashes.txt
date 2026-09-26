@@ -1,0 +1,17 @@
+ee99c11ea97332f8329f87c3e20a0bd5ab09a14c31e221ec000b0884c9149b31  docs/tui.md
+63f282fa12a63d94a97cc76aa2fc916a9038d5645b39f336ffe7437e31733b76  docs/tui.zh-CN.md
+560b29ecf93a46bd8d77195939672c9ad819a27aacaa6cf4d1df1542296635f2  docs/tui-edition-report.md
+06856df697ff8136d3eea5e1fe87f73c3e44867da75a20d3266c2a47d25b7e3e  .mpd/plans/dsh-tui-edition-report.md
+0e4014e157404e27148ea36fd7f8727dc18467d8c069352fe5696c5be4703827  evidence/tui/ACCEPTANCE-LEDGER.md
+2b97ac99a0993e6f6bc313703b36762e27dc6e63e22bf700839e2dfa245bfecf  evidence/tui/EVIDENCE-INDEX.md
+f7ed1ec33731dc3e9fc53f46de23f4a33d16ce68d04a19813ce3f63abe4304d4  packages/mpd-tui-plugin/README.md
+563a9b0602672c624e4eb0e5f453db49590f2916a48612a607a8f20582691fea  packages/mpd-tui-plugin/README.zh-CN.md
+2a0adbd193c5e02331f2c4e550826276826b8cc94e2459300d4beab9e57e3541  packages/mpd-config-plugin/README.md
+f381e5ede05260ad740e9a442e0a460b989b98a6da9e37c1c26b7dcd67c1f201  packages/mpd-config-plugin/README.zh-CN.md
+docs/tui.md 36097
+docs/tui.zh-CN.md 34794
+docs/tui-edition-report.md 28055
+evidence/tui/ACCEPTANCE-LEDGER.md 17472
+evidence/tui/EVIDENCE-INDEX.md 15491
+36fdecfd045af2695341821eab3b3d59166f9efc742c0dd573995a99f86339fc  docs/tui-edition-report.md
+7a6119ea174c79c3a6427a70f115fb1f769a3b61e203696c1e171b1769ce5d27  .mpd/plans/dsh-tui-edition-report.md

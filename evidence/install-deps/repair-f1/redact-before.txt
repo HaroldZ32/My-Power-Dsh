@@ -1,0 +1,5 @@
+measured_at_utc: 2026-09-20T04:33:32Z
+=== BEFORE: files carrying token=
+107
+=== distinct token values:
+53

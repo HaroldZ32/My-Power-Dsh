@@ -1,0 +1,87 @@
+{
+  "task": "t13",
+  "role": "Architect (independent verification of the two RED-arm repairs)",
+  "attemptId": "c392e2f9-918e-4771-bc47-bdd3ef735e19",
+  "head": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739",
+  "note": "The four in-scope edits were already present in the working tree when this attempt started (t5's revision state had recorded them as uncommitted drafts). This record is an INDEPENDENT verification of those bytes against the frozen t13 contract, plus the commands the contract names.",
+  "fixes": {
+    "F-T7-1": {
+      "status": "closed",
+      "change": "scripts/pack-mpd.mjs PLUGIN_PKGS gained \"mpd-team-watchdog-plugin\" (4th occurrence of the silent-omission class) with a class-recording comment naming mpd-team-compact-plugin / mpd-ext-plugin / mpd-tui-plugin and the measured failure evidence.",
+      "packExit": 0,
+      "packedPathsOnDisk": [
+        "dist/mpd-package/cordis.patch.yml",
+        "dist/mpd-package/packages/mpd-team-watchdog-plugin/dist/index.js",
+        "dist/mpd-package/extensions",
+        "dist/mpd-package/packages/mpd-ext-plugin/dist"
+      ],
+      "packedRow": "dist/mpd-package/cordis.patch.yml:227-228 -> id: mpd-team-watchdog / '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'",
+      "r11": "R11 ok: 17 patch rows present in pack-mpd PLUGIN_PKGS"
+    },
+    "F-T7-2": {
+      "status": "closed",
+      "change": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs schema arm now asserts the shipped F1 rule (keep the TOOL, drop the SCHEMA) instead of the pre-F1 'a foreign outputSchema costs the tool'.",
+      "productUntouched": "packages/** unchanged by this task (git status shows no packages/ path); anchored to packages/mpd-ext-plugin/src/mcp.ts:354-375 and pinned by packages/mpd-ext-plugin/test/mcp.test.ts:642 (both read and confirmed on disk).",
+      "armIsNotVacuous": "the live control is still offered AND called: live.ok=true with offered/called/succeeded=true, and schema.vacuous=false.",
+      "schemaArmObserved": {
+        "vacuous": false,
+        "ok": true,
+        "goodToolOffered": true,
+        "badInputSkipped": true,
+        "badOutputOffered": true,
+        "badOutputSchemaDropped": true,
+        "reportedReason": true
+      },
+      "selfTestPremiseAdded": "the arm's offline self-test now pins that bad_output carries a VALID inputSchema next to its foreign outputSchema, so a pass cannot come from the input rule by accident."
+    },
+    "SKILL_NARRATIVE": {
+      "status": "corrected",
+      "change": "skills/dsh-qa/SKILL.md:77 packed-arm narrative no longer declares a RED on the false premise that the packed tree lacks packages/mpd-ext-plugin and extensions/; it now states the current behaviour. The mcp-bridge row (:78) now documents both shipped schema rules.",
+      "citationsVerified": {
+        "scripts/pack-mpd.mjs:42": "\"mpd-ext-plugin\" in PLUGIN_PKGS — CONFIRMED",
+        "scripts/pack-mpd.mjs:98": "cpSync(extensionsSrc, join(outDir, \"extensions\"), ...) — CONFIRMED",
+        "extension-lifecycle.mjs:385": "case returns GREEN when the packed tree carries plugin + extensions/ — consistent"
+      }
+    },
+    "REPIN": {
+      "asset": "skills",
+      "fileCount": 317,
+      "treeSha": "7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa",
+      "algorithm": "scripts/verify-vendor.mjs:113-121 — sorted relative paths, per-file sha256 over readBytes() (CRLF normalized to LF, NUL-containing files hashed raw, __pycache__/.pyc skipped), hash updated with relpath + \"\\n\" + fileHash + \"\\n\", then a final sha256.",
+      "independentRecompute": "MATCH (317 files, 7a48fdad...)",
+      "gate": "node scripts/verify-vendor.mjs exit 0, printed '[verify-vendor] asset OK: skills 317 files' and '[verify-vendor] PASS'"
+    }
+  },
+  "commands": [
+    { "command": "node scripts/verify-vendor.mjs", "exitCode": 0 },
+    { "command": "node scripts/pack-mpd.mjs", "exitCode": 0 },
+    { "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip", "exitCode": 0 },
+    { "command": "R11 node -e assertion over packages/mpd-bundle/cordis.patch.yml vs scripts/pack-mpd.mjs", "exitCode": 0 },
+    { "command": "git status --porcelain", "exitCode": 0 }
+  ],
+  "changedPaths": [
+    "scripts/pack-mpd.mjs",
+    "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+    "skills/dsh-qa/SKILL.md",
+    "VENDOR_LOCK.json"
+  ],
+  "scopeCompliance": "git status --porcelain lists exactly the four in-scope modified paths plus untracked evidence/extensions/**; no packages/, docs/, presets/, extensions/ or other scripts/ path was touched.",
+  "carryForwardFindings": [
+    {
+      "id": "F-T13-C1",
+      "severity": "low",
+      "file": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "problem": "The packed arm's inline comment and its status string still narrate the fix as 't11's' and describe the GREEN as a future event ('the GREEN packed boot (PLUGIN_PKGS + the extensions/ asset + the packed manifest files/exports)'), while the repair has landed and the arm now reports GREEN. The arm's LOGIC is correct (greenOwner: 't11' is inert data; the ok expression is computed).",
+      "requiredFix": "Reword the comment and the status/greenOwner strings to the current state when the lane is next edited. Deliberately NOT changed here: it is a narrative-only inconsistency, outside the declared inScope list, and editing it would not change the lane's behaviour, so it is reported rather than bundled.",
+      "resolved": false
+    },
+    {
+      "id": "F-T13-C2",
+      "severity": "low",
+      "file": "VENDOR_LOCK.json",
+      "problem": "The skills asset 'source' description string was not extended for this wave's skills edits (it already lists the extension-* QA cases, so it is not wrong, merely not re-narrated).",
+      "requiredFix": "No action required; noted for completeness because AGENTS.md §11 pairs the re-pin with the change that invalidated it.",
+      "resolved": false
+    }
+  ]
+}

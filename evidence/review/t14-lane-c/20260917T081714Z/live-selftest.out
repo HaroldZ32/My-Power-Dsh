@@ -1,0 +1,4 @@
+[lane-c-live self-test] live: PASS (pass/0)
+[lane-c-live self-test] restart-needed: PASS (fail/1)
+[lane-c-live self-test] not-same-instance: PASS (fail/1)
+[lane-c-live self-test] 3/3 arms passed — PASS

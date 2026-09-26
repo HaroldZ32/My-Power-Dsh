@@ -1,0 +1,4 @@
+      "sourceBytes": 48354,
+      "renderedBytes": 48658,
+      "truncated": false,
+      "verdict": "GREEN (full content injected)"

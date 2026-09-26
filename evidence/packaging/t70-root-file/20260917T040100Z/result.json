@@ -1,0 +1,76 @@
+{
+  "task": "t70 — Lane E defect: ship EXTENSIONS-FOR-AGENTS.md in the artifact and make the closure gate see an undeclared-asset omission",
+  "seat": "packaging-engineer",
+  "attemptId": "1c72b39b-02bf-4cff-af64-9923740c7070",
+  "measuredAtUtc": "2026-09-17T03:57–04:02Z",
+  "hostOffset": "+0800",
+  "changedFiles": [
+    { "path": "scripts/pack-mpd.mjs", "sha256_16": "79563bc5fdd6518e", "what": "new named `const ROOT_FILES` table (licence pair + README pair + the extension author's machine contract); the root-file copy loop now iterates that table; the packed manifest's `files[]` spreads the SAME table, so copy and declaration cannot disagree" },
+    { "path": "scripts/verify-pack-closure.mjs", "sha256_16": "08a145cea8d949cc", "what": "new REQUIRED_ROOT_FILES source-side expectation (kind ROOT-FILE): packer table must name the file, source must exist, packed copy must exist AND be byte-equal; fixtures + four new negative-control arms" },
+    { "path": "evidence/packaging/t70-root-file/20260917T040100Z/**", "what": "evidence: scratch-pack harness, relative-link checker, raw logs, readings" }
+  ],
+  "packerChange": {
+    "table": "ROOT_FILES = [LICENSE.md, LICENSE-NOTICES.md, README.md, README.zh-CN.md, EXTENSIONS-FOR-AGENTS.md]",
+    "whyNamed": "the closure gate parses this literal (readPackageList) and requires every REQUIRED_ROOT_FILES entry to appear in it — that comparison is the ONLY check that fires when a file is declared NOWHERE, because the manifest arm and the packed arm both reason over what the packer already decided to ship",
+    "noExportsEntry": "correct: root files are not exported (README.md/LICENSE.md are not either); the manifest arm only requires `./<dir>/*` exports for root asset DIRECTORIES",
+    "bilingual": "no zh-CN twin added: agent-facing English-only at the root, outside verify:docs discovery (measured below: pairs=37 unchanged)"
+  },
+  "gateChange": {
+    "newList": "REQUIRED_ROOT_FILES = [\"EXTENSIONS-FOR-AGENTS.md\"], kind ROOT-FILE",
+    "staticHalf": "(a) packer ROOT_FILES must name it, (b) source file must exist — plus a PARSE finding if the `const ROOT_FILES = [` literal disappears",
+    "packedHalf": "packed copy must exist AND be byte-equal to the source (Buffer.equals) — a packed copy that differs is the same class of failure (bytes no reading was taken on)",
+    "statsLine": "the ok line now reports `root files 1/1`",
+    "newArms": [
+      "negative-control (packed root file gone, exit 1) — PASS",
+      "negative-control (packed root file differs from its source, exit 1) — PASS",
+      "negative-control (root file absent from the source tree, exit 1) — PASS",
+      "negative-control (packer ROOT_FILES drops the file, exit 1) — PASS (fixture-build guard asserts exactly ONE line was removed)"
+    ]
+  },
+  "artifactSideProof": {
+    "method": "SCRATCH pack, not the canonical artifact: `dist/mpd-package/**` is out of this task's scope and the wave packs last in t35, so the harness copies scripts/pack-mpd.mjs, rewrites EXACTLY TWO path constants (`repoRoot`, `outDir`) — refusing to patch unless each anchor matches exactly once — and spawns the copy",
+    "harness": "evidence/packaging/t70-root-file/20260917T040100Z/scratch-pack.mjs sha256 8f69e0be6c2961be",
+    "packerShaAtPackTime": "79563bc5fdd6518e (my edited packer)",
+    "patchedCopySha256_16": "6fa8aeaf704fb273 (2 of 517 lines rewritten, every other line byte-identical)",
+    "run": "exit 0; [pack-mpd] validator: generated … (9 exports) from the shipped bundle; staged package -> <scratch>",
+    "scratchArtifact": { "files": 1190, "manifestSha256_16": "eaa0919702bf5b33", "carriesTheFile": true, "fileSha256_16": "9a157363a16bfeab", "sourceFileSha256_16": "9a157363a16bfeab", "manifestDeclaresIt": true },
+    "canonicalArtifactUntouched": "dist/mpd-package manifest mtime still 2026-09-17T10:56:59 local (02:56:59.067Z); still without the file; not written by this task",
+    "scratchTreeDisposition": "removed after the readings (18 MB, 1190 files) — the full file list is kept at scratch-artifact.files.txt and the tree is regenerable with one documented command"
+  },
+  "closureGateReadings": {
+    "scratchArtifact": { "command": "node scripts/verify-pack-closure.mjs --packed <scratch> --source-root . --require-packed", "exit": 0, "verdict": "… packed tree: <scratch> (379 asset files); agent references 3/3; root files 1/1" },
+    "canonicalArtifact": { "command": "node scripts/verify-pack-closure.mjs", "exit": 1, "findings": 1, "detail": "the packed tree does not carry EXTENSIONS-FOR-AGENTS.md — exactly the single finding the new arm adds, on an artifact packed at 02:56:59.067Z, i.e. before this change" }
+  },
+  "linkChecker": {
+    "path": "evidence/packaging/t70-root-file/20260917T040100Z/check-relative-links.mjs",
+    "sha256_16": "509ba82c623a184f",
+    "readings": {
+      "sourceCheckout": { "exit": 0, "instances": 10, "resolving": 10, "broken": 0, "note": "README.md 2, README.zh-CN.md 2, docs/extension-authoring-guide.md 2, docs/extension-authoring-guide.zh-CN.md 2, docs/index.md 1, docs/index.zh-CN.md 1 — exactly the six files the contract names" },
+      "canonicalArtifact": { "exit": 1, "instances": 10, "resolving": 0, "broken": 10 },
+      "scratchArtifact": { "exit": 0, "instances": 10, "resolving": 10, "broken": 0 }
+    },
+    "scratchNoiseExplained": "an UNFILTERED source scan reads 20 instances / 10 broken because `.qa-reloc/mpd-pkg-relocated/**` — the QA relocation scratch copy of the artifact's own docs — is picked up; it is scratch, not the shipped link surface (logged as links-source.log vs links-source-clean.log with the skip list that excludes .qa-*)"
+  },
+  "selfTest": {
+    "command": "node scripts/verify-pack-closure.mjs --self-test",
+    "exit": 1,
+    "arms": "20/21",
+    "redArm": "positive-control (real tree, exit 0) — exit 1 with 1 closure violation",
+    "cause": "arm 1 asserts the tree AS IT STANDS is closed, and the canonical artifact predates this change; t70 may not pack it (out of scope) and the wave packs last in t35",
+    "preExistingDesignNote": "the arm has always depended on the canonical artifact being current w.r.t. the asset declarations — before this change nothing was missing from it, so the coupling was latent",
+    "handoffToT35": "after the re-pack run: (1) node scripts/verify-pack-closure.mjs --self-test → expect 21/21 and exit 0; (2) node scripts/verify-pack-closure.mjs → expect exit 0 with `root files 1/1`; (3) node .../check-relative-links.mjs --root dist/mpd-package → expect 10 instances / 0 broken"
+  },
+  "verifyDocs": { "command": "bun run verify:docs", "exit": 0, "pairs": 37, "failed": 0, "violations": 0, "exempt": 17, "reading": "the new root file does not enter docs discovery; no zh-CN twin was added or required" },
+  "twinScan": {
+    "command": "node evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs --pack <scratch> --repo . --json",
+    "exit": 0,
+    "reading": { "identical": 1187, "drift": [], "missing": [], "byDesign": 2, "noTwin": 1, "ok": true },
+    "targetFile": { "inDrift": false, "inMissing": false, "inByDesign": false, "note": "it has a source twin, so it lands in the `identical` class (1187 includes it) and the two counts that must not move did not: byDesign=2, noTwin=1, ok=true" }
+  },
+  "wave2RowsRecorded": {
+    "agentsMdDocForm": "shipped docs present 4 relative links to AGENTS.md, which is DELIBERATELY unshipped (scripts/pack-mpd.mjs documents the exclusion) — a doc-form candidate row, NOT fixed here (docs/** and AGENTS.md are out of scope)",
+    "vendoredLinkHits": "11 of the wider 'escaping link' hits sit in vendored/ported upstream files (`_deps/**` comments, ported `skills/*/AGENTS.md`) — provenance, left alone",
+    "carryForwardFile": ".mpd/TODO.md is not in this task's scope; these two rows are handed to t35 (which owns the carry-forward append), with this result.json as the source"
+  },
+  "bounds": "all readings are on the tree as it stood 03:57–04:02Z; the scratch artifact was produced by the patched COPY (2 path constants) and removed after the readings, so an artifact-side re-check must re-run the documented harness (≈10 s, 18 MB); the canonical artifact was not written by this task; `--self-test` exits 1 for the single named real-tree arm until t35 re-packs — the four NEW arms and the fixture positive control all pass"
+}

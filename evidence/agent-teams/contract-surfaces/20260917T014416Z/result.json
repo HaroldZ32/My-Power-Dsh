@@ -1,0 +1,27 @@
+{
+  "task": "t14 — lane B2: T-02 owned contracts become repairable, T-03 edit_plan.add_task keeps the full quality contract, T-52 terminal output is append-repairable",
+  "attemptId": "32aa56aa-dc08-4b89-808a-2d1a6ede8ee0",
+  "measuredAt": "2026-09-17T01:44Z",
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs"
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-agent-teams-plugin", "exitCode": 0, "status": "passed", "evidence": "229 pass / 0 fail / 1748 expect() calls, 64 files (test.log); the 4 new tests are in self-fix-tests/contract-surfaces.test.mjs" },
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "exitCode": 0, "status": "passed", "evidence": "already applied: 59 mpd delta region(s) across 9 adopted file(s) (check.log)" },
+    { "command": "bun run typecheck", "exitCode": 0, "status": "passed", "evidence": "$ tsgo --noEmit (typecheck.log)" }
+  ],
+  "chosenShapes": {
+    "T-02": "CAPTAIN-AMEND-WITHOUT-TAKEOVER + CONTRACT-VERSION STAMP. The ownership guard now exempts `amend` (definition-only), so a captain repairs a member-owned contract in place; the running-amend branch treats an IN-FLIGHT task (claimed/in_progress) as attempt-preserving — nothing is invalidated because the task's output does not exist yet — and stamps contractVersion/contractAmendedBy/contractAmendedAt. claim_task stamps attemptContractVersion, so agent_teams_task_contract renders the revision pair and says 'AMENDED since this attempt was claimed' when they diverge. A member may amend ONLY while its own task is `claimed` (claim time), with an amend-only carve-out from the attempt_id requirement; anywhere else the refusal stays LOUD.",
+    "T-03": "edit_plan.add_task accepts kind/objective/acceptance/inScope/outOfScope/verify, carries them into the staged mutation and runs the SAME `validateCreateTask` gate create_task runs (same error text), so a staged edit can no longer downgrade a quality task to legacy `work`.",
+    "T-52": "APPEND-ONLY REPAIR: a new `output_append` parameter appends to a TERMINAL task's stored output (never replaces: the new value starts with the old one), emits agent-teams/task-output-appended, and refuses (a) a blank append, (b) any append on a non-terminal task, (c) every other terminal change still hits the immutability guard."
+  },
+  "registry": { "before": 51, "after": 59, "generatedBy": "node scripts/patch-agent-teams-fixes.mjs --write-registry (never hand-edited)" },
+  "notes": {
+    "statusEnum": "NOT widened: `status: \"claimed\"` would have made the REQUIRED-status rule expressible for a claimed task, but the enum is pinned by test/update-task-diagnostics.test.mjs:175 (OUTSIDE t14's inScope), so the claim-time amend keeps the status parameter inert (the amend branch returns before any status write) and gates on the TASK's own status instead. No out-of-scope edit was made.",
+    "brittlePin": "self-fix-tests/registry-context-heal.test.mjs pinned the FIRST drifted delta id by name; adding regions above it (t14 did) legitimately changes that id. The assertion now extracts the named id and requires it to be a REGISTERED delta — order-independent and strictly stronger than the literal id."
+  },
+  "handoff": "delta-table-handoff-t14.md — the AGENTS.md / agent-references rows for the 8 new regions and the 4 changed ones, plus the 51 → 59 count and the REMOVED `mpd-delta update-task-amend-captain-only` id (which the t9 handoff still lists)."
+}

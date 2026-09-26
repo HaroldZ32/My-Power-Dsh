@@ -1,0 +1,1 @@
+[bundle-lifecycle] FAIL: install step failed: no dsh launcher on PATH: install the harness (`npm install -g @deepseek-ai/dsh`) or put its bin directory on PATH

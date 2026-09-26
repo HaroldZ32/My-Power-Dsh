@@ -1,0 +1,68 @@
+{
+  "case": "install-deps/implementation/comp5_web_package_absent",
+  "measured_at_utc": "2026-09-20T03:31:35.109Z",
+  "author_run_advisory": true,
+  "expectation": "guard DISABLED (package not resolvable); boot green, degraded",
+  "shadowManifest": "/root/dshProj/my-power-dsh/evidence/install-deps/implementation/sandbox/comp5/shadow-mpd/package.json",
+  "exit": {
+    "code": 0,
+    "signal": null
+  },
+  "http": {
+    "attempted": true,
+    "probes": [],
+    "token": {
+      "status": 303,
+      "location": "/",
+      "setCookieBytes": 315
+    },
+    "index": {
+      "status": 200,
+      "bytes": 27913,
+      "cookie": "dsh-auth-yqmFLCvJyafLwlADFy1mBt3ARv_N2H0xjWvERaJ1NQk=v1.eyJ2ZXJzaW9uIjoxLCJhdXRob3JpdHkiOiIxMjcuMC4wLjE6MzQwNSIsImlzc3VlZEF0IjoxNzg5ODc1MDkxNTc4LCJleHBpcmVzQXQiOjE3OTI0NjcwOTE1Nzh9.vpTdxgX4Dw-mJPEdGLi8Q1vhPB96qnlaP1eyi6tBQx4"
+    },
+    "clientCompositeHasSidebar": false,
+    "clientStandalone": [],
+    "sidebarApi": {
+      "status": 404,
+      "body": ""
+    }
+  },
+  "scan": {
+    "guard": [
+      {
+        "decision": "DISABLED",
+        "reason": "dsh-better-sidebar is not resolvable from the profile node_modules"
+      }
+    ],
+    "probes": [
+      {
+        "total": 180,
+        "rows": [
+          "mpd-better-sidebar|js-guarded|fiber=false"
+        ],
+        "web_entry": true
+      },
+      {
+        "total": 182,
+        "rows": [
+          "mpd-better-sidebar|js-guarded|fiber=false"
+        ],
+        "web_entry": true
+      }
+    ],
+    "fatal": [],
+    "ready": true
+  },
+  "log_sha256": "3e0a513dfc43efc6918d8398058179cf3592311067b1bdd4200ff544c6b82578",
+  "log_read_at_utc": "2026-09-20T03:31:35.109Z",
+  "verdict": {
+    "fatal_signatures": [],
+    "guard_decisions": [
+      "DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+    ],
+    "sidebar_rows_in_entry_list": [
+      "mpd-better-sidebar|js-guarded|fiber=false"
+    ]
+  }
+}

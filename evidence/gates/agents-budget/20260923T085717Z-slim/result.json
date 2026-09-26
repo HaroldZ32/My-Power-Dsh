@@ -1,0 +1,121 @@
+{
+  "schema": "agents-md-slim/2",
+  "at": "2026-09-23T08:57:17Z",
+  "reverified_at": "2026-09-23T09:47:35Z",
+  "reviewed_at": "2026-09-23T10:01:27Z",
+  "final_hash_sha256": "b88e3107d96a3c2703b0bc597b76e0b388eea43452eefd251e71aa12290bfc2b",
+  "goal": "Slim the auto-injected repository manual (AGENTS.md) while keeping the repository working exactly as it did: every binding rule, machine contract, §N citation and audited path preserved.",
+  "artifact": {
+    "file": "AGENTS.md",
+    "baseline_source": "git show 88e94083^1:AGENTS.md (the first parent of the merge that landed this work), copied to AGENTS.md.before — 64,424 B, LF",
+    "baseline_bytes": 64424,
+    "after_bytes": 56653,
+    "saved_bytes": 7771,
+    "saved_percent": 12.1,
+    "repairs_after_the_first_commit": "six, in two passes: three found by prose-loss-sweep.mjs (the §3 package roles, the docs-gate ignored-targets clause, the 'NOT presets' correction) and three by the independent review (the wrong bypass-test path spelling, the emptied §3 exemption target, the stale T-67 build-script claim)",
+    "committed_intermediate": {
+      "commit": "8dc86a5e (merge 88e94083) docs(agents): slim the repository manual into the 64 KiB injection budget",
+      "bytes": 54396,
+      "note": "the first committed revision of this change; the final working tree is 1,548 B LARGER because a re-verification pass restored three fidelity losses (see preservation.reverification_findings)"
+    },
+    "other_tracked_files_content_changed": []
+  },
+  "budget": {
+    "instrument": "evidence/gates/agents-budget/20260923T085717Z-slim/budget-check.mjs (the INSTALLED harness renderer, @deepseek-ai/dsh-agent-instructions, maxBytes=65536; the wave-1 instrument hard-coded a Linux nvm path, so this copy resolves the same module on win32)",
+    "eol_normalized": true,
+    "before": { "label": "before", "source_bytes": 64424, "raw_source_bytes": 64424, "eol_as_read": "lf", "rendered_bytes": 64728, "headroom_bytes": 808, "verdict": "GREEN (full content injected)" },
+    "after": { "label": "post", "source_bytes": 56653, "raw_source_bytes": 56653, "eol_as_read": "lf", "rendered_bytes": 56957, "headroom_bytes": 8579, "verdict": "GREEN (full content injected)" },
+    "negative_control": { "label": "control", "source_bytes": 67704, "rendered_bytes": 65536, "headroom_bytes": 0, "verdict": "RED (truncated)", "note": "the archived T-22 fixture, reused so a green reading is a measurement and not an unconditional pass" },
+    "checks": { "post_renders_full_content": true, "post_under_budget": true, "post_eol_is_lf": true, "negative_control_is_red": true },
+    "verdict": "PASS",
+    "why_it_matters": "at 808 B of headroom the baseline was 1.2% from the cap; one more paragraph would have made a live session receive a TRUNCATED manual",
+    "eol_hazard_measured": ".gitattributes pins `*.md text eol=lf`, so the manual is LF in every working tree; but a file NOT named *.md matches only `* text=auto` and IS checked out CRLF on Windows. Measured: AGENTS.md.before reads 65,163 B / 739 CRLF in a Windows working tree against its 64,424 B LF blob (+1 B per line). Un-normalized, the baseline would render 65,467 B = 69 B of headroom instead of 808. The instrument now normalizes EOL, reports raw_source_bytes/eol_as_read, and asserts post_eol_is_lf."
+  },
+  "preservation": {
+    "instrument": "evidence/gates/agents-budget/20260923T085717Z-slim/preservation-audit.mjs (plus prose-loss-sweep.mjs and crossref-check.mjs, added by the re-verification pass)",
+    "why_a_new_instrument": "T-22's move-audit.mjs demanded BYTE-IDENTITY per segment because that wave only MOVED text. This change COMPRESSES text, so byte-identity is the wrong instrument; this one asks the questions a compression must still answer (contract survival, a fully triaged token census, a prose-level sweep, and citation resolution).",
+    "numbered_sections": { "before": 13, "after": 13, "missing": [] },
+    "contracts_checked": 34,
+    "contracts_missing": [],
+    "contracts_present_only_after_reflow": ["delta-registry-derived"],
+    "token_census": { "pre_distinct": 528, "left_the_manual": 33, "moved_to_references": 6, "accepted_with_reason": 27, "untriaged": 0 },
+    "prose_sweep": {
+      "instrument": "prose-loss-sweep.mjs — for every SENTENCE of the old manual, does any 6-word run survive anywhere in the new one? This closes the gap a token check cannot see (prose-only loss, e.g. the role descriptions that are not code spans).",
+      "prose_units": 438,
+      "unmatched": 79,
+      "reading": "TRIAGE LIST, not a verdict: a fully REWRITTEN sentence also lands here, which is the expected shape for a compression. Each of the 79 was inspected and falls into: reworded-rule-intact (the large majority), §3 tree reflow (three real role losses repaired), or a deliberate example trim already ledgered with its reason."
+    },
+    "crossref": {
+      "instrument": "crossref-check.mjs",
+      "sections_defined": 13,
+      "in_manual_citations": 23,
+      "in_manual_unresolved": 0,
+      "outside_citations": 180,
+      "outside_unresolved": 0,
+      "files_scanned": 1239,
+      "verdict": "PASS",
+      "reading": "every §N citation inside the manual AND every explicit `AGENTS.md §N` citation anywhere in the repository still names a section that exists"
+    },
+    "reverification_findings": [
+      "§3 had lost 17 of 26 package role comments, leaving the map INCONSISTENT (6 annotated, 20 bare) => every package now carries a terse role",
+      "§1's docs-gate clause 'external URLs, in-page anchors and code spans are ignored' was dropped => restored",
+      "§1's emphatic roster correction 'NOT presets' and the two env-key descriptors ('the sg resolver' / 'codegraph serve') were dropped => restored",
+      "INSTRUMENT DEFECT: budget-check.mjs read whatever EOL the working copy had, which on a Windows checkout inflated the baseline by 739 B and would have shown a re-runner headroom=69 instead of 808 => it now normalizes EOL and asserts post_eol_is_lf"
+    ],
+    "defects_found_by_the_first_audit_and_repaired": [
+      "verify-manual-paths was absent from the §4 gate table although it is the binding gate for this file => the 'Manual paths' row was added",
+      "the --dump-config paragraph had lost its provenance anchors => the mounting-boot artifact paths and the WORKMATE_TOOLS reading were restored (T-90: a claim carries its artifact anchor)"
+    ],
+    "false_positive_classes_reported": [
+      "a code span MIS-PAIRED by line-wrapping in the old file (the closing backtick of a wrapped inline code starts a new span) - counted as a non-token in the ledger",
+      "a needle or token split across a line break - the instrument compares REFLOW-NORMALIZED text, and reports literal-only matches apart as contractsPresentOnlyAfterReflow",
+      "markdown EMPHASIS markers (**bold**, `code`) made a surviving rule shingle differently - prose-loss-sweep.mjs flattens them on both sides before comparing"
+    ],
+    "verdict": "PASS"
+  },
+  "independent_review": {
+    "delegation_history": "the roster Reviewer path was commissioned TWICE and returned an EMPTY final message both times (no verdict, no findings) — not counted as a review; the THIRD attempt via the plain subagent path produced the substantive report summarised here",
+    "verdict": "needs_revision",
+    "binding_rule_loss": "NONE — the reviewer read both files end-to-end, walked all 13 sections, re-ran both repo gates, scored every BEFORE sentence containing MUST/NEVER/binding/refuse/deny/do-not/exactly/only, and opened the files the manual names (scripts/verify-gates.mjs, package.json, the three package build scripts, three committed dist artifacts, scripts/verify-docs-parity.mjs, packages/mpd-dsh-adapter-plugin/src/index.ts, agent-references/index.md, the roles/workmate deny lists)",
+    "findings": [
+      { "id": "F1", "severity": "medium", "what": "the bypass-test pointer was spelled `test/adapter-bypass-inventory.test.mjs` — no root `test/` dir exists; verify-manual-paths bucketed it as over-report:notRoot so it could not fail, and the §4 row added by this same change over-claimed that the gate audits every code-span path token", "verified_by_author": "CONFIRMED — the file lives at packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs", "repair": "pointer re-spelled package-relative (now root-anchored, so the gate AUDITS it: audited 106 -> 107) and the §4 row now states the gate's real bucket rule" },
+      { "id": "F2", "severity": "medium", "what": "the Language-policy bullet points at `(see §3)` for the bilingual exemption classes, but §3's docs/ line had been compressed to a bare description — 8 docs/*.md files carry `<!-- docs-parity: exempt … (AGENTS.md §3) -->` and the docs gate itself prints 'process record (AGENTS.md §3: plan-*.md)', so all of them pointed at an emptied target", "verified_by_author": "CONFIRMED — 8 docs + 6 gate-source citations; §3 no longer contained 'exempt'/'process record'", "repair": "the exemption sentence is restored in §3's docs/ line, so every citation resolves again without touching a gate script" },
+      { "id": "F3", "severity": "low", "what": "the Build bullet asserted a present-tense fact about three named files ('the form mpd-ext-plugin, mpd-team-watchdog-plugin and mpd-tui-plugin STILL CARRY in their own build scripts') — all three already use the canonical root-qualified form", "verified_by_author": "CONFIRMED — all three build scripts begin `cd \"$(git rev-parse --show-toplevel)\" && bun build packages/…`, dist/sdk.js carries the root-relative comment, and fix 39793669 IS an ancestor of the baseline (so BEFORE's hedge was already stale)", "repair": "the trap is now stated as a rule (a PACKAGE-directory build is flagged STALE) with the three packages described as having USED that shape, moved to the canonical form by T-67" }
+    ],
+    "instrument_blind_spots_the_reviewer_identified": [
+      "crossref-check.mjs proves only that a §N EXISTS, so an EMPTIED §3 body passes it (F2)",
+      "preservation-audit.mjs checks needles that live in the Language policy, so it could not see that the §3 pointer TARGET had been emptied (F2)",
+      "NO instrument opens the files the manual NAMES, so a wrong path spelling bucketed as an over-report is invisible to all of them (F1) — the one instrument that does open them is the path gate, and its own bucket rule is what hid it",
+      "prose-loss-sweep.mjs DID list the T-67 sentence as unmatched (its entry 69); it was trimmed rather than re-verified against the tree (F3)",
+      "LESSON: a needle must be checked at its TARGET; a prose-sweep hit must be opened against the tree; an instrument that cannot see a class of defect must not be reported as if it covered it"
+    ],
+    "could_not_verify_on_this_host": [
+      "bun run verify:gates, node scripts/verify-dist-fresh.mjs, node scripts/mpd-bg.mjs --self-test and bun test are blocked by child-spawn BUILD_FAILED/EPERM on piped stdio, so F3 rests on the build scripts plus the committed dist comments rather than on the gate",
+      "the 'lib/client.js is still the 0.1.14 client build' claim (that bundle carries no version string) and the T-44 installed-harness-row claim — both unchanged from BEFORE"
+    ]
+  },
+  "consumers": {
+    "verify_manual_paths": { "command": "node scripts/verify-manual-paths.mjs", "audited": 107, "resolved": 107, "unresolved": 0, "anticipatory": 2, "exit": 0, "verdict": "PASS", "note": "the F1 repair made the bypass-test pointer ROOT-ANCHORED, so the gate now audits and resolves it; the earlier over-report:notRoot entry for `test/...` is gone" },
+    "verify_docs_parity": { "command": "node scripts/verify-docs-parity.mjs", "pairs": 38, "violations": 0, "derived": 3, "dead_links": 0, "exit": 0, "verdict": "PASS", "note": "AGENTS.md still carries its A1–D42 derived-value claim, checked against the registry table" },
+    "qa_case_substring": { "consumer": "skills/dsh-qa/scripts/agent-teams-adopt.mjs", "assertion": "AGENTS.md includes \"Adopted plugins keep their plugin ids and tool names\"", "measured_directly": true, "verdict": "PASS" },
+    "verify_gates_aggregate": { "command": "node scripts/verify-gates.mjs", "verdict": "NOT RUNNABLE ON THIS HOST", "reading": "all 5 members FAIL with 'spawn error: EPERM' (the sandbox denies node->node piped stdio), so each member was run directly" }
+  },
+  "caveats": [
+    "agent-teams-adopt --self-test is RED on this host and the manual is NOT the cause: its AGENTS.md assertion passes when run directly, and it then fails inside install-profile.mjs --self-test, which was red directly ('sidebar guard drifted from the bundle patch') because of an in-flight uncommitted mpd-bundle-plugin sidebar change in the working tree at the time (since committed by the captain). The case also spawns a child with piped stdio, which is EPERM under this sandbox independently of the tree state.",
+    "verify-manual-paths was RED in the baseline run (unresolved=1 - .mpd/plans) and is green now because the manual no longer spells that gitignored runtime directory in a code span. The gate's verdict therefore depended on transient workspace state; the recommended follow-up is to classify .mpd/** as runtime state in the GATE, not to re-add a claim that a transient directory exists.",
+    "The independent review took THREE attempts: the roster Reviewer path returned an empty final message twice (not a review), and the third attempt (plain subagent) produced a substantive report with verdict needs_revision, NO binding rule lost, and three real findings — all three verified against the tree by the author and repaired (see independent_review). Its critique of the instruments' blind spots is recorded there because the author's own four PASS instruments could not see any of the three defects.",
+    "EOL HYGIENE: the first commit of these evidence files stored LF blobs correctly, but on a Windows checkout every evidence file whose name is not *.md/*.ts/*.yml is re-materialized as CRLF by `* text=auto` (git warns 'LF will be replaced by CRLF the next time Git touches it'). The working copies were normalized back to LF (content-identical; git diff --numstat shows no content change for them). Recommended one-liner: add `evidence/** text eol=lf` to .gitattributes so a re-runner's baseline reading cannot be inflated by 1 B per line.",
+    "This change is manual-only: no gate script, no plugin source and no reference file's content was modified."
+  ],
+  "acceptance": [
+    { "criterion": "the manual renders under the harness cap with headroom", "status": "PASS", "evidence": "rendered 64,728 B / 808 B headroom -> 56,957 B / 8,579 B headroom; the oversized control is still RED; post_eol_is_lf holds" },
+    { "criterion": "every §1–§13 section and every machine contract survives", "status": "PASS", "evidence": "13/13 sections; 0 of 34 contract needles missing (1 matches only after reflow-normalization, reported separately)" },
+    { "criterion": "no rule is silently dropped: every token that left the manual is moved or triaged, and the prose level is swept too", "status": "PASS", "evidence": "33 tokens left: 6 moved to agent-references, 27 accepted with a written reason, 0 untriaged; the prose sweep's 79 unmatched sentences are triaged by class, and its three real losses were repaired" },
+    { "criterion": "the manual's own consumers and every §N citation still resolve", "status": "PASS", "evidence": "verify-manual-paths PASS (107/107 audited, including the repaired bypass-test pointer); verify-docs-parity PASS; the QA case's AGENTS.md substring assertion passes; 24 in-manual + 180 repo-wide citations resolve (1,239 files scanned)" },
+    { "criterion": "no file other than AGENTS.md has its CONTENT changed", "status": "PASS", "evidence": "the change is a sequence of edit-tool operations on AGENTS.md; the instruments and readings live in this new evidence directory, and the only other working-tree edits are EOL normalizations with no content diff (git diff --numstat)" },
+    { "criterion": "an independent review was obtained and every finding closed", "status": "PASS", "evidence": "the third review attempt returned a substantive report (verdict needs_revision, explicitly NO binding rule lost); all three findings were verified by the author against the tree and repaired; the repaired content was re-measured and every instrument and gate is PASS (budget, preservation, prose sweep, crossref, verify-manual-paths 107/107, verify-docs-parity)" }
+  ],
+  "verdict": "PASS",
+  "failedChecks": []
+}
+

@@ -1,0 +1,538 @@
+// Read-only projection of ONE team's workflow — the data behind the two TUI
+// surfaces (`mpd-tui-team`, `mpd-tui-plan`).
+//
+// 0.1.7 REBASE (boundary, frozen contract `.mpd/plans/tui-team-surface.md` §5.5): the retired
+// vendored `agent-teams` plugin and its `<workspace>/.mpd/team/<teamId>/team.json` are GONE. The
+// source is now the OFFICIAL live readout, resolved through the adapter
+// (`liveTeamViews(dsh, workspace)` → `dsh.teamLiveTeams()`), and the mailbox readers that mirrored
+// `<teamDir>/inbox/*.jsonl` are gone with the file they read.
+//
+// Those bytes are live — NOTHING here reads a disk record any more — and what the official plane
+// does not carry is reported as ABSENT rather than invented:
+//   * `subject`, `status`, `blockedBy`, `ownerName` come from the board, so the DAG, the depth
+//     ordering and the BLOCKED marking keep working;
+//   * `kind`, `verdict`, `round`, `attempt` have NO official field: they stay OPTIONAL and are
+//     never populated, so a renderer that prints them prints the honest blank;
+//   * `phase` is DERIVED (a teammate running/provisioning ⇒ `active`), there is no staged plan and
+//     no `approvedAt`/`createdAt`, so `staged` is always false;
+//   * the peer mailbox lives in the Lead Session log with no adapter seam: `unread` is `null`
+//     ("not observable"), never a fabricated `0`.
+//
+// This module still performs ZERO writes — no write primitive may appear in this package's built
+// bytes — and it never touches a harness service: the ADAPTER is the only contact surface, and a
+// scene receives its resolved views from the composition root.
+//
+// Nothing here throws: an absent/unreadable readout degrades to an empty workflow plus a bounded
+// problem note. A scene must never be able to take the session down (contract §10, last criterion).
+import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { scalarText } from "./sanitize.js"
+
+/** Bounded caps — so one pathological readout cannot stall a render. */
+const MAX_TEAMS = 20
+const MAX_TASKS = 5000
+const MAX_PROBLEMS = 5
+/** The mailbox key cap (mirrors the retired `MAX_KEY_LENGTH` the normalisation was written for). */
+const MAILBOX_KEY_MAX = 48
+
+/** One task row of the workflow view. */
+export interface TeamTaskRow {
+  id: string
+  subject: string
+  /** Optional in the durable record — a hand-written fixture may omit it (§3.1 item 4). */
+  kind?: string
+  status: string
+  /** The visual state the Web panel computes: completed|failed|cancelled|running|blocked|open. */
+  visual: string
+  assignee?: string
+  attempt?: number
+  round?: number
+  verdict?: string
+  dependencies: string[]
+  failedDependencies: string[]
+  /** Longest dependency path length (0 = a root); the row's indent. */
+  depth: number
+}
+
+/** One roster row: the member plus the progress facts the Web panel shows. */
+export interface TeamMemberRow {
+  name: string
+  role?: string
+  /** `provider/model`, or the bare model when no provider is recorded. */
+  route?: string
+  status: string
+  done: number
+  total: number
+  progress: number
+  currentTask?: string
+  /** `null` = NOT OBSERVABLE on the official plane (the mailbox is the Lead session's). */
+  unread: number | null
+}
+
+/** The team-level facts. */
+export interface TeamHead {
+  id: string
+  name: string
+  phase: string
+  description?: string
+  captainSessionId?: string
+  planReviewState?: string
+  /** `approvedAt ?? createdAt`, the record's own ordering stamp. */
+  stagedAt?: string
+  /** True while `phase === "staged"` — the Web's own precondition for the plan editor. */
+  staged: boolean
+  runnable: boolean
+  links: number
+}
+
+/** The whole projection. `team` is undefined when the workspace has no readable record. */
+export interface TeamWorkflow {
+  workspace: string
+  team?: TeamHead
+  members: TeamMemberRow[]
+  tasks: TeamTaskRow[]
+  counts: {
+    total: number
+    completed: number
+    inProgress: number
+    pending: number
+    claimed: number
+    failed: number
+    cancelled: number
+    other: number
+  }
+  /** `unread: null` = not observable; `captainInbox` is always empty for the same reason. */
+  mail: { unread: number | null; captainInbox: { from: string; content: string }[] }
+  /** Team ids the team watchdog currently holds for this workspace (never fabricated). */
+  holds: readonly string[]
+  problems: string[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+/** Sanitized optional text: `undefined` when the field is missing or not a scalar. */
+function asText(value: unknown, maxCells: number): string | undefined {
+  return scalarText(value, maxCells)
+}
+
+/** Spread one optional sanitized field into an object literal. */
+function optional(key: string, value: string | undefined): Record<string, string> {
+  return value === undefined ? {} : { [key]: value }
+}
+
+/** The adopted mailbox key normalization (mirrors `state.js:sanitizeKey`). */
+export function mailboxKey(name: string): string {
+  const cleaned = name
+    .normalize("NFC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
+  if (cleaned === "") return ""
+  const points = [...cleaned]
+  return points.length > MAILBOX_KEY_MAX ? points.slice(0, MAILBOX_KEY_MAX).join("") : cleaned
+}
+
+/** The dependency ids that still block (`state.js:dependencyStates`). */
+function blockingDependencies(tasks: readonly TeamTaskRow[], dependencies: readonly string[]): { blocking: string[]; failed: string[] } {
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const blocking: string[] = []
+  const failed: string[] = []
+  for (const id of dependencies) {
+    const status = byId.get(id)?.status
+    if (status === "completed" || status === "cancelled") continue
+    if (status === "failed") failed.push(id)
+    else blocking.push(id)
+  }
+  return { blocking, failed }
+}
+
+/** The visual state the Web panel renders (`state.js:1397-1407`). */
+export function taskVisualState(status: string, tasks: readonly TeamTaskRow[], dependencies: readonly string[]): string {
+  if (status === "completed") return "completed"
+  if (status === "failed") return "failed"
+  if (status === "cancelled") return "cancelled"
+  if (status === "in_progress") return "running"
+  return blockingDependencies(tasks, dependencies).blocking.length > 0 ? "blocked" : "open"
+}
+
+/**
+ * Longest dependency-path depth per task (`state.js:1415-1442`). A cycle is
+ * visible instead of fatal: a revisited node resolves to 0 and the caller adds a
+ * note, so the render can never hang or blow the stack.
+ */
+export function taskDepths(tasks: readonly { id: string; dependencies: readonly string[] }[]): Map<string, number> {
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const depths = new Map<string, number>()
+  const visiting = new Set<string>()
+  const depthOf = (taskId: string): number => {
+    const cached = depths.get(taskId)
+    if (cached !== undefined) return cached
+    if (visiting.has(taskId)) return 0
+    const task = byId.get(taskId)
+    if (task === undefined) return 0
+    visiting.add(taskId)
+    const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort()
+    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf))
+    visiting.delete(taskId)
+    depths.set(taskId, depth)
+    return depth
+  }
+  for (const task of tasks) depthOf(task.id)
+  return depths
+}
+
+/** Ids taking part in a dependency cycle (a bounded, visible note instead of a hang). */
+export function cycleIds(tasks: readonly { id: string; dependencies: readonly string[] }[]): string[] {
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const done = new Set<string>()
+  const stack: string[] = []
+  const inStack = new Set<string>()
+  const cyclic = new Set<string>()
+  const visit = (id: string): void => {
+    if (done.has(id)) return
+    if (inStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id))) cyclic.add(entry)
+      return
+    }
+    const task = byId.get(id)
+    if (task === undefined) return
+    inStack.add(id)
+    stack.push(id)
+    for (const dependency of task.dependencies) if (byId.has(dependency)) visit(dependency)
+    stack.pop()
+    inStack.delete(id)
+    done.add(id)
+  }
+  for (const task of tasks) visit(task.id)
+  return [...cyclic].sort()
+}
+
+/** The first unfinished task a member owns (`snapshot.js:15-21`). */
+function currentTaskOf(memberName: string, tasks: readonly TeamTaskRow[]): string | undefined {
+  for (const task of tasks) {
+    if (task.status === "in_progress" && task.assignee === memberName) return task.id
+  }
+  return undefined
+}
+
+/** An empty workflow: what every failure path renders instead of a crash. */
+function emptyWorkflow(workspace: string, problems: string[], holds: readonly string[]): TeamWorkflow {
+  return {
+    workspace,
+    members: [],
+    tasks: [],
+    counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems,
+  }
+}
+
+/**
+ * The LIVE team views that belong to ONE workspace, resolved through the adapter.
+ *
+ * The official readout is process-wide, so the per-workspace scoping the TUI needs is recovered
+ * from the SAME registry the readout itself folds: a view belongs to `workspace` when its Lead
+ * session is a live Agent whose session cwd IS that workspace. When the registry cannot answer at
+ * all, every view is returned — the readout is then the only truth available, and showing a live
+ * team is better than showing none. A readout that throws degrades to `[]`, never a throw.
+ *
+ * @param dsh - the adapter (the ONE harness contact surface).
+ * @param workspace - the calling session's workspace root.
+ * @returns the views, never throwing.
+ */
+export function liveTeamViews(dsh: DshAdapter, workspace: string): DshTeamView[] {
+  let views: DshTeamView[]
+  try {
+    views = dsh.teamLiveTeams() ?? []
+  } catch {
+    return []
+  }
+  let agents: readonly unknown[] = []
+  try {
+    agents = dsh.liveAgents() ?? []
+  } catch {
+    agents = []
+  }
+  if (agents.length === 0 || workspace === "") return views.slice(0, MAX_TEAMS)
+  const cwdOf = new Map<string, string>()
+  for (const entry of agents) {
+    const agent = entry as { id?: unknown; session?: { header?: { cwd?: unknown } } } | undefined
+    const id = typeof agent?.id === "string" ? agent.id : ""
+    const cwd = agent?.session?.header?.cwd
+    if (id !== "" && typeof cwd === "string") cwdOf.set(id, cwd)
+  }
+  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace)
+  // A view whose Lead the registry does not carry cannot be placed in any workspace; it is kept
+  // only when NOTHING could be placed, so a single-workspace host still renders its team.
+  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS)
+}
+
+/** The roster status of a member, in the official vocabulary (`TeamMemberView.status`). */
+function memberStatus(view: DshTeamView, index: number): string {
+  const rows = Array.isArray(view.members) ? view.members : []
+  const row = rows[index]
+  return typeof row?.status === "string" ? row.status : "unknown"
+}
+
+/** Whether any teammate row is doing something (the DERIVED phase, see the module header). */
+function teamActive(view: DshTeamView): boolean {
+  const rows = Array.isArray(view.members) ? view.members : []
+  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"))
+}
+
+/**
+ * Choose the team the surface shows: the live view with the most tasks, ties broken by the
+ * readout's own order. There are no timestamps on the official plane, so "newest" is not a
+ * question that can be asked; "the one with a board" is.
+ */
+function principalView(views: readonly DshTeamView[]): DshTeamView | undefined {
+  let best: DshTeamView | undefined
+  for (const view of views) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0)) best = view
+  }
+  return best
+}
+
+/**
+ * Read one workflow projection from the OFFICIAL readout.
+ *
+ * @param workspace - the calling session's workspace root (display + problem notes).
+ * @param holds - the team ids the watchdog currently holds (read through its service).
+ * @param views - the LIVE team views for that workspace, resolved by the caller through the
+ *   adapter (`liveTeamViews(dsh, workspace)`); pass `[]` when the seam is absent.
+ * @returns the projection; never throws.
+ */
+export function readTeamWorkflow(workspace: string, holds: readonly string[] = [], views: readonly DshTeamView[] = []): TeamWorkflow {
+  const problems: string[] = []
+  const view = principalView(views.slice(0, MAX_TEAMS))
+  if (view === undefined) return emptyWorkflow(workspace, problems, holds)
+
+  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS) : []
+  const tasks: TeamTaskRow[] = []
+  for (const raw of rawTasks) {
+    if (raw === null || typeof raw !== "object") continue
+    const id = asText(raw.id, 40)
+    if (id === undefined) continue
+    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : [])
+      .map((entry) => asText(entry, 40))
+      .filter((entry): entry is string => entry !== undefined)
+    tasks.push({
+      id,
+      subject: asText(raw.subject, 160) ?? "",
+      // `kind`/`round`/`verdict`/`attempt` have NO official source: the row leaves them absent so a
+      // renderer prints the honest blank instead of a value the board never carried.
+      status: asText(raw.status, 40) ?? "pending",
+      visual: "open",
+      ...optional("assignee", asText(raw.ownerName, 80)),
+      dependencies,
+      failedDependencies: [],
+      depth: 0,
+    })
+  }
+  const depths = taskDepths(tasks)
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed
+    task.visual = taskVisualState(task.status, tasks, task.dependencies)
+  }
+  // The DAG is ordered by `depth` then the board's own order (there is no per-task creation
+  // timestamp to sort by on the official plane, and the board's rows ARE append-ordered).
+  const creationIndex = new Map(tasks.map((task, index) => [task.id, index]))
+  tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0))
+  const cycle = cycleIds(tasks)
+  if (cycle.length > 0) problems.push(`cycle ${cycle.join(",")}`)
+
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+  for (const task of tasks) {
+    counts.total += 1
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1
+        break
+      case "in_progress":
+        counts.inProgress += 1
+        break
+      case "pending":
+        counts.pending += 1
+        break
+      case "claimed":
+        counts.claimed += 1
+        break
+      case "failed":
+        counts.failed += 1
+        break
+      case "cancelled":
+        counts.cancelled += 1
+        break
+      default:
+        counts.other += 1
+    }
+  }
+
+  const memberRows = Array.isArray(view.members) ? view.members : []
+  const members: TeamMemberRow[] = []
+  memberRows.forEach((raw, index) => {
+    if (raw === null || typeof raw !== "object") return
+    if (raw.role === "lead") return
+    // A `removed` teammate is not part of the roster (the Web panel's own filter, tolerated here
+    // for a record-shaped fixture; the official statuses are running|inactive|provisioning|failed).
+    if ((raw as { status?: unknown }).status === "removed") return
+    const name = asText(raw.name, 80) ?? "?"
+    const status = memberStatus(view, index)
+    const provider = asString(raw.provider)?.trim() ?? ""
+    const model = asString(raw.model)?.trim() ?? ""
+    const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined
+    const owned = tasks.filter((task) => task.assignee === name)
+    const done = owned.filter((task) => task.status === "completed").length
+    members.push({
+      name,
+      ...optional("role", asText(raw.description, 120)),
+      ...optional("route", route),
+      status,
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round((done / owned.length) * 100),
+      ...optional("currentTask", currentTaskOf(name, tasks)),
+      unread: null,
+    })
+  })
+
+  const phase = teamActive(view) ? "active" : "idle"
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0)
+  // A team the readout carries at all is one a session owns; the plan surface's runnable gate is
+  // the Web's own (`members && tasks`).
+  const runnable = members.length > 0 && tasks.length > 0
+
+  return {
+    workspace,
+    team: {
+      id: asText(view.teamId, 60) ?? "?",
+      name: asText(view.leadName, 80) ?? "?",
+      phase,
+      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
+      // No staged phase and no approval flow exist on the official plane: `staged` is ALWAYS false
+      // and the two stamp fields have no source, so they stay absent rather than invented.
+      staged: false,
+      runnable,
+      links,
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS),
+  }
+}
+
+/** The exact phrase the user must type to approve (`approve <teamId>`), from the record's own id. */
+export function approvalPhrase(teamId: string): string {
+  return `approve ${teamId}`
+}
+
+/** The team-scene body: header, watchdog, roster, task DAG, counts, mailbox, problems. */
+export function teamWorkflowLines(workflow: TeamWorkflow): string[] {
+  if (workflow.team === undefined) return ["team       (none in this workspace)"]
+  const team = workflow.team
+  const lines: string[] = []
+  lines.push(`team       ${team.name} (${team.id})`)
+  lines.push(`phase      ${team.phase}`)
+  if (team.staged && team.planReviewState !== undefined) lines.push(`plan       ${team.planReviewState}`)
+  if (team.captainSessionId !== undefined) lines.push(`captain    ${team.captainSessionId}`)
+  if (team.staged && team.stagedAt !== undefined) lines.push(`staged     ${team.stagedAt}`)
+  // A hold row exists ONLY while the watchdog reports this team as held: never a fabricated "ok".
+  if (workflow.holds.includes(team.id)) lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`)
+  lines.push("")
+  lines.push("roster")
+  if (workflow.members.length === 0) lines.push("  (no members)")
+  for (const member of workflow.members) {
+    const parts = [member.name]
+    if (member.role !== undefined) parts.push(member.role)
+    if (member.route !== undefined) parts.push(member.route)
+    parts.push(member.status)
+    let row = `  ${parts.join(" · ")}`
+    row += ` · ${member.done}/${member.total}`
+    if (member.currentTask !== undefined) row += ` · ${member.currentTask}`
+    // Unread is `null` on the official plane: the row prints nothing rather than a fake `0`.
+    if (member.unread !== null && member.unread > 0) row += ` · ${member.unread} unread`
+    lines.push(row)
+  }
+  lines.push("")
+  lines.push("tasks")
+  if (workflow.tasks.length === 0) lines.push("  (no tasks)")
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12))
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`
+    if (task.assignee !== undefined) row += ` @${task.assignee}`
+    if (task.attempt !== undefined) row += ` attempt ${task.attempt}`
+    if (task.round !== undefined) row += ` r${task.round}`
+    if (task.verdict !== undefined) row += ` verdict ${task.verdict}`
+    if (task.dependencies.length > 0) row += ` deps=${task.dependencies.join(",")}`
+    for (const failed of task.failedDependencies) row += ` failed-dep=${failed}`
+    if (task.visual === "blocked") row += " BLOCKED"
+    lines.push(row)
+  }
+  lines.push("")
+  const tasks = workflow.counts
+  lines.push(
+    `tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`,
+  )
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`)
+  for (const message of workflow.mail.captainInbox) lines.push(`  ${message.from}: ${message.content}`)
+  if (workflow.problems.length > 0) {
+    lines.push("")
+    for (const problem of workflow.problems) lines.push(`note       ${problem}`)
+  }
+  return lines
+}
+
+/** The plan-scene projection lines (read-only; the action block is appended by the scene). */
+export function planProjectionLines(workflow: TeamWorkflow): string[] {
+  if (workflow.team === undefined) return ["no staged plan for team (none)"]
+  const team = workflow.team
+  const lines: string[] = []
+  lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`)
+  lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`)
+  // The Web's own runnable gate (`client.js:1459`), restated for the terminal.
+  lines.push(`runnable   ${team.runnable ? "yes" : "no"}`)
+  // The TUI has no inline editors (NOT-CLAIMED #2), so this is always `none`.
+  lines.push("edits      none (the TUI has no inline plan editors)")
+  lines.push("")
+  lines.push("roster")
+  if (workflow.members.length === 0) lines.push("  (no members)")
+  for (const member of workflow.members) {
+    const parts = [member.name]
+    if (member.role !== undefined) parts.push(member.role)
+    if (member.route !== undefined) parts.push(member.route)
+    parts.push(member.status)
+    lines.push(`  ${parts.join(" · ")} · ${member.done}/${member.total}`)
+  }
+  lines.push("")
+  lines.push("tasks")
+  if (workflow.tasks.length === 0) lines.push("  (no tasks)")
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12))
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`
+    if (task.assignee !== undefined) row += ` @${task.assignee}`
+    if (task.dependencies.length > 0) row += ` deps=${task.dependencies.join(",")}`
+    if (task.visual === "blocked") row += " BLOCKED"
+    lines.push(row)
+  }
+  return lines
+}

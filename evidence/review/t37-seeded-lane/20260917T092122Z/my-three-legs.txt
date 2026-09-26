@@ -1,0 +1,13 @@
+== seeded
+   line: Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watc
+   shipped-line occurrences in copy: 1 | seed present: True
+   matchers: {'prefixPresent': True, 'singleMechanismFraming': False, 'peerWordingAbsent': False, 'deferralAbsent': False}
+== shipped
+   line: Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-probe-
+   matchers: {'prefixPresent': True, 'singleMechanismFraming': True, 'peerWordingAbsent': True, 'deferralAbsent': True}
+== unseeded
+   line: Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-probe-
+   matchers: {'prefixPresent': True, 'singleMechanismFraming': True, 'peerWordingAbsent': True, 'deferralAbsent': True}
+
+lane requirements: {'seeded_prefixPresent_MUST_BE': True, 'seeded_singleMechanismFraming_MUST_BE': False, 'seeded_peerWordingAbsent_MUST_BE': False, 'seeded_deferralAbsent_MUST_BE': False, 'shipped_allFour_MUST_BE': True}
+lane would pass on: {'seeded': True, 'shipped': True, 'unseeded': True}

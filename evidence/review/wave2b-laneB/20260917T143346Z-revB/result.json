@@ -1,0 +1,59 @@
+{
+  "task": "t20 — rev-B: falsify wave-2b lane B (t14) — gates/packaging/hygiene, 8 rows + T-89 runner half",
+  "attempt_id": "6582b91a-83ea-495a-83cf-faf94fbdabf8",
+  "reviewer": "docs-parity-engineer (lane B3 author — independent of lane B by authorship)",
+  "verdict": "pass",
+  "head": "ca78033",
+  "pinned_hashes": {
+    "scripts/verify-rows-parity.mjs": "e622eb2fcf8556b7",
+    "scripts/verify-manual-paths.mjs": "22d49ea72c12b8a1",
+    "scripts/verify-gates.mjs": "d6bc7b02ccecfab5",
+    "scripts/repin-vendor.mjs": "fc3919ef5d6b07f7",
+    "scripts/run-qa-lanes.mjs": "2b8ff82cad206aab",
+    "scripts/mpd-doctor.mjs": "21b1db27251d8d44",
+    "scripts/install-git-hooks.mjs": "2708e1f6a02618d1",
+    "scripts/verify-pack-closure.mjs": "f59850ba9211c217",
+    ".gitignore": "83baa5404c203025",
+    "package.json": "ef7d0884e56df8ca",
+    "scripts/verify-docs-parity.mjs": "4068616ac479a860 (B3's own file — unchanged)"
+  },
+  "reproduced_readings": {
+    "verify-rows-parity --self-test": "exit 0 — self-test PASS: 6/6 arms",
+    "verify-rows-parity live": "exit 0 — 25 row ids match the bundle patch insert list",
+    "verify-manual-paths --self-test": "exit 0 — self-test PASS: 6/6 arms",
+    "verify-gates --self-test": "exit 0 — self-test PASS: 9/9 arms",
+    "mpd-doctor --self-test": "exit 0 — self-test PASS: 7/7 arms",
+    "install-git-hooks --self-test": "exit 0 — self-test PASS: 6/6 arms (throwaway repos)",
+    "repin-vendor --self-test": "exit 0 — SELF-TEST PASS - 10/10 arm(s)",
+    "run-qa-lanes --self-test": "exit 0 — classification arms reported ok",
+    "verify-pack-closure --self-test": "exit 0 — self-test PASS: 34/34 arms (the lane's timestamp-precision fix landed; the 33/34 red I routed in wave 2a is CLEARED)",
+    "run-qa-lanes --check-drift": "exit 0 — manifest and disk agree (51 entries, 45 lane script(s) discovered)",
+    "repin-vendor --check": "exit 0 — CHECK: GREEN - lock matches the working tree (drift=0, problems=0)"
+  },
+  "red_sides_observed": {
+    "verify-manual-paths": "SEEDED on a scratch manual outside the workspace (deleted after): a manual naming `scripts/does-not-exist.mjs` -> exit 1, `unresolved AGENTS.md:3 -> scripts/does-not-exist.mjs` (path named). Log: red-manual-paths.log",
+    "verify-gates": "INJECTED failing member: `--member ok=true --member bad=false` -> exit 1 with BOTH members reported (`member ok: exit=0 PASS`, `member bad: exit=1 FAIL`) and the summary `1/2 member gate(s) failed: bad` — the non-short-circuit property the row exists for. Log: red-gates.log",
+    "mpd-doctor": "EMPTY bundle root (scratch, deleted after) -> exit 1 with the REQUIRED entry named and the OPTIONAL entries carrying their degrade sentences. Log: red-mpd-doctor.log",
+    "run-qa-lanes --only": "an unknown case name -> exit 3, `--only names case(s) not in the manifest: lane-0` (the filter refuses instead of silently running nothing). Log: live-runqalanes-only.log",
+    "verify-pack-closure": "its own positive AND negative arms are in the 34/34 self-test (temp fixtures, never the live tree)",
+    "install-git-hooks": "its red side (a staged corpus change without the lock -> commit refused) is exercised by its arms in throwaway repos; see the bound below"
+  },
+  "write_set_discipline_verified": {
+    "scripts/verify-docs-parity.mjs": "byte-unchanged by lane B: sha256 prefix 4068616ac479a860 equals the B3 completion hash; git status lists it as unmodified",
+    "skills/**": "untouched — `git status --porcelain skills/` empty",
+    "declared_set_status": "exactly the ten declared paths appear: 6 x ` M` (verify-rows-parity, repin-vendor, run-qa-lanes, verify-pack-closure, .gitignore, package.json) + 4 x `??` (verify-manual-paths, verify-gates, mpd-doctor, install-git-hooks)",
+    "no_lane_B_path_outside_the_set": "the only other modified paths are lane A's `packages/mpd-agent-teams-plugin/lib/*` and B2's `scripts/check-citations.mjs` — neither is a lane-B path",
+    "forbidden_in_lane_verify": "the lane's verify list holds no repo-wide aggregate: `bun run verify:gates`, `test:qa`, `test:qa:all`, `verify-dist-fresh`, `typecheck`, `verify-vendor` and a bare `verify-pack-closure` are all absent (checked against acceptance §2's list)"
+  },
+  "observation_not_a_lane_B_finding": {
+    "what": "The live T-66 reading MOVED after lane B froze it: they read `audited=107 resolved=103 unresolved=4` at AGENTS.md sha 8d0dd92980c353ad (17:02:41); I reproduce `unresolved=7` at sha b1f1a28372ef… — namely docs/adder4.md (AGENTS.md:14), docs/cnt8.md (AGENTS.md:14), dist/validator.js (:146), dist/index.js (:281 AND :438), client (:474), node_modules/@mpd-dsh/mpd (:477).",
+    "attribution": "THREE of the seven are NEW and were introduced by lane B3's own edits in t16, after lane B's reading: docs/adder4.md + docs/cnt8.md come from the T-30 sentence that records the ANTICIPATORY paths by name (AGENTS.md:14), and the second dist/index.js from the T-88 doctrine paragraph (:438). The other four are the ones lane B declared, with shifted line numbers because B3 inserted lines above them.",
+    "why_not_a_finding": "Lane B's T-66 instrument behaved exactly as its acceptance routes it: the live reading is moment-bound, its subject is B3's AGENTS.md, and the lane filed it as EVIDENCE (never in a verify list). The delta is a cross-lane consequence of my own lane landing after their freeze — the T-88 family — so it is routed to the captain as a follow-up (reword the two anticipatory names, or give the audit an explicit anticipatory exemption), NOT charged to t14."
+  },
+  "bounds": [
+    "install-git-hooks' real-repo refusal was NOT triggered by me: no git writes are allowed in this review, so the observation rests on its throwaway-repo arms (6/6) — reported as the instrument's own red side, not an independent one.",
+    "No live QA lane case was executed (`--only` was exercised for its refusal path only): a real lane spawns dsh and is a QA-lane cost, out of this review's remit.",
+    "Readings are pinned to the hashes above; lane A's `packages/mpd-agent-teams-plugin/lib/*` edits were in flight during the review (they do not touch lane B's instruments).",
+    "I did not re-derive the .gitignore near-miss arm independently: it is exercised inside install-git-hooks? — NO: it is the .gitignore instrument's own arm, not run in isolation; the file's shape (`/.qa-*`) is read and its rule is visible, but no independent seeded near-miss was produced."
+  ]
+}

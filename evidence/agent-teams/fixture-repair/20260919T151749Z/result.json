@@ -1,0 +1,80 @@
+{
+  "task": "t18",
+  "attempt_id": "0c2b0acf-ff7d-464d-9f32-ed54e3be3fa9",
+  "lane": "fixture-repair",
+  "generated_at_utc": "2026-09-19T15:19:16.107Z",
+  "defect": {
+    "source": "measured by the bridge lane and recorded in evidence/agent-teams/adapter-wiring/bridge/README.md §4.5 + watchdog-fixture-caller-probe.log",
+    "symptom": "input.ctx.cancelAgentTurn is not a function on the pause-preserves-halt-control leg",
+    "cause": "the fixture handed the REAL haltTeamWork a hand-built RAW ctx; after the bridge wiring the halt path reaches the harness seam through the facade, so a raw ctx no longer carries that surface",
+    "why_no_gate_caught_it": "the fixture is not a *.test.mjs (the watchdog suite is green by construction) and its consumer is the QA real case skills/dsh-qa/scripts/team-watchdog-fault.mjs, which bun run test:qa does not exercise"
+  },
+  "fix": {
+    "file": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs",
+    "edits": [
+      "realModules() precheck now also requires the bridge module (join(ADOPTED_LIB, \"mpd-adapter-ctx.js\"))",
+      "realModules() loads adapterCtx: await import(join(ADOPTED_LIB, \"mpd-adapter-ctx.js\"))",
+      "casePausePreservesHaltControl destructures { tools, adapterCtx }",
+      "the haltTeamWork call passes ctx: adapterCtx.createAgentTeamsCtx(harness.ctx, { witness: () => {} }) — the one-line wrap the contract asks for"
+    ],
+    "not_done": [
+      "no change to the plugin, the halt path, or any skills/** file (the QA case that consumes the fixture is untouched)"
+    ]
+  },
+  "before": {
+    "command": "node evidence/agent-teams/fixture-repair/20260919T151749Z/probe-pause-halt-control.mjs",
+    "exit": 1,
+    "lines": [
+      "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+      "[pause-preserves-halt-control] case threw: input.ctx.cancelAgentTurn is not a function",
+      "leg ok: false",
+      "observation: {\"threw\":\"input.ctx.cancelAgentTurn is not a function\"}"
+    ]
+  },
+  "after": {
+    "command": "node evidence/agent-teams/fixture-repair/20260919T151749Z/probe-pause-halt-control.mjs",
+    "exit": 0,
+    "lines": [
+      "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+      "[pause-preserves-halt-control] case completed",
+      "leg ok: true",
+      "observation: {\"injected\":\"silence\",\"mechanism\":\"haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed\",\"cancelledTasks\":1,\"alreadyHalted\":false,\"halted\":true,\"sha256Changed\":true,\"before\":{\"status\":\"in_progress\",\"attemptId\":\"att-live\",\"output\":\"partial result\",\"handoffId\":\"handoff-1\"},\"after\":{\"status\":\"cancelled\",\"attemptId\":null,\"output\":\"Stopped from the captain chat.\",\"handoffId\":null},\"cancelled\":true,\"wouldReddenAC17\":true}"
+    ],
+    "observation": {
+      "injected": "silence",
+      "mechanism": "haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed",
+      "cancelledTasks": 1,
+      "alreadyHalted": false,
+      "halted": true,
+      "sha256Changed": true,
+      "before": {
+        "status": "in_progress",
+        "attemptId": "att-live",
+        "output": "partial result",
+        "handoffId": "handoff-1"
+      },
+      "after": {
+        "status": "cancelled",
+        "attemptId": null,
+        "output": "Stopped from the captain chat.",
+        "handoffId": null
+      },
+      "cancelled": true,
+      "wouldReddenAC17": true
+    }
+  },
+  "gates": {
+    "bun test packages/mpd-team-watchdog-plugin": "139 pass / 0 fail / 684 expect() calls — unchanged from the contract baseline",
+    "grep -n \"createAgentTeamsCtx\" <fixture>": "1 match, line 728 — the haltTeamWork call site",
+    "grep -rn \"cancelAgentTurn\" <fixture>": "NO match (exit 1) — the fixture never names or defines the seam itself",
+    "skills/**": "untouched (git status --porcelain -- skills = 0 lines)"
+  },
+  "fixture_sha256": "b4c9ceb879b290a179c593f83d72973a58bd10e04ee19374abe462d166ae6c58",
+  "settled_hash_moments_utc": {
+    "read_before": "2026-09-19T15:18:47Z",
+    "read_after": "2026-09-19T15:19:22Z",
+    "sandwich": "start == end (SETTLED; re-verified this read)",
+    "re_verified_sha256": "b4c9ceb879b290a179c593f83d72973a58bd10e04ee19374abe462d166ae6c58"
+  },
+  "downstream": "t8 verification depends on this task; the bridge/docs lanes are untouched by this repair."
+}

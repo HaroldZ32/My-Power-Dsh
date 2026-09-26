@@ -1,0 +1,37 @@
+t21 UPDATE — second lane defect found and fixed, F1/T-69 observation, verify4 recovering, updated fingerprint
+Recorded by qa-lane-engineer, 2026-09-17T03:00Z. (Authoritative record: the three garbled lines at the end
+of output.log were mangled by shell quoting during an append; this file replaces them.)
+
+1) A SECOND, PRE-EXISTING DEFECT in `workmate-library` was found by the FIRST raw reproduction of the four
+   verify commands (02:47Z, exit 1) and is now fixed.
+   - What it was: the `files` step asserted the INITIAL note text
+     (`note.includes("Verilog") || note.includes("counter")`). The product REGENERATES `note.md` inside
+     `mpd_workmate_reflect` (mpd-workmate `src/index.ts`: `autoNote(...)` then `writeFileSync(note.md)`),
+     so that assertion measured the MODEL's wording, not the product's contract.
+   - Measured with the SAME lane code: 02:31Z `files.ok = true` (the regenerated note happened to keep
+     "Verilog counter specialist") and 02:47Z `files.ok = false` (it did not) → a FLAKY assertion, i.e. a
+     lane defect of exactly the class this wave is closing.
+   - Fix: assert the durable bookkeeping instead — the four files exist, the regenerated note is non-empty,
+     `memory.md` is non-empty (reflect appended), and `meta.uses` advanced past init's 0.
+     Measured after the fix: `files: {ok:true, uses:2, noteChars:226/239, memoryChars:581/582}`.
+   - Raw logs: `verify1-runA.log` (exit 0), `verify1-runB.log` (exit 0, same command ⇒ determinism), and the
+     failing reproduction is kept as `verify1-workmate-library-real.log` (exit 1).
+
+2) F1 / T-69 OBSERVATION (no code changed — the captain's boundary ruling: do not extend t21's scope).
+   8 lanes spawn `dsh --profile … --dump-config` DIRECTLY through their own runSync/spawnSync helpers:
+   agent-teams-adopt, bundle-lifecycle, mount-assert, relocate-smoke, session-start-team, team-route-rewire,
+   workmate-library, workmate-team-member. NO file under `skills/` references the repo wrapper
+   `scripts/dump-config.mjs`, so none of them prints the composition-only banner. `mount-assert`'s own
+   header even says it asserts the plugin rows are "mounted" while it only COMPOSES them — exactly F1's
+   mislabel at the surface an agent is most likely to open. Confirmed as registered T-69 (WAVE 2, owner the
+   QA-lane writer); nothing was changed for it here.
+
+3) verify4 (`node evidence/extensions/docs-claims/check-citations.mjs`) is RECOVERING: 6/12 at 02:35Z →
+   11/12 at 02:57Z while docs-gate-engineer refreshes the anchors. The single remaining failure is
+   `citations:EXTENSIONS-FOR-AGENTS.md` (3 unresolved): doc line 24 → `EXPECTED_TOOLS`
+   @ packages/mpd-ext-plugin/src/index.ts:548; doc line 224 → `packages/mpd-ext-plugin/dist/validator.js`;
+   plus one more line in the same doc. t21 stays OPEN until it is 12/12 or the captain amends the verify list.
+
+4) FINAL skills fingerprint UPDATED (the workmate-library assertion fix landed after the first announcement):
+   322 files / 4e679a5e7e0d952a2572d673828b10ab24cf25166684c2afc2ebc9dbc4bc5028 (LF-normalized, the
+   `repin-vendor.mjs` algorithm). No further `skills/**` edit from qa-lane-engineer after this reading.

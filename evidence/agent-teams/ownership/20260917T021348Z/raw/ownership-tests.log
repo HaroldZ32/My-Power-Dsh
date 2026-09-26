@@ -1,0 +1,15 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs:
+(pass) T-01: `who owns <path>` names the owner and is READ-ONLY [21.82ms]
+(pass) T-01: an overlapping create is refused NAMING the owner, and after the move the same create can be declared [20.23ms]
+(pass) T-01: the move refuses a path the donor does not own, an unknown target, a terminal target and an ambiguous donor [9.36ms]
+(pass) T-12: rollover REFUSES while a task is non-terminal, naming the open ids [4.59ms]
+(pass) T-12: rollover archives the closed wave WITH its tasks, advances the label, and status shows both [8.19ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs:
+
+ 5 pass
+ 0 fail
+ 66 expect() calls
+Ran 5 tests across 2 files. [281.00ms]

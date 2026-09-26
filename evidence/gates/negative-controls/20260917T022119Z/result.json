@@ -1,0 +1,97 @@
+{
+  "task": "t27 \u2014 Verify \u2014 lane D: every new gate falsified with a seeded violation; documented claims re-measured",
+  "attemptId": "21aa3584-3b0d-4774-9daf-60aa654e2a4e",
+  "verifier": "agent-teams-engineer (did NOT author any lane-D gate or the manual \u2014 independent seat)",
+  "measuredAt": "2026-09-17T02:21-02:26Z",
+  "changedPaths": [
+    "evidence/gates/negative-controls/20260917T022119Z"
+  ],
+  "treePolicy": "No gate, script or manual was edited. The two seeded violations were applied to a COPY-BACKUP, reverted immediately, and the restored files are byte-identical (sha256 verified before/restore).",
+  "seededViolations": [
+    {
+      "gate": "node scripts/verify-dist-fresh.mjs (dist freshness / T-37)",
+      "seed": "append one comment line to packages/mpd-boulder-plugin/dist/index.js",
+      "red": "exit 1 \u2014 '[verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1)'",
+      "restored": "sha256 8903b8e384343723\u2026 identical before/after; gate back to exit 0 (20/20 fresh)"
+    },
+    {
+      "gate": "node scripts/verify-rows-parity.mjs (row parity / B9)",
+      "seed": "rename one insert id in packages/mpd-bundle/cordis.patch.yml: mpd-boulder -> mpd-boulderSEEDED",
+      "red": "exit 1 \u2014 'FAIL - installer vs bundle patch row ids differ' + BOTH 25-id sets printed, the seeded id visible in the patch set",
+      "restored": "sha256 a9891438e87d3dec\u2026 identical before/after; gate back to exit 0"
+    },
+    {
+      "gate": "node skills/dsh-qa/scripts/preset-conformance.mjs (row/parity + row schema)",
+      "seed": "the gate's OWN negative control (a preset copy with the required persona key removed)",
+      "red": "negativeControl {ok:true, code:'agent-preset/invalid', message:'\u2026 $.prefix missing required value \u2026'} \u2014 the seeded key fails loudly",
+      "note": "31 harness rows conform, parity 31/31 on the clean tree"
+    },
+    {
+      "gate": "node scripts/repin-vendor.mjs --check (derived vendor re-pin / T-39)",
+      "seed": "check-only run on the CURRENT dirty tree",
+      "red": "exit 1 \u2014 'CHECK: RED - lock does not match the working tree (drift=1, problems=0)', and it REFUSES to re-pin a build artifact (packages/mpd-mcp-codegraph/dist/serve.js)",
+      "note": "check-only proven: nothing was written"
+    },
+    {
+      "gate": "node scripts/dump-config.mjs (composition-only wrapper / T-31)",
+      "seed": "none needed \u2014 the banner is the gate",
+      "red": "n/a; ASSERTED: exit 1 PROPAGATED from the child (the child itself failed here, Node stack recorded in dump-config-mpd-headless.log), output carries 'COMPOSITION ONLY \u2014 rows composed, no plugin code executed' before and the recap after",
+      "bound": "the child's exit was 1 (its own failure); a successful child's exit-0 leg was not re-observed in this run (t18 recorded one)"
+    }
+  ],
+  "budgetClaim": {
+    "wc_c_AGENTS_md": 45176,
+    "budget": 65536,
+    "realSession": "an isolated mpd-headless boot (sandbox DSH_HOME/HOME, cwd = the repo) produced a session store with 21 records / 6 frames / 1 session that CONTAINS AGENTS.md content (10 mentions) and ZERO 'Workspace instruction budget \u2026' / truncation markers (decoded with skills/dsh-qa/scripts/lib/session-evidence.mjs, the house decoder for the concatenated-zstd store)",
+    "negativeControl": "the PRE-split state DID print the marker at this same budget \u2014 'Workspace instruction budget 65536 bytes: truncated AGENTS.md from 78283 to 65143 bytes' (the harness's own notice, recorded in this session and in t16's evidence); 45176 < 65536 makes truncation impossible by the harness's own rule (truncateUtf8 only above maxBytes; the marker text is empty when nothing is omitted or truncated)",
+    "bound": "the sandbox boot exited 1 (no credentials there); the injection is recorded at session creation, which is what this row measures"
+  },
+  "cwdHermetic": {
+    "file": "packages/mpd-config-plugin/test/settings-wiring.test.ts",
+    "repoCwd": "exit 0 \u2014 23 pass / 0 fail, 101 expect() calls, 2 files (cwd-repo.log)",
+    "cleanCwd": "exit 0 \u2014 23 pass / 0 fail, 101 expect() calls, 1 file (cwd-clean.log)",
+    "verdict": "hermetic in both directions; the removed coupling does not return"
+  },
+  "gateSelfTests": {
+    "verify-dist-fresh": "10/10 arms passed (incl. a bad-flag arm and a seeded mismatch)",
+    "repin-vendor": "10/10 arms passed (incl. 'a tampered authority makes the mirror guard REFUSE', restored byte-identically)",
+    "dump-config": "6/6 arms passed (incl. bad-flag -> usage + exit 1)",
+    "verify-rows-parity": "no --self-test arm exists (args ignored); falsified independently by the patch-id seed above"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "problem": "After the wave's single skills re-pin, `bun run verify:vendor` / `verify:gates` can STILL be red: `repin-vendor --check` reports a second, independent blocker \u2014 packages/mpd-mcp-codegraph/dist/serve.js is a single-file sha256 asset that the helper explicitly REFUSES to re-pin ('a build artifact: rebuild it with scripts/build-mcp.mjs, never by rewriting the lock'). `verify-vendor` currently names only the skills drift (321 vs 319 files + treeSha), so the second blocker is invisible in ITS output.",
+      "requiredFix": "release-sweep owner: rebuild the codegraph serve.js artifact via scripts/build-mcp.mjs and update the lock through the captain's re-pin step, or record the artifact as an accepted exemption; either way the aggregate gate state after the re-pin must be re-measured, not assumed."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "problem": "`scripts/verify-rows-parity.mjs` ships NO negative-control arm: it ignores --self-test silently (no argv handling), so its falsifiability rests entirely on an external seed (which I supplied: the patch-id rename goes red loudly and names both sets). AGENTS.md \u00a74 lists the gate without such an arm.",
+      "requiredFix": "docs/gate lane: add a --self-test arm that seeds a renamed insert id in a temp copy and asserts exit 1 (or document explicitly that the row gate is falsified only by external seeding)."
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "problem": "Method note for the next verifier: renaming a bundle row id in `presets/mpd/agent.cordis.yml` is a NO-OP seed \u2014 that file carries no bundle row ids (grep: 0 matches). The row gate's two inputs are the INSTALLER's dry-run output and the bundle patch's insert lists.",
+      "requiredFix": "none; recorded so the seed is aimed at the right file."
+    }
+  ],
+  "ok": true,
+  "corrections": [
+    {
+      "findingId": "F1",
+      "status": "WITHDRAWN \u2014 the blocker does not exist",
+      "ruledBy": "captain (2026-09-17), independently re-measured by me before accepting",
+      "originalText": "After the wave's single skills re-pin, `bun run verify:vendor` / `verify:gates` can STILL be red: `repin-vendor --check` reports a second, independent blocker \u2014 packages/mpd-mcp-codegraph/dist/serve.js is a single-file sha256 asset that the helper explicitly REFUSES to re-pin ('a build artifact: rebuild it with scripts/build-mcp.mjs, never by rewriting the lock'). `verify-vendor` currently names only the skills drift (321 vs 319 files + treeSha), so the second blocker is invisible in ITS output.",
+      "whyItWasWrong": "I read the helper's POLICY lines ('NOT REPINNED - single-file sha256 asset - a build artifact ... never by rewriting the lock') as a detected drift. They are a policy statement about four single-file assets; each of those assets is byte-OK. The reading I failed to take is the OTHER command's asset line.",
+      "reMeasurement": {
+        "verify-vendor": "exit 1 with EXACTLY two failures, both for `skills` (count drifted 321 vs 319, treeSha mismatch) and `asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files` (likewise astgrep/gitbash/lsp cli.js and _deps 635 files) \u2014 f1-recheck-verify-vendor.log",
+        "repin-vendor --check": "RED - lock does not match the working tree (drift=1, problems=0): the drift is the ONE skills asset and problems=0 \u2014 f1-recheck-repin.log"
+      },
+      "durablePartKept": "Re-measure the aggregate (`bun run verify:gates` / `verify:vendor`) at commit time after the single skills re-pin instead of assuming green \u2014 the captain adopted exactly that.",
+      "lesson": "When a gate prints both an OK/FAIL asset line and a POLICY line for the same asset, cite the OK/FAIL line as the state; a guard's refusal text is not a measurement."
+    }
+  ]
+}

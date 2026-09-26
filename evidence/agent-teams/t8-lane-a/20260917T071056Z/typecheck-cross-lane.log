@@ -1,0 +1,5 @@
+=== typecheck at 07:3xZ (settled reading attempt) ===
+$ tsgo --noEmit
+packages/mpd-team-watchdog-plugin/src/engine.ts(156,45): error TS2304: Cannot find name 'KnobIssue'.
+error: script "typecheck" exited with code 1
+TYPECHECK_EXIT=1

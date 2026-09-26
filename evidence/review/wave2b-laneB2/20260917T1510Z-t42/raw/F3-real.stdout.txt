@@ -1,0 +1,9 @@
+driver-header claim check (T-80)
+parameters: claims \bA(\d+)\b + \bA(\d+)\s*[–-]\s*A?(\d+)\b (markers \b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b; references (design|acceptance|\bplan\b|§|\bt\d+\b)) · keys add\(\s*"A(\d+)[^"]*" · mode one offline process · unit one driver file · scope /tmp/t42-exact/dir · moment 2026-09-17T15:14:44.506Z
+
+  FAIL driver:../../../tmp/t42-exact/dir/a.mjs — CLAIMED-BUT-UNASSERTED A3 (header phrase: "This driver CHECKS A1–A3.")
+  FAIL driver:../../../tmp/t42-exact/dir/b.mjs — CLAIMED-BUT-UNASSERTED A3 (header phrase: "This driver CHECKS A1–A3.")
+  FAIL driver:../../../tmp/t42-exact/dir/c.mjs — CLAIMED-BUT-UNASSERTED A3 (header phrase: "This driver CHECKS A1–A3.")
+[driver-headers] evidence -> evidence/review/wave2b-laneB2/20260917T1510Z-t42/F3-exact-fixture-real
+
+[driver-headers] 3 file(s) scanned, 3 key-producing driver(s), 3 claim set(s), 0 NO-CLAIM-SET, 3 violation(s)

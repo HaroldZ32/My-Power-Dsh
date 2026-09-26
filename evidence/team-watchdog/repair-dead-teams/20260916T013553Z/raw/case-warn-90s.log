@@ -1,0 +1,5 @@
+[warn-90s] frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3
+[warn-90s] tick at silence 89999 ms => 0 decision(s)
+[warn-90s] tick at silence 90001 ms => exactly 1 WARN
+[warn-90s] snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/repair-dead-teams/20260916T013553Z/raw/ws-cases/fault-wfgi4b/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[warn-90s] snapshot fields: {"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1}

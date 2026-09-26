@@ -132,16 +132,20 @@ test("DEFECT 3: the full agent-teams tool surface registers, with the contract t
         const tools = registerTools(workspace, captain, member)
         // the whole server-side tree applied without throwing, and the read-only
         // contract surface joined the established set. t52 added the three interjection
-        // lane tools (request / decide / clear), which is why the pinned count grew:
+        // lane tools (request / decide / clear) and t20 added the three ownership/wave
+        // tools (path_owner / move_path / rollover), which is why the pinned count grew:
         // the list below is exhaustive on purpose, so a tool can never appear or vanish
         // silently.
-        expect(tools.size).toBe(17)
+        // t48 (P1d): the READ-ONLY pre-send check is the 21st tool — the pin moves WITH the tool.
+        expect(tools.size).toBe(21)
         expect([...tools.keys()].sort()).toEqual([
             "agent_teams_add_member", "agent_teams_approve", "agent_teams_claim_task", "agent_teams_create",
             "agent_teams_create_task", "agent_teams_delete", "agent_teams_edit_plan", "agent_teams_interject_decide",
-            "agent_teams_interject_request", "agent_teams_mailbox_clear", "agent_teams_reassign_task",
-            "agent_teams_remove_member", "agent_teams_resume", "agent_teams_send_message", "agent_teams_status",
-            "agent_teams_task_contract", "agent_teams_update_task",
+            "agent_teams_interject_request", "agent_teams_mailbox_check", "agent_teams_mailbox_clear",
+            "agent_teams_move_path",
+            "agent_teams_path_owner", "agent_teams_reassign_task",
+            "agent_teams_remove_member", "agent_teams_resume", "agent_teams_rollover", "agent_teams_send_message",
+            "agent_teams_status", "agent_teams_task_contract", "agent_teams_update_task",
         ])
     }
     finally {

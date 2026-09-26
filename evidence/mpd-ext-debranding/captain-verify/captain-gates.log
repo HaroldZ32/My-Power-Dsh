@@ -1,0 +1,18 @@
+== captain gates for t33 (2026-09-15T07:54:02Z) ==
+
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+validate exit=0
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+
+ 90 pass
+ 0 fail
+ 993 expect() calls
+Ran 90 tests across 6 files. [2.28s]
+
+$ tsgo --noEmit
+typecheck exit=0

@@ -1,0 +1,91 @@
+{
+  "probe": "packed-tree-probe",
+  "repo": "/root/dshProj/my-power-dsh",
+  "packer_facts": {
+    "ships scripts/mpd-ext.mjs": true,
+    "copies templates/": false,
+    "copies packages/*/src": false
+  },
+  "arms": [
+    {
+      "arm": "A — packed exactly as the packer builds it",
+      "layout": {
+        "scripts/mpd-ext.mjs": true,
+        "packages/mpd-ext-plugin/src": false,
+        "packages/mpd-roles-plugin/src": false,
+        "templates/mpd-extension": false
+      },
+      "runs": [
+        {
+          "args": [
+            "validate",
+            "extensions/mpd-ext-example"
+          ],
+          "exitCode": 1,
+          "firstLine": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs'",
+          "stderrTail": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs' |  | Bun v1.3.14 (Linux x64)"
+        },
+        {
+          "args": [
+            "scaffold",
+            "probe-ext",
+            "--dir",
+            "."
+          ],
+          "exitCode": 1,
+          "firstLine": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs'",
+          "stderrTail": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs' |  | Bun v1.3.14 (Linux x64)"
+        },
+        {
+          "args": [
+            "--self-test"
+          ],
+          "exitCode": 1,
+          "firstLine": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs'",
+          "stderrTail": "error: Cannot find module '/tmp/t19-packed-tree-XSQkOb/A-packed/packages/mpd-ext-plugin/src/registry.ts' from '/tmp/t19-packed-tree-XSQkOb/A-packed/scripts/mpd-ext.mjs' |  | Bun v1.3.14 (Linux x64)"
+        }
+      ],
+      "template_shipped": false
+    },
+    {
+      "arm": "B — packed + packages/*/src restored",
+      "layout": {
+        "scripts/mpd-ext.mjs": true,
+        "packages/mpd-ext-plugin/src": true,
+        "packages/mpd-roles-plugin/src": true,
+        "templates/mpd-extension": false
+      },
+      "runs": [
+        {
+          "args": [
+            "validate",
+            "extensions/mpd-ext-example"
+          ],
+          "exitCode": 0,
+          "firstLine": "[mpd-ext] validate /tmp/t19-packed-tree-XSQkOb/B-with-src/extensions/mpd-ext-example (plane=user)",
+          "stderrTail": ""
+        },
+        {
+          "args": [
+            "scaffold",
+            "probe-ext",
+            "--dir",
+            "."
+          ],
+          "exitCode": 1,
+          "firstLine": "mpd-ext scaffold: the template \"/tmp/t19-packed-tree-XSQkOb/B-with-src/templates/mpd-extension\" is missing — it is the only source of this command's output",
+          "stderrTail": "mpd-ext scaffold: the template \"/tmp/t19-packed-tree-XSQkOb/B-with-src/templates/mpd-extension\" is missing — it is the only source of this command's output"
+        },
+        {
+          "args": [
+            "--self-test"
+          ],
+          "exitCode": 1,
+          "firstLine": "FAIL validate accepts templates/mpd-extension (got 1): [mpd-ext] 1 problem(s) — this extension would not load",
+          "stderrTail": "      at /tmp/t19-packed-tree-XSQkOb/B-with-src/scripts/mpd-ext.mjs:597:7 |  | Bun v1.3.14 (Linux x64)"
+        }
+      ],
+      "template_shipped": false
+    }
+  ]
+}

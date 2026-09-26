@@ -1,0 +1,17 @@
+== node scripts/verify-rows-parity.mjs ==
+[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+== bun run verify:rows ==
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+== node skills/dsh-qa/scripts/preset-conformance.mjs --self-test ==
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+exit=0
+== node scripts/install-profile.mjs --dry-run ==
+              role: small mechanical changes
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+exit=0

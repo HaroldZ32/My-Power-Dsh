@@ -1,0 +1,29 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.33ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.80ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.55ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.27ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.34ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.32ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.35ms]
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.26ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.13ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [10.77ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [1.17ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.86ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.96ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [0.75ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.66ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+ 15 pass
+ 0 fail
+ 52 expect() calls
+Ran 15 tests across 4 files. [213.00ms]

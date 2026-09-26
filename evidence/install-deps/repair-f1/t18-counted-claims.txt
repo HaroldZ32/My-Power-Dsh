@@ -1,0 +1,6 @@
+measured_at_utc: 2026-09-20T04:37:49Z
+live '- id:' rows (any indent): 30
+COMMENTED '- id:' rows (# prefix): 0
+live rows only: 28
+naive 'grep -c "- id: "' (the I-5 trap): 30
+verify-rows-parity insert ids: 26 (see t18-gates.txt)

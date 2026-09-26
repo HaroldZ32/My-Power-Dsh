@@ -1,0 +1,19 @@
+########## PER-PACKAGE bun test (the 14 cascade rebuilds + the 4 lane-owned artifacts)
+mpd-bootstrap-plugin             exit=0   6 pass  0 fail 
+mpd-boulder-plugin               exit=0   4 pass  0 fail 
+mpd-codegraph-plugin             exit=0   9 pass  0 fail 
+mpd-comment-checker-plugin       exit=0   3 pass  0 fail 
+mpd-ext-plugin                   exit=0   75 pass  0 fail 
+mpd-hashline-plugin              exit=0   11 pass  0 fail 
+mpd-memory-plugin                exit=0   4 pass  0 fail 
+mpd-modelchain-plugin            exit=0   4 pass  0 fail 
+mpd-qa-roles-probe               exit=1  
+mpd-roles-plugin                 exit=0   32 pass  0 fail 
+mpd-team-compact-plugin          exit=0   22 pass  0 fail 
+mpd-team-watchdog-plugin         exit=0   139 pass  0 fail 
+mpd-tools-plugin                 exit=0   8 pass  0 fail 
+mpd-ulw-plugin                   exit=0   15 pass  0 fail 
+mpd-config-plugin                exit=0   81 pass  0 fail 
+mpd-dsh-adapter-plugin           exit=0   63 pass  0 fail 
+mpd-tui-plugin                   exit=0   105 pass  0 fail 
+mpd-workmate-plugin              exit=0   43 pass  0 fail 

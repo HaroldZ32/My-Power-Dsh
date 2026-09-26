@@ -1,0 +1,79 @@
+{
+  "case": "install-deps/implementation/comp3_web_aggregate_before",
+  "measured_at_utc": "2026-09-20T03:29:41.904Z",
+  "author_run_advisory": true,
+  "expectation": "guard DISABLED even though the aggregate layer precedes ours; single mount",
+  "exit": {
+    "code": 0,
+    "signal": null
+  },
+  "http": {
+    "attempted": true,
+    "probes": [
+      {
+        "url": "http://127.0.0.1:3403/plugins/??dsh-better-sidebar/client.js&rev=f07010da9613e34e-54",
+        "status": 200,
+        "bytes": 870764,
+        "looksLikeModule": true
+      }
+    ],
+    "token": {
+      "status": 303,
+      "location": "/",
+      "setCookieBytes": 315
+    },
+    "index": {
+      "status": 200,
+      "bytes": 35092,
+      "cookie": "dsh-auth-eLMeyCWMIRhyCEm0BWy56VchNwsosXWYg9qhqoRmdlA=v1.eyJ2ZXJzaW9uIjoxLCJhdXRob3JpdHkiOiIxMjcuMC4wLjE6MzQwMyIsImlzc3VlZEF0IjoxNzg5ODc0OTc4MzcwLCJleHBpcmVzQXQiOjE3OTI0NjY5NzgzNzB9.t_LS4Fq9z7hz0BdgAR3EhE8Fs-eNtfKtrYAAdKe2yGI"
+    },
+    "clientCompositeHasSidebar": true,
+    "clientStandalone": [
+      "/plugins/??dsh-better-sidebar/client.js&rev=f07010da9613e34e-54"
+    ],
+    "sidebarApi": {
+      "status": 405,
+      "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+    }
+  },
+  "scan": {
+    "guard": [
+      {
+        "decision": "DISABLED",
+        "reason": "bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+      }
+    ],
+    "probes": [
+      {
+        "total": 201,
+        "rows": [
+          "web-ui-better-sidebar|raw-enabled|fiber=false",
+          "mpd-better-sidebar|js-guarded|fiber=false"
+        ],
+        "web_entry": true
+      },
+      {
+        "total": 203,
+        "rows": [
+          "web-ui-better-sidebar|raw-enabled|fiber=true",
+          "mpd-better-sidebar|js-guarded|fiber=false"
+        ],
+        "web_entry": true
+      }
+    ],
+    "fatal": [],
+    "ready": true
+  },
+  "log_sha256": "beab25190a96ad89f09138af952acd42ff0d0e9106152329ce56eb121bb9f329",
+  "log_read_at_utc": "2026-09-20T03:29:41.904Z",
+  "verdict": {
+    "fatal_signatures": [],
+    "guard_decisions": [
+      "DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+    ],
+    "sidebar_rows_in_entry_list": [
+      "web-ui-better-sidebar|raw-enabled|fiber=true",
+      "mpd-better-sidebar|js-guarded|fiber=false"
+    ]
+  }
+}

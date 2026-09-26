@@ -1,0 +1,52 @@
+# per-script --self-test sweep (test:qa's loop short-circuits at the first failure, so this runs ALL of them)
+0  skills/dsh-qa/scripts/agent-teams-adopt.mjs
+0  skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+1  skills/dsh-qa/scripts/agent-teams-messaging.mjs
+       [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=326/e944e320b3ff tree=326/82f38bd828bc (re-pin in the same commit, AGENTS.md §9)
+0  skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+0  skills/dsh-qa/scripts/bundle-lifecycle.mjs
+0  skills/dsh-qa/scripts/codegraph-smoke.mjs
+0  skills/dsh-qa/scripts/dual-track-smoke.mjs
+0  skills/dsh-qa/scripts/explicit-team-trigger.mjs
+0  skills/dsh-qa/scripts/extension-isolation.mjs
+0  skills/dsh-qa/scripts/extension-lifecycle.mjs
+0  skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+0  skills/dsh-qa/scripts/extension-template.mjs
+0  skills/dsh-qa/scripts/mcp-call.mjs
+0  skills/dsh-qa/scripts/memory-smoke.mjs
+0  skills/dsh-qa/scripts/mount-assert.mjs
+0  skills/dsh-qa/scripts/plan-c-smoke.mjs
+0  skills/dsh-qa/scripts/preset-conformance.mjs
+0  skills/dsh-qa/scripts/preset-register.mjs
+0  skills/dsh-qa/scripts/readonly-deny.mjs
+0  skills/dsh-qa/scripts/relocate-smoke.mjs
+0  skills/dsh-qa/scripts/session-start-team.mjs
+0  skills/dsh-qa/scripts/skill-catalog-probe.mjs
+0  skills/dsh-qa/scripts/software-smoke.mjs
+0  skills/dsh-qa/scripts/team-route-rewire.mjs
+0  skills/dsh-qa/scripts/team-watchdog-boot.mjs
+0  skills/dsh-qa/scripts/team-watchdog-config.mjs
+0  skills/dsh-qa/scripts/team-watchdog-fault.mjs
+0  skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+0  skills/dsh-qa/scripts/team-watchdog-notify.mjs
+0  skills/dsh-qa/scripts/team-watchdog-scene.mjs
+0  skills/dsh-qa/scripts/tool-output-validation.mjs
+0  skills/dsh-qa/scripts/tui-admission.mjs
+0  skills/dsh-qa/scripts/tui-distribution.mjs
+0  skills/dsh-qa/scripts/tui-mount.mjs
+0  skills/dsh-qa/scripts/tui-panels.mjs
+0  skills/dsh-qa/scripts/tui-settings-bridge.mjs
+0  skills/dsh-qa/scripts/tui-spec-conformance.mjs
+0  skills/dsh-qa/scripts/tui-team-surface.mjs
+0  skills/dsh-qa/scripts/ultrawork-smoke.mjs
+0  skills/dsh-qa/scripts/ulw-command.mjs
+0  skills/dsh-qa/scripts/vision-smoke.mjs
+0  skills/dsh-qa/scripts/watchdog-redesign.mjs
+0  skills/dsh-qa/scripts/wave2b-lane-d.mjs
+0  skills/dsh-qa/scripts/web-client-adapt.mjs
+0  skills/dsh-qa/scripts/web-settings-bridge.mjs
+0  skills/dsh-qa/scripts/workmate-library.mjs
+0  skills/dsh-qa/scripts/workmate-team-member.mjs
+--- ext CLI (the last two steps of test:qa) ---
+0  scripts/mpd-ext.mjs --self-test
+0  scripts/mpd-ext.mjs validate extensions/mpd-ext-example

@@ -1,0 +1,10 @@
+### freshness proof (t18's gate is not on disk yet — t18 pending — so this is the direct equivalent)
+build each dist into a scratch file with the package's canonical command and compare bytes with the committed dist:
+mpd-dsh-adapter-plugin: IDENTICAL (dist == fresh build of src)
+mpd-ext-plugin: IDENTICAL (dist == fresh build of src)
+mpd-roles-plugin: IDENTICAL (dist == fresh build of src)
+
+### mtimes (src then dist)
+mpd-dsh-adapter-plugin src=2026-09-17 09:25:37 dist=2026-09-17 09:33:52
+mpd-ext-plugin src=2026-09-17 09:25:33 dist=2026-09-17 09:33:52
+mpd-roles-plugin src=2026-09-17 09:26:18 dist=2026-09-17 09:33:52

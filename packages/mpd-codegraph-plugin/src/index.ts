@@ -17,6 +17,12 @@ type Config = { autoInit?: boolean; initTimeoutMs?: number; cooldownMs?: number;
 // The one seam this plugin needs from the adapter: the workspace plane. Typed
 // structurally so the plugin still builds/behaves standalone in unit tests.
 type WorkspacePlane = { workspaceRoot(exec?: { agent?: unknown }): string }
+// The adapter surface this plugin actually uses: the workspace plane plus the
+// command seam (AGENTS.md §6: a plugin never touches the harness command
+// registry directly, and the adapter degrades to a no-op when it is absent).
+type AdapterSeams = WorkspacePlane & {
+  registerCommand(definition: { name: string; description: string; handler: (invocation: CommandInvocation) => unknown }): () => void
+}
 // The harness command handler receives {commandId, agent, rawInput, attachments, signal};
 // only `agent` matters here (it is what workspaceRoot reads for the session cwd).
 type CommandInvocation = { agent?: unknown }
@@ -118,7 +124,7 @@ function writeCooldown(dir: string, file: string): void {
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin):
   // the mounted instance when present, the standalone fallback otherwise.
-  const dsh = ((typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) as WorkspacePlane | undefined) ?? createDshAdapter(ctx)
+  const dsh = ((typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) as AdapterSeams | undefined) ?? createDshAdapter(ctx)
   const autoInit = config.autoInit ?? true
   const timeoutMs = config.initTimeoutMs ?? 60_000
   const cooldownMs = config.cooldownMs ?? 15 * 60_000
@@ -134,27 +140,25 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   else { status = initProject(cwd, binary, timeoutMs) }
   console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""))
 
-  // Manual re-run command (registered only when a command registry is present).
+  // Manual re-run command, registered THROUGH THE ADAPTER (AGENTS.md §6: no plugin
+  // touches `ctx.commands` / `ctx.get("commands")` directly). The adapter returns a
+  // no-op disposer when the composition has no command registry, so this stays a
+  // harmless no-op there instead of a swallowed error.
   // O-1: this is the CALL-TIME consumer — it re-resolves the root per invocation
   // through `dsh.workspaceRoot(invocation)`, so a session whose workspace differs
   // from the dsh process cwd re-runs against its OWN project. The handler returns
   // the harness CommandResult shape (`{kind}`), which dsh-commands validates
   // (dsh-commands/lib/index.js `normalizeResult`); the older `{success,error}`
   // shape would have been rejected as "must return a CommandResult".
-  try {
-    const commands = (ctx.get && ctx.get("commands")) as { register?: (d: Record<string, unknown>) => void } | undefined
-    if (commands?.register) {
-      commands.register({
-        name: "mpd-codegraph",
-        description: "Initialize/re-run the CodeGraph index (.codegraph/codegraph.db)",
-        handler: async (invocation?: CommandInvocation) => {
-          const b = resolveBinary(config)
-          if (!b) return { kind: "error", text: "codegraph binary unavailable: install it or set MPD_DSH_CODEGRAPH_BIN" }
-          const target = resolveProjectRoot(dsh, invocation)
-          const s = existsSync(join(target, ".codegraph", "codegraph.db")) ? "marker" : initProject(target, b, timeoutMs)
-          return { kind: s === "ok" || s === "marker" ? "success" : "error", text: "mpd-codegraph init: " + s + " (" + target + ")" }
-        }
-      })
-    }
-  } catch { /* ignore */ }
+  dsh.registerCommand({
+    name: "mpd-codegraph",
+    description: "Initialize/re-run the CodeGraph index (.codegraph/codegraph.db)",
+    handler: async (invocation: CommandInvocation) => {
+      const b = resolveBinary(config)
+      if (!b) return { kind: "error", text: "codegraph binary unavailable: install it or set MPD_DSH_CODEGRAPH_BIN" }
+      const target = resolveProjectRoot(dsh, invocation)
+      const s = existsSync(join(target, ".codegraph", "codegraph.db")) ? "marker" : initProject(target, b, timeoutMs)
+      return { kind: s === "ok" || s === "marker" ? "success" : "error", text: "mpd-codegraph init: " + s + " (" + target + ")" }
+    },
+  })
 }

@@ -1,0 +1,26 @@
+=== 1. THE DECISIVE DRIVER, re-run by the reviewer with a fresh --out ===
+t79 driver exit=0
+
+=== 2. immutability arm: SAME target again (must refuse, exit 3) ===
+immutability exit=3
+
+=== 3. mpd-bg --self-test ===
+exit=0
+=== 4. mpd-doctor --self-test ===
+exit=0
+
+=== 5. T-41 baseline ===
+exit=0
+=== 6. T-41 ABSENT binary ===
+exit=2
+
+=== 7. Addendum A --live ===
+exit=0
+=== 8. Addendum A --mutant restart-needed ===
+exit=0
+
+=== 9. T-25 naive-vs-frame, my own --out ===
+exit=0
+
+=== 10. watchdog package suite (the lane's own verify #1) ===
+exit=0

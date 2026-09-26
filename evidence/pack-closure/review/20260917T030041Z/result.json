@@ -1,0 +1,102 @@
+{
+  "task": "t34 (review of t23 + the packaging lane t11; lanes E+F)",
+  "attempt_id": "56a4b3ae-7e10-44ec-bf6a-4840016f641c",
+  "verdict": "pass",
+  "revisionsAnchored": {
+    "artifactTree": "f945d153089479caeab4b0786329d58e2f944fbb247bfbb4a5c636abe6691b74 (1188 files) \u2014 re-verified UNCHANGED after my accidental write was undone and after every run below",
+    "mpdBg": "0b294972b05f5e4eacaded59db316432d8fe9aeee859a23fcbd21fcac8d95ba9 (== pre-claim pin)",
+    "packer": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68 (== pin)",
+    "closureChecker": "b7f940b422d34bda1a7d615394f9289e4f23c90e8868417447bffcac30a589cd (== pin)",
+    "note": "the artifact was re-packed at 02:56:59Z, 17s AFTER my pre-claim pin, so the pinned tree hash moved (f9790d57 -> f945d153) while the file count stayed 1188; all review numbers are anchored to f945d153."
+  },
+  "artifactChecks": [
+    {
+      "check": "templates present",
+      "reading": "dist/mpd-package/templates/mpd-extension with mpd-ext.json + README.md + README.zh-CN.md; packed validate on it exits 0"
+    },
+    {
+      "check": "docs pairs complete",
+      "reading": "docs: 26 EN + 11 zh-CN = 37 files, zh-without-EN = 0 (the 15 lone EN are the AGENTS.md S3-exempt process records)"
+    },
+    {
+      "check": "packed CLI from INSIDE the tree",
+      "reading": "node scripts/mpd-ext.mjs validate extensions/mpd-ext-example -> exit 0; validate templates/mpd-extension -> exit 0; --self-test -> exit 0, '53 checks', [validator: compiled]; same under bun (53 checks); scaffold --dir <review dir> -> exit 0 (7 files, mcp dropped); --validator reports the packed packages/mpd-ext-plugin/dist/validator.js as the loaded entry and names all four unavailable source paths"
+    },
+    {
+      "check": "closure exit 0 on the real artifact",
+      "reading": "17 dist/index.js rows + 1 adopted lib row + 4 mcp rows resolve; root assets declared and present; packed tree 378 asset files; agent references 3/3"
+    },
+    {
+      "check": "closure negative controls \u2014 MY OWN, on a COPY",
+      "reading": "copy baseline exit 0; SEED A (templates/mpd-extension/mpd-ext.json removed) -> exit 1 with TEMPLATES + TREE-DRIFT naming the file; SEED B (docs/user-guide.zh-CN.md removed) -> exit 1 with DOC-PAIR naming the file; copy deleted afterwards"
+    },
+    {
+      "check": "closure self-test",
+      "reading": "17/17 arms PASS, every negative control observed exiting 1"
+    },
+    {
+      "check": "artifact fidelity (my own diff -rq of the six wholesale groups)",
+      "reading": "skills, presets, extensions, templates, docs = IDENTICAL; agent-references DIFFERS by exactly ONE line \u2014 the source gained the `(T-23)` id at 11:03:59, AFTER the 10:56:58 pack (see finding F1)"
+    },
+    {
+      "check": "packed manifest files",
+      "reading": "13/13 resolve \u2014 5 real files present, 8 glob groups each expand to >=1 match (reproduced rather than taken from t28)"
+    },
+    {
+      "check": "packed doc parity",
+      "reading": "node scripts/verify-docs-parity.mjs --root dist/mpd-package -> pairs=35 failed=0 violations=0 exempt=17 PASS"
+    }
+  ],
+  "harnessCloseChecks": [
+    {
+      "check": "helper executed for real",
+      "reading": "check-write <in-workspace> -> INSIDE-WORKSPACE exit 0; check-write /etc/passwd -> outside-workspace exit 1 (T-26); reload-check scripts/mpd-bg.mjs -> RESTART-REQUIRED with mtime + newest live session, exit 1 (T-21)"
+    },
+    {
+      "check": "helper self-test",
+      "reading": "node scripts/mpd-bg.mjs --self-test -> 13/13 arms PASS"
+    },
+    {
+      "check": "T-43 guard does not fire for a normal session",
+      "reading": "bun test packages/mpd-workmate-plugin -> 28 pass / 0 fail, exit 0; the real ~/.mpd/workmate mtime is byte-identical before (08:56:05.216389962) and after the suite"
+    },
+    {
+      "check": "notes reachable",
+      "reading": "AGENTS.md S12 carries a pointer line for each of T-21/T-23/T-24/T-26/T-43; agent-references/troubleshooting.md carries the symptom rows, ids present for T-21/T-24/T-26/T-43 and, as of 11:03:59 (during this review), one of T-23's two rows (see F2)"
+    }
+  ],
+  "t50Checks": [
+    {
+      "check": "laziness (code)",
+      "reading": "createLazyDshAdapter returns a Proxy whose get/has call resolve() on EVERY access; only a successful STRICT probe is cached in `mounted`; a miss builds one temporary adapter and re-probes next time"
+    },
+    {
+      "check": "honesty of the warning (code)",
+      "reading": "two miss modes: non-strict hit -> 'ADAPTER NOT YET ACTIVE ... needs NO row-order change (T-50)'; strict+non-strict miss -> 'ADAPTER FALLBACK ... fix the ROW ORDER'; each warns once, wrapped so logging cannot take the row down"
+    },
+    {
+      "check": "pinned by execution",
+      "reading": "bun test packages/mpd-dsh-adapter-plugin -> 42 pass / 0 fail, incl. 5 T-50 pins; the decisive one drives the REAL vendored cordis (state != 2 during the sibling apply, strict read undefined, NOT-YET-ACTIVE wording and NO row-order hint, then the SAME facade reaches marker='mounted' after activation)"
+    },
+    {
+      "check": "no 'observed fix' claim",
+      "reading": "t12's evidence states the sibling-apply window was NEVER observed in a production boot (6/6 clean boots, 0 fallback lines) and lists 'the transient window was never observed in a production boot by anyone' under unverified \u2014 a bound, exactly as t28 reported"
+    }
+  ],
+  "falseGreenCheck": "I reproduced t28's headline numbers independently rather than reading them: artifact census 1188 files, docs 26/11 with 0 zh-without-EN, manifest 13/13, packed CLI validate/self-test(53)/scaffold/--validator all exit 0 inside the tree, closure exit 0 + 17/17 self-test arms + my own two seeded omissions, packed doc parity 35/0, workmate 28/0 with the real home untouched, mpd-bg 13/13 with real runs. No false green found; the ONE drift I found (one line) is post-verification SOURCE aging and is reported as F1.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "problem": "The packed copy of agent-references/troubleshooting.md is one line behind the source (the source gained the T-23 id at 11:03:59, the artifact was packed at 10:56:58). Not a defect of t11/t23 (the artifact was faithful at pack time; five of the six wholesale groups are still byte-identical), but it is invisible to every gate: the closure checker verifies agent-references PRESENCE, not bytes, so a stale reference copy ships silently.",
+      "requiredFix": "Re-pack before release (the pack is a release step); optionally extend the closure checker's reference-group assertion from presence to a byte compare, as the docs group already does via DOC-PAIR/TREE-DRIFT."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "problem": "The T-23 friction is carried by TWO symptom rows (fresh /tmp per call, and nohup dying with the sandbox) but only ONE carries the id (fixed in the source at 11:03:59, during this review; t28's earlier F-2 called it the only id-less row and it was still id-less when I started). An id search lands on one of the two entry points, not both.",
+      "requiredFix": "None required for this wave's acceptance (the note is reachable by symptom and the id exists once plus in AGENTS.md S12); if the lane wants id-complete coverage, add (T-23) to the fresh-/tmp row too."
+    }
+  ],
+  "myOwnDeviation": "DISCLOSED: my first scaffold invocation passed the target as a positional arg instead of --dir, so the packed CLI created dist/mpd-package/review-ext (6 files) INSIDE the artifact \u2014 outside my inScope. I removed it immediately and re-verified the artifact tree hash is byte-identical to its pre-review value (f945d153..., 1188 files, verified again at the end of the review). The correct form is `scaffold <name> --dir <path>`; the corrected run wrote only into this evidence dir and left the artifact hash unchanged."
+}

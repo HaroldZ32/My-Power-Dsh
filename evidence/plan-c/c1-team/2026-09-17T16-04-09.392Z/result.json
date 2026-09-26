@@ -1,0 +1,138 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-KLDQys",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-82c1bd20-a5ab-43f7-bcbe-5a5c62db1bb7",
+          "createdAt": 1789661071160,
+          "members": [
+            {
+              "id": "d26483ac-6616-43c6-b7ac-518381e84ef2",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You are librarian on team c1qa. Claim the task assigned to you, do exactly what its contract says, and complete it with a concise output: a single-line summary of the QA goal. Do not edit any files. Keep your report to a few lines.",
+              "joinedAt": 1789661074283,
+              "status": "removed"
+            },
+            {
+              "id": "45fedcd1-ba28-42ea-90c2-53053ef2aa7a",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You are oracle on team c1qa. Claim the review task assigned to you once its dependency completes, read the dependency's output, and complete with a clear approve/reject decision plus one line of justification. Do not edit any files. Keep your report to a few lines.",
+              "joinedAt": 1789661074315,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team description ('C1 adoption QA') and write ONE line that summarizes the QA goal. Put the one-line summary in your task output. No file edits.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789661076076,
+              "updatedAt": 1789661085838,
+              "kind": "work",
+              "deliverables": [
+                "one-line QA goal summary in task output"
+              ],
+              "attemptId": "0b87b658-a84e-496c-a9fb-b1055b523bdf",
+              "reassigning": false,
+              "output": "QA goal (C1 adoption QA): verify that C1 is genuinely adopted in the real environment — mounted/configured and working end-to-end with concrete, reproducible evidence rather than assumption."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read the output of t1 (the one-line QA goal summary). Decide approve or reject: approve only if it is exactly one line and actually summarizes the 'C1 adoption QA' goal. State the decision and one line of justification in your task output. No file edits.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789661077552,
+              "updatedAt": 1789661099459,
+              "kind": "work",
+              "deliverables": [
+                "approve/reject decision plus one-line justification in task output"
+              ],
+              "attemptId": "9a3473d0-be17-469f-be45-3012e14d6f9c",
+              "reassigning": false,
+              "output": "Decision: APPROVE. t1's stored output (team.json line 48) is a single line with no embedded newline, and it accurately summarizes the \"C1 adoption QA\" goal: verify C1 is genuinely adopted in the real environment (mounted/configured) and working end-to-end with concrete, reproducible evidence rather than assumption. No file edits made."
+            }
+          ],
+          "taskSeq": 2,
+          "revision": 14
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T16-04-09.392Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

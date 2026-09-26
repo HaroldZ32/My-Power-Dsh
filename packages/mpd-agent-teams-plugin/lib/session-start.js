@@ -12,10 +12,13 @@
  *   unconditional notice. The mechanical gate below still runs when
  *   `autoRoute` is enabled.
  * - `sessionTeamPolicy.autoRoute: true` (DEFAULT) — the complexity gate is
- *   mechanically evaluated at the first pre-step. When it fires, the staged
- *   default team is provisioned (the same path `agent_teams_create` uses, so
- *   member routes and team state are byte-identical) and exactly one startup
- *   notice is injected telling the captain the session was routed BY THE GATE.
+ *   mechanically evaluated at the first pre-step. When it fires on a SOFT
+ *   signal, exactly one ADVISORY startup notice is injected: it names the
+ *   matched signals, states that NO team was staged, and asks the captain to
+ *   stage one with `agent_teams_create(approval="required", profile=...)` at the
+ *   moment the work actually warrants a team — otherwise the captain continues
+ *   solo and says so. Nothing is provisioned while complexity is merely being
+ *   judged; an explicit `team:` / `!team` request still provisions (R4).
  * - `sessionTeamPolicy.mode: 'auto'` — legacy opt-in: provision unconditionally
  *   for every qualifying session (kept for explicit opt-in, not the default).
  * - `sessionTeamPolicy.mode: 'instruct'` — legacy opt-in: inject the
@@ -62,10 +65,11 @@
  *   at all (the headless direct driver, legacy installs) are covered by
  *   default, because such deployments run the bundle itself.
  *
- * The policy settles once per session: after the first check (team found,
- * team provisioned, or provisioning failed) it never provisions again, so a
- * team the user deletes mid-session is NOT recreated and a new team the
- * captain creates afterwards is never fought over.
+ * The policy settles once per session: after the first check (an advisory
+ * notice injected, team found, team provisioned, or provisioning failed) the
+ * gate is never evaluated for that session again, so a team the user deletes
+ * mid-session is NOT recreated and a new team the captain creates afterwards
+ * is never fought over.
  *
  * Failure policy: a provisioning error never breaks the step — the step runs
  * unreduced and the gated notice is injected instead, so the session still gets
@@ -73,7 +77,7 @@
  * @module dsh-agent-teams/session-start
  */
 import { createHash } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { appendTeamEvent } from "./events.js";
@@ -397,25 +401,55 @@ export async function provisionSessionTeam(ctx, config, policy, agent, signal) {
     });
 }
 /**
- * The notice shown when the complexity gate provisioned a team. It states that
- * the session was ROUTED BY THE GATE — never that a team is mandatory.
+ * The notice shown when a team WAS provisioned at session start — the explicit
+ * `team:` / `!team` request path (R4) or the unconditional `mode: 'auto'`
+ * opt-in. It states how the team came to exist and that a team is never
+ * mandatory. A triggered SOFT auto-route no longer reaches this builder: it is
+ * advisory and stages nothing (see `advisoryNotice`).
  * @param team - the provisioned team state.
  * @param signals - the matched gate signal ids.
  * @returns the user-role startup notice.
  */
 export function provisionedNotice(team, signals = []) {
     const profileName = team.profile?.name ?? '';
-    const matched = signals.length === 0 ? 'complexity signals' : `complexity signals ${signals.join('/')}`;
+    const routing = signals.length === 0
+        ? 'this deployment stages a team unconditionally (sessionTeamPolicy.mode="auto")'
+        : `this session was routed by the complexity gate (complexity signals ${signals.join('/')})`;
     return createUserMessage({
         content: [{
             type: 'text',
-            text: `${STARTUP_NOTICE_MARKER}: this session was routed by the complexity gate (${matched}) — a team is NOT a precondition of this session.
+            text: `${STARTUP_NOTICE_MARKER}: ${routing} — a team is NOT a precondition of this session.
 - Team "${team.name}" (id ${team.id}${profileName === '' ? '' : `, profile \`${profileName}\``}) is staged in this workspace; you are its captain.
 - While it is staged, shape the roster/DAG with agent_teams_add_member / agent_teams_create_task / agent_teams_edit_plan / agent_teams_send_message, then tell the user the Web plan is ready. Members start only after the user edits and approves the plan (agent_teams_approve is yours to call only on explicit user approval).
 - If the staged team does not fit this session, archive it with agent_teams_delete and continue solo with the user — that is an accepted outcome of this gate.
 - You may not create a second team while leading this one.`,
         }],
         source: { kind: 'plugin', plugin: 'agent-teams', reason: 'session-start-provision' },
+    });
+}
+/**
+ * The ADVISORY notice shown when the complexity gate fires on a SOFT signal:
+ * the session was NOT staged a team (user clause 4 / D1). It names the matched
+ * signals, states that no team exists yet, and leaves the staging decision to
+ * the captain at the moment the work actually warrants one. It deliberately
+ * says nothing about automatic approval: a ULW run stages with
+ * `approval="automatic"`, so the advisory must not forbid that path.
+ * @param signals - the matched gate signal ids.
+ * @param policy - the normalized sessionTeamPolicy config.
+ * @returns the user-role startup notice.
+ */
+export function advisoryNotice(signals = [], policy = {}) {
+    const profile = policy.profile ?? 'mpd';
+    const matched = signals.length === 0 ? 'complexity signals' : `complexity signals ${signals.join('/')}`;
+    return createUserMessage({
+        content: [{
+            type: 'text',
+            text: `${STARTUP_NOTICE_MARKER}: this session shows ${matched}, and NO team was staged — the gate is ADVISORY and stages nothing while complexity is merely being judged.
+- Stage a team at the moment the work actually warrants one: call agent_teams_create(approval="required", profile="${profile}") with the goal as its description, then shape the roster/DAG while staged and tell the user the Web plan is ready for review.
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so: tell the user in one line that the gate fired and no team was staged.
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`,
+        }],
+        source: { kind: 'plugin', plugin: 'agent-teams', reason: 'session-start-advisory' },
     });
 }
 /**
@@ -455,7 +489,8 @@ export function spliceNotice(decision, claimed, notice) {
  * @param policy - the normalized sessionTeamPolicy config.
  * @param userText - the text of the latest claimed user message (undefined when none).
  * @param workspace - the session workspace root.
- * @returns the routing decision: which path applies and the matched signals.
+ * @returns the routing decision: which path applies and the matched signals
+ * (`advise` = the gate fired on a soft signal and NOTHING is staged).
  */
 export async function routeDecision(policy, userText, workspace) {
     if (userText === undefined)
@@ -468,8 +503,14 @@ export async function routeDecision(policy, userText, workspace) {
         const consumed = consumeExplicitFlag(userText);
         const planArtifact = await hasPlanArtifact(workspace);
         const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
-        if (verdict.trigger)
-            return { action: 'provision', signals: verdict.signals };
+        if (verdict.trigger) {
+            // An explicit `team:` / `!team` request is a DIRECT request and still provisions
+            // (R4: never "the user asked for a team and nothing happened"). Every SOFT trigger
+            // (B/C/D) is ADVISORY instead (user clause 4 / D1): while complexity is merely
+            // being judged the gate stages NOTHING — it tells the captain that a team MAY be
+            // warranted at the moment the work actually needs one.
+            return { action: consumed.flagged ? 'provision' : 'advise', signals: verdict.signals };
+        }
     }
     return { action: 'none', signals: [] };
 }
@@ -479,8 +520,9 @@ export async function routeDecision(policy, userText, workspace) {
  * The listener is registered global + prepend so it sits outermost in the
  * `agent/pre-step` waterfall (the host mounts before per-preset listeners) and
  * its returned decision is the final one. It faithfully forwards the inner
- * decision untouched on every non-provisioning step, and it lands BEFORE any
- * sizing/scale doctrine so the gate can actually prevent a team.
+ * decision untouched on every step whose route is `none`; a triggered SOFT
+ * auto-route injects the advisory notice and stages nothing, and it lands
+ * BEFORE any sizing/scale doctrine so the gate can actually prevent a team.
  * @param ctx - the plugin context (injects `agents`, `llm`, `systemPrompt`).
  * @param resolved - the resolved plugin runtime config (must carry `sessionTeamPolicy`).
  */
@@ -549,6 +591,13 @@ export function installSessionTeamPolicy(ctx, resolved) {
             if (team !== undefined)
                 notice = provisionedNotice(team, route.signals);
         }
+        else if (route.action === 'advise') {
+            // ADVISORY auto-route (user clause 4 / D1): the gate fired on a soft signal and
+            // stages NOTHING here — provisioning is reached ONLY from `mode:'auto'` or an
+            // explicit `team:` / `!team` request (`route.action === 'provision'`). No profile
+            // init, no team record and no lock is touched on this path.
+            notice = advisoryNotice(route.signals, policy);
+        }
         else {
             notice = instructNotice(policy);
         }
@@ -556,6 +605,96 @@ export function installSessionTeamPolicy(ctx, resolved) {
     }, { global: true, prepend: true });
 }
 //#endregion mpd-delta session-start-gate
+//#region mpd-delta plan-format-seed (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-42 (wave 2b, lane A): ONE plan format, understood by BOTH paths.
+ *
+ * The friction: the session-start path only ASKED WHETHER a `.mpd/plans/*.md` artifact exists (a soft
+ * signal for the complexity gate) while the DAG seed took its tasks from a profile's `tasks` templates —
+ * two conventions for "the plan", and nothing compared them, so a plan file could describe one DAG and
+ * the seed produce another (or a task nobody authored). The declared convention is the PLAN'S OWN: the
+ * item ids the artifact already carries — `## TODOs` items (`1.`, `2.`, …) as `T1`, `T2`, … and
+ * `## Final Verification Wave` items (`F1.`) as `F1` — normalised here and consumed by BOTH the
+ * session-start reader and the DAG seed (`lib/tools.js`, `initializeProfileTeam`, which now accepts a
+ * `planFile` and builds its draft tasks through the SAME items).
+ *
+ * IDENTITY IS REFUSED, NEVER REPAIRED: two items naming the same id are a REFUSAL that names the id and
+ * both lines — never a merge and never a suffix, because a suffixed id is a task the author did not write.
+ */
+export const PLAN_TODO_SECTION = '## TODOs';
+export const PLAN_FINAL_WAVE_SECTION = '## Final Verification Wave';
+function planItemSubject(text) {
+    return text.replace(/\*\*/gu, '').replace(/\s+/gu, ' ').trim();
+}
+/**
+ * Parse one plan's task items into the declared convention.
+ * @param planText - the plan artifact's bytes.
+ * @returns `{ ok: true, items }` or `{ ok: false, error }` naming the collision (or the absence).
+ */
+export function parsePlanSeedItems(planText) {
+    const items = [];
+    const seen = new Map();
+    let section;
+    const lines = String(planText ?? '').split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        if (line.trim().startsWith('#'))
+            section = line.trim().replace(/#+\s*$/u, '');
+        const todo = section === PLAN_TODO_SECTION ? /^\s*(\d+)\.\s+(.+)$/u.exec(line) : null;
+        const final = section === PLAN_FINAL_WAVE_SECTION ? /^\s*F(\d+)\.\s+(.+)$/u.exec(line) : null;
+        const match = todo ?? final;
+        if (match === null)
+            continue;
+        const id = todo === null ? `F${match[1]}` : `T${match[1]}`;
+        const subject = planItemSubject(match[2]);
+        if (subject === '')
+            continue;
+        const previous = seen.get(id);
+        if (previous !== undefined) {
+            return {
+                ok: false,
+                error: `plan item id "${id}" is named twice (lines ${previous} and ${index + 1}) — ids are IDENTITY: the plan is refused, never merged and never suffixed`,
+            };
+        }
+        seen.set(id, index + 1);
+        items.push({ id, subject, line: index + 1 });
+    }
+    if (items.length === 0)
+        return { ok: false, error: `no plan items found: a plan declares its work under "${PLAN_TODO_SECTION}" (numbered items) and its verification under "${PLAN_FINAL_WAVE_SECTION}" (F-items)` };
+    return { ok: true, items };
+}
+/**
+ * Read the workspace's plan artifact as the declared task set — the SESSION-START path's half of the
+ * T-42 reading. The file is chosen deterministically (first `*.md` by name, since a plan set is a set).
+ * @param workspace - the session workspace.
+ * @param planFile - optional workspace-relative plan path (the seed's explicit choice).
+ * @returns `{ ok, planFile, items }` or `{ ok: false, error }`.
+ */
+export async function readPlanSeedSet(workspace, planFile) {
+    let relative = planFile;
+    if (relative === undefined) {
+        let entries;
+        try {
+            entries = (await readdir(join(workspace, PLANS_DIR))).filter((entry) => entry.endsWith('.md')).sort();
+        }
+        catch {
+            return { ok: false, error: `no plan artifact under ${PLANS_DIR}` };
+        }
+        if (entries.length === 0)
+            return { ok: false, error: `no plan artifact under ${PLANS_DIR}` };
+        relative = join(PLANS_DIR, entries[0]);
+    }
+    let text;
+    try {
+        text = await readFile(join(workspace, relative), 'utf8');
+    }
+    catch {
+        return { ok: false, error: `plan artifact ${relative} is not readable` };
+    }
+    const parsed = parsePlanSeedItems(text);
+    return parsed.ok === true ? { ...parsed, planFile: relative } : parsed;
+}
+//#endregion mpd-delta plan-format-seed
 //#region mpd-delta interjection-expiry-session-start (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /**
  * R1 dormancy fix: make "captain silence = DENY" resolve even for a DORMANT team.

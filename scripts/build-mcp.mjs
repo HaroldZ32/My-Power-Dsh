@@ -114,13 +114,22 @@ const MPD_SCRUB = {
       ["omo-lsp-daemon", "mpd-lsp-daemon"],
       ["omo-lsp-", "mpd-lsp-"],
       ["omo/ping", "mpd/ping"],
+      // Windows-only startup crash, fixed at the artifact level because the upstream line lives
+      // OUTSIDE the lsp-core overlay band: the win32 named-pipe branch reads the account name
+      // unconditionally (`resolveSocketPath` -> `platform.username()`), and `os.userInfo()` THROWS
+      // on Windows hosts where libuv's `uv_os_get_passwd` fails (measured: `ERR_SYSTEM_ERROR: ...
+      // uv_os_get_passwd returned ENOMEM`). That took the whole MCP row down before a single
+      // JSON-RPC frame was answered (exit 1). The hardened form keeps the original call FIRST, so
+      // every healthy host resolves exactly the name it always did, and only the throwing host
+      // falls back to the environment's account name.
+      ["username: () => userInfo().username", "username: () => { try { return userInfo().username; } catch { return process.env.USERNAME || process.env.USER || \"user\"; } }"],
       // The LSP auth envelope is renamed on BOTH sides (writer + reader/stripper live in this same
       // artifact), so a rebuild must emit the mpd spelling and a re-introduced envelope still fails
       // the residual check. The pattern is written the way the brand regex below writes it -- an
       // underscore followed by the omo shape -- so no shipped file has to spell the retired key.
       [/_(?:om)o/g, "_mpd"],
     ],
-    residual: ["OMO_", ".omo", "omo-lsp", "omo/ping", /_(?:om)o/],
+    residual: ["OMO_", ".omo", "omo-lsp", "omo/ping", /_(?:om)o/, "username: () => userInfo().username"],
   },
   "ast-grep": {
     replace: [
@@ -302,15 +311,17 @@ try {
   // node_modules layout (mimic a bun workspace)
   const nm = join(work, "node_modules", "@oh-my-opencode")
   mkdirSync(nm, { recursive: true })
+  // "junction", never "dir": a Windows directory SYMLINK needs SeCreateSymbolicLinkPrivilege and
+  // answers EPERM without it, while a junction needs no privilege. The type is ignored on POSIX.
   for (const c of CORE) {
-    symlinkSync(join(srcRoot, c), join(nm, c), "dir")
+    symlinkSync(join(srcRoot, c), join(nm, c), "junction")
   }
   const extNm = join(work, "node_modules")
   const resolvedExternals = {}
   for (const [name, entry] of Object.entries(EXTERNAL)) {
     const from = findCache(entry)
     if (!from) { console.error("[build-mcp] bun cache missing external dependency: " + entry); process.exit(1) }
-    symlinkSync(from.path, join(extNm, name), "dir")
+    symlinkSync(from.path, join(extNm, name), "junction")
     resolvedExternals[name] = from.entry
     console.log("[build-mcp] ext dep: " + name + " <- " + from.entry)
   }

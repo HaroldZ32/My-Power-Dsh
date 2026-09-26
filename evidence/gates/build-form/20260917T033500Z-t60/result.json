@@ -1,0 +1,134 @@
+{
+  "task": "t60",
+  "kind": "repair",
+  "sourceTaskId": "t45",
+  "sourceFindingIds": ["t45-section-6-first-line-wording-invites-banner-normalization"],
+  "coverageOf": ["T-67"],
+  "agent": "docs-gate-engineer",
+  "attemptId": "6220cc64-334f-4187-b304-ca65deef6e63",
+  "date": "2026-09-17T03:30Z",
+  "verdict": "pass",
+  "headline": "AGENTS.md §6's build-form sentence now names EVERY bundled module's path comment with the measured 26/24 count instead of 'the first line', foreclosing the disproven one-banner-normalization remedy. Words only, ONE hunk, no command touched — proved by reproducing the recorded pre-edit whole-file hash from a reverse substitution. verify:docs (pairs=37) and verify-rows (25 ids) green; rendered instruction budget re-measured GREEN, truncated:false.",
+  "file": "AGENTS.md",
+  "wholeFileIdentity": {
+    "before": { "sha256": "eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452", "bytes": 48354 },
+    "after":  { "sha256": "1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4", "bytes": 48540 },
+    "delta_bytes": 186,
+    "delta_accounting": "182 B of reworded words (whitespace-normalised span delta) + 4 B of line-wrap whitespace",
+    "mtime": "2026-09-17 11:27:12 +0800",
+    "settled_recheck": "re-hashed at 2026-09-17T03:30:27Z — identical, so the revision was settled, not in flight"
+  },
+  "change": {
+    "hunks": 1,
+    "lines_removed": 3,
+    "lines_added": 5,
+    "before_verbatim": "  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes the entry\n  path RELATIVE TO CWD into the artifact's first line, and `node scripts/verify-dist-fresh.mjs`\n  reproduces THESE bytes — so a package-directory build (the form the packages' own `build` scripts",
+    "after_verbatim": "  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes EVERY\n  bundled module's path RELATIVE TO CWD into the artifact's path comments — 26 of them in the\n  `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line — and\n  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot\n  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts",
+    "preserved": [
+      "the canonical repo-root form + exact command (AGENTS.md:347-349)",
+      "the three-package residual (AGENTS.md:355-357 — mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin, T-67 wave 2)",
+      "the §4 Dist-freshness row's pointer to §6's Build line (unchanged — outside the substituted span by construction)"
+    ],
+    "command_touched": false,
+    "command_untouched_proof": "the substituted span starts after the command block and the multi-entry note and ends at 'a package-directory build'; reversing it reproduces the recorded pre-edit whole-file sha256 exactly (see reverseSubstitutionProof)"
+  },
+  "reverseSubstitutionProof": {
+    "method": "in a COPY (no write to AGENTS.md): replace the post-t60 span with the pre-t60 span, then hash",
+    "artefact": "evidence/gates/build-form/20260917T033500Z-t60/REVERSED-pre-t60.AGENTS.md",
+    "candidate_sha256": "eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452",
+    "candidate_bytes": 48354,
+    "recorded_before_sha256": "eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452",
+    "match": true,
+    "conclusion": "the reworded span IS the entire delta between the recorded before-state and the current file ⇒ single hunk, words only, and no third-party write to AGENTS.md in that window"
+  },
+  "measurement": {
+    "claim": "the two build forms differ on 26 lines, 24 of which remain after dropping the first; EVERY difference is a bundled-module path comment and NO code line differs",
+    "method": "both forms built with `bun build packages/<pkg>/src/…` into TEMP outfiles — repo-root path-qualified args (canonical) vs package-directory cwd (the trap) — then compared line by line; no `packages/**` path written",
+    "root_form": { "sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a", "bytes": 152855 },
+    "package_dir_form": { "sha256": "a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a", "bytes": 152579 },
+    "differing_lines_total": 26,
+    "differing_lines_after_dropping_first": 24,
+    "non_path_comment_differences": 0,
+    "samples": [
+      "// packages/mpd-dsh-adapter-plugin/src/index.ts  vs  // ../mpd-dsh-adapter-plugin/src/index.ts",
+      "// packages/mpd-ext-plugin/src/sdk.ts  vs  // src/sdk.ts",
+      "// packages/mpd-ext-plugin/src/registry.ts  vs  // src/registry.ts"
+    ],
+    "recorded_in": "evidence/gates/build-form/20260917T033500Z-t60/two-forms-method.txt (verbatim in output.log §3)",
+    "same_as_t45_measurement": "identical hashes/bytes to evidence/gates/build-form/20260917T032000Z/round-trip.log:12-17"
+  },
+  "roundTripIdentity_not_rederived": {
+    "command": "sha256sum packages/mpd-ext-plugin/dist/index.js; wc -c packages/mpd-ext-plugin/dist/index.js",
+    "output": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  packages/mpd-ext-plugin/dist/index.js | 152855",
+    "note": "pure READ (hash of the on-disk artefact) — no build re-run for the committed artefact"
+  },
+  "budget": {
+    "renderer": "@deepseek-ai/dsh-agent-instructions renderWorkspaceContext (the module that produced the original truncation notice)",
+    "maxBytes": 65536,
+    "sourceBytes": 48540,
+    "renderedBytes": 48844,
+    "truncated": false,
+    "omitted": [],
+    "verdict": "GREEN (full content injected)",
+    "headroomBytes": 16692,
+    "previous_reading": "48,658 rendered at 48,354 B (t45)"
+  },
+  "acceptance": [
+    {
+      "criterion": "The wording gap is stated with the measurement that proves it: 26 lines differ, 24 after dropping the first, every difference a bundled-module path comment with NO code line differing.",
+      "status": "passed",
+      "evidence": "AGENTS.md:351-352 states 'path comments — 26 of them in the `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line'. The measurement itself (counts, three sample comment pairs, 0 non-path-comment differences) is on disk in two-forms-method.txt and quoted verbatim in output.log §3."
+    },
+    {
+      "criterion": "§6's sentence is reworded so the one-banner-normalization conclusion is FORECLOSED: EACH bundled module's path is written relative to CWD, with the measured count, while preserving the canonical repo-root form, the three-package residual and the §4 pointer.",
+      "status": "passed",
+      "evidence": "after_verbatim above; preserved list in `change.preserved`; the 'normalizing a banner cannot reconcile the two forms' clause is new. §4's Dist-freshness row text is byte-identical (the reverse-substitution hash proof covers the whole file except the substituted span)."
+    },
+    {
+      "criterion": "The change is WORDS ONLY: no other claim in §6 or §4 moves, the file's diff is a single hunk, and the byte count plus the rendered budget are re-measured (48,354 B → new reading; rendered against 65,536 with truncated:false) rather than assumed.",
+      "status": "passed",
+      "evidence": "diff -u pre-t60(reconstructed) vs current = ONE hunk, 3 removed / 5 added prose lines (output.log §2). 48,354 B → 48,540 B; rendered 48,844 / 65,536, `truncated:false`, `omitted:[]` (budget.current.json, output.log §4)."
+    },
+    {
+      "criterion": "The from-disk round trip stays exactly as recorded (f6097fd3383f2fa7… / 152,855 B == committed) and is NOT re-derived — unless the reword touches a command, which it must not; if it does, stop and report instead.",
+      "status": "passed",
+      "evidence": "the reword touched no command (reverse-substitution proof); the recorded identity was confirmed by hashing the on-disk artefact — f6097fd3… / 152,855 B — with no rebuild of it. Honest bound: the 26/24 COUNT was re-taken at 11:27:00 +0800 with temp outfiles (no `packages/**` write; dist mtime 09:33:52, 1h53m before the edit) and reproduced t45's recorded values byte-for-byte; the committed artefact itself was never rebuilt."
+    },
+    {
+      "criterion": "`bun run verify:docs` exit 0 (pairs=37) and `node scripts/verify-rows-parity.mjs` exit 0 (25 ids).",
+      "status": "passed",
+      "evidence": "`[verify-docs-parity] … pairs=37 failed=0 violations=0 exempt=17 — PASS` (exit 0) and `[verify-rows-parity] ok: 25 row ids match the bundle patch insert list` (exit 0) — checks.stage1.log, output.log §5."
+    },
+    {
+      "criterion": "Evidence quotes the before/after sentence verbatim and carries the 26/24 line-difference measurement WITH its method (temp outfiles, no `packages/**` write), so a reader can reproduce the count without trusting prose.",
+      "status": "passed",
+      "evidence": "output.log §1 (verbatim before/after), §3 (verbatim two-forms-method.txt + the method in words + the evidence-path provenance), §7 + SHA256SUMS.txt (sha256 of every artefact, incl. the reverse-reconstruction the diff can be re-run against)."
+    }
+  ],
+  "verify": [
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "status": "passed", "exitCode": 0, "evidence": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" }
+  ],
+  "scope": {
+    "inScopeTouched": ["AGENTS.md", "evidence/gates/build-form/20260917T033500Z-t60/**"],
+    "outOfScopeUntouched": ["agent-references/**", "docs/**", "packages/**", "scripts/**", "skills/**", "EXTENSIONS-FOR-AGENTS.md"],
+    "gitWrites": "none (read-only status/diff only; the captain commits)",
+    "nonGoals": ["re-deriving the round trip", "touching the three packages' build scripts (T-67 script half, wave 2)", "any other section of the manual"]
+  },
+  "artifacts": {
+    "evidenceDir": "evidence/gates/build-form/20260917T033500Z-t60/",
+    "files": [
+      "output.log (13 KB curated transcript: before/after, reverse proof, hunk, measurement+method, budget, gates)",
+      "result.json (this file)",
+      "REVERSED-pre-t60.AGENTS.md (48,354 B / eb526cb3… — re-runnable reconstruction)",
+      "two-forms-method.txt (the 26/24 measurement + samples)",
+      "whole-file-before.txt (the pre-edit whole-file identity)",
+      "checks.stage1.log (raw verify:docs + verify-rows runs)",
+      "budget.current.json (raw renderer output)",
+      "SHA256SUMS.txt (final hashes of every artefact)"
+    ]
+  },
+  "residual": [
+    "T-67's script half stays wave 2: the three packages (mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin) still carry package-directory build scripts, so §6's warning remains load-bearing."
+  ]
+}

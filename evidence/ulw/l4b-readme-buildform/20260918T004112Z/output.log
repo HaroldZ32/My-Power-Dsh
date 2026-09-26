@@ -1,0 +1,117 @@
+=== t14 repair: stale package-directory build form in 12 package READMEs ===
+2026-09-18T00:41:12Z
+base revision: 5aa222a144e4238b67453731c5decd806db6db94
+
+--- BEFORE: bun build lines (from the working tree, pre-edit) ---
+packages/mpd-boulder-plugin/README.md:line 26:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-boulder-plugin/README.zh-CN.md:line 22:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-comment-checker-plugin/README.md:line 39:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-comment-checker-plugin/README.zh-CN.md:line 38:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-hashline-plugin/README.md:line 28:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-hashline-plugin/README.zh-CN.md:line 24:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-memory-plugin/README.md:line 39:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-memory-plugin/README.zh-CN.md:line 31:bun build src/index.ts --outdir dist --target node --format esm
+packages/mpd-qa-roles-probe/README.md:line 20:bun build src/index.ts --target node --format esm --outfile dist/index.js
+packages/mpd-qa-roles-probe/README.zh-CN.md:line 16:bun build src/index.ts --target node --format esm --outfile dist/index.js
+packages/mpd-workmate-plugin/README.md:line 166:bun build src/index.ts --target node --format esm --outfile dist/index.js
+packages/mpd-workmate-plugin/README.zh-CN.md:line 130:bun build src/index.ts --target node --format esm --outfile dist/index.js
+
+--- BEFORE: git status of the 12 files (must be clean pre-edit) ---
+(empty above = clean)
+
+--- AFTER: bun build lines (from the working tree, post-edit) ---
+packages/mpd-boulder-plugin/README.md:line 26:bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
+packages/mpd-boulder-plugin/README.zh-CN.md:line 22:bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
+packages/mpd-comment-checker-plugin/README.md:line 39:bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+packages/mpd-comment-checker-plugin/README.zh-CN.md:line 38:bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+packages/mpd-hashline-plugin/README.md:line 28:bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+packages/mpd-hashline-plugin/README.zh-CN.md:line 24:bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+packages/mpd-memory-plugin/README.md:line 39:bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+packages/mpd-memory-plugin/README.zh-CN.md:line 31:bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+packages/mpd-qa-roles-probe/README.md:line 20:bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+packages/mpd-qa-roles-probe/README.zh-CN.md:line 16:bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+packages/mpd-workmate-plugin/README.md:line 166:bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+packages/mpd-workmate-plugin/README.zh-CN.md:line 130:bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+
+--- STALE-FORM SWEEP: 'bun build src/index.ts' in the 12 files (expect no hits) ---
+grep-exit=1
+
+--- STALE-FORM SWEEP: same form anywhere else in packages/*/README*.md ---
+grep-exit=1
+
+--- CANONICAL-FORM PRESENCE (12/12 expected) ---
+packages/mpd-boulder-plugin/README.md:1
+packages/mpd-boulder-plugin/README.zh-CN.md:1
+packages/mpd-comment-checker-plugin/README.md:1
+packages/mpd-comment-checker-plugin/README.zh-CN.md:1
+packages/mpd-hashline-plugin/README.md:1
+packages/mpd-hashline-plugin/README.zh-CN.md:1
+packages/mpd-memory-plugin/README.md:1
+packages/mpd-memory-plugin/README.zh-CN.md:1
+packages/mpd-qa-roles-probe/README.md:1
+packages/mpd-qa-roles-probe/README.zh-CN.md:1
+packages/mpd-workmate-plugin/README.md:1
+packages/mpd-workmate-plugin/README.zh-CN.md:1
+
+--- TWIN IDENTITY: build line byte-equality per pair (empty = identical) ---
+mpd-boulder-plugin: identical
+mpd-comment-checker-plugin: identical
+mpd-hashline-plugin: identical
+mpd-memory-plugin: identical
+mpd-qa-roles-probe: identical
+mpd-workmate-plugin: identical
+
+--- NON-BUILD LINES UNCHANGED: diff excluding the build line (expect empty per file) ---
+(no NON-BUILD CHANGE lines above = only the build line differs)
+
+--- verify:docs (contract verify) at 2026-09-18T00:43:17Z ---
+$ node scripts/verify-docs-parity.mjs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+verify-docs-exit=0
+
+--- sha256 of the 12 files ---
+b8c88e62a3ce980333fed4eef0a0b52359f4d0ee9c825caaee5a96154f973d2e  packages/mpd-boulder-plugin/README.md
+74a31faa1cc8b084f00bce11bf90b98325b12187b7b7c569a15657b139859503  packages/mpd-boulder-plugin/README.zh-CN.md
+ff5c8cef836f06f1e0a05694e10c4b215c0a6baf831223dfb3e474f9c32d8a53  packages/mpd-comment-checker-plugin/README.md
+aae5d4aa750a5855d2a81b01b2afb4ea2ba67804a544176dca2c2e0f0a7a801f  packages/mpd-comment-checker-plugin/README.zh-CN.md
+89ffae7c516d39bd567b7b4fc298ce87ede45f17d1213b15e75db8cecc5fd515  packages/mpd-hashline-plugin/README.md
+e642b0744d980c8155908a527b39793caeecc065d6d448fd8987b9b4f6b01c07  packages/mpd-hashline-plugin/README.zh-CN.md
+aa6c4438ac37d69b97bd6662f5765428fa04ceadef8c4e863d8587234ff78045  packages/mpd-memory-plugin/README.md
+583e6eca5b64a1d5234b40e97d79cf7e39cc94786a5c3df59ed4a4aa3f4db864  packages/mpd-memory-plugin/README.zh-CN.md
+fe5c752586f05d919d3b42564254e70895040e06ff5db35aa3bd0c825d2e8deb  packages/mpd-qa-roles-probe/README.md
+7820458c79121894a07a32a049dc254f7cd4dc960a6074fb8e47022d0376faf0  packages/mpd-qa-roles-probe/README.zh-CN.md
+42263972268cc8fdb7730603b563b43eb04ed59013c6692195aca7c156afe1cb  packages/mpd-workmate-plugin/README.md
+9082479e9b4cc5a8a05fe7f46c796005d18a9683ed7c784b028bb39146f13501  packages/mpd-workmate-plugin/README.zh-CN.md
+
+--- FINAL verify:docs at 2026-09-18T00:43:36Z (final state) ---
+$ node scripts/verify-docs-parity.mjs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+final-verify-docs-exit=0
+
+--- workspace status of the 12 inScope files ---
+ M packages/mpd-boulder-plugin/README.md
+ M packages/mpd-boulder-plugin/README.zh-CN.md
+ M packages/mpd-comment-checker-plugin/README.md
+ M packages/mpd-comment-checker-plugin/README.zh-CN.md
+ M packages/mpd-hashline-plugin/README.md
+ M packages/mpd-hashline-plugin/README.zh-CN.md
+ M packages/mpd-memory-plugin/README.md
+ M packages/mpd-memory-plugin/README.zh-CN.md
+ M packages/mpd-qa-roles-probe/README.md
+ M packages/mpd-qa-roles-probe/README.zh-CN.md
+ M packages/mpd-workmate-plugin/README.md
+ M packages/mpd-workmate-plugin/README.zh-CN.md
+--- evidence dir ---
+total 32
+drwxr-xr-x 2 root root 4096 Sep 18 08:43 .
+drwxr-xr-x 3 root root 4096 Sep 18 08:41 ..
+-rw-r--r-- 1 root root 7616 Sep 18 08:43 output.log
+-rw------- 1 root root 9532 Sep 18 08:43 result.json
+-rw-r--r-- 1 root root   17 Sep 18 08:41 .ts
+
+--- evidence dir cleanup: removed the scratch .ts marker; final contents ---
+hashes.txt
+output.log
+result.json

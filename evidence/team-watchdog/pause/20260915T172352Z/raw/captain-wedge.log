@@ -1,0 +1,4 @@
+[captain-wedge] NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)
+[captain-wedge] the captain's own silence is flagged: [{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}]
+[captain-wedge] the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false
+[captain-wedge] scene written: 1, incident recorded: 1

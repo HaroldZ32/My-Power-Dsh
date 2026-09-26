@@ -1,0 +1,32 @@
+patch guard      : 3367 e0429ff54f8eaca1cd371e49925a32d91233850126ebd8afc66bbb601f40aeb6
+installer const  : 3367 EQUAL: true
+packed guard     : 2493 7a497589c7fa36db6d38aa39e179b899698b01599073180ec8722d404ea26793
+PACKED == PATCH  : false
+reads evaluated .disabled getter: no (only raw e.options.disabled)
+[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar
+[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition
+[mpd-better-sidebar] mount guard: DISABLED - bundle layer @other/web-all already mounts it in its own patch
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r2-8-H6fav2/dsh/profiles/w/cordis.patch.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r2-9-vjVydE/dsh/cordis.patch.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r2-10-mHoH6x/overlay-mention.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+
+--- round-2 synthetic composition probes (shipped guard verbatim, real fs) ---
+OK   P1 web: own layer + webserver entry -> ENABLED -> false (expected false)
+OK   P1b web: own layer not installed as a dir (unreadable) -> ENABLED -> false (expected false)
+OK   P2 web layer declared but webserver entry MISSING -> DISABLED (fail-closed) -> true (expected true)
+OK   P3 webserver entry disabled by !!js marker -> DISABLED (R3) -> true (expected true)
+OK   P3b webserver entry raw disabled:false -> ENABLED -> false (expected false)
+OK   P4 foreign layer mounts + mentions our id -> DISABLED (R4) -> true (expected true)
+OK   P5 foreign layer mounts (no mention) -> DISABLED -> true (expected true)
+OK   P5b foreign layer mounts, ordered FIRST -> DISABLED (order-independent) -> true (expected true)
+OK   P6 profile layer mentions it -> DISABLED (R1a) -> true (expected true)
+OK   P7 home layer mentions it -> DISABLED (R1b) -> true (expected true)
+OK   P8a --patch <file> overlay mounts -> DISABLED (R1c) -> true (expected true)
+OK   P8b --patch=<file> spelling -> DISABLED (R1c) -> true (expected true)
+OK   P9 --patch overlay that does NOT mention it -> ENABLED -> false (expected false)
+OK   P10 package absent -> DISABLED -> true (expected true)
+OK   P11 no ctx.loader -> throw path DISABLED -> true (expected true)
+OK   P12 webserver entry but NO web plane layer (custom web bundle) + own layer -> ENABLED -> false (expected false)
+
+ALL PROBES OK

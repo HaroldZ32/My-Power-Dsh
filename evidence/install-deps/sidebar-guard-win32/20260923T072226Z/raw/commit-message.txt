@@ -1,0 +1,51 @@
+fix(bundle): resolve the sidebar guard's profile dir on win32
+
+The `mpd-better-sidebar` mount guard derived the profile directory with
+`path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname))`. `baseUrl` is the
+profile's own file URL (`file:///C:/Users/<u>/.dsh/profiles/web/`, set by dsh-app-boot as
+`pathToFileURL(dirname(configPath)).href + "/"`), whose `pathname` is `/C:/Users/.../web/`.
+win32 `path.normalize` reads that leading `/` as the CURRENT drive root, so the guard tested
+`\C:\Users\...\node_modules\dsh-better-sidebar` and `fs.existsSync` answered false for a
+sidebar that WAS resolvable in the profile. Clause 1 therefore disabled the bundle's ONLY
+sidebar mount on EVERY win32 profile, with the reason "dsh-better-sidebar is not resolvable
+from the profile node_modules" - a line that reads as "the package is not installed" while
+it sits in `<profile>/node_modules`. A non-URL `baseUrl` (plain path) took the other branch
+and threw `Invalid URL` into the same DISABLED catch, so both branches were disabled-only.
+
+The derivation is now `node:url.fileURLToPath(baseUrl)`: canonical, drive-form and
+percent-encoding safe, and it needs no escaping inside this row's YAML DOUBLE-quoted `!!js`
+scalar, where the sibling rows' string-op FILE-URL idiom would have required `\\/`.
+
+This is the same doubled-drive-prefix class the win32 wave (010d9ef6) fixed for the presets
+row and the four MCP rows of this very file and documents in its FILE-URL header; the guard
+was the one spot left on the POSIX-shaped form, and it had no test.
+
+Measured on win32-x64 (node v24.21.0, bun 1.4.2, harness 0.1.5-rc.2):
+
+- New `packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.mjs` extracts the
+  SHIPPED `!!js` scalar (never a re-typed copy) and evaluates it against synthetic profile
+  layouts in a temp sandbox: 1 pass / 4 fail before, 5 pass / 0 fail after. The red run
+  reports the bogus clause-1 reason for a profile that DOES contain the package, which is
+  the defect stated as an assertion.
+- A real isolated boot of the bundle's own web profile (bundle link + layer, sandbox
+  DSH_HOME and HOME, server stdio to a FILE) prints
+  `[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from
+  the profile node_modules` on the pre-fix bytes and
+  `[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts
+  dsh-better-sidebar` after them. Everything but the guard bytes is constant across the
+  pair, and both boots came up - so pre-fix the declared sidebar host was simply never
+  mounted on win32.
+
+Evidence: evidence/install-deps/sidebar-guard-win32/20260923T072226Z/ (result.json, the
+red/green test logs, the red/green mount logs, and the boot probe under raw/).
+
+Gates on this host: bun test packages 1160 pass / 0 fail; bun run typecheck clean;
+verify:rows 26/26; install-profile.mjs --dry-run; verify:docs PASS (38 pairs);
+preset-conformance --self-test 31/31; plus the MOUNT pair above.
+
+Known limit, recorded in the same evidence: the `bundle-lifecycle` lane cannot START on
+this host - `lib/dsh-launcher.mjs#resolveOnPath` reads `env.PATH` from a plain
+`{...process.env}` copy, which win32 enumerates as `Path`, so no PATH directory is scanned
+and the lane reports "no dsh launcher on PATH" while `dsh.cmd` is installed. That is a
+skills/** defect with its own single-writer and VENDOR_LOCK constraints (AGENTS.md §9), so
+the MOUNT proof above uses an evidence-local probe that boots the harness entry directly.

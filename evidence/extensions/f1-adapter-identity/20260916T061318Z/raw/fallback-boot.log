@@ -1,0 +1,75 @@
+=== F1 LIVE fallback boot ===
+repo=/root/dshProj/my-power-dsh
+sandbox DSH_HOME=/tmp/mpd-f1-dsh-hrIz0p
+sandbox HOME=/tmp/mpd-f1-home-OJkZfZ
+sandbox workspace=/tmp/mpd-f1-ws-08rHw0
+overlay=/root/dshProj/my-power-dsh/evidence/extensions/f1-adapter-identity/20260916T061318Z/raw/disable-adapter.yml
+overlay contents:
+- id: mpd-dsh-adapter
+  disabled: true
+HEAD=1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+src sha256: eaf4b11816382250fd2887b54e73e8b7c88ad6ff886eac9314a0af3abc5e4eb3  packages/mpd-ext-plugin/src/index.ts 96f3e530dbaef271482c4d79ea58cb3d7547476a4d0be9dd7c640d958ea0649c  packages/mpd-roles-plugin/src/index.ts 
+dist sha256: c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe  packages/mpd-ext-plugin/dist/index.js dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0  packages/mpd-roles-plugin/dist/index.js 
+
+[exit=0] dsh plugin --profile mb add <repo>
+### real boot: dsh --profile mb --patch <disable mpd-dsh-adapter> 'say ok' (sandboxed cwd)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter).
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[mpd-team-watchdog] WARN mpd-default task=t12 member=Lead silence=3034472ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T061833Z-warn.json
+[mpd-team-watchdog] WARN mpd-default task=t12 member=Lead silence=3049477ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T061848Z-warn.json
+[mpd-team-watchdog] ESCALATE mpd-default task=t12 member=Lead silence=3064494ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/.mpd/team/watchdog/scene/mpd-default/20260916T061903Z-escalate.json
+[CodeGraph MCP] Auto-synced 1 file(s) in 637ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 417ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 440ms
+[CodeGraph] Watch sync failed { error: 'database is locked', retryCount: 1 }
+[CodeGraph MCP] Auto-sync error: database is locked
+[CodeGraph] Watch sync failed { error: 'database is locked', retryCount: 1 }
+[CodeGraph MCP] Auto-sync error: database is locked
+[CodeGraph MCP] Auto-synced 1 file(s) in 400ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 416ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 460ms
+[exit=124] boot (124 = still serving at the 180s cap)
+
+readings:
+  mpd-dsh-adapter applied (MUST be 0)          : 0
+  [mpd-ext] ADAPTER FALLBACK lines (MUST be 1) : 1
+  [mpd-roles] ADAPTER FALLBACK lines (MUST be 1): 1
+  fallback identity readings (= warn + summary): 4
+  [mpd-ext] mpdExtensions provided lines        : 1
+  [mpd-roles] mpdRoles provided lines           : 1
+  four-tool summary present                     : 1
+  apply-crash signatures (MUST be 0)            : 0
+--- identity lines, verbatim ---
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter).
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get("mpdDsh") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter
+{
+  "proof": "REAL boot with the mpd-dsh-adapter row disabled: the fallback branch warns once per row and the tree keeps working",
+  "isolation": {
+    "DSH_HOME": "temp sandbox",
+    "HOME": "temp sandbox"
+  },
+  "overlay": "/root/dshProj/my-power-dsh/evidence/extensions/f1-adapter-identity/20260916T061318Z/raw/disable-adapter.yml",
+  "adapter_row_applied": 0,
+  "mpd_ext_fallback_warnings": 1,
+  "mpd_roles_fallback_warnings": 1,
+  "fallback_identity_readings": 4,
+  "mpd_ext_summary_lines": 1,
+  "mpd_roles_summary_lines": 1,
+  "four_tool_summary_present": true,
+  "apply_crash_signatures": 0,
+  "install_exit": 0,
+  "boot_exit": 124,
+  "passed": true,
+  "note": "loader-level apply is the load evidence; --dump-config is never used here (it composes rows without executing plugin code)"
+}
+[exit=0] F1 live fallback boot

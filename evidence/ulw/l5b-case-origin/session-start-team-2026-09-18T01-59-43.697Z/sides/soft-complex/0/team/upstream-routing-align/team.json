@@ -1,0 +1,567 @@
+{
+  "name": "upstream-routing-align",
+  "id": "upstream-routing-align",
+  "description": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change. Bundle = /root/dshProj/my-power-dsh @ HEAD 5aa222a (READ-ONLY; deliverables land in this workspace as an applicable patch + operator handoff). Orchestration surface = the adopted packages/mpd-agent-teams-plugin, whose upstream is NanmiCoder/dsh-agent-teams (local clone /root/dshProj/dsh-agent-teams @ 502dd6c / v0.1.16-rc.3). The request's definite article names no referent, and at least five routing candidates exist with several already landed (T-93 is fully landed) — so the DAG resolves the ambiguity by evidence and gates it BEFORE implementing: map the surface, establish upstream alignment, freeze ONE open routing change behind a falsifiable acceptance with a negative control, independently verify the spec, implement it in a pinned HEAD copy, verify seeded-RED/GREEN, review, and hand off.",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-0002e58b-5c69-4d08-931f-8d4a2393a4fb",
+  "createdAt": 1789697094879,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789697094879
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789697094879,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Map the orchestration surface: adopted files, live mpd-delta regions, and every routing decision point",
+      "description": "Read-only reconnaissance. Your seat has NO bash and NO write/edit/artifact-outside-evidence: use read/grep/glob and deliver through the task `artifact` field at a path under evidence/audit/. READ SHARED-FACTS.md FIRST — §3 gives you `head-pin/`, the captain-built read-only copy of committed HEAD, and §8 states exactly what your seat can and cannot do. Read HEAD content from `head-pin/`, NEVER from the bundle's dirty working tree (50 uncommitted entries would hand you wrong line numbers for the 3 changed lib files). Do not attempt to build a pin or run any command; that is mechanically impossible for your seat.",
+      "status": "pending",
+      "assignee": "Explorer",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789697110672,
+      "updatedAt": 1789697240134,
+      "kind": "requirements",
+      "objective": "Produce a read-only, statically falsifiable map of the adopted agent-teams orchestration surface at committed HEAD 5aa222a: every adopted lib file, every LIVE mpd-delta region id with its 1-based line span, and every routing decision point — so the spec-freeze and implementation tasks cite exact loci instead of re-discovering them.",
+      "inScope": [
+        "evidence/audit/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "packages/**",
+        "presets/**",
+        "scripts/**",
+        "SHARED-FACTS.md",
+        "evidence/spec/**",
+        "evidence/upstream/**"
+      ],
+      "acceptance": [
+        "evidence/audit/surface-map.md names every adopted file under packages/mpd-agent-teams-plugin/lib/** and gives, per file, its LIVE `//#region mpd-delta <id>` marker ids with 1-based line spans, read from a pin built from HEAD 5aa222a (never from the bundle's dirty tree), with the exact extraction command recorded.",
+        "It enumerates every ROUTING decision point — anywhere a task, repair, review or delivery is routed to a seat, or a session is routed to a team — as file:line + runtime symbol, covering at minimum lib/scheduler.js, lib/quality-gates.js, lib/session-start.js, lib/members.js and lib/index.js.",
+        "The measured region and file totals are stated and reconciled against `node scripts/patch-agent-teams-fixes.mjs --check` run inside the pin (120 regions / 10 files at HEAD); if the numbers disagree, the report gives the command output that contradicts them instead of repeating the SHARED-FACTS figure.",
+        "Every claim rests on a file:line that exists in the pin and on a command whose output is quoted; no claim rests on the dirty working tree, and the report says so explicitly.",
+        "The report ends with a short section listing which routing loci are already LANDED (region id + symbol) versus which have no landed implementation — the input the spec task's OPEN test consumes."
+      ],
+      "deliverables": [
+        "evidence/audit/surface-map.md"
+      ],
+      "nonGoals": [
+        "Do not edit any file under /root/dshProj — the bundle is read-only and out of bounds.",
+        "Do not propose or implement the routing change; this task only maps the surface.",
+        "Do not re-derive the SHARED-FACTS numbers unless your own measurement contradicts them."
+      ],
+      "coverageOf": [
+        "audit the orchestration surface"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Upstream alignment: pin the adopted base against NanmiCoder/dsh-agent-teams and classify every routing delta",
+      "description": "Read-only evidence research. READ /tmp/mpd-sst-zUULiP/side/soft-complex/0/ws/SHARED-FACTS.md FIRST — §2 records the two distinct upstreams and that the local clone tops out at v0.1.16-rc.3 with all origin/* branches merged; §3 records the corrected pin recipe. Primary sources only: the local clone /root/dshProj/dsh-agent-teams and the bundle's own provenance files. Do not assert a version you cannot cite — a remembered version number is exactly the error this task exists to prevent. Work from the bundle's committed HEAD, not its dirty tree.",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789697110678,
+      "updatedAt": 1789697240134,
+      "kind": "requirements",
+      "objective": "Establish from primary sources the exact upstream identity this bundle pins, what upstream changed across its releases in the routing/seat-selection area, and which of those changes are PRESENT, ABSENT or DELIBERATELY DIVERGED in the adopted plugin — so the spec freeze ranks candidates against measured drift rather than a remembered version.",
+      "inScope": [
+        "evidence/upstream/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/my-power-dsh/**",
+        "packages/**",
+        "presets/**",
+        "scripts/**",
+        "SHARED-FACTS.md",
+        "evidence/audit/**",
+        "evidence/spec/**"
+      ],
+      "acceptance": [
+        "evidence/upstream/pinned-base.md states the pinned upstream identity as recorded IN THE BUNDLE (packages/mpd-agent-teams-plugin/package.json, VENDOR_LOCK.json, scripts/vendor-agent-teams.mjs, packages/mpd-agent-teams-plugin/_deps/**), quoting the exact line or file for each claim, and names which upstream ref (tag or commit) the local clone's HEAD corresponds to.",
+        "evidence/upstream/releases.md records every upstream release-note entry that touches routing, seat/model selection or member fallback, quoting each entry verbatim with its file — at minimum v0.1.14's native model routing and the v0.1.16-rc.1 fallback-route entry.",
+        "Every upstream routing change identified is classified PRESENT / ABSENT / DELIBERATELY DIVERGED in the adopted lib, each with file:line evidence on BOTH sides (upstream src/*.ts and adopted lib/*.js).",
+        "The report states plainly whether any version above 0.1.16-rc.3 is reachable from the available local sources. If none is reachable it says so and asserts no higher version; if one is, it quotes the primary source rather than a recollection.",
+        "The runtime-symbol parity measurement is reported (upstream-only runtime exports, i.e. export function|const|class present upstream and absent from the adopted lib) with the exact command that produced the number, or the SHARED-FACTS result is contradicted with command output."
+      ],
+      "deliverables": [
+        "evidence/upstream/pinned-base.md",
+        "evidence/upstream/releases.md",
+        "evidence/upstream/routing-drift.md"
+      ],
+      "nonGoals": [
+        "Do not modify the upstream clone at /root/dshProj/dsh-agent-teams or the bundle — both are out of bounds.",
+        "Do not re-pin, vendor or copy upstream code; this is a measurement task.",
+        "Do not implement or recommend a change; the spec task consumes your classification."
+      ],
+      "coverageOf": [
+        "align the bundle with upstream"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Freeze the routing-change spec: rank every candidate referent, prove the OPEN one with a negative control",
+      "description": "Read-only decision task and the hinge of this session. Your seat has NO bash and NO write/edit: deliver through the task `artifact` field at a path under evidence/spec/. READ SHARED-FACTS.md §3 (head-pin = committed HEAD, cite file:line from THERE), §5 (the already-landed routing regions) and §8 (capability matrix) FIRST. The request says \"the routing change\" with a definite article but names no referent, and at least five candidates exist while several are already landed — implementing something already shipped is the dominant failure mode of the whole session. Consume evidence/audit/surface-map.md (t1) and evidence/upstream/*.md (t2); do not re-derive them. You cannot run the negative control — state it precisely enough that the t4 executor can run it and report the raw result.",
+      "status": "pending",
+      "assignee": "Architect",
+      "dependencies": [
+        "t1",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697119297,
+      "updatedAt": 1789697240134,
+      "kind": "requirements",
+      "objective": "Turn the orchestration-surface map (t1) and the upstream alignment evidence (t2) into a frozen SINGLE-change spec that resolves the request's ambiguity: what \"the routing change\" denotes, which candidates are already landed or out of scope, and exactly which OPEN change the implementation task must make — with a falsifiable acceptance and a negative control.",
+      "inScope": [
+        "evidence/spec/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "packages/**",
+        "presets/**",
+        "scripts/**",
+        "SHARED-FACTS.md",
+        "evidence/audit/**",
+        "evidence/upstream/**",
+        "pinned/**",
+        "patches/**"
+      ],
+      "acceptance": [
+        "evidence/spec/routing-change-spec.md ranks EVERY candidate referent of 'the routing change' that t1 and t2 support — at minimum: the session-start auto-route team policy (lib/session-start.js), pool/dispatch seat routing (nextReadyTask/nextCapableTask/taskCapabilityGap), generated repair/review seat selection (lib/quality-gates.js), the delivery routing class (lib/scheduler.js), and every routing drift t2 classified as ABSENT.",
+        "Each candidate carries a verdict LANDED / OPEN / OUT-OF-SCOPE with file:line evidence. A candidate may be marked OPEN ONLY with a NEGATIVE CONTROL: a concrete probe or test, with its command, that FAILS at the pinned HEAD because the change is absent. A candidate supported only by a comment or a document is explicitly NOT open.",
+        "The spec freezes exactly ONE change and states its locus as file:line at HEAD, the behavioral contract before and after, the mpd-delta region id(s) it adds or changes, the falsifiable acceptance, and the negative control that must fail without it.",
+        "It names what is deliberately NOT being implemented — at minimum the already-landed T-93 arms (repair-seat-capability, repair-seat-selection, repair-seat-required, pool-capability-guard, reoffer-terminal-route) — with the evidence that they are landed.",
+        "It states the residual risk if the frozen choice is the wrong referent, and names the cheapest independent evidence that would refute it, so the verifier can attack that specific claim rather than the spec in general.",
+        "The document is self-contained: a reader who has not seen t1 or t2 can act on it, every cited path exists in the pin, and every command in it is copy-pasteable."
+      ],
+      "deliverables": [
+        "evidence/spec/routing-change-spec.md"
+      ],
+      "nonGoals": [
+        "Do not implement the change or edit any file outside evidence/spec/**.",
+        "Do not write to /root/dshProj — the bundle is read-only.",
+        "Do not freeze a change whose OPEN status rests on a comment, a TODO or a document; that is not evidence.",
+        "Do not freeze more than one change; a ranked list with one winner is the deliverable."
+      ],
+      "coverageOf": [
+        "implement the routing change",
+        "audit the orchestration surface"
+      ]
+    },
+    {
+      "id": "t4",
+      "subject": "Verify the frozen spec: reproduce its negative control on an independent pin and resolve every cited locus",
+      "description": "Independent early gate, and this seat is a WORKER: you have bash + write and are EXPECTED to build a pin and run the spec's negative control. Read SHARED-FACTS.md first — §3 the corrected green pin recipe, §5 the already-landed routing regions, §8 the capability matrix. The spec's author (Architect) is a read-only seat and CANNOT run anything, so the spec only PROPOSES the probe; you are the one who executes it. Build your OWN pin; never reuse a pin, probe, or number produced by the spec author.",
+      "status": "pending",
+      "assignee": "Junior Engineer",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697129247,
+      "updatedAt": 1789697240134,
+      "kind": "verification",
+      "objective": "Independently falsify the frozen spec's claims BEFORE any implementation effort is spent: reproduce its negative control on a verifier-built pin, resolve every cited locus, and confirm the frozen change is genuinely absent at HEAD rather than already landed.",
+      "inScope": [
+        "spec-verify/**",
+        "evidence/spec-verify/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "packages/**",
+        "presets/**",
+        "scripts/**",
+        "SHARED-FACTS.md",
+        "evidence/spec/**",
+        "evidence/audit/**",
+        "evidence/upstream/**",
+        "pinned/**",
+        "patches/**"
+      ],
+      "acceptance": [
+        "evidence/spec-verify/spec-verdict.md judges EVERY acceptance criterion of t3 and, above all, the spec's central OPEN claim, with a per-claim verdict and the command output it rests on.",
+        "The verifier builds its OWN pin from HEAD 5aa222a (path spec-verify/pin, using the corrected recipe in SHARED-FACTS.md §3) and records the exact build command; it does not reuse any pin or probe built by the spec author, and says so explicitly.",
+        "The spec's NEGATIVE CONTROL is independently reproduced on that pin and its FAILING output is quoted. If the probe PASSES at HEAD, the frozen change is not absent and the verdict is a failure with that output as the finding.",
+        "Every file:line the spec cites is resolved in the pin, and the report states how many citations were checked; any citation that does not exist, or that resolves to something other than the spec claims, is a finding naming the corrected locus.",
+        "The inverse error is scored the same: any candidate the spec marked LANDED is spot-checked, and a candidate that is in fact OPEN is reported rather than accepted.",
+        "The verdict states plainly whether the frozen change is executable as specified; a verdict of pass requires the reproduced negative control plus every citation resolving, and any failure lists findings with file, line and required fix."
+      ],
+      "verify": [
+        "cd spec-verify/pin && node scripts/patch-agent-teams-fixes.mjs --check",
+        "cd spec-verify/pin && bun test packages/mpd-agent-teams-plugin"
+      ],
+      "deliverables": [
+        "evidence/spec-verify/spec-verdict.md"
+      ],
+      "nonGoals": [
+        "Do not implement the change or edit the spec; you verify, you do not repair.",
+        "Do not write to /root/dshProj — the bundle is read-only.",
+        "Do not accept a citation on the strength of the spec's summary; resolve it in the pin."
+      ],
+      "coverageOf": [
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t5",
+      "subject": "Implement the frozen routing change in a pinned HEAD copy and emit an applicable patch",
+      "description": "The only task that changes the product code, and it does so inside a pinned copy in THIS WORKSPACE — never under /root/dshProj, which is read-only. READ SHARED-FACTS.md §3 (corrected green pin recipe), §4 (the mpd-delta registry mechanism and the 120-region/10-file count) and §5 (T-93 is already landed — do not re-implement it). Implement exactly what evidence/spec/routing-change-spec.md froze, no more: scope creep here is indistinguishable from implementing the wrong referent.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t4"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697134669,
+      "updatedAt": 1789697134669,
+      "kind": "implementation",
+      "objective": "Implement the routing change frozen in evidence/spec/routing-change-spec.md inside a pinned copy of the bundle's committed HEAD 5aa222a in this workspace, keep the mpd-delta registry consistent, run the plugin gates green, and emit a patch that applies cleanly to a fresh pin.",
+      "inScope": [
+        "pinned/**",
+        "patches/**",
+        "evidence/impl/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "evidence/spec/**",
+        "evidence/audit/**",
+        "evidence/upstream/**",
+        "spec-verify/**",
+        "verify/**",
+        "handoff/**",
+        "SHARED-FACTS.md"
+      ],
+      "acceptance": [
+        "pinned/ is a pin of committed HEAD 5aa222a built with the corrected recipe recorded in SHARED-FACTS.md §3; the pinned sha, the archive file list and the exact commands are recorded, and a before/after capture of `git -C /root/dshProj/my-power-dsh status --porcelain` is byte-identical to baseline/bundle-status-before.txt (50 lines) proving no write occurred under /root/dshProj.",
+        "The change is implemented ONLY at the locus frozen in evidence/spec/routing-change-spec.md; any new or changed mpd-delta region is registered by running the patch script, and `node scripts/patch-agent-teams-fixes.mjs --check` exits 0 inside pinned/.",
+        "`bun test packages/mpd-agent-teams-plugin` inside pinned/ is green — at least the 299 pass / 0 fail baseline plus the change's own regression test — and the tail of the run is quoted.",
+        "The spec's negative control is run BOTH ways by the implementer: it FAILS in a copy with the production change reverted and PASSES with it. Both outputs are quoted, and the reverted copy is not left as the delivered artifact.",
+        "patches/routing-change.patch exists, applies cleanly to a FRESH pin of HEAD via `git apply --check`, and touches only paths under packages/mpd-agent-teams-plugin/**; the patch is regenerable from pinned/ by a recorded command.",
+        "Changed paths are listed as workspace-relative POSIX paths, and the report states honestly anything that did NOT work rather than presenting a partial result as complete."
+      ],
+      "verify": [
+        "cd pinned && node scripts/patch-agent-teams-fixes.mjs --check",
+        "cd pinned && bun test packages/mpd-agent-teams-plugin"
+      ],
+      "deliverables": [
+        "pinned/**",
+        "patches/routing-change.patch",
+        "evidence/impl/implementation-report.md"
+      ],
+      "nonGoals": [
+        "Do not write to /root/dshProj — the bundle is read-only and out of bounds; deliver a patch instead.",
+        "Do not implement anything the spec did not freeze, and do not re-implement the landed T-93 routing arms.",
+        "Do not modify pinned/node_modules or any vendored dependency; it is a symlink to the bundle's node_modules.",
+        "Do not weaken, skip or delete an existing test to reach green."
+      ],
+      "coverageOf": [
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t6",
+      "subject": "Independently verify the routing change: seeded RED, GREEN, registry cleanliness, patch applicability",
+      "description": "Adversarial independent verification. Build every artifact yourself from HEAD and the patch; trust no implementer summary. READ SHARED-FACTS.md §3 for the corrected pin recipe — a pin missing presets/evidence/packages-mpd-bundle yields a spurious 296/3, and mistaking that for a real regression is the specific error this task must avoid. The change's value is only as good as the RED that proves it was ever absent.",
+      "status": "pending",
+      "assignee": "Deep Worker",
+      "dependencies": [
+        "t5"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697141431,
+      "updatedAt": 1789697141431,
+      "kind": "verification",
+      "objective": "Falsify or confirm the delivered routing change on artifacts the verifier builds itself — a seeded-RED pin where the change's regression test fails without the production change, a GREEN pin where the full suite passes, registry consistency, and clean patch applicability to a fresh pin — without trusting the implementer's summaries.",
+      "inScope": [
+        "verify/**",
+        "evidence/verify/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "pinned/**",
+        "patches/**",
+        "evidence/impl/**",
+        "evidence/spec/**",
+        "evidence/audit/**",
+        "evidence/upstream/**",
+        "spec-verify/**",
+        "handoff/**",
+        "SHARED-FACTS.md"
+      ],
+      "acceptance": [
+        "verify/green, verify/red and verify/apply are built by the VERIFIER from the bundle's committed HEAD and the delivered patch, each with its exact build command recorded; the verifier does not reuse pinned/ or the implementer's reverted copy as its workspace, and says so.",
+        "The seeded RED is real and explained: verify/red holds the change's regression test with the production change reverted, that test FAILS there, and the evidence quotes the failing test name and its assertion output — not merely an exit code.",
+        "The GREEN pin passes the full plugin suite with the exact counts stated (at least 299 pass / 0 fail, 48 files) and the tail of the run quoted; any count below the baseline is a finding, not a rounding note.",
+        "The mpd-delta registry is consistent in verify/green: `node scripts/patch-agent-teams-fixes.mjs --check` exits 0, and the region ids and totals are RE-MEASURED by the verifier rather than copied from the implementer's report.",
+        "patches/routing-change.patch is applied BY THE VERIFIER to a fresh pin (verify/apply) using `git apply`; the applied tree is exercised, and any path outside packages/mpd-agent-teams-plugin/** in the patch is reported as a finding.",
+        "The report states explicitly which of the implementer's claims it could NOT reproduce, if any, and never softens a non-reproduction into a note; it also confirms the bundle's `git status --porcelain` still matches baseline/bundle-status-before.txt (50 lines)."
+      ],
+      "verify": [
+        "cd verify/green && node scripts/patch-agent-teams-fixes.mjs --check",
+        "cd verify/green && bun test packages/mpd-agent-teams-plugin",
+        "cd verify/red && bun test packages/mpd-agent-teams-plugin"
+      ],
+      "deliverables": [
+        "verify/**",
+        "evidence/verify/verification-report.md"
+      ],
+      "nonGoals": [
+        "Do not repair the implementation or edit the patch; you verify, you do not fix.",
+        "Do not write to /root/dshProj — the bundle is read-only.",
+        "Do not reuse the implementer's pinned/ directory, its reverted copy, or its numbers.",
+        "Do not report a green suite as proof of the change unless the RED reproduces without it."
+      ],
+      "coverageOf": [
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t7",
+      "subject": "Review the routing change against the frozen spec and the independent verification",
+      "description": "Final quality gate before the handoff. You judge the delivered artifact against the frozen spec and against the independent verification, not the story around it. READ SHARED-FACTS.md §5 so you can detect the session's signature failure — a routing change that duplicates something already landed (T-93) — and §3 for the pin recipe, since a pin missing presets/ produces a spurious 296/3 that must never be read as a real regression.",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t6",
+        "t5"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697147477,
+      "updatedAt": 1789697147477,
+      "kind": "review",
+      "round": 1,
+      "objective": "Judge whether the delivered routing change satisfies the frozen spec (t3) and whether the independent verification (t6) actually falsifies its claims, producing findings that name file, line and required fix.",
+      "inScope": [
+        "evidence/review/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "pinned/**",
+        "patches/**",
+        "verify/**",
+        "evidence/impl/**",
+        "evidence/verify/**",
+        "evidence/spec/**",
+        "spec-verify/**",
+        "handoff/**",
+        "SHARED-FACTS.md"
+      ],
+      "acceptance": [
+        "Every acceptance criterion of the frozen spec (evidence/spec/routing-change-spec.md) and of the implementation contract (t5) is judged with a per-criterion verdict and the specific evidence line it rests on.",
+        "The review attacks at least four things: whether the seeded RED fails for the RIGHT reason (a genuine assertion about routing behaviour, not an import/path/typo error); whether the patch applies to a FRESH pin rather than only to the implementer's own tree; whether the mpd-delta registry ids and totals agree with the live region markers in the delivered code; and whether the change actually alters the frozen routing behaviour rather than merely adding a test around existing behaviour.",
+        "The review states whether the change sits exactly at the spec's frozen locus, and reports any scope creep or any unrequested behavioural change as a finding.",
+        "A pass verdict requires that the independent verification (t6) reproduced BOTH the RED and the GREEN; an unreproduced claim cannot be approved.",
+        "The review states plainly what it did NOT check, so the handoff does not overstate the assurance level."
+      ],
+      "deliverables": [
+        "evidence/review/review-verdict.md"
+      ],
+      "nonGoals": [
+        "Do not fix the implementation, the patch or the evidence; findings only.",
+        "Do not write to /root/dshProj — the bundle is read-only.",
+        "Do not approve on the strength of a summary; require the reproduced RED and GREEN.",
+        "Do not re-run the whole verification yourself as a substitute for judging it — check its load-bearing claims."
+      ],
+      "reviewedTaskId": "t5",
+      "coverageOf": [
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t8",
+      "subject": "Assemble the operator handoff: audit, upstream alignment, tested patch, and the blocked in-repo application",
+      "description": "Integration. Assemble the operator-facing result. The bundle is READ-ONLY, so the deliverable is not a commit — it is a tested patch plus the exact commands an operator with write access must run, and an honest record of what was and was not proven. Do not restate the upstream work as alignment that was applied in place; it was not.",
+      "status": "pending",
+      "assignee": "Lead",
+      "dependencies": [
+        "t7"
+      ],
+      "attempt": 0,
+      "createdAt": 1789697153881,
+      "updatedAt": 1789697153881,
+      "kind": "integration",
+      "objective": "Assemble the user-facing operator handoff for this session — the orchestration-surface audit, the upstream-alignment record, the frozen spec, the tested patch, the independent verification and the review verdict — plus the exact apply/rebase commands the operator must run, because the bundle at /root/dshProj/my-power-dsh is read-only and nothing was written there.",
+      "inScope": [
+        "handoff/**",
+        "evidence/handoff/**"
+      ],
+      "outOfScope": [
+        "/root/dshProj/**",
+        "pinned/**",
+        "patches/**",
+        "verify/**",
+        "spec-verify/**",
+        "evidence/audit/**",
+        "evidence/upstream/**",
+        "evidence/spec/**",
+        "evidence/spec-verify/**",
+        "evidence/impl/**",
+        "evidence/verify/**",
+        "evidence/review/**",
+        "SHARED-FACTS.md"
+      ],
+      "acceptance": [
+        "handoff/HANDOFF.md is executable by a reader who HAS write access to the bundle: the exact patch path, the exact apply command, the mpd-delta registry regeneration and check commands, the test command, and the expected numbers (at least 299 pass / 0 fail on a pin; 120 mpd delta region(s) across 10 adopted file(s) for --check).",
+        "It states plainly that NO write occurred under /root/dshProj, and shows the evidence: the bundle's live `git status --porcelain` compared against baseline/bundle-status-before.txt (50 lines).",
+        "It names the resolved routing change in one clear sentence — what 'the routing change' was taken to denote and why — with the loci it touches and the path to the frozen spec, so a reader who never saw this team can act on it.",
+        "It reproduces the honest evidence chain (audit, upstream alignment, frozen spec, spec verification, implementation, independent verification, review verdict), one section each with its path and a one-line statement of what that artifact establishes.",
+        "Residual risk and everything NOT verified are stated at the same prominence as the verified results; a limitation is never buried under a success.",
+        "The handoff is self-contained and legible without the team's task ids, and any id it does cite is resolved inline."
+      ],
+      "deliverables": [
+        "handoff/HANDOFF.md",
+        "evidence/handoff/handoff-summary.md"
+      ],
+      "nonGoals": [
+        "Do not write to /root/dshProj — the bundle is read-only and must stay byte-identical.",
+        "Do not attempt to commit, tag, push or release anything.",
+        "Do not claim the bundle was modified, re-pinned or aligned in place.",
+        "Do not present an unsurprising or unverified result as verified to make the handoff look complete."
+      ],
+      "coverageOf": [
+        "align the bundle with upstream",
+        "implement the routing change"
+      ]
+    }
+  ],
+  "taskSeq": 8,
+  "revision": 10
+}

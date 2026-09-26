@@ -1,0 +1,117 @@
+{
+  "purpose": "Pre-claim pin set for the four blocking reviews (t30/t31/t32/t34) so each verdict can be anchored to the revision that existed BEFORE its lane landed, and any later edit forces a re-judge instead of an inherited pass.",
+  "takenAt": "20260917T025642Z",
+  "laneReadiness": {
+    "t20": "completed",
+    "t21": "in_progress",
+    "t23": "completed",
+    "t25": "in_progress",
+    "t26": "pending",
+    "t28": "in_progress",
+    "t29": "pending",
+    "t30": "pending",
+    "t31": "pending",
+    "t32": "pending",
+    "t34": "pending"
+  },
+  "pins": {
+    "t30_watchdog": {
+      "frozenContract": {
+        "path": ".mpd/plans/watchdog-redesign-contract.md",
+        "sha256": "2550a3f8623e69fedafe495cb4362b2dacf4fd8bd656ba43070c076d0a73f18a"
+      },
+      "pluginSrc": {
+        "path": "packages/mpd-team-watchdog-plugin/src",
+        "fileCount": 12,
+        "treeSha256": "28b14107b81a29e100af4c76a415a0e6c8c47bfc0a2f7f9bee478e6f405ce77a"
+      },
+      "pluginTests": {
+        "path": "packages/mpd-team-watchdog-plugin/test",
+        "fileCount": 14,
+        "treeSha256": "46adaf81e1e4b6b63a43228bdcb6b6656dc6de85957fa6ab3e7b170008c870da"
+      },
+      "decisiveChecksPlanned": [
+        "node scripts/patch-agent-teams-fixes.mjs --check (registry count + clean)",
+        "bun test packages/mpd-team-watchdog-plugin (with the pre-step waterfall pin)",
+        "the four-state channel predicate + ladder numbers + degradation path: run the lane A unit suites and the frozen-contract numbers; re-derive, never read prose",
+        "hold semantics: claim/update/kick remain usable while dispatch is held (D2 direction) - reproduce with the plugin tests",
+        "bound policing: every lane A claim that rests on a 6-boot sample or a static read must be labelled a bound"
+      ]
+    },
+    "t31_adopted": {
+      "lib": {
+        "path": "packages/mpd-agent-teams-plugin/lib",
+        "fileCount": 54,
+        "treeSha256": "17d7aaaa95dd78c6de88e1c5ade29e3f15fe3222f6cf0fd6030b30a7ef0847c0"
+      },
+      "selfFixTests": {
+        "path": "packages/mpd-agent-teams-plugin/self-fix-tests",
+        "fileCount": 15,
+        "treeSha256": "f4afacd3f04f9998a1897ca5302f1ff18e2cb6f4aee90d819b7fbd90c37bab4e"
+      },
+      "registryCheck": {
+        "exit": 0,
+        "reading": "[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)"
+      },
+      "decisiveChecksPlanned": [
+        "node scripts/patch-agent-teams-fixes.mjs --check clean; lib/mpd-deltas.js generated (not hand-edited)",
+        "bun test packages/mpd-agent-teams-plugin (self-fix-tests + tool tests)",
+        "D2: claim/update work while the team is held; dispatch stays held (deliveriesWhileHeld === 0) - a write-unblock must not unblock dispatch",
+        "contract tool reachable from every seat; amend path / edit_plan / artifact channel / ownership query behave as their acceptance states",
+        "REPLACEMENT-shaped regions marked not self-healing after a re-materialize"
+      ]
+    },
+    "t32_qa": {
+      "inFlightWarning": "t21 is IN PROGRESS and owns skills/dsh-qa/scripts + evidence/extensions/docs-claims; these pins are ADVISORY only and must be re-taken at claim time.",
+      "runner": {
+        "path": "scripts/run-qa-lanes.mjs",
+        "sha256": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+        "correction": "the runner is scripts/run-qa-lanes.mjs (t15 handover); skills/dsh-qa/scripts/run-qa-lanes.mjs does not exist and was a wrong guess in the first write"
+      },
+      "manifest": {
+        "path": "skills/dsh-qa/cases.json",
+        "sha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86"
+      },
+      "immutableOutputHelper": {
+        "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+        "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976"
+      },
+      "decisiveChecksPlanned": [
+        "run the runner with a seeded failing lane (does not abort), an unavailable lane (reason reported), and read the exit code that separates green/unavailable/failed",
+        "re-prove credentials on >=2 live lanes run by me; grep my own logs for any secret value",
+        "manifest drift: remove a lane from the manifest while it exists on disk (on a COPY) and show detection",
+        "T-53: attempt to overwrite an existing artifact and observe the refusal",
+        "classify every red lane: unavailable-for-a-real-bug is a finding"
+      ],
+      "runnerFromT15": {
+        "path": "scripts/run-qa-lanes.mjs"
+      }
+    },
+    "t34_packaging_harnessclose": {
+      "artifact": {
+        "path": "dist/mpd-package",
+        "fileCount": 1188,
+        "treeSha256": "f9790d57d17511af7a375bba2a72a8b1860042069433f939b9b6602a35725ac1"
+      },
+      "mpdBg": {
+        "path": "scripts/mpd-bg.mjs",
+        "sha256": "0b294972b05f5e4eacaded59db316432d8fe9aeee859a23fcbd21fcac8d95ba9"
+      },
+      "packer": {
+        "path": "scripts/pack-mpd.mjs",
+        "sha256": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68"
+      },
+      "closureChecker": {
+        "path": "scripts/verify-pack-closure.mjs",
+        "sha256": "b7f940b422d34bda1a7d615394f9289e4f23c90e8868417447bffcac30a589cd"
+      },
+      "decisiveChecksPlanned": [
+        "judge the ARTIFACT: templates/ + docs/ pairs present, packed CLI validate/scaffold/--self-test from INSIDE dist/mpd-package",
+        "seed an omission in a COPY and show the closure rule exits 1 loudly",
+        "run scripts/mpd-bg.mjs once (helper behaves) and confirm the T-43 guard does not fire for a normal session",
+        "T-50: laziness + honesty of the warning; an observed-fix claim for an unobserved window is a finding"
+      ]
+    }
+  },
+  "notClaimed": "none of the four is ready: t30<-t29(pending), t31<-t25(in_progress), t32<-t21(in_progress)+t26(pending), t34<-t28(in_progress). This file is preparation only; no task was claimed and no lane artifact touched."
+}

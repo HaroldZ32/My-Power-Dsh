@@ -1,0 +1,51 @@
+t19 repair round 2 — evidence log
+stamp 20260916T063710Z · attempt 5e9fb1f2-67a2-4e83-8da5-5326f656ee76
+subject: the t14 round-1 findings against t5
+
+WHAT CHANGED
+  scripts/mpd-ext.mjs
+    * serverNameMaxLength() parses the bound out of MPD_EXT_CONTRACT.serverNamePattern (no literal 32),
+      serverNameFor(name) is the ONE helper shared by finishManifest and compareCopyToTemplate.
+    * a truncating id now WARNS on stderr (new warn() helper) instead of silently shipping a different name.
+    * BASE_ROLE_NAME_KEYS is built from the runtime's own roster table (mpd-roles-plugin/src/roles.data.ts,
+      the module registry.ts builds its private set from) and baseRosterRoleConflicts() screens every
+      derived role name with registry.roleNameKey BEFORE anything is written, refusing with
+      registry.roleNameCollisionReason — the runtime's own sentence.
+    * runScaffold builds in <parent>/.mpd-ext-scaffold-<pid>-<ts>/<name>, validates THAT tree, and
+      renames the extension root onto the target only on success; the finally removes the container.
+      The container level keeps the staged tree out of a discovery root's immediate children, so it
+      is never discoverable while being built. A refusal therefore writes nothing, and the
+      post-validate failure path says "refused ... nothing was written to <target>" — the old
+      "this is a CLI defect" wording is gone from every refusal path.
+    * --self-test: 41 -> 52 checks (new 3b long-id arm, new "plan" collision assertions).
+  templates/mpd-extension/README.md + README.zh-CN.md
+    * location-neutral ("the upstream template directory", "your copy"), §7 retitled --with-mcp-only,
+      §6 states the template is neither discovered nor packed + the packed-tree consequence,
+      §1 documents the empty-target refusal including the base-roster role collision,
+      §2 states the contract-bound cap with its warning, §3 adds the roles provider/model pair rule and
+      fixes the wrong "directory name must match the frontmatter name" claim.
+
+GATES (all exit 0)
+  bun scripts/mpd-ext.mjs --self-test                                     -> passed (52 checks)
+  bun scripts/mpd-ext.mjs validate templates/mpd-extension                -> loadable 1/1/1/1
+  bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example             -> loadable 1/1/1/1
+  node scripts/verify-docs-parity.mjs                                     -> pairs=36 failed=0 violations=0
+  compare-arms.mjs (t5 driver, re-run with --out into THIS dir)           -> 39/39 (regression; t5 dir untouched)
+  packed-tree-probe.mjs                                                   -> probe wrote raw/packed-tree-probe.json
+
+RAW READINGS
+  raw/refusal-plan.txt       scaffold plan -> exit 1, roster's own sentence, empty target dir
+  raw/long-id.txt            41-char id -> exit 0, warning on stderr, serverName capped at the contract bound, copy validates
+  raw/packed-tree-probe.json arm A (as packed): validate/scaffold/--self-test all exit 1 (src/ not packed)
+                             arm B (src restored): validate 0, scaffold 1 (template missing), --self-test 1
+  raw/gate-*.txt             the four contract gates, verbatim
+  raw/regression-compare-arms/  the t5 driver's own result.json + output.log for this stamp
+
+CROSS-TASK REQUIREMENT (NOT written here: docs/** is out of scope for t19)
+  docs/extension-adaptation-report.md §12 + zh twin must disclose that the AGENTS.md §4 Extension-CLI gate
+  is RED in a packed tree. The ready-to-paste sentence is in result.json -> cross_task_requirement.
+
+HONEST NOTES
+  * The finding's premise ("validate/list work from a packed install") is not what the probe measured; the
+    stronger measured fact is recorded instead.
+  * No dsh boot was run: this repair touches the dev CLI and two README files, not the runtime.

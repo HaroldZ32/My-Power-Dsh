@@ -1,0 +1,10 @@
+[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...
+[relocate-smoke] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-d/relocate/2026-09-17T15-22-07.988Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0,"leaked":false}
+  live: {"ok":true,"exit":0,"preset":"/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/presets/mpd/agent.cordis.yml","fixtureBase":"/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/skills/svn-mast
+  noPresetCopy: {"ok":true,"count":0}
+  noSkillCopy: {"ok":true,"count":0}
+  servedFromRelocated: {"ok":true,"staged":"/root/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated"}
+  bootstrap: {"ok":true}
+[relocate-smoke] PASS

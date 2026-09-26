@@ -1,0 +1,97 @@
+{
+  "task": "t24 — T-73: a composed ticket must not wipe a task's stored output",
+  "lane": "A (agent-teams plugin + task-contract tooling)",
+  "owner": "agent-teams-engineer",
+  "wave": "friction-p2-wave (2a)",
+  "attempt": "attempt 2, attempt_id b10f0c24-b114-4ade-9c49-641e0a89072f",
+  "register_row": "T-73 — a composed ticket WIPES a task's stored output (data loss); registered from the wave-1 journal by the captain's A-6, put into 2a as t24",
+  "surface": {
+    "module": "packages/mpd-agent-teams-plugin/lib/state.js",
+    "function": "activateTaskAttempt (the rotation primitive behind beginTaskAttempt)",
+    "region": "mpd-delta composed-ticket-output-preserved (ADDITIVE)",
+    "table_row": "documented inside the D40 row (same file, same function, same wave as T-79's region) so the derived range pointer A1–D42 stays true for AGENTS.md and agent-references/index.md, which t24 does not own"
+  },
+  "acceptance_1_probe_reproduced": {
+    "driver": "evidence/agent-teams/composed-ticket-output/20260917T075659Z/driver.mjs (HEAD state.js materialised into a scratch lib/, HEAD c826f16)",
+    "fixed_reading": "the fixture is the wave-1 probe's: one `kickMember` over an `in_progress` task holding a stored deliverable",
+    "before_after_record": {
+      "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+      "outputAfter": null,
+      "wiped": true,
+      "statusBefore": "in_progress",
+      "statusAfter": "claimed",
+      "attemptBefore": 1,
+      "attemptAfter": 2,
+      "deliveries": 1
+    },
+    "wave_1_corroboration": "the same reading was taken by t36's author with `evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/output-wipe-probe.mjs` (`output: null`, `attempt: 2`, `status: claimed`, deterministic, not a race)"
+  },
+  "acceptance_2_shape_chosen": {
+    "implemented": "SHAPE (i) — `output` SURVIVES a rotation that stays inside the SAME generation: the task is still OPEN (`claimed`/`in_progress`, so nothing invalidated it) and the incoming assignee IS its current owner (the `recoverOwned` re-dispatch). The ticket is still composed and the attempt still rotates — the WIPE is what is prevented.",
+    "why": "it is the shape this lane can EXERCISE: the deterministic probe above steers it exactly, and the arm asserts it (plus the reverse control in a neutralised copy).",
+    "unchanged_behaviour": [
+      "a `pending` task's first dispatch clears (a NEW generation)",
+      "a generation invalidated by an amend clears",
+      "a handover clears — the reassign path calls `invalidateTaskAttempt`, which clears EXPLICITLY, so clearing is an explicit invalidate action instead of a compose side effect (T-73 control case)"
+    ],
+    "shape_ii_not_shipped": "the wave-1 record's alternative (snapshot before the compose + restore in the refusal path) is NOT shipped: `terminal-dispatch/20260917T023700Z/result.json` (`second_data_loss_vector.where_the_fix_belongs`) records it as in-process-untestable on a path no harness can steer, and this lane does not ship a repair it cannot exercise. Additionally, the refusal path it targets is now unreachable for terminal work (T-79's state half refuses the rotation first) — asserted together in the T-73 ∩ T-79 case.",
+    "bound": "a later COMPLETE on the same generation that supplies a DIFFERENT summary longer than 240 chars meets T-46's existing loud replacement guard (`replace_output: true` / `output_append`) instead of silently discarding the preserved bytes — a refusal WITH a remedy, never a loss."
+  },
+  "acceptance_3_arm_fails_on_prefix_tree": {
+    "arm": "packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs (6 cases)",
+    "prefix_tree_run": "evidence/agent-teams/composed-ticket-output/20260917T075659Z/prefix-tree-run.mjs",
+    "pre_fix_tree_HEAD_state_js": {
+      "exit": 1,
+      "failed": 2,
+      "passed": 4,
+      "failedCases": [
+        "T-73: the deterministic probe — a composed ticket no longer WIPES the stored deliverable",
+        "T-73 negative control: with the new condition neutralised, the SAME fixture is WIPED (the condition does not exist pre-fix, so the control's one-occurrence guard fails — the honest reading on a pre-fix tree)"
+      ]
+    },
+    "fixed_tree": { "exit": 0, "passed": 6, "failed": 0 },
+    "in_arm_negative_control": "case 2 neutralises the new condition in a scratch copy of `lib/` (asserting exactly one occurrence was replaced) and requires the WIPE to reappear THERE (deliveries 1, status claimed, attempt 2, output undefined) — a structural absence test cannot go red, this can"
+  },
+  "acceptance_4_phantom_claim_cause": {
+    "statement": "The phantom-claim family's mechanical cause is a silent DELETE, not a spurious wake: `lib/scheduler.js` `kickMember` composes a ticket through `beginTaskAttempt` → `lib/state.js` `activateTaskAttempt`, which rotated the attempt (status -> `claimed`, fresh `attemptId`) AND cleared `task.output` on EVERY composed ticket. The dispatch-boundary re-check (`mpd-delta terminal-dispatch-recheck`) runs AFTER that function, so it can prevent the WAKE and never the WIPE.",
+    "where_recorded": [
+      "the region comment in lib/state.js (mpd-delta composed-ticket-output-preserved)",
+      "this file",
+      "the arm's header comment"
+    ]
+  },
+  "acceptance_5_t79_not_regressed": {
+    "together_in_one_function": "`assertTaskRearmable(task)` (T-79, region terminal-task-rearm-refusal) runs ABOVE the T-73 condition in the same function, so terminal work is refused before the wipe logic is reachable",
+    "asserted_in_this_arm": "case 5 `T-73 ∩ T-79`: a `completed` task with an earned summary + one `kickMember` -> 0 deliveries, the record byte-identical, output intact, status `completed`, attempt 1",
+    "asserted_in_the_t79_arm": "self-fix-tests/terminal-rearm-refusal.test.mjs 6 pass / 0 fail (rotation refusal before the first mutation; real scheduler in-process; sanctioned fresh-id revive; stale capability refused; guards-removed control; fresh-process leg)",
+    "suite_reading": "the two arms run in the same `bun test packages/mpd-agent-teams-plugin/self-fix-tests/` invocation"
+  },
+  "acceptance_6_evidence_and_verify": {
+    "verify_command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests/",
+    "reading": "107 pass / 0 fail, exit 0 (was 101 before this task; +6 T-73 cases)",
+    "whole_plugin_suite": "264 pass / 0 fail, exit 0",
+    "registry": "node scripts/patch-agent-teams-fixes.mjs --write-registry -> 79 regions; --check exit 0; registry-context-heal.test.mjs 21 pass / 0 fail",
+    "docs_parity": "bun run verify:docs -> PASS, pairs=37 failed=0 violations=0 exempt=17 derived=3 (the count sentence reads 79 and both pointer sites derive A1–D42, which is why the new region is documented inside the D40 row rather than minting a new D-number)",
+    "logs": [
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/output.log",
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/output-after-fix.log",
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/pair-before-after.log",
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/prefix-tree-run.log",
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/form-a-substring.stdout",
+      "evidence/agent-teams/composed-ticket-output/20260917T075659Z/form-b-isolated.stdout"
+    ]
+  },
+  "observed_pollution_finding": {
+    "what": "`bun test packages/mpd-agent-teams-plugin/self-fix-tests/` treats a positional argument as a SUBSTRING FILTER, so while t12's evidence copy lived under `evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-agent-teams-plugin/self-fix-tests/`, that copy's tests were discovered and run too",
+    "measured": "one run read 164 tests failed / 324 errors / 331 ran (the copies died on `Cannot find module '../../../scripts/patch-agent-teams-fixes.mjs'` — recorded in verify-attempt.log); once the copies stopped matching, the same command read 107 pass / 0 fail",
+    "isolation": "`bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/` (leading `./` = a PATH, not a filter) reads exactly the 15 package test files; both forms are green as of this record",
+    "not_mine_to_fix": "the copy is t12's sealed review material; reported to the captain and the reviewer with the mechanism, not edited"
+  },
+  "scope_note": {
+    "required_edits_outside_t24_inScope": [
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js — the registry MUST be regenerated when a region is added (--write-registry; 79 regions); owned by t8 (completed)",
+      "agent-references/agent-teams-deltas.md — the derived count sentence and the D40 row MUST move with the registry or the wave-wide `verify:docs` derived arm reddens; owned by t8 (completed) and t19 (completed)"
+    ],
+    "requested": "captain: amend t24's inScope to add those two paths (the T-02 amend exemption means no takeover), or move them with agent_teams_move_path; the completion payload lists every changed path, so it cannot be submitted honestly until the contract covers them"
+  }
+}

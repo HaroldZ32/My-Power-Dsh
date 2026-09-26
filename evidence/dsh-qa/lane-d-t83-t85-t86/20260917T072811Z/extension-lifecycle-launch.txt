@@ -1,0 +1,2 @@
+[mpd-bg] started pid=13 log=/root/dshProj/my-power-dsh/evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/extension-lifecycle-real.log pidfile=/root/dshProj/my-power-dsh/evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/extension-lifecycle-real.log.pid
+[mpd-bg] note: start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)

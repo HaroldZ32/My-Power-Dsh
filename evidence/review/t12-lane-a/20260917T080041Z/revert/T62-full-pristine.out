@@ -1,0 +1,187 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.37ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.88ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.46ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.37ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.35ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.25ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [212.51ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.35ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.22ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.08ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [4.01ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [0.50ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.37ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.56ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [0.35ms]
+(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [257.48ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [1.26ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+ 17 pass
+ 0 fail
+ 56 expect() calls
+Ran 17 tests across 82 files. [6.49s]

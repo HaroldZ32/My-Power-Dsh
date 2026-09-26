@@ -1,0 +1,18 @@
+{
+  "name": "mpd-tui",
+  "displayName": "MPD 终端 (MPD terminal)",
+  "base": "dark",
+  "colors": {
+    "accent": "#7FB6E8",
+    "accentShimmer": "#A9D0F5",
+    "permission": "#E0B36A",
+    "promptBorder": "#5C7A99",
+    "text": "#E6EAF0",
+    "inactive": "#9AA6B2",
+    "subtle": "#7C8894",
+    "selectionBg": "#2C3E50",
+    "success": "#8FD1A4",
+    "error": "#E08A8A",
+    "warning": "#E3C77E"
+  }
+}

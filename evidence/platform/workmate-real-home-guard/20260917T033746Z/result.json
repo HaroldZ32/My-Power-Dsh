@@ -1,0 +1,64 @@
+{
+  "task": "t62 — repair the T-43 real-home guard that refused the SANDBOX it is supposed to allow",
+  "attempt_id": "d4e85555-c14e-48c8-b055-f81aae53b78c",
+  "agent": "platform-engineer",
+  "verdict": "FIXED — both sides pinned by spawn-shape arms, canonical rebuild, gate 20/20, real library untouched BY THIS LANE; the sandboxed-BOOT runtime effect is deferred by contract to t63 (lane owner) and t64 (non-author).",
+  "changed": {
+    "src": {
+      "path": "packages/mpd-workmate-plugin/src/index.ts",
+      "before": "c995d0172170507a…",
+      "after": "63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559"
+    },
+    "dist": {
+      "path": "packages/mpd-workmate-plugin/dist/index.js",
+      "before": "6b1715d0f8bebda0…",
+      "after": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d",
+      "bytes": 56585,
+      "build": "canonical repo-root form; first line '// packages/mpd-workmate-plugin/src/index.ts'"
+    },
+    "applied_diff": "evidence/platform/workmate-real-home-guard/20260917T033746Z/applied.diff"
+  },
+  "A1_red": {
+    "evidence": "evidence/platform/workmate-real-home-guard/20260917T032852Z/output.log",
+    "reading": "scratch harness, env AT SPAWN, pre-fix dist 6b1715d0: HOME=<tmp>/home DSH_HOME=<tmp>/dsh -> 403 'refusing to probe a mutation inside the REAL library /tmp/…/home/.mpd/workmate … set HOME=<sandbox> (T-43)' in node AND bun; HOME unset -> 403 naming /root/.mpd/workmate; HOME=/root -> 403; +override -> ALLOWED",
+    "primitives": "node userInfo().homedir=/root (passwd-derived) vs bun's=/tmp/fakehome (follows HOME) — hence passwd-by-uid first, userInfo() only when it differs"
+  },
+  "A2_fix": {
+    "shape": "realUserHome(): /etc/passwd entry for the effective uid first; userInfo().homedir accepted only when it differs from HOME; undefined => refuse (fail closed) with that case named in the message",
+    "intent_preserved": "arms B and C still REFUSE (HOME unset; real HOME), and the override remains the only bypass — the guard was not weakened into passivity"
+  },
+  "A3_arms": {
+    "harness": "evidence/platform/workmate-real-home-guard/20260917T032852Z/guard-arms.mjs (4 arms × 2 runtimes, child process, env AT SPAWN)",
+    "pre_fix": "evidence/platform/workmate-real-home-guard/20260917T032852Z/guard-arms.pre.log — arm A FAIL in both runtimes (REFUSED instead of ALLOWED)",
+    "post_fix": "evidence/platform/workmate-real-home-guard/20260917T033746Z/guard-arms.post.log — all 8 rows PASS (A ALLOWED, B REFUSED, C REFUSED, D ALLOWED in node AND bun); ok=true, exit 0",
+    "control": "--self-test proves a ONE-SIDED arm table would hide the defect (PASS)",
+    "harness_bugs_found_and_fixed": "a RELATIVE ARM_DIST is a bare specifier to node (ERR_MODULE_NOT_FOUND) and makes bun HANG (exit 124); a per-arm spawnSync timeout keeps a hang from wedging the run"
+  },
+  "A4_no_lane_write": "all reproduction and arms ran in scratch harnesses under this task's evidence path; nothing under evidence/dsh-qa/red-lanes was written by me; the lane re-run belongs to t63's owner",
+  "A5_gate_and_passivity": {
+    "V1": "bun test packages/mpd-workmate-plugin -> 28 pass / 0 fail, 333 expect() calls, exit 0",
+    "V2": "node scripts/verify-dist-fresh.mjs -> ok: 20/20 targets fresh (each rebuilt twice, byte-identical), findings 0, NOT COVERED 7 with the list UNCHANGED (3 BUILD.lock/web-metadata rows + 4 offline/SHA-pinned artifacts), exit 0",
+    "real_library": {
+      "criterion": "byte-identical before/after — scoped to THIS lane's operation window, because the library is a SHARED user-level store that peers legitimately write via mpd_workmate_reflect",
+      "measured": "window around my own suite run (start 03:38:18Z): before 7324687ec6eaf0bc74631587e996551b3ac783c2ece4e7870aef72cb9ddb4847, after the SAME digest, 33 files; `find /root/.mpd/workmate -newermt <window>` -> EMPTY (my run wrote nothing)",
+      "attributed_deltas_vs_baseline": "my 03:28:52Z baseline e2b206d2…039b99 moved because peers reflected: code-reviewer 03:30:28Z and docs-gate-engineer 03:34:27Z (their instances + index.json) — the wave's own post-task bookkeeping, none of it this lane",
+      "guard_not_passive": "arm C (real HOME + DSH_HOME) still REFUSES 403; the documented override remains the only bypass"
+    }
+  },
+  "A6_bound": "this task proves the unit-level both-sides behaviour plus the gate readings; the sandboxed-BOOT runtime effect is carried by t63 (lane owner re-runs workmate-library --no-skip) and t64 (non-author re-runs the arms) — no claim about the deployed runtime is made here",
+  "commands_run": [
+    {
+      "command": "bun test packages/mpd-workmate-plugin",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "28 pass / 0 fail, 333 expect() calls"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "ok: 20/20 targets fresh — 7 NOT COVERED (list unchanged)"
+    }
+  ],
+  "caveat_for_t63_t64": "when checking 'the real ~/.mpd/workmate is byte-identical', scope it to YOUR own operation window and expect peer reflect writes (identify them by mtime): a bare before/after across minutes WILL differ for reasons unrelated to this fix — I measured exactly that confound and attributed it."
+}

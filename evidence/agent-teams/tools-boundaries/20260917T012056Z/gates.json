@@ -1,0 +1,75 @@
+{
+  "task": "t9 \u2014 lane B1 (D2 guard deletion, T-49 contract tool on every seat, T-19 adopted-side pause surface)",
+  "attemptId": "2dcbbdaf-1273-4f56-82a8-a481fe6af050",
+  "measuredAt": "2026-09-17T01:24Z",
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/tool-names.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs"
+  ],
+  "commandsRun": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "225 pass / 0 fail / 1643 expect() calls, 62 files (log: test.log). The new self-fix file alone: 5 pass / 0 fail."
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "already applied: 51 mpd delta region(s) across 9 adopted file(s) (log: check.log)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "$ tsgo --noEmit \u2014 no diagnostics (log: typecheck.log)"
+    },
+    {
+      "command": "bun test packages/mpd-team-watchdog-plugin",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "107 pass / 0 fail \u2014 the DISPATCH half's preserving-pause pin (the fixture drives the REAL lib/scheduler.js with a live hold: `deliveriesWhileHeld: 0`, sha256(team.json) unchanged across held kicks). This is acceptance row 2's second half.",
+      "note": "That package is being edited by its own lane (t8/t13) in this shared tree; the fixture imports the adopted tools.js only for `haltTeamWork`, so the run is a snapshot at 2026-09-17T01:26Z."
+    }
+  ],
+  "registry": {
+    "before": 53,
+    "after": 51,
+    "deletedIds": [
+      "mpd-delta claim-task-hold-guard",
+      "mpd-delta update-task-hold-guard",
+      "mpd-delta watchdog-hold-reader (lib/tools.js copy)"
+    ],
+    "addedIds": [
+      "mpd-delta status-pause-mechanisms"
+    ],
+    "generatedBy": "node scripts/patch-agent-teams-fixes.mjs --write-registry (never hand-edited)"
+  },
+  "mountedBootProbe": {
+    "driver": "driver.mjs",
+    "result": "result.json",
+    "firstAttempt": "result.run1-profile-seeded.json (profile 'mpd' seeded an 11-member roster, so the explicit read-only member was rejected as a duplicate name and the deny was not exercised \u2014 kept as provenance)",
+    "assertions": {
+      "A1_captain_seat_classified": true,
+      "A2_member_lists_contract_tool": true,
+      "A3_member_does_not_list_approve": true,
+      "A4a_member_log_records_contract_call": true,
+      "A4b_member_log_has_nonerror_result": true,
+      "A5_member_denied_write_tools": true,
+      "A6_contract_result_returned_to_member": true
+    },
+    "measured": {
+      "captainToolCount": 99,
+      "memberToolCount": 83,
+      "memberHasContractTool": true,
+      "memberHasApproveTool": false,
+      "memberHasBashOrWrite": false,
+      "memberSessionLog": "tool/call agent_teams_task_contract + non-error tool/result carrying the real contract text (Task t1 [claimed] verification \u2014 T49 contract read, Assignee: Architect, attempt_id 6267f678-\u2026)",
+      "stackUsed": "evidence/<ts>/raw/sessions (trimmed copy of the sandbox session store)"
+    },
+    "falsifiabilityControl": "The SAME measurement path reports `agent_teams_approve` and `bash` ABSENT from the member's 83-tool list while present in the captain's 99 \u2014 so 'member lists tool X' can go red. The tool-boundary half carries a second control: the re-injection lane in the self-fix test re-adds the deleted guard to a scratch module copy and the same call FAILS."
+  }
+}

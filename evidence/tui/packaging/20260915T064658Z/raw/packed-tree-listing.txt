@@ -1,0 +1,30 @@
+=== packed TUI package ===
+dist/mpd-package/packages/mpd-tui-plugin/dist/index.js
+dist/mpd-package/packages/mpd-tui-plugin/README.md
+dist/mpd-package/packages/mpd-tui-plugin/README.zh-CN.md
+dist/mpd-package/packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md
+dist/mpd-package/packages/mpd-tui-plugin/themes/mpd-tui.json
+
+=== packed MCP packages (launchers + closure + licences) ===
+dist/mpd-package/packages/mpd-mcp-astgrep/dist/BUILD.lock
+dist/mpd-package/packages/mpd-mcp-astgrep/dist/cli.js
+dist/mpd-package/packages/mpd-mcp-astgrep/launch.mjs
+dist/mpd-package/packages/mpd-mcp-astgrep/README.md
+dist/mpd-package/packages/mpd-mcp-astgrep/README.zh-CN.md
+dist/mpd-package/packages/mpd-mcp-codegraph/daemon-policy.mjs
+dist/mpd-package/packages/mpd-mcp-codegraph/dist/serve.js
+dist/mpd-package/packages/mpd-mcp-codegraph/launch.mjs
+dist/mpd-package/packages/mpd-mcp-codegraph/LICENSE
+dist/mpd-package/packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md
+dist/mpd-package/packages/mpd-mcp-codegraph/NOTICE
+dist/mpd-package/packages/mpd-mcp-codegraph/README.md
+dist/mpd-package/packages/mpd-mcp-codegraph/README.zh-CN.md
+dist/mpd-package/packages/mpd-mcp-gitbash/dist/BUILD.lock
+dist/mpd-package/packages/mpd-mcp-gitbash/dist/cli.js
+dist/mpd-package/packages/mpd-mcp-gitbash/README.md
+dist/mpd-package/packages/mpd-mcp-gitbash/README.zh-CN.md
+dist/mpd-package/packages/mpd-mcp-lsp/dist/BUILD.lock
+dist/mpd-package/packages/mpd-mcp-lsp/dist/cli.js
+dist/mpd-package/packages/mpd-mcp-lsp/README.md
+dist/mpd-package/packages/mpd-mcp-lsp/README.zh-CN.md
+dist/mpd-package/packages/mpd-mcp-shared/bin-resolve.mjs

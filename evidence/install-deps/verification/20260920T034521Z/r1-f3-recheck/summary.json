@@ -1,0 +1,63 @@
+{
+  "task": "t5 follow-up — R1 class (profile-level cordis.patch.yml supplies a sidebar row), controlled pair",
+  "startedAt": "2026-09-20T04:17:24Z",
+  "endedAt": "2026-09-20T04:19:43Z",
+  "livePatch": {
+    "sha256": "7c7e36b85ce277e2afa613d6eb9ab1aecb8355c0a175b151a37ce11860bf61a8",
+    "atUtc": "2026-09-20T04:19:43Z"
+  },
+  "P1": {
+    "id": "P1-live-profile-patch-mounts-sidebar",
+    "kind": "LIVE revision (repair present)",
+    "measuredPatchSha256": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+    "measuredFromUtc": "2026-09-20T04:17:25Z",
+    "measuredToUtc": "2026-09-20T04:17:40Z",
+    "compositionRows": [
+      "mpd-better-sidebar",
+      "p1-profile-sidebar"
+    ],
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "patch layer <sandbox>/P1-live-profile-patch-mounts-sidebar/dsh/profiles/w/cordis.patch.yml already mounts it"
+    },
+    "route": 405,
+    "served": true,
+    "booted": true,
+    "fatalSignatureHits": [],
+    "duplicateRouteLines": []
+  },
+  "P2": {
+    "id": "P2-pre-repair-staged-copy",
+    "kind": "PRE-REPAIR staged copy (patch-layer clause removed)",
+    "stagedPatchSha256": "c1051f2728ed2563dae0b798ff68d1d9ed0a3be46419332611c219d1c90abfc9",
+    "clauseRemoved": true,
+    "compositionRows": [
+      "mpd-better-sidebar",
+      "p1-profile-sidebar"
+    ],
+    "guard": {
+      "decision": "ENABLED",
+      "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+    },
+    "route": null,
+    "served": null,
+    "booted": false,
+    "fatalSignatureHits": [
+      "failed to apply loader entry",
+      "duplicate prefix route",
+      "plugin tree failed to load"
+    ],
+    "duplicateRouteLines": [
+      "Error: dsh: plugin tree failed to load: failed to apply loader entry p1-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "Error: webserver: duplicate prefix route \"/sidebar/api\"",
+      "  [cause]: Error: failed to apply loader entry p1-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "    [cause]: Error: webserver: duplicate prefix route \"/sidebar/api\""
+    ]
+  },
+  "livePatchMovedDuringArms": true,
+  "boundaryProven": true,
+  "flagCorrection": {
+    "atUtc": "2026-09-20T04:21:27Z",
+    "reason": "the first summary compared signatures.hits (MARKER strings) against a key name; re-derived from the persisted arms without rebooting"
+  }
+}

@@ -1,0 +1,406 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-89b7491d-db09-4863-b4f8-f6bc430c998f",
+  "createdAt": 1789544992957,
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789544992957,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Freeze the routing-change contract: upstream ref, routing target, writable checkout",
+      "description": "The raw request is \"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.\" Neither \"upstream\" nor \"the routing change\" resolves to exactly one artifact on inspection, so fix both before implementation.\n\nEvidence already gathered by the captain (verify, do not re-derive from scratch):\n- The bundle is /root/dshProj/my-power-dsh (@mpd-dsh/mpd v0.9.1). Its parity ledger docs/upstream-parity-ledger.md §2 freezes D_UPSTREAM_REF: reference = /root/dshProj/oh-my-openagent @ v5.0.0-beta.62 (HEAD d1557a4b4), repo baseline stays pinned at upstream 8c57e46 / beta.20 in VENDOR_LOCK.json. A re-pin is NOT part of a functional alignment.\n- \"Orchestration surface\" candidates: packages/mpd-agent-teams-plugin/lib (session-start.js gate, scheduler.js dispatch, members.js, quality-gates.js, web-routes.js), packages/mpd-team-watchdog-plugin, packages/mpd-team-compact-plugin, packages/mpd-ulw-plugin, packages/mpd-workmate-plugin, packages/mpd-modelchain-plugin.\n- \"Routing change\" candidates, each a real local surface: (i) session->team routing, packages/mpd-agent-teams-plugin/lib/session-start.js:194 evaluateComplexityGate / :289 autoRouteEnabled / :467 the autoRoute branch (+ lib/index.js:112-122 defaults, packages/mpd-bundle/cordis.patch.yml:377-381, scripts/install-profile.mjs); (ii) role->model routing, packages/mpd-modelchain-plugin/src/index.ts:103 mpd_modelchain_resolve; (iii) workspace-root routing, AGENTS.md:531 with evidence/session-workspace-root/; (iv) ready-task->member dispatch routing, packages/mpd-agent-teams-plugin/lib/scheduler.js.\n- Repo convention for this kind of freeze: evidence/<wave>/requirements/frozen-contract.json plus a verdict.json, same-commit records (AGENTS.md §2.3/§4).\n\nIf the writable checkout cannot be established (workspace empty and the bundle read-only), the contract must say so explicitly and this task must FAIL with that blocker — do not invent a green field.",
+      "status": "pending",
+      "assignee": "Planner",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789545129029,
+      "updatedAt": 1789545129029,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Turn the session's two undefined nouns into a frozen, decision-complete contract BEFORE any code moves: (a) which upstream reference \"upstream\" denotes; (b) which \"routing change\" the wave implements, selected from enumerated candidates each carrying file:line evidence; (c) which checkout the wave writes to, given this session's workspace is an empty probe workspace and the bundle checkout /root/dshProj/my-power-dsh is mounted read-only in this sandbox.",
+      "inScope": [
+        "evidence/orchestration-routing/requirements"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "docs/**",
+        "scripts/**",
+        "presets/**",
+        "skills/**",
+        "AGENTS.md"
+      ],
+      "acceptance": [
+        "frozen-contract.json names exactly one upstream ref (id + commit) or explicitly adopts D_UPSTREAM_REF from docs/upstream-parity-ledger.md §2, and states that no re-pin is in scope.",
+        "frozen-contract.json selects exactly ONE routing target out of the four candidates and records the other three as deliberately out of scope with a one-line reason each.",
+        "Every candidate row carries file:line evidence resolvable in the bundle checkout (no bare claims, no invented paths).",
+        "The contract names the exact landing points (files) the implementation task will touch, so its inScope can be pruned to them.",
+        "The writable target checkout is recorded as an absolute path, or the contract records the read-only/empty-workspace blocker verbatim and the task fails rather than proceeding.",
+        "verdict.json records verdict=pass with the criteria above checked one by one."
+      ],
+      "verify": [
+        "node -e \"const c=JSON.parse(require('node:fs').readFileSync('evidence/orchestration-routing/requirements/frozen-contract.json','utf8')); if(!c.upstreamRef||!c.routingTarget||!c.targetCheckout) process.exit(1)\""
+      ],
+      "deliverables": [
+        "evidence/orchestration-routing/requirements/frozen-contract.json",
+        "evidence/orchestration-routing/requirements/verdict.json"
+      ],
+      "nonGoals": [
+        "Re-pinning VENDOR_LOCK.json or chasing a newer upstream",
+        "Renaming any manual entry name (ledger §5 forbids it)",
+        "Writing any code or config"
+      ],
+      "coverageOf": [
+        "Align the bundle with upstream",
+        "audit the orchestration surface",
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Audit the orchestration surface against the frozen upstream ref",
+      "description": "Read-only. Enumerate the bundle's orchestration surface and diff it, behaviour by behaviour, against the upstream ref t1 froze (default: /root/dshProj/oh-my-openagent @ v5.0.0-beta.62 HEAD d1557a4b4, per docs/upstream-parity-ledger.md §2) — a functional comparison, never a structural/naming copy (ledger G4).\n\nSurface to cover, at minimum: the session-start gate and its policy plumbing (packages/mpd-agent-teams-plugin/lib/session-start.js, lib/index.js, packages/mpd-bundle/cordis.patch.yml, scripts/install-profile.mjs, presets/mpd/agent.cordis.yml), dispatch/scheduling (lib/scheduler.js, lib/members.js), quality gates (lib/quality-gates.js), plan review and the web surface (lib/web-routes.js), the interjection lane (lib/tools.js), plus the sibling orchestration plugins (mpd-team-watchdog, mpd-team-compact, mpd-ulw, mpd-workmate, mpd-modelchain).\n\nThen, for the one routing target t1 selected, state precisely: what the local behaviour is today (file:line), what upstream does, what the change would alter, and which invariants must survive (e.g. the decoupling of sessionTeamPolicy.mode from autoRoute, and the frozen manual entry names in ledger §5).\n\nRecord raw command output under evidence/orchestration-routing/audit/ rather than paraphrasing it.",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 0,
+      "createdAt": 1789545137288,
+      "updatedAt": 1789545137288,
+      "kind": "work",
+      "inScope": [
+        "evidence/orchestration-routing/audit"
+      ],
+      "acceptance": [
+        "Every orchestration component claimed is backed by a resolvable file:line in the bundle checkout; zero invented paths or findings.",
+        "Every upstream divergence cites the upstream artifact (path or URL) it was compared against, so the claim is re-checkable.",
+        "The report names the single routing gap that the frozen routing target (t1) closes, or records a contradiction with t1's freeze as an escalation instead of silently choosing a different target.",
+        "The report ends with a machine-readable gap list (id, severity, file, line, one-line problem) that the implementation and review tasks can reference by id."
+      ],
+      "deliverables": [
+        "evidence/orchestration-routing/audit/gap-report.md",
+        "evidence/orchestration-routing/audit/gaps.json"
+      ],
+      "nonGoals": [
+        "Editing any package, config or doc",
+        "Re-auditing the whole parity ledger's already-verified gates (§8) beyond what the routing target needs",
+        "Proposing renames of any manual entry name"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Implement the frozen routing change on the audited surface",
+      "description": "Implement the single routing change frozen by t1 and located by t2. Keep the diff minimal and idiomatic to the surrounding code; the bundle ships built lib/ alongside sources where sources exist, so follow whatever the touched package's own build/test convention is rather than inventing one.\n\nPrune inScope to the landing points t1 named: this task declares the plausible superset (the ledger §6 landing surface plus the modelchain surface). If t1 selected a narrow target, drop the unrelated paths instead of touching them.\n\nVerify with the repo's real gates, not assumed ones: bun run typecheck; bun test packages/mpd-agent-teams-plugin; node scripts/install-profile.mjs --self-test; and, when the change touches the session-start gate, bun skills/dsh-qa/scripts/session-start-team.mjs (the two-sided gate case: simple prompts must stay silent, the frozen complex fixture must leave exactly one staged team and one notice).\n\nNote for the record: this session's own prompt is frozen complex fixture #1 of that case (skills/dsh-qa/scripts/session-start-team.mjs COMPLEX_PROMPTS[0]), so a change to the gate is directly measurable against it.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t1",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789545144946,
+      "updatedAt": 1789545144946,
+      "kind": "implementation",
+      "round": 1,
+      "objective": "Implement exactly the routing change frozen by t1 (upstream ref, routing target, landing points) and located by t2's gap report, keeping the change minimal, the gate's existing semantics intact unless t1 froze otherwise, and the bilingual records riding the same commit.",
+      "inScope": [
+        "packages/mpd-agent-teams-plugin/lib",
+        "packages/mpd-agent-teams-plugin/test",
+        "packages/mpd-agent-teams-plugin/self-fix-tests",
+        "packages/mpd-bundle/cordis.patch.yml",
+        "packages/mpd-bundle/README.md",
+        "packages/mpd-bundle/README.zh-CN.md",
+        "packages/mpd-modelchain-plugin/src",
+        "scripts/install-profile.mjs",
+        "presets/mpd/agent.cordis.yml",
+        "skills/dsh-qa/SKILL.md",
+        "skills/dsh-qa/scripts/session-start-team.mjs",
+        "docs/upstream-parity-ledger.md",
+        "docs/upstream-parity-ledger.zh-CN.md",
+        "AGENTS.md",
+        "evidence/orchestration-routing/implementation"
+      ],
+      "outOfScope": [
+        "evidence/orchestration-routing/audit",
+        "evidence/orchestration-routing/verify",
+        "evidence/orchestration-routing/review"
+      ],
+      "acceptance": [
+        "The routing change implemented is exactly the one t1 froze and t2 located by gap id; nothing beyond it is changed (no drive-by refactor, no rename of any manual entry name from ledger §5).",
+        "sessionTeamPolicy semantics stay intact unless t1 explicitly froze a change to them: the mechanical gate (autoRoute) remains decoupled from the legacy mode enum, and the frozen defaults (mode off + autoRoute true) still hold in packages/mpd-bundle/cordis.patch.yml and in the installer row.",
+        "The EN and zh-CN records of the change (ledger row / bundle README pair where the change lands) are updated in the SAME commit as the code, per AGENTS.md §4; an evidence-free pass is not accepted.",
+        "Raw gate output is filed under evidence/orchestration-routing/implementation/ and the gap id(s) closed are named.",
+        "If the frozen target is unreachable in this environment (empty workspace / read-only bundle checkout), the task fails with that blocker recorded verbatim instead of fabricating a change."
+      ],
+      "verify": [
+        "bun run typecheck",
+        "bun test packages/mpd-agent-teams-plugin",
+        "node scripts/install-profile.mjs --self-test",
+        "bun skills/dsh-qa/scripts/session-start-team.mjs"
+      ],
+      "deliverables": [
+        "the frozen routing change at the landing points named by t1",
+        "evidence/orchestration-routing/implementation/ (raw gate output + closed gap ids)"
+      ],
+      "nonGoals": [
+        "Re-pinning the vendor baseline or chasing newer upstream commits",
+        "Renaming manual entry names, tools or slash commands (frozen)",
+        "Rewriting the complexity-gate thresholds (an open user decision, ledger O1)",
+        "Touching evidence written by t2/t4/t5"
+      ]
+    },
+    {
+      "id": "t4",
+      "subject": "Independently verify the routing change against the frozen contract",
+      "description": "Independent verification of t3. Re-derive the intended behaviour from the frozen contract (t1) and the diff itself — do not trust t3's own summary. Run the gates on the SETTLED revision (re-check HEAD immediately before and after; if the tree moves, re-run and say so).\n\nCover, at minimum: the four t3 verify commands; the behavioural delta the routing change claims (demonstrate the observable before/after, not just a green suite); the invariants t1 froze (mode/autoRoute decoupling, frozen manual entry names, no unrelated surface touched); and the negative control above.\n\nTry to falsify the change: construct the case where the new routing misbehaves (empty/absent config, non-matching prompt, disarmed gate) and report what actually happens. File raw logs; a summary without the raw command output does not count as evidence (AGENTS.md §2.3).",
+      "status": "pending",
+      "assignee": "Deep Worker",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789545149665,
+      "updatedAt": 1789545149665,
+      "kind": "verification",
+      "round": 1,
+      "objective": "Independently verify that the implemented routing change (t3) satisfies the frozen contract (t1) on a settled revision, including a negative control and an honest account of anything unverifiable in this environment.",
+      "inScope": [
+        "evidence/orchestration-routing/verify"
+      ],
+      "acceptance": [
+        "Every acceptance criterion of t3 is re-checked independently with a command whose raw output is filed under evidence/orchestration-routing/verify/ (one file per criterion), and each is marked passed/failed with its exit status.",
+        "At least one negative control is run: the surface that must NOT route/trigger stays silent (e.g. the simple prompt set of the session-start-team case, or the disarmed autoRoute control) — a gate that cannot fail one side is not accepted.",
+        "The verified revision is pinned by git rev-parse HEAD and by sha256 of the touched gate/config files, so the verification is re-anchorable after the tree moves.",
+        "Any criterion that cannot be verified in this environment is reported as unverifiable with the reason, not silently marked passed.",
+        "The verdict is reported to the captain as a per-criterion table plus an overall pass/fail, never a bare 'all good'."
+      ],
+      "deliverables": [
+        "evidence/orchestration-routing/verify/result.json",
+        "evidence/orchestration-routing/verify/ (raw per-criterion logs)"
+      ],
+      "nonGoals": [
+        "Fixing anything found (report it; repair is a separate task)",
+        "Re-implementing or re-designing the routing change",
+        "Editing the implementation, docs or tests"
+      ]
+    },
+    {
+      "id": "t5",
+      "subject": "Review the routing change and its verification evidence",
+      "description": "Deep review, read-only. Judge correctness and risk of the implemented routing change (t3) plus the verification evidence (t4) against the frozen contract (t1). Recommend fixes; do not apply them.\n\nLook specifically for: a routing change that alters behaviour outside the frozen target; a mode/autoRoute coupling regression; a gate that can no longer fail one side (false positives on plain prompts); silent renames of frozen manual entry names; evidence that is asserted rather than produced (a claimed command with no raw output); EN/ZH record drift in the same commit; and any claim in t3/t4 that the frozen contract does not support.",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t3",
+        "t4"
+      ],
+      "attempt": 0,
+      "createdAt": 1789545154216,
+      "updatedAt": 1789545154216,
+      "kind": "review",
+      "round": 1,
+      "objective": "Review whether the latest implementation satisfies the user goal",
+      "inScope": [
+        "evidence/orchestration-routing/review"
+      ],
+      "acceptance": [
+        "A verdict file is filed at evidence/orchestration-routing/review/verdict.json naming the reviewed revision (HEAD + content hashes) and judging the LATEST implementation (t3) against t1's frozen contract — not judging whether the gate rejected a revision.",
+        "The review explicitly checks the frozen invariants: mode/autoRoute decoupling and defaults, no manual entry name renamed (ledger §5), no re-pin of the vendor baseline, and no unrelated surface touched.",
+        "Any divergence between the audit report (t2), the implementation (t3) and the verification (t4) is called out as a finding rather than reconciled silently.",
+        "Findings reference t2 gap ids where applicable, so a repair can be scoped to a gap instead of a rewrite."
+      ],
+      "deliverables": [
+        "evidence/orchestration-routing/review/verdict.json",
+        "evidence/orchestration-routing/review/findings.json"
+      ],
+      "nonGoals": [
+        "Applying fixes",
+        "Re-running the whole verification suite as a substitute for reading the diff",
+        "Redesigning the frozen contract (raise it as a finding instead)"
+      ],
+      "reviewedTaskId": "t3"
+    }
+  ],
+  "taskSeq": 5
+}

@@ -1,0 +1,71 @@
+{
+  "task": "t20 (lane B4) \u2014 T-01 path ownership queryable+repairable, T-12 explicit wave boundary",
+  "attempt": "507dcca9-723b-4c28-821e-85d0fc13a76a",
+  "measured_at": "2026-09-17T02:23:48.750530+00:00",
+  "red_readings": {
+    "refusal_text_at_HEAD": "inScope overlaps ${other.id} at ${overlap.join(', ')}; serialize these tasks or split the paths  (quality-gates.js:507 at HEAD 646d801: names the id only, no owner context, no repair)",
+    "who_owns_surface_at_HEAD": "absent (git show HEAD:lib/tools.js | grep -c agent_teams_path_owner == 0; move_path/rollover likewise 0)",
+    "tool_surface_at_HEAD": 17,
+    "wave_label_at_HEAD": "absent \u2014 the team record carried no wave field and status rendered every task of every wave"
+  },
+  "green_readings": {
+    "tool_surface_now": 20,
+    "new_tools": [
+      "agent_teams_path_owner",
+      "agent_teams_move_path",
+      "agent_teams_rollover"
+    ],
+    "refusal_text_now": "inScope overlaps <owner: id + subject + assignee + status> at <patterns>; repair WITHOUT remove+re-add: agent_teams_move_path {path, from_task, to_task} to hand the path over, OR agent_teams_update_task {task_id, status, amend:{inScope:[...]}} (t14's shipped primitive) to edit ONE contract in place \u2014 or split the paths",
+    "registry_regions": 71,
+    "registry_check": "already applied: 71 mpd delta region(s) across 9 adopted file(s)",
+    "new_region_ids": [
+      "mpd-delta scope-overlap-refusal",
+      "mpd-delta wave-labels",
+      "mpd-delta path-ownership-tools",
+      "mpd-delta wave-status",
+      "mpd-delta wave-render",
+      "mpd-delta wave-create"
+    ],
+    "ownership_helpers_registered_under": "mpd-delta scope-overlap (folded in: a NEW region at the same seam shared scope-overlap's context pair and broke strip-heal \u2014 measured, then fixed)"
+  },
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": {
+      "exit": 0,
+      "reading": "238 pass / 0 fail / 238, 1962 expect() calls"
+    },
+    "node scripts/patch-agent-teams-fixes.mjs --check": {
+      "exit": 0,
+      "reading": "already applied: 71 mpd delta region(s) across 9 adopted file(s)"
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "reading": "0 errors"
+    },
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs": {
+      "exit": 0,
+      "reading": "5 pass / 0 fail"
+    },
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs": {
+      "exit": 0,
+      "reading": "21 pass / 0 fail"
+    }
+  },
+  "hashes": {
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f",
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "04dc08ca13609722994953c78062ab56f305d0ad03e7c3f79057c68459cdf45a",
+    "packages/mpd-agent-teams-plugin/lib/state.js": "391e85b4053bb7a8631d26bd5024ba40ab22f66309f4c5f38d22a07044768929",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "2567879a59b5f8ff0ca756fb4fd4344505e5a2ff676158310ad9c31328ee3fd2",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs": "58df62e8250fc7c0c5220311210b67d727b45dbffa69d750760eb7d66a4fb8b3"
+  },
+  "bound": "The 5 acceptance cases drive the REAL registered tools against real team records on disk. One verify command is RED solely because an exhaustive tool-surface pin outside this task's inScope must list the three new tools; the requested exception is recorded in the captain report for this attempt.",
+  "blocker_resolved": {
+    "what": "the exhaustive tool-surface pin (tools.size 17 -> 20 + the three new names) was cleared by the CAPTAIN in four out-of-inScope files; no file outside this task's inScope was edited by lane A",
+    "captain_edits": [
+      "test/task-contract-tool.test.mjs (count + three names)",
+      "lib/tool-names.js TEAM_TOOL_NAMES (three names)",
+      "lib/tool-names.js MEMBER_TOOL_NAMES (agent_teams_path_owner -> member-visible, answering the second question)",
+      "test/r3-view-parity.test.mjs (containment + >= frozen.length, per the frozen contract's own 'ADDING NEW NAMES IS ALLOWED' policy)"
+    ],
+    "verification": "bun test packages/mpd-agent-teams-plugin -> 238/0 after the edits"
+  }
+}

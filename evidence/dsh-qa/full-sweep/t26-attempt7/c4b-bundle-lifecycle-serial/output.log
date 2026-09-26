@@ -1,0 +1,5 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c4b-bundle-lifecycle-serial
+[mpd-qa:(only)] PASS case=bundle-lifecycle evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-41-04.634Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c4b-bundle-lifecycle-serial/lanes/bundle-lifecycle.log ms=18976
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c4b-bundle-lifecycle-serial
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

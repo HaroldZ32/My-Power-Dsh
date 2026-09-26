@@ -1,0 +1,61 @@
+{
+  "task": "t70 (amended) — ship EXTENSIONS-FOR-AGENTS.md in the artifact AND close the absent-package blind spot on the product side",
+  "seat": "packaging-engineer",
+  "attemptId": "3d3b75c9-4813-4778-9570-c962965d5283",
+  "predecessorAttempt": "1c72b39b-02bf-4cff-af64-9923740c7070 (attempt 4, terminal failed)",
+  "measuredAtUtc": "2026-09-17T04:09–04:10Z",
+  "hostOffset": "+0800",
+  "changedFiles": [
+    { "path": "scripts/pack-mpd.mjs", "sha256_16": "79563bc5fdd6518e", "what": "finding 1 (attempt 4, unchanged): named `const ROOT_FILES` table read by BOTH the root-file copy loop and the packed manifest `files[]`" },
+    { "path": "scripts/verify-pack-closure.mjs", "sha256_16": "b82941ec2d4cd744", "what": "finding 1 (attempt 4): REQUIRED_ROOT_FILES / kind ROOT-FILE, both halves, byte equality, four arms. finding 2 (this attempt): every declared package directory (PLUGIN_PKGS ∪ MCP_PKGS ∪ the patch's class-B adopted packages) must exist in the artifact with ≥1 file under kind PACKED-MISSING; verdict line reports `declared packages N/N present in the artifact`; fixture creates the declared package dirs; one new negative-control arm" }
+  ],
+  "finding2Proof": {
+    "baseline": { "command": "node scripts/verify-pack-closure.mjs --packed <scratch> --source-root . --require-packed", "exit": 0, "verdictTail": "… agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact" },
+    "seededControl": {
+      "shape": "copy the SAME fresh scratch artifact, `rm -rf <copy>/packages/mpd-team-compact-plugin` (a declared PLUGIN_PKG), re-run the identical command",
+      "exit": 1,
+      "findings": 1,
+      "finding": "PACKED-MISSING [mpd-team-compact-plugin] - packages/mpd-team-compact-plugin is declared by the packer (PLUGIN_PKGS/MCP_PKGS or the adopted main-code row) but <packed>/packages/mpd-team-compact-plugin is absent - a wholly absent package is the omission shape no per-file rule can see",
+      "before": "the SAME shape exited 0 on the pre-change gate while its verdict line asserted '18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist' — evidence/pack-closure/absent-package-blindspot/20260917T035300Z/"
+    },
+    "inTreeControl": "self-test arm 'negative-control (declared package dir absent from the artifact, exit 1)' PASSES with exactly 1 finding (21/22 arms overall)",
+    "declaredSetMath": "18 PLUGIN_PKGS + 4 MCP_PKGS + 1 adopted (mpd-agent-teams-plugin, the patch's class-B row) = 23"
+  },
+  "amendedRow4QuotedVerbatim": "the asymmetry existed in v3 (`fa2a256ac575f9bb`) and was INDEPENDENTLY FIXED in v5 (`3f26f36c9aff34c9`) by the instrument's author; the closure gate's fix is the PRODUCT-side half of the same false-green class, and the report must not claim a hole that no longer exists in either instrument.",
+  "instrumentPins": {
+    "superseded": "fa2a256ac575f9bb (v3): asset roots enumerated from the SOURCE, package dirs from `readdirSync(<pack>/packages)`",
+    "current": "3f26f36c9aff34c9 (v5, 11,313 B, mtime 03:55:11Z): `declaredPackages(repo)` parses the packer's PLUGIN_PKGS ∪ MCP_PKGS and requires a packed DIRECTORY for every declared package AND every declared asset root; self-test seeds four shapes and catches `MISSING packages/mpd-workmate-plugin/: declared package directory absent from the packed tree`",
+    "notEditedHere": true
+  },
+  "finding1Proof": {
+    "links": { "source": "10/10 resolving (six named files)", "canonicalArtifact": "0/10 (the defect, on disk)", "scratchArtifact": "10/10, 0 broken" },
+    "checker": "evidence/packaging/t70-root-file/20260917T040100Z/check-relative-links.mjs sha256_16 509ba82c623a184f"
+  },
+  "criterion7_twinScan": {
+    "command": "node evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs --pack <scratch> --repo . --json",
+    "reading": { "identical": 1187, "drift": [], "missing": [], "byDesign": 2, "noTwin": 1, "ok": true, "targetInDrift": false, "targetInMissing": false },
+    "targetIsIdentical": "sha256 9a157363a16bfeab in the artifact == the source file's sha — it has a source twin, so it rides the `identical` class; byDesign and noTwin did not move"
+  },
+  "verifyDocs": { "command": "bun run verify:docs", "exit": 0, "reading": "pairs=37 failed=0 violations=0 exempt=17 — PASS", "zhTwinAdded": false },
+  "theOnlyRed": {
+    "command": "node scripts/verify-pack-closure.mjs --self-test",
+    "exit": 1,
+    "arms": "21/22",
+    "redArm": "positive-control (real tree, exit 0) — exit 1 with exactly 1 finding (the ROOT-FILE one)",
+    "cause": "arm 1 asserts the live canonical artifact is closed; the artifact (stamp 02:56:59.067Z) predates both changes and `dist/mpd-package/**` is out of this task's scope, with the pack assigned to t35",
+    "notReshaped": "the arm was left exactly as it was; fixing it is a contract decision the captain holds (options A/B/C sent)",
+    "sameCauseOnTheGateRun": "node scripts/verify-pack-closure.mjs (no flags) exits 1 with the SAME single ROOT-FILE finding — the pre-pack truth, cleared by the re-pack"
+  },
+  "t35Handoff": [
+    "node scripts/verify-pack-closure.mjs --self-test → expect 22/22",
+    "node scripts/verify-pack-closure.mjs → expect exit 0 with `root files 1/1; declared packages 24/24 present in the artifact`",
+    "the link checker with --root dist/mpd-package → expect 10 instances / 0 broken",
+    "packed-twin-scan — v5 `ok=true` (drift==0 AND missing==0); if `missing` is non-zero after the re-pack that is a FINDING, not an expected red"
+  ],
+  "wave2Rows": {
+    "agentsMdDocForm": "shipped docs carry 4 relative links to the deliberately unshipped AGENTS.md (doc-form candidate, docs-gate lane)",
+    "vendoredLinkHits": "11 wider 'escaping link' hits live in vendored/ported upstream files (`_deps/**`, ported skills/*/AGENTS.md) — provenance, left alone",
+    "carryForwardFile": ".mpd/TODO.md is out of t70's scope; t35 owns the append, this file is the source"
+  },
+  "bounds": "artifact-side readings were taken against a SCRATCH pack produced by a two-line-patched copy of the real packer (harness sha256_16 8f69e0be6c2961be; anchors asserted; canonical artifact untouched — manifest mtime still 02:56:59.067Z). The scratch tree (18 MB, 1,190 files) was removed after the readings; its file list is kept and it is regenerable with one command. The `--self-test` red is the single arm documented above and is a contract/ordering artifact, not a code defect: every other arm, both new negative controls and the positive fixture control pass."
+}

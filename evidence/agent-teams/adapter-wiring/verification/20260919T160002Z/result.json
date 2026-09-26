@@ -1,0 +1,165 @@
+{
+  "task": "t8 (contract lane t6) \u2014 verification, FRESH attempt 7 on the REPAIRED revision",
+  "seat": "Deep Worker",
+  "attempt": 7,
+  "attempt_id": "f7964b4f-8e43-4ea2-b178-8598bf8043c3",
+  "stamp": "20260919T160002Z",
+  "verdict": "PASSED \u2014 every acceptance item green on the repaired revision. V-1 (credentials merge) is FIXED and re-measured; the V-2 bare-`bun test` red is the captain-accepted ENVIRONMENT NOTE (unchanged, no code change); no previously-green arm changed because of the fix.",
+  "repair_context": {
+    "V1": "fixed in t22 (skills/dsh-qa/scripts/lib/credentials.mjs); this lane's secret-free reproducer is the before/after instrument",
+    "skills_edits_in_the_repair": [
+      "skills/dsh-qa/scripts/lib/credentials.mjs (the V-1 fix)",
+      "skills/dsh-qa/scripts/agent-teams-dispatch.mjs (stale QA assertions, intent preserved)"
+    ],
+    "re_pin": "the captain's single VENDOR_LOCK.json re-pin landed: skills treeSha -> 82f38bd828bc1bf22c25db9e0ee02a2b0b98d168915c1a71e9375e3778cc8f4f",
+    "verify_vendor_transition": "RED (attempt 6) -> GREEN (this attempt): `node scripts/verify-vendor.mjs` EXIT 0 PASS"
+  },
+  "AC10_mounting_boot": {
+    "ok": true,
+    "run": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs -> PASS, exit 0",
+    "case_evidence": "evidence/dsh-qa/bundle-lifecycle/2026-09-19T16-00-10.971Z/{boot.log,result.json}",
+    "boot_lines": {
+      "adapter_row_provided": "\u00d71",
+      "mounted_witness": "\u00d71 (no pending/absent line)",
+      "fallback_witnesses": "absent 0 / pending 0",
+      "ADAPTER_SEAMS": "carries toolsRegisterHost, subagentsProvider, subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection (the five agent-object flags are LIVE-REGISTRY probes and read false in a session-less boot, exactly like the pre-existing turnSubmit)",
+      "tool_call": "ADAPTER_TOOL_CALL=ok (a REAL tool executed through the adapter)",
+      "roles_probe": "PASS",
+      "tools_21_via_my_instrument": "VERIF_AGENT_TEAMS_TOOLS=21/21 (the shipped probe instruments only 7 -> its own line reads 7/7)"
+    }
+  },
+  "AC11_negative_control": {
+    "ok": true,
+    "run": "adapter-disabled-boot.mjs -> PASS, exit 0",
+    "measurements": {
+      "adapter_row_disabled": "provided \u00d70 (the \u00a711 E4 id-targeted `disabled: true` overlay took effect)",
+      "fallback_witness": "EXACTLY ONE (absent 1, pending 0, mounted 0)",
+      "tools_21": "21/21",
+      "roles_probe": "PASS",
+      "isolation": "DSH_HOME + HOME + workspace sandboxed; assertSessionsSandboxed OK"
+    }
+  },
+  "F1_regression_check": {
+    "ok": true,
+    "signature_counts": {
+      "enabled_arm": 0,
+      "disabled_arm": 0
+    },
+    "boot_level_arm": "in BOTH arms a hostile per-agent ctx (Proxy throwing on every read) through the REAL bridge agentScopeOf(facade, agent) returns {context,effect,on,tools} with context === hostileCtx (Object.is true) and no read throwing",
+    "br1_witness_lines": 0,
+    "honest_bound": "no team member is created in either boot (no session/model turn), so the signature count is necessary-not-sufficient; the hostile-ctx call through the real bridge is the positive arm."
+  },
+  "three_arm_scope_test": {
+    "ok": true,
+    "file": "packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs",
+    "test": "F1: agentScopeOf returns ONE shape in ALL THREE arms (mounted / pending / absent-with-a-throwing-proxy)",
+    "run": "targeted: 130 pass / 0 fail / 2390 expect (adapter-facade + adapter-routing + adapter-bypass-inventory + adapter-tool-parity + the adapter package)"
+  },
+  "AC12_preset_conformance": {
+    "ok": true,
+    "self_test": "PASS exit 0 (31 rows conform, parity 31/31)",
+    "real_run": "PASS exit 0 \u2014 THIS IS THE V-1 RE-MEASUREMENT",
+    "case_evidence": "evidence/dsh-qa/preset-conformance/2026-09-19T16-01-07.071Z",
+    "measurements": {
+      "conformance": "checked 31, schemaFree 6, parity reference 31 / ours 31, problems []",
+      "auth": "ok (tokenSeen true, cookieSession true)",
+      "sessionCreate": "ok \u2014 status 200, sessionId present, agentPreset mpd",
+      "sessionHeader": "ok \u2014 agentPreset mpd, session log written",
+      "bootLog": "ok \u2014 signatures [] (the former `failed to apply loader entry credentials` is GONE)",
+      "negativeControl": "ok \u2014 the mutated preset is REFUSED with `agent-preset/invalid` (the assertion is falsifiable again)"
+    }
+  },
+  "AC13_aggregate_gates": {
+    "ok": true,
+    "green": {
+      "bun run verify:gates": "exit 0 \u2014 5/5 members",
+      "bun test packages (the sanctioned scope; package.json's own test script)": "exit 0 \u2014 1152 pass / 0 fail / 11775 expect",
+      "bun run typecheck": "exit 0",
+      "bun run test:qa": "exit 0 \u2014 `[test:qa] all self-tests passed` (RED at attempt 6 -> GREEN; this is the second V-1 re-measurement)",
+      "node scripts/verify-dist-fresh.mjs": "exit 0 \u2014 20/20 targets fresh, ZERO STALE",
+      "bun run verify:docs": "exit 0 \u2014 pairs=38 failed=0 violations=0 dead=0",
+      "bun run verify:rows": "exit 0 \u2014 25 row ids match",
+      "node scripts/verify-vendor.mjs": "exit 0 PASS \u2014 the re-pin's red->green transition"
+    },
+    "V2_environment_note": {
+      "bare_bun_test": "exit 1 \u2014 605 fail / 1052 errors (unchanged from attempt 6)",
+      "measured_cause": "the 411 *.test.ts files under evidence/mpd-naming/wave2/raw/scratch/** are UNTRACKED and GITIGNORED by design (.gitignore:45 evidence/**/raw/scratch/): local vendored working copies, not the repository's record (git ls-files -> 0)",
+      "captain_disposition": "ACCEPTED as an environment note; NO code change; the sanctioned gate is `bun test packages`; nothing deleted to make an unsanctioned spelling look green",
+      "reading_rule": "the bare-form red is not a wave defect and no verdict here depends on it"
+    },
+    "docs_counts_re_measured_at_landing": {
+      "registry": "151 entries / 13 files",
+      "six_bridged_files": "27 region markers / 26 distinct ids (27 with the bridge's own region)",
+      "adapter_methods": "14/14 present",
+      "capability_flags_used_by_the_bridge": "14 (the corrected count: my 13 was a candidate-list artifact; the 14th is `subagents`, gating subagentRuntime, cited by SYMBOL)",
+      "members_childCtx": "5 by the inventory test's own rule",
+      "patch_applier_check": "--check exit 0: 151 regions / 13 files, 'already applied'"
+    }
+  },
+  "AC16_settled_hashes": {
+    "start_read_utc": "2026-09-19T16:00:02Z",
+    "files": 24,
+    "DRIFT_DETECTED": "AGENTS.md moved during the verification window: bdd440cb9826323c9f8d60d4d5c6d94e139c08d542397f1f02426a7c6af9b2a9 -> d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54 (the docs lane's \u00a76/\u00a71 residual precision; every other file stable). No verdict here depends on AGENTS.md's bytes, but the drift is recorded rather than hidden.",
+    "RE_ANCHORED": {
+      "start2_read_utc": "2026-09-19T16:09:11Z",
+      "end_read_utc": "2026-09-19T16:10:01Z",
+      "settle_window_s": 50,
+      "comparison": "start2 == end over all 24 files \u2014 IDENTICAL, so the revision under verdict is SETTLED",
+      "docs_gates_re_run_on_the_settled_revision": "verify:docs PASS exit 0; verify:gates 5/5 exit 0"
+    },
+    "verdict_anchor": "the settled 24-file set (start2 == end); the files are listed in start2.txt/end.txt"
+  },
+  "live_tool_call_criterion": {
+    "status": "PASSED as scoped",
+    "proven": "no verdict cites model prose. Registration is anchored on an in-boot live-registry read (the technique AGENTS.md \u00a74 mandates because --dump-config never executes plugin code) and ADAPTER_TOOL_CALL=ok is a REAL tool executed through the adapter. NEW this attempt: AC12 additionally proves a LIVE SESSION exists under the `mpd` preset (sessionCreate 200 + sessionHeader with a written session log) on the same revision.",
+    "NOT_MEASURED": "the tool LIST inside a session (request/header.data.header.tools[] advertising the 21 tools) \u2014 neither my instrumented boots nor the AC12 sandbox keeps a session store for this lane to read (the AC12 sandbox is in /tmp and is cleaned). Recorded as NOT MEASURED; no verdict depends on it, and the closing technique is named: read the store with skills/dsh-qa/scripts/lib/session-evidence.mjs (readSessionEvents/recordedToolNames) from a boot that creates a session."
+  },
+  "evidence_convention": {
+    "ok": true,
+    "dir": "evidence/agent-teams/adapter-wiring/verification/20260919T160002Z/",
+    "files": [
+      "result.json",
+      "output.log",
+      "ac10-bundle-lifecycle.log",
+      "ac10-11-instrumented-boots.log",
+      "adapter-enabled-boot.log",
+      "adapter-enabled-result.json",
+      "adapter-disabled-boot.log",
+      "adapter-disabled-result.json",
+      "v1-before-after.log",
+      "ac12-preset-conformance.log",
+      "ac-three-arm-and-bridge-tests.log",
+      "ac13-static-gates.log",
+      "ac13-suite-gates.log",
+      "ac13-verify-gates.raw.log",
+      "ac13-bun-test-packages.raw.log",
+      "ac13-bun-test-bare.raw.log",
+      "ac13-test-qa.raw.log",
+      "ac13-docs-gates-settled.log",
+      "start.txt",
+      "end-pre.txt",
+      "start2.txt",
+      "end.txt",
+      "verif-probe.mjs",
+      "adapter-disabled-boot.mjs",
+      "adapter-enabled-boot.mjs",
+      "credentials-merge-repro.mjs"
+    ],
+    "every_gate_command_quoted_with_exit_code": true
+  },
+  "AC16_extended_set": {
+    "read_utc": "2026-09-19T16:13:25Z",
+    "why": "the captain's attempt-7 request names BOTH changed skills/** files plus VENDOR_LOCK.json in the AC16 set; my first attempt-7 set (24 files) carried only skills/dsh-qa/scripts/lib/credentials.mjs and VENDOR_LOCK.json.",
+    "added": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs (sha256 8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c)",
+    "set_size": 25,
+    "revision_still_verified": "re-hash of the original 24-file set against end.txt at 2026-09-19T16:13:25Z \u2192 UNCHANGED (no drift), so the attempt-7 verdict stands on the current tree",
+    "settle": "start3 vs end2 after a fresh 50 s window \u2192 IDENTICAL over all 25 files (start3.txt / end2.txt)",
+    "conclusion": "the verdict is anchored on the SETTLED 25-file set that now includes both changed skills files and VENDOR_LOCK.json"
+  },
+  "dispatch_attribution_confirmed": {
+    "read_utc": "2026-09-19T16:13:25Z",
+    "confirmed": "the two agent-teams-dispatch checks were GREEN at HEAD and went RED with the BRIDGE REWIRING (the pre-bridge spellings they asserted), not because of the credentials parse error; the V-1 parse error killed the captainRun leg in the same run \u2014 a second, independent failure.",
+    "my_measurement": "git show HEAD:\u2026 vs the repaired copy: check 1 moved from `await queueMemberPrompt(ctx.subagents,` to the `subagentRuntimeOf(ctx) \u2026 brandedSessionId(childId)` form PLUS the absence of the pre-bridge spelling; check 2 moved from `revoke = agent.ctx.tools.restrict({` to the `agentScopeOf` + `revoke = scope.tools.restrict({` form.",
+    "record": "correction appended to attempt 6's evidence as erratum_dispatch_attribution (originals preserved)."
+  }
+}

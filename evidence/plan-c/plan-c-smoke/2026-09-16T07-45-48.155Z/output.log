@@ -1,0 +1,55 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-ee1FXL/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three waves passed. Report:
+
+**1) Config layer — `.mpd/mpd.jsonc`**
+- Wrote the file and read it back through the tool:
+  - `mpd_config_get(key='memory.vcs')` → **`"git"`**
+  - `mpd_config_reload` → `mpd config reloaded: /tmp/mpd-wa-ee1FXL/ws/.mpd/mpd.jsonc` (the in-memory `ulw.maxRounds: 4` / `memory.vcs: "git"` layer is live)
+
+**2) Boulder layer — `.mpd/plans/qa.md`**
+- Plan file created with `# QA` and a `## TODOs` section holding `- [ ] 1. First` and `- [x] 2. Second`.
+- `mpd_boulder_start(.mpd/plans/qa.md)` → **workId `qa-41dd2e79`**, status `active` (7,142 ms wall time end-to-end).
+- Task timer for key `1`: `start` → `1 (running)`, then `end` → `1 (completed)`.
+- `mpd_boulder_complete` → **`status=completed`**; final ledger shows `active works: []`, `resume: []`, and plan progress `{total: 2, completed: 1, isComplete: false}` — the 1/2 count reflects the plan text itself (item 1 unchecked, item 2 checked), not a timer failure.
+
+**3) Hashline layer — `note.txt`**
+- Initial read gave anchors `1#KM|first`, `2#BB|second`, `3#SS|third`.
+- Edit `replace pos="2#BB" → "second2"` applied cleanly: `noop=0, deduped=0`, with a correct unified diff (only line 2 changed).
+- Final on-disk content:
+  ```
+  first
+  second2
+  third
+  ```
+
+Every sub-step returned a success marker with no sandbox denials or errors, and the file-level state on disk matches what the tools reported.
+dsh: reasoning:
+I'm starting a test sequence: first I'll write a config file, then run a series of commands to validate the get and boulder operations, and finally test the hashline functionality with a note file. I need to be careful about dependencies between these steps.
+dsh: reasoning:
+I need to check the memory configuration and examine the boulder structure, so I'm running both the config getter for memory.vcs and the boulder start command. I'm also realizing that mpd_config_get likely reads from a cached or resolved config, so I may need to reload it first since I just wrote a new config file. Let me call mpd_config_reload to ensure the latest values are picked up.
+dsh: reasoning:
+Config resolves correctly, so now I'm moving forward with the boulder sequence. I need to create a boulder plan, start it, then manage task timers for task 1 before completing it.
+
+I'm aware that mpd_boulder_start doesn't return a workId, so I'll need to call mpd_boulder_status afterward to capture the workId and current status. Let me run the start command now.
+dsh: reasoning:
+I have a workId of qa-41dd2e79. I need to call mpd_boulder_task_timer with action=start and taskKey='1', and then call it again with action='end'. But first I should check the boulder status to get the workId and confirm it's active. I can run task_timer and boulder_status in parallel since boulder_status is read-only, though I should probably get the status first to be safe.
+
+Let me start the task timer now, then run the status check and end the timer.
+dsh: reasoning:
+Now I need to end the timer, and I can check the status simultaneously to see the workId and current status.
+dsh: reasoning:
+Now I need to retrieve a hashline read of note.txt, then perform a hashline edit to replace line 2, and call mpd_boulder_complete. I'll run the boulder complete and hashline read in parallel since they're independent operations, making sure to capture the workId and status in the output.
+dsh: reasoning:
+I need to update line 2 by replacing the content after the hash marker, and I have the anchor position with the operation details ready.
+dsh: reasoning:
+Now I need to read the final content from note.txt, check the boulder status to verify the workId and status, and confirm that plan progress is being tracked correctly.
+dsh: reasoning:
+All three parts are done. The plan shows 2 total items with 1 completed, matching the single `- [x]` marker in the plan file, as expected from the raw markdown semantics.
+
+Now I'll compile the report with the config value, workId, status details including elapsed time, and the final note.txt content. The tasks are complete, so there's no need to review the boulder status further.

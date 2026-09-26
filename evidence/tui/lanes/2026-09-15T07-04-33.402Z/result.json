@@ -1,0 +1,88 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetSessionId": "34a61b5c-9c21-4379-9f35-8ec23eaa7ac3",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "isolationOffenders": [],
+      "sessionKeysCreated": [],
+      "sessionKeysInherited": [
+        "--root-dshProj-my-power-dsh--",
+        "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"
+      ],
+      "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--",
+      "sandboxSessions": 18,
+      "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T07-04-33.402Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": []
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetSessionId": "34a61b5c-9c21-4379-9f35-8ec23eaa7ac3",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "isolationOffenders": [],
+    "sessionKeysCreated": [],
+    "sessionKeysInherited": [
+      "--root-dshProj-my-power-dsh--",
+      "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--"
+    ],
+    "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-qa-ws--",
+    "sandboxSessions": 18,
+    "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T07-04-33.402Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "bytes": 98883,
+    "mtimeLocal": "2026-09-15T06:23:20.169Z",
+    "mtimeUtc": "2026-09-15T06:23:20.169Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "after": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9"
+}

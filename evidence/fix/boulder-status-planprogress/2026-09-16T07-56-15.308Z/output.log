@@ -1,0 +1,18 @@
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-tov-Q6exjb/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+Here is the exact tool result for `mpd_boulder_status` (no arguments):
+
+```
+boulder status: /tmp/mpd-tov-Q6exjb/ws/.mpd/boulder.json
+active works: []
+resume: []
+```
+
+Three lines: the ledger path, an empty active-works list, and an empty resume list — no boulder work is currently active in this workspace.
+dsh: reasoning:
+The user is asking me to call the `mpd_boulder_status` tool with no arguments and paste the exact tool result lines. This is a straightforward request to get the current boulder status.

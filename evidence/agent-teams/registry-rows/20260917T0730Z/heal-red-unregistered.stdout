@@ -1,0 +1,252 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+124 |         for (const name of ADOPTED_FILES) stripDeltas(libPath(root, name))
+125 |         const healed = applyAgentTeamsFixes({ root, write: true })
+126 |         expect(healed.status).toBe("applied")
+127 |         expect(healed.inserted.length).toBe(MPD_DELTAS.length)
+128 |         for (const name of ADOPTED_FILES)
+129 |             expect(readFileSync(libPath(root, name), "utf8"), name).toBe(canonical[name])
+                                                                          ^
+error: quality-gates.js
+
+@@ -535,34 +535,11 @@
+      // implementation, and starts a false-reject loop. A repair likewise must
+      // wait for its source implementation before it can touch the same paths.
+      if (kind === 'review' && input.reviewedTaskId !== undefined && !dependencies.includes(input.reviewedTaskId)) {
+          dependencies.push(input.reviewedTaskId);
+      }
+-     //#region mpd-delta repair-source-open-edge (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+-     // T-81 (wave 2, lane A) — the repair auto-wire DEADLOCKED on an OPEN source.
+-     //
+-     // MEASURED (wave 1, `t21`): a repair created on a task whose own `verify` was blocked by the
+-     // very defect the repair existed to fix acquired the implicit edge `repair -> source`, so the
+-     // repair waited for a source that could only complete AFTER the repair; the captain had to
+-     // take the task over to break the cycle. The edge's stated purpose — "a repair must wait for
+-     // its source implementation before it can touch the same paths" (the comment above) — holds
+-     // only for a source that has ALREADY finished: for an OPEN source the source is not a
+-     // deliverable to wait for, and waiting can park the pair forever.
+-     //
+-     // The edge is therefore kept for every NON-open source: `completed` keeps the protection, and
+-     // `failed`/`cancelled` KEEP the edge so the refusal loop below still fires (`repair must not
+-     // depend on failed task …`) — that guard is a regression control of this change, not a
+-     // casualty of it. `sourceTaskId` stays on the record either way: provenance is not a
+-     // dependency.
+-     const repairSource = kind === 'repair' && input.sourceTaskId !== undefined
+-         ? team.tasks.find((item) => item.id === input.sourceTaskId)
+-         : undefined;
+-     if (kind === 'repair' && input.sourceTaskId !== undefined && !dependencies.includes(input.sourceTaskId)
+-         && (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))) {
+-         dependencies.push(input.sourceTaskId);
+-     }
+-     //#endregion mpd-delta repair-source-open-edge
+      for (const dependency of dependencies) {
+          const upstream = team.tasks.find((item) => item.id === dependency);
+          if (upstream === undefined) {
+              return { ok: false, error: `dependency "${dependency}" does not exist` };
+          }
+
+- Expected  - 24
++ Received  + 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:129:69)
+(fail) t2: strip-healing ALL adopted files from the same state is byte-identical [300.30ms]
+142 |         stripDeltas(libPath(root, "tools.js"))
+143 |         expect(applyAgentTeamsFixes({ root, write: true }).status).toBe("applied")
+144 |         const healed = readFileSync(libPath(root, "tools.js"), "utf8")
+145 |         // BYTE identity is the property wave 2 lost: the measured defect was 60 diff
+146 |         // lines with `mpd-delta task-contract` re-inserted at 1970 instead of 1733.
+147 |         expect(healed).toBe(canonical)
+                             ^
+error: expect(received).toBe(expected)
+
+@@ -24,65 +24,11 @@
+  import { deliverToMember, installRetiredMemberGuard, installMemberSelectionRuntime, interruptMember, memberActivity, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections, } from "./members.js";
+  export { steerCaptainReport } from "./members.js";
+  import { TERMINAL_TASK_STATUSES } from "./types.js";
+  import { installTeamScheduler } from "./scheduler.js";
+  import { resolveTeamProfile } from "./profiles.js";
+- //#region mpd-delta strict-tool-arguments (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+- // T-61 (wave 2, lane A) — an UNKNOWN argument name must be LOUD, never a successful no-op.
+- //
+- // MEASURED (wave 1, `t35`'s post-completion note): the snake-case payload
+- // `output_append` (and earlier `acceptance_results` / `commands_run`) was reported as APPLIED
+- // while NOTHING was stored — the call returned success, the task record was byte-identical, and
+- // the one channel meant to repair an unrecoverable terminal record was silently unavailable.
+- // Root cause, read from the adopted code: `defineTool` compiles the flat parameter map with NO
+- // `additionalProperties:false` (`_deps/dsh-tools/lib/index.js`, `parameterSchemaSpecToJsonSchema`),
+- // so unknown keys pass validation and are simply never read by `execute`.
+- //
+- // The check is deliberately FIRST in `execute` (before any read, lock or write): a refused call
+- // must leave the workspace byte-identical. `UPDATE_TASK_ARGUMENT_NAMES` is the literal list of
+- // the tool's declared parameters — the drill arm
+- // (`self-fix-tests/strict-task-arguments.test.mjs`) pins it against the registered definition's
+- // compiled schema key set, so adding a parameter without extending this list reddens the arm
+- // instead of silently disabling the guard for that key.
+- export const UPDATE_TASK_ARGUMENT_NAMES = [
+-     'task_id',
+-     'status',
+-     'output',
+-     'output_append',
+-     'artifact',
+-     'replace_output',
+-     'attempt_id',
+-     'verdict',
+-     'findings',
+-     'changedPaths',
+-     'acceptanceResults',
+-     'commandsRun',
+-     'amend',
+- ];
+- /**
+-  * Refuse an argument object carrying any key the tool does not declare.
+-  * @param toolName - the tool's registered name, used in the message.
+-  * @param declaredNames - every argument name the tool declares.
+-  * @param args - the raw arguments payload, however malformed.
+-  * @returns nothing when every key is declared.
+-  */
+- export function assertKnownToolArguments(toolName, declaredNames, args) {
+-     const declared = new Set(declaredNames);
+-     const supplied = args === undefined || args === null ? [] : Object.keys(args);
+-     const unknown = supplied.filter((key) => !declared.has(key));
+-     if (unknown.length === 0) {
+-         return;
+-     }
+-     const named = unknown.map((key) => `"${key}"`).join(', ');
+-     throw new Error(
+-         `${toolName}: unknown argument name(s) ${named} — the call was REFUSED and NOTHING was stored.`
+-         + ` Declared arguments: ${declaredNames.join(', ')}.`
+-         + ' A snake_case payload (e.g. "acceptance_results" for "acceptanceResults") used to be'
+-         + ' accepted as a successful no-op; rename the key(s) and repeat the call.',
+-     );
+- }
+- //#endregion mpd-delta strict-tool-arguments
+  /** The caller agent, or a loud failure for non-agent callers. */
+  function requireCaptain(exec) {
+      if (!exec.agent) {
+          throw new Error('agent_teams tools require a calling agent (exec.agent was undefined)');
+      }
+@@ -2022,16 +1968,11 @@
+                      type: 'text',
+                      text: `Task ${value.task_id} attempt ${value.attempt} → ${value.status}${value.output !== undefined ? `\nOutput: ${value.output}` : ''}`,
+                  }],
+          },
+          async execute(args, exec) {
+-             //#region mpd-delta strict-tool-arguments-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+-             // T-61: the FIRST statement of the call path — an unknown argument name is refused
+-             // before the caller is resolved, before the team lock and before any write, so a
+-             // typo'd payload can never be reported as APPLIED while storing nothing.
+-             assertKnownToolArguments('agent_teams_update_task', UPDATE_TASK_ARGUMENT_NAMES, args);
+-             //#endregion mpd-delta strict-tool-arguments-apply
+              const caller = requireCaptain(exec);
+              const workspace = workspaceOf(caller);
+              const stateRoot = stateRootOf(workspace, config);
+              const team = await requireParticipantTeam(workspace, config, caller);
+              const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+@@ -2210,25 +2151,11 @@
+                          if (changedField !== undefined) {
+                              throw new Error(`terminal task ${task.id} is immutable: ${changedField} would change; use agent_teams_reassign_task to retry failed/cancelled work`);
+                          }
+                      }
+                      //#endregion mpd-delta update-task-terminal-immutable-fields
+-                     //#region mpd-delta terminal-stale-attempt-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+-                     // T-79 STATE HALF (wave 2, lane A) — a STALE capability on terminal work.
+-                     //
+-                     // The three blocks above admit the sanctioned terminal mutations (artifact /
+-                     // output_append / amend) and the immutable-field guard refuses a real CHANGE.
+-                     // What was left was the idempotent path: a caller presenting a capability that
+-                     // no longer exists was answered SUCCESS with the stored record, so a replayed
+-                     // ticket (wave 2: `t1` re-sent to its completed seat) got a green answer for an
+-                     // attempt that had already ended. A capability that does not match the stored
+-                     // one cannot be current on a finished task, so the refusal names the terminal
+-                     // status and the stored capability and points at the ONE sanctioned revive.
+-                     if (args.attempt_id !== undefined && args.attempt_id !== '' && args.attempt_id !== task.attemptId) {
+-                         throw new Error(`task ${task.id} is ${task.status}: the supplied attempt_id "${args.attempt_id}" does not match the stored capability (${task.attemptId ?? 'none'}) — terminal work is never re-armed, so a stale capability cannot update it. Read the record with agent_teams_task_contract, or retry failed/cancelled work with agent_teams_reassign_task (a FRESH attempt id).`);
+-                     }
+-                     //#endregion mpd-delta terminal-stale-attempt-refusal
+                      const sameStatus = args.status === undefined || args.status === task.status;
+                      const sameOutput = args.output === undefined || args.output === task.output;
+                      if (!sameStatus || !sameOutput) {
+                          throw new Error(`terminal task ${task.id} is immutable; use agent_teams_reassign_task to retry failed/cancelled work`);
+                      }
+
+- Expected  - 76
++ Received  + 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:147:24)
+(fail) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [187.68ms]
+159 |     const root = scratchRoot()
+160 |     try {
+161 |         const canonical = canonicalOf("quality-gates.js")
+162 |         stripDeltas(libPath(root, "quality-gates.js"))
+163 |         expect(applyAgentTeamsFixes({ root, write: true }).status).toBe("applied")
+164 |         expect(readFileSync(libPath(root, "quality-gates.js"), "utf8")).toBe(canonical)
+                                                                              ^
+error: expect(received).toBe(expected)
+
+@@ -535,34 +535,11 @@
+      // implementation, and starts a false-reject loop. A repair likewise must
+      // wait for its source implementation before it can touch the same paths.
+      if (kind === 'review' && input.reviewedTaskId !== undefined && !dependencies.includes(input.reviewedTaskId)) {
+          dependencies.push(input.reviewedTaskId);
+      }
+-     //#region mpd-delta repair-source-open-edge (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+-     // T-81 (wave 2, lane A) — the repair auto-wire DEADLOCKED on an OPEN source.
+-     //
+-     // MEASURED (wave 1, `t21`): a repair created on a task whose own `verify` was blocked by the
+-     // very defect the repair existed to fix acquired the implicit edge `repair -> source`, so the
+-     // repair waited for a source that could only complete AFTER the repair; the captain had to
+-     // take the task over to break the cycle. The edge's stated purpose — "a repair must wait for
+-     // its source implementation before it can touch the same paths" (the comment above) — holds
+-     // only for a source that has ALREADY finished: for an OPEN source the source is not a
+-     // deliverable to wait for, and waiting can park the pair forever.
+-     //
+-     // The edge is therefore kept for every NON-open source: `completed` keeps the protection, and
+-     // `failed`/`cancelled` KEEP the edge so the refusal loop below still fires (`repair must not
+-     // depend on failed task …`) — that guard is a regression control of this change, not a
+-     // casualty of it. `sourceTaskId` stays on the record either way: provenance is not a
+-     // dependency.
+-     const repairSource = kind === 'repair' && input.sourceTaskId !== undefined
+-         ? team.tasks.find((item) => item.id === input.sourceTaskId)
+-         : undefined;
+-     if (kind === 'repair' && input.sourceTaskId !== undefined && !dependencies.includes(input.sourceTaskId)
+-         && (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))) {
+-         dependencies.push(input.sourceTaskId);
+-     }
+-     //#endregion mpd-delta repair-source-open-edge
+      for (const dependency of dependencies) {
+          const upstream = team.tasks.find((item) => item.id === dependency);
+          if (upstream === undefined) {
+              return { ok: false, error: `dependency "${dependency}" does not exist` };
+          }
+
+- Expected  - 24
++ Received  + 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:164:73)
+(fail) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [128.83ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [3271.82ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.49ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.19ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [5.78ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [28.96ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [29.89ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [848.32ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.72ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [3.82ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [381.08ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [5.57ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [353.40ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [143.79ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.66ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [218.38ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [471.13ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [16.81ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [30.76ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs:
+
+ 18 pass
+ 3 fail
+ 835 expect() calls
+Ran 21 tests across 2 files. [6.60s]

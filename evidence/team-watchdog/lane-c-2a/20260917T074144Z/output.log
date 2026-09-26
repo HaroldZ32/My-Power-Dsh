@@ -1,0 +1,50 @@
+LANE C (wave 2, friction-p2-wave) — t10 evidence index
+=====================================================
+Items: T-48 · T-16 · T-18 · T-19 · T-05 · T-79 (delivery half)   |   owner: watchdog-engineer (attempt 2)
+
+THE TWO USER RULINGS THIS LANE IMPLEMENTS, VERBATIM
+  (1) T-19 — "`agent_teams_halt` becomes the SOLE external mechanism; the watchdog's PRESERVING
+      hold is demoted to its internal implementation. Surface, tools and docs expose one mechanism."
+  (2) T-18 — "the knobs must be TRULY live in-process (knobs are DATA, so T-21's module-cache
+      limit does not apply), plus a `--live` assertion as a regression pin."
+  T-48's reading is FROZEN by the captain (D-2): no delivery while held · claim/update SUCCEED ·
+  a kick is ANSWERED with a NAMED decline · the SAME kick delivers after the release.
+  The register's §8.4 sentence ("never decline … claim_task/update_task/kick") is NOT carried.
+
+WHAT IS IN THIS DIRECTORY
+  result.json                 the structured per-item readings, revision pin, commands and bounds
+  output.log                  this index
+  kick-arm-handoff.md         D-3 handoff: the frozen KICK row for lane D's skills driver
+  lane-c-live.mjs             T-18's `--live` assertion (re-runnable CLI: --live / --mutant / --self-test)
+  raw/gates.log               [1] lane-C arms · [2] full package suite · [3] typecheck · [4] mpd-bg
+                              self-test · [5] verify-dist-fresh — each with its own exit code
+  raw/readings.log            the revision pin (hashes + mtimes), the src→dist correspondence probe
+                              (with ADDENDUM 1: the first long pattern was a PATTERN artifact), the
+                              T-19 surface quotes (in-scope descriptions + the out-of-scope surfaces
+                              named as bounds), and the T-79 RED-baseline reading
+  raw/live.log                the --live / --mutant / --self-test runs
+  raw/live/live-result.json   the live reading (same-instance readback, liveWithoutRestart: true)
+  raw/mutant/live-result.json the seeded-revert mutant: the assertion REDDENS (exit 1) and the
+                              mutant runner exits 0 = DETECTED
+
+THE INSTRUMENTS (re-runnable, in-repo, imported by the arms)
+  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts   12 arms, GREEN + RED legs in one run
+  packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts  the T-19 pin, updated to ONE
+                                                                pause state (tool-list pin untouched)
+  node scripts/mpd-bg.mjs --self-test  ·  bun run typecheck  ·  bun test packages/mpd-team-watchdog-plugin
+
+BOUNDS CARRIED (not smoothed)
+  * `skills/dsh-qa/scripts/team-watchdog-config.mjs --live` (named in t3's acceptance) is NOT
+    implemented here: that file is lane D's single-writer corpus. The in-scope equivalent is
+    lane-c-live.mjs --live (same three legs, same liveWithoutRestart key, same restart-needed
+    mutant); the shared checker's flag rides lane D with the spec in this dir's result.json.
+  * T-19's remaining surfaces are OUT of this lane's inScope and are quoted as bounds:
+    lib/tools.js:3520 (the team-status PAUSE line — lane A / t21) and the README pair
+    (README.md:258/303/326/391 + zh-CN:216/254/272/328 — t20). The src-side surface + the
+    inScope agent-references row are landed here; `agent-references/troubleshooting.md` had NO
+    T-19 row before this change (a create, recorded, not a silent edit).
+  * T-79 is a SPLIT: this evidence carries the DELIVERY half; the state half is t8's, and the joint
+    reading is F-2 on the merged tip (the reviewer must not read this as the whole of T-79).
+  * dist/ is rebuilt (`packages/mpd-team-watchdog-plugin/dist/index.js`) although the contract's
+    inScope names src/**; the shipped artifact is dist and verify-dist-fresh would otherwise redden.
+    Recorded as a declared deviation, not an unstated one.

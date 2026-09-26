@@ -1,0 +1,7 @@
+- insert:
+    - id: probe2-entries
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE2-ENTRIES ' + JSON.stringify([...ctx.loader.entries()].map((e) => String(e.options.id) + '|' + String(e.options.name)))), true)"
+    - id: probe2-resolve
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(() => { const out = []; const probe = (label, fn) => { try { out.push([label, String(fn())]) } catch (e) { out.push([label, 'THROW: ' + String(e.message).slice(0, 120)]) } }; const L = ctx.loader; const R = L && L.internal && L.internal.resolveSync; const U = new URL(baseUrl); if (typeof R === 'function') { probe('url+spec', () => R(U, 'dsh-better-sidebar')); probe('spec+obj', () => R('dsh-better-sidebar', { parentURL: U })); probe('spec+base+obj', () => R('dsh-better-sidebar', baseUrl, {})); probe('spec+url+obj', () => R('dsh-better-sidebar', U, {})); probe('url+spec+obj', () => R(U, 'dsh-better-sidebar', {})); probe('arity', () => R.length); probe('missing-url+spec', () => R(U, 'definitely-not-a-package-xyz')); probe('import-type', () => typeof L.internal.import) } else out.push(['no-resolveSync', 'unavailable']); console.warn('PROBE2-RESOLVE ' + JSON.stringify({ baseUrl: String(baseUrl), out: out })); return true })()"

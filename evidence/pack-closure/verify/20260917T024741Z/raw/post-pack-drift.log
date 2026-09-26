@@ -1,0 +1,8 @@
+=== POST-PACK DRIFT MEASUREMENT: artifact copy vs its source NOW ===
+skills/dsh-qa/scripts/workmate-library.mjs: DRIFT  source=ba9053b24a3d84f9e46cc6b12848be2545c9fe5abea3310455eafc491009b0d7 artifact=a59b89ccfdf6fb09b86e8957b8f6913038cc9c71440fa21736d7313470818951  (artifact packed at 02:50:34, source written after)
+packages/mpd-workmate-plugin/dist/index.js: DRIFT  source=6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85 artifact=401573a0173b03db8a6a8fe8dd38e78a9d6d3d6f1aae27de1d5d5f1faec4072a  (artifact packed at 02:50:34, source written after)
+=== is the workmate dist inside the artifact the one the 02:54:37 rebuild produced? ===
+10:50:34 dist/mpd-package/packages/mpd-workmate-plugin/dist/index.js 54704 
+10:54:37 packages/mpd-workmate-plugin/dist/index.js 55875 
+=== F-1 status now: dist freshness gate ===
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 894ms

@@ -1,0 +1,38 @@
+--- mpd-bundle-plugin ---
+packages/mpd-bundle-plugin/README.md:1:# mpd-bundle-plugin
+packages/mpd-bundle-plugin/README.md:52:## Config
+packages/mpd-bundle-plugin/README.md:56:## Regenerating the client
+packages/mpd-bundle-plugin/README.md:63:## Files
+packages/mpd-bundle-plugin/README.zh-CN.md:1:# mpd-bundle-plugin
+packages/mpd-bundle-plugin/README.zh-CN.md:15:## 配置
+packages/mpd-bundle-plugin/README.zh-CN.md:19:## 重新生成客户端
+packages/mpd-bundle-plugin/README.zh-CN.md:26:## 文件
+--- mpd-bundle ---
+packages/mpd-bundle/README.md:1:# mpd-bundle
+packages/mpd-bundle/README.md:22:## Session-start team gate (binding)
+packages/mpd-bundle/README.md:57:## Configuration plane
+packages/mpd-bundle/README.md:68:## TUI composition
+packages/mpd-bundle/README.zh-CN.md:1:# mpd-bundle
+packages/mpd-bundle/README.zh-CN.md:10:## 会话启动团队门（强制）
+packages/mpd-bundle/README.zh-CN.md:25:## 配置平面
+packages/mpd-bundle/README.zh-CN.md:29:## TUI 组合
+--- mpd-dsh-adapter-plugin ---
+packages/mpd-dsh-adapter-plugin/README.md:1:# mpd-dsh-adapter-plugin
+packages/mpd-dsh-adapter-plugin/README.md:10:## Wrapped seams
+packages/mpd-dsh-adapter-plugin/README.md:23:## Why it exists
+packages/mpd-dsh-adapter-plugin/README.md:43:## Usage
+packages/mpd-dsh-adapter-plugin/README.md:63:## Config
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:1:# mpd-dsh-adapter-plugin
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:7:## 封装的接缝
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:20:## 为什么存在
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:30:## 用法
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:47:## 配置
+--- mpd-config-plugin ---
+packages/mpd-config-plugin/README.md:1:# mpd-config-plugin
+packages/mpd-config-plugin/README.md:11:## Known keys
+packages/mpd-config-plugin/README.md:18:## Service / tools
+packages/mpd-config-plugin/README.md:24:## The `/settings` bridge (write-back)
+packages/mpd-config-plugin/README.zh-CN.md:1:# mpd-config-plugin
+packages/mpd-config-plugin/README.zh-CN.md:11:## 已知 key
+packages/mpd-config-plugin/README.zh-CN.md:18:## 服务 / 工具
+packages/mpd-config-plugin/README.zh-CN.md:24:## `/settings` 打通（回写）

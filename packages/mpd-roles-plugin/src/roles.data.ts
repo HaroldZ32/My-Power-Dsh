@@ -5,9 +5,10 @@
 // were renamed to plain functional names. Hand-maintained since the one-time
 // migration generator (scripts/gen-roles.mjs) lost its input preset tree.
 // Consumer surfaces: mpd_roles_list / mpd_role_spawn (roster lookup),
-// mpd_role_persona (text for spawn surfaces like agent_teams_add_member), and
-// mpd_modelchain_resolve (chain lookup). Team mode uses the dsh-agent-teams
-// `profiles` templates configured in the bundle patch (normal-named members).
+// mpd_role_persona (text for spawn surfaces — the official Agent Teams
+// `spawn_teammate` takes it as the teammate's prompt), and mpd_modelchain_resolve
+// (chain lookup). Team mode is the OFFICIAL Agent Teams plugin, whose Lead stages
+// these members BY NAME (`spawn_teammate` + `team_task_create`).
 export interface MpdRoleSpec {
   id: string
   name: string

@@ -1,0 +1,4 @@
+== PIN 2026-09-17T09:21:22Z ==
+1145f15bcc52765c9bc51cd7dfbc28e52335b6943d3c055a2d3dc589bb157c52  packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs
+6021bf6dfce594ed2f0f855cd4b75decb12cc71abc29d17c3b7775c92e32092d  packages/mpd-agent-teams-plugin/lib/tools.js
+6dce6f1f3598c77bbf805b603090aab216d759f1458c037317b3fc7ad33dd5b1  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js

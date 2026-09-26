@@ -1,0 +1,7 @@
+[92:92:0918/152433.759239:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[92:92:0918/152433.759470:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[92:105:0918/152433.821629:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+
+DevTools listening on ws://127.0.0.1:36563/devtools/browser/2324c166-76e1-4393-b4f0-3f8671d04327
+[92:92:0918/152433.953077:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.DBus.Error.UnixProcessIdUnknown: Failed to set unit properties: No such process
+[92:105:0918/152434.036609:ERROR:crypto/nss_util.cc:256] Error initializing NSS with a persistent database (sql:/root/.local/share/pki/nssdb): NSS error code: -8126

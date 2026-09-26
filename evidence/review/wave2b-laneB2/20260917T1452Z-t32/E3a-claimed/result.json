@@ -1,0 +1,136 @@
+{
+  "task": "T-80 (t15, wave-2b lane B2): a driver header's `A<n>` claims vs its own assertion keys",
+  "run_at": "2026-09-17T14:52:08.146Z",
+  "mode": "driver-headers",
+  "parameters": {
+    "literal_string": "`A<n>` (claim) and `add(\"A<n>…\")` (key)",
+    "pattern_as_passed": "\\bA(\\d+)\\b + \\bA(\\d+)\\s*[–-]\\s*A?(\\d+)\\b + add\\(\\s*\"A(\\d+)[^\"]*\" (case-sensitive, unescaped)",
+    "tool_mode": "one process, offline, no children",
+    "unit": "one driver file (every finding names its PATH)",
+    "scope": "/tmp/t32-arms/e3a",
+    "moment": "2026-09-17T14:52:08.146Z"
+  },
+  "policy": {
+    "claimed_but_unasserted": "VIOLATION",
+    "asserted_but_unclaimed": "VIOLATION (a header that under-claims is reported, never silent)",
+    "no_claim_set": "REPORTED, not a violation — the equality rule has no subject; the file and its keys are named",
+    "reference_lines": "an `A<n>` token on a line pointing at another artifact's numbering (acceptance/design/§/t<nn>) is a REFERENCE, counted and printed, never a claim",
+    "out_of_family": "a citation cited by POSITION (no literal string) and a BASENAME-ONLY path (no `/`) are OUT OF FAMILY: the six addressing parameters require a repo-relative literal, so neither shape is judged and both pass silently — a green run says nothing about them (t31/B2-F3)"
+  },
+  "audit": {
+    "directories": [
+      {
+        "path": "/tmp/t32-arms/e3a",
+        "recursive": true,
+        "files_scanned": 1
+      }
+    ],
+    "per_directory_split": {
+      "../../../tmp/t32-arms/e3a/": {
+        "files": 1,
+        "key_producers": 1,
+        "keys": 9,
+        "claims": 9,
+        "violations": 0,
+        "no_claim_set": 0
+      }
+    },
+    "claim_set_parsed": 1,
+    "no_claim_set": 0,
+    "violations": 0,
+    "third_direction": {
+      "name": "the line-wide REFERENCE exemption",
+      "measured": "1 reference line(s) carry 1 A<n> token(s) (A11); the exemption skips the WHOLE line, so a claim sharing a line with an artifact reference is not claimed — declared and measured rather than silent (t31/B2-F4)"
+    },
+    "matcher_error_directions": [
+      {
+        "direction": "over-report",
+        "alternative": "whole-header token scan (no claim-marker scope, no reference filter)",
+        "measured": "1 file(s) flagged and 1 key(s) reported as mismatched, against 0 with the precise rule"
+      },
+      {
+        "direction": "under-report",
+        "alternative": "non-recursive /tmp/t32-arms/e3a*.mjs (misses lib/)",
+        "measured": "1 key producer(s) found against 1"
+      },
+      {
+        "direction": "under-report",
+        "alternative": "a file-type assumption (.js) instead of .mjs",
+        "measured": "0 key producer(s) found against 1"
+      },
+      {
+        "direction": "over-report",
+        "alternative": "a whole-repo literal scan for `add(\"A`",
+        "measured": "25 key-producing .mjs file(s) repo-wide against 1 in scope"
+      }
+    ],
+    "not_inherited": "lane A's T-92 audit split (25 self-fix-tests/** + 17 test/** = 42 `not.toContain(` occurrences; subject-scoped 3 with 0 reddened) measures a DIFFERENT audit — different literal, different subject — and is not reused here."
+  },
+  "drivers": [
+    {
+      "path": "../../../tmp/t32-arms/e3a/claim-seed.mjs",
+      "keys": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10
+      ],
+      "claims": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10
+      ],
+      "no_claim_set": false,
+      "claimed_but_unasserted": [],
+      "asserted_but_unclaimed": [],
+      "reference_lines": [
+        "CHECKS A11 as well (t32 seed: A11 claimed, never asserted)",
+        "Case tui-team-surface: prove the TUI team-workflow + plan-approval surfaces",
+        "`apply()` from the built dist with a host double, takes the `mpd-tui-plan`"
+      ],
+      "reference_tokens": [
+        11
+      ],
+      "claim_lines": [
+        "CLAIM SET (T-80): this driver CLAIMS the assertion keys A1–A8 and A10 — the same keys its own",
+        "`add(\"A…\")` calls produce below. A claimed-but-unasserted key, or a produced-but-unclaimed one,",
+        "is a defect the corpus arm reports with this path and the key.",
+        "(`packages/mpd-tui-plugin`, frozen contract `.mpd/plans/tui-team-surface.md`)",
+        "GATE A REAL MUTATION on a real host, and that the gate can be seen to fail.",
+        "Two arms, both driven against a REAL staged-team record written to disk (never a",
+        "hand-built object) inside an isolated sandbox:",
+        "ARM 1 — the bundle's own wiring, no TTY.  The lane calls the plugin's REAL",
+        "component the plugin registered, renders it, and types the frozen phrase one",
+        "keystroke at a time.  The mutation leaves through the REAL",
+        "`mpd-dsh-adapter-plugin` instance (`createDshAdapter`), so the recorded",
+        "harness-boundary call is the bundle's own code path, not a stand-in for it.",
+        "ARM 2 — the REAL dsh-TUI host in tmux, driven by real keystrokes, with the",
+        "staged record in the SANDBOX workspace.  The record is the truth source: an",
+        "approval that the pane claims but the file does not show is a FAIL, and so is",
+        "a file change the pane denies.",
+        "THE NEGATIVE CONTROL (required, and it must REDDEN): the SAME drive is re-run with",
+        "the confirmation step bypassed (empty echo / another team's id / a cancelled",
+        "confirmation).  The lane's own `assertApprovalHappened` must FAIL on those runs —",
+        "the red run is written to `negative-control/` and to the lane output.  A control",
+        "that cannot fail proves nothing, so the control also asserts that the observation",
+        "DISCRIMINATES: true exactly where the phrase was typed, false where it was not.",
+        "NOT-CLAIMED is emitted verbatim in `result.json` (see NOT_CLAIMED below): the",
+        "boundary in arm 1 is a recording double, so arm 1 proves the GATE and the adapter",
+        "forwarding, never that the adopted runtime executed."
+      ],
+      "phrases": {}
+    }
+  ],
+  "violations": []
+}

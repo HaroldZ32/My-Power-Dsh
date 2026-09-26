@@ -1,0 +1,47 @@
+{
+  "task": "t7 (contract lane t5) — docs: state the CLOSED AGENTS.md §6 exception",
+  "team": "agent-teams-adapter-wiring",
+  "wave": "w1",
+  "attempt_id": "90b842ec-a9b1-45a4-9326-01e8bc6dc448",
+  "measured_at": "2026-09-19T15:10Z",
+  "authority": "evidence/agent-teams/adapter-wiring/requirements-contract.md §7 AC9, §9 R1-R5, §11 E1/E5",
+  "measurements": {
+    "registry_entries": 151,
+    "registry_files": 13,
+    "registry_keys": ["file", "id", "beforeContext", "afterContext", "block"],
+    "registry_create_keys": 0,
+    "adapter_markers_six_bridged_files": 27,
+    "adapter_distinct_ids_six_bridged_files": 26,
+    "adapter_markers_including_bridge": 28,
+    "adapter_distinct_ids_including_bridge": 27,
+    "bridge_region_id": "mpd-delta adapter-ctx-bridge",
+    "adapter_methods_present": 14,
+    "capability_flags_present": 13,
+    "members_js_childCtx_residual_lines": 5,
+    "copy_of_import_region_id_in_two_files": "adapter-subagent-runtime-import (harness-compat.js + tools.js)"
+  },
+  "changed_paths": [
+    "AGENTS.md",
+    "docs/design.md",
+    "docs/design.zh-CN.md",
+    "agent-references/agent-teams-deltas.md",
+    "packages/mpd-dsh-adapter-plugin/README.md",
+    "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+    "evidence/agent-teams/adapter-wiring/docs/README.md",
+    "evidence/agent-teams/adapter-wiring/docs/measure-counts.mjs",
+    "evidence/agent-teams/adapter-wiring/docs/measure-counts.log",
+    "evidence/agent-teams/adapter-wiring/docs/registry-count.log",
+    "evidence/agent-teams/adapter-wiring/docs/verify-docs.log",
+    "evidence/agent-teams/adapter-wiring/docs/verify-gates.log"
+  ],
+  "untouched_on_purpose": [
+    "packages/mpd-agent-teams-plugin/README.md (VERBATIM provenance)",
+    "packages/mpd-agent-teams-plugin/README_ZH.md (VERBATIM provenance)",
+    "skills/** (single-skills-writer rule; a skills edit forces a corpus re-pin)"
+  ],
+  "commands": [
+    { "command": "bun run verify:docs", "exit": 0, "reading": "pairs=38 failed=0 violations=0 — PASS (was RED with exactly one violation before the fix: 123/10 vs derived 151/13)" },
+    { "command": "bun run verify:gates", "exit": 0, "reading": "PASS - 5/5 member gate(s) green" },
+    { "command": "node -e \"import('./packages/mpd-agent-teams-plugin/lib/mpd-deltas.js').then(m=>console.log(m.MPD_DELTAS.length, new Set(m.MPD_DELTAS.map(d=>d.file)).size))\"", "exit": 0, "reading": "151 13" }
+  ]
+}

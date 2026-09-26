@@ -1,0 +1,3 @@
+[doctor] exit=0 :: [mpd-doctor] self-test PASS: 7/7 arms
+[install-git-hooks] exit=0 :: [install-git-hooks] self-test PASS: 6/6 arms
+[dump-config] exit=0 :: [dump-config self-test] 6/6 arms passed — PASS

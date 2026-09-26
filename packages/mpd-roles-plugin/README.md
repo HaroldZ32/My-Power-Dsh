@@ -30,7 +30,8 @@ read-only discipline.
   subagent is **labelled with the role's name** (`Architect`,
   `Deep Worker`), never with `role-<id>-<random>`.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
-  persona as text (e.g. `agent_teams_add_member`).
+  persona as text (the official Agent Teams `spawn_teammate` takes it as the
+  teammate's `prompt`).
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a
@@ -42,13 +43,15 @@ advertises an upstream alias: a role is described by what it does.
 *Compatibility (internal, undocumented on any surface):* the roster also still accepts
 its stable internal keys — the chain keys used by `mpd-modelchain-plugin` and by
 `personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the camelCase spellings
-(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains, workmate
-records (`meta.baseId`) and callers keep working. They are never returned, listed or
-required.
+(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains and callers keep
+working. They are never returned, listed or required. The **workmate library does not
+resolve a base this way**: `mpd_workmate_init` matches the functional NAME only (a stable
+id is refused with a names-only error), and `meta.baseId` is kept purely as internal
+provenance that no tool output, route or GUI exposes.
 
-The same resolution is what `ctx.get("mpdRoles").get(key)` uses, so the workmate
-library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster tools
-all address a role the same way.
+`ctx.get("mpdRoles").get(key)` uses that same resolution, which is how
+`mpd_modelchain_resolve` and the roster tools address a role; the workmate library
+(`mpd_workmate_init base=...`) instead addresses it by functional NAME.
 
 ## Extension-contributed roles
 
@@ -59,11 +62,11 @@ they work on every surface a base role does:
 
 - `mpd_roles_list` lists them with their owning extension (`extension: <extension-id>`), and
   `mpd_role_spawn` / `mpd_role_persona` address them by their declared name in any spelling
-  (`Verilog Reviewer`, `verilog-reviewer`, `verilogreviewer`).
+  (`Code Reviewer`, `code-reviewer`, `codereviewer`).
 - A role the extension declares `readonly` spawns with the same write-deny toolFilter as the
   read-only base roles.
 - The `mpdRoles` service serves them too, so they are usable as **workmate BASE templates**
-  (`mpd_workmate_init base="Verilog Reviewer"`) and resolve through `mpd_modelchain_resolve`
+  (`mpd_workmate_init base="Code Reviewer"`) and resolve through `mpd_modelchain_resolve`
   when the extension declared a `provider` + `model` pair.
 - The stable id is namespaced (`ext-<extension-id>-<slug of the name>`), so it can never
   collide with a base id.
@@ -73,21 +76,68 @@ another extension is reported in `mpd_roles_list`'s `refused` list and logged on
 takes the roster, or the boot, down. A role whose persona file is unreadable is refused the
 same way, and an extension that is disabled by config contributes no role at all.
 
-**Honoured limit — extension roles are not team members.** The adopted agent-teams `mpd`
-profile member list is static patch configuration in `packages/mpd-bundle/cordis.patch.yml`
-and cannot be extended from a plugin at runtime, so an extension role can be spawned one-shot
-and used as a workmate base, but it can never be staged as a teammate by
-`agent_teams_create`.
+**Honoured limit — the roster SECTION lists the BASE roster only.** Extension-contributed
+roles are resolved per call from `mpdExtensions`, not when an agent scope is created, so they
+are not named in the `mpd:roster` section below. They stay fully usable: one-shot through
+`mpd_role_spawn`, as a **workmate BASE template**, and a Lead that knows one can still stage
+it with `spawn_teammate` by passing its `mpd_role_persona` text.
 
 ## Team mode
 
-Multi-member team work is NOT built here. It lives in the adopted
-`dsh-agent-teams` plugin: the bundle patch configures a normal-named `mpd`
-roster profile (`taskPlanning: captain`) whose members mirror the table above.
-The captain calls `agent_teams_create(profile="mpd")` to stage those teammates,
-designs the task DAG, and reuses the agent-teams Web plan panel + scheduler.
+Multi-member team work is NOT built here: it is the **official Agent Teams plugin**
+(`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`,
+mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows),
+whose Lead stages teammates with `spawn_teammate` and opens their lanes with `team_task_create`.
+This row contributes the ROSTER side of that path — every call through `mpd-dsh-adapter`:
 
-Read-only roles (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision
-Analyst) get a write-tool deny filter at `mpd_role_spawn`; as team members the
-read-only discipline is expressed in the profile protocol / execution prompt
-(they take requirements/review/analysis tasks only).
+| Contract | How this row implements it |
+|---|---|
+| the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
+| a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
+| a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
+| the session-start complexity gate | an ADVISORY `agent/pre-step` listener (below) |
+
+**Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
+to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
+inherits the Lead's route and no provider/persona/tool filter can be attached to it. The
+`teamModels.slot*` routes therefore apply to `mpd_role_spawn` / `mpd_workmate_spawn` (which
+pass explicit `agentOptions`), and the roster section says exactly that instead of promising
+a route the harness cannot deliver.
+
+### A read-only teammate is denied mechanically
+
+The seven-name deny list is enforced on BOTH paths, from ONE exported constant
+(`READONLY_DENY`), so the two can never drift:
+
+- **one-shot** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);
+- **team** — a tool guard resolves the CALLING agent's team membership through the adapter
+  (`dsh.teamMembership(exec.agent)`) and denies any name in the list when the membership is
+  role `teammate` AND its model-facing name normalises (lowercase, every run of
+  non-alphanumerics → `-`, one optional trailing `-<digits>` team suffix) to a READ-ONLY
+  roster member. The denial names the member and the rule, and points at the Lead or a worker
+  member. The Lead, a worker member, a non-team agent and an unresolvable membership all pass
+  through untouched; the guard never throws, never mutates and never widens.
+
+This closes the measured defect of the retired profile-carried `toolDeny`: a teammate staged
+as "Explorer" without the filter kept `write`/`edit`/`bash`.
+
+### The session-start complexity gate (advisory)
+
+At a session's first pre-step the row evaluates the frozen predicate
+
+```
+trigger = explicit flag OR (matchedSignals >= 1)
+```
+
+with signals **A** (`team:` prefix or `!team`; the marker is CONSUMED from the goal text),
+**B** (≥ 4 distinct deliverable verbs), **C** (ONE signal, fired by ≥ 2 of its three
+sub-signals: ≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses) and **D** (a
+`.mpd/plans/*.md` artifact exists for the session workspace). On a trigger it injects ONE
+user-role notice carrying the marker `[AgentTeams] Session-start team rule` that names the
+fired signals, states that **NO team was staged**, and tells the captain to stage one with
+`spawn_teammate` + `team_task_create` when the work actually warrants a team.
+
+**It never stages a team** — including for an explicit `team:` / `!team` request, which is
+only a stronger reason to advise. It is scoped to top-level `mpd` sessions (a child session —
+subagent, teammate, workflow worker — and another preset's session never get it), settles
+once per session, and a failure inside it leaves the step untouched.

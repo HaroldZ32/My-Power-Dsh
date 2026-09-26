@@ -1,0 +1,138 @@
+{
+  "before": {
+    "label": "BEFORE",
+    "dist": {
+      "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/dist-before/watchdog-index.js",
+      "bytes": 119753,
+      "sha256": "54f1f41ce60629651d96320cffe573e5c0079d742f1a024213c07e733681935b"
+    },
+    "subscribedWaterfalls": {
+      "pre": false,
+      "post": true
+    },
+    "gatePassedThrough": null,
+    "realCommand": {
+      "elapsedMs": 1622,
+      "status": 0
+    },
+    "ticks": [
+      {
+        "silenceFromLastStamp": 1026,
+        "decisions": [
+          "warn"
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "silenceFromLastStamp": 1433,
+        "decisions": [
+          "warn"
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "silenceFromLastStamp": 1835,
+        "decisions": [
+          "escalate"
+        ],
+        "scenes": 1,
+        "holds": 1
+      }
+    ],
+    "decisionKinds": [
+      "warn",
+      "warn",
+      "escalate"
+    ],
+    "beyondThreeWindows": true,
+    "stampStream": [
+      "step"
+    ],
+    "stats": {
+      "holdsApplied": 1,
+      "scenes": 3,
+      "incidents": 3
+    },
+    "incidentKinds": [
+      "warn",
+      "warn",
+      "escalate"
+    ],
+    "hold": {
+      "id": "6be785fb-8575-4243-9364-eb002be825b0",
+      "taskId": "t1",
+      "attemptId": "att-1",
+      "cause": "silence"
+    },
+    "rowBootLine": "(applied)"
+  },
+  "after": {
+    "label": "AFTER",
+    "dist": {
+      "path": "/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js",
+      "bytes": 125754,
+      "sha256": "810e0fb315e968ac897d44e297d073cb30063df8a5b8b0569d7effce2cb8d269"
+    },
+    "subscribedWaterfalls": {
+      "pre": true,
+      "post": true
+    },
+    "gatePassedThrough": {
+      "kind": "allow"
+    },
+    "realCommand": {
+      "elapsedMs": 1620,
+      "status": 0
+    },
+    "ticks": [
+      {
+        "silenceFromLastStamp": 1029,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceFromLastStamp": 1432,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      },
+      {
+        "silenceFromLastStamp": 1833,
+        "decisions": [],
+        "scenes": 0,
+        "holds": 0
+      }
+    ],
+    "decisionKinds": [
+      "",
+      "",
+      ""
+    ],
+    "beyondThreeWindows": true,
+    "stampStream": [
+      "step",
+      "tool-start"
+    ],
+    "stats": {
+      "holdsApplied": 0,
+      "scenes": 0,
+      "incidents": 0,
+      "toolStarts": 1,
+      "toolExpired": 0
+    },
+    "incidentKinds": [],
+    "hold": null,
+    "rowBootLine": "(applied)"
+  },
+  "verdict": {
+    "beforeHeldTheTeam": true,
+    "afterHeldNothing": true,
+    "beforeHadNoPreHook": true,
+    "afterHasThePreHook": true,
+    "sameRealCommandDuration": true
+  },
+  "ok": true
+}

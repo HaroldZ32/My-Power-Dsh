@@ -1,0 +1,122 @@
+# adapter-src → consumer-dist invalidation (measured 2026-09-19T14:28:30Z)
+# repo: /root/dshProj/my-power-dsh
+# adapter src sha256: 702164d3e8144939b5314b4e360c3b4fc4f0f7bed9313dbae965b8d47aaafa0d
+# committed adapter dist sha256: c22f2e87c7623238abd21799fd788bf5ce85f0e68a9e12c13fd3138b33f0590a
+
+## A. verify-dist-fresh STALE set (from /root/dshProj/my-power-dsh/evidence/agent-teams/adapter-wiring/adapter/dist-fresh-after-adapter-src.log)
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  STALE   packages/mpd-boulder-plugin/dist/index.js  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 21ms  <- packages/mpd-bundle-plugin/src/index.ts
+  STALE   packages/mpd-codegraph-plugin/dist/index.js  <- packages/mpd-codegraph-plugin/src/index.ts
+  STALE   packages/mpd-comment-checker-plugin/dist/index.js  <- packages/mpd-comment-checker-plugin/src/index.ts
+  STALE   packages/mpd-config-plugin/dist/index.js  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha c22f2e87c762… 30ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  STALE   packages/mpd-ext-plugin/dist/index.js  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 19ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  STALE   packages/mpd-hashline-plugin/dist/index.js  <- packages/mpd-hashline-plugin/src/index.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  STALE   packages/mpd-modelchain-plugin/dist/index.js  <- packages/mpd-modelchain-plugin/src/index.ts
+  STALE   packages/mpd-qa-roles-probe/dist/index.js  <- packages/mpd-qa-roles-probe/src/index.ts
+  STALE   packages/mpd-roles-plugin/dist/index.js  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-team-compact-plugin/dist/index.js  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-watchdog-plugin/dist/index.js  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  STALE   packages/mpd-tools-plugin/dist/index.js  <- packages/mpd-tools-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-ulw-plugin/dist/index.js  <- packages/mpd-ulw-plugin/src/index.ts
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+  STALE: packages/mpd-bootstrap-plugin/dist/index.js
+  STALE: packages/mpd-boulder-plugin/dist/index.js
+  STALE: packages/mpd-codegraph-plugin/dist/index.js
+  STALE: packages/mpd-comment-checker-plugin/dist/index.js
+  STALE: packages/mpd-config-plugin/dist/index.js
+  STALE: packages/mpd-ext-plugin/dist/index.js
+  STALE: packages/mpd-hashline-plugin/dist/index.js
+  STALE: packages/mpd-memory-plugin/dist/index.js
+  STALE: packages/mpd-modelchain-plugin/dist/index.js
+  STALE: packages/mpd-qa-roles-probe/dist/index.js
+  STALE: packages/mpd-roles-plugin/dist/index.js
+  STALE: packages/mpd-team-compact-plugin/dist/index.js
+  STALE: packages/mpd-team-watchdog-plugin/dist/index.js
+  STALE: packages/mpd-tools-plugin/dist/index.js
+  STALE: packages/mpd-tui-plugin/dist/index.js
+  STALE: packages/mpd-ulw-plugin/dist/index.js
+  STALE: packages/mpd-workmate-plugin/dist/index.js
+
+## B. entries whose FRESH build embeds adapter code (grep for the adapter's message prefix)
+EMBEDS-ADAPTER packages/mpd-bootstrap-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-boulder-plugin/src/index.ts
+no-adapter     packages/mpd-bundle-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-codegraph-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-comment-checker-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-config-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-dsh-adapter-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-ext-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-hashline-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-memory-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-modelchain-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-qa-roles-probe/src/index.ts
+EMBEDS-ADAPTER packages/mpd-roles-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-team-compact-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-team-watchdog-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-tools-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-tui-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-ulw-plugin/src/index.ts
+EMBEDS-ADAPTER packages/mpd-workmate-plugin/src/index.ts
+# entries embedding adapter code: 18
+
+## C. byte-causality: rebuild a consumer with HEAD's adapter src
+# HEAD adapter src sha256: 8826eb6d2b7a4b34abb1b784b69c11913734172772366b1a57e3a86b8a53c604
+IDENTICAL mpd-roles-plugin: HEAD-adapter rebuild == committed dist (98180ed1c3f7a4caa4015c4866bc28f024ebad77bbd39013b8516d421fb77044)
+IDENTICAL mpd-tools-plugin: HEAD-adapter rebuild == committed dist (248dbf383aea3feafacdffd83a564827717a1a359cc1994ae5a1c2e1863fbf69)
+
+## D. the exact canonical rebuild commands (extracted from the gate's own STALE lines)
+bun build packages/mpd-bootstrap-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bootstrap-plugin/dist/index.js
+bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
+bun build packages/mpd-codegraph-plugin/src/index.ts --target node --format esm --outfile packages/mpd-codegraph-plugin/dist/index.js
+bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+bun build packages/mpd-config-plugin/src/index.ts --target node --format esm --outfile packages/mpd-config-plugin/dist/index.js
+bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+bun build packages/mpd-modelchain-plugin/src/index.ts --target node --format esm --outfile packages/mpd-modelchain-plugin/dist/index.js
+bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+bun build packages/mpd-team-compact-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-compact-plugin/dist/index.js
+bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js
+bun build packages/mpd-tools-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tools-plugin/dist/index.js
+bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  STALE   packages/mpd-boulder-plugin/dist/index.js  <- packages/mpd-boulder-plugin/src/index.ts
+  STALE   packages/mpd-codegraph-plugin/dist/index.js  <- packages/mpd-codegraph-plugin/src/index.ts
+  STALE   packages/mpd-comment-checker-plugin/dist/index.js  <- packages/mpd-comment-checker-plugin/src/index.ts
+  STALE   packages/mpd-config-plugin/dist/index.js  <- packages/mpd-config-plugin/src/index.ts
+  STALE   packages/mpd-ext-plugin/dist/index.js  <- packages/mpd-ext-plugin/src/index.ts
+  STALE   packages/mpd-hashline-plugin/dist/index.js  <- packages/mpd-hashline-plugin/src/index.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  STALE   packages/mpd-modelchain-plugin/dist/index.js  <- packages/mpd-modelchain-plugin/src/index.ts
+  STALE   packages/mpd-qa-roles-probe/dist/index.js  <- packages/mpd-qa-roles-probe/src/index.ts
+  STALE   packages/mpd-roles-plugin/dist/index.js  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-team-compact-plugin/dist/index.js  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-watchdog-plugin/dist/index.js  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  STALE   packages/mpd-tools-plugin/dist/index.js  <- packages/mpd-tools-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-ulw-plugin/dist/index.js  <- packages/mpd-ulw-plugin/src/index.ts
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+
+## RESOLUTION (2026-09-19T14:46Z, contract revision 2)
+
+The captain amended t4's inScope with exactly these 17 paths and added the acceptance item that
+records the correction. Executed in this order, from the repo root:
+
+1. `bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-dsh-adapter-plugin/dist/index.js`
+2. `bash evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh`   → exit 0
+3. `node scripts/verify-dist-fresh.mjs`                                                   → exit 0:
+   `[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed`
+4. change-set check: `git status --porcelain -- packages/` (minus the adopted-plugin lane) == **the 4
+   adapter-package paths + EXACTLY the declared 17 dists** (unexpected: [] / declared-but-untouched: [])
+
+Post-rebuild sha256 of every rebuilt dist + the adapter's own src/dist: `verify.log` §5.
+Full rebuild transcript: `rebuild-consumer-dists.log`. Structured record: `result.json`
+(`blocking_finding.resolution`, `post_rebuild_hashes`, `commands_run`).

@@ -1,0 +1,151 @@
+{
+  "schema": "packaging-engineer/laneB-preflight/1",
+  "captured_at": "2026-09-17T07:07:21.879Z",
+  "repo_head": "c826f16",
+  "t9": {
+    "status": "NOT CLAIMED — blocked by dependency t2 (requirements r-B)",
+    "verify_list_as_amended": [
+      "node scripts/verify-pack-closure.mjs",
+      "node scripts/verify-pack-closure.mjs --self-test",
+      "node scripts/verify-dist-fresh.mjs"
+    ],
+    "cross_lane_aggregate_moved_to": "t18 (bun run verify:gates)"
+  },
+  "tree_state": {
+    "skills_dirty_files": 0
+  },
+  "commands": [
+    {
+      "name": "vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exitCode": 0,
+      "log": "vendor.log",
+      "reading": {
+        "skills_files": "323",
+        "verdict": "PASS",
+        "verdict_derivation": "exitCode==0 AND no `[<gate>] FAIL` line in vendor.log"
+      }
+    },
+    {
+      "name": "closure",
+      "command": "node scripts/verify-pack-closure.mjs",
+      "exitCode": 0,
+      "log": "closure.log",
+      "reading": {
+        "asset_files": "379",
+        "agent_refs": "3/3",
+        "verdict": "PASS",
+        "verdict_derivation": "exitCode==0 AND no `[<gate>] FAIL` line in closure.log"
+      }
+    },
+    {
+      "name": "closure-selftest",
+      "command": "node scripts/verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "log": "closure-selftest.log",
+      "reading": {
+        "arms": {
+          "passed": 22,
+          "total": 22
+        },
+        "tail": "[verify-pack-closure] self-test PASS - negative-control (declared package dir absent from the artifact, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s) | [verify-pack-closure] self-test PASS: 22/22 arms",
+        "verdict": "PASS",
+        "verdict_derivation": "exitCode==0 AND `self-test PASS: N/N arms`; the log legitimately contains 20 `[verify-pack-closure] FAIL` line(s) BY DESIGN (the negative control: a declared package dir absent from the artifact, child exit 1). A blanket 'no FAIL in the log' rule misreads this arm — measured.",
+        "embedded_expected_fail_lines": 20
+      }
+    },
+    {
+      "name": "dist-fresh",
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "log": "dist-fresh.log",
+      "reading": {
+        "targets": "20/20",
+        "not_covered": "7",
+        "verdict": "PASS",
+        "verdict_derivation": "exitCode==0 AND no `[<gate>] FAIL` line in dist-fresh.log"
+      }
+    }
+  ],
+  "artifact_vs_repo": {
+    "direction": "artifact -> repo (counterpart compared only when the repo has that exact relpath)",
+    "trees": {
+      "skills": {
+        "same": 323,
+        "diff": 0,
+        "extra": 0
+      },
+      "presets": {
+        "same": 2,
+        "diff": 0,
+        "extra": 0
+      },
+      "docs": {
+        "same": 37,
+        "diff": 0,
+        "extra": 0
+      },
+      "agent-references": {
+        "same": 3,
+        "diff": 0,
+        "extra": 0
+      },
+      "templates": {
+        "same": 7,
+        "diff": 0,
+        "extra": 0
+      },
+      "scripts": {
+        "same": 2,
+        "diff": 0,
+        "extra": 0
+      },
+      "extensions": {
+        "same": 7,
+        "diff": 0,
+        "extra": 0
+      }
+    },
+    "package_dists": {
+      "same": 26,
+      "diff": [],
+      "missing": [
+        "packages/mpd-qa-roles-probe/dist/index.js"
+      ],
+      "compared": 27
+    }
+  },
+  "artifact_read_only_proof": {
+    "closure_before": "ff5f96da7c43a056:1190",
+    "closure_after": "ff5f96da7c43a056:1190",
+    "identical": true,
+    "meaning": "the closure gate was run with the real dist/mpd-package present and its finding-stamp (file relpaths+sizes+mtimes) did not move",
+    "method": "canonical stamp = sha256( `find dist/mpd-package -type f -printf '%P<TAB>%s<TAB>%T@<NL>'` , UNSORTED ) truncated to 16 hex + ':' + file count",
+    "note": "An earlier in-session stamp (52b5d3c81dfd57ef) was built with an extra `| sort` and is therefore NOT a comparable string; the two readings are each internally identical before/after (same method), and both report 1190 files. Only method-identical stamps may be compared — carrying the wave-1 lesson that a pin asserting identity must exclude construction differences."
+  },
+  "findings": [
+    "CLEARED: node scripts/verify-pack-closure.mjs does not write the canonical artifact",
+    "CLEARED: the canonical artifact is byte-in-sync with the repo at the capture time",
+    "CONFLICT (already re-pinned by the captain): bun run verify:gates was un-green inside a lane's scope while a parallel lane edits skills/**"
+  ],
+  "corrections": [
+    {
+      "field": "commands[closure].reading.verdict",
+      "superseded": "see log",
+      "corrected": "PASS"
+    },
+    {
+      "field": "artifact_read_only_proof.method",
+      "superseded": "(unstated: two different stamp constructions were used in one session)",
+      "corrected": "canonical stamp = sha256( `find dist/mpd-package -type f -printf '%P<TAB>%s<TAB>%T@<NL>'` , UNSORTED ) truncated to 16 hex + ':' + file count",
+      "reason": "stamp strings from different constructions are not comparable even when each is stable"
+    },
+    {
+      "field": "commands[closure-selftest].reading.verdict",
+      "superseded": "NOT-PASS",
+      "corrected": "PASS",
+      "reason": "a uniform 'no FAIL line' rule cannot read a self-test whose negative control prints FAIL by design"
+    }
+  ],
+  "verdict_rule_gloss": "PASS is derived per command from its exit code plus that command's own success marker; expected-FAIL negative controls live INSIDE the self-test log and are counted, never folded into the verdict."
+}

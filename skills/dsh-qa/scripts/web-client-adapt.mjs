@@ -18,6 +18,8 @@ import { join, dirname } from "node:path"
 
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { credentialEnv } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(__dirname)))
@@ -70,8 +72,21 @@ function selfTest() {
     /inject\(\s*["'`]shell\.overlay["'`]/,
     /inject\(\s*["'`]sidebar\.footer\.action["'`]/,
   ]
+  // The no-host guard STRING moved with the page it guards: the bundle's sidebar tab is now the
+  // TEAM WATCHDOG page (the official client owns the AgentTeams roster/board UI), so the warning
+  // reads "the team watchdog page has no host". Matched on the STABLE tail ("page has no host")
+  // rather than the page's name, so a future rename of the page cannot redden a case whose claim is
+  // "the guard exists", not "the page is called X" — measured 2026-09-27: the retired literal was
+  // the only clause of this check left red after lane E rebased the page.
+  //
+  // The stable tail alone is NOT falsifiable on its own, though: the retired literal also ends in
+  // "page has no host", so a REVERT to it would still satisfy the tail while telling an operator
+  // that the AgentTeams GUI is unmounted — which is exactly what is no longer true. The retired
+  // sentence is therefore forbidden in its own right, and THAT is the clause a rename cannot
+  // weaken: the page may be called anything, but it may not claim the page the official client owns.
   checks.push(["both GUIs are sidebar-only", mpdSources.some((s) => s.includes("registerTeamSidebarTab"))
-    && mpdSources.some((s) => s.includes("the AgentTeams page has no host"))
+    && mpdSources.some((s) => s.includes("page has no host"))
+    && mpdSources.every((s) => !s.includes("AgentTeams page has no host"))
     && mpdSources.some((s) => s.includes("registerWorkmateSidebarTab"))
     && mpdSources.every((s) => removedRegistrations.every((re) => !re.test(s)))])
   const wm = readFileSync(join(ROOT, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
@@ -121,10 +136,12 @@ async function runReal() {
   cpSync(join(homedir(), ".dsh", ".credentials.yaml"), join(home, ".credentials.yaml"))
   cpSync(join(ROOT, "dist", "mpd-package"), join(profile, "node_modules", "@mpd-dsh", "mpd"), { recursive: true })
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@mpd-dsh/mpd"] } } }, null, 2))
-  const env = { ...process.env, DSH_HOME: home, HOME: wmHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: wmHome  })
   const log = join(outDir, "web.log")
   const fd = openSync(log, "w")
-  const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })
+  const webSpec = dshCommand(["--profile", "w", "--port", String(PORT), "--no-open"], env)
+  if (webSpec === null) throw new Error(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })
   const steps = {}
   const t0 = Date.now()
   while (Date.now() - t0 < 90000) {

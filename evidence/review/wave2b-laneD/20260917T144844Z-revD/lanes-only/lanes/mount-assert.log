@@ -1,0 +1,12 @@
+44 |   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
+45 |   const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
+46 |   if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] isolation assertion failed: DSH_HOME does not point to the temp directory"); process.exit(1) }
+47 | 
+48 |   // T-69: the sanctioned composer is the wrapper (its banner goes to stderr under --json).
+49 |   const run = spawnSync(process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "headless", "--json"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+                                                     ^
+ReferenceError: REPO is not defined
+      at main (/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/mount-assert.mjs:49:49)
+      at /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/mount-assert.mjs:68:1
+
+Bun v1.3.14 (Linux x64)

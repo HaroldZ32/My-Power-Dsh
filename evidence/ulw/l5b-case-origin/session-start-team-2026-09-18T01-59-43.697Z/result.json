@@ -1,0 +1,297 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-zUULiP",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "5aa222a144e4238b67453731c5decd806db6db94",
+      "gateHash": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 20,
+        "sessionFrames": 7,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 25,
+        "sessionFrames": 10,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 47,
+        "sessionFrames": 23,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 1,
+        "stagedTotal": 1,
+        "staged": "staged",
+        "profile": "mpd",
+        "members": 8,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 1,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [
+          {
+            "slot": "active",
+            "id": "upstream-routing-align",
+            "phase": "staged",
+            "description": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change. Bundle = /root/dshProj/my-power-dsh @ HEAD 5aa222a (READ-ONLY; deliverables land in this workspace as an applicable patch + operator handoff",
+            "captainSessionId": "session-0002e58b-5c69-4d08-931f-8d4a2393a4fb",
+            "logResolution": "session-id",
+            "logSessionId": "session-0002e58b-5c69-4d08-931f-8d4a2393a4fb",
+            "createCalls": [
+              "call_00_KnytZN03Rfarlfw730PD2178"
+            ],
+            "archiveCalls": [],
+            "origin": "model",
+            "reasons": [
+              "the captain session log records an agent_teams_create tool call"
+            ],
+            "pluginDescription": false,
+            "modelCalled": true
+          }
+        ],
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 399,
+        "sessionFrames": 226,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 257,
+        "sessionFrames": 143,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "provision",
+        "exited": 0,
+        "teams": 1,
+        "stagedTotal": 1,
+        "staged": "staged",
+        "profile": "mpd",
+        "members": 11,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 1,
+        "unattributed": 0,
+        "attributions": [
+          {
+            "slot": "active",
+            "id": "mpd-default",
+            "phase": "staged",
+            "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+            "captainSessionId": "session-4d258b04-c69c-4c42-b47a-ec8414b9fabe",
+            "logResolution": "session-id",
+            "logSessionId": "session-4d258b04-c69c-4c42-b47a-ec8414b9fabe",
+            "createCalls": [],
+            "archiveCalls": [],
+            "origin": "plugin",
+            "reasons": [
+              "the record carries the plugin's auto-route description and belongs to this session"
+            ],
+            "pluginDescription": true,
+            "modelCalled": false
+          }
+        ],
+        "notice": {
+          "any": true,
+          "advisory": 0,
+          "provisioned": 1,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 101,
+        "sessionFrames": 53,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "negativeControl": {
+      "ok": true,
+      "teams": 0,
+      "stagedTotal": 0,
+      "notice": {
+        "any": false,
+        "advisory": 0,
+        "provisioned": 0
+      },
+      "disarmed": true,
+      "isolation": true,
+      "problems": []
+    },
+    "threeWay": {
+      "ok": true,
+      "simpleTeams": [
+        0,
+        0,
+        0
+      ],
+      "simpleNotices": [
+        false,
+        false,
+        false
+      ],
+      "softTeams": [
+        1,
+        0
+      ],
+      "softModelStaged": [
+        1,
+        0
+      ],
+      "softPluginStaged": [
+        0,
+        0
+      ],
+      "softAdvisory": [
+        1,
+        1
+      ],
+      "softSignals": [
+        [
+          "C"
+        ],
+        [
+          "C"
+        ]
+      ],
+      "explicitTeams": [
+        1
+      ],
+      "explicitActive": [
+        1
+      ],
+      "explicitArchived": [
+        0
+      ],
+      "explicitPluginStaged": [
+        1
+      ],
+      "explicitProvisioned": [
+        1
+      ]
+    }
+  },
+  "totalSteps": 9
+}

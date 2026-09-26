@@ -1,0 +1,57 @@
+=== cross-lane status verification of citation-reviewer's three corrections (read-only) ===
+date: 2026-09-17T15:13:06Z
+
+--- 1. B2-F4: is the third matcher-error direction DECLARED in the checker? ---
+883:      "third_direction.measured": "reference LINES carrying an A<n> token, summed over rows, and the distinct token ids they carry (unit: LINES, then token ids)",
+898:      read_and_named_consistent: ["directories[].files_scanned", "per_directory_split[].files", "per_directory_split[].key_producers", "per_directory_split[].no_claim_set", "claim_set_parsed", "no_claim_set", "third_direction.measured", "matcher_error_directions[].measured"],
+913:    third_direction: {
+
+--- 2. B2-F5: does the scan classify its own records as SELF-REFERENCE? ---
+988:  const selfReferenceReason = (file) => {
+1004:    const reason = selfReferenceReason(file)
+1010:      else selfHits.push({ ...entry, self_reference: reason })
+1017:  for (const hit of selfHits) log(`  SELF-REFERENCE ${hit.path}:${hit.line} — ${hit.self_reference}: ${hit.phrase}`)
+1024:    matches_self_reference: selfHits,
+1025:    self_reference: {
+1028:      rule: "a match is an ANCHOR only if it is not the scanner's own record: the scan excludes its OWN output root, and classifies any hit inside an anchor-scan record (or a capture quoting the scan's command) as SELF-REFERENCE — named, never counted. Re-takeable 0: `--out` (and any stdout capture) belongs OUTSIDE the scanned scope, or the scanned scope must be sealed (t31/B2-F5).",
+
+--- 3. B2R3-F1: does the label claim a directory-scoped distinct predicate? ---
+834:      // t41/B2R3-F1: DEDUPED at DIRECTORY scope — the label says "distinct … in that directory", so the
+836:      // own distinct count per file (a seeded two-file directory printed 4 where only 2 ids exist).
+883:      "third_direction.measured": "reference LINES carrying an A<n> token, summed over rows, and the distinct token ids they carry (unit: LINES, then token ids)",
+887:    // distinct / summed / per-directory / deduped — carries its computing predicate inline (above), and the
+162:  if (!existsSync(absolute)) return { file, error: "missing subject file", citations: [], claims: [], pending: [] }
+168:    if (match === null) return { file, error: `no status section (${STATUS_HEADING}) found`, citations: [], claims: [], pending: [] }
+736:    keys: [...keys.keys()].sort((a, b) => a - b),
+737:    claims: [...claims.keys()].sort((a, b) => a - b),
+905:      keys: bucket.key_ids.size,
+906:      claims: bucket.claim_ids.size,
+
+--- 4. the checker revision these readings were taken on (T-55/T-90: hash + moment, never line numbers alone) ---
+453d3d7f499fc5660a9dc733584c59033326d5e3ce69e72439ce0da4f217f354  scripts/check-citations.mjs
+2026-09-17 23:09:10.202799853 +0800  scripts/check-citations.mjs
+
+--- 5. B2R3-F1: is the per-directory count now DEDUPED (a Set) or still a per-file SUM? ---
+    if (keys.size > 0) {
+      const row = driverRow(file)
+      rows.push(row)
+      bucket.key_producers += 1
+      // t41/B2R3-F1: DEDUPED at DIRECTORY scope — the label says "distinct … in that directory", so the
+      // ids are UNIONED across the directory's files. The previous `+= row.keys.length` SUMMED one file's
+      // own distinct count per file (a seeded two-file directory printed 4 where only 2 ids exist).
+      for (const id of row.keys) bucket.key_ids.add(id)
+      for (const id of row.claims) bucket.claim_ids.add(id)
+      for (const id of [...row.claimed_but_unasserted, ...row.asserted_but_unclaimed]) bucket.mismatched_ids.add(id)
+      if (row.no_claim_set) bucket.no_claim_set += 1
+
+    },
+    directories: [{ path: scopeArg, recursive: true, files_scanned: files.length }],
+    per_directory_split: Object.fromEntries([...split.entries()].sort().map(([path, bucket]) => [path, {
+      files: bucket.files,
+      key_producers: bucket.key_producers,
+      keys: bucket.key_ids.size,
+      claims: bucket.claim_ids.size,
+      violations: bucket.mismatched_ids.size,
+      no_claim_set: bucket.no_claim_set,
+    }])),
+    claim_set_parsed: rows.filter((row) => !row.no_claim_set).length,

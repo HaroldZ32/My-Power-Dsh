@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-8lGGes",
+  "wmHome": "/tmp/mpd-wm-home-0kczPi",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "soning: | Step 1 done. Now step 2: mpd_workmate_list. | dsh: reasoning: | Step 3: mpd_workmate_spawn {name:\"alice\", task:\"Read the file README.md in the workspace and summarize it in one sentence\"} |  | This spawns a subagent that will read README.md. Let me check the workspace has README.md. But the instruction is to run it. Let's do it. It might fail if README.md doesn't exist. Let me first check quickly? The user said use the tools in exact order. I'll just run the spawn, and the subagent can handle missing file. Actually, let me check the workspace listing quickly — no, that adds a step ou"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 197,
+      "memoryChars": 436,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; workspace README is a 2-line e2e test stub for my-power-dsh. Last task: summarize README. 2026-0",
+      "wmRoot": "/tmp/mpd-wm-home-0kczPi/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-0kczPi",
+      "sandboxRoot": "/tmp/mpd-wm-home-0kczPi/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

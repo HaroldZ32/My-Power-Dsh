@@ -1,0 +1,3 @@
+BEFORE 15377543b30a28502d814a1996538339bf62d628d5964273afcf3bb6719f3b28 100368 packages/mpd-config-plugin/dist/index.js
+BEFORE 09935e228256b65c4e176edfa8546f3fc39c2295cc26bd6340538bf5a79d7867 111398 packages/mpd-tui-plugin/dist/index.js
+BEFORE 34f1976ffef5efa5464059ed11bff787916024f74e298010b775592bd13a3ce1 298301 packages/mpd-bundle-plugin/client.js

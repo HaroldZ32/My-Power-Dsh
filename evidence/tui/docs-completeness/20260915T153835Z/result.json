@@ -1,0 +1,76 @@
+{
+  "task": "t55 \u2014 TUI coverage in the core docs (bilingual, same commit)",
+  "finishedAt": "2026-09-15T15:40:18Z",
+  "pairs": [
+    {
+      "en": "README.md",
+      "zh": "README.zh-CN.md"
+    },
+    {
+      "en": "docs/user-guide.md",
+      "zh": "docs/user-guide.zh-CN.md"
+    },
+    {
+      "en": "docs/architecture.md",
+      "zh": "docs/architecture.zh-CN.md"
+    },
+    {
+      "en": "docs/development.md",
+      "zh": "docs/development.zh-CN.md"
+    },
+    {
+      "en": "docs/index.md",
+      "zh": "docs/index.zh-CN.md"
+    }
+  ],
+  "changedHashes": {
+    "README.md": "sha256:ec199c1d70e288e29131b32d8849e7c141bf636d350111f8929892be9f1e6351",
+    "README.zh-CN.md": "sha256:c9fb89652c06658a3318a7558eb9d6826b903ebe912d498c2f4cd985b52cedae",
+    "docs/user-guide.md": "sha256:152d7aed945ceb542364d3ca892e28940960519f12be7d5da2041c2197c4ebd3",
+    "docs/user-guide.zh-CN.md": "sha256:3bf4a82b32025d3a0bcafe36fb25c86400c6e0dce2c83430e0a845a815a11df1",
+    "docs/architecture.md": "sha256:fc43bda8f9bd48b7d1bb8c15d78e637627ddab7bd5ed02f968be6e406484f954",
+    "docs/architecture.zh-CN.md": "sha256:4f0738af63528bd20a47f6ba9c9838362eb12790450a2974a6edbe8f1d8de6d5",
+    "docs/development.md": "sha256:8b9184ea1bf600dceca5612a8545f15789319aef3a40210b2e41313dba995e7a",
+    "docs/development.zh-CN.md": "sha256:0a473de4d807700b06bd16bae4cb2f882c9aa6b634e669bb2fb989de91d936cd",
+    "docs/index.md": "sha256:170d98b48b7c1c4fd70babf572870e857bda00f8430d0f8b2c17834dc2d95609",
+    "docs/index.zh-CN.md": "sha256:232c65871908a6a0b6f8e4ca60f787d17a914145c0f3c925391f53b59dc59b25"
+  },
+  "verify": {
+    "tui-spec-conformance --self-test": {
+      "exit": 0,
+      "log": "raw/tui-spec-conformance-selftest.log"
+    },
+    "doc-pair-gate-locate": {
+      "command": "grep -rln 'zh-CN' scripts/ skills/dsh-qa/ packages/*/test/",
+      "found": [
+        "scripts/pack-mpd.mjs",
+        "skills/dsh-qa/scripts/tui-spec-conformance.mjs"
+      ],
+      "finding": "no repo gate asserts a bilingual pair; pack-mpd only copies the README pair, tui-spec-conformance only reads the tui disclosure",
+      "log": "raw/doc-pair-gate-locate.log"
+    },
+    "docs-parity (task-owned checker)": {
+      "exit": 0,
+      "checks": 87,
+      "passed": 87,
+      "artifact": "docs-parity.json",
+      "log": "raw/docs-parity.log"
+    },
+    "pack-mpd": {
+      "exit": 0,
+      "note": "the release step that carries the README pair; packed README.md + README.zh-CN.md both present",
+      "log": "raw/pack-mpd.log"
+    },
+    "heading-trees-side-by-side": "raw/heading-trees-side-by-side.txt"
+  },
+  "findings": [
+    {
+      "id": "NO-DOC-PAIR-GATE",
+      "severity": "low",
+      "problem": "the repository has no doc-pair/parity gate: the locate step returns only scripts/pack-mpd.mjs (copies the README pair, asserts nothing) and skills/dsh-qa/scripts/tui-spec-conformance.mjs (reads tui.md/tui.zh-CN.md for the trust disclosure only).",
+      "requiredFix": "add a repo gate asserting, per bilingual pair, existence of both files, the switch link under the title, and heading-tree identity (this task's docs-parity.mjs is a working prototype)",
+      "reportedNotFixed": true
+    }
+  ],
+  "isolation": "writes confined to the ten inScope doc files + this evidence dir; dist/mpd-package is a gitignored build artifact refreshed by pack; no git command run"
+}

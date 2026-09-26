@@ -1,0 +1,54 @@
+{
+  "case": "mid-turn-stall",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "newestStampKind": "step",
+    "ticks": [
+      {
+        "silenceMs": 90001,
+        "decisions": [
+          "warn"
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "silenceMs": 180001,
+        "decisions": [
+          "warn"
+        ],
+        "scenes": 1,
+        "holds": 0
+      },
+      {
+        "silenceMs": 270001,
+        "decisions": [
+          "escalate"
+        ],
+        "scenes": 1,
+        "holds": 1
+      }
+    ],
+    "decisions": [
+      "warn",
+      "warn",
+      "escalate"
+    ],
+    "scenesWritten": 3,
+    "incidents": 3,
+    "holdsApplied": 1,
+    "hold": {
+      "id": "ce91c2c6-318e-4a2d-b7ad-01cc1ada7464",
+      "taskId": "t1",
+      "attemptId": "att-1"
+    }
+  },
+  "lines": [
+    "the member STALLED mid-turn: the newest stamp for t1/att-1 is still a `step` at 1700000002000",
+    "ticks at silence 90001/180001/270001 ms",
+    "decisions: [\"warn\",\"warn\",\"escalate\"] — the wedge STILL escalates",
+    "hold applied: 1 {\"id\":\"ce91c2c6-318e-4a2d-b7ad-01cc1ada7464\",\"taskId\":\"t1\",\"attemptId\":\"att-1\"}",
+    "=> the boundary fix does not silence the fault the wave exists for"
+  ]
+}

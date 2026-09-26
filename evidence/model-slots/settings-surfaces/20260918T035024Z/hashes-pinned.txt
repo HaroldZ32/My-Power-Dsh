@@ -1,0 +1,9 @@
+# t9 pinned input hashes — taken BEFORE the first measurement run (settle-before-you-measure).
+73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e  packages/mpd-tui-plugin/dist/index.js
+0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5  packages/mpd-bundle-plugin/client.js
+28fa64d4db831922e442ec476f27d849625aaba07f230d3cac59d76809496e72  packages/mpd-config-plugin/src/index.ts
+bd64ac48b51071a1358edaa73837af35cd7454aff09fe6433ab6f51bdee9ce41  packages/mpd-config-plugin/src/settings-schema.ts
+3393e54427a31eeb847cabc3a48e2b9c7880205cc37893ed083079e7fce3b384  packages/mpd-tui-plugin/src/settings.ts
+7dffbdf454a800a4f4292f976393912dac367a11cd99f3ffd572dcaccc0a281b  packages/mpd-dsh-adapter-plugin/dist/index.js
+ead4a80f3b0fc540838342bafbd7b7ea45201d1305d48dea7689b163139d604f  packages/mpd-bundle/cordis.patch.yml
+4b142e9b27617a21b15ca74343c59ef2f70c14eb81cd83cec4906af60435cadf  packages/mpd-config-plugin/dist/index.js

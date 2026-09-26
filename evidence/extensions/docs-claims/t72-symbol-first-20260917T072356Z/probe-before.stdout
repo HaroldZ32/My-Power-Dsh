@@ -1,0 +1,40 @@
+T-72 anchor-form probe — checker under test: /root/dshProj/my-power-dsh/evidence/extensions/docs-claims/check-citations.mjs
+
+ACCEPTED  symbol-first             exit 0
+ACCEPTED  symbol-first+line        exit 0
+FLAGGED   line-only                exit 1
+          FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: no content claim: write `SYMBOL`, `src/probe.ts:2` so the anchor can be checked aga
+ACCEPTED  line-only-shadowed       exit 0
+FLAGGED   symbol-first+line-SHIFT  exit 1
+          FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `alphaSymbol` (src/probe.ts:2)
+ACCEPTED  symbol-first-SHIFT       exit 0
+
+{
+  "checker": "/root/dshProj/my-power-dsh/evidence/extensions/docs-claims/check-citations.mjs",
+  "arms": {
+    "symbol-first": {
+      "exitCode": 0,
+      "guideFailure": null
+    },
+    "symbol-first+line": {
+      "exitCode": 0,
+      "guideFailure": null
+    },
+    "line-only": {
+      "exitCode": 1,
+      "guideFailure": "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: no content claim: write `SYMBOL`, `src/probe.ts:2` so the anchor can be checked aga"
+    },
+    "line-only-shadowed": {
+      "exitCode": 0,
+      "guideFailure": null
+    },
+    "symbol-first+line-SHIFT": {
+      "exitCode": 1,
+      "guideFailure": "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `alphaSymbol` (src/probe.ts:2)"
+    },
+    "symbol-first-SHIFT": {
+      "exitCode": 0,
+      "guideFailure": null
+    }
+  }
+}

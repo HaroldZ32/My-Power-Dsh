@@ -1,0 +1,85 @@
+=== docs/user-guide.md  |  docs/user-guide.zh-CN.md ===
+# User Guide	# 使用者指南
+## 1. Install	## 1. 安装
+### One command, from the checkout	### 一条命令，直接在检出目录中执行
+### Packed package (release / publishing)	### 打包产物（发布 / 分发）
+# or from any published location	# 或者从任何已发布位置
+### Uninstall (one command, no residue)	### 卸载（一条命令，无残留）
+### Legacy installer (dev/QA only)	### 历史安装器（仅开发/QA）
+## 2. The `mpd` preset	## 2. `mpd` preset
+## 3. Tools, by job	## 3. 按用途划分的工具
+## 4. Specialists (the roster)	## 4. 专家（名册）
+## 5. Workmate library (durable, evolving specialists)	## 5. workmate 库（持久、会演化的专家）
+### Renaming and deleting a workmate	### 重命名与删除 workmate
+## 6. Team mode	## 6. 团队模式
+# while staged: edit members/tasks in the Web plan panel, or with	# 暂存期间：在 Web 计划面板中编辑成员/任务，或者用
+# leader (you/captain):	# 队长（你 / captain）：
+## 7. DSH-TUI edition (the terminal UI)	## 7. DSH-TUI 版本（终端界面）
+### 7.1 TUI-native surfaces and their web counterparts	### 7.1 TUI 原生界面与对应的 Web 界面
+### 7.2 The `/settings` screen and the `mpd.jsonc` bridge	### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
+### 7.3 The `/mpd` command and the status line	### 7.3 `/mpd` 命令与状态行
+## 8. Web GUI	## 8. Web GUI
+## 9. Configuration (`mpd.jsonc`)	## 9. 配置（`mpd.jsonc`）
+## 10. Extensions, from your side	## 10. 从使用者视角看扩展
+## 11. Troubleshooting quick map	## 11. 故障排查速查
+
+=== docs/architecture.md  |  docs/architecture.zh-CN.md ===
+# Architecture	# 架构
+## 1. Big picture	## 1. 全局图景
+## 2. Bundle assembly	## 2. Bundle 组装
+## 3. Boot chain & the web-compat self-row	## 3. 启动链路与 web-compat 自引用行
+## 4. Plugin inventory	## 4. 插件清单
+## 5. Interaction flows	## 5. 交互流程
+### Roster → one-shot specialist	### Roster → 单发专家
+### Roster → workmate → team	### Roster → workmate → team
+### Extension → skills, flows, MCP tools and roles	### 扩展 → skills、flows、MCP 工具与 roles
+### Service timing	### 服务时序
+## 6. State layout	## 6. 状态布局
+## 6b. Harness adapter (the only seam contact)	## 6b. Harness 适配器（唯一的接缝接触面）
+## 6c. Agent preset plane (the `mpd` preset)	## 6c. Agent 预设层（`mpd` 预设）
+## 7. Web client wiring (the subtle part)	## 7. Web client 接线（微妙之处）
+## 7b. TUI edition wiring (the counterpart of §7)	## 7b. TUI 版本接线（§7 的对应章节）
+## 8. Security & isolation	## 8. 安全与隔离
+
+=== docs/development.md  |  docs/development.zh-CN.md ===
+# Development Guide	# 开发指南
+## 1. Repo layout	## 1. 仓库布局
+## 2. Build	## 2. 构建
+## 3. Tests	## 3. 测试
+## 4. QA (real DSH boots, strictly isolated)	## 4. QA（真实 DSH 启动，严格隔离）
+## 5. Gates (AGENTS.md §4)	## 5. 门禁（AGENTS.md §4）
+## 6. Release flow	## 6. 发布流程
+## 7. Git model	## 7. Git 模型
+## 8. Vendoring & baseline	## 8. Vendor 与基线
+## 9. Common pitfalls (from real incidents)	## 9. 常见坑（来自真实事故）
+
+=== docs/index.md  |  docs/index.zh-CN.md ===
+# my-power-dsh Documentation	# my-power-dsh 文档
+## Reading order	## 阅读顺序
+## Package reference	## 包参考
+## Extension assets	## 扩展资产
+## Historical planning docs	## 历史规划文档
+## QA evidence	## QA 证据
+
+=== README.md  |  README.zh-CN.md ===
+# my-power-dsh	# my-power-dsh
+## Capabilities	## 能力清单
+### The main agent: the `mpd` preset	### 主智能体：`mpd` preset
+### Tools, by job	### 按用途划分的工具
+### Specialists: the roster	### 专家：名册
+### The workmate library	### workmate 库
+### Team mode	### 团队模式
+### Web GUI	### Web GUI
+### DSH-TUI edition	### DSH-TUI 版本
+### Skills	### Skills
+### MCP integrations	### MCP 集成
+### The extension interface	### 扩展接口
+### Built to stay maintainable	### 面向长期可维护
+## Install	## 安装
+### Uninstall	### 卸载
+## Quick start	## 快速上手
+## Requirements	## 环境要求
+## Where to go next	## 接下来读什么
+## Relationship to other projects	## 与其他项目的关系
+## License	## 许可证
+

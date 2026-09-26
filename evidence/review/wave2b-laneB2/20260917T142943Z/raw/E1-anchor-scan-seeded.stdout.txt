@@ -1,0 +1,4 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under /tmp/revb2-scratch/e1 · scope 1 text file(s) · moment 2026-09-17T14:33:26.399Z
+  MATCH ../../../tmp/revb2-scratch/e1/note.md:2 — The finding is recorded in inbox message ee9ec16-4a2b-4c8d-9f01-2de3f4a5b6c7 (read while present).
+[anchor-scan] refusing to overwrite the existing anchor-scan run result: /root/dshProj/my-power-dsh/evidence/review/wave2b-laneB2/20260917T142943Z/seeded-e1-mailbox-id/result.json — evidence is immutable by default (T-53); pass an explicit new target

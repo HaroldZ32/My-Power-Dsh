@@ -1,0 +1,36 @@
+
+===== CUR line 23 (full) =====
+`packages/mpd-ext-plugin/src/index.ts`: the wrapper `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts`;
+
+===== CUR line 24 (full) =====
+the four registrations `mpd_ext_list`, `packages/mpd-ext-plugin/src/index.ts`; `mpd_ext_show`,
+
+===== CUR line 25 (full) =====
+`packages/mpd-ext-plugin/src/index.ts`; `mpd_flow_list`, `packages/mpd-ext-plugin/src/index.ts`;
+
+===== CUR line 26 (full) =====
+`mpd_flow_show`, `packages/mpd-ext-plugin/src/index.ts`.
+
+===== CUR line 27 (full) =====
+The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts`)
+
+===== CUR line 36 (full) =====
+| `mcp` | `{ serverName, transport, command, args?, env?, cwd?, connectTimeoutMs?, toolCallTimeoutMs? }` | `transport` is exactly `"stdio"`; `serverName` matches `^[A-Za-z0-9_-]{1,32}$`; `command` is a non-empty string; `cwd` defaults to `"."` and is extension-root-relative; the declared server is spawned at apply with only the SDK's safe inherit list plus the manifest `env` (`childEnv`, `packages/mpd-ext-plugin/src/mcp-client.ts`); its raw tool `t` is published as `mcp__<serverName>__<t>` when that name is already legal (`[A-Za-z0-9_-]` only) and at most 64 characters — otherwise the illegal characters become `_`, the name is truncated, and a `_<12-hex sha256(serverName NUL rawName)>` suffix is appended so two distinct identities can never collapse into one public name (`publicToolName`, `packages/mpd-ext-plugin/src/mcp-client.ts`) |
+
+===== CUR line 42 (full) =====
+`packages/mpd-ext-plugin/src/registry.ts` — the runtime reads `enabled: input.enabled !== false`, so an omitted key is TRUE; a config `disable` still wins over it). The shipped
+
+===== CUR line 116 (full) =====
+(`projectRejectionReason`, `packages/mpd-ext-plugin/src/sdk.ts`; refusal at
+
+===== CUR line 117 (full) =====
+`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts`).
+
+===== CUR line 141 (full) =====
+| `pending contributes.mcp[0]: … not connected yet` | **not an error** — the server is declared and connect happens at apply | ignore in `validate`; read the live state from `mpd_ext_show` (`connecting`/`connected`/`unavailable`/`failed`/`disabled`, `McpServerState`, `packages/mpd-ext-plugin/src/mcp.ts`) |
+
+===== CUR line 233 (full) =====
+No reload (a restart is the reload: `"No reload"`, `docs/extensions.md`, section 11 "v1 limits and follow-ups"); stdio MCP only; JSON flows only; no
+
+===== CUR line 12 (full) =====
+| The frozen constants (grammars, defaults, key sets) | `MPD_EXT_CONTRACT`, `packages/mpd-ext-plugin/src/sdk.ts` |

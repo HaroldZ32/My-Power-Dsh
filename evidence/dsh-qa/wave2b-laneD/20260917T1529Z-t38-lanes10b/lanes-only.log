@@ -1,0 +1,19 @@
+CMD: node scripts/run-qa-lanes.mjs --only=wave2b-lane-d,workmate-team-member,session-start-team,relocate-smoke,bundle-lifecycle,team-route-rewire,mount-assert,agent-teams-adopt,workmate-library,tui-team-surface --evidence-dir=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes
+START: 2026-09-17T15:29:09Z
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=df652241c742 lanes=10 evidence=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes
+[mpd-qa:(only)] discovery=46 lane script(s) (.mjs entries 46, underscore-excluded 0, unlisted 0, outside-suite 19)
+[mpd-qa:(only)] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36
+[mpd-qa:(only)] PASS case=wave2b-lane-d evidence=evidence/dsh-qa/wave2b-laneD/2026-09-17T15-29-09.630Z/result.json log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/wave2b-lane-d.log ms=1662
+[mpd-qa:(only)] PASS case=workmate-team-member evidence=evidence/plan-f/workmate-team-member/2026-09-17T15-29-11.287Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/workmate-team-member.log ms=181165
+[mpd-qa:(only)] FAIL case=session-start-team reason=exit-1 exit=1 evidence=evidence/dsh-qa/session-start-team/2026-09-17T15-32-12.457Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/session-start-team.log ms=1010527
+[mpd-qa:(only)] PASS case=relocate-smoke evidence=evidence/plan-d/relocate/2026-09-17T15-49-02.988Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/relocate-smoke.log ms=15401
+[mpd-qa:(only)] PASS case=bundle-lifecycle evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T15-49-18.388Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/bundle-lifecycle.log ms=20932
+[mpd-qa:(only)] PASS case=team-route-rewire evidence=evidence/plan-e/e4-team-vendor/2026-09-17T15-49-39.356Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/team-route-rewire.log ms=36508
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T15-50-16.019Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/mount-assert.log ms=235
+[mpd-qa:(only)] PASS case=agent-teams-adopt evidence=evidence/plan-c/c1-team/2026-09-17T15-50-16.072Z/web.log log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/agent-teams-adopt.log ms=93855
+[mpd-qa:(only)] PASS case=workmate-library evidence=evidence/plan-f/workmate-library/2026-09-17T15-51-49.926Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/workmate-library.log ms=36332
+[mpd-qa:(only)] PASS case=tui-team-surface evidence=evidence/tui/team-surface-verify/2026-09-17T15-52-26.270Z log=evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes/lanes/tui-team-surface.log ms=40033
+[mpd-qa:(only)] summary selected=10 pass=9 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b/lanes
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+ONLY10B EXIT=1 (dir evidence/dsh-qa/wave2b-laneD/20260917T1529Z-t38-lanes10b)

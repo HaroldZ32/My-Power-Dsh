@@ -1,0 +1,5 @@
+# source hashes read at 2026-09-20T03:35:45Z
+6ab4df7eb2e4dbe515406044ef580c698f004b355f4ea0bde4d2e327baeb711a  packages/mpd-bundle/cordis.patch.yml
+64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f  package.json
+52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07  scripts/pack-mpd.mjs
+98b29e101bd0e7d146311e9f191905389d0fd0c645275044950bde232220b94a  scripts/install-profile.mjs

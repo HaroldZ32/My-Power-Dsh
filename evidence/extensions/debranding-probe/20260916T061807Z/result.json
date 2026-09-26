@@ -1,0 +1,485 @@
+{
+  "task": "t7",
+  "subject": "F7 + F6: a corrected debranding prober in a new evidence dir, and the pre-c239407 boundary index",
+  "attempt": 1,
+  "attemptId": "07550f28-c56f-4c0d-841c-593b9bc96044",
+  "member": "Junior Engineer",
+  "utc": "20260916T061807Z",
+  "boundaryCommit": {
+    "sha": "c239407186e93a8c1d975caad5888a45f72dfc43",
+    "committed": "2026-09-15T09:17:55+08:00",
+    "utc": "2026-09-15T01:17:55Z",
+    "subject": "fix(ext): close the v0.9.1 review findings F1-F7 in the extension interface"
+  },
+  "PART_A_F6_boundaryIndex": {
+    "deliverable": "evidence/extensions/boundary-index/INDEX.md",
+    "bytes": 9075,
+    "sha256": "37c1208d41b0b56513b0ba9ad516ffabb95a1fc07520faf36f1d4d79ecd6b06f",
+    "covers": "every evidence directory under evidence/extensions/ and evidence/mpd-ext-debranding/",
+    "classificationTest": "git ls-tree -r c239407 -- <dir> (authoritative: absent means the dir post-dates the boundary) PLUS the directory-name UTC stamp, with every disagreement called out explicitly",
+    "sectionA_preExisting_in_c239407_tree": [
+      "extension-lifecycle",
+      "extension-mcp-bridge",
+      "mcp-bridge-framing",
+      "mcp-bridge-gates",
+      "registered-tool-schemas",
+      "roles-wiring",
+      "sanitizer-crosscheck",
+      "t7-verify"
+    ],
+    "sectionB_absent_from_c239407_tree": [
+      "v0.9.1-defect-fixes",
+      "t12-integration",
+      "t13-repair",
+      "mpd-ext-debranding/20260915T074904Z",
+      "mpd-ext-debranding/captain-verify"
+    ],
+    "sectionC_created_by_this_wave": [
+      "f1-adapter-identity",
+      "template-scaffold",
+      "pack-closure-check",
+      "debranding-probe",
+      "boundary-index"
+    ],
+    "statesNotReRun": "INDEX.md states in its own words that the stale directories were NOT re-run in this wave, that nothing inside them was edited, moved or deleted, and that a new separately-stamped sub-run is not a rewrite of an existing record",
+    "namingTrap": "INDEX.md records that evidence/extensions/{t7-verify,t12-integration,t13-repair} are a PREVIOUS wave's records despite their task-id-like names",
+    "stampTrap": "INDEX.md records that extension-lifecycle/2026-09-15T01-16-15.149Z is stamped ~90 s BEFORE c239407 yet is absent from its tree (written to disk first, committed after)"
+  },
+  "boundaryProof": {
+    "method": "sha256 of every file under the 13 pre-existing evidence directories, snapshotted BEFORE t7 wrote anything and again AFTER; the BEFORE file set alone is compared, because a new sub-run written by an owning task would legitimately ADD files",
+    "preExistingDirsFile": "evidence/extensions/boundary-index/pre-existing-dirs.txt",
+    "preExistingDirCount": 13,
+    "before": {
+      "snapshot": "evidence/extensions/boundary-index/hashes-before.txt",
+      "sha256": "441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124",
+      "files": 356
+    },
+    "after": {
+      "snapshot": "evidence/extensions/boundary-index/hashes-after.txt",
+      "sha256": "441c5ba89620c937f2908c1e9543cb2a063c2a14f32ecee36372b8f3e42d4124",
+      "files": 356
+    },
+    "result": {
+      "filesBefore": 356,
+      "filesAfter": 356,
+      "stillPresent": 356,
+      "modified": 0,
+      "deleted": 0,
+      "added": 0
+    },
+    "verdict": "PROOF: no pre-existing evidence file was modified or deleted (0 modified, 0 deleted, 0 added)"
+  },
+  "PART_B_F7_correctedProber": {
+    "deliverable": "evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs",
+    "sha256": "a8d1673c02cae52d54473ad049c584bb41858fc996262058edb27f0be84d2a56",
+    "probeReport": "evidence/extensions/debranding-probe/20260916T061807Z/probe-report.json",
+    "supersededProberUntouched": "evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs was NOT edited (it sits inside the byte-identical after-snapshot above); the correction lives beside it",
+    "fieldInventory": {
+      "skills": [
+        "name",
+        "description"
+      ],
+      "flows": [
+        "id",
+        "title",
+        "description",
+        "whenToUse"
+      ],
+      "roles": [
+        "name",
+        "description",
+        "persona"
+      ],
+      "mcp": [
+        "serverName",
+        "transport",
+        "command",
+        "args"
+      ]
+    },
+    "supersededCoverageGap": {
+      "available": true,
+      "path": "evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs",
+      "printedClaim": "quoted snippets match the shipped example verbatim",
+      "oldFields": [
+        "flows.description",
+        "flows.id",
+        "flows.title",
+        "flows.whenToUse",
+        "skills.description",
+        "skills.name"
+      ],
+      "gap": [
+        "mcp.args",
+        "mcp.command",
+        "mcp.serverName",
+        "mcp.transport",
+        "roles.description",
+        "roles.name",
+        "roles.persona"
+      ]
+    },
+    "targets": [
+      {
+        "id": "mpd-ext-example",
+        "root": "extensions/mpd-ext-example",
+        "docs": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ],
+        "requireAllQuoted": true,
+        "artifactCounts": {
+          "skills": 1,
+          "flows": 1,
+          "roles": 1,
+          "mcp": 1
+        },
+        "probeCount": 13,
+        "quotedCount": 13,
+        "notQuoted": []
+      },
+      {
+        "id": "mpd-extension-template",
+        "root": "templates/mpd-extension",
+        "docs": [
+          "templates/mpd-extension/README.md",
+          "templates/mpd-extension/README.zh-CN.md"
+        ],
+        "requireAllQuoted": false,
+        "artifactCounts": {
+          "skills": 1,
+          "flows": 1,
+          "roles": 1,
+          "mcp": 1
+        },
+        "probeCount": 13,
+        "quotedCount": 2,
+        "notQuoted": [
+          "skills.name [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md]",
+          "skills.description [templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md]",
+          "flows.id [templates/mpd-extension/flows/mpd-extension-template-flow.json]",
+          "flows.title [templates/mpd-extension/flows/mpd-extension-template-flow.json]",
+          "flows.description [templates/mpd-extension/flows/mpd-extension-template-flow.json]",
+          "flows.whenToUse [templates/mpd-extension/flows/mpd-extension-template-flow.json]",
+          "roles.name [templates/mpd-extension/mpd-ext.json]",
+          "roles.description [templates/mpd-extension/mpd-ext.json]",
+          "roles.persona [templates/mpd-extension/mpd-ext.json]",
+          "mcp.serverName [templates/mpd-extension/mpd-ext.json]",
+          "mcp.args [templates/mpd-extension/mpd-ext.json]"
+        ]
+      }
+    ],
+    "claim": "probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 15 quoted verbatim, 11 reported not-quoted; 0 finding(s). No claim is made about a field this prober did not probe.",
+    "fieldByFieldProbeList": [
+      {
+        "target": "mpd-ext-example",
+        "kind": "skills",
+        "artifact": "extensions/mpd-ext-example/skills/change-triage/SKILL.md",
+        "field": "name",
+        "value": "change-triage",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "skills",
+        "artifact": "extensions/mpd-ext-example/skills/change-triage/SKILL.md",
+        "field": "description",
+        "value": "Reference extension skill: triage a code change before review (what changed, what it touches, which risks deserve a reader). Use when a code diff needs a first pass before a human or reviewer looks at it.",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "flows",
+        "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+        "field": "id",
+        "value": "change-triage-flow",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "flows",
+        "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+        "field": "title",
+        "value": "Change triage before review",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "flows",
+        "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+        "field": "description",
+        "value": "Walk a code change through the reference extension's triage skill, then hand the result to a reviewer. Use before a code change is reviewed.",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "flows",
+        "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+        "field": "whenToUse",
+        "value": "Use when a code change needs a first pass before review.",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "roles",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "name",
+        "value": "Code Reviewer",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "roles",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "description",
+        "value": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "roles",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "persona",
+        "value": "personas/code-reviewer.md",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "mcp",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "serverName",
+        "value": "lint-mcp",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "mcp",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "transport",
+        "value": "stdio",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "mcp",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "command",
+        "value": "node",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-ext-example",
+        "kind": "mcp",
+        "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+        "field": "args",
+        "value": "[\"server.mjs\"]",
+        "quotedIn": [
+          "docs/extensions.md",
+          "docs/extensions.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "skills",
+        "artifact": "templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md",
+        "field": "name",
+        "value": "mpd-extension-template-skill",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "skills",
+        "artifact": "templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md",
+        "field": "description",
+        "value": "The mpd-extension-template extension's first skill. Replace this description with what the skill does and when an agent should use it; keep the load-bearing sentence first.",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "flows",
+        "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+        "field": "id",
+        "value": "mpd-extension-template-flow",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "flows",
+        "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+        "field": "title",
+        "value": "mpd-extension-template flow",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "flows",
+        "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+        "field": "description",
+        "value": "The mpd-extension-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "flows",
+        "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+        "field": "whenToUse",
+        "value": "Use when a task needs the repeatable procedure this flow describes.",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "roles",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "name",
+        "value": "mpd-extension-template reviewer",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "roles",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "description",
+        "value": "Read-only reviewer contributed by the mpd-extension-template extension: checks a change against this extension's own contract and reports findings with evidence.",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "roles",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "persona",
+        "value": "personas/mpd-extension-template-reviewer.md",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "mcp",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "serverName",
+        "value": "mpd-extension-template",
+        "quotedIn": []
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "mcp",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "transport",
+        "value": "stdio",
+        "quotedIn": [
+          "templates/mpd-extension/README.md",
+          "templates/mpd-extension/README.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "mcp",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "command",
+        "value": "node",
+        "quotedIn": [
+          "templates/mpd-extension/README.md",
+          "templates/mpd-extension/README.zh-CN.md"
+        ]
+      },
+      {
+        "target": "mpd-extension-template",
+        "kind": "mcp",
+        "artifact": "templates/mpd-extension/mpd-ext.json",
+        "field": "args",
+        "value": "[\"server.mjs\"]",
+        "quotedIn": []
+      }
+    ]
+  },
+  "commands": [
+    {
+      "command": "node evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 15 quoted verbatim, 11 reported not-quoted; 0 finding(s). No claim is made about a field this prober did not probe."
+    },
+    {
+      "command": "node -e \"const fs=require('fs');const p='evidence/extensions/boundary-index/INDEX.md';if(!fs.existsSync(p))throw new Error('index missing');console.log(fs.readFileSync(p,'utf8').length+' bytes')\"",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "9075 bytes"
+    },
+    {
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=35 failed=0 violations=0 exempt=16 - PASS"
+    }
+  ],
+  "extraChecks": [
+    {
+      "command": "node evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "self-test PASS: 5/5 arms (positive control + F7 coverage arm + 3 mutated-snippet controls)"
+    }
+  ],
+  "FINDINGS_for_downstream": [
+    {
+      "id": "T7-F1",
+      "severity": "low",
+      "scope": "docs (t9)",
+      "problem": "11 of the template's 13 snippet fields are NOT quoted in its own README pair (only mcp.transport and mcp.command are). A drift in the template's skill/flow/role/mcp snippet fields would therefore be invisible to any doc-parity check.",
+      "requiredFix": "if the template guide is meant to show its snippets, t9 should quote them in both languages; otherwise this prober keeps reporting them as not-quoted rather than claiming them verified. NOT a t7 failure: the probe exits 0 and records the fact on the record."
+    }
+  ],
+  "inScopeRespected": [
+    "evidence/extensions/boundary-index",
+    "evidence/extensions/debranding-probe"
+  ],
+  "notTouched": [
+    "skills/**",
+    "docs/**",
+    "packages/**",
+    "scripts/**",
+    "templates/**",
+    "VENDOR_LOCK.json",
+    "evidence/mpd-ext-debranding/20260915T074904Z/**",
+    "evidence/mpd-ext-debranding/captain-verify/**",
+    "evidence/extensions/f1-adapter-identity",
+    "evidence/extensions/extension-lifecycle",
+    "evidence/extensions/extension-mcp-bridge",
+    "evidence/extensions/template-scaffold"
+  ],
+  "gitVerbsUsed": "read-only only (git ls-tree, git log, git status); no commit/add/checkout/switch/reset/stash/merge/branch/rebase/tag."
+}

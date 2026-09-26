@@ -1,0 +1,4 @@
+vendor=0
+closure=0
+closure-selftest=0
+dist-fresh=0

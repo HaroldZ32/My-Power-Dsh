@@ -1,0 +1,17 @@
+{
+  "checkedAt_staleDispatchVerification": true,
+  "t22_completed": true,
+  "declarationsStillIdenticalOutsideDisclosure": true,
+  "changedTopLevelKeys": [
+    "x-mpd-tui-surfaces"
+  ],
+  "acceptance1_measuredChainPresent": true,
+  "acceptance2_unblockPresent": true,
+  "acceptance3_noFunctionalChange": true,
+  "acceptance4_structure": {
+    "requiredKeysPresent": true,
+    "entry": "packages/mpd-tui-plugin/dist/index.js",
+    "noProvides": true,
+    "noRequiresServices": true
+  }
+}

@@ -1,0 +1,3 @@
+FU-1 strip: removed 1198 bytes
+FU-1 strip: 'rules: {' still in source: False
+FU-1 strip: 'doc_rewrite: {' still in source: False

@@ -1,0 +1,34 @@
+{
+  "schema": "laneB/t60-independent-fold/1",
+  "moment_utc": "2026-09-17T17:09:12.348Z",
+  "command": "node ./independent-fold.mjs",
+  "inputs": {
+    "dir": "/root/dshProj/my-power-dsh/skills",
+    "lock": "/root/dshProj/my-power-dsh/VENDOR_LOCK.json",
+    "lock_sha256": "cfc8005d56bc3e3fb5ebfa74c30b86a609c85eb56439547fc79f117722ca1256",
+    "lock_sha256_16": "cfc8005d56bc3e3f",
+    "files_discovered": 324
+  },
+  "rule_source": "scripts/verify-vendor.mjs readBytes()/listFiles()/treeSha fold, re-implemented here; the gate was neither called nor imported and repin-vendor.mjs was not run",
+  "lf_treeSha": "2c039e4c49b9fd32546974c590a54cd53d148946cf6ac26b59b02f1afa39651e",
+  "raw_treeSha": "3ce41c5c128e1a0802a1300d02c15b21b025ffa8e02894606ce7bafb01c1d513",
+  "lock": {
+    "skills_treeSha": "2c039e4c49b9fd32546974c590a54cd53d148946cf6ac26b59b02f1afa39651e",
+    "skills_fileCount": 324
+  },
+  "comparison": {
+    "lf_equals_lock": true,
+    "filecount_equals_lock": true,
+    "words": "MY LF-normalized fold equals the lock's written value over the same file count: the landed re-pin reading is CONFIRMED by an independent implementation.",
+    "first_byte_difference_if_any": null
+  },
+  "lf_normalized_files": [
+    "ultimate-browsing/engine/tests/fixtures/amp_redirect_stub.html"
+  ],
+  "lf_normalized_explanation": "a file is LF-normalized when its bytes contain NO NUL (text) AND a CR/CRLF sequence was present; the digest then differs from the raw-bytes digest of the same file",
+  "raw_is_not_the_lock_value": "the RAW-BYTES fold is printed only to show the wave's LF-vs-raw trap: the lock holds the LF value, and a raw reading silently fails `node ./scripts/verify-vendor.mjs` on any corpus containing CRLF/CR bytes",
+  "per_file_kinds": {
+    "text_lf_normalized": 324,
+    "binary": 0
+  }
+}

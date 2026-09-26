@@ -1,0 +1,5 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable
+[mpd-qa:(only)] UNAVAILABLE case=tui-mount reason=absent-fixture exit=1 log=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable/lanes/tui-mount.log ms=142
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=1 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable
+[mpd-qa:(only)] exit 2 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

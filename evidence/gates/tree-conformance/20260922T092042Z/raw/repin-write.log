@@ -1,0 +1,33 @@
+[repin-vendor] algorithm : MIRROR of scripts/verify-vendor.mjs (readBytes + listFiles + sorted-relpath tree fold); the authority exports nothing, assertAuthorityShape() guards the mirror
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : C:\MyDoc\DshProj\my-power-dsh\VENDOR_LOCK.json  (3434 bytes, 2 treeSha asset(s))
+[repin-vendor] authority : mirror matches all 7 decisive token(s) of scripts/verify-vendor.mjs
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=220ddd2cf5c15d6eee8a8dfae9921d41e93aa20f06e68f804c90c34c3495e7d4 fileCount=327
+[repin-vendor]   computed (LF) : treeSha=3a21517bf54257733e09492725ba0e2381ada25cb88ba29cd6ab2528f5fed18f fileCount=328 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : d1a608a9be98f218e51914ef875d6545d679c3dfc91eec6072d309f84e00fea2   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha 220ddd2cf5c15d6eee8a8dfae9921d41e93aa20f06e68f804c90c34c3495e7d4 -> 3a21517bf54257733e09492725ba0e2381ada25cb88ba29cd6ab2528f5fed18f
+[repin-vendor]   DELTA        : fileCount 327 -> 328
+
+[repin-vendor] asset          : packages/mpd-agent-teams-plugin/_deps
+[repin-vendor]   locked       : treeSha=d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 fileCount=635
+[repin-vendor]   computed (LF) : treeSha=d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 fileCount=635 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-astgrep/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock
+[repin-vendor] WRITE     : applied 2 field change(s) to C:\MyDoc\DshProj\my-power-dsh\VENDOR_LOCK.json
+[repin-vendor]   skills.fileCount: 327 -> 328
+[repin-vendor]   skills.treeSha: 220ddd2cf5c15d6eee8a8dfae9921d41e93aa20f06e68f804c90c34c3495e7d4 -> 3a21517bf54257733e09492725ba0e2381ada25cb88ba29cd6ab2528f5fed18f
+[repin-vendor]   - (line 20)       "fileCount": 327,
+[repin-vendor]   + (line 20)       "fileCount": 328,
+[repin-vendor]   - (line 22)       "treeSha": "220ddd2cf5c15d6eee8a8dfae9921d41e93aa20f06e68f804c90c34c3495e7d4"
+[repin-vendor]   + (line 22)       "treeSha": "3a21517bf54257733e09492725ba0e2381ada25cb88ba29cd6ab2528f5fed18f"
+[repin-vendor] WRITE     : linesChanged=2 bytes 3434 -> 3434 (differingBytes=59)

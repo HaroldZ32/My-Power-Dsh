@@ -1,0 +1,15 @@
+[step6] host boot pid=12 port=36371
+[step6] SERVED client: {"url":"http://127.0.0.1:36371/plugins/@mpd-dsh/mpd/client.js","status":404,"bytes":0,"hasCallerScopedChain":false,"hasTeamPageChain":false,"hasPreFixCardList":false,"hasPreFixTeamList":false,"hasSettingsKnobs":false}
+[step6] [cdp] attaching to target FA644CA8CF5DAAAFC7EBB20A0DEAA5EC url=about:blank
+[step6] app hydrated
+[step6] SESSION binding: {"hostSessionCreated":"session-c79c8491-727f-4e46-8964-ddfd13679e66","rpcStatus":200,"injected":{"hasService":true,"before":null,"afterId":"session-c79c8491-727f-4e46-8964-ddfd13679e66"},"method":"app's own sessions.list.set via the captured ctx — NOT a UI drive (the workspace picker is a native dialog headless CDP cannot operate)"}
+[step6] sessions after binding: {"currentId":null,"count":14}
+[step6] open settings: {"clicked":true,"text":"Settings","ariaLabel":"Settings","box":{"x":10,"y":998,"width":260,"height":42}}
+[step6] mpd nav: {"clicked":true,"tag":"BUTTON","text":"MPD","visible":true}
+[step6] CARD STATUS: "declared fallback — live catalog unavailable (no session is bound)"
+[step6] CARD ATTRS: {"data-mpd-catalog-state":"fallback","data-mpd-catalog-providers":"0","data-mpd-catalog-models":"0","style":"margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"}
+[step6] SLOT PROVIDERS: []
+[step6] BROWSER catalog: {"status":200,"providers":2,"models":31,"providerIds":["deepseek-official","opencode-go"]}
+[step6] CONSOLE: total=16 mpd=0
+[step6] VERDICT: {"cardFound":true,"statusLine":"declared fallback — live catalog unavailable (no session is bound)","liveCatalogLine":true,"catalogStateAttribute":"fallback","catalogProvidersAttribute":"0","catalogModelsAttribute":"0","slotProviderSelectCount":0,"distinctSlotProviderValues":[],"offersMoreThanDeepseekOfficial":false,"cardEmittedMpdConsole":false,"browserCatalog":{"status":200,"providers":2,"models":31,"providerIds":["deepseek-official","opencode-go"]}}
+[step6] done ok=false

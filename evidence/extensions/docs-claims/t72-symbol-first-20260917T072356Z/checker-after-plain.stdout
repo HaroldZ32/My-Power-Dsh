@@ -1,0 +1,19 @@
+docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+repo /root/dshProj/my-power-dsh
+
+  ok   citations:docs/extension-authoring-guide.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; pending 0, illustrative 4), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — 12 illustrative citation(s) (extension-root-relative, not repo paths): docs/extension-authoring-guide.md:134 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.md:223 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.md:235 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:118 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:199 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.zh-CN.md:210 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | EXTENSIONS-FOR-AGENTS.md:67 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths | EXTENSIONS-FOR-AGENTS.md:92 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:93 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:94 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths | docs/extension-adaptation-report.md:419 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-adaptation-report.zh-CN.md:220 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path
+  ok   content:anchors — 49 citation(s) verified against their claim: 17 symbol-first (line-free, whole file), 32 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+  ok   guide-heading-tree — 10 EN heading(s) vs 10 zh-CN heading(s), levels identical
+  ok   split-headings — no heading text is shared between the human guide and the agent contract
+  ok   split-prose — no prose line (>= 60 chars, outside code fences) is reused
+  ok   skeleton-validates — the extracted manifest + the template's four assets: validate exit 0;   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+[docs-claims] evidence -> evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/checker-after-plain
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 17 symbol-first, 32 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative

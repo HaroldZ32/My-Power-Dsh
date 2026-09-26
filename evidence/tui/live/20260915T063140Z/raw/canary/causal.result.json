@@ -1,0 +1,16 @@
+{
+  "instrument": "BOTH the visible panes AND the full ANSI-stripped pipe-pane log (the implementer used the log)",
+  "arm": "causal canary: fresh type vs already-seen type in ONE boot",
+  "knownType": "t8probe/known-0710",
+  "plainType": "t8probe/plain-0710",
+  "tmuxFailures": [],
+  "knownRowRendered": false,
+  "plainRowRendered": false,
+  "commandTextSeen": true,
+  "statusLineRendered": true,
+  "paneChars": [
+    2227,
+    2844,
+    2844
+  ]
+}

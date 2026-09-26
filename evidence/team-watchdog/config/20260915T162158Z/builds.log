@@ -1,0 +1,17 @@
+== build 1: mpd-config-plugin dist ==
+Bundled 7 modules in 8ms
+
+  index.js  100.37 KB  (entry point)
+
+exit=0
+
+== build 2: client.js ==
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (278544 bytes)
+exit=0
+
+== build 3: mpd-tui-plugin dist ==
+Bundled 19 modules in 8ms
+
+  index.js  106.48 KB  (entry point)
+
+exit=0

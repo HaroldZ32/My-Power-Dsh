@@ -13,7 +13,12 @@
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
   let react = require("react");
-  const agentTeams = require("@nanmicoder/dsh-agent-teams");
+  // 0.1.7 REBASE: `require("@nanmicoder/dsh-agent-teams")` used to sit here. The retired
+  // vendored client is NO LONGER required by any mpd client source: the official
+  // `@deepseek-ai/dsh-experimental-client-ui-agent-team` client owns the roster/task-board UI,
+  // and this bundle's own team surface is the WATCHDOG view (src/team-page.js), which reads
+  // only this bundle's own routes through `fetch`. Nothing in this factory touches the
+  // harness's client modules.
 
   // ── Version-tolerant client seams ──────────────────────────────────────────
   // The web boot hard-fails the WHOLE page when one entry stays `pending`:
@@ -120,6 +125,20 @@
     }
   }
 
+  /**
+   * Whether a sidebar service already holds a descriptor for `id`.
+   *
+   * A service WITHOUT `getTab` answers `false` (register as before), so this guard can only
+   * ever remove a duplicate registration — never suppress the first one.
+   */
+  function sidebarAlreadyHasTab(service, id) {
+    try {
+      return typeof service.getTab === "function" && service.getTab(id) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
   const LIST_URL = "/plugins/mpd-workmate/list";
   const INIT_URL = "/plugins/mpd-workmate/init";
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
@@ -147,7 +166,7 @@
     "panel.loading": "加载中…",
     "panel.empty": "暂无 workmate — 请在下方初始化一个。",
     "panel.baseLabel": "Base（专家模板）",
-    "panel.basePlaceholder": "base（例如 hephaestus）",
+    "panel.basePlaceholder": "base（例如 Deep Worker）",
     "panel.nameLabel": "名称（可选）",
     "panel.namePlaceholder": "名称（可选）",
     "panel.noteLabel": "备注（可选）",
@@ -166,7 +185,7 @@
     "panel.created": "创建",
     "panel.updated": "更新",
     "panel.model": "模型",
-    "panel.rosterUnavailable": "roster 不可用，请手填 base id",
+    "panel.rosterUnavailable": "roster 不可用，请手填 base 名称",
     "mutate.renameTitle": "重命名",
     "mutate.renameLabel": "新名称（仅限 [a-z0-9_-]）",
     "mutate.renamePlaceholder": "新名称",
@@ -202,7 +221,7 @@
     "panel.loading": "Loading…",
     "panel.empty": "No workmates yet — initialize one below.",
     "panel.baseLabel": "Base (roster template)",
-    "panel.basePlaceholder": "base (e.g. hephaestus)",
+    "panel.basePlaceholder": "base (e.g. Deep Worker)",
     "panel.nameLabel": "Name (optional)",
     "panel.namePlaceholder": "name (optional)",
     "panel.noteLabel": "Note (optional)",
@@ -221,7 +240,7 @@
     "panel.created": "Created",
     "panel.updated": "Updated",
     "panel.model": "Model",
-    "panel.rosterUnavailable": "roster unavailable — type the base id",
+    "panel.rosterUnavailable": "roster unavailable — type the base name",
     "mutate.renameTitle": "Rename",
     "mutate.renameLabel": "New name ([a-z0-9_-] only)",
     "mutate.renamePlaceholder": "new name",
@@ -387,7 +406,7 @@
         .then((data) => { setWorkmates(data.workmates ?? []); setError(null); })
         .catch((e) => { setError(String(e?.message ?? e)); setWorkmates([]); });
       request(ROSTER_URL)
-        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.id ?? "")); })
+        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.name ?? "")); })
         .catch(() => setBases([]));
     }, []);
     react.useEffect(() => { refresh(); }, [refresh]);
@@ -575,7 +594,7 @@
             : react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)))
           : react.createElement("div", { style: { overflowY: "auto" } },
           react.createElement("div", { style: MUTED },
-            String(d.baseName ?? d.baseId ?? ""),
+            String(d.baseName ?? ""),
             d.readonly ? " · " + t("panel.readonly") : "",
             d.uses !== undefined ? " · " + t("panel.uses", { count: d.uses }) : "",
           ),
@@ -625,7 +644,7 @@
           react.createElement("span", null, t("panel.baseLabel")),
           (bases ?? []).length > 0
             ? react.createElement("select", { value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
-                (bases ?? []).map((b) => react.createElement("option", { key: b.id, value: b.id }, b.name + " (" + b.id + ")" + (b.readonly ? " · " + t("panel.readonly") : ""))))
+                (bases ?? []).map((b) => react.createElement("option", { key: b.name, value: b.name }, b.name + (b.readonly ? " · " + t("panel.readonly") : ""))))
             : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE }),
         ),
         bases !== null && (bases ?? []).length === 0 ? react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("panel.rosterUnavailable")) : null,
@@ -651,6 +670,11 @@
   */
   function registerWorkmateSidebarTab(ctx, sidebar) {
     if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
+    // and the sidebar's own `registerTab` THROWS on a duplicate id. Re-checking through the
+    // service's own registry both absorbs a re-fire and RESTORES the tab after a remount
+    // that lost it, instead of reporting a failure the user sees as "the tab is gone".
+    if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,
@@ -684,6 +708,22 @@
     return { registerTeamSidebarTab: () => false };
   }
 
+  /**
+  * Load the mpd settings card module defensively. It is an ADDITIVE feature: a missing or broken
+  * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
+  * client entry fails the whole page as `entry: pending`).
+  */
+  function loadSettingsCard() {
+    try {
+      const card = require("@mpd-dsh/settings-card");
+      if (card !== undefined && card !== null && typeof card.mountSettingsCard === "function") return card;
+      console.warn("[mpd] settings card module exposes no mountSettingsCard — the mpd card is unavailable");
+    } catch (error) {
+      console.warn("[mpd] settings card module failed to load: " + String(error));
+    }
+    return { mountSettingsCard: () => false };
+  }
+
   function apply(ctx) {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
     // declared dependency, so it is present.
@@ -695,6 +735,15 @@
     // ctx.inject callback, never from a probe here (that race is what left the sidebar's
     // "+" menu with no mpd row at all). A profile without the sidebar fires nothing.
     mountSidebarPages(ctx, loadTeamPage());
+    // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
+    // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
+    // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided
+    // service, so it is awaited with ctx.inject, never declared here).
+    try {
+      loadSettingsCard().mountSettingsCard(ctx);
+    } catch (error) {
+      console.warn("[mpd] settings card mount failed: " + String(error));
+    }
   }
 
   // zh is the key-set source of truth; en must stay key-complete against it. Exported so
@@ -704,6 +753,6 @@
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
   // (dictionaries and the §D failure mapper) are exported so the offline harness
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries };
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
 }

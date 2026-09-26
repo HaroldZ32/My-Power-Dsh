@@ -1,0 +1,57 @@
+{
+  "task": "t18",
+  "kind": "repair (round 2)",
+  "lane": "L2",
+  "member": "ulw-engineer",
+  "attempt": 1,
+  "attemptId": "1e6a0791-826b-4e7d-becc-a64046a50e91",
+  "baseRevision": "5aa222a",
+  "branch": "dev",
+  "capturedAtUtc": "20260918T015650Z",
+  "sourceReview": "t9 review of /ulw + /ultrawork (verdict needs_revision, 2 findings)",
+  "findingsAddressed": [
+    {
+      "finding": "no test covered the engine's close-out rule — a quality-gate lane verdict FAIL must BLOCK the run and be stamped in the ledger",
+      "fix": "makeCtx gained an `overrides` parameter (the shared defaults stay the positive controls), and a new negative-control test supplies a gate arm whose 'hands-on QA' lane verdicts FAIL"
+    },
+    {
+      "finding": "ONE shared command description naming '/ultrawork' was registered for BOTH names, so the 'ultrawork' entry advertised itself as its own alias",
+      "fix": "ULW_COMMAND_DESCRIPTION became a per-name function; the map passes the OTHER spelling (name === 'ulw' ? '/ultrawork' : '/ulw')"
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "In `packages/mpd-ulw-plugin/test/engine.test.ts`, add one case whose canned gate returns a lane verdict 'FAIL' (extend the `makeCtx` canned `-gate` arm, or a second canned key) and assert `res.status === 'blocked'` plus the ledger's `quality-<lane>` row stamped FAIL; keep the existing completed-run case as the positive control.",
+      "status": "passed",
+      "evidence": "test/engine.test.ts 'quality gate: a FAIL lane blocks completion and stamps the ledger row': makeCtx now accepts `overrides` (spread AFTER the shared canned arms, which remain the positive controls) and the new case overrides '-gate' with lanes code quality=PASS / hands-on QA=FAIL / goal verification=PASS. Asserts res.status === 'blocked', res.verdict === 'approve' (the other gates still ran — the FAIL lane alone blocks), res.ledger's hands-on QA lane verdict === 'FAIL', state.json status === 'blocked', and the ledger rows `\"lane\":\"quality-hands-on QA\",\"verdict\":\"FAIL\"` plus the two PASS rows. The pre-existing completed-run test is untouched and still asserts status 'complete' + ledger rows. MUTATION CONTROL: neutralizing the engine's blocking rule makes exactly this new test RED (14 pass / 1 fail); src restored byte-exactly (1480131f… before and after)."
+    },
+    {
+      "criterion": "Make the description per-name: `const ULW_COMMAND_DESCRIPTION = (alias) => 'Run the ULW discipline for an objective, fully autonomously (identical alias: ' + alias + ')'` and pass `alias = name === 'ulw' ? '/ultrawork' : '/ulw'` in the map (or drop the parenthetical entirely). No QA-case change is needed — `ulw-command.mjs` only requires a non-empty description.",
+      "status": "passed",
+      "evidence": "src/index.ts: ULW_COMMAND_DESCRIPTION is now `(alias: string) => \"Run the ULW discipline for an objective, fully autonomously (identical alias: \" + alias + \")\"` and the registration map passes `name === \"ulw\" ? \"/ultrawork\" : \"/ulw\"`. Measured from a real apply() (registered-descriptions.log): `ulw -> \"… (identical alias: /ultrawork)\"`, `ultrawork -> \"… (identical alias: /ulw)\"` — neither names itself; both handlers still submit IDENTICAL directive bytes (2 registrations, 2 submissions, one distinct text). commands.test.ts locks it (each description contains the other spelling and does not name itself). The QA case was NOT changed: `node skills/dsh-qa/scripts/ulw-command.mjs --self-test` is green, and the source still carries the markers it greps (`[\"ulw\", \"ultrawork\"]`, `usage: /ulw <objective>`)."
+    }
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-ulw-plugin", "status": "passed", "exitCode": 0, "evidence": "15 pass / 0 fail (14 before; +1 blocked-gate negative control)" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics" },
+    { "command": "node skills/dsh-qa/scripts/ulw-command.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "extra evidence: the QA case needs no change — self-test green on the changed source" }
+  ],
+  "mutationControl": {
+    "script": "evidence/ulw/l2d-review-repairs/t18-20260918T015650Z/mutation-control.mjs",
+    "log": "evidence/ulw/l2d-review-repairs/t18-20260918T015650Z/mutation-control.log",
+    "result": "blocking rule neutralized -> the new blocked-gate test is the single RED (14 pass / 1 fail); file restored byte-exactly (1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea)",
+    "mutatedSha256": "a144142f39cf1abf1736ea6c725fd240e8e21beb2b63d0ae07972eb4b1e5c067"
+  },
+  "fileHashesSha256": {
+    "packages/mpd-ulw-plugin/src/index.ts": "1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea",
+    "packages/mpd-ulw-plugin/test/engine.test.ts": "7db8496ef6d124570401f019471b5c320526b2af957d04433ad4efb66437658e",
+    "packages/mpd-ulw-plugin/test/commands.test.ts": "5b4935f5521a3257af4e55953ffb0e6cb75cae1ad2df187f260b5fbbe016a406"
+  },
+  "honestNotes": [
+    "The t9 review pinned the src hash 1e10df6e… (which already contained the t16 schema repair); this task changes src again (1480131f…), so the review's verdict is anchored to the earlier revision — a re-review must re-pin.",
+    "Only the two findings in this contract were addressed; no other behaviour was touched (the gesture fix from t15, the schema fix from t16 and the command/turn seam composition are unchanged and their tests stay green).",
+    "dist/** untouched by rule (out of scope, T-88): the rebuilt artifact is the integration task's step.",
+    "No git write command was run; skills/** was executed (self-test only), never edited.",
+    "CONTRACT AMENDMENT: t18 was amended from revision 1 to revision 2 while this attempt was open — the evidence scope changed from evidence/ulw/l2-ulw-commands/** to evidence/ulw/l2d-review-repairs/**. The evidence written under the old scope was MOVED here (the completion payload refused the undeclared paths) and the mutation-control script's snapshot path was corrected and re-run from this location. No other contract element changed."
+  ]
+}

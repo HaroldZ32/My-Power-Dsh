@@ -1,0 +1,70 @@
+{
+  "domain": "install-deps",
+  "slug": "sidebar-guard-win32",
+  "timestamp": "20260923T072226Z",
+  "host": "win32-x64",
+  "toolchain": { "node": "v24.21.0", "bun": "1.4.2", "harness": "@deepseek-ai/dsh 0.1.5-rc.2", "shell": "pwsh (harness tool process)" },
+  "defect": {
+    "summary": "The `mpd-better-sidebar` mount guard derived the profile directory from `baseUrl` with a POSIX-shaped expression, so clause 1 answered \"not resolvable\" on EVERY win32 profile and the bundle's only sidebar mount was disabled even when dsh-better-sidebar WAS resolvable in the profile.",
+    "file": "packages/mpd-bundle/cordis.patch.yml",
+    "symbol": "row `mpd-better-sidebar`, `disabled: !!js` mount guard, clause 1 (`dsh-better-sidebar is not resolvable from the profile node_modules`)",
+    "before": "const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname));",
+    "after": "const profileDir = path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl));",
+    "sha256_before": "5ffa68d24965def3efc389c6a2abdbd6ad1026a565f79ceef3c85a7c8d20f14c",
+    "sha256_after": "5647ca5467f8184ad815293037833171448bd147c2f902e239da027366374980",
+    "hash_sandwich": {
+      "after_at_start": "2026-09-23T07:29:07Z",
+      "after_recheck": "2026-09-23T07:29:28Z",
+      "equal": true,
+      "note": "the pre-fix bytes were restored for the red mount arm and the fixed bytes re-applied byte-identically between the two readings"
+    },
+    "mechanism": [
+      "`@deepseek-ai/dsh-app-boot` sets `ctx.baseUrl = pathToFileURL(dirname(configPath)).href + \"/\"` (lib/index.js), i.e. `file:///C:/Users/<u>/.dsh/profiles/web/` on win32.",
+      "`new URL('.', baseUrl).pathname` is `/C:/Users/<u>/.dsh/profiles/web/`.",
+      "win32 `path.normalize` reads the leading `/` as the CURRENT drive root: the value becomes `\\C:\\Users\\<u>\\.dsh\\profiles\\web\\`.",
+      "`fs.existsSync(path.join(that, 'node_modules', 'dsh-better-sidebar'))` therefore answers false while `<profile>/node_modules/dsh-better-sidebar` really exists (measured: real path true, mangled path false).",
+      "clause 1 returns true (DISABLED) with the reason \"dsh-better-sidebar is not resolvable from the profile node_modules\".",
+      "When `baseUrl` is a plain path instead of a file URL the same guard throws `Invalid URL` and the outer catch returns DISABLED as well, so both branches were disabled-only on win32."
+    ],
+    "class": "Same doubled-drive-prefix class the win32 wave (commit 010d9ef6) fixed for the presets row and the four MCP rows of this SAME file, and documents in the file's FILE-URL header (lines 13-21). The guard was the one spot left on the POSIX-shaped form, and it had no test."
+  },
+  "reproduction": {
+    "script": "packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.mjs",
+    "method": "Extracts the SHIPPED `disabled: !!js` scalar from cordis.patch.yml (never a re-typed copy), evaluates it with `new Function` against synthetic profile layouts in a temp sandbox, with DSH_HOME pointed at that sandbox and the guard's own console.warn decision captured.",
+    "red_before_fix": { "exit": 1, "pass": 1, "fail": 4, "log": "red-before-fix.log", "key_observation": "the fixture profile DOES contain node_modules/dsh-better-sidebar and the guard still reported `DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules`" },
+    "green_after_fix": { "exit": 0, "pass": 5, "fail": 0, "log": "green-after-fix.log" }
+  },
+  "mount_pair": {
+    "method": "Real isolated dsh boot of the bundle's OWN web profile (bundles: dsh-base, dsh-web-app, @mpd-dsh/mpd; link dependency on this checkout; sandbox DSH_HOME + sandbox HOME; server stdio to a FILE) on win32; the guard's decision is read out of the boot log. Probe: raw/mount-probe.mjs (evidence artifact, not shipped code).",
+    "before_fix": { "decision": "DISABLED", "guardLine": "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules", "booted": true, "result": "raw/mount-probe-before-fix.result.json" },
+    "after_fix": { "decision": "ENABLED", "guardLine": "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar", "booted": true, "result": "raw/mount-probe-after-fix.result.json" },
+    "reading": "Everything but the guard bytes is constant across the pair. Pre-fix the bundle's declared sidebar host was never mounted on win32 (no sidebar, hence no AgentTeams/Workmates tabs); post-fix the row mounts it."
+  },
+  "gates": [
+    { "gate": "bun test packages/mpd-bundle-plugin", "exit": 0, "detail": "110 pass / 0 fail", "log": "bundle-plugin-suite.log" },
+    { "gate": "bun test packages", "exit": 0, "detail": "1160 pass / 4 skip / 0 fail across 106 files", "log": "gate-bun-test-packages.log" },
+    { "gate": "bun run typecheck", "exit": 0, "detail": "tsgo --noEmit clean", "log": "gate-typecheck.log" },
+    { "gate": "bun run verify:rows", "exit": 0, "detail": "26 row ids match the bundle patch insert list, mpd-better-sidebar included", "log": "gate-verify-rows.log" },
+    { "gate": "node scripts/install-profile.mjs --dry-run", "exit": 0, "detail": "DRY-RUN done (nothing written)", "log": "gate-install-dryrun.log" },
+    { "gate": "node scripts/verify-docs-parity.mjs", "exit": 0, "detail": "pairs=38 failed=0 violations=0 dead=0 — PASS", "log": "gate-verify-docs.log" },
+    { "gate": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test", "exit": 0, "detail": "31 harness rows conform against the installed schemas, row parity 31/31", "log": "gate-preset-selftest.log" },
+    { "gate": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs", "exit": 1, "detail": "COULD NOT RUN ON THIS HOST — pre-existing lane defect, see known_limits", "log": "gate-bundle-lifecycle.log" },
+    { "gate": "MOUNT (real boot, isolated home)", "exit": 0, "detail": "red/green guard-decision pair above; gate-mount-before-fix.log + gate-mount-after-fix.log" }
+  ],
+  "known_limits": [
+    {
+      "item": "bundle-lifecycle lane cannot start on this host",
+      "measured": "[bundle-lifecycle] FAIL: install step failed: no dsh launcher on PATH",
+      "cause": "`skills/dsh-qa/scripts/lib/dsh-launcher.mjs#resolveOnPath` reads `env.PATH` on a PLAIN `{...process.env}` copy (built by `credentialEnv`), but win32 enumerates that variable as `Path`, so `env.PATH` is undefined and no PATH directory is scanned. `dsh.cmd` sits in C:\\Users\\zhao.yinan\\AppData\\Roaming\\npm and resolves correctly when the real `process.env` proxy is used (verified), so this is a case-sensitivity defect of the lane, not a missing install.",
+      "scope": "skills/** — deliberately NOT fixed in this commit (out of scope for the guard defect; skills edits carry the single-writer rule and a VENDOR_LOCK re-pin, AGENTS.md §9)."
+    },
+    {
+      "item": "the MOUNT gate was therefore measured with an evidence-local probe",
+      "note": "raw/mount-probe.mjs boots the same profile through the harness entry directly (process.execPath + <harness>/lib/bin.js), so no PATH lookup is involved. It is an evidence artifact and is not part of the shipped tree."
+    }
+  ],
+  "symptom_it_explains": {
+    "reported": "\"本机有 better-sidebar 的时候装上去插件照样认不出来\"",
+    "reading": "Two independent causes. (1) On win32 the guard disabled the bundle's own sidebar mount unconditionally, so a profile without a foreign (unguarded) sidebar mount had no sidebar at all. (2) On THIS machine the GUI's profile (`web`) never declared @mpd-dsh/mpd as a layer — only a stray, pnpm-unknown junction sat in its node_modules — so the mpd rows never composed: measured GET /sidebar/api -> 405 (the host IS up, via the @linxin666/dsh-web-all aggregate) while GET /plugins/mpd-workmate/list -> 404 (the mpd bundle is not loaded). Cause (1) is fixed here; cause (2) is an install action."
+  }
+}

@@ -1,0 +1,201 @@
+{
+  "preWave": {
+    "path": ".mpd/red-baseline/evidence/extensions/docs-claims/check-citations.mjs",
+    "bytes": 24021,
+    "sha256": "471aec42e0644ad28ce7bc3716ead64bffaef58bcc1b94ce9945c85597d6578e"
+  },
+  "current": {
+    "path": "evidence/extensions/docs-claims/check-citations.mjs",
+    "bytes": 30345,
+    "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c"
+  },
+  "totalDelta": {
+    "addedBytes": 6761,
+    "removedBytes": 437,
+    "netBytes": 6324,
+    "addedLines": 99,
+    "removedLines": 8
+  },
+  "bySet": {
+    "T-53": {
+      "hunks": 5,
+      "added": 22,
+      "removed": 4,
+      "addedBytes": 1758,
+      "removedBytes": 249,
+      "netBytes": 1509
+    },
+    "T-55": {
+      "hunks": 9,
+      "added": 76,
+      "removed": 3,
+      "addedBytes": 4930,
+      "removedBytes": 83,
+      "netBytes": 4847
+    },
+    "unattributed": {
+      "hunks": 1,
+      "added": 1,
+      "removed": 1,
+      "addedBytes": 73,
+      "removedBytes": 105,
+      "netBytes": -32
+    }
+  },
+  "hunks": [
+    {
+      "header": "@@ -20,0 +21,4 @@ import { fileURLToPath } from \"node:url\"",
+      "set": "T-53",
+      "added": 4,
+      "removed": 0,
+      "addedBytes": 407,
+      "removedBytes": 0,
+      "netBytes": 407,
+      "firstAddedLine": "// T-53: evidence is immutable by default — a plain run writes to a FRESH timestamped directory and"
+    },
+    {
+      "header": "@@ -22,0 +27,3 @@ const HERE = dirname(fileURLToPath(import.meta.url))",
+      "set": "T-53",
+      "added": 3,
+      "removed": 0,
+      "addedBytes": 323,
+      "removedBytes": 0,
+      "netBytes": 323,
+      "firstAddedLine": "const OUT_FLAG = process.argv.findIndex((a) => a === \"--out\" || a.startsWith(\"--out=\"))"
+    },
+    {
+      "header": "@@ -74,0 +82,9 @@ function log(text) {",
+      "set": "T-55",
+      "added": 9,
+      "removed": 0,
+      "addedBytes": 350,
+      "removedBytes": 0,
+      "netBytes": 350,
+      "firstAddedLine": "/** The lines a negative-control arm is judged on: the subject verdicts plus any mismatch text. */"
+    },
+    {
+      "header": "@@ -217,0 +234,37 @@ function contentClaimProblem(citation, claims) {",
+      "set": "T-55",
+      "added": 37,
+      "removed": 0,
+      "addedBytes": 1872,
+      "removedBytes": 0,
+      "netBytes": 1872,
+      "firstAddedLine": "/**"
+    },
+    {
+      "header": "@@ -297 +350,3 @@ function negativeControl() {",
+      "set": "T-55",
+      "added": 3,
+      "removed": 1,
+      "addedBytes": 188,
+      "removedBytes": 27,
+      "netBytes": 161,
+      "firstAddedLine": "  const make = (line) => {"
+    },
+    {
+      "header": "@@ -302 +357 @@ function negativeControl() {",
+      "set": "unattributed",
+      "added": 1,
+      "removed": 1,
+      "addedBytes": 73,
+      "removedBytes": 105,
+      "netBytes": -32,
+      "firstAddedLine": "    const guide = `# fixture guide\\n\\nSee \\`alphaSymbol\\`, \\`src/probe.ts:${line}\\` for the constant.\\n`"
+    },
+    {
+      "header": "@@ -319,2 +374,7 @@ function negativeControl() {",
+      "set": "T-55",
+      "added": 7,
+      "removed": 2,
+      "addedBytes": 505,
+      "removedBytes": 56,
+      "netBytes": 449,
+      "firstAddedLine": "  const green = run(make(2))"
+    },
+    {
+      "header": "@@ -323,0 +384,2 @@ function negativeControl() {",
+      "set": "T-55",
+      "added": 2,
+      "removed": 0,
+      "addedBytes": 549,
+      "removedBytes": 0,
+      "netBytes": 549,
+      "firstAddedLine": "    symbolOnlyPresent: { command: \"check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first, symbo"
+    },
+    {
+      "header": "@@ -326,0 +389,2 @@ function negativeControl() {",
+      "set": "T-55",
+      "added": 2,
+      "removed": 0,
+      "addedBytes": 527,
+      "removedBytes": 0,
+      "netBytes": 527,
+      "firstAddedLine": "  record(\"negative-control:symbol-first-present\", arms.symbolOnlyPresent.passed, `${arms.symbolOnlyPresent.com"
+    },
+    {
+      "header": "@@ -350,0 +415 @@ let contentVerified = 0",
+      "set": "T-55",
+      "added": 1,
+      "removed": 0,
+      "addedBytes": 27,
+      "removedBytes": 0,
+      "netBytes": 27,
+      "firstAddedLine": "let symbolOnlyVerified = 0"
+    },
+    {
+      "header": "@@ -366,0 +432,12 @@ for (const entry of analyzed) {",
+      "set": "T-55",
+      "added": 12,
+      "removed": 0,
+      "addedBytes": 687,
+      "removedBytes": 0,
+      "netBytes": 687,
+      "firstAddedLine": "    // T-55 SYMBOL-FIRST arm: a line-LESS path citation that carries a claim must find that claim in"
+    },
+    {
+      "header": "@@ -428 +505 @@ if (!citationsOnly && process.argv.includes(\"--gates\")) {",
+      "set": "T-53",
+      "added": 1,
+      "removed": 1,
+      "addedBytes": 56,
+      "removedBytes": 52,
+      "netBytes": 4,
+      "firstAddedLine": "  mkdirSync(join(HERE, \"raw\"), { recursive: true })"
+    },
+    {
+      "header": "@@ -437 +514 @@ if (!citationsOnly && process.argv.includes(\"--gates\")) {",
+      "set": "T-53",
+      "added": 1,
+      "removed": 1,
+      "addedBytes": 83,
+      "removedBytes": 48,
+      "netBytes": 35,
+      "firstAddedLine": "    writeFileSync(join(HERE, spec.raw), output)"
+    },
+    {
+      "header": "@@ -450,0 +528,3 @@ const report = {",
+      "set": "T-55",
+      "added": 3,
+      "removed": 0,
+      "addedBytes": 225,
+      "removedBytes": 0,
+      "netBytes": 225,
+      "firstAddedLine": "  // T-55: how many of those used the line-LESS symbol-first form (`` `SYMBOL`, `path/file.ts` ``),"
+    },
+    {
+      "header": "@@ -466,2 +546,13 @@ if (fixtureRun) {",
+      "set": "T-53",
+      "added": 13,
+      "removed": 2,
+      "addedBytes": 889,
+      "removedBytes": 149,
+      "netBytes": 740,
+      "firstAddedLine": "  writeFileSync(join(HERE, \"result.json\"), JSON.stringify(report, null, 2) + \"\\n\")"
+    }
+  ],
+  "retainedRevisions": {
+    "note": "the intermediate revisions (5e56c82c… 25,530 B, e332da70… 28,116 B) are NOT on disk — T-82 — so the 25,530→30,345 window cannot be byte-attributed per revision; what is measured is the retained pair below and the per-hunk classification of the final revision",
+    "windowNetBytes": 4815
+  }
+}

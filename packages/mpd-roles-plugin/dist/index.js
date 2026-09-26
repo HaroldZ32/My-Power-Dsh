@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve as resolve2 } from "node:path";
+import { dirname, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
@@ -130,12 +130,336 @@ var ROLES = [
 ];
 var ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
+// packages/mpd-roles-plugin/src/team-guard.ts
+function normalizeTeamMemberKey(name) {
+  return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function readonlyMemberKeys(members) {
+  const keys = new Map;
+  for (const member of members) {
+    if (member?.readonly !== true)
+      continue;
+    const key = normalizeTeamMemberKey(member.name);
+    if (key !== "")
+      keys.set(key, member.name);
+  }
+  return keys;
+}
+function readonlyMemberForTeamName(name, readonlyKeys) {
+  const key = normalizeTeamMemberKey(name);
+  if (key === "")
+    return;
+  const exact = readonlyKeys.get(key);
+  if (exact !== undefined)
+    return exact;
+  const withoutSuffix = key.replace(/-\d+$/, "");
+  if (withoutSuffix === key || withoutSuffix === "")
+    return;
+  return readonlyKeys.get(withoutSuffix);
+}
+function readonlyGuardDecision(exec, options) {
+  try {
+    const toolName = String(exec?.name ?? "");
+    if (!options.deny.has(toolName))
+      return;
+    const membership = options.membershipOf(exec?.agent);
+    if (membership === undefined || membership === null || membership.role !== "teammate")
+      return;
+    const member = readonlyMemberForTeamName(String(membership.name ?? ""), options.readonlyKeys);
+    if (member === undefined)
+      return;
+    return 'roster read-only discipline: teammate "' + String(membership.name) + '" is the READ-ONLY roster member ' + member + ", so `" + toolName + "` is denied. Read-only members never modify the tree: return the finding, " + "or ask the Lead (or a worker member — Deep Worker, Senior Engineer, Junior Engineer, Reviewer) to make the change.";
+  } catch {
+    return;
+  }
+}
+function installReadonlyGuard(dsh, options) {
+  const readonlyKeys = readonlyMemberKeys(options.members);
+  if (readonlyKeys.size === 0) {
+    options.warn("no read-only roster member is declared — the team-path read-only guard is NOT installed");
+    return { installed: false, reason: "no-readonly-members" };
+  }
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the team-path read-only guard is NOT installed " + "(read-only teammates would keep write access; the one-shot path is unaffected)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const deny = new Set(options.deny);
+    const dispose = dsh.guardTool((exec) => readonlyGuardDecision(exec, {
+      deny,
+      readonlyKeys,
+      membershipOf: (agent) => dsh.teamMembership(agent)
+    }));
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the team-path read-only guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-roles-plugin/src/session-gate.ts
+import { readdir as readdirFs } from "node:fs/promises";
+import { join } from "node:path";
+var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var DELIVERABLE_VERB_MIN = 4;
+var ENUMERATED_LINE_MIN = 3;
+var ACTION_VERB_MIN = 3;
+var C_SUBSIGNAL_MIN = 2;
+var PLANS_DIR = [".mpd", "plans"];
+var DEFAULT_GATE_PRESETS = ["mpd"];
+function distinctMatches(text, pattern) {
+  const seen = new Set;
+  for (const match of text.matchAll(pattern))
+    seen.add(match[0].toLowerCase());
+  return seen.size;
+}
+function enumeratedLineCount(text) {
+  let count = 0;
+  for (const line of text.split(`
+`))
+    if (ENUMERATED_LINE_PATTERN.test(line))
+      count += 1;
+  return count;
+}
+function clauseStepCount(text) {
+  let count = 0;
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+    if (CLAUSE_ACTION_PATTERN.test(clause))
+      count += 1;
+  return count;
+}
+function consumeExplicitFlag(text) {
+  const source = String(text ?? "");
+  const trimmed = source.trimStart();
+  const prefix = /^team:\s*/iu.exec(trimmed);
+  if (prefix !== null)
+    return { flagged: true, text: trimmed.slice(prefix[0].length) };
+  if (/!team/iu.test(source))
+    return { flagged: true, text: source.replace(/!team\s*/giu, "") };
+  return { flagged: false, text: source };
+}
+function evaluateComplexityGate(text, input = {}) {
+  const source = String(text ?? "");
+  const signals = [];
+  if (input.explicitFlag === true)
+    signals.push("A");
+  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+    signals.push("B");
+  const cSubSignals = [
+    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
+    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+  ].filter(Boolean).length;
+  if (cSubSignals >= C_SUBSIGNAL_MIN)
+    signals.push("C");
+  if (input.planArtifact === true)
+    signals.push("D");
+  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+}
+async function hasPlanArtifact(workspace, readdirFn) {
+  try {
+    const read = readdirFn ?? readdirFs;
+    const entries = await read(join(String(workspace ?? ""), ...PLANS_DIR));
+    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"));
+  } catch {
+    return false;
+  }
+}
+function messageText(message) {
+  const content = message?.content;
+  if (!Array.isArray(content))
+    return;
+  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  return parts.length === 0 ? undefined : parts.join(`
+`);
+}
+function latestUserMessage(candidates) {
+  for (let index = candidates.length - 1;index >= 0; index -= 1) {
+    const message = candidates[index];
+    if (message?.role !== "user")
+      continue;
+    const text = messageText(message);
+    if (text !== undefined)
+      return { message, text };
+  }
+  return;
+}
+function consumeFlagFromMessage(message, source) {
+  if (!consumeExplicitFlag(source).flagged)
+    return message;
+  let changed = false;
+  const content = (message?.content ?? []).map((block) => {
+    const text = block?.text;
+    if (block?.type !== "text" || typeof text !== "string")
+      return block;
+    const next = consumeExplicitFlag(text);
+    if (next.text === text)
+      return block;
+    changed = true;
+    return { ...block, text: next.text };
+  });
+  return changed ? { ...message, content } : message;
+}
+function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.parentSession !== undefined)
+    return false;
+  const preset = header.agentPreset;
+  if (preset === undefined)
+    return true;
+  return presets.includes(String(preset));
+}
+function advisoryNoticeText(signals, explicit) {
+  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
+}
+function installSessionGate(dsh, options) {
+  const presets = options.presets ?? DEFAULT_GATE_PRESETS;
+  const settled = new Set;
+  const dispose = dsh.onAgentPreStep(async (payload, decision) => {
+    try {
+      if (decision?.kind === "reject")
+        return;
+      const agent = payload?.agent;
+      if (agent === undefined || agent === null)
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const agentId = String(agent.id ?? "");
+      if (agentId !== "" && settled.has(agentId))
+        return;
+      const claimed = Array.isArray(decision?.messages) ? decision.messages : payload?.messages ?? [];
+      const user = latestUserMessage(claimed);
+      if (user === undefined)
+        return;
+      if (agentId !== "")
+        settled.add(agentId);
+      const workspace = dsh.workspaceRoot({ agent });
+      const consumed = consumeExplicitFlag(user.text);
+      const planArtifact = await hasPlanArtifact(workspace, options.readdir);
+      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
+      if (verdict.trigger !== true)
+        return;
+      const notice = dsh.userMessage({
+        text: advisoryNoticeText(verdict.signals, consumed.flagged),
+        source: { kind: "plugin", plugin: "mpd-roles", reason: "session-start-advisory" }
+      });
+      const messages = (Array.isArray(decision?.messages) ? [...decision.messages] : [...payload?.messages ?? []]).map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
+      let lastClaimed = -1;
+      for (let at2 = 0;at2 < messages.length; at2 += 1)
+        if (claimed.includes(messages[at2]))
+          lastClaimed = at2;
+      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
+      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
+      return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
+    } catch (error) {
+      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
+      return;
+    }
+  });
+  return { installed: typeof dispose === "function", settled };
+}
+
+// packages/mpd-roles-plugin/src/roster-section.ts
+var ROSTER_SECTION_NAME = "mpd:roster";
+var ROSTER_SECTION_ORDER = 605;
+function functionOf(description) {
+  const text = String(description ?? "");
+  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
+  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
+}
+function rosterSectionText(members) {
+  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
+  return [
+    "## MPD specialist roster",
+    "The specialists this deployment stages as teammates, addressed by NAME:",
+    ...lines,
+    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
+  ].join(`
+`);
+}
+function installRosterSection(dsh, options) {
+  const presets = options.presets ?? ["mpd"];
+  const disposers = new Map;
+  const text = rosterSectionText(options.members);
+  const report = (line) => {
+    try {
+      options.log?.(line);
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
+      const dispose = dsh.agentPromptSection(agent, section);
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
+    } catch (error) {
+      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      if (options.onEvent !== undefined) {
+        options.onEvent(event, handler);
+        return;
+      }
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => {
+    register(payload?.agent ?? payload);
+    return;
+  });
+  subscribe("agent/disposed", (payload) => {
+    release(payload?.agent ?? payload);
+    return;
+  });
+  return { installed: true, registered: disposers.size, disposers };
+}
+
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function userMessage(input) {
+  const content = textBlock(input?.text);
+  for (const block of content)
+    Object.freeze(block);
+  Object.freeze(content);
+  const source = { kind: "user", ...input?.source ?? {} };
+  Object.freeze(source);
+  const message = { id: randomUUID(), role: "user", content, source };
+  return Object.freeze(message);
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
@@ -176,6 +500,108 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop() {}
+function scopeOfAgentContext(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  const kind = typeof context;
+  if (kind !== "object" && kind !== "function")
+    return;
+  let on;
+  let effect;
+  let restrict;
+  try {
+    const scoped = context;
+    on = scoped.on;
+    effect = scoped.effect;
+    restrict = scoped.tools?.restrict;
+  } catch {
+    return;
+  }
+  if (typeof on !== "function" || typeof effect !== "function" || typeof restrict !== "function")
+    return;
+  const tools = context.tools;
+  return {
+    context,
+    tools: { restrict: (filter) => restrict.call(tools, filter) },
+    on: (event, handler) => on.call(context, event, handler),
+    effect: (fn, label) => effect.call(context, fn, label)
+  };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   const service = (serviceName) => {
@@ -259,6 +685,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -272,8 +789,12 @@ function createDshAdapter(ctx, config = {}) {
       const subagents = service("subagents");
       const skills = service("skills");
       const presets = service("agentPresets");
+      const commands = service("commands");
       const agents = service("agents");
       const compaction = service("compaction");
+      const llmService = service("llm");
+      const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -288,16 +809,39 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        commands: commands !== undefined,
+        commandsRegister: typeof commands?.register === "function",
+        turnSubmit: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function"),
+        toolsRegisterHost: typeof tools?.register === "function",
+        subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
+        subagentsContinuable: typeof subagents?.startContinuable === "function",
+        subagentsInterrupt: typeof subagents?.interrupt === "function",
+        llmListModels: typeof llmService?.listModels === "function",
+        llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
+        systemPromptSection: typeof systemPrompt?.section === "function",
+        agentScope: liveAgents().some((candidate) => scopeOfAgentContext(candidate) !== undefined),
+        agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
+        agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
+        agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -306,6 +850,26 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
+    llmListModels(provider) {
+      const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
+      if (typeof llm.listModels !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
+      return llm.listModels.call(llm, provider);
+    },
+    llmResolveCallConfig(config2, signal) {
+      const llm = requireService("llm", "cannot resolve a call config");
+      if (typeof llm.resolveCallConfig !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
+      return llm.resolveCallConfig.call(llm, config2, signal);
+    },
+    registerHostTool(definition) {
+      const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const registered = tools.register(definition);
+      return typeof registered === "function" ? registered : noop;
+    },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -329,11 +893,47 @@ function createDshAdapter(ctx, config = {}) {
           dispose();
       };
     },
+    registerCommand(definition) {
+      const commands = service("commands");
+      if (commands === undefined || commands === null || typeof commands.register !== "function")
+        return noop;
+      const registered = commands.register({
+        name: definition?.name,
+        description: definition?.description,
+        ...definition?.input === undefined ? {} : { input: definition.input },
+        handler: (invocation) => {
+          const host = invocation ?? { rawInput: "" };
+          return definition.handler({
+            ...host,
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+          });
+        }
+      });
+      return typeof registered === "function" ? registered : noop;
+    },
+    registerPromptSection(section) {
+      const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
+      if (typeof systemPrompt.section !== "function")
+        throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
+    },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
@@ -342,6 +942,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -373,7 +987,8 @@ function createDshAdapter(ctx, config = {}) {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,
-          ...signal === undefined ? {} : { signal }
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
         });
         const isError = raw?.isError === true;
         if (isError) {
@@ -412,6 +1027,154 @@ function createDshAdapter(ctx, config = {}) {
         stopReason: result.stopReason ?? null
       };
     },
+    subagentRuntime() {
+      return service("subagents");
+    },
+    subagentProvider(name) {
+      const subagents = service("subagents");
+      const getProvider = subagents?.getProvider;
+      if (typeof getProvider !== "function")
+        return;
+      return getProvider.call(subagents, name);
+    },
+    subagentProviders() {
+      const subagents = service("subagents");
+      const list = subagents?.list;
+      if (typeof list !== "function")
+        return [];
+      const names = list.call(subagents);
+      return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+    },
+    startContinuableAgent(spec) {
+      const subagents = requireService("subagents", "cannot start a continuable agent");
+      if (typeof subagents.startContinuable !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
+      return subagents.startContinuable.call(subagents, spec);
+    },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
+    interruptAgent(targetSessionId, authority) {
+      const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
+      if (typeof subagents.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
+      subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
+    },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
       if (typeof skills.registerProvider !== "function")
@@ -433,7 +1196,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -442,9 +1205,241 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
     },
-    text: textBlock
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
+    },
+    text: textBlock,
+    userMessage,
+    agentScope(agent) {
+      return scopeOfAgentContext(agent);
+    },
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
+      followup.call(agent, message2);
+    },
+    cancelAgentTurn(agent, cause, options) {
+      const cancel = agent?.cancel;
+      if (typeof cancel !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
+      cancel.call(agent, cause, options);
+    },
+    steerAgentTurn(agent, message2) {
+      const steer = agent?.steer;
+      if (typeof steer !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
+      steer.call(agent, message2);
+    },
+    injectAgentMessage(agent, message2) {
+      const inject = agent?.inject;
+      if (typeof inject !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
+      inject.call(agent, message2);
+    },
+    submitUserTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        return false;
+      try {
+        followup.call(agent, message2);
+        return true;
+      } catch {
+        return false;
+      }
+    }
   };
   return adapter;
+}
+var SERVICE_NAME = "mpdDsh";
+var ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh";
+var ADAPTER_IDENTITY_PENDING = "pending:provider-not-active";
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
+}
+function dshAdapterIdentity(ctx) {
+  if (!probeMpdDsh(ctx, true).missing)
+    return ADAPTER_IDENTITY_MOUNTED;
+  if (!probeMpdDsh(ctx, false).missing)
+    return ADAPTER_IDENTITY_PENDING;
+  return ADAPTER_IDENTITY_FALLBACK;
+}
+function createLazyDshAdapter(ctx, options) {
+  const warning = (line) => {
+    try {
+      (options.warn ?? ((text) => console.log("[" + options.label + "] " + text)))(line);
+    } catch {}
+  };
+  let mounted;
+  let temporary;
+  let warnedPending = false;
+  let warnedMissing = false;
+  const resolve2 = () => {
+    if (mounted !== undefined)
+      return mounted;
+    const active = probeMpdDsh(ctx, true);
+    if (active.value !== undefined) {
+      mounted = active.value;
+      return mounted;
+    }
+    temporary ??= createDshAdapter(ctx);
+    if (!probeMpdDsh(ctx, false).missing) {
+      if (!warnedPending) {
+        warnedPending = true;
+        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).");
+      }
+      return temporary;
+    }
+    if (!warnedMissing) {
+      warnedMissing = true;
+      warning("ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).");
+    }
+    return temporary;
+  };
+  return new Proxy({}, {
+    get(_target, property) {
+      const impl = resolve2();
+      const value = impl[property];
+      return typeof value === "function" ? value.bind(impl) : value;
+    },
+    has(_target, property) {
+      return property in resolve2();
+    }
+  });
 }
 
 // packages/mpd-roles-plugin/src/index.ts
@@ -485,9 +1480,9 @@ function rosterNameList() {
   return ROLES.map((r) => r.name).join(", ");
 }
 function rosterFunctionList() {
-  return ROLES.map((r) => r.name + " (" + functionOf(r.description) + ")").join(", ");
+  return ROLES.map((r) => r.name + " (" + functionOf2(r.description) + ")").join(", ");
 }
-function functionOf(description) {
+function functionOf2(description) {
   const afterColon = description.includes(": ") ? description.slice(description.indexOf(": ") + 2) : description;
   return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
 }
@@ -506,7 +1501,7 @@ function normalizeRoleKey(key) {
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join(resolve2(config.personasDir), spec.id + ".md") : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join2(resolve2(config.personasDir), spec.id + ".md") : join2(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -629,7 +1624,6 @@ function extensionRoles(ctx, exec, warn) {
   return { roles, refused };
 }
 function apply(ctx, config = {}) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const warn = (line) => {
     const message2 = "[mpd-roles] " + line;
     try {
@@ -639,6 +1633,15 @@ function apply(ctx, config = {}) {
         console.log(message2);
     } catch {}
   };
+  const adapterWarn = (line) => {
+    const message2 = "[mpd-roles] " + line;
+    try {
+      console.log(message2);
+      if (ctx?.logger && typeof ctx.logger.warn === "function")
+        ctx.logger.warn(message2);
+    } catch {}
+  };
+  const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn });
   const warned = new Set;
   const warnOnce = (key, line) => {
     if (warned.has(key))
@@ -681,6 +1684,7 @@ function apply(ctx, config = {}) {
   };
   const roleNameListOf = (surface) => surface.roles.map((role) => role.name).join(", ");
   ctx.provide("mpdRoles", {
+    adapterIdentity: dshAdapterIdentity(ctx),
     list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
     get: (key) => {
       const spec = roleOf(roleSurface(undefined), key);
@@ -689,7 +1693,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work call agent_teams_create profile=mpd instead of repeated one-shot spawns.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
@@ -705,7 +1709,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
+    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated one-shot spawns: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -750,7 +1754,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   });
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is that same name — so the member gets the real role instructions instead of a bare label.',
+    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.',
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },
@@ -762,18 +1766,59 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length };
     }
   });
+  const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }));
+  const guardOutcome = [];
+  try {
+    const guard = installReadonlyGuard(dsh, {
+      deny: READONLY_DENY,
+      members: teamMembers(),
+      warn: (line) => warnOnce("team-guard:" + line, line)
+    });
+    guardOutcome.push(guard.installed ? "readOnlyGuard=installed deny=" + READONLY_DENY.length : "readOnlyGuard=absent reason=" + String(guard.reason));
+  } catch (error) {
+    guardOutcome.push("readOnlyGuard=absent reason=threw");
+    warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    installRosterSection(dsh, {
+      members: teamMembers(),
+      presets: ["mpd"],
+      warn: (line) => warnOnce("team-section:" + line, line),
+      log: (line) => console.log("[mpd-roles] " + line)
+    });
+    guardOutcome.push("rosterSection=agent-scoped order=605");
+  } catch (error) {
+    guardOutcome.push("rosterSection=absent");
+    warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")");
+  }
+  try {
+    installSessionGate(dsh, { presets: ["mpd"], warn: (line) => warn(line) });
+    guardOutcome.push("sessionGate=advisory");
+  } catch (error) {
+    guardOutcome.push("sessionGate=absent");
+    warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")");
+  }
+  try {
+    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "));
+  } catch {}
+  try {
+    console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx));
+  } catch {}
 }
 export {
-  rosterNameList,
-  rosterFunctionList,
-  readPersona,
-  pkgRoot,
-  normalizeRoleNameKey,
-  normalizeRoleKey,
-  name,
-  inject,
-  extensionRoles,
-  extensionRoleId,
+  ADAPTER_IDENTITY_FALLBACK,
+  ADAPTER_IDENTITY_MOUNTED,
+  ADAPTER_IDENTITY_PENDING,
+  READONLY_DENY,
   apply,
-  READONLY_DENY
+  extensionRoleId,
+  extensionRoles,
+  inject,
+  name,
+  normalizeRoleKey,
+  normalizeRoleNameKey,
+  pkgRoot,
+  readPersona,
+  rosterFunctionList,
+  rosterNameList
 };

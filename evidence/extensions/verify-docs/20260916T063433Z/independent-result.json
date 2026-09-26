@@ -1,0 +1,318 @@
+{
+  "task": "t12",
+  "role": "independent verifier (logic re-implemented, not the author's checker)",
+  "repo": "/root/dshProj/my-power-dsh",
+  "hashes": {
+    "README.md": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718",
+    "README.zh-CN.md": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03",
+    "docs/index.md": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81",
+    "docs/index.zh-CN.md": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93",
+    "docs/extension-authoring-guide.md": "df231162f849ab2ac712084a8b0c08ccb515dfb9884104229c0b4767ba6bb6c5",
+    "docs/extension-authoring-guide.zh-CN.md": "a6bbe90ee1a4fec9304deceeddcb96e2339982a96dcfee481f0103f61729b996",
+    "EXTENSIONS-FOR-AGENTS.md": "dbdb9d144f61bf5718fcbbab21830b7647253063c8505a7ff0f0aafa5c64f2b0",
+    "docs/extension-adaptation-report.md": "4bf61adec14adb0037aa79ccf117ddead6389c5248a4a713d06f5e1b13d0a0c2",
+    "docs/extension-adaptation-report.zh-CN.md": "f2c4e0ef1b17cc477760b9c9e4ecdf9f195d5667ebaf43234f23b19b3e11f467",
+    "packages/mpd-ext-plugin/src/index.ts": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+    "packages/mpd-roles-plugin/src/index.ts": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+    "packages/mpd-ext-plugin/src/mcp-client.ts": "48af2daf060041d2ebd0dd0c6791ef5e66457caedabe84ddc1a52fdf97c31de4",
+    "packages/mpd-ext-plugin/src/registry.ts": "6001c29ca93fe50c09f3a94ad7b7ddb48f644a8b38b7edd0ce35ef06ef977c1b",
+    "packages/mpd-ext-plugin/src/sdk.ts": "f42941d53ffedf3c243afeb3414a59a6a767d03981b7c3c522a4b7c3d9cef686",
+    "packages/mpd-ext-plugin/src/mcp.ts": "f44de6a1153dfefc9722897446032ff6bb7b26d9b01917f153bfb0424f13195a",
+    "docs/extensions.md": "f860593aedb45974fa1063be187d5f1dddf82fb75f0a4b97c030f068f24e80a1",
+    "scripts/mpd-ext.mjs": "70af7a5098d4025b4716506dfbc467dc7435a3885683fefe1e7b07ac3e12b4d5",
+    "templates/mpd-extension/mpd-ext.json": "9d4d6ad8b52354cad02adaa7bb7e3a5b38e18192b01d646080d637230313f773"
+  },
+  "links": {
+    "checked": 112,
+    "anchored": 6,
+    "problems": []
+  },
+  "citations": {
+    "anchors": 36,
+    "problems": [],
+    "rows": [
+      {
+        "where": "docs/extension-authoring-guide.md:49",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:61",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:63",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:65",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:75",
+        "token": "packages/mpd-ext-plugin/src/index.ts:641-658",
+        "status": "resolves",
+        "first": "type: \"array\","
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:95",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:104",
+        "token": "packages/mpd-ext-plugin/src/index.ts:1041-1053",
+        "status": "resolves",
+        "first": "steps: flow.steps.map((step) => ({"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:105",
+        "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+        "status": "resolves",
+        "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]"
+      },
+      {
+        "where": "docs/extension-authoring-guide.md:112",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+        "status": "resolves",
+        "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:42",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:54",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:55",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:57",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:66",
+        "token": "packages/mpd-ext-plugin/src/index.ts:641-658",
+        "status": "resolves",
+        "first": "type: \"array\","
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:82",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:90",
+        "token": "packages/mpd-ext-plugin/src/index.ts:1041-1053",
+        "status": "resolves",
+        "first": "steps: flow.steps.map((step) => ({"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:91",
+        "token": "packages/mpd-roles-plugin/src/index.ts:225-292",
+        "status": "resolves",
+        "first": "export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]"
+      },
+      {
+        "where": "docs/extension-authoring-guide.zh-CN.md:98",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+        "status": "resolves",
+        "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:12",
+        "token": "packages/mpd-ext-plugin/src/sdk.ts:113-146",
+        "status": "resolves",
+        "first": "export const MPD_EXT_CONTRACT = {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:22",
+        "token": "packages/mpd-ext-plugin/src/index.ts:701",
+        "status": "resolves",
+        "first": "kept: { plane: record.kept.plane, root: record.kept.root },"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:22",
+        "token": "packages/mpd-ext-plugin/src/index.ts:793",
+        "status": "resolves",
+        "first": "for (const rejected of value.rejected) lines.push(`! rejected ${rejected.id} (${rejected.plane}): ${rejected.e"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:22",
+        "token": "packages/mpd-ext-plugin/src/index.ts:916",
+        "status": "resolves",
+        "first": "mcp: entry.mcp.map((server) => ({"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:22",
+        "token": "packages/mpd-ext-plugin/src/index.ts:970",
+        "status": "resolves",
+        "first": "id: flow.id,"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:30",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:99-117",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:107",
+        "token": "packages/mpd-ext-plugin/src/sdk.ts:144-145",
+        "status": "resolves",
+        "first": "projectRejectionReason:"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:108",
+        "token": "packages/mpd-ext-plugin/src/registry.ts:678-685",
+        "status": "resolves",
+        "first": "const refuseHostKind = (kind: \"mcp\" | \"roles\", index: number): boolean => {"
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:132",
+        "token": "packages/mpd-ext-plugin/src/mcp.ts:34",
+        "status": "resolves",
+        "first": "export type McpServerState = \"connecting\" | \"connected\" | \"unavailable\" | \"failed\" | \"disabled\""
+      },
+      {
+        "where": "EXTENSIONS-FOR-AGENTS.md:216",
+        "token": "docs/extensions.md:524",
+        "status": "resolves",
+        "first": "- **No reload** — restart dsh; a failed MCP server is retried on the next boot."
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:372",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59-95",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:373",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59-80",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:380",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-adaptation-report.md:380",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:176",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59-95",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:177",
+        "token": "packages/mpd-ext-plugin/src/index.ts:59-80",
+        "status": "resolves",
+        "first": "* CANONICAL NOTE — the second-adapter hazard. This is the ONE place that"
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:184",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:69-85",
+        "status": "resolves",
+        "first": "export const INHERITED_ENV_VARS: readonly string[] ="
+      },
+      {
+        "where": "docs/extension-adaptation-report.zh-CN.md:184",
+        "token": "packages/mpd-ext-plugin/src/mcp-client.ts:87-97",
+        "status": "resolves",
+        "first": "/**"
+      }
+    ]
+  },
+  "semantic": {
+    "samples": 23,
+    "problems": [
+      "docs/extension-authoring-guide.md:75 cites packages/mpd-ext-plugin/src/index.ts:641-658 for mpd_ext_show redacts the env VALUES (keys stay visible) — the cited line(s) do not carry redactedDescriptor / <redacted>",
+      "docs/extension-authoring-guide.md:104 cites packages/mpd-ext-plugin/src/index.ts:1041-1053 for servers are connected at apply, in parallel and time-boxed by connectTimeoutMs — the cited line(s) do not carry connectExtensionMcpServers / connectTimeoutMs",
+      "docs/extension-authoring-guide.zh-CN.md:66 cites packages/mpd-ext-plugin/src/index.ts:641-658 for zh twin: mpd_ext_show redacts env values — the cited line(s) do not carry redactedDescriptor / <redacted>",
+      "EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:701-701 for the registration of the mpd_ext_list inspection tool — the cited line(s) do not carry mpd_ext_list",
+      "EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:793-793 for the registration of the mpd_ext_show inspection tool — the cited line(s) do not carry mpd_ext_show",
+      "EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:916-916 for the registration of the mpd_flow_list inspection tool — the cited line(s) do not carry mpd_flow_list",
+      "EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:970-970 for the registration of the mpd_flow_show inspection tool — the cited line(s) do not carry mpd_flow_show"
+    ]
+  },
+  "split": {
+    "sharedHeadings": [],
+    "sharedBlocks": []
+  },
+  "skeleton": {
+    "extracted": true
+  },
+  "checks": [
+    {
+      "id": "links:targets+anchors",
+      "status": "passed",
+      "detail": "112 relative link(s), 6 with an anchor, 0 unresolved"
+    },
+    {
+      "id": "citations:independent-scan",
+      "status": "passed",
+      "detail": "36 line-anchor citation(s) in scope, 0 flagged"
+    },
+    {
+      "id": "citations:semantic-samples",
+      "status": "failed",
+      "detail": "23 hand-picked anchor(s) checked against their cited line content, 7 mismatch(es): docs/extension-authoring-guide.md:75 cites packages/mpd-ext-plugin/src/index.ts:641-658 for mpd_ext_show redacts the env VALUES (keys stay visible) — the cited line(s) do not carry redactedDescriptor / <redacted> | docs/extension-authoring-guide.md:104 cites packages/mpd-ext-plugin/src/index.ts:1041-1053 for servers are connected at apply, in parallel and time-boxed by connectTimeoutMs — the cited line(s) do not carry connectExtensionMcpServers / connectTimeoutMs | docs/extension-authoring-guide.zh-CN.md:66 cites packages/mpd-ext-plugin/src/index.ts:641-658 for zh twin: mpd_ext_show redacts env values — the cited line(s) do not carry redactedDescriptor / <redacted> | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:701-701 for the registration of the mpd_ext_list inspection tool — the cited line(s) do not carry mpd_ext_list | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:793-793 for the registration of the mpd_ext_show inspection tool — the cited line(s) do not carry mpd_ext_show | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:916-916 for the registration of the mpd_flow_list inspection tool — the cited line(s) do not carry mpd_flow_list"
+    },
+    {
+      "id": "split:headings",
+      "status": "passed",
+      "detail": "20 machine heading(s) vs 26 human heading(s), 0 shared"
+    },
+    {
+      "id": "split:paragraphs",
+      "status": "passed",
+      "detail": "17 machine paragraph(s) (>= 80 chars) vs 25 human paragraph(s), 0 duplicated"
+    },
+    {
+      "id": "skeleton:extracted",
+      "status": "passed",
+      "detail": "json block with id \"for-agents-skeleton\" parsed (31 lines)"
+    },
+    {
+      "id": "skeleton:validates",
+      "status": "passed",
+      "detail": "mpd-ext validate over the extracted skeleton → exit 0; [mpd-ext] validate /tmp/t12-verify-QkGHvt/for-agents-skeleton (plane=user) |   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s) | [mpd-ext] ok"
+    },
+    {
+      "id": "skeleton:negative-control",
+      "status": "passed",
+      "detail": "same skeleton with its declared persona file deleted → exit 1 (must be non-zero);   pending contributes.mcp[0]: pending: server \"for-agents-skeleton\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] 2 problem(s) — this extension would not load"
+    }
+  ],
+  "failed": [
+    "citations:semantic-samples: 23 hand-picked anchor(s) checked against their cited line content, 7 mismatch(es): docs/extension-authoring-guide.md:75 cites packages/mpd-ext-plugin/src/index.ts:641-658 for mpd_ext_show redacts the env VALUES (keys stay visible) — the cited line(s) do not carry redactedDescriptor / <redacted> | docs/extension-authoring-guide.md:104 cites packages/mpd-ext-plugin/src/index.ts:1041-1053 for servers are connected at apply, in parallel and time-boxed by connectTimeoutMs — the cited line(s) do not carry connectExtensionMcpServers / connectTimeoutMs | docs/extension-authoring-guide.zh-CN.md:66 cites packages/mpd-ext-plugin/src/index.ts:641-658 for zh twin: mpd_ext_show redacts env values — the cited line(s) do not carry redactedDescriptor / <redacted> | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:701-701 for the registration of the mpd_ext_list inspection tool — the cited line(s) do not carry mpd_ext_list | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:793-793 for the registration of the mpd_ext_show inspection tool — the cited line(s) do not carry mpd_ext_show | EXTENSIONS-FOR-AGENTS.md:22 cites packages/mpd-ext-plugin/src/index.ts:916-916 for the registration of the mpd_flow_list inspection tool — the cited line(s) do not carry mpd_flow_list"
+  ],
+  "passed": 7,
+  "total": 8
+}

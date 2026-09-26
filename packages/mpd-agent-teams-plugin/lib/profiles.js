@@ -18,7 +18,12 @@ export const PROFILE_PROTOCOL_PROMPT_LIMIT = 240;
 const PROFILE_KEYS = ['description', 'protocol', 'executionPrompt', 'fallback', 'members', 'tasks', 'taskPlanning', 'reviewPolicy'];
 const REVIEW_POLICY_KEYS = ['requirementsMinRounds', 'requirementsMaxRounds', 'codeMaxRounds', 'maxRepairAttempts', 'requiredReviewers'];
 //#region mpd-delta member-tool-deny-keys (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback', 'toolDeny'];
+// `tier` (a positive integer, 1..4 in this bundle) selects one of the configured `teamModels`
+// slots at staging time; `route` declares an explicit provider/model/reasoningEffort that is used
+// verbatim. Both are optional, both are accepted HERE so the existing assertAllowedKeys call stays
+// byte-identical, and declaring BOTH on one member is refused in the `member-tool-deny-parse`
+// region below. Every other unknown key is still refused by assertAllowedKeys.
+const MEMBER_KEYS = ['name', 'role', 'provider', 'model', 'reasoning_effort', 'executionPrompt', 'fallback', 'toolDeny', 'tier', 'route'];
 //#endregion mpd-delta member-tool-deny-keys
 const FALLBACK_KEYS = ['provider', 'model'];
 const TASK_KEYS = ['id', 'subject', 'description', 'assignee', 'dependencies'];
@@ -328,7 +333,15 @@ function normalizeMember(value, path, profileName) {
         throw new Error(`profile member "${name}" sets provider without model`);
     }
 //#region mpd-delta member-tool-deny-parse (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-    return omitUndefined({ name, role, provider, model, reasoningEffort, executionPrompt, fallback,
+    // A member's route source is EITHER a `tier` (resolved at staging time from the configured
+    // `teamModels` slots) OR an explicit `route` (used verbatim). Declaring both is ambiguous and is
+    // refused here, at profile load, naming the member and both keys — never resolved by precedence.
+    const tier = optionalPositiveInt(raw['tier'], `${path}.tier`);
+    const route = normalizeMemberRoute(raw['route'], `${path}.route`);
+    if (tier !== undefined && route !== undefined) {
+        throw new Error(`member "${name}" declares both "tier" and "route"; declare exactly one route source`);
+    }
+    return omitUndefined({ name, role, provider, model, reasoningEffort, executionPrompt, fallback, tier, route,
         // Inlined on purpose: the declaration and the use must live in ONE region so a
         // partial heal can never leave this file calling an undeclared helper.
         toolDeny: optionalStringList(raw['toolDeny'], `${path}.toolDeny`) });
@@ -343,6 +356,30 @@ function normalizeFallback(value, path) {
     const model = requiredNonEmptyString(raw['model'], `${path}.model`, `${path}.model must not be empty`);
     return { provider, model };
 }
+//#region mpd-delta member-route-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** The allowed leaves of an explicit member `route` — the same shape discipline as `FALLBACK_KEYS`, plus the effort. */
+const MEMBER_ROUTE_KEYS = ['provider', 'model', 'reasoningEffort'];
+/**
+ * An explicit member route: `{ provider, model, reasoningEffort? }`. All-or-nothing in the same
+ * sense as the `fallback` block — `provider` and `model` are REQUIRED non-empty strings — while
+ * `reasoningEffort` is optional and is deliberately NOT validated here: dsh-llm owns effort
+ * validation (`UNSUPPORTED_REASONING_EFFORT`), and the slot-aware staging path re-throws that error
+ * with the member and the slot named instead of clamping or aliasing the effort.
+ * @param value - the raw `route` entry.
+ * @param path - the config path used in error messages.
+ * @returns the normalized route, or undefined when absent.
+ */
+function normalizeMemberRoute(value, path) {
+    if (value === undefined)
+        return undefined;
+    const raw = asRecord(value, path);
+    assertAllowedKeys(raw, MEMBER_ROUTE_KEYS, path);
+    const provider = requiredNonEmptyString(raw['provider'], `${path}.provider`, `${path}.provider must not be empty`);
+    const model = requiredNonEmptyString(raw['model'], `${path}.model`, `${path}.model must not be empty`);
+    const reasoningEffort = optionalNonEmptyString(raw['reasoningEffort'], `${path}.reasoningEffort`);
+    return omitUndefined({ provider, model, reasoningEffort });
+}
+//#endregion mpd-delta member-route-helper
 function normalizeTask(value, path, profileName, sourceIndex, memberByName, memberByKey, requireAssignee) {
     const raw = asRecord(value, path);
     assertAllowedKeys(raw, TASK_KEYS, path);

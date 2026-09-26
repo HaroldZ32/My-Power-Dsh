@@ -1,0 +1,24 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-26T18-13-01.037Z
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_RESOLVE_POLLS=2 id=mpd
+[roles-probe] PRESET_PATH=/home/haroldzhao/dshProj/my-power-dsh/presets/mpd.patch.yml trust=bundle
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,team,teamTasks,teamMessages,subagentsProviderRegister ABSENT=turnSubmit,compaction,compactionForAgent,agentScope,agentTurnStart,agentTurnCancel,agentTurnSteer,agentTurnInject
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[roles-probe] AGENT_TEAMS_TOOLS=2/7 MISSING=agent_teams_interject_request,agent_teams_interject_decide,agent_teams_mailbox_clear,agent_teams_send_message,agent_teams_update_task
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=false
+[roles-probe] TEAM_COMPACT_TOOLS=2/2
+[roles-probe] TOOL_PARAM_SCHEMAS=39/39
+[roles-probe] SKILLS=18 BUNDLED=18 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/home/haroldzhao/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] PASS

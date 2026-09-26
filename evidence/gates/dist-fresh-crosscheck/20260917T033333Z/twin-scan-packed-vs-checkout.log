@@ -1,0 +1,60 @@
+# Packed-vs-checkout twin scan + accounting of the two drifts — 2026-09-17T03:37Z
+# (docs-gate-engineer, read-only; run because platform-engineer reported the pack at 03:01:30Z already stale in two paths)
+
+## FULL SCAN — every file present in BOTH trees (generated manifests excluded: package.json, cordis.patch.yml, CHANGELOG.md)
+identical: 1183
+differing: 2
+packed-only path absent from checkout: 1  (packages/mpd-ext-plugin/dist/validator.js — BY DESIGN: the
+  packer emits it into the artifact; AGENTS.md §8 / scripts/mpd-ext.mjs: "the packer-generated
+  dist/validator.js inside a packed artifact")
+
+## THE TWO DRIFTS
+1) agent-references/troubleshooting.md
+     packed   35,534 B  b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689  (pack mtime 10:56:58)
+     checkout 35,548 B  f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955  (mtime 11:11:38)
+   ATTRIBUTION (diff of the two, one hunk): the delta is +2 × " (T-23)" label tags appended to the
+   `/tmp` row and the nohup row (= 14 B). The PACKED copy is byte-identical to MY t42 revision
+   (35,534 B / b4032f41…, evidence/gates/watchdog-asymmetry-row/20260917T025500Z/), so the +14 B came
+   from the harness-close labeling write, NOT from the docs-gate lane.
+2) skills/dsh-qa/scripts/workmate-library.mjs
+     packed   14,322 B  ba9053b24a3d84f9e46cc6b12848be2545c9fe5abea3310455eafc491009b0d7  (pack mtime 10:56:58)
+     checkout 16,464 B  f0ec4a325af9844ea37157c3c8cf0c97ae8fcd4e734c4061b797136c3a8cd1c7  (mtime 11:18:29)
+   NOTE: this is NOT the size platform-engineer measured at ~03:12Z (15,800 B / f1568f53…). The file
+   moved AGAIN at 11:18:29 ⇒ the skills writer was still active after that reading. The pack gate has
+   to be "packed == checkout for every packed path", measured after the writer goes quiet — a
+   timestamp is not a gate.
+
+## THE GATE THAT WOULD HAVE CAUGHT THIS
+scripts/verify-pack-closure.mjs (packaging-engineer's twin scan) + the captain's "pack LAST" ordering.
+Cheap independent re-run of the same idea is the python block above (1,183/2/1 in ~6 s).
+
+## LABEL FORMAT NOTE (why the STALE/MISSING cue needs no new task; see message to platform-engineer)
+scripts/verify-dist-fresh.mjs:301 (MISSING) and :365 (STALE) both already say:
+  "rebuild from the repository root — a package-directory build is flagged, because bun writes the
+   entry path relative to cwd: bun build <src> --target node --format esm --outfile <dist>"
+with the command path-qualified from the repo root by construction (${target.src} / ${target.dist}).
+
+## CLOSING RE-MEASUREMENT — 2026-09-17T03:36:07Z (per-revision rule applied to source AND artifact)
+$ node scripts/verify-dist-fresh.mjs --json
+  "ok": true, counts {targets:20, fresh:20, findings:0, notCovered:7}
+  [summary] [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 635ms
+  valid for revision: packages/mpd-workmate-plugin/dist/index.js = 6b1715d0f8bebda0… / 55,875 B
+
+  agent-references/troubleshooting.md   packed b4032f41a33ffea2/35,534 B  vs checkout f6b4d1bec8745da6/35,548 B (11:11:38)
+  skills/dsh-qa/scripts/workmate-library.mjs packed ba9053b24a3d84f9/14,322 B vs checkout f0ec4a325af9844e/16,464 B (11:18:29)
+  ⇒ QUIESCENT since 11:18:29 (+0800): both checkout copies unchanged across the 03:33Z and 03:36Z measurements.
+  ⇒ the packed-tree reading is valid for the PACK revision only; re-pack must be gated on packed==checkout after the last docs/agent-references write.
+
+================================================================================
+## UPDATE 2026-09-17T03:50:36Z — the drift set is THREE paths, not two
+================================================================================
+platform-engineer's t62 landed 03:37:33Z (workmate dist 6b1715d0…/55,875 B -> 5a1863b2755c6c9f…/56,585 B), which
+moved the revision under the 03:36:07Z gate citation above. Re-measured now:
+  verify-dist-fresh --json : ok:true, 20/20 targets fresh, 7 NOT COVERED (793 ms) — valid for dist 5a1863b2…
+  twin scan (my classifier): identical 1182 | drift 3 | packed-only 1 (by design)
+  1. agent-references/troubleshooting.md           packed b4032f41a33ffea2/35,534 B vs checkout f6b4d1bec8745da6/35,548 B (11:11:38)
+  2. packages/mpd-workmate-plugin/dist/index.js     packed 6b1715d0f8bebda0/55,875 B vs checkout 5a1863b2755c6c9f/56,585 B (11:37:33)
+  3. skills/dsh-qa/scripts/workmate-library.mjs     packed ba9053b24a3d84f9/14,322 B vs checkout f0ec4a325af9844e/16,464 B (11:18:29)
+  raw: UPDATE-20260917T035100Z-dist-drift-three-paths.txt (same directory)
+  MID-RUN INTEGRITY (for t26's sweep, started 11:44:01 +0800): find packages skills -newermt 11:44:01 -> EMPTY,
+  i.e. the running sweep's tree is frozen and t62/its dist predate the start -> the board will be single-revision.

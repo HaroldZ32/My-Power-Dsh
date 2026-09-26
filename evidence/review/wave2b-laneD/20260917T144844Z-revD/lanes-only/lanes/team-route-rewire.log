@@ -1,0 +1,12 @@
+154 |   // may be unwritable under the QA sandbox policy).
+155 |   const store = join(reloc, "pnpm-store")
+156 |   const add = runSync("dsh", ["plugin", "--profile", "t", "add", "--store-dir", store, staged], { timeout: 600000 })
+157 |   steps.install = { ok: add.status === 0, exit: add.status }
+158 |   // T-69: composition goes through the wrapper; --json keeps the child's tree parseable.
+159 |   const dump = runSync(process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "t", "--json"], { timeout: 120000 })
+                                                     ^
+ReferenceError: REPO is not defined
+      at runReal (/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/team-route-rewire.mjs:159:48)
+      at /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/team-route-rewire.mjs:264:6
+
+Bun v1.3.14 (Linux x64)

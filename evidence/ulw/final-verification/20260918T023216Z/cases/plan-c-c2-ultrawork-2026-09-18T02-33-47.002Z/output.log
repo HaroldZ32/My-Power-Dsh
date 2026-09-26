@@ -1,0 +1,44 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c2-EixFIj/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+Ultrawork run complete.
+
+## Result
+
+| Field | Value |
+|---|---|
+| **Status** | `complete` |
+| **Rounds** | `1` (of maxRounds=2 — no second round needed) |
+| **Verdict** | `n/a` (verification gate skipped: light tier + plan=false + strictReview=false, per the fixed discipline) |
+| **State file** | `/tmp/mpd-c2-EixFIj/ws/.mpd/ulw/ulw-9046321d/state.json` |
+
+## Criteria states
+
+**`utils-txt-three-lines`** — state: **`clean`** (1/1 criterion clean, 0 remaining)
+
+> "utils.txt exists in the workspace and contains exactly three lines alpha, beta, gamma"
+
+Lifecycle: `PIN → RED → GREEN → SURFACE → CLEAN`
+- **RED**: file absent (`ls` exit 2)
+- **GREEN**: single write, 17 bytes
+- **SURFACE**: `cat`/`nl`/`wc -l` (=3)/`od -c` (LF-only, ends after `gamma\n`), byte-exact assertion `b'alpha\nbeta\ngamma\n'` → True, sha256 `4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996`
+- **CLEAN**: no CR, no BOM, no stray artifacts
+
+## Independent confirmation
+
+```
+     1	alpha
+     2	beta
+     3	gamma
+---
+3
+```
+
+No children were spawned; all lanes are terminal.
+[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s).
+dsh: reasoning:
+Let me verify the file exists and read the state file to report criteria states.

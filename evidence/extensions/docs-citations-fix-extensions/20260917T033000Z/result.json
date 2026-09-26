@@ -1,0 +1,97 @@
+{
+  "task": "t50 — the last citation blocker: re-anchor EXTENSIONS-FOR-AGENTS.md so check-citations.mjs exits 0",
+  "attempt_id": "65e384e6-5e8d-4355-b3b3-1342d8849399",
+  "generated_at": "2026-09-17T03:38:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "red_before": {
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+      "exit": 1,
+      "only_failing_file": "EXTENSIONS-FOR-AGENTS.md",
+      "unresolved": 3,
+      "unresolved_detail": [
+        "doc line 24: the cited line/range does not carry the claim `EXPECTED_TOOLS` (packages/mpd-ext-plugin/src/index.ts:548)",
+        "doc line 224: packages/mpd-ext-plugin/dist/validator.js does not exist",
+        "doc line 225: src does not exist"
+      ],
+      "docs_extension_files": "all four ok (t47's fix holds — none appears in the failure list)",
+      "disclosure": "the contract predicted ONE unresolved; measured THREE. The two extra are side effects of t43's §9 rewrite (a full path to a packer-generated file, and a bare `src/` token) — the checker flags them by its own grammar (PATH_PATTERN = slash-path + extension; DIR_PATTERN = backticked token ending in `/` whose first segment is one of ten ROOT_DIRS, `src/` among them). t50 fixes all three because the whole-file green is its reason to exist; t43's verify list did not include the citation driver, which is how the side effect survived that task."
+    },
+    "source_measurement": {
+      "symbol": "EXPECTED_TOOLS",
+      "declaration_now_at": "packages/mpd-ext-plugin/src/index.ts:532 — `const EXPECTED_TOOLS = [\"mpd_ext_list\", \"mpd_ext_show\", \"mpd_flow_list\", \"mpd_flow_show\"]`",
+      "claimed_line_548_now_carries": "an unrelated comment line (`snapshot()` -> `provider.list()` -> `snapshot()`)",
+      "re_measured_at_landing": true
+    },
+    "edits": {
+      "line_24": "`packages/mpd-ext-plugin/src/index.ts:548` → `:532` (symbol kept visible beside the anchor)",
+      "lines_224_225": "`packages/mpd-ext-plugin/dist/validator.js` → `validator.js` (the file exists only inside the packed artifact, so a repo path could never resolve), and the bare `src/` token → `the package's TypeScript sources` — meaning unchanged",
+      "lines_changed": 3
+    },
+    "green_after": {
+      "checker": "node evidence/extensions/docs-claims/check-citations.mjs → exit 0; `ok citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), 0 unresolved`; `ok annotations:pending — none`; `ok annotations:illustrative — 12 illustrative citation(s)`; 12/12 checks passed",
+      "verify_docs": "exit 0 — pairs=37 failed=0 violations=0 exempt=17"
+    },
+    "identity": {
+      "before": { "bytes": 15419, "sha256": "cae9486f806dafd159ce3b9a27d9e3bd0f75743e84cf67628ff36313d083cb7b" },
+      "after": { "bytes": 15425, "sha256": "78a61f5442df747899ae1239dc7f1ad1a71ecac4c5e5d2bae118f28bdb3c1807" }
+    },
+    "bounds": {
+      "pre_existing_rotted_refs_on_line_23": "`:537`, `:715`, `:807`, `:930`, `:984` are UNANCHORED legacy references the driver does not check; measured now, all five point at unrelated lines (`:537` → a `view.shadowed.filter(...)` line, `:715` → `origin: { type: \"string\" }`, `:807` → `plane: { type: \"string\" }`, `:930` → `title: { type: \"string\" }`, `:984` → `description: { type: \"string\" }`). T-55's class again, pre-dating this wave; left untouched to honour the 'nothing else moves' clause and recommended for a symbol-first rewrite in the follow-up that owns that region.",
+      "checker_untouched": "no edit under evidence/extensions/docs-claims/** (relaxing or re-pointing the checker was the rejected outcome)",
+      "other_trees_untouched": "no AGENTS.md, agent-references/**, docs/**, packages/** or scripts/** edit"
+    }
+  },
+  "acceptance": [
+    {
+      "criterion": "The RED is reproduced first and quoted raw: with t47 landed, the checker still exits 1 and EXTENSIONS-FOR-AGENTS.md is the ONLY failing file (1 unresolved at line 24) — the four docs/extension-* files must NOT appear in the failure list.",
+      "status": "passed",
+      "evidence": "Reproduced and quoted raw (check-before.log): exit 1; the four docs/extension-* subjects all read `ok … 0 unresolved`; EXTENSIONS-FOR-AGENTS.md is the only failing file. DISCLOSURE: it carried THREE unresolved, not one — line 24's anchor plus two path-shaped tokens introduced by t43's §9 rewrite. The deviation is reported rather than glossed, and all three are fixed here."
+    },
+    {
+      "criterion": "The re-anchor is PROVEN on the cited line: the evidence quotes the source line that carries EXPECTED_TOOLS at its CURRENT number, and the corrected anchor as it now reads. The checker's grammar is `SYMBOL`, `path:line`, so the number must be right — and the symbol stays visible next to it (T-55).",
+      "status": "passed",
+      "evidence": "Source re-measured at landing: `532:  const EXPECTED_TOOLS = [...]` (the claimed 548 carries an unrelated comment). The doc now reads ``(`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)`` — number correct, symbol visible beside it; before/after quoted in output.log."
+    },
+    {
+      "criterion": "The checker then exits 0 with every check passing — that whole-file green is this task's reason to exist — and the report quotes the raw output plus the annotations lines (4 illustrative, 0 pending) so the fix is not achieved by annotating.",
+      "status": "passed",
+      "evidence": "exit 0; `ok citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), 0 unresolved`; `ok annotations:pending — none`; `ok annotations:illustrative — 12 illustrative citation(s)`; 12/12 checks pass. No annotation was added anywhere — the fix is textual (check-before/after logs)."
+    },
+    {
+      "criterion": "bun run verify:docs stays green (pairs=37, failed=0) and NOTHING else in the file moves: t43's §9 packed-CLI correction and its other corrections are preserved, proven by the file's sha256 before and after plus a before/after quote of the anchor region only.",
+      "status": "passed",
+      "evidence": "verify:docs exit 0 (pairs=37 failed=0 violations=0 exempt=17). sha256 before `cae9486f…` (15,419 B) → after `78a61f54…` (15,425 B); EXACTLY three lines changed (24, 224, 225), quoted before/after in output.log; `index.ts:548` and `dist/validator.js` now occur 0 times, `index.ts:532` once. t43's §9 corrections (the packed-CLI capability, the re-pack caveat, the scoped `packages/*/src/` wording) are preserved verbatim apart from the two flagged tokens."
+    },
+    {
+      "criterion": "No edit under evidence/extensions/docs-claims/**, and no AGENTS.md, agent-references/**, docs/**, packages/** or scripts/** edit.",
+      "status": "passed",
+      "evidence": "The only file edited is EXTENSIONS-FOR-AGENTS.md; the checker is untouched (read-only inspection only), and my own evidence lives under evidence/extensions/docs-citations-fix-extensions/ per the inScope."
+    }
+  ],
+  "commands": [
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs", "exit": 0, "decisive_output": "12/12 checks ok; `citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) … 0 unresolved`; `annotations:pending — none`; `annotations:illustrative — 12 illustrative` (before the fix: exit 1, the same file with 3 unresolved)" },
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "grep -n 'const EXPECTED_TOOLS' packages/mpd-ext-plugin/src/index.ts", "exit": 0, "decisive_output": "532:  const EXPECTED_TOOLS = [\"mpd_ext_list\", \"mpd_ext_show\", \"mpd_flow_list\", \"mpd_flow_show\"]" }
+  ],
+  "residual_risks": [
+    "t21's fourth verify (the citation driver) is now green — quote that exit code, not an inherited one: a later edit to any of the five subject files can redden it again.",
+    "The unanchored legacy line refs on line 23 (`:537`, `:715`, `:807`, `:930`, `:984`) are rotted and unchecked; they need a symbol-first rewrite (T-55) in the follow-up that owns that region — reported, not silently fixed.",
+    "The anchor `:532` is correct today and will rot again on the next growth of `packages/mpd-ext-plugin/src/index.ts`; the durable fix is T-72's symbol-first grammar in the checker (t21's window), which this task deliberately did not touch.",
+    "No git writes; the captain commits."
+  ],
+  "artifacts": [
+    "EXTENSIONS-FOR-AGENTS.md",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/result.json",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/output.log",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/check-before.log",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/check-after.log",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/verify-docs.log",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/anchor-before.txt",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/anchor-after.txt",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/source-line.txt",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/sha-before.txt",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/sha-after.txt",
+    "evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/section9-after.txt"
+  ]
+}

@@ -1,0 +1,91 @@
+### BEFORE revision (pre-edit) ###
+file: agent-references/troubleshooting.md
+sha256: b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689
+bytes: 35534  lines: 69
+grep -c 'T-23' agent-references/troubleshooting.md -> 0
+grep -n 'T-23' agent-references/troubleshooting.md -> (no match)
+--- the five harness-close rows, ids as they read BEFORE ---
+  T-21  count=1
+  T-23  count=0
+  T-24  count=1
+  T-26  count=1
+  T-43  count=1
+--- row 17 in full BEFORE (the target) ---
+| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-with-parent`, so a detached child is killed the moment the call that started it returns — visible as a half-written artifact plus a liveness check that lies (measured 2026-09-16: a `nohup`-ed 13-gate sweep died inside `bun test packages`, its summary frozen after two gates, while `pgrep -f run-sweep.sh` reported RUNNING because the probe's OWN command line contained the script name). Run long work as a MANAGED background job (the bash tool's `run_in_background`) and never with `nohup`; and when probing liveness, match a pattern your own command line cannot contain. The sanctioned shape is ONE copy-pasteable command — start it inside the managed job: `node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd> [args…]` (opens the log file, hands it to the child as stdout+stderr, prints `pid=` and the log path, writes `<log>.pid`, returns immediately), then `node scripts/mpd-bg.mjs probe <log>.pid` for liveness — the probe asks the KERNEL (`kill(pid, 0)`) and never greps a command line, so the self-match trap is structurally impossible (`RUNNING` exit 0 · `DEAD` exit 1 · `NO-PID-FILE` exit 2). Measured 2026-09-17: a 150 s command through the helper logged 10 progress lines + `LONG-DONE` in the workspace and probed `RUNNING` at 9 consecutive checks before `DEAD`, while the same command started with `nohup … &` in one bash call never wrote its completion marker at all (the child dies with the call's `bwrap` sandbox). |
+--- sibling tails for shape comparison ---
+hen it predates it (no false alarm), `NO-LIVE-SESSION` (exit 0) when this workspace has no session to restart (T-21). |
+hold a handle of yours; its `--self-test` pins that statically and with a grandchild case (T-24). |
+
+### AFTER revision (post-edit) ###
+sha256: cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219
+bytes: 35541  lines: 69
+grep -c 'T-23' agent-references/troubleshooting.md -> 1
+--- grep -n 'T-23' agent-references/troubleshooting.md (the acceptance's quoted proof) ---
+17:| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-with-parent`, so a detached child is killed the moment the call that started it returns — visible as a half-written artifact plus a liveness check that lies (measured 2026-09-16: a `nohup`-ed 13-gate sweep died inside `bun test packages`, its summary frozen after two gates, while `pgrep -f run-sweep.sh` reported RUNNING because the probe's OWN command line contained the script name). Run long work as a MANAGED background job (the bash tool's `run_in_background`) and never with `nohup`; and when probing liveness, match a pattern your own command line cannot contain. The sanctioned shape is ONE copy-pasteable command — start it inside the managed job: `node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd> [args…]` (opens the log file, hands it to the child as stdout+stderr, prints `pid=` and the log path, writes `<log>.pid`, returns immediately), then `node scripts/mpd-bg.mjs probe <log>.pid` for liveness — the probe asks the KERNEL (`kill(pid, 0)`) and never greps a command line, so the self-match trap is structurally impossible (`RUNNING` exit 0 · `DEAD` exit 1 · `NO-PID-FILE` exit 2). Measured 2026-09-17: a 150 s command through the helper logged 10 progress lines + `LONG-DONE` in the workspace and probed `RUNNING` at 9 consecutive checks before `DEAD`, while the same command started with `nohup … &` in one bash call never wrote its completion marker at all (the child dies with the call's `bwrap` sandbox) (T-23). |
+--- id census after (all five siblings now greppable) ---
+  T-21  count=1
+  T-23  count=1
+  T-24  count=1
+  T-26  count=1
+  T-43  count=1
+--- single-line diff (quoted in full) ---
+
+### diff provenance note ###
+git diff is EMPTY for this file because it is UNTRACKED at HEAD (new in this wave; git has no pre-edit blob) -> the diff below is produced by byte reconstruction instead, which is strictly stronger.
+### byte-delta accounting ###
+before: 35534 B / 69 lines / sha256 b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689
+after : 35541 B / 69 lines / sha256 cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219
+inserted bytes = 7  (len(' (T-23)') = 7) | line count delta = 0
+### RECONSTRUCTION PROOF: delete exactly ' (T-23)' on row 17 from the AFTER file -> must equal the BEFORE hash ###
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: ENOENT: no such file or directory, open 'undefined/reconstructed-before.md'
+    at Object.writeFileSync (node:fs:2422:20)
+    at [eval]:5:4
+    at [eval]:10:4
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:451:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:449:60)
+    at evalFunction (node:internal/process/execution:283:30)
+    at evalTypeScript (node:internal/process/execution:295:3)
+    at node:internal/main/eval_string:71:3 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'undefined/reconstructed-before.md'
+}
+
+Node.js v24.16.0
+### the single-line diff, quoted in full (reconstructed-before.md -> file) ###
+diff: evidence/gates/troubleshooting-t23-row/20260917T030350Z/reconstructed-before.md: No such file or directory
+### (correction: the block above had the env var misplaced; re-run verbatim below) ###
+### RECONSTRUCTION PROOF: delete exactly ' (T-23)' on row 17 from the AFTER file -> must equal the BEFORE hash ###
+  reconstructed before sha256: b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689
+  recorded before     sha256: b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689
+  MATCH: YES -> the ONLY delta is the 7-byte insertion on row 17
+### the single-line diff, quoted in full (reconstructed-before.md -> file) ###
+  --- evidence/gates/troubleshooting-t23-row/20260917T030350Z/reconstructed-before.md	2026-09-17 11:04:16.818392990 +0800
+  +++ agent-references/troubleshooting.md	2026-09-17 11:03:59.148954838 +0800
+  @@ -17 +17 @@
+  -| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-with-parent`, so a detached child is killed the moment the call that started it returns — visible as a half-written artifact plus a liveness check that lies (measured 2026-09-16: a `nohup`-ed 13-gate sweep died inside `bun test packages`, its summary frozen after two gates, while `pgrep -f run-sweep.sh` reported RUNNING because the probe's OWN command line contained the script name). Run long work as a MANAGED background job (the bash tool's `run_in_background`) and never with `nohup`; and when probing liveness, match a pattern your own command line cannot contain. The sanctioned shape is ONE copy-pasteable command — start it inside the managed job: `node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd> [args…]` (opens the log file, hands it to the child as stdout+stderr, prints `pid=` and the log path, writes `<log>.pid`, returns immediately), then `node scripts/mpd-bg.mjs probe <log>.pid` for liveness — the probe asks the KERNEL (`kill(pid, 0)`) and never greps a command line, so the self-match trap is structurally impossible (`RUNNING` exit 0 · `DEAD` exit 1 · `NO-PID-FILE` exit 2). Measured 2026-09-17: a 150 s command through the helper logged 10 progress lines + `LONG-DONE` in the workspace and probed `RUNNING` at 9 consecutive checks before `DEAD`, while the same command started with `nohup … &` in one bash call never wrote its completion marker at all (the child dies with the call's `bwrap` sandbox). |
+  +| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-with-parent`, so a detached child is killed the moment the call that started it returns — visible as a half-written artifact plus a liveness check that lies (measured 2026-09-16: a `nohup`-ed 13-gate sweep died inside `bun test packages`, its summary frozen after two gates, while `pgrep -f run-sweep.sh` reported RUNNING because the probe's OWN command line contained the script name). Run long work as a MANAGED background job (the bash tool's `run_in_background`) and never with `nohup`; and when probing liveness, match a pattern your own command line cannot contain. The sanctioned shape is ONE copy-pasteable command — start it inside the managed job: `node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd> [args…]` (opens the log file, hands it to the child as stdout+stderr, prints `pid=` and the log path, writes `<log>.pid`, returns immediately), then `node scripts/mpd-bg.mjs probe <log>.pid` for liveness — the probe asks the KERNEL (`kill(pid, 0)`) and never greps a command line, so the self-match trap is structurally impossible (`RUNNING` exit 0 · `DEAD` exit 1 · `NO-PID-FILE` exit 2). Measured 2026-09-17: a 150 s command through the helper logged 10 progress lines + `LONG-DONE` in the workspace and probed `RUNNING` at 9 consecutive checks before `DEAD`, while the same command started with `nohup … &` in one bash call never wrote its completion marker at all (the child dies with the call's `bwrap` sandbox) (T-23). |
+### doc-pair gate (agent-references is NOT discovered by it; census must not move) ###
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+verify:docs exit=0
+### no zh twin added, no rename (the inScope file list) ###
+agent-teams-deltas.md
+index.md
+troubleshooting.md
+### FINAL settle check (2026-09-17T03:04:42Z) ###
+sha256 now: cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219  (expected cfc98118…)
+grep -c 'T-23' -> 1   line: 17
+row count: 69  bytes: 35541
+other rows untouched: T-21=1 T-24=1 T-26=1 T-43=1
+evidence dir: evidence/gates/troubleshooting-t23-row/20260917T030350Z
+output.log
+reconstructed-before.md
+result.json

@@ -1,0 +1,46 @@
+t28 - lane F verification (harness-close + T-50). Readings are verbatim in raw/; result.json is the verdict.
+revision: HEAD 646d8018a44bffb2d6e1c30afa090056f81b911e (dirty 216 paths) at 2026-09-17T02:49-02:56Z.
+Every line below was produced by the command printed above it.
+
+[1] notes where an agent meets the friction (T-21/T-23/T-24/T-26/T-43)
+$ grep -c 'T-2[0-9]' AGENTS.md agent-references/troubleshooting.md
+  AGENTS.md                 -> SS12 bullet per friction, each with its one-command fallback (lines 521/524/527/530/532)
+  troubleshooting.md        -> rows 15(T-21) 17(T-23) 29(T-24) 30(T-26) 31(T-43), symptom-first
+  T-23 row 17 does NOT carry its id -> F-2 (low, cosmetic): an id-search for 'T-23' in that file returns 0 hits.
+  Reachability is not lost: the id route goes through AGENTS.md SS12, the symptom route (grep nohup / mpd-bg / reload-check / check-write / real-home) hits the row.
+
+[2] the T-23/T-24 helper, executed for real
+$ node scripts/mpd-bg.mjs run --log <evidence>/raw/helper.log -- node -e '<write HELPER-REAL-RUN-DONE>'
+  [mpd-bg] started pid=17 log=.../raw/helper.log pidfile=.../raw/helper.log.pid
+  log content: HELPER-REAL-RUN-DONE
+$ node scripts/mpd-bg.mjs probe .../raw/probe.log.pid   (second run, correct pidfile)
+  [mpd-bg] RUNNING pid=15
+  [mpd-bg] DEAD pid=15     log: PROBE-JOB-DONE
+  (the FIRST attempt probed helper.pid - the helper writes <log>.pid - and answered [mpd-bg] NO-PID-FILE, i.e. the documented exit-2 arm)
+
+[3] the helper's own negative controls
+$ node scripts/mpd-bg.mjs --self-test
+  [PASS] probe: missing pid file -> NO-PID-FILE, exit 2 - exit=2
+  [PASS] T-24: a child that spawns a grandchild holding the handle returns promptly - elapsed=76ms
+  [PASS] T-24: the helper never uses stdio:'pipe' - pipeHits=0
+  [mpd-bg self-test] 13/13 arms passed - PASS
+
+[4] T-43 negative case (the guard must not fire for a normal session)
+$ bun test packages/mpd-workmate-plugin
+  28 pass / 0 fail / 333 expect() calls / 4 files        (the two sandbox cases: evidence/platform/harness-close/)
+
+[5] T-50 - what it actually claims, cited by SYMBOL
+  createLazyDshAdapter            packages/mpd-dsh-adapter-plugin/src/index.ts
+  consumers                       packages/mpd-ext-plugin/src/index.ts (dsh = createLazyDshAdapter(ctx, { label: "mpd-ext", warn }))
+                                  packages/mpd-roles-plugin/src/index.ts (const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn }))
+  mechanism                       a Proxy whose get() resolves per property access; resolve() re-probes on every use and caches only a successful mount
+  transient miss                  "ADAPTER NOT YET ACTIVE: ... its provider fiber is not ACTIVE yet ... this transient miss needs NO row-order change (T-50)."
+  provably absent                 "ADAPTER FALLBACK (adapterIdentity=...): ... fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter)"
+  the two modes are separated by probeMpdDsh(ctx, false).missing (comment at the branch; ADAPTER_IDENTITY_PENDING = "pending:provider-not-active")
+$ bun test packages/mpd-dsh-adapter-plugin   -> 42 pass / 0 fail / 137 expect
+$ bun test packages/mpd-ext-plugin           -> 74 pass / 0 fail / 560 expect
+$ bun test packages/mpd-roles-plugin         -> 31 pass / 0 fail / 485 expect
+  bound, restated as a bound (never as a fix for an observed failure):
+  "six consecutive clean boots on the correctly ordered tree never opened the window (t24, 6/6 adapterIdentity=mounted:mpdDsh, zero fallback lines) - so this change is justified by the code" (evidence/platform/lazy-adapter/20260917T012724Z/result.json)
+
+VERDICT: PASS. A4 holds with one cosmetic finding (F-2, the T-23 row's missing id); A5 holds - the resolution is lazy, the warning wording separates "not active yet" from "provably absent", and the absent observation is stated as a bound.

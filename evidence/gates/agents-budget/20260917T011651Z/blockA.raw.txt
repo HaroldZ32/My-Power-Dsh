@@ -1,0 +1,54 @@
+  **The local adaptations, transcribed from t4's authoritative enumeration**
+  (`evidence/wave2/adopted-tooling/result.json`, `adaptation_list`) — the pre-existing
+  six, only A1 of which this section used to name:
+
+  | Id | File · function/line | Marker | Purpose |
+  |---|---|---|---|
+  | A1 | `lib/members.js` `installContinuableSetup` | no | Live-Setup guard / legacy `registerContinuableSetup` fallback |
+  | A2 | `lib/members.js` `installMemberSelectionRuntime` | no | takes the live Agent from the harness payload, never `childCtx.agent` |
+  | A3 | `lib/harness-compat.js:16` delivery probe | no | does not throw when no delivery contract exists; prefers the public `prompt` seam |
+  | A4 | `lib/members.js:28-78,499` workmate persona injection | no | injects `~/.mpd/workmate` persona/memory (HOME resolved per call, name sanitized) |
+  | A5 | `lib/session-start.js:355-396` notices + `evaluateComplexityGate` | region `mpd-delta session-start-gate` | gate wording ("routed by the complexity gate", never a mandatory team) + the frozen signal predicate |
+  | A6 | `lib/client.js` export bridge region | region + own patcher | additive re-exports consumed by mpd client code (`scripts/patch-agent-teams-client.mjs`) |
+  | D1 | `lib/quality-gates.js` `pathMatchesScope` + glob helpers | `mpd-delta scope-glob` | `**` crosses separators, `*`/`?` single segment |
+  | D2 | `lib/quality-gates.js` `pathMatchesScopeNormalized` | `mpd-delta scope-glob-core` | B5 exact/dir-prefix kept bit-identical — **now merged into `scope-glob`** (post-t4, so a re-materialize cannot strand an upstream copy of the function) |
+  | D3 | `lib/quality-gates.js` `contractContradiction` + `repairScopeFromFindings` | `mpd-delta contract-contradiction` | rejects an unsatisfiable contract; generates a contradiction-free repair scope that carves the required path out of the inherited `outOfScope`; hosts the B7 overlap relation (wave 4 fix) |
+  | D4 | `lib/quality-gates.js` `planQualityFollowUp` scope build | `mpd-delta repair-scope` | routes the generated repair scope through D3 |
+  | D5 | `lib/quality-gates.js` repair object scope fields | `mpd-delta repair-scope-fields` | spreads the generated scope onto the repair task |
+  | D6 | `lib/tools.js` `agent_teams_task_contract` registration | `mpd-delta task-contract` | the read-only contract surface |
+  | D7 | `lib/tools.js` `taskContractView` + `renderTaskContract` | `mpd-delta task-contract-render` | the view/render pair behind D6 |
+  | D8 | `lib/mpd-deltas.js` | generated | registry of the regions, each keyed by a `beforeContext`/`afterContext` **CONTEXT PAIR** measured on the region-stripped skeleton — the wave-2 line-keyed `anchor`/`anchorOccurrence`/`anchorMarker` fields are GONE, and uniqueness is required at BOTH emit and heal time (regenerate with `--write-registry`, never hand-edit) |
+  | D9 | `scripts/patch-agent-teams-fixes.mjs` | n/a | idempotent applier (`--check` / `--write` / `--write-registry`) |
+  | D10 | `scripts/vendor-agent-teams.mjs` | n/a | invokes D9 with `--write` and exits 1 on refusal, so a vendor run cannot silently drop a delta |
+  | D11 | `self-fix-tests/scope-glob-and-contract.test.mjs` | n/a | behaviour, guard-refusal and byte-fidelity tests |
+  | D12 | `test/task-contract-tool.test.mjs` | n/a | tool-level readable-while-running tests |
+  | D13 | `lib/tools.js` `agent_teams_update_task` contract text | `mpd-delta update-task-contract` | wave-3: `status` REQUIRED + the minimal terminal-call shape. **REPLACEMENT-shaped** (the upstream `description:` line sits INSIDE the block): after a re-materialize it is NOT self-healable — the heal REFUSES loudly, file byte-untouched, same class as `scope-glob` under F3; remedy = restore the region or re-author + `--write-registry`. |
+  | D14 | `lib/tools.js` `agent_teams_update_task` `status` parameter | `mpd-delta update-task-required-status-param` | wave-3: an omitted `status` fails loudly at the tool boundary. **REPLACEMENT-shaped** for the same reason (the single top-level `status:` line) → a re-materialize REFUSES; it cannot silently duplicate the key (last-wins). |
+  | D15 | `lib/tools.js` `agent_teams_update_task` attempt-id branch | `mpd-delta update-task-required-attempt-id` | wave-3: an omitted `attempt_id` says REQUIRED; the stale wording stays for a mismatch. **Purely ADDITIVE → DOES self-heal** after a re-materialize. |
+  | D16–D18 | `lib/tools.js` `update_task` amend path | `mpd-delta update-task-amend-*` (4 regions) | wave-4: a member's `amend`, a terminal-task field change, and a `pending`-task amendment all used to do NOTHING silently (and `pending` was unreachable); loud now. ADDITIVE. |
+  | D19–D20 | amend deadlock + member read-only deny | `mpd-delta update-task-amend-running`, `mpd-delta member-tool-deny-*` (5 regions) | wave-4: `kickTeam(...)` inside `withTeamLock(...)` self-deadlocked the tool (kick removed); a "read-only" TEAM member still held `write`/`edit`/`bash` (now `toolDeny` profile data → harness `toolFilter`). Proof: `evidence/agent-teams/{amend-lock-and-guards,defect-sweep}/`. |
+  | D21–D22 | `lib/scheduler.js` pool capability guard | `mpd-delta pool-capability-guard` (ADDITIVE), `mpd-delta pool-capability-select` (**REPLACEMENT-shaped**) | v0.9.1: the pool branch of the selection had no capability test, so a read-only member was handed a pooled `implementation`/`repair` task it could not execute (measured twice: the read-only Architect and Reviewer). `nextCapableTask` keeps the member's OWN task first (explicit assignment still dispatches, loudly) and leaves a pooled task it cannot run IN THE POOL, logging once per (team, member, reason). Like D13/D14 the replacement REFUSES after a re-materialize; remedy = restore the region or re-author + `--write-registry`. Proof: `packages/mpd-agent-teams-plugin/self-fix-tests/pool-capability-guard.test.mjs`. |
+  | D23–D26 | the team watchdog's PRESERVING hold, read from adopted code | `mpd-delta watchdog-hold-reader` (ADDITIVE, **2 regions**: `lib/tools.js` + `lib/scheduler.js` carry the same `watchdogHoldOf` helper), `mpd-delta claim-task-hold-guard`, `mpd-delta update-task-hold-guard`, `mpd-delta kick-member-hold-decline` | the team-watchdog wave: the claim / update / kick paths consult the watchdog's own `mpdWatchdog` service through cordis's inject-free `ctx.get(name, false)` lookup and DECLINE while that team is held, so a hold pauses dispatch without cancelling anything (adopted `inject` lists are not ours to change, which is why the lookup is inject-free). FAIL-OPEN (binding): with the watchdog row absent the service is `undefined`, the gate reads nothing, and dispatch behaves exactly as before — a hold-looking file on disk alone changes no decision. Proof: `evidence/team-watchdog/pause/20260915T164700Z/` + the heartbeat/fault lanes' preserving-pause cases. |
+
+  The live registry is **53** regions across **9** adopted files (`--write-registry`, `--check` clean;
+  D16–D20 are wave 4, D21–D22 are v0.9.1, D23–D26 are the team-watchdog wave — measured with
+  `node scripts/patch-agent-teams-fixes.mjs --check`, 2026-09-16). **An `id` is a LOGICAL delta, not a
+  registry key: one id may carry several regions when the same block is needed in several files** —
+  `mpd-delta watchdog-hold-reader` is one such pair (the identical `watchdogHoldOf` helper, applied in
+  `lib/tools.js` AND `lib/scheduler.js`, each with its own context pair), so a duplicate id is intended
+  and uniqueness is required of the CONTEXT PAIR PER FILE, never of the id. **Addressing is by a CONTEXT PAIR, not a line key:** each entry carries the
+  shortest `beforeContext`/`afterContext` windows measured on the region-STRIPPED skeleton that occur
+  exactly once (k ≤ 6, the emitter FAILS rather than using a far-away anchor) and that bracket the seam
+  from outside every region — so the heal is exact under ANY insertion history (wave-2's line-keyed
+  anchors were order-dependent: `tools.js` healed to 60 diff lines). The applier also refuses an OLD
+  anchor-format registry, a drifted orphan body, and a region that would re-declare a symbol the file
+  still carries. Proof: `evidence/wave3/t5-verify/20260911T083206Z/` (strip BOTH files from the same
+  state → one heal → 0 diff lines each) + the permanent suite
+  `packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs`. **Absolute line
+  numbers are NOT part of any contract:** the canonical `mpd-delta task-contract` region moved
+  1733 → **1757** when the wave-3 regions were inserted above it, and the heal keys on the context
+  pair — re-read the registry after any region change instead of reusing a remembered line.
+  **Two wave-2 driver scripts are deliberately UNPATCHED historical records:**
+  `evidence/wave2/t10-review/20260911T063000Z/{guard-copy.mjs,guard-fullstrip.mjs}` still import the
+  OLD anchor-format registry, so they now fail with the old-format refusal by design — a future
+  reader must NOT "fix" them (editing them would rewrite evidence); write a new driver instead.

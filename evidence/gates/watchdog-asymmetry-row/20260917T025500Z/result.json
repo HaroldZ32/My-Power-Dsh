@@ -1,0 +1,91 @@
+{
+  "task": "t42 — land the watchdog §1 rule-3 asymmetry row in agent-references/troubleshooting.md",
+  "attempt_id": "71d97a8c-4274-4615-b162-d15aa00bd999",
+  "generated_at": "2026-09-17T02:58:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "edit": {
+      "file": "agent-references/troubleshooting.md",
+      "anchor_line_before": 39,
+      "anchor_text": "| a healthy team is paused ~90 s after a member starts a long tool call (a build, a lane that boots `dsh`, a slow test) | …",
+      "inserted_at_line": 40,
+      "lines_before": 69,
+      "lines_after": 70,
+      "bytes_before": 34292,
+      "bytes_after": 35534,
+      "sha256_before": "67bc579b850d1990825fac83747ea1c88e17000eda019e6314c193ab570db5de",
+      "sha256_after": "b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689",
+      "sha256_on_disk_after": "b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689 (sha256sum, equals the driver's reading)",
+      "driver": "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/insert-row.mjs (prefix-anchored single-row insert; it refuses a multi-line row and refuses an anchor that is not unique)",
+      "row_verbatim_file": "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/row.md"
+    },
+    "readme_pair_confirmation": {
+      "claim": "the watchdog README pair (EN + zh-CN) ALREADY states the same asymmetry — CONFIRMED, not re-written",
+      "packages/mpd-team-watchdog-plugin/README.md": { "bytes": 29409, "sha256_prefix": "bd887558cdc833db", "lines": "127 (the OUTSTANDING state row), 138-148 (the asymmetry bullets; 140 'A completed step is ALIVE forever', 141-146 the streaming/enrichment bullet, 147-148 the no-first-token case), 241/243 (the warn knobs)" },
+      "packages/mpd-team-watchdog-plugin/README.zh-CN.md": { "bytes": 28693, "sha256_prefix": "a5cd1023620e9ba6", "lines": "110 (state table), 120 (completed step), 122-126 (the streaming/enrichment bullet incl. the no-first-token case), 202/204 (the knobs)" },
+      "notable": "the EN README (lines 142-146) explicitly PROMISES the agent-facing troubleshooting reference states this asymmetry too — this row fulfils that promise rather than duplicating unowned text; the zh twin (lines 124-126) says the same."
+    },
+    "source_grounding": {
+      "state_machine": "packages/mpd-team-watchdog-plugin/src/channel.ts — the module header documents OUTSTANDING as 'an open step with NO committed assistant answer', and the assistant/message | assistant/attempt cases flip it to answered",
+      "enrichment": "`noteStreamFrame` (packages/mpd-team-watchdog-plugin/src/channel.ts) — its doc comment names contract §2 (never required) and §1 rule 3: the agent/assistant-stream START frame proves the model is DELIVERING, flipping the open (turn,step) to ALIVE; without that signal the state honestly stays OUTSTANDING",
+      "clock": "only an OUTSTANDING request has a clock (the same file's rule-2 comment); a completed step is ALIVE forever",
+      "engine": "packages/mpd-team-watchdog-plugin/src/engine.ts tracks the flipped steps and whether the enrichment is installed"
+    },
+    "hash_chain_for_this_body": {
+      "t16_created": "30,124 B (moved §12 body + provenance header; recorded in evidence/gates/agents-budget/20260917T011651Z) — settled sha256 5671bf5d2641dd79ff28ad40a050e7cf92089ec4ebb0e4128f3d699d6691efa2",
+      "t23_added": "4 rows (T-21/T-23/T-24/T-26/T-43/T-54/T-55 pointer work) → 34,292 B / sha256 67bc579b… (the state this task measured BEFORE its own edit)",
+      "t42_added": "1 row → 35,534 B / sha256 b4032f41…",
+      "correction": "the t16 evidence's settled hash for this file is HISTORICAL (superseded by t23's rows and then by this one). The correction is recorded here because evidence/gates/agents-budget/** is outside t42's inScope; if the captain wants the correction in that file too, it is one line and needs a path in some task's inScope."
+    },
+    "citation_driver_note": "evidence/extensions/docs-claims/check-citations.mjs does NOT scan this tree (its ROOT_DIRS are docs/, packages/, skills/, extensions/, templates/, scripts/, evidence/, presets/, tests/, src/, and its named targets are the extension guide/report pairs + EXTENSIONS-FOR-AGENTS.md), so this row cannot redden that gate; the row still cites by SYMBOL plus an existing path (T-55), never by a bare line number."
+  },
+  "acceptance": [
+    {
+      "criterion": "A row is added to agent-references/troubleshooting.md covering the contract §1 rule-3 asymmetry: a member streaming a very long answer with no first-token signal stays OUTSTANDING until assistant/message|assistant/attempt commits; the agent/assistant-stream START frame is the ENRICHMENT that flips it to ALIVE; a COMPLETED step is ALIVE forever while an UNANSWERED one has a clock; and with the enrichment unavailable the warnSilenceMs bound is the protection instead of silence.",
+      "status": "passed",
+      "evidence": "One table row inserted at line 40 (bytes 34,292 → 35,534; lines 69 → 70; sha256 67bc579b… → b4032f41…). It states all four facts in the symptom→cause/fix form the file uses, cites the source by SYMBOL (noteStreamFrame, packages/mpd-team-watchdog-plugin/src/channel.ts) and names watchdog.warnSilenceMs as the bound when the enrichment is unavailable. Verbatim text in row.md; the insert driver refuses a multi-line row and a non-unique anchor."
+    },
+    {
+      "criterion": "The row is English-only agent-facing content: agent-references/** is deliberately outside the bilingual gate's discovery, so NO *.zh-CN.md twin is added and no file in that tree is renamed to README.md.",
+      "status": "passed",
+      "evidence": "Exactly one line changed in one file; `ls agent-references/` still lists exactly {agent-teams-deltas.md, index.md, troubleshooting.md} — no twin added, no rename. `bun run verify:docs` exit 0 with the census unchanged (pairs=37 failed=0 violations=0 exempt=17), which is what proves the tree stayed outside the bilingual discovery."
+    },
+    {
+      "criterion": "The existing claim that the watchdog README pair (EN + zh-CN) already states the same asymmetry is CONFIRMED with the lines/hashes cited, not re-written.",
+      "status": "passed",
+      "evidence": "CONFIRMED and NOT rewritten: EN README (29,409 B, sha256 bd887558cdc833db…) lines 138-148 + state table 127 + knobs 241/243; zh README (28,693 B, sha256 a5cd1023620e9ba6…) lines 120-126 + table 110 + knobs 202/204. The EN bullet explicitly says the asymmetry is 'stated here on purpose, and in the agent-facing troubleshooting reference', so this row closes a promise the README already makes. No README byte was touched by this task (both packages/** paths are out of its inScope)."
+    },
+    {
+      "criterion": "bun run verify:docs stays green (pairs=37 failed=0) and the evidence records the inserted row verbatim plus the file's before/after size.",
+      "status": "passed",
+      "evidence": "`bun run verify:docs` exit 0: '[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS' (verify-docs.log). `node scripts/verify-rows-parity.mjs` exit 0 (25 row ids, verify-rows.log). Sizes: 34,292 → 35,534 B; the row verbatim is in row.md and insert-result.json."
+    },
+    {
+      "criterion": "This is ONE row (plus, if the file's structure needs it, no heading change at all): nothing else in the reference tree is rewritten.",
+      "status": "passed",
+      "evidence": "The insert is a single slice insertion: linesBefore 69 → linesAfter 70, exactly one line added, no heading touched, and the other two files in the tree (agent-teams-deltas.md, index.md) are byte-untouched (only troubleshooting.md's sha changed; no other file was opened for write)."
+    }
+  ],
+  "commands": [
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exit": 0, "decisive_output": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" },
+    { "command": "node evidence/gates/watchdog-asymmetry-row/20260917T025500Z/insert-row.mjs $PWD", "exit": 0, "decisive_output": "anchorLine 39, insertedAtLine 40, lines 69→70, bytes 34292→35534, sha256 67bc579b…→b4032f41…" },
+    { "command": "sha256sum agent-references/troubleshooting.md", "exit": 0, "decisive_output": "b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689 (matches the driver's post-edit hash)" }
+  ],
+  "residual_risks": [
+    "The t16 evidence's settled hash for this body (5671bf5d…) is now historical twice over (t23's four rows, then this one). The correction is recorded in THIS evidence dir because evidence/gates/agents-budget/** is not in t42's inScope; landing it in that file needs one path in some task's scope.",
+    "`agent-references/**` is untracked in git until the captain commits, so `git diff` shows nothing for this file — the change is proven by the insert driver's before/after counters and the sha256 pair instead (and the captain's commit will carry it as a new directory).",
+    "`t39` is still parked awaiting the captain's inScope ruling for the delta-table path (agent-references/agent-teams-deltas.md); it is claimed by me but NOT started, so this task did not collide with it — the two touch different files in the same tree.",
+    "The citation-coverage driver does not scan agent-references/**, so this row's anchors are not machine-checked; they were written symbol-first (T-55) on purpose."
+  ],
+  "artifacts": [
+    "agent-references/troubleshooting.md",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/result.json",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/output.log",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/row.md",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/insert-row.mjs",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/insert-result.json",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/verify-docs.log",
+    "evidence/gates/watchdog-asymmetry-row/20260917T025500Z/verify-rows.log"
+  ]
+}

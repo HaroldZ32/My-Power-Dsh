@@ -1,0 +1,254 @@
+{
+  "startedAt": "2026-09-17T01:47:08.930Z",
+  "redRoot": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+  "greenRoot": "/root/dshProj/my-power-dsh",
+  "fingerprintsBefore": {
+    "red": {
+      "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "channel": "(absent)",
+      "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+      "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    },
+    "green": {
+      "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+      "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+      "tools": "aca511e284fd1855c1255ada7a20347583f85f36f6ef4e2db535fd2845976d5e"
+    }
+  },
+  "rows": [
+    {
+      "id": "(b)",
+      "title": "a member whose only open tasks are dependency-blocked",
+      "required": "NO warn, NO hold, and the member is reported PARKED",
+      "red": {
+        "verdict": {
+          "red": "fail",
+          "green": "fail",
+          "detail": "warn=true escalate=true hold=true dependencyParked=0 foldState=null"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+          "defaults": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3,
+            "actionOnEscalate": "pause"
+          },
+          "ticks": [
+            {
+              "offset": 91000,
+              "decisions": [
+                "warn"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 181000,
+              "decisions": [
+                "warn"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 271000,
+              "decisions": [
+                "escalate"
+              ],
+              "holds": [
+                "team-a"
+              ],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 362000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": true
+            }
+          ],
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": true,
+          "neverStarted": 0,
+          "dependencyParked": 0,
+          "foldStates": null,
+          "teamBytesUntouched": true
+        }
+      },
+      "green": {
+        "verdict": {
+          "red": "pass",
+          "green": "pass",
+          "detail": "warn=false escalate=false hold=false dependencyParked=4 foldState={\"a1\":\"OUTSTANDING\"}"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh",
+          "defaults": {
+            "warnSilenceMs": 600000,
+            "warnStreakToEscalate": 6,
+            "actionOnEscalate": "warn-only"
+          },
+          "ticks": [
+            {
+              "offset": 91000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 181000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 271000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 362000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            }
+          ],
+          "anyWarn": false,
+          "anyEscalate": false,
+          "anyHold": false,
+          "neverStarted": 0,
+          "dependencyParked": 4,
+          "foldStates": {
+            "a1": "OUTSTANDING"
+          },
+          "teamBytesUntouched": true
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "(f)",
+      "title": "a team whose only evidence is a PREVIOUS generation's stamp (and a task nobody attempted)",
+      "required": "never holdable: no warn, no hold",
+      "red": {
+        "verdict": {
+          "red": "fail",
+          "green": "fail",
+          "detail": "warn=true escalate=true hold=true neverStarted=0"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+          "defaults": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3,
+            "actionOnEscalate": "pause"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [
+                "warn"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 2000,
+              "decisions": [
+                "warn"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 3000,
+              "decisions": [
+                "escalate"
+              ],
+              "holds": [
+                "team-a"
+              ],
+              "heldOnDisk": true
+            }
+          ],
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": true,
+          "neverStarted": 0,
+          "dependencyParked": 0,
+          "foldStates": null,
+          "teamBytesUntouched": true
+        }
+      },
+      "green": {
+        "verdict": {
+          "red": "pass",
+          "green": "pass",
+          "detail": "warn=false escalate=false hold=false neverStarted=1"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh",
+          "defaults": {
+            "warnSilenceMs": 600000,
+            "warnStreakToEscalate": 6,
+            "actionOnEscalate": "warn-only"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 2000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 3000,
+              "decisions": [],
+              "holds": [],
+              "heldOnDisk": false
+            }
+          ],
+          "anyWarn": false,
+          "anyEscalate": false,
+          "anyHold": false,
+          "neverStarted": 1,
+          "dependencyParked": 0,
+          "foldStates": {},
+          "teamBytesUntouched": true
+        }
+      },
+      "ok": true
+    }
+  ],
+  "settleMs": 50000,
+  "fingerprintsAfter": {
+    "red": {
+      "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "channel": "(absent)",
+      "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+      "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    },
+    "green": {
+      "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+      "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+      "tools": "aca511e284fd1855c1255ada7a20347583f85f36f6ef4e2db535fd2845976d5e"
+    }
+  },
+  "settled": true,
+  "redPinned": true,
+  "ok": true,
+  "finishedAt": "2026-09-17T01:47:59.048Z"
+}

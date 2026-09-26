@@ -1,0 +1,7 @@
+ packages/mpd-bundle-plugin/client.js               |  56 +++++++++--
+ packages/mpd-bundle-plugin/src/settings-card.js    |  37 ++++++-
+ packages/mpd-bundle-plugin/src/team-page.js        |  19 +++-
+ packages/mpd-bundle-plugin/test/client-harness.mjs |  48 ++++++++-
+ .../mpd-bundle-plugin/test/settings-card.test.mjs  | 108 ++++++++++++++++++++-
+ packages/mpd-bundle-plugin/test/team-page.test.mjs |  51 +++++++++-
+ 6 files changed, 292 insertions(+), 27 deletions(-)

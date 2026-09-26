@@ -1,0 +1,42 @@
+# t74 — INDEPENDENT verification of the runner's reason ladder — docs-gate-engineer — 2026-09-17T05:38:46Z
+# fixture built by me under this dir; nothing else written; no git write.
+
+## 1. MY OWN REPLAY (recorded bytes → fixed label)
+# t74 INDEPENDENT replay — fixture built by docs-gate-engineer, lane re-emits the RECORDED bytes
+# $ node scripts/run-qa-lanes.mjs --root=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay --manifest=skills/dsh-qa/cases.json --only=replay-adopt --evidence-dir=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=349300448e96 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out
+[mpd-qa:(only)] FAIL case=replay-adopt reason=step:archive prereq="the lane's own evidence marks step `archive` as failed" signature=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1 evidence=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log log=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out/lanes/replay-adopt.log ms=38
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+[exit=1]
+
+## 2. THE STRUCTURED RECORD OF THAT REPLAY
+   replay-adopt | fail | reason: step:archive | sig: {"code": "step:archive", "label": "the lane's own evidence marks step `archive` as failed", "file": "../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json", "line": null} | also: [{"code": "unauthorized", "file": "(the lane's own stdout)", "line": 11}]
+
+## 3. THE CONTRACT'S VERIFY COMMAND
+$ node scripts/run-qa-lanes.mjs --self-test
+[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures
+  [exit=0]
+
+## 4. NEUTRALITY (measured here)
+$ node scripts/repin-vendor.mjs   # dry-run
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 2 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /root/dshProj/my-power-dsh/VENDOR_LOCK.json  (3434 bytes, 2 treeSha asset(s))
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c fileCount=323
+[repin-vendor]   computed (LF) : treeSha=68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c fileCount=323 (1 file(s) LF-normalized)
+$ sha256sum VENDOR_LOCK.json
+6ca531d2b20afb19cdc336fa90fcbb7509d2237cfaea62adb2850325d6134992  VENDOR_LOCK.json
+$ find skills VENDOR_LOCK.json -newermt '2026-09-17 13:29:36'   # the runner edit's mtime
+  (empty ⇒ no writer after the change)
+$ grep -c run-qa-lanes scripts/pack-mpd.mjs
+0
+$ sha256sum scripts/run-qa-lanes.mjs
+6bea2b38de2a4ac76ddb672b25bdc5f226e870bdd45cafb9026ae9e3c9c9ded0  scripts/run-qa-lanes.mjs
+  bytes: 44774
+
+## 5. THE OLD LABEL IS STILL IN MY BOARD (not rewritten)
+5:Runner line: `verdict=fail reason=unauthorized exit=1 ms=48927` with `signature {code: unauthorized, file: "(the lane's own stdout)", line: 11}`.
+73:artefact) and the board's `reason=unauthorized` names a **signature found in a passing step**, not the cause.*

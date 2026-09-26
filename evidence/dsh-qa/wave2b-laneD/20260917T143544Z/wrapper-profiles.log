@@ -1,0 +1,5 @@
+mpd-headless   wrapper exit=1  child output: 0 bytes, exitCode=1
+w              wrapper exit=1  child output: 0 bytes, exitCode=1
+t              wrapper exit=1  child output: 0 bytes, exitCode=1
+headless       wrapper exit=1  child output: 0 bytes, exitCode=1
+dsh-tui        wrapper exit=1  child output: 0 bytes, exitCode=1

@@ -1,0 +1,324 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-62c8c5f6-d505-4a10-9b28-886c1424e36e",
+  "createdAt": 1789620050896,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789620050896
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620050896,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Audit the routing-relevant orchestration surface against the pinned upstream reference",
+      "description": "Read-only audit task. The bundle tree is mounted read-only at /root/dshProj/my-power-dsh; reads (read/grep/glob) work, writes there do not. Deliver the report through the task artifact channel under evidence/orchestration-audit/audit/. Known anchors to start from: lib/session-start.js:177 consumeExplicitFlag, :194 evaluateComplexityGate, :289 the auto-route predicate, :292 autoRouteEnabled, :467 the gate wiring; lib/index.js:116 autoRoute defaults true, :122 {mode:'off',autoRoute:true}, :161 config read; scripts/install-profile.mjs:210 shipped policy pin and :297 its self-test assertion; packages/mpd-bundle/cordis.patch.yml:385-386. Upstream reference verified present at v5.0.0-beta.62-14-gd1557a4b4.",
+      "status": "pending",
+      "assignee": "Architect",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789620187503,
+      "updatedAt": 1789620187503,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Produce a file:line-anchored inventory of the bundle's routing-relevant orchestration surface and classify every row as aligned / local-adaptation / gap against the pinned upstream reference /root/dshProj/oh-my-openagent @ d1557a4b4 (v5.0.0-beta.62), stating for each row whether it is already shipped or still open. The surface to cover at minimum: the session-start complexity gate (packages/mpd-agent-teams-plugin/lib/session-start.js), the policy schema and defaults (lib/index.js), the dispatch/scheduler and task-board surface (lib/scheduler.js, lib/tools.js, lib/state.js, lib/quality-gates.js, lib/members.js), the tool-name/capability surface (lib/tool-names.js, lib/capabilities.js), the manual entry points (lib/command.js, lib/profiles.js), and the shipped wiring (scripts/install-profile.mjs, packages/mpd-bundle/cordis.patch.yml).",
+      "inScope": [
+        "evidence/orchestration-audit/audit/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "scripts/**",
+        "docs/**",
+        "skills/**",
+        "presets/**"
+      ],
+      "acceptance": [
+        "Every inventory row carries a file:line anchor plus a verbatim snippet from the bundle tree; a row without an anchor is inadmissible.",
+        "Every row is labelled aligned | local-adaptation | gap, and each gap row names what upstream carries that the bundle does not (or the reverse), citing the upstream path.",
+        "The report states explicitly which routing surfaces are ALREADY SHIPPED and which are OPEN, and cites docs/upstream-parity-ledger.md (§3 gate, §7 open items, §8 verification state) for every open item.",
+        "Any remaining calibration item is recorded as a USER DECISION (ledger O1) and is NOT implemented or presented as a defect.",
+        "Read-only: no file in the bundle tree is written or modified; the only deliverable is the report under evidence/orchestration-audit/audit/."
+      ],
+      "deliverables": [
+        "evidence/orchestration-audit/audit/orchestration-surface.md"
+      ],
+      "nonGoals": [
+        "No implementation or repair in this task — it is analysis only.",
+        "No VENDOR_LOCK.json change and no upstream re-pin; the upstream tree is a read-only reference."
+      ],
+      "coverageOf": [
+        "audit the orchestration surface",
+        "align the bundle with upstream"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Independently verify the shipped routing change (autoRoute complexity gate) is live",
+      "description": "Independent second reading. The claim to falsify: the routing change (the decoupled complexity gate: sessionTeamPolicy.autoRoute default true, mode default off) is live in the shipped bundle, not merely present in source. Measure at least: (a) grep anchors in packages/mpd-agent-teams-plugin/lib/index.js:116/:122/:161 and lib/session-start.js:194/:289/:292/:467; (b) the shipped pins in scripts/install-profile.mjs:210 and packages/mpd-bundle/cordis.patch.yml:385-386; (c) the self-tests node scripts/install-profile.mjs --self-test and node skills/dsh-qa/scripts/session-start-team.mjs --self-test; (d) the plugin suite bun test packages/mpd-agent-teams-plugin; (e) the recorded two-sided lane verdict and its settled revision. Run each command for real and capture raw output; do not restate the audit's claims as your own evidence.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620192608,
+      "updatedAt": 1789620192608,
+      "kind": "verification",
+      "objective": "Independently re-measure, with falsifiable checks, whether the routing change is live in the shipped bundle: sessionTeamPolicy defaults (mode off + autoRoute true) in the plugin schema, the installer row and its self-test assertion, the bundle patch, and the two-sided session-start QA lane verdict on the settled revision; report per-check pass/fail with the exact command and its raw output.",
+      "inScope": [
+        "evidence/orchestration-audit/verify/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "scripts/**",
+        "docs/**",
+        "skills/**",
+        "presets/**"
+      ],
+      "acceptance": [
+        "Each check records the exact command, its raw output, and the sha256 of every file it measured.",
+        "The two-sided evidence is cited from skills/dsh-qa/scripts/session-start-team.mjs (frozen prompt sets at :28-37) and the newest COMPLETE evidence/dsh-qa/session-start-team/*/result.json, including its negative control (autoRoute=false -> 0 teams, no notice).",
+        "A negative control shows the key assertion FAILS when the shipped defaults are flipped in a sandbox copy; a check that cannot fail is rejected as vacuous.",
+        "Any divergence from the claim is reported as a failure with its anchor, never smoothed over.",
+        "Verification is measurement only: no bundle file is modified and no other task's evidence path is written."
+      ],
+      "verify": [
+        "node scripts/install-profile.mjs --self-test",
+        "node skills/dsh-qa/scripts/session-start-team.mjs --self-test",
+        "bun test packages/mpd-agent-teams-plugin",
+        "grep -n 'autoRoute' packages/mpd-agent-teams-plugin/lib/index.js packages/mpd-agent-teams-plugin/lib/session-start.js scripts/install-profile.mjs packages/mpd-bundle/cordis.patch.yml"
+      ],
+      "nonGoals": [
+        "No repair and no source edit — a failure is reported, never fixed here.",
+        "No re-run of the full QA board or the real-dsh boot lanes."
+      ],
+      "coverageOf": [
+        "implement the routing change (already shipped — verify it is live)"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Review the orchestration audit and its independent verification, and rule on whether any routing work remains",
+      "description": "Review gate over the audit (t1) and its independent verification (t2). The reviewer must judge whether the two together support the claim that the alignment work for the routing surface is complete and that nothing remains open except the user-decided calibration item (ledger O1). The reviewer has tool access and is expected to re-run spot checks rather than trust the reports. Findings go through update_task (structured findings); no bundle file is modified.",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t1",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620197729,
+      "updatedAt": 1789620197729,
+      "kind": "review",
+      "round": 1,
+      "objective": "Judge whether t1's orchestration-surface audit and t2's independent re-measurement jointly support the verdict that the routing change is already shipped and measured, and that no routing-surface work remains open other than the calibration item reserved for the user (docs/upstream-parity-ledger.md §7 O1).",
+      "inScope": [
+        "evidence/orchestration-audit/review/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "scripts/**",
+        "docs/**",
+        "skills/**",
+        "presets/**"
+      ],
+      "acceptance": [
+        "States explicitly whether an implementation task is needed; if one is, it names the file and the missing behaviour, and if none is, it says so with the reason (the routing change is shipped and measured).",
+        "Spot-checks at least two of the verification's raw commands by re-running them and reports any mismatch."
+      ],
+      "nonGoals": [
+        "No repair, no source edit, no re-planning of the wave.",
+        "No re-measurement of surfaces outside t1's declared inventory."
+      ],
+      "reviewedTaskId": "t1",
+      "coverageOf": [
+        "align the bundle with upstream",
+        "implement the routing change"
+      ]
+    }
+  ],
+  "taskSeq": 3
+}

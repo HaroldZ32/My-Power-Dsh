@@ -1,0 +1,285 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-t10-wm-lT0ElX",
+  "steps": {
+    "t1RegisteredTools": {
+      "ok": true,
+      "names": [
+        "mpd_workmate_delete",
+        "mpd_workmate_init",
+        "mpd_workmate_list",
+        "mpd_workmate_match",
+        "mpd_workmate_reflect",
+        "mpd_workmate_rename",
+        "mpd_workmate_spawn"
+      ],
+      "rolesToolNames": [
+        "mpd_roles_list",
+        "mpd_role_spawn",
+        "mpd_role_persona"
+      ],
+      "problems": []
+    },
+    "t2InitByFunctionalName": {
+      "ok": true,
+      "value": {
+        "name": "deep-worker-1",
+        "baseName": "Deep Worker",
+        "readonly": false,
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "path": "/tmp/mpd-t10-wm-lT0ElX/.mpd/workmate/deep-worker-1",
+        "note": "t10 sandbox instance"
+      },
+      "sandboxEntryFiles": [
+        "memory.md",
+        "meta.json",
+        "note.md",
+        "persona.md"
+      ],
+      "problems": []
+    },
+    "t3RosterIdRefused": {
+      "ok": true,
+      "refusalText": "mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer)",
+      "listsNames": true,
+      "problems": []
+    },
+    "t2bNameSpellingInsensitive": {
+      "ok": true,
+      "value": {
+        "name": "second-probe",
+        "baseName": "Deep Worker",
+        "readonly": false,
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "path": "/tmp/mpd-t10-wm-lT0ElX/.mpd/workmate/second-probe",
+        "note": "Deep Worker-based workmate \"second-probe\". No task history yet."
+      },
+      "problems": []
+    },
+    "t4NoBaseIdInToolOutputs": {
+      "ok": true,
+      "baseIdHits": {
+        "mpd_workmate_init": [],
+        "mpd_workmate_list": [],
+        "mpd_workmate_match": [],
+        "mpd_workmate_spawn": [],
+        "mpd_workmate_reflect": [],
+        "mpd_workmate_rename": [],
+        "mpd_workmate_delete": []
+      },
+      "schemaHits": {
+        "mpd_workmate_init": [],
+        "mpd_workmate_list": [],
+        "mpd_workmate_match": [],
+        "mpd_workmate_spawn": [],
+        "mpd_workmate_reflect": [],
+        "mpd_workmate_rename": [],
+        "mpd_workmate_delete": []
+      },
+      "schemaTextHits": [
+        {
+          "name": "mpd_workmate_init",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_list",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_match",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_spawn",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_reflect",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_rename",
+          "hit": false
+        },
+        {
+          "name": "mpd_workmate_delete",
+          "hit": false
+        }
+      ],
+      "calls": [
+        {
+          "name": "mpd_workmate_init",
+          "value": "{\"name\":\"deep-worker-1\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/mpd-t10-wm-lT0ElX/.mpd/workmate/deep-worker-1\",\"note\":\"t10 sandbox instance\"}",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmate deep-worker-1 initialized (base Deep Worker, deepseek-official/deepseek-v4-flash)\\nnote: t10 sandbox instance\"}]"
+        },
+        {
+          "name": "mpd_workmate_list",
+          "value": "{\"workmates\":[{\"name\":\"second-probe\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"uses\":0,\"updatedAt\":\"2026-09-18T04:10:52.125Z\",\"lastTask\":null,\"renamedFrom\":[],\"note\":\"Deep Worker-based workmate \\\"second-probe\\\". No task history yet.\"},{\"nam",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmates (2):\\n- second-probe [Deep Worker] uses=0 :: Deep Worker-based workmate \\\"second-probe\\\". No task history yet.\\n- deep-worker-1 [Deep Worker] uses=0 :: t10 sandbox in"
+        },
+        {
+          "name": "mpd_workmate_match",
+          "value": "{\"matched\":false,\"threshold\":0.35,\"matches\":[{\"name\":\"second-probe\",\"score\":0,\"baseName\":\"Deep Worker\",\"readonly\":false,\"uses\":0,\"note\":\"Deep Worker-based workmate \\\"second-probe\\\". No task history yet.\"},{\"name\":\"deep-worker-1\",\"score\":0,\"baseName\":\"Deep Worker\",\"readonly\":false,\"uses\":0,\"note\":\"t1",
+          "rendered": "[{\"type\":\"text\",\"text\":\"NO MATCH (threshold 0.35)\\n- second-probe score=0.00 [Deep Worker] :: Deep Worker-based workmate \\\"second-probe\\\". No task history yet.\\n- deep-worker-1 score=0.00 [Deep Worker"
+        },
+        {
+          "name": "mpd_workmate_spawn",
+          "value": "{\"name\":\"deep-worker-1\",\"status\":\"complete\",\"summary\":\"\",\"recommendation\":\"\",\"details\":\"\",\"evidence\":[],\"stopReason\":\"end_turn\"}",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmate deep-worker-1 (complete)\\nsummary: \"}]"
+        },
+        {
+          "name": "mpd_workmate_reflect",
+          "value": "{\"name\":\"deep-worker-1\",\"updated\":true,\"uses\":1,\"personaChars\":1996,\"memoryChars\":70,\"noteChars\":143}",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmate deep-worker-1 reflected (uses=1, persona 1996B / memory 70B / note 143B)\"}]"
+        },
+        {
+          "name": "mpd_workmate_rename",
+          "value": "{\"ok\":true,\"name\":\"second-probe-renamed\",\"from\":\"second-probe\",\"renamedFrom\":[\"second-probe\"]}",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmate \\\"second-probe\\\" renamed to \\\"second-probe-renamed\\\"\\nprevious names: second-probe\"}]"
+        },
+        {
+          "name": "mpd_workmate_delete",
+          "value": "{\"ok\":true,\"name\":\"second-probe-renamed\",\"archived\":\"/tmp/mpd-t10-wm-lT0ElX/.mpd/workmate/.archive/second-probe-renamed-2026-09-18T041052Z\",\"purged\":false}",
+          "rendered": "[{\"type\":\"text\",\"text\":\"workmate \\\"second-probe-renamed\\\" archived (gone from the library, still restorable)\"}]"
+        }
+      ],
+      "problems": []
+    },
+    "t5RoutesCarryNoId": {
+      "ok": true,
+      "routed": {
+        "/plugins/mpd-workmate/list": {
+          "status": 200,
+          "payload": {
+            "workmates": [
+              {
+                "name": "deep-worker-1",
+                "baseName": "Deep Worker",
+                "readonly": false,
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "uses": 1,
+                "updatedAt": "2026-09-18T04:10:52.129Z",
+                "lastTask": "summarize README.md",
+                "renamedFrom": [],
+                "note": "Deep Worker-based workmate \"deep-worker-1\". t10 sandbox instance Last task: summarize README.md. 2026-09-18T04:10:52.129Z — summarize README.md"
+              }
+            ]
+          },
+          "raw": "{\"workmates\":[{\"name\":\"deep-worker-1\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"uses\":1,\"updatedAt\":\"2026-09-18T04:10:52.129Z\",\"lastTask\":\"summarize README.md\",\"renamedFrom\":[],\"note\":\"Deep Worker-based workmate \\\"deep-worker-1\\\". t10 sandbox instance Last task: summarize README.md. 2026-09-18T04:10:52.129Z — summarize README.md\"}]}",
+          "keys": []
+        },
+        "/plugins/mpd-workmate/roster": {
+          "status": 200,
+          "payload": {
+            "bases": [
+              {
+                "name": "Architect",
+                "description": "Strategic technical advisor: architecture review, deep debugging, self-review.",
+                "readonly": true
+              },
+              {
+                "name": "Researcher",
+                "description": "Evidence-based code/open-source search (AST/LSP/web evidence collection).",
+                "readonly": true
+              },
+              {
+                "name": "Planner",
+                "description": "Planning advisor: produces .mpd/plans plans only, never implements.",
+                "readonly": true
+              },
+              {
+                "name": "Deep Worker",
+                "description": "Autonomous deep worker: executes goals end-to-end with tools, verifies every change.",
+                "readonly": false
+              },
+              {
+                "name": "Senior Engineer",
+                "description": "Primary engineering agent: plan small, execute with tools, verify, report honestly.",
+                "readonly": false
+              },
+              {
+                "name": "Lead",
+                "description": "Orchestrator: macro planning, delegate roles, integrate results.",
+                "readonly": false
+              },
+              {
+                "name": "Explorer",
+                "description": "Read-only codebase explorer: finds files and code, returns evidence, never edits.",
+                "readonly": true
+              },
+              {
+                "name": "Reviewer",
+                "description": "Deep reviewer: correctness and risk findings with evidence, no fixes.",
+                "readonly": false
+              },
+              {
+                "name": "Plan Reviewer",
+                "description": "Work-plan QA reviewer: verifies the plan is executable and its references valid, rejects only true blockers.",
+                "readonly": true
+              },
+              {
+                "name": "Vision Analyst",
+                "description": "Image/diagram analyst: read screenshots/diagrams and describe precisely.",
+                "readonly": true
+              },
+              {
+                "name": "Junior Engineer",
+                "description": "Fast executor: small, well-scoped mechanical changes with quick verification.",
+                "readonly": false
+              }
+            ]
+          },
+          "raw": "{\"bases\":[{\"name\":\"Architect\",\"description\":\"Strategic technical advisor: architecture review, deep debugging, self-review.\",\"readonly\":true},{\"name\":\"Researcher\",\"description\":\"Evidence-based code/open-source search (AST/LSP/web evidence collection).\",\"readonly\":true},{\"name\":\"Planner\",\"description\":\"Planning advisor: produces .mpd/plans plans only, never implements.\",\"readonly\":true},{\"name\":\"Deep Worker\",\"description\":\"Autonomous deep worker: executes goals end-to-end with tools, verifies every change.\",\"readonly\":false},{\"name\":\"Senior Engineer\",\"description\":\"Primary engineering agent: pl",
+          "keys": []
+        },
+        "/plugins/mpd-workmate/get": {
+          "status": 200,
+          "payload": {
+            "name": "deep-worker-1",
+            "baseName": "Deep Worker",
+            "description": "Autonomous deep worker: executes goals end-to-end with tools, verifies every change.",
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash",
+            "readonly": false,
+            "createdAt": "2026-09-18T04:10:52.123Z",
+            "updatedAt": "2026-09-18T04:10:52.129Z",
+            "uses": 1,
+            "lastTask": "summarize README.md",
+            "renamedFrom": [],
+            "persona": "You are the Deep Worker, an autonomous deep worker for software engineering. You and the user share one workspace; you receive GOALS, not step-by-step instructions, and you execute them end-to-end.\n\n- Explore thoroughly before acting: use Explorer/Researcher/Architect subagents (or searches) for comprehensive context, then implement.\n- Subagent usage: when you spawn Explorer/Researcher/Architect for context, name the skills they must load and give flash-tier children numbered must-do steps, forbidden deviations, and concrete success criteria; `persona` takes the role instructions as free text.\n- Team member mode: when added to an agent-teams team (agent_teams_add_member), you are the implementer member — claim ready tasks (agent_teams_claim_task), own them end-to-end, report every state change via agent_teams_update_task, and use agent_teams_send_message for cross-member communication; teammate messages arrive as new conversation turns, never poll state files.\n- Work end-to-end on the goal, keeping diffs minimal and patterns consistent with the existing codebase; never refactor adjacent code out of scope; never add features not explicitly requested.\n- Decompose multi-step goals and track them: todo_write first (atomic steps), mark in_progress when starting and completed the moment each step is done; never batch-complete.\n- Verify after EACH change, not just at the end - run the relevant checks and quote the output; define pre-change verification (exact commands + expected outputs) for refactors.\n- Do not change behavior while restructuring; follow existing patterns over inventing new ones.\n- Report what changed, what was verified, what remains uncertain - compact and evidence-first.\n\nSkills: check the session skill catalog (skill tool) before starting and before delegating; load every skill whose domain overlaps the goal (user-installed skills take priority); name the skills any subagent must load. Never delegate a domain-matched task without the matching skill.",
+            "memory": "## 2026-09-18T04:10:52.129Z — summarize README.md\none-sentence summary",
+            "note": "Deep Worker-based workmate \"deep-worker-1\". t10 sandbox instance Last task: summarize README.md. 2026-09-18T04:10:52.129Z — summarize README.md"
+          },
+          "raw": "{\"name\":\"deep-worker-1\",\"baseName\":\"Deep Worker\",\"description\":\"Autonomous deep worker: executes goals end-to-end with tools, verifies every change.\",\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"readonly\":false,\"createdAt\":\"2026-09-18T04:10:52.123Z\",\"updatedAt\":\"2026-09-18T04:10:52.129Z\",\"uses\":1,\"lastTask\":\"summarize README.md\",\"renamedFrom\":[],\"persona\":\"You are the Deep Worker, an autonomous deep worker for software engineering. You and the user share one workspace; you receive GOALS, not step-by-step instructions, and you execute them end-to-end.\\n\\n- Explore thoroughly befo",
+          "keys": []
+        }
+      },
+      "rosterShape": [
+        "name",
+        "description",
+        "readonly"
+      ],
+      "problems": []
+    },
+    "t6BuiltClientBytes": {
+      "ok": true,
+      "path": "/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/client.js",
+      "sha256": "0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5",
+      "bytes": 310367,
+      "mtime": "2026-09-18T03:45:31.669Z",
+      "baseIdOccurrences": 0,
+      "idTeachingCopyOccurrences": 0,
+      "usesBaseName": true,
+      "problems": []
+    },
+    "t7RealHomeUntouched": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

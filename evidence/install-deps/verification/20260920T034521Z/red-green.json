@@ -1,0 +1,27 @@
+{
+  "task": "t5 RED/GREEN boundary (controlled pair)",
+  "runDir": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z",
+  "startedAt": "2026-09-20T04:11:21Z",
+  "endedAt": "2026-09-20T04:11:52Z",
+  "red": {
+    "id": "R1-prefix-controlled-red",
+    "rows": 0,
+    "route": 404,
+    "served": false,
+    "bootHealthy": true,
+    "guard": null
+  },
+  "green": {
+    "id": "R2-shipped-controlled-green",
+    "rows": 1,
+    "route": 405,
+    "served": true,
+    "bootHealthy": true,
+    "guard": {
+      "decision": "ENABLED",
+      "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+    }
+  },
+  "boundaryProven": true,
+  "allChecksOk": true
+}

@@ -1,0 +1,38 @@
+$ bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 48641,
+      "renderedBytes": 48945,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    }
+  ]
+}
+[exit=0]
+
+$ bun run verify:docs
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+[exit=0]
+
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[exit=0]
+
+# CORRECTION to the block above: the '[exit=0]' after verify:docs was tail's exit code (piped), not the gate's. True run:
+$ bun run verify:docs
+verify:docs exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+$ sha256sum AGENTS.md   # settled re-check 2026-09-17T03:41:51Z
+a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  AGENTS.md
+48641 AGENTS.md

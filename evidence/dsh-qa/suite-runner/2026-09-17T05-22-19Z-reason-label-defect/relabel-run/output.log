@@ -1,0 +1,5 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/relabel-run
+[mpd-qa:(only)] PASS case=agent-teams-adopt evidence=evidence/plan-c/c1-team/2026-09-17T05-30-02.318Z/web.log log=evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/relabel-run/lanes/agent-teams-adopt.log ms=77649
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/relabel-run
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

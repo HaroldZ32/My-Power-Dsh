@@ -1,0 +1,6 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170627Z-scene/raw/ws/fault-vohg06/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170627Z-scene/raw/ws/fault-vohg06/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260915T170627Z-scene/raw/ws/fault-vohg06/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=applied scene=none
+[team-watchdog-scene] fixture case escalate-3x: ok

@@ -1,0 +1,86 @@
+{
+  "task": "t23",
+  "kind": "review",
+  "round": 1,
+  "object": "wave-2b lane C (t17) — T-79's decisive host-restart test + the T-25 / T-41 / Addendum-A instrument legs",
+  "done_when": "evidence/requirements/wave2b-laneC/20260917T1416Z-wave2b-laneC-acceptance.md",
+  "verdict": "needs_revision",
+  "verdict_reason": "the decisive test PASSES on substance (re-run by me: identical four-leg matrix, competent fixture, honest wording), but ONE count in the record's revision-pin table does not reproduce at its own revision — 89 live region ids where the live count is 88, reproducible only as a line count of the registry file's own header comment. Fix is one line; nothing in the verdict, arms, census or outcome wording depends on it.",
+  "pin_settled": true,
+  "pins": {
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4b824797195996fa",
+    "skills/dsh-qa/scripts/lib/session-evidence.mjs": "73d06d44dcb781df",
+    "scripts/mpd-bg.mjs": "0b294972b05f5e4e",
+    "scripts/mpd-doctor.mjs": "21b1db27251d8d44",
+    "skills/dsh-qa/scripts/team-watchdog-config.mjs": "f9f03ca7e048e207",
+    "agent-references/agent-teams-deltas.md": "a2120d45fca43ef1"
+  },
+  "decisive_test": {
+    "verified_as_run": true,
+    "my_rerun": "node ./evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t79-decisive-driver.mjs --out evidence/review/wave2b-laneC/20260917T144500Z/repro-t79",
+    "exit": 0,
+    "legs_mine": {
+      "control_pending_current_tree": { "tickets": 1, "deliveries": 1 },
+      "pure_terminal_current_tree": { "tickets": 0, "deliveries": 0 },
+      "recorded_race_current_tree": { "tickets": 1, "deliveries": 0, "namedDeclines": 1 },
+      "recorded_race_region_stripped": { "tickets": 1, "deliveries": 1 }
+    },
+    "legs_lane": {
+      "control_pending_current_tree": { "tickets": 1, "deliveries": 1 },
+      "pure_terminal_current_tree": { "tickets": 0, "deliveries": 0 },
+      "recorded_race_current_tree": { "tickets": 1, "deliveries": 0, "namedDeclines": 1 },
+      "recorded_race_region_stripped": { "tickets": 1, "deliveries": 1 }
+    },
+    "outcome_string_identical": true,
+    "discriminator_reproduced": { "equalityHalfHolds": false, "stored_attempt_id_never_on_ticket": true, "fresh_ids_each_run": true },
+    "fixture_competent": "the control and the guard-removed leg BOTH deliver (1 each), so the zeros are readings; the compose path is scheduler.kickMember; the hook anchor is asserted unique before injection",
+    "wrong_reason_fixtures_used": false,
+    "host_restart_precondition_real": "evidence-local sandbox {ws,dsh,home} on disk; restart.moment 2026-09-17T14:28:28.301Z; raw job log T79-HOLDING pid=28 / T79-DRIVER-EXIT=0; my rerun is itself a new process importing fresh"
+  },
+  "arms_observed_red_by_me": [
+    { "arm": "guard-removed red side (terminal-dispatch-recheck stripped)", "reading": "delivers 1 where the shipped tree refuses (0 + named decline)" },
+    { "arm": "Addendum A --mutant restart-needed", "reading": "DETECTED (the assertion reddened); liveWithoutRestart false — liveness LOST; KNOBS DIVERGE warnSilenceMs live=90000 file=900000" },
+    { "arm": "T-25 regressed reader (first frame only)", "reading": "returns the naive reading records=1 / events=0; driver asserts regressionToSingleFrameWouldRedden=true" },
+    { "arm": "T-41 absent-binary line REMOVED", "reading": "negative_control_reddened=true with four named failing checks" },
+    { "arm": "T-79 immutability (same --out twice)", "reading": "REFUSED … already exists (immutable evidence), exit 3" }
+  ],
+  "legs_reproduced": {
+    "t25": "same store, byte/mtime stable (sha256Before==sha256After=d82ef35d…): naive 1 record / 0 events; regressed identical; shipped 26 records / 25 events / 10 frames; corpus 10 found / 10 multi-frame / 10 naive-zero",
+    "t41": "baseline exit 0 verdict=OK; absent exit 2 verdict=DEGRADED missingOPTIONAL=ast-grep with ast-grep [OPTIONAL]: MISSING ⇒ degrades … and every other entry ok",
+    "addendumA": "--live PASS (mounted=90000 file=900000 sameInstance=900000 fileApplied=true restartRequired=false) + --mutant DETECTED",
+    "watchdog_suite": "bun test ./packages/mpd-team-watchdog-plugin → 139 pass / 0 fail / Ran 139 tests across 13 files"
+  },
+  "forbidden_token_census": {
+    "authority": "captain log A-28 + register row T-79",
+    "lane_own_artifacts_and_dir": { "inert in-process": 0, "consistent with a stale host": 0, "bare token (inert)": 2 },
+    "where_the_two_bare_hits_live": ["evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/raw/t41-baseline.txt (1, third-party doctor output)", "evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/raw/t41-pinned.txt (1, third-party doctor output)"],
+    "verdict": "absent from every artifact the lane authored, exactly as the lane disclosed (1+1 in the verbatim third-party captures); the lane's own prose spells the token split"
+  },
+  "clause_4": {
+    "verify_re_derives_another_lane_value": false,
+    "forbidden_aggregates_run": "none (listed by name as not-run)",
+    "dist_written": "none — find packages/*/dist dist/mpd-package -newermt 2026-09-17T14:15Z -type f → empty",
+    "changed_paths_all_inside_lane_evidence_dir": true
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "problem": "The revision-pin table reports `agent-references/agent-teams-deltas.md` a2120d45fca43ef1 with '89 live unique `mpd-delta <id>` region ids (re-counted at this moment)'. At those exact bytes the live count is 88 by three independent predicates (registry entries 88; `node scripts/patch-agent-teams-fixes.mjs --check` → '88 mpd delta region(s) across 9 adopted file(s)'; the deltas doc's own derived sentence 'carried 88/9 vs derived 88/9'). No live predicate yields 89: the only 89 is the LINE count of `packages/mpd-agent-teams-plugin/lib/mpd-deltas.js` (`grep -c '//#region mpd-delta'` = 89), which counts the file's own header comment on line 4 ('Generated from the `//#region mpd-delta ...` markers …') as a region. Both files' mtimes (14:22:50Z, 14:26:28Z) precede the lane's write moment (~14:33Z), so the number was already wrong when counted, not merely stale.",
+      "requiredFix": "Change the value to 88, or name the predicate and note that the registry file's own header comment is not a region — a one-line edit. The acceptance's §6 count rule (counts are re-taken at the write, never inherited) is the rule this reading violates; no conclusion in the record depends on it.",
+      "file": "evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t17-record.md",
+      "line": 16
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "note": "the liveness table's subject (pid 27 = the pidfile = the managed job's `sh -c` top process) differs from the `restart` block's subject (pid 28 = the driver). Both readings are faithful; one clause naming each subject would close the gap. Mechanism settled by me: `node ./scripts/mpd-bg.mjs run --pid <f> -- node -e …` → 'started pid=54', pidfile=54, CHILD_SELF_PID=54, i.e. the pidfile is the spawned process and `-- sh -c` interposes the shell." },
+    { "id": "O2", "severity": "low", "note": "ADDENDUM B §4 asks for the two-verdict shape; the record carries `outcomeReadingBothWays` (observed / moves / doesNotMove / wordingAuthority) and names the unmeasured routes in §G, but does not add a separate 'unobserved branch' entry with per-reading matcher expectations. The frozen body's own requirement ('states the outcome AND what it does and does not move') IS met." }
+  ],
+  "not_verified": [
+    "the host PROCESS: nothing observes what a long-lived dsh host has loaded; `reload-check` cannot see it, and the decisive test's 'restart' is a new process importing the tree fresh — my rerun inherits that bound",
+    "a full booted-dsh team lifecycle, and the other wake routes (idle edge, approval/spawn-time dispatch, memberSelections, a stale on-disk snapshot read outside the lock) — the residual stays UNRESOLVED",
+    "the register's replay count (8 MEASURED EVENTS) — not re-derived; the record warns it moves",
+    "no integration aggregate was run; nothing was written outside evidence/review/wave2b-laneC/**"
+  ],
+  "evidence_dir": "evidence/review/wave2b-laneC/20260917T144500Z/"
+}

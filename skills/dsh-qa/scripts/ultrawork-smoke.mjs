@@ -9,6 +9,8 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, 
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK2 = "Run mpd_ultrawork (light tier, plan=false, maxRounds=2) on: create a file utils.txt with three lines alpha, beta, gamma. Return the status, rounds, criteria states and the state file path."
@@ -30,7 +32,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-c", "c2-ultrawork", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-c2-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -43,7 +45,7 @@ async function runReal() {
   mkdirSync(ws, { recursive: true })
   mkdirSync(join(ws, ".mpd"), { recursive: true })
   writeFileSync(join(ws, ".mpd", "mpd.jsonc"), JSON.stringify({ ulw: { maxRounds: 2 } }))
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   const steps = {}
 
   console.log("[ultrawork-smoke] installing...")
@@ -52,7 +54,8 @@ async function runReal() {
   console.log("[ultrawork-smoke] install done=" + steps.installer.ok)
 
   console.log("[ultrawork-smoke] live run starting...")
-  const run = spawnSync("dsh", ["--profile", "mpd-headless", TASK2], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  const runSpec = dshCommand(["--profile", "mpd-headless", TASK2], env)
+  const run = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (run.stdout || "") + (run.stderr || "")
   steps.live = { ok: run.status === 0, exit: run.status }
   console.log("[ultrawork-smoke] live done=" + steps.live.ok + " bytes=" + out.length)

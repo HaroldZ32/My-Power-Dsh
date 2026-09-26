@@ -1,0 +1,48 @@
+=== verify-vendor ===
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+verify-vendor exit=0
+
+=== verify:docs ===
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 exempt=15 — PASS
+verify-docs exit=0
+
+=== heartbeat --self-test ===
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-dispatch: the mutated observation FAILED its own check(s) ["H5"] — a claim of a pre-dispatch stamp (W-9)
+[self-test] PASS — team-watchdog-heartbeat (7 checks, 0 failed)
+self-test exit=0
+=== fault --self-test ===
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (10 checks, 0 failed)
+self-test exit=0
+=== scene --self-test ===
+[self-test] ok   negative:log-shorter: the mutated observation FAILED its own check(s) ["S7"] — an incident log with fewer records than the snapshot claims
+[self-test] ok   negative:pointer: the mutated observation FAILED its own check(s) ["S9"] — a latest.json pointer that is not the newest scene
+[self-test] ok   negative:fresh-process: the mutated observation FAILED its own check(s) ["S1"] — a read that was not made from a fresh process
+[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)
+self-test exit=0
+=== config --self-test ===
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+self-test exit=0
+=== notify --self-test ===
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+self-test exit=0

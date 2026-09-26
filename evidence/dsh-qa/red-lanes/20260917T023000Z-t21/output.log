@@ -1,0 +1,99 @@
+== t21 — lane C3: remaining red lanes, immutable-by-default evidence, one product formula ==
+recorded 2026-09-17T02:40:37Z
+
+== artifact hashes ==
+a59b89ccfdf6fb09b86e8957b8f6913038cc9c71440fa21736d7313470818951  skills/dsh-qa/scripts/workmate-library.mjs
+354ecaf1345f76aec4340e794c8122e99e6b124731c60386a469a07699a79753  skills/dsh-qa/scripts/extension-template.mjs
+5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976  skills/dsh-qa/scripts/lib/immutable-output.mjs
+5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83  evidence/extensions/docs-claims/check-citations.mjs
+eaf7703d38dc254e5af97d5623ea951a937e7a9b1d6f915d64855a1acb04c5af  evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs
+
+== 1) workmate-library: real lane ==
+tail: cannot open 'evidence/dsh-qa/red-lanes/20260917T023000Z-t21/workmate-library.log' for reading: No such file or directory
+  [exit 0 = PASS]
+
+== 1b) workmate-library: --self-test ==
+[workmate-library self-test] ok: 19 checks
+  [exit 0]
+
+== 2) session-start-team: predicate measurement + the lane's own verdict ==
+[prompt-predicate] predicate = consumeExplicitFlag + evaluateComplexityGate (lib/session-start.js)
+  simple  #0 expectedTeams=0 explicitFlag=false signals=0 :: "Reply with exactly: hello-ok"
+  simple  #1 expectedTeams=0 explicitFlag=false signals=0 :: "What does the git-master skill do? Answer in one sentence."
+  simple  #2 expectedTeams=0 explicitFlag=false signals=0 :: "Rename the variable `foo` to `bar` in src/util.ts and run its "
+  complex #0 expectedTeams=1 explicitFlag=false signals=1 :: "Align the bundle with upstream: audit the orchestration surfac"
+  complex #1 expectedTeams=1 explicitFlag=true signals=1 :: "team: fix the flaky test"
+  complex #2 expectedTeams=1 explicitFlag=false signals=1 :: "1. Read the patch file\n2. Audit the gates\n3. Implement the cha"
+[prompt-predicate] ok: the frozen sets are two-sided under the live predicate — every COMPLEX prompt triggers (>=1 satisfied C, or the consumed explicit flag), every SIMPLE prompt does not
+  [exit 0]
+  lane evidence 2026-09-17T01-39-23.411Z -> ok=true complexTeams=[1,1,1] simpleTeams=[0,0,0] complexNotices=[true,true,true] negativeControl={"ok":true,"teams":0,"notice":false,"disarmed":true}
+
+== 3) T-53 immutability on both named drivers ==
+-- debranding --self-test:
+tail: cannot open 'evidence/dsh-qa/red-lanes/20260917T023000Z-t21/debranding-selftest.log' for reading: No such file or directory
+-- debranding: explicit EXISTING target refused:
+grep: evidence/dsh-qa/red-lanes/20260917T023000Z-t21/debranding-refusal.log: No such file or directory
+   [exit 3]
+-- check-citations: explicit EXISTING target refused:
+grep: evidence/dsh-qa/red-lanes/20260917T023000Z-t21/docs-claims-refusal.log: No such file or directory
+   [exit 3]
+-- check-citations: plain run writes a FRESH timestamped dir and leaves the canonical files alone:
+grep: evidence/dsh-qa/red-lanes/20260917T023000Z-t21/check-citations.log: No such file or directory
+   canonical result.json/output.log byte-identical: YES (md5 of both before/after compared in the run above)
+
+== 4) T-56: extension-template imports the product formula ==
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+  [bun exit 0]
+  [node exit 0]
+  product export check: publicToolName("srv","raw") = mcp__srv__raw
+
+== 5) the 4th verify command: node evidence/extensions/docs-claims/check-citations.mjs ==
+-- CROSS-LANE RED (not mine, not the driver's): the canonical pre-wave record was 14/14 with 0 failures (result.json mtime 16:24 yesterday); the drift appeared after packages/mpd-ext-plugin/src/index.ts was edited 09:25 today and docs/extension-{authoring-guide,adaptation-report}.md at 09:30/09:36:
+  FAIL citations:docs/extension-adaptation-report.zh-CN.md — 45 citation(s) (checked 45: path 30, dir 15, command 0; pending 0, illustrative 0), 4 unresolved: doc line 180: the cited line/range does not carry the claim `resolveAdapter` (packages/mpd-ext-plugin/src/index.ts:102) | doc line 208: the cited line/range does not carry the claim `../packages/mpd-ext-plugin/src/registry.ts` (scripts/mpd
+  FAIL content:anchors — 30 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 2 anchor(s) without a content claim
+[docs-claims] 6/12 checks passed, 6 failed, 249 citation(s) resolved, 0 pending, 4 illustrative
+
+== UPDATE 2026-09-17T02:58:22Z — a SECOND lane defect found and fixed, and verify4 recovering ==
+
+1) workmate-library: the FIRST reproduction of the four verify commands caught a SECOND, pre-existing defect in the same lane (not the isolation one):
+   the  step asserted the INITIAL note keywords (),
+   but the product REGENERATES note.md in mpd_workmate_reflect (autoNote) — so the assertion asserted the MODEL's wording.
+   MEASURED with the SAME lane code: 02:31Z ok=true (the regenerated note happened to keep "Verilog counter specialist"),
+   02:47Z ok=false (it did not) → a flaky assertion, i.e. a lane defect, not a product defect.
+   FIX: assert the product's durable bookkeeping instead — four files exist, the regenerated note is non-empty,
+   memory.md is non-empty (reflect appended), and meta.uses advanced past init's 0. Raw logs: verify1-runA.log (exit 0),
+   verify1-runB.log (exit 0, same command), and the failing reproduction verify1-workmate-library-real.log (exit 1).
+
+2) F1/T-69 OBSERVATION (no code changed, per the captain boundary ruling):
+   8 lanes spawn  DIRECTLY through their own runSync/spawnSync helpers —
+   agent-teams-adopt, bundle-lifecycle, mount-assert, relocate-smoke, session-start-team, team-route-rewire,
+   workmate-library, workmate-team-member — and NO file under skills/ references the repo wrapper scripts/dump-config.mjs,
+   so none of them prints the composition-only banner. mount-assert's own header even says the rows are "mounted" while it only
+   COMPOSES them, which is exactly F1's mislabel. Confirmed as registered T-69 (wave 2): nothing here was changed for it.
+
+3) verify4 (docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+repo /root/dshProj/my-power-dsh
+
+  ok   citations:docs/extension-authoring-guide.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  FAIL citations:EXTENSIONS-FOR-AGENTS.md — 56 citation(s) (checked 52: path 34, dir 6, command 12; pending 0, illustrative 4), 3 unresolved: doc line 24: the cited line/range does not carry the claim `EXPECTED_TOOLS` (packages/mpd-ext-plugin/src/index.ts:548) | doc line 224: packages/mpd-ext-plugin/dist/validator.js does not exist | doc line 225: src does not exist
+  ok   citations:docs/extension-adaptation-report.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — 12 illustrative citation(s) (extension-root-relative, not repo paths): docs/extension-authoring-guide.md:134 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.md:223 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.md:235 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:118 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:199 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.zh-CN.md:210 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | EXTENSIONS-FOR-AGENTS.md:64 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths | EXTENSIONS-FOR-AGENTS.md:89 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:90 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:91 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths | docs/extension-adaptation-report.md:419 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-adaptation-report.zh-CN.md:220 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path
+  ok   content:anchors — 40 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+  ok   guide-heading-tree — 10 EN heading(s) vs 10 zh-CN heading(s), levels identical
+  ok   split-headings — no heading text is shared between the human guide and the agent contract
+  ok   split-prose — no prose line (>= 60 chars, outside code fences) is reused
+  ok   skeleton-validates — the extracted manifest + the template's four assets: validate exit 0;   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+[docs-claims] evidence -> evidence/extensions/docs-claims/runs/run-2026-09-17T02-58-23.091Z
+
+[docs-claims] 11/12 checks passed, 1 failed, 246 citation(s) resolved, 0 pending, 12 illustrative): was 6/12, NOW 11/12 — docs-gate-engineer is
+   mid-refresh. The single remaining failure is  (3 unresolved): doc line 24 →
+    @ packages/mpd-ext-plugin/src/index.ts:548; doc line 224 → packages/mpd-ext-plugin/dist/validator.js;
+   plus one more line. t21 stays OPEN until it is 12/12 or the captain amends the verify list.
+
+4) FINAL skills fingerprint UPDATED (the workmate-library assert fix landed after the first announcement):
+   322 files / 4e679a5e7e0d952a2572d673828b10ab24cf25166684c2afc2ebc9dbc4bc5028 (LF-normalized).
+
+NOTE: the three preceding lines were mangled by shell quoting during an append. The authoritative record of that update is update-second-defect-and-f1.txt in this directory (a second lane defect found+fixed; the F1/T-69 observation; verify4 6/12 -> 11/12; updated final fingerprint 322 / 4e679a5e7e0d952a2572d673828b10ab24cf25166684c2afc2ebc9dbc4bc5028).

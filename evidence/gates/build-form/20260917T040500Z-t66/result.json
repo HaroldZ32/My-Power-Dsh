@@ -1,0 +1,75 @@
+{
+  "task": "t66",
+  "kind": "repair",
+  "sourceTaskId": "t60",
+  "sourceFindingIds": ["t60-path-comment-count-26-is-not-one-builds-count"],
+  "coverageOf": ["T-67"],
+  "agent": "docs-gate-engineer",
+  "attemptId": "e08f5a5e-b791-4192-8956-db46bdc34594",
+  "date": "2026-09-17T03:42Z",
+  "verdict": "pass",
+  "headline": "§6 now states 13 path comments per build (11 distinct module paths), ALL 13 differing between the two forms, and names the diff-side 26 (13 removed + 13 added); the artifact-wide 26 (index.js + validator.js, 13 each) is named in the evidence. Words only, one span; the reverse substitution reproduces the recorded pre-edit whole-file sha exactly.",
+  "measurements": {
+    "one_build_comments": {
+      "index_js_comment_lines": 13,
+      "index_js_lines_starting_with_comment": 13,
+      "distinct_module_paths": 11,
+      "duplicates": ["packages/mpd-ext-plugin/src/registry.ts", "packages/mpd-ext-plugin/src/mcp.ts"],
+      "sdk_js_comment_lines": 1,
+      "grep": "grep -cE '^// .*\\.(ts|js)$' packages/mpd-ext-plugin/dist/index.js → 13; …/dist/sdk.js → 1"
+    },
+    "between_forms": {
+      "differing_source_lines": 13,
+      "all_differing_lines_are_comments": true,
+      "non_comment_differences": 0,
+      "comment_list_diff_lines": 26,
+      "comment_list_diff_removed": 13,
+      "comment_list_diff_added": 13,
+      "root_form": { "sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a", "bytes": 152855 },
+      "package_dir_form": { "sha256": "a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a", "bytes": 152579 },
+      "method": "both forms built into TEMP outfiles (repo-root path-qualified args vs package-directory cwd), then compared line by line; no packages/** path written"
+    },
+    "artifact_wide_26_origin": {
+      "fact": "the packed artifact stores the bundle twice: packages/mpd-ext-plugin/dist/index.js (13 comments) + the packer-generated dist/validator.js (13 comments) = 26",
+      "validator_js": "present only in the packed tree (dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js, 153,262 B); absent from the checkout"
+    }
+  },
+  "change": {
+    "file": "AGENTS.md",
+    "hunks": 1,
+    "before_verbatim": "  bundled module's path RELATIVE TO CWD into the artifact's path comments — 26 of them in the\n  `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line — and\n  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot\n  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts",
+    "after_verbatim": "  bundled module's path RELATIVE TO CWD into the artifact's path comments — 13 of them in the\n  `mpd-ext-plugin` build (11 distinct module paths), and ALL 13 differ between the two forms, so a\n  `diff` of the two comment lists prints 26 lines (13 removed + 13 added), not one banner line — and\n  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot\n  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts",
+    "unmoved": ["the canonical repo-root command", "the multi-entry note", "the three-package residual + T-67 pointer", "the §4 pointer", "'not one banner line'", "the foreclosure sentence"]
+  },
+  "wholeFileIdentity": {
+    "before": { "sha256": "1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4", "bytes": 48540 },
+    "after": { "sha256": "a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa", "bytes": 48641 },
+    "delta_bytes": 101,
+    "reverse_substitution_match": true,
+    "artefact": "evidence/gates/build-form/20260917T040500Z-t66/REVERSED-pre-t66.AGENTS.md",
+    "settled_recheck": "2026-09-17T03:41:51Z — identical"
+  },
+  "budget": { "maxBytes": 65536, "sourceBytes": 48641, "renderedBytes": 48945, "truncated": false, "omitted": [], "headroomBytes": 16591, "verdict": "GREEN (full content injected)" },
+  "acceptance": [
+    { "criterion": "The measured facts are quoted so the number stops being ambiguous: ONE build writes 13 path comments (11 distinct module paths), sdk.js carries 1; between the two forms ALL 13 differ, so a comment-list diff prints 26 lines (13 + 13); and the artifact carries the bundle twice (index.js + validator.js), the other origin of a 26 total.", "status": "passed", "evidence": "output.log §1: grep counts 13 / 11 distinct / sdk.js 1 on the committed artifact; the 13 comments listed with their two duplicates; comment-list diff 26 (13 removed + 13 added); full-line comparison 13 differing source lines, all comments, 0 non-comment; validator.js (packed-only, 153,262 B, 13 comments) named as the artifact-wide origin. Raw: measure.log." },
+    { "criterion": "§6's sentence states 13 per build (11 distinct modules), every one of them differing — no diff-side or artifact-wide total presented as one build's count.", "status": "passed", "evidence": "after_verbatim: '13 of them in the `mpd-ext-plugin` build (11 distinct module paths), and ALL 13 differ between the two forms, so a `diff` of the two comment lists prints 26 lines (13 removed + 13 added)'. The 26 is explicitly labelled a diff result, not a per-build count." },
+    { "criterion": "WORDS ONLY, one hunk: no command, no other claim, no section structure moves; whole-file identity pair recorded and the reverse-substitution technique reused.", "status": "passed", "evidence": "reverse substitution in a copy reproduces the recorded pre-edit sha exactly (1a317bdf… / 48,540 B) ⇒ the reworded span is the entire delta (single hunk); before a5ba27f6… vs 1a317bdf…, +101 B. Artefact kept: REVERSED-pre-t66.AGENTS.md." },
+    { "criterion": "`bun run verify:docs` exit 0 (pairs=37, census unchanged) and `node scripts/verify-rows-parity.mjs` exit 0 (25 ids); rendered budget re-measured against 65,536 with truncated:false.", "status": "passed", "evidence": "verify-docs exit=0, 'pairs=37 failed=0 violations=0 exempt=17 — PASS'; verify-rows exit=0, 'ok: 25 row ids'; budget 48,945 / 65,536, truncated:false, omitted:[], headroom 16,591 B (checks.log, verify-docs.log)." },
+    { "criterion": "The evidence states plainly that the superseded figure was committed by t60 and is corrected here, not by editing t60's evidence in place.", "status": "passed", "evidence": "output.log §6 'SUPERSESSION STATEMENT (A5)': t60 committed 26/24, this repair corrects it, t60's evidence untouched and cited as sourceTaskId; the discovery record stays at evidence/gates/build-form/20260917T034500Z-counting-convention/." }
+  ],
+  "verify": [
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "status": "passed", "exitCode": 0, "evidence": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" }
+  ],
+  "scope": {
+    "inScopeTouched": ["AGENTS.md", "evidence/gates/build-form/20260917T040500Z-t66/**"],
+    "outOfScopeUntouched": ["packages/**", "scripts/**", "skills/**", "agent-references/**", "docs/**"],
+    "gitWrites": "none (the captain commits)",
+    "packagesWrite": "none — both build forms were written to temp outfiles; the checkout's dist mtimes are unchanged"
+  },
+  "artifacts": {
+    "evidenceDir": "evidence/gates/build-form/20260917T040500Z-t66/",
+    "files": ["result.json", "output.log", "measure.log", "checks.log", "verify-docs.log", "REVERSED-pre-t66.AGENTS.md"]
+  },
+  "residual": ["T-67's script half (three packages still carry package-directory build scripts) stays wave 2; §6's warning remains load-bearing."]
+}

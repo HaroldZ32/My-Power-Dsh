@@ -1,0 +1,67 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t50-team-revision.test.mjs:
+67 |     expect(record.revision).toBeUndefined()
+68 |     expect(teamRevisionOf(readTeamSync(stateRoot, TEAM))).toBe(0)
+69 | 
+70 |     // Every write goes through `writeTeam`; each one moves the token by exactly one.
+71 |     await writeTeam(stateRoot, record)
+72 |     expect(record.revision).toBe(1)
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: undefined
+
+      at <anonymous> (/tmp/t50-red-ORis/pkgA/self-fix-tests/t50-team-revision.test.mjs:72:29)
+(fail) T-06 (1/6): the FUNNEL bumps on every write and the token round-trips a record [7.98ms]
+107 |     writeFileSync(teamFile, JSON.stringify(record, null, 2))
+108 |     await writeTeam(stateRoot, record)
+109 |     const firstMove = diskToken(teamFile)
+110 |     await writeTeam(stateRoot, record)
+111 |     const moved = diskToken(teamFile)
+112 |     expect(() => assertMoved(firstMove, moved)).not.toThrow()
+                                                          ^
+error: expect(received).not.toThrow()
+
+Error name: "Error"
+Error message: "revision did not move forward: undefined -> undefined"
+
+      at <anonymous> (/tmp/t50-red-ORis/pkgA/self-fix-tests/t50-team-revision.test.mjs:112:53)
+(fail) T-06 (2/6): NEGATIVE CONTROL — an unmoved fixture reddens the very assertion used above [1.80ms]
+[T-06] writeTeam call sites: members.js 3 / scheduler.js 6 / tools.js 20 = 29 → 2 writers (1 funnel + 1 opener), both in state.js
+(pass) T-06 (3/6): the CENSUS — two writers and ONE funnel, so every write path is covered [42.82ms]
+185 |     const firstState = first.tasks.find((task) => task.id === "t1")
+186 |     // The payload's token IS the record's token at read time (the scheduler kick inside the status
+187 |     // call writes through the funnel FIRST, so the read that follows is stamped by the write it saw),
+188 |     // and every state printed with it matches the RECORD at that token.
+189 |     const firstRecord = readTeamSync(stateRoot, TEAM)
+190 |     expect(first.revision).toBe(diskToken(teamFile))
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: undefined
+Received: 0
+
+      at <anonymous> (/tmp/t50-red-ORis/pkgA/self-fix-tests/t50-team-revision.test.mjs:190:28)
+(fail) T-06 (4/6): STATUS — two reads straddling ONE task transition carry different tokens, each state stamped by its own [38.41ms]
+223 |     await createTeamDir(stateRoot, draft)
+224 |     expect(diskToken(teamFile)).toBe(1)
+225 |     expect(readTeamSync(stateRoot, TEAM).revision).toBe(1)
+226 |     // Every write after the opening one is the funnel's, continuing from the token that opened it.
+227 |     await writeTeam(stateRoot, readTeamSync(stateRoot, TEAM))
+228 |     expect(diskToken(teamFile)).toBe(2)
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+
+      at <anonymous> (/tmp/t50-red-ORis/pkgA/self-fix-tests/t50-team-revision.test.mjs:228:33)
+(fail) T-06 (5/6): the OPENING write stamps the first token, so a fresh team is never token-less [1.21ms]
+(pass) T-06 (6/6): the SHAPE CHAIN — the token is validated like `taskSeq`, and a legacy record stays readable [0.99ms]
+
+ 2 pass
+ 4 fail
+ 22 expect() calls
+Ran 6 tests across 1 file. [220.00ms]

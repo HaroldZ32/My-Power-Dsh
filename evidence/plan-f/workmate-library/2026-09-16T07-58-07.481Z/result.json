@@ -1,0 +1,32 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-wjHxaf",
+  "wmHome": "/tmp/mpd-wm-home-tZf9Sr",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": true,
+      "sample": "d directory. Let me also try reading the note file directly with the read tool to see if it resolves differently, and search for directories modified within the last 30 minutes in likely locations. | dsh: reasoning: | The workmate state isn't persisting on disk—the tools are returning success but nothing's actually being written, likely because the environment is running through a fake or replay implementation. The incrementing `uses=2` suggests there's some in-memory state tracking happening, but it's not backed by real file operations. |  | I'll try one more targeted check by reading the not"
+    },
+    "files": {
+      "ok": true,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; also handles read-only doc summarization and workspace inspection. Last task: summarize README. ",
+      "wmRoot": "/tmp/mpd-wm-home-tZf9Sr/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": false,
+      "realWm": "/root/.mpd/workmate"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+== SETTLED-HASH SWEEP (pass 3 — AUTHORITATIVE after ADDENDUM 3; passes 1-2 kept) — Thu Sep 17 07:51:26 AM UTC 2026 ==
+-- full hashes BEFORE the 50 s settle window:
+47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52  packages/mpd-team-watchdog-plugin/src/machine.ts
+a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece  packages/mpd-team-watchdog-plugin/src/engine.ts
+69ca5fa9f63f80df397b987b107ae93fd78057e8df89978ac3694ec4614a372f  packages/mpd-team-watchdog-plugin/src/actions.ts
+31f6dfbd9d15acd8c38e94b4aa01b39391a86b58038c00a819ec683641365bf9  packages/mpd-team-watchdog-plugin/src/index.ts
+c535df9eb04decf2b27056c304899ff6cfafd7e59d1b884fc1fa14d1ed71383e  packages/mpd-team-watchdog-plugin/src/config-file.ts
+8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+133f3c6342961c6428852bb2317570dad8cb035ec1a857c0cf15efa60c9a66cc  packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd  packages/mpd-team-watchdog-plugin/dist/index.js
+c8ebe4755a00acf3c3020710e94628c34f8015cdbef9d0e4c48adb20d01d5605  agent-references/troubleshooting.md
+-- full hashes AFTER the 50 s settle window (identical => settled):
+47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52  packages/mpd-team-watchdog-plugin/src/machine.ts
+a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece  packages/mpd-team-watchdog-plugin/src/engine.ts
+69ca5fa9f63f80df397b987b107ae93fd78057e8df89978ac3694ec4614a372f  packages/mpd-team-watchdog-plugin/src/actions.ts
+31f6dfbd9d15acd8c38e94b4aa01b39391a86b58038c00a819ec683641365bf9  packages/mpd-team-watchdog-plugin/src/index.ts
+c535df9eb04decf2b27056c304899ff6cfafd7e59d1b884fc1fa14d1ed71383e  packages/mpd-team-watchdog-plugin/src/config-file.ts
+8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+133f3c6342961c6428852bb2317570dad8cb035ec1a857c0cf15efa60c9a66cc  packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd  packages/mpd-team-watchdog-plugin/dist/index.js
+c8ebe4755a00acf3c3020710e94628c34f8015cdbef9d0e4c48adb20d01d5605  agent-references/troubleshooting.md
+-- Thu Sep 17 07:52:16 AM UTC 2026 :: the contract verify commands on the settled revision:
+ 139 pass
+ 0 fail
+ 684 expect() calls
+Ran 139 tests across 1053 files. [8.64s]
+bun test exit=0
+$ tsgo --noEmit
+typecheck exit=0
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS
+mpd-bg exit=0
+-- Thu Sep 17 07:52:29 AM UTC 2026 :: SWEEP DONE ==

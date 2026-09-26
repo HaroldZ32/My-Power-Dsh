@@ -11,19 +11,34 @@ compacted.
 
 | Tool | Inputs | Result |
 |---|---|---|
-| `mpd_team_compact_run` | `team_id?` — defaults to every finished team in this workspace | one audit pass per team: the team outcome plus each member's outcome |
+| `mpd_team_compact_run` | `team_id?`, `force?` — defaults to every finished team in this workspace | one audit pass per team: the team outcome plus each member's outcome. A record is written only when the outcome CHANGES; `force: true` overrides |
 | `mpd_team_compact_status` | `team_id?` — defaults to every team with an audit | read-only: the recorded passes (newest last), including skipped members and the reason each was skipped |
 
 ## Semantics
 
-- **Trigger** — a team whose EVERY task is terminal AND whose members are ALL idle.
+- **Trigger** — a team whose EVERY task is terminal AND whose members are ALL idle. 0.1.7: the
+  retired `.mpd/team/<teamId>/team.json` is gone, and the OFFICIAL Agent Teams service exposes no
+  "finished team" predicate either, so the trigger is DERIVED from BOTH halves of its live readout —
+  every task terminal (`teamListTasks`) AND no member active (`teamListMembers`). The terminal
+  vocabulary is mirrored in `src/index.ts` (`TERMINAL_TASK_STATUSES`, official
+  `TeamTaskStatus = pending | in_progress | completed | deleted`) because the official package is not
+  resolvable by a bare specifier from this repository (measured `MODULE_NOT_FOUND`).
 - **Who** — members only. The captain is never compacted (that is the user's `/compact`).
 - **Barrier** — wait for every member to go idle, then compact them together.
 - **Method** — an unconditional explicit `compactNow`. A null answer means "no safely compactable
   range", which is recorded as a fact, not as an error.
 - **Audit** — `<workspace>/.mpd/team-compact/<teamId>/`, accumulated and never overwritten. It is
-  never `.mpd/team`: that state belongs to the agent-teams plugin.
+  never `.mpd/team`: no harness team file lives there any more — the board is the harness's, in the
+  Lead Session log, and this plugin only ever READS it through the adapter.
 - **Silence** — audit only. A member is never notified; a notification would push context back in.
+- **Triggers** — TWO, and only one of them can reach a member. (1) `agent/status`, the harness's own
+  status edge, which re-checks every finished team but fires when a released member is already gone;
+  (2) the member's own turn boundary (`agent/turn-stopping`, the edge the team watchdog stamps
+  `turn-end` from), which is the only moment a continuable child is still resident — its Activation
+  is process-local and released on settlement. Measured 2026-09-16: 235 status-edge passes produced
+  2260 `skipped-not-live` member entries and ZERO successes, which is why (2) exists. A member that
+  has already been released is recorded as `skipped-not-live`: reaching it would mean materializing
+  it, and that would push context back in.
 
 ## Design constraints (each one measured)
 
@@ -50,7 +65,7 @@ compacted.
 
 | Path | Notes |
 |---|---|
-| `<workspace>/.mpd/team-compact/<teamId>/` | the audit ledger: one record per pass, accumulated |
+| `<workspace>/.mpd/team-compact/<teamId>/` | the audit ledger: one record per CHANGED outcome, accumulated (identical repeats are counted in the next record's `suppressed`) |
 
 ## Gates
 

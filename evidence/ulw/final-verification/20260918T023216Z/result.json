@@ -1,0 +1,1292 @@
+{
+  "task": "t11",
+  "owner": "Deep Worker",
+  "kind": "verification",
+  "independentOfIntegrationOwner": "YES — t8 (integration/rebuild/re-pin/re-pack/commit) was executed by the captain; this verification is a different member and re-ran every acceptance item on the integrated revision with its own harnesses (two of which, f2-live-plan-false.mjs and t11-mount-boot.mjs, were written for this task).",
+  "at": "2026-09-18T02:52:38.064Z",
+  "revision": {
+    "commit": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+    "branch": "dev",
+    "worktree": "clean of every tracked change; the ONLY untracked entry is evidence/ulw/final-verification/ (this task's inScope)",
+    "pinT0": {
+      "at": "2026-09-18T02:32:26.324Z",
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fileHashesSha256": "4570864de80a78693464c7fbcf907941b4287fe0eafe55a8323c59e0ec3813e8"
+    },
+    "pinSettled": {
+      "at": "2026-09-18T02:33:26.105Z",
+      "elapsedSeconds": 59.781,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fileHashesSha256": "4570864de80a78693464c7fbcf907941b4287fe0eafe55a8323c59e0ec3813e8"
+    },
+    "pinFinal": {
+      "at": "2026-09-18T02:52:37.924Z",
+      "elapsedSeconds": 1211.6,
+      "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fileHashesSha256": "4570864de80a78693464c7fbcf907941b4287fe0eafe55a8323c59e0ec3813e8"
+    },
+    "stableAcrossAllThreeReadings": true,
+    "fileHashes": {
+      "packages/mpd-ulw-plugin/src/index.ts": "1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea",
+      "packages/mpd-ulw-plugin/dist/index.js": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+      "packages/mpd-ulw-plugin/test/engine.test.ts": "7db8496ef6d124570401f019471b5c320526b2af957d04433ad4efb66437658e",
+      "packages/mpd-ulw-plugin/test/commands.test.ts": "5b4935f5521a3257af4e55953ffb0e6cb75cae1ad2df187f260b5fbbe016a406",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8",
+      "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d",
+      "scripts/patch-agent-teams-fixes.mjs": "8d6a3102eed6973dfda5148c30ab49e5e84caaef7beaa223bd8383a8f108db6d",
+      "skills/dsh-qa/scripts/session-start-team.mjs": "c6dc9cb495ab4b8857a1b39f774c3de89d9d8e65d24394efa7937ddf9e824a79",
+      "skills/dsh-qa/scripts/ulw-command.mjs": "5e03eec31c685370da69f75c08c047a8e2c7ce5591e73564372b3924a94add5f",
+      "skills/dsh-qa/scripts/ultrawork-smoke.mjs": "dbad6a4360281d12cc0aba0f60d6bcfabe425cbef73de3e79322d018232fba30",
+      "presets/mpd/agent.cordis.yml": "ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b",
+      "packages/mpd-bundle/cordis.patch.yml": "a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116",
+      "VENDOR_LOCK.json": "4ae15e8149cb0f250fc29af42e6d4e9793295028ff10511c1dc2b4c37b064477"
+    }
+  },
+  "gates": {
+    "verifyGates": {
+      "exit": 0,
+      "summary": "[verify-gates] PASS - 5/5 member gate(s) green"
+    },
+    "verifyDistFresh": {
+      "exit": 0,
+      "summary": "[verify-gates] dist-fresh out| [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 480ms"
+    },
+    "verifyPackClosure": {
+      "exit": 0,
+      "summary": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (382 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1184 file(s) compared, 1184 identical, 0 drift, 0 expected-after-pack; completeness: 409 declared source file(s) compared, 408 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-18T02:25:48.307Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+    }
+  },
+  "live": {
+    "ulwCommand": {
+      "exit": 0,
+      "ok": true,
+      "artifactSources": {
+        "mpd-dsh-adapter": "shipped",
+        "mpd-ulw": "shipped"
+      },
+      "shippedCompositionOk": true,
+      "listing": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "usageKind": "error",
+      "usageText": "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective",
+      "gesture": {
+        "ok": true,
+        "problems": [],
+        "gating": true,
+        "finding": null,
+        "rewritten": true,
+        "clauses": [
+          "triage",
+          "gate",
+          "team",
+          "loop",
+          "fixOnSight",
+          "closeOut"
+        ],
+        "numbered": 6,
+        "commandRuns": 0,
+        "objectiveSeen": true
+      },
+      "equivalenceTableTools": {
+        "ok": true,
+        "observed": true,
+        "toolCount": 103,
+        "missing": []
+      },
+      "problems": []
+    },
+    "sessionStartTeam": {
+      "exit": 0,
+      "ok": true,
+      "settled": {
+        "ok": true,
+        "rev": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+        "gateHash": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+      },
+      "threeWay": {
+        "ok": true,
+        "simpleTeams": [
+          0,
+          0,
+          0
+        ],
+        "simpleNotices": [
+          false,
+          false,
+          false
+        ],
+        "softTeams": [
+          1,
+          0
+        ],
+        "softModelStaged": [
+          1,
+          0
+        ],
+        "softPluginStaged": [
+          0,
+          0
+        ],
+        "softAdvisory": [
+          1,
+          1
+        ],
+        "softSignals": [
+          [
+            "C"
+          ],
+          [
+            "C"
+          ]
+        ],
+        "explicitTeams": [
+          1
+        ],
+        "explicitActive": [
+          0
+        ],
+        "explicitArchived": [
+          1
+        ],
+        "explicitPluginStaged": [
+          1
+        ],
+        "explicitProvisioned": [
+          1
+        ]
+      },
+      "invocations": [
+        {
+          "caseDir": "cases/session-start-team-2026-09-18T02-33-43.836Z",
+          "exit": 0,
+          "ok": true,
+          "threeWay": {
+            "ok": true,
+            "simpleTeams": [
+              0,
+              0,
+              0
+            ],
+            "simpleNotices": [
+              false,
+              false,
+              false
+            ],
+            "softTeams": [
+              1,
+              0
+            ],
+            "softModelStaged": [
+              1,
+              0
+            ],
+            "softPluginStaged": [
+              0,
+              0
+            ],
+            "softAdvisory": [
+              1,
+              1
+            ],
+            "softSignals": [
+              [
+                "C"
+              ],
+              [
+                "C"
+              ]
+            ],
+            "explicitTeams": [
+              1
+            ],
+            "explicitActive": [
+              0
+            ],
+            "explicitArchived": [
+              1
+            ],
+            "explicitPluginStaged": [
+              1
+            ],
+            "explicitProvisioned": [
+              1
+            ]
+          },
+          "softAttributions": [
+            [
+              {
+                "slot": "active",
+                "id": "upstream-orchestration-align",
+                "phase": "staged",
+                "description": "Align the bundle (my-power-dsh) with upstream oh-my-openagent v5.0.0-beta.62: AUDIT the orchestration surface (roster/role routing, modelchain, spawn, team dispatch) against upstream's documented + implemented contracts, then IMPLEMENT the ",
+                "captainSessionId": "session-8fd453e2-2e7b-4251-abf5-5b9c0789573d",
+                "logResolution": "session-id",
+                "logSessionId": "session-8fd453e2-2e7b-4251-abf5-5b9c0789573d",
+                "createCalls": [
+                  "call_00_yQmNGXWVQ80raOevQHCr7027"
+                ],
+                "archiveCalls": [],
+                "origin": "model",
+                "reasons": [
+                  "the captain session log records an agent_teams_create tool call"
+                ],
+                "pluginDescription": false,
+                "modelCalled": true
+              }
+            ],
+            []
+          ]
+        },
+        {
+          "caseDir": "cases/session-start-team-2026-09-18T02-43-31.862Z",
+          "exit": 0,
+          "ok": true,
+          "threeWay": {
+            "ok": true,
+            "simpleTeams": [
+              0,
+              0,
+              0
+            ],
+            "simpleNotices": [
+              false,
+              false,
+              false
+            ],
+            "softTeams": [
+              0,
+              0
+            ],
+            "softModelStaged": [
+              0,
+              0
+            ],
+            "softPluginStaged": [
+              0,
+              0
+            ],
+            "softAdvisory": [
+              1,
+              1
+            ],
+            "softSignals": [
+              [
+                "C"
+              ],
+              [
+                "C"
+              ]
+            ],
+            "explicitTeams": [
+              1
+            ],
+            "explicitActive": [
+              0
+            ],
+            "explicitArchived": [
+              1
+            ],
+            "explicitPluginStaged": [
+              1
+            ],
+            "explicitProvisioned": [
+              1
+            ]
+          },
+          "softAttributions": [
+            [],
+            []
+          ]
+        }
+      ],
+      "stability": {
+        "invocations": 2,
+        "bothOk": true,
+        "softSides": 4,
+        "advisoryExactlyOneOnEverySoftSide": true,
+        "pluginStagedZeroOnEverySoftSide": true,
+        "signalsNamedOnEverySoftSide": true,
+        "modelBehaviourDifferedBetweenInvocations": true,
+        "modelStagedCounts": {
+          "run1": [
+            1,
+            0
+          ],
+          "run2": [
+            0,
+            0
+          ]
+        },
+        "note": "the live model staged a team on ONE soft side in run 1 (attributed origin=model from an agent_teams_create call in the captain session's own log — NOT a false red) and on NEITHER soft side in run 2; the verdict is PASS in both, and the PLUGIN staged nothing on any of the four soft sides."
+      },
+      "simpleSide": [
+        {
+          "prompt": "Reply with exactly: hello-ok",
+          "teams": 0,
+          "notices": {
+            "any": false,
+            "advisory": 0,
+            "provisioned": 0,
+            "signals": []
+          },
+          "problems": [],
+          "ok": true
+        },
+        {
+          "prompt": "What does the git-master skill do? Answer in one sentence.",
+          "teams": 0,
+          "notices": {
+            "any": false,
+            "advisory": 0,
+            "provisioned": 0,
+            "signals": []
+          },
+          "problems": [],
+          "ok": true
+        },
+        {
+          "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+          "teams": 0,
+          "notices": {
+            "any": false,
+            "advisory": 0,
+            "provisioned": 0,
+            "signals": []
+          },
+          "problems": [],
+          "ok": true
+        }
+      ],
+      "softComplexSide": [
+        {
+          "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+          "teams": 1,
+          "modelStaged": 1,
+          "pluginStaged": 0,
+          "unattributed": 0,
+          "attributions": [
+            {
+              "slot": "active",
+              "id": "upstream-orchestration-align",
+              "phase": "staged",
+              "description": "Align the bundle (my-power-dsh) with upstream oh-my-openagent v5.0.0-beta.62: AUDIT the orchestration surface (roster/role routing, modelchain, spawn, team dispatch) against upstream's documented + implemented contracts, then IMPLEMENT the ",
+              "captainSessionId": "session-8fd453e2-2e7b-4251-abf5-5b9c0789573d",
+              "logResolution": "session-id",
+              "logSessionId": "session-8fd453e2-2e7b-4251-abf5-5b9c0789573d",
+              "createCalls": [
+                "call_00_yQmNGXWVQ80raOevQHCr7027"
+              ],
+              "archiveCalls": [],
+              "origin": "model",
+              "reasons": [
+                "the captain session log records an agent_teams_create tool call"
+              ],
+              "pluginDescription": false,
+              "modelCalled": true
+            }
+          ],
+          "notice": {
+            "any": true,
+            "advisory": 1,
+            "provisioned": 0,
+            "signals": [
+              "C"
+            ]
+          },
+          "problems": [],
+          "ok": true
+        },
+        {
+          "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+          "teams": 0,
+          "modelStaged": 0,
+          "pluginStaged": 0,
+          "unattributed": 0,
+          "attributions": [],
+          "notice": {
+            "any": true,
+            "advisory": 1,
+            "provisioned": 0,
+            "signals": [
+              "C"
+            ]
+          },
+          "problems": [],
+          "ok": true
+        }
+      ],
+      "explicitSide": [
+        {
+          "prompt": "team: fix the flaky test",
+          "teams": 0,
+          "pluginStaged": 1,
+          "archivedRecords": 1,
+          "notice": {
+            "any": true,
+            "advisory": 0,
+            "provisioned": 1,
+            "signals": []
+          },
+          "problems": [],
+          "ok": true
+        }
+      ],
+      "negativeControl": {
+        "ok": true,
+        "teams": 0,
+        "stagedTotal": 0,
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0
+        },
+        "disarmed": true,
+        "isolation": true,
+        "problems": []
+      }
+    },
+    "ultraworkSmoke": {
+      "exit": 0,
+      "ok": true,
+      "steps": {
+        "installer": {
+          "ok": true,
+          "exit": 0
+        },
+        "live": {
+          "ok": true,
+          "exit": 0
+        },
+        "state": {
+          "ok": true,
+          "stateAny": {
+            "id": "ulw-9046321d",
+            "status": "complete",
+            "verdict": "n/a",
+            "rounds": 1,
+            "planFile": null
+          }
+        },
+        "ledger": {
+          "ok": true,
+          "rows": 1
+        },
+        "planFile": {
+          "ok": true
+        },
+        "commentCheck": {
+          "ok": true
+        }
+      },
+      "note": "relocated into this evidence subtree after the run: the case writes to evidence/plan-c/c2-ultrawork/<ts>/ and takes no override, so the run's own directory was moved here and the original path removed (the task's inScope is evidence/ulw/final-verification/**)."
+    },
+    "f2ShippedPlanFalse": {
+      "exit": 0,
+      "ok": true,
+      "revision": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+      "shippedArtifacts": {
+        "measured": [
+          {
+            "rowId": "mpd-ulw",
+            "path": "packages/mpd-ulw-plugin/dist/index.js",
+            "sha256": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+            "carriesFixedConditionalPlanFile": true,
+            "carriesRetiredUnconditionalPlanFile": false
+          },
+          {
+            "rowId": "mpd-dsh-adapter",
+            "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+            "sha256": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8",
+            "carriesFixedConditionalPlanFile": false,
+            "carriesRetiredUnconditionalPlanFile": false
+          }
+        ],
+        "note": "measured on the INSTALLED PROFILE'S OWN artifacts (no sandbox build, no row retargeting): the boot below exercises the user path."
+      },
+      "shippedLivePlanFalse": {
+        "ok": true,
+        "problems": [],
+        "exit": 0,
+        "crashes": [],
+        "stubRequests": 6,
+        "calls": [
+          {
+            "callId": "call_t11-f2-live-plan-false_0",
+            "tool": "mpd_ultrawork",
+            "objective": "t11-f2-shipped-ultrawork",
+            "plan": false,
+            "resultFound": true,
+            "isError": false,
+            "resultTextHead": "ultrawork status=max-rounds rounds=1 verdict=n/a\nround 1: no summary\nstate: /tmp/mpd-t11-f2-live-plan-false-WQoFJX/ws-f2/.mpd/ulw/ulw-02b0cd15/state.json"
+          },
+          {
+            "callId": "call_t11-f2-live-plan-false_1",
+            "tool": "mpd_ulw",
+            "objective": "t11-f2-shipped-alias",
+            "plan": null,
+            "resultFound": true,
+            "isError": false,
+            "resultTextHead": "mpd_ulw status=max-rounds rounds=1\nround 1: no summary\nstate: /tmp/mpd-t11-f2-live-plan-false-WQoFJX/ws-f2/.mpd/ulw/ulw-eb72d594/state.json"
+          }
+        ],
+        "invalidOutputHits": 0,
+        "invalidOutputExcerpt": [],
+        "isolation": {
+          "ok": true,
+          "checked": 1,
+          "keys": [
+            "--tmp-mpd-t11-f2-live-plan-false-WQoFJX-ws-f2--"
+          ]
+        },
+        "sessionsSandboxed": {
+          "ok": true,
+          "checked": 1,
+          "keys": [
+            "--tmp-mpd-t11-f2-live-plan-false-WQoFJX-ws-f2--"
+          ]
+        },
+        "note": "the two tool calls are MODEL-INITIATED in the SHIPPED composition, so the harness ran its own output validation on each returned value"
+      }
+    },
+    "mountBoot": {
+      "exit": 0,
+      "ok": true,
+      "revision": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+      "shippedArtifact": {
+        "ok": true,
+        "path": "packages/mpd-ulw-plugin/dist/index.js",
+        "sha256": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+        "markers": [
+          "registerCommand",
+          "ULW_ACTIVATION_DIRECTIVE",
+          "usage: /ulw"
+        ],
+        "note": "the shipped dist must carry the command surface, otherwise this boot would measure PRE-WAVE code (that was the pre-integration observation); no sandbox build and no row retargeting is used here"
+      },
+      "mountedShippedBoot": {
+        "ok": true,
+        "problems": [],
+        "exit": 0,
+        "crashes": [],
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "tools": {
+          "serviceMounted": true,
+          "hasLookup": true,
+          "mpd_ultrawork": true,
+          "mpd_ulw": true
+        },
+        "commands": [
+          "agent-teams",
+          "agent-teams-mpd",
+          "compact",
+          "feedback",
+          "goal",
+          "mpd",
+          "permission",
+          "plan",
+          "ultrawork",
+          "ulw"
+        ],
+        "descriptors": [
+          {
+            "name": "agent-teams",
+            "description": "run a goal with a multi-agent team (you become the captain)",
+            "hint": "[--profile <name>] <goal>"
+          },
+          {
+            "name": "agent-teams-mpd",
+            "description": "run a goal with the AgentTeams mpd profile",
+            "hint": "<goal>"
+          },
+          {
+            "name": "compact",
+            "description": "Compact older conversation history",
+            "hint": null
+          },
+          {
+            "name": "feedback",
+            "description": "record feedback about this session",
+            "hint": "<text>"
+          },
+          {
+            "name": "goal",
+            "description": "set or view the goal for a long-running task",
+            "hint": "[<objective>|clear|edit <objective>|pause|resume]"
+          },
+          {
+            "name": "mpd",
+            "description": "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+            "hint": null
+          },
+          {
+            "name": "permission",
+            "description": "Switch the permission preset (sandbox mode + approval policy)",
+            "hint": "<preset>"
+          },
+          {
+            "name": "plan",
+            "description": "Enter or leave plan mode",
+            "hint": "[off|message]"
+          },
+          {
+            "name": "ultrawork",
+            "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ulw)",
+            "hint": "objective"
+          },
+          {
+            "name": "ulw",
+            "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)",
+            "hint": "objective"
+          }
+        ],
+        "registryShape": {
+          "hasRootRegistry": true,
+          "registryKeys": [
+            "ctx",
+            "_counter",
+            "_internal"
+          ]
+        },
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "teams": {
+          "active": [],
+          "archived": []
+        },
+        "isolation": {
+          "ok": true,
+          "checked": 1,
+          "keys": [
+            "--tmp-mpd-t11-mount-boot-Gdtusa-ws-mount--"
+          ]
+        },
+        "sessionsSandboxed": {
+          "ok": true,
+          "checked": 1,
+          "keys": [
+            "--tmp-mpd-t11-mount-boot-Gdtusa-ws-mount--"
+          ]
+        },
+        "note": "registration instrumentation on the SHIPPED composition: the row is loaded, both command names are listed by the live registry, and a complex prompt produced the advisory notice with ZERO team records"
+      }
+    }
+  },
+  "targeted": {
+    "t62": {
+      "exits": [
+        0,
+        0,
+        0
+      ],
+      "rolesByteIdentity": "(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [240.95ms]",
+      "extByteIdentity": "(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [220.34ms]",
+      "note": "bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts and bun test packages/mpd-ext-plugin/test/adapter-identity.test.ts: both T-62 byte-identity checks PASS (they were RED at t2 on the pre-integration tree whose committed dists inlined the PRE-t12 adapter)."
+    },
+    "mcpSharedToolchainProbe": {
+      "directFileExit": 0,
+      "directFileResult": "PASS",
+      "underBunRunTest": {
+        "exit": 1,
+        "failingTest": "(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [326.07ms]"
+      },
+      "pathExperiment": "### which test bin dir gives sg a working delegate\nast-grep\ncodegraph\ncomment-checker\nsg\n\n### A: default PATH (ast-grep absent) -> expect PASS\n(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [230.75ms]\n 10 pass\n 0 fail\nrc=0\n\n### B: PATH with .toolchain/node_modules/.bin prepended -> expect the sg assertion to redden\n(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.21ms]\nExpected: false\nReceived: true\n(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [220.21ms]\n 1 fail\n\n### C: sg with toolchain bin on PATH\nast-grep 0.45.3\nsg_exit=0\n### root node_modules/.bin ast-grep?\nast-grep\nsg\nrc=0\n\n### realpath node_modules/.bin\n/root/dshProj/my-power-dsh/node_modules/.bin\n\n### D: direct bun test with node_modules/.bin prepended\nExpected: false\nReceived: true\n(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [256.39ms]\n 1 fail\n\n### PATH that bun run would use\n",
+      "reason": "ENVIRONMENT / LAUNCHER artifact, outside this tree. packages/mpd-mcp-shared and its test are UNTOUCHED by the wave (no wave edit, no dist rebuild). The probe asserts `probeAstGrep(.toolchain/.../.bin/sg) === false`; the deprecated sg wrapper only fails when it cannot resolve `ast-grep` on PATH. Measured: `sg --version` exits 1 with 'No such file or directory' when ast-grep is absent from PATH (test PASSES) and prints 'ast-grep 0.45.3' when node_modules/.bin is on PATH (test FAILS). The repo's own script `bun run test` (= `bun test packages`) prepends node_modules/.bin to PATH, and node_modules/.bin carries BOTH ast-grep and sg — so the aggregate via the script is red on exactly that one test, while `bun test packages` invoked DIRECTLY is fully green (981 pass / 0 fail). Reproduced both ways on this revision."
+    }
+  },
+  "packedArtifact": {
+    "logs": [
+      "logs/packed-artifact-spotcheck.log",
+      "logs/packed-artifact-spotcheck2.log"
+    ],
+    "packedEqualsRepo": [
+      {
+        "path": "packages/mpd-ulw-plugin/dist/index.js",
+        "sha256": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+        "sha256": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8"
+      },
+      {
+        "path": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+        "sha256": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+      },
+      {
+        "path": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+        "sha256": "5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d"
+      },
+      {
+        "path": "presets/mpd/agent.cordis.yml",
+        "sha256": "ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b"
+      }
+    ],
+    "packedPatchEqualsRepoPatch": true,
+    "packedSessionTeamPolicy": true,
+    "note": "the packed tree's decisive shipped files are BYTE-IDENTICAL to the repo ones (including the packed patch at the pack root), and the packed gate row carries mode: off + autoRoute: true + profile: mpd — the advisory (non-pre-staging) configuration a user installs."
+  },
+  "aggregate": {
+    "bunRunTest": {
+      "command": "bun run test",
+      "exit": 1,
+      "summary": "Ran 981 tests across 7857 files. [57.92s]",
+      "passLine": "980 pass",
+      "failLine": "1 fail",
+      "onlyFailures": [
+        "(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [326.07ms]"
+      ]
+    },
+    "bunTestPackagesDirect": {
+      "command": "bun test packages (direct: no bun-run PATH injection)",
+      "exit": 0,
+      "summary": "Ran 981 tests across 7857 files. [53.84s]",
+      "passLine": "981 pass",
+      "failLine": "0 fail"
+    },
+    "testQa": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "summary": "$ for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\""
+    }
+  },
+  "clause1FalsifiableGreps": {
+    "log": "logs/clause1-checks.log",
+    "c11_noStaleB3Label": true,
+    "c12_noB3ShapedWording": true,
+    "c13_canonicalBuildFormBothTwins": true,
+    "c13b_retiredFormGone": true,
+    "c14_foreignHostResidueGone": true,
+    "c15_featureAuditClaim": true
+  },
+  "clauseVerdicts": [
+    {
+      "clause": "1 — ULW legacy fixes (docs + code)",
+      "verdict": "satisfied",
+      "evidence": "C1.1 no stale B3 label in AGENTS.md; C1.2 no 'B3-shaped' wording in src or dist; C1.3 the canonical repo-root, path-qualified build form is in BOTH README twins and the retired package-directory form is gone; C1.4 the four foreign-host residue strings are gone; C1.5 the feature-audit claim is corrected. bun run verify:gates exits 0 (5/5: vendor, dist-fresh, rows, docs-pairs, preset-conformance). The equivalence tables the contract explicitly excludes are intact and their right-hand-side tool names were verified against the LIVE registry by ulw-command (103 tools observed, missing [])."
+    },
+    {
+      "clause": "2 — /ulw + /ultrawork commands",
+      "verdict": "satisfied",
+      "evidence": "ulw-command PASS on the SHIPPED composition (both rows source=shipped, shippedComposition.ok=true): the LIVE command registry lists BOTH names with a description and the 'objective' input hint; an empty invocation settles kind=error carrying 'usage: /ulw'; a non-empty invocation settles success and records the ULW activation directive as the invoking session's own user-role message carrying the objective and the six ordered autonomy clauses; the plain-text GESTURE arm rewrites with 0 command/run records (t15 regression fix verified in the real composition)."
+    },
+    {
+      "clause": "3 — ULW autonomy (and the same complexity predicate)",
+      "verdict": "satisfied, with the U1 residual bound",
+      "evidence": "The injected activation directive is asserted clause-by-clause from the REAL rewrite (triage first, the SAME complexity predicate, team-when-warranted with approval=\"automatic\" profile=\"mpd\", loop-to-completion, fix-on-sight, close-out-on-proof, and no questions head); mpd-ulw-plugin/test/commands.test.ts locks the same six behaviours (green in the aggregate). The engine loop is proven live by ultrawork-smoke (state complete, 1 round, ledger row, planFile null). NOT proven end-to-end: a full live /ulw run that autonomously stages a team itself (U1) — see residualBound."
+    },
+    {
+      "clause": "4 — the session-start gate ADVISES, never pre-stages",
+      "verdict": "satisfied",
+      "evidence": "session-start-team PASS TWICE on this revision (two independent invocations, 4 soft sides total): 3 simple prompts per run -> 0 teams and 0 notices; every soft-complex side -> advisory notice EXACTLY 1 naming signal C and pluginStaged=0 (run 1: the LIVE model staged a team on one soft side, attributed origin=model from an agent_teams_create call in the captain session's own log — the DESIGNED behaviour, reported as such, never a false red; run 2: none); the explicit 'team:' prompt -> pluginStaged=1 with the provisioning notice in both runs; the disarmed negative control stays clean. Independently confirmed by the mount-instrumented boot on the SHIPPED composition: for a complex prompt, 0 team records in the workspace's own .mpd/team and 1 advisory notice / 0 provisioning notices. Code-level confirmation: in lib/session-start.js the 'advise' branch only builds advisoryNotice, and provisionSessionTeam is reachable ONLY from routeDecision action 'provision' (mode 'auto' or an explicit flag)."
+    }
+  ],
+  "bugsFound": [],
+  "residualBound": {
+    "U1": {
+      "element": "A live, full /ulw run that autonomously stages a team, spawns members and completes a real objective end-to-end",
+      "claimedBy": "no lane (frozen contract §5 U1)",
+      "substitutesObserved": [
+        "(a) the mount-instrumented boot on the SHIPPED composition proving registration (both tools + both command names from the LIVE registries) and no plugin pre-staging for a complex prompt",
+        "(b) the activation-directive unit test (packages/mpd-ulw-plugin/test/commands.test.ts, green in the aggregate) plus ulw-command's clause-by-clause assertion on the REAL injected bytes",
+        "(c) ultrawork-smoke.mjs live: the engine loop reaches state=complete with a ledger row (1 round)",
+        "(d) the F2 bounded live mpd_ultrawork(plan=false) + mpd_ulw calls returning non-error results, read from the harness session log"
+      ],
+      "thereforeUnproven": "that a single /ulw invocation autonomously runs triage -> gate -> team staging -> loop -> close-out with live members and a real objective; the members' model routes and a nested live chain stay outside this workspace's control (U1's stated reason). No green is claimed for it."
+    },
+    "U3": {
+      "element": "the running session's behaviour changes without a restart",
+      "note": "T-21 stands: a FRESH boot is what was observed; the wave's own live session is out of the observation set."
+    },
+    "U4": {
+      "element": "exact provider/model routes at team-spawn time",
+      "note": "not asserted; only the create call's profile=\"mpd\" argument is in scope, which the advisory text states."
+    }
+  },
+  "deviations": [
+    {
+      "id": "D1",
+      "acceptanceText": "the mpd-mcp-shared toolchain probe is recorded as an environment red with its reason (outside this tree)",
+      "measured": "the probe is RED only when the suite is launched through the repo script `bun run test` (which prepends node_modules/.bin to PATH, where a real `ast-grep` lives, so the deprecated sg wrapper succeeds). It is GREEN when the file is run directly and GREEN in the whole aggregate invoked directly (`bun test packages`: 981 pass / 0 fail).",
+      "disposition": "recorded with its reason either way; the substance the criterion names (T-62 green + the probe dispositioned as an environment-class red outside this tree) holds. No wave defect is implied: mpd-mcp-shared and its test are untouched by the wave."
+    },
+    {
+      "id": "D2",
+      "acceptanceText": "session-start-team proves the advisory behaviour STABLY",
+      "measured": "on side 1 of the soft arm the LIVE model followed the advisory and staged a team itself (origin=model, 1 agent_teams_create call in the captain session's own log, pluginStaged=0); side 2 staged none. Both verdicts PASS.",
+      "disposition": "reported as the DESIGNED behaviour, not a failure and not a false red; the artifact carries the per-record attribution."
+    }
+  ],
+  "environmentNotes": [
+    "two detached launches via scripts/mpd-bg.mjs died with their bwrap sandbox (T-23) before producing output; the cases were then re-run as managed background jobs. The two empty evidence dirs left behind were removed; nothing else was affected.",
+    "ultrawork-smoke writes to evidence/plan-c/c2-ultrawork/<ts>/ with no override, so its run directory was copied into cases/ and the original removed to keep every write inside this task's inScope."
+  ],
+  "artifactInventory": [
+    {
+      "path": "assemble-result.mjs",
+      "bytes": 23637,
+      "sha256": "60d475158b0f4850d8baf8652b6ff39db65a303a709a17946f98181eb13e9d47"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/prompt.txt",
+      "bytes": 24,
+      "sha256": "9fc65ace090b4445bd08b2e9032bb3061fae60e8054274a8cfa71f99de4c7fb6"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/sessions/--tmp-mpd-sst-gKDeht-side-explicit-0-ws--/session-2adf0c88-09b3-45da-abd9-a98df14bfa50/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/sessions/--tmp-mpd-sst-gKDeht-side-explicit-0-ws--/session-2adf0c88-09b3-45da-abd9-a98df14bfa50/session.v3.jsonl.zstd",
+      "bytes": 61907,
+      "sha256": "9e36fe2b6b6dcb198c9af85c8005be566256934376d0141d7e15a7fc574d7fd1"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/team/archive/mpd-default/team.json",
+      "bytes": 7430,
+      "sha256": "e6799279883d7d23a9d2bed385bf3b76e94c10fbe67d97980245a2ee9595d7a6"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/team/watchdog/heartbeat/captain.jsonl",
+      "bytes": 4624,
+      "sha256": "d95cfd1cc75d48723a37dd61ee9418b77fbe4896b12620a090f7502010af1b93"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/explicit/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 1978,
+      "sha256": "4b8a0ddda97768b7340a1adaaae6cd2f0b3f3e7803deb452c5fbc1fe4ce5fa30"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/0/prompt.txt",
+      "bytes": 28,
+      "sha256": "8bed0caa02287931368fc01d48ea7857c021512a6f49fcc9ca400df3af55b6b0"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/0/sessions/--tmp-mpd-sst-gKDeht-side-simple-0-ws--/session-2192f3cc-c366-4f14-afa2-f2a06911c5a2/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/0/sessions/--tmp-mpd-sst-gKDeht-side-simple-0-ws--/session-2192f3cc-c366-4f14-afa2-f2a06911c5a2/session.v3.jsonl.zstd",
+      "bytes": 38429,
+      "sha256": "f26a5bbe1b0f8f7023679a1e403bad54f6ea58c87a381a418aa618112b568b59"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 628,
+      "sha256": "66cc572da807207c4468607bbaa21c16db08d2f0539ab9bd02156db2d6b26e59"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/1/prompt.txt",
+      "bytes": 58,
+      "sha256": "347ed18c7fa8145ff34f3e2826fcbeeab71978f6c26dac868d17ca44f2d064f0"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/1/sessions/--tmp-mpd-sst-gKDeht-side-simple-1-ws--/session-5ade877d-dcc4-48c1-be55-443cd23d0ff2/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/1/sessions/--tmp-mpd-sst-gKDeht-side-simple-1-ws--/session-5ade877d-dcc4-48c1-be55-443cd23d0ff2/session.v3.jsonl.zstd",
+      "bytes": 40393,
+      "sha256": "c7a64653b1c5080bd6502c21dfad97a8bde1e40f848fd083889b60db9cb7800c"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/1/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 628,
+      "sha256": "fb5a0fe77fd93192e45ef4a4a8cf53a1e10cf94e6f850efda982850d51ae4697"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/2/prompt.txt",
+      "bytes": 67,
+      "sha256": "240c9e06de592f6b08fa5194f3a64923c7b16d2a4077ddbfc3f313e370ba68b2"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/2/sessions/--tmp-mpd-sst-gKDeht-side-simple-2-ws--/session-c1a16f4a-0c36-48e4-b0d1-abc7869be77b/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/2/sessions/--tmp-mpd-sst-gKDeht-side-simple-2-ws--/session-c1a16f4a-0c36-48e4-b0d1-abc7869be77b/session.v3.jsonl.zstd",
+      "bytes": 53235,
+      "sha256": "512371d7fa600dd06f6433c5e67b642d2107fe07ec357c3fd3012d670d79cbb2"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/simple/2/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 3968,
+      "sha256": "5cd1df83d5300bb706838e371058168d6aa3abdead8d7a23dcd5fbd2867f94d2"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/prompt.txt",
+      "bytes": 99,
+      "sha256": "d1cecb824bd58a823fc4de5f62d80a469b15211fdbe2426d4245d5d91ce4b8fb"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/sessions/--tmp-mpd-sst-gKDeht-side-soft-complex-0-ws--/session-8fd453e2-2e7b-4251-abf5-5b9c0789573d/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/sessions/--tmp-mpd-sst-gKDeht-side-soft-complex-0-ws--/session-8fd453e2-2e7b-4251-abf5-5b9c0789573d/session.v3.jsonl.zstd",
+      "bytes": 344720,
+      "sha256": "8427b9ba630dadcaa3ae9d29d3c8db9d9d15b894ef163139cca88b55c7f10b9b"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/team/upstream-orchestration-align/team.json",
+      "bytes": 32903,
+      "sha256": "0e24918e459b670a2ebe60f1ce29a7f82d7b9363848891d636a3564f2042a1d5"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/team/watchdog/heartbeat/captain.jsonl",
+      "bytes": 8330,
+      "sha256": "7ae9f750e22a2fe600bbeb6ca2cdf3b78da99d027c0fd21a079b4fadf55b0a6e"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 37658,
+      "sha256": "2e1616aeea0a726f0f83e2b73826fbe18def253e775eb23a8570e0ea8306f881"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/1/prompt.txt",
+      "bytes": 84,
+      "sha256": "029d2c36c3338ec6445a8f7144154e73bee8ec9a0afa7903e12c8864090edf59"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/1/sessions/--tmp-mpd-sst-gKDeht-side-soft-complex-1-ws--/session-acb82f3a-3423-4cfe-adbf-3a6c52a208c9/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/1/sessions/--tmp-mpd-sst-gKDeht-side-soft-complex-1-ws--/session-acb82f3a-3423-4cfe-adbf-3a6c52a208c9/session.v3.jsonl.zstd",
+      "bytes": 63836,
+      "sha256": "4d33d7d3587fc5bcd33c1c9db4f0ea9128b78c32607f2021f13cbc827f5d9389"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-33-43.836Z/sides/soft-complex/1/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 8258,
+      "sha256": "1a15c018f40f961ece48b59db1cd70523a4cd05ff0c1fa0a0e53ed2341be0235"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/prompt.txt",
+      "bytes": 24,
+      "sha256": "9fc65ace090b4445bd08b2e9032bb3061fae60e8054274a8cfa71f99de4c7fb6"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/sessions/--tmp-mpd-sst-3bEhGc-side-explicit-0-ws--/session-2bc037b7-4bf3-41c1-b789-2b92bf7c154a/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/sessions/--tmp-mpd-sst-3bEhGc-side-explicit-0-ws--/session-2bc037b7-4bf3-41c1-b789-2b92bf7c154a/session.v3.jsonl.zstd",
+      "bytes": 63918,
+      "sha256": "d94f32529af61cc27be0e6f37a019c1254eed2196e5dca2e9cd5d7c9443e3b70"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/team/archive/mpd-default/team.json",
+      "bytes": 7430,
+      "sha256": "99eefaa6993f80b3d99bcda5143280912d7fa15c0175b177c6ec870312e5a91e"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/team/watchdog/heartbeat/captain.jsonl",
+      "bytes": 5572,
+      "sha256": "ddf3c84937a23033313e929c0c0e5ee7f45c89068be7a0e1c05989e717104cab"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/explicit/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 1950,
+      "sha256": "055dbf7472ea060964308c7c822bd56be3d9b0d8d6ac9cf7e57aac1c4d5ee0fb"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/0/prompt.txt",
+      "bytes": 28,
+      "sha256": "8bed0caa02287931368fc01d48ea7857c021512a6f49fcc9ca400df3af55b6b0"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/0/sessions/--tmp-mpd-sst-3bEhGc-side-simple-0-ws--/session-2d3aa908-ac8a-4d19-ba46-6bcc29cc47d4/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/0/sessions/--tmp-mpd-sst-3bEhGc-side-simple-0-ws--/session-2d3aa908-ac8a-4d19-ba46-6bcc29cc47d4/session.v3.jsonl.zstd",
+      "bytes": 38419,
+      "sha256": "c8dafab7cc5f92a575dc95724121609703d6125fc3b3d3749b4de6283be0ebf1"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 628,
+      "sha256": "b356102e628f2e78d956ad958d98180038cd6acf98069da64212a85b2dbd3879"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/1/prompt.txt",
+      "bytes": 58,
+      "sha256": "347ed18c7fa8145ff34f3e2826fcbeeab71978f6c26dac868d17ca44f2d064f0"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/1/sessions/--tmp-mpd-sst-3bEhGc-side-simple-1-ws--/session-397fcdb5-66c5-42c4-96b1-19537c19f74f/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/1/sessions/--tmp-mpd-sst-3bEhGc-side-simple-1-ws--/session-397fcdb5-66c5-42c4-96b1-19537c19f74f/session.v3.jsonl.zstd",
+      "bytes": 43045,
+      "sha256": "8637e34e6d8cb23e92c4071093a5dc480ac9b8f291968133092a184f78ea794b"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/1/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 1380,
+      "sha256": "cde6e385af16b1ca47e1cdef59cefcd886161d5228a8d7a50a03d4a64fda7f0d"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/2/prompt.txt",
+      "bytes": 67,
+      "sha256": "240c9e06de592f6b08fa5194f3a64923c7b16d2a4077ddbfc3f313e370ba68b2"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/2/sessions/--tmp-mpd-sst-3bEhGc-side-simple-2-ws--/session-9043909a-4bba-4a18-89b9-3e83e9702ce8/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/2/sessions/--tmp-mpd-sst-3bEhGc-side-simple-2-ws--/session-9043909a-4bba-4a18-89b9-3e83e9702ce8/session.v3.jsonl.zstd",
+      "bytes": 62952,
+      "sha256": "f76ac42534e95ebefa88610fe691d84c8354ad878c4f1047bf4c1572552a7db3"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/simple/2/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 7316,
+      "sha256": "7c94ca8b98a1be564a5c105bcee3faeade339650fe12c317781daab5565ede92"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/0/prompt.txt",
+      "bytes": 99,
+      "sha256": "d1cecb824bd58a823fc4de5f62d80a469b15211fdbe2426d4245d5d91ce4b8fb"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/0/sessions/--tmp-mpd-sst-3bEhGc-side-soft-complex-0-ws--/session-235d8967-43f3-4785-8732-89a334079015/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/0/sessions/--tmp-mpd-sst-3bEhGc-side-soft-complex-0-ws--/session-235d8967-43f3-4785-8732-89a334079015/session.v3.jsonl.zstd",
+      "bytes": 208319,
+      "sha256": "86fc28191452583a5f179fef3d3a6e8a61ba7b1ab672d26071e13fd8187041d9"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/0/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 25358,
+      "sha256": "34f796b88be44026db42610e6a7fce5be8e1856238c6f161050f4756d20c6fe1"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/1/prompt.txt",
+      "bytes": 84,
+      "sha256": "029d2c36c3338ec6445a8f7144154e73bee8ec9a0afa7903e12c8864090edf59"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/1/sessions/--tmp-mpd-sst-3bEhGc-side-soft-complex-1-ws--/session-b20f3460-1ec1-4445-8073-648736eb85e6/session.lock",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/1/sessions/--tmp-mpd-sst-3bEhGc-side-soft-complex-1-ws--/session-b20f3460-1ec1-4445-8073-648736eb85e6/session.v3.jsonl.zstd",
+      "bytes": 153951,
+      "sha256": "e8e2f846479c538c3a36ff1f6444af7b38076d3842557a19d4d8c1d2c112ba2d"
+    },
+    {
+      "path": "cases/session-start-team-2026-09-18T02-43-31.862Z/sides/soft-complex/1/team/watchdog/heartbeat/session-session.jsonl",
+      "bytes": 27918,
+      "sha256": "60ff70a443db742f49da38d31cb5b6cf5547c8375bbf89e35e06145dcdc3e172"
+    },
+    {
+      "path": "cases/ulw-command-2026-09-18T02-33-41.745Z/raw/arm-gesture.session.decoded.jsonl",
+      "bytes": 130161,
+      "sha256": "575ff1214b417b45e0a43882aa16bafe838cfb06aa73dba348555489851aeca1"
+    },
+    {
+      "path": "cases/ulw-command-2026-09-18T02-33-41.745Z/raw/arm-gesture.session.jsonl.zstd",
+      "bytes": 39655,
+      "sha256": "d3ec390a1cfa72438be72c20c762509047bfe0d93792da6877658fd65fd3981f"
+    },
+    {
+      "path": "cases/ulw-command-2026-09-18T02-33-41.745Z/raw/arm-shipped.session.decoded.jsonl",
+      "bytes": 132630,
+      "sha256": "fa7ddf0d85723ca7d711f07c7a445a6dcf6ee3f76d3fe24e9a54eee6300a75d0"
+    },
+    {
+      "path": "cases/ulw-command-2026-09-18T02-33-41.745Z/raw/arm-shipped.session.jsonl.zstd",
+      "bytes": 40721,
+      "sha256": "7fd43c046afd107b23aa992ea89fb39573f9583e59f2bec62528700c2e0dc785"
+    },
+    {
+      "path": "f2-live-plan-false.mjs",
+      "bytes": 9944,
+      "sha256": "4aa7721c3d81fd603b752fd57d4e59897bd9208063c56c53816083c378c376da"
+    },
+    {
+      "path": "f2-live/raw/arm-f2-shipped.session.decoded.jsonl",
+      "bytes": 132401,
+      "sha256": "622fc6408bff4cb5f99bb72677c1f9467cb62a1b11ef905c3acceaaf18c7427b"
+    },
+    {
+      "path": "f2-live/raw/arm-f2-shipped.session.jsonl.zstd",
+      "bytes": 40541,
+      "sha256": "9e6835fc65957c44277e14d533c0947cb9b81c8b530da5b8811577c36405f715"
+    },
+    {
+      "path": "head.txt",
+      "bytes": 41,
+      "sha256": "769f2c264ee207653c63992a493e8d01440cad341d4594a4c87305969073be2f"
+    },
+    {
+      "path": "logs/bun-test-direct.log",
+      "bytes": 699181,
+      "sha256": "3ff374aa5dab8a96a4014c68509f80814c7f54d679936713797e08dcd5c08e78"
+    },
+    {
+      "path": "logs/bun-test.log",
+      "bytes": 699864,
+      "sha256": "485be8803ae3728772a6f30b4b0c4c517319c44b08bb762f1bd9547a2c4fccb7"
+    },
+    {
+      "path": "logs/clause1-checks.log",
+      "bytes": 1440,
+      "sha256": "372755847edbe522030e77ded4efc1931978efd3fbc1cbc8ec83d707420775ea"
+    },
+    {
+      "path": "logs/f2-live.log",
+      "bytes": 2195,
+      "sha256": "5755115ef8194c792bbc1f3216f109b82a6558085a9396805cdc7d9fe7cce90d"
+    },
+    {
+      "path": "logs/gates.log",
+      "bytes": 18514,
+      "sha256": "5a840a8ccae34cc440e99b46c4df949865f6537afb885a3526ca59e3840cee00"
+    },
+    {
+      "path": "logs/mount-boot.log",
+      "bytes": 2171,
+      "sha256": "445e6f662545ccd977a361022455ddb62907cf1acd1d7d69944e9cc784c3cd6d"
+    },
+    {
+      "path": "logs/packed-artifact-spotcheck.log",
+      "bytes": 931,
+      "sha256": "b0fc1282cee3189bbe783727e12f6540c9828f004288bc4b35a16aef087c302f"
+    },
+    {
+      "path": "logs/packed-artifact-spotcheck2.log",
+      "bytes": 728,
+      "sha256": "c138fda946d2862d740f897ba821bf223c66e9aefeedeaaeb54475ad888f96e0"
+    },
+    {
+      "path": "logs/session-start-team-run2.log",
+      "bytes": 2168,
+      "sha256": "fcc650954282955a998153e3bc61890bcdb3df94ce7905ebe212aebf68aa90cc"
+    },
+    {
+      "path": "logs/session-start-team.log",
+      "bytes": 2168,
+      "sha256": "a762c1952e47bb2f21dfaaa36636455af0de77b5eaa7bd29aaeac7b8470297b4"
+    },
+    {
+      "path": "logs/session-start-team.pid",
+      "bytes": 3,
+      "sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381"
+    },
+    {
+      "path": "logs/t62-and-toolchain.log",
+      "bytes": 16324,
+      "sha256": "96c5b174fb6e41008b02a3068e5b03d352217ab63d9af3b832bfb2f68bcdedea"
+    },
+    {
+      "path": "logs/test-qa.log",
+      "bytes": 27341,
+      "sha256": "b85903dd8fa8571f3b576f9d2004bc0c38514588bf108edfded8c5e5514275d4"
+    },
+    {
+      "path": "logs/toolchain-path-experiment.log",
+      "bytes": 992,
+      "sha256": "b816e64ec5cff16a201c3683ea892d2e524d1b71cc9dc4a67806a6c89ec7c5f7"
+    },
+    {
+      "path": "logs/toolchain-probe.log",
+      "bytes": 1526,
+      "sha256": "5acb7e0c5f3ce6158d6a51382aed155e3d84951a98f6c57c9ae90ceed742971b"
+    },
+    {
+      "path": "logs/ultrawork-smoke.log",
+      "bytes": 554,
+      "sha256": "8aa6d7d1f6b071fa1763cecdd5cea04ac6d311b7ad2b6cc47f430310f723457c"
+    },
+    {
+      "path": "logs/ultrawork-smoke.pid",
+      "bytes": 4,
+      "sha256": "496ecdb854d49463f8655b210ddf17d3395d26b20a6f297b07cf99834c6336f0"
+    },
+    {
+      "path": "logs/ulw-command.log",
+      "bytes": 1313,
+      "sha256": "c915264743f027877c6082ffff6c563a887c0940459a6f5859d68198440c2452"
+    },
+    {
+      "path": "logs/ulw-command.pid",
+      "bytes": 3,
+      "sha256": "917df3320d778ddbaa5c5c7742bc4046bf803c36ed2b050f30844ed206783469"
+    },
+    {
+      "path": "mount-boot/raw/arm-mount-shipped.session.decoded.jsonl",
+      "bytes": 128887,
+      "sha256": "5d17d51f96cff92d63a6614a1cae606ebc4b8a720d397cfed867c11577c695e7"
+    },
+    {
+      "path": "mount-boot/raw/arm-mount-shipped.session.jsonl.zstd",
+      "bytes": 38807,
+      "sha256": "4144a7cc2fc4c995fed07b456ae7eddd28bb1882184df81e242cb23241159cf0"
+    },
+    {
+      "path": "pin-final.json",
+      "bytes": 2220,
+      "sha256": "7d71973901cdbc5570addc19dca4356052cae5444775e2243f117e06a292e980"
+    },
+    {
+      "path": "pin-revision.mjs",
+      "bytes": 2394,
+      "sha256": "9a462a1c761c3b10b1a03315cee271fa93ccdc0f435e46f64895bd2aa61fb26a"
+    },
+    {
+      "path": "pin-settled.json",
+      "bytes": 2220,
+      "sha256": "4b41306a34519e8e843672dbb68909e29260e82381208fe6b124bf7559bd9117"
+    },
+    {
+      "path": "pin-t0.json",
+      "bytes": 2220,
+      "sha256": "a7273ac57bec20a7886553e5b0e3a59edbba47e6f11fa48bcd6efdea67e493d5"
+    },
+    {
+      "path": "t11-mount-boot.mjs",
+      "bytes": 11241,
+      "sha256": "005ee063d59f315e4c8282d8e24afa8b0f5d4f195d41025b5688abb016aac299"
+    },
+    {
+      "path": "t11-mount-probe.mjs",
+      "bytes": 4781,
+      "sha256": "15594eda1f723452c379360b2561864b87b5ffecc0dacffea799575119de858e"
+    }
+  ]
+}

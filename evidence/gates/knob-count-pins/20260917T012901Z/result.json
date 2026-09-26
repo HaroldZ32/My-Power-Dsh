@@ -1,0 +1,26 @@
+{
+  "task": "t38 — Impl — knob-count pins: the two hardcoded 12s become 13 with the new watchdog knob (T-18 consequence)",
+  "attempt_id": "7bbddd88-77e6-4ded-a351-abfedef49417",
+  "why_this_task_exists": "t10 added the 13th knob (`watchdog.holdTtlMs`) to the ONE shared declaration; two EXISTING tests pin the knob count and were red after that. They were outside t10's inScope, and the captain could NOT amend an owned task's contract (measured refusal, `.mpd/plans/friction-p1-wave.md` §8 L8), so the pin fix became this separate task.",
+  "change": {
+    "packages/mpd-tui-plugin/test/plugin.test.ts": "line 302 `toHaveLength(12)` -> 13 (inside 'full composition (every service injected)'), with a comment naming the shared list as the source of the count",
+    "packages/mpd-bundle-plugin/test/settings-card.test.mjs": "line 259 test title 'twelve fields' -> 'thirteen fields'; line 267 `toHaveLength(12)` -> 13, with a comment naming the shared list",
+    "mechanical_only": true,
+    "no_behaviour_no_schema_no_dist": "no src, schema, dist or behaviour was touched; both files are test files only"
+  },
+  "no_new_magic_number": {
+    "tui": "calls.sections[0].fields IS the section built from SETTINGS_KNOBS (mpd-tui-plugin/src/settings.ts maps the shared list), and the same test loops over every field asserting hint/label/disclosure — so the 13 is the shared list's length, checked against the shared list, not an independent constant",
+    "bundle": "the test evals the card's FIELDS and asserts for EVERY field that its path/label/zh (and semantics hint) appear verbatim in packages/mpd-config-plugin/src/settings-schema.ts — the 13 pin only fixes the count of that same cross-checked list"
+  },
+  "before_after": {
+    "before": "bun test packages/mpd-tui-plugin packages/mpd-bundle-plugin = 167 pass / 2 fail, both exactly the count pin (recorded in evidence/team-watchdog/redesign/config/20260917T011345Z/output.log)",
+    "after": "bun test packages/mpd-tui-plugin = 98 pass / 0 fail; bun test packages/mpd-bundle-plugin = 71 pass / 0 fail"
+  },
+  "verify_results": {
+    "bun test packages/mpd-tui-plugin": {"exit": 0, "result": "98 pass / 0 fail (10 files)"},
+    "bun test packages/mpd-bundle-plugin": {"exit": 0, "result": "71 pass / 0 fail (8 files)"}
+  },
+  "unverified": [
+    "nothing behavioural is claimed here: these are count pins over an already-verified shared declaration (the knob itself and both front doors were verified by t10, evidence/team-watchdog/redesign/config/20260917T011345Z/)"
+  ]
+}

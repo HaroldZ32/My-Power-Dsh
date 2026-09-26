@@ -1,0 +1,63 @@
+{
+  "task": "t31 — repair round 2 — wave-2b lane B2 (findings B2-F1…B2-F6 of the t21 review)",
+  "agent": "citation-checker-engineer",
+  "attemptId": "bb84028e-4cf0-403c-b18b-e3c1494b93de",
+  "date": "2026-09-17T14:46–14:48Z",
+  "source_findings": "evidence/review/wave2b-laneB2/20260917T1445Z/t21-rev-B2-review.md (verdict needs_revision; B2-F1 medium/blocker-class for the record, B2-F2…F6 low)",
+  "revisions": {
+    "before": { "path": "scripts/check-citations.mjs", "sha256": "fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28", "wc_l": 1146, "predicate": "wc -l (newline-terminated lines)" },
+    "after": { "path": "scripts/check-citations.mjs", "sha256": "53ae5cbc387c95566fadaf6697cff6b31f9e759f6cdefb9e519d99f33bc8b41f", "wc_l": 1230, "predicate": "wc -l; split(\\n) = 1231; non-empty = 1179", "moment": "2026-09-17T14:47:50Z" },
+    "why_two_numbers": "the t15 record's `lines: 1143` was a stale reading of an earlier revision kept beside the later hash — corrected by the nested note below, and this record states the PREDICATE with every count"
+  },
+  "fixes": {
+    "F1": {
+      "finding": "the sealed t15 record's `revisions.durable_checker.lines` (1143) did not reproduce at its own pinned sha (1146)",
+      "fix": "NESTED correction beside the sealed record — never a rewrite: `evidence/gates/wave2b-laneB2/20260917T142452Z/LINES-COUNT-CORRECTION.md` states the re-taken count with its PREDICATE, UNIT and MOMENT (wc -l = 1146 at sha fbdc0256…; split = 1147; non-empty = 1095; re-taken 14:47Z), plus a two-revision table (pinned 1146 vs post-t31 1230) so neither count reads as the other, and the rule: a line count is a DERIVED value and carries its predicate or is not recorded",
+      "raw": "line-count-retake.txt, LINES-COUNT-CORRECTION.md"
+    },
+    "F2": {
+      "finding": "`--naive` only relabelled the record's mode while every row came from the precise matcher",
+      "fix": "DROPPED (the acceptance's second branch): the `--naive` flag and the `mode: naive ? …` vocabulary are gone from the usage block and the code. The alternative (naive) matcher remains an INTERNAL measurement the audit runs for its over-report direction, stated in a comment where the flag used to be read",
+      "raw": "grep for --naive in the checker returns only the removal comment; the live record's `mode` is the constant \"driver-headers\""
+    },
+    "F3": {
+      "finding": "the citation family's boundary was unstated, so a POSITION citation and a basename-only path each passed silently, indistinguishable from 'checked and clean'",
+      "fix": "one named boundary clause added to the checker's usage/RULE block AND to EVERY run record's policy block: the citation run's `rules.family_boundary.out_of_family`, the driver-header record's `policy.out_of_family`, and the anchor-scan record's `policy.out_of_family` — a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, because the six addressing parameters require a repo-relative literal",
+      "raw": "run-set.log; citation-run/result.json rules.family_boundary; driver-headers-live-final/result.json policy.out_of_family; anchor-retake-1/result.json policy.out_of_family"
+    },
+    "F4": {
+      "finding": "the reference filter exempts a whole LINE, and that third error direction was undeclared (an under-report)",
+      "fix": "DECLARED AND MEASURED: `parseHeaderClaims` now collects the `A<n>` tokens carried by REFERENCE lines and each row exposes `reference_tokens`; the audit reports `third_direction = \"the line-wide REFERENCE exemption\"` with the live measurement — 1 reference line carries 5 tokens (A1, A2, A3, A4, A6), which the line-wide exemption does not claim. Declared in the record rather than left silent (the acceptance's first branch)",
+      "raw": "driver-headers-live-final/result.json audit.third_direction"
+    },
+    "F5": {
+      "finding": "the 'absence is checkable' arm was not re-takeable: the scan wrote its record inside the scanned tree and the record carried the literal, so re-running the exact command returned 4 self-matches",
+      "fix": "THREE changes: (a) the scan EXCLUDES its own output root from the walk and names the excluded files; (b) a hit that is the scanner's own record — inside an `anchor-*` output dir, or a file that IS an anchor-scan record, or a file that QUOTES the scan's own command — is CLASSIFIED as `self_reference`, named in `matches_self_reference`, and never counted as an anchor; (c) the usage block and the record state the operational rule (`--out` and any stdout capture belong OUTSIDE the scanned scope, or the scope must be sealed). DEMONSTRATED: the same command run TWICE over the sealed t15 scope returns byte-identical readings — 0 anchor matches, 4 self-reference matches (the reviewer's 4, now explained and named) — exit 0 both times",
+      "raw": "anchor-retake-1/ + anchor-retake-2/ + their .stdout; anchor-inside.stdout (the negative case, output inside the scope)"
+    },
+    "F6": {
+      "finding": "the declared-exception field accounted for ONE default-root run; the tree held TWO",
+      "fix": "NESTED correction beside the sealed record: `evidence/gates/wave2b-laneB2/20260917T142452Z/DEFAULT-ROOT-EXCEPTIONS.md` names BOTH legacy runs (`run-2026-09-17T14-24-29.334Z` — the earlier intermediate-revision `--self-test`, 21/21 with `negative_control`; and `run-2026-09-17T14-25-20.731Z` — the verbatim contract verify) as deliberately-left intermediate-revision self-test artefacts in the checker's own historical home, inside this task's write set; nothing is deleted",
+      "raw": "DEFAULT-ROOT-EXCEPTIONS.md; ls of evidence/extensions/docs-claims/runs/"
+    }
+  },
+  "readings": {
+    "contract_verify_verbatim": { "command": "node scripts/check-citations.mjs", "exit": 0, "reading": "13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative", "raw": "contract-verify-verbatim.stdout" },
+    "scoped_run": { "command": "node scripts/check-citations.mjs --out ./evidence/gates/wave2b-laneB2/20260917T144602Z/citation-run", "exit": 0, "reading": "13/13; revisions/checker.mjs + revisions/superseded.mjs retained", "raw": "citation-run/" },
+    "self_test": { "command": "node scripts/check-citations.mjs --self-test --out ./…/citation-selftest", "exit": 0, "reading": "25/25 checks passed, 0 failed (all T-55/T-72/T-78/T-80/T-82 arms green)", "raw": "citation-selftest/" },
+    "t80_fixture_arms": { "command": "node scripts/check-citations.mjs --driver-headers --self-test", "exit": 0, "reading": "3/3 arms passed", "raw": "driver-headers-selftest.stdout" },
+    "t80_live_scan": { "command": "node scripts/check-citations.mjs --driver-headers --out ./…/driver-headers-live-final", "exit": 0, "reading": "54 file(s) scanned (46 top-level + 8 lib/), 2 key-producing drivers, 2 claim sets, 0 NO-CLAIM-SET, 0 violations — lane D's driver-side `A<n>` claims have landed and MATCH the keys (settings-bridge-lane A1–A5 claimed = asserted; tui-team-surface A1–A8,A10 claimed = asserted)", "raw": "driver-headers-live-final/" },
+    "immutability": { "command": "the same --driver-headers --out twice", "exit": 3, "reading": "refusing to overwrite the existing driver-header run result … (T-53)", "raw": "immutability.stdout" },
+    "anchor_retake": { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out ./…/anchor-retake-{1,2}", "exit": "0 and 0", "reading": "0 anchor matches in 16 files; 4 self-reference matches classified and named; the two readings are byte-identical", "raw": "anchor-retake-1/ + anchor-retake-2/" }
+  },
+  "scope": {
+    "inScope": ["scripts/check-citations.mjs", "evidence/extensions/**", "evidence/gates/wave2b-laneB2/**"],
+    "changed": ["scripts/check-citations.mjs", "evidence/gates/wave2b-laneB2/20260917T142452Z/LINES-COUNT-CORRECTION.md (nested)", "evidence/gates/wave2b-laneB2/20260917T142452Z/DEFAULT-ROOT-EXCEPTIONS.md (nested)", "evidence/gates/wave2b-laneB2/20260917T144602Z/** (this run set)"],
+    "not_touched": ["the sealed t15 result.json (nested corrections only)", "skills/** (lane D — its driver-side claims were read, never edited)", "docs/**, AGENTS.md, templates/** (B3)", "scripts/verify-*.mjs (lanes B/B3)", "dist/**, VENDOR_LOCK.json, .mpd/plans/**"],
+    "git": "no git commands (the captain is the only writer)"
+  },
+  "bounds": [
+    "I did not re-run the t21 reviewer's own seeded-rot instruments; each fix is verified by the reading the acceptance names (the two nested notes, the six clauses, the re-take and the immutability refusal).",
+    "The live T-80 scan's GREEN is a reading of the corpus at 14:47Z, where lane D's driver-side claims are present; the scan is re-runnable with one command and its moment is recorded in its own record."
+  ]
+}

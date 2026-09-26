@@ -1,0 +1,68 @@
+# T-19 README pair — before/after readings (EN + zh-CN)
+# generated 2026-09-17T08:00:13Z HEAD c826f16
+
+## EN packages/mpd-team-watchdog-plugin/README.md
+### BEFORE (from git HEAD, the pre-edit revision)
+--- :292-295 (the hold bullet, last sentence) ---
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`. It
+  is written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
+  stop NEW dispatch into one team, never to cancel work. It is NOT `agent_teams_halt`
+  (which cancels every non-terminal task).
+--- :319-327 (the T-19 section) ---
+### T-19 — one pause surface, naming the ACTIVE mechanism
+
+A team can be paused two ways: `agent_teams_halt` (which CANCELS every non-terminal task) and
+this package's own **preserving** hold. `session-watchdog-status` prints the **union** and names
+which one is active — `team-a: PAUSED — halted (agent_teams_halt)` vs `team-a: PAUSED — held
+(watchdog hold)` vs `team-a: not paused` — in the rendered text AND as a `pause: {active,
+mechanism, halted, held}` object per team in the JSON. No new resume verb is introduced: the two
+clears stay distinct (`agent_teams_resume` / `session-watchdog-resume`) and the surface tells the
+user which one applies.
+
+### AFTER (working tree)
+--- :292-295 ---
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`. It
+  is written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
+  stop NEW dispatch into one team, never to cancel work. It is the **INTERNAL implementation**
+  of a team pause — the ONE external pause is `agent_teams_halt` (which cancels every non-terminal task).
+--- :319-327 ---
+### T-19 — one pause surface, naming the ACTIVE mechanism
+
+There is ONE external pause: `agent_teams_halt` (which CANCELS every non-terminal task),
+cleared by `agent_teams_resume`. This package's own **preserving** hold is that pause's
+**INTERNAL implementation**, never a second mechanism a caller picks between. The status view
+therefore reports ONE pause state and names the external mechanism — `team-a: PAUSED —
+mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
+active` vs `team-a: not paused` — in the rendered text AND as a `pause: {paused, mechanism,
+implementation, halted, held}` object per team in the JSON, whose `halted`/`held` stay diagnostics.
+
+## ZH packages/mpd-team-watchdog-plugin/README.zh-CN.md
+### BEFORE (from git HEAD)
+--- :245-247 ---
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`。写入采用
+  临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
+  派发**新**工作，绝不用于取消已有工作。它不是 `agent_teams_halt`（后者会取消所有未终结任务）。
+--- :266-273 ---
+### T-19 —— 同一个暂停面，并指明当前生效的机制
+
+团队可以被两种方式暂停：`agent_teams_halt`（会**取消**所有未终结任务）与本包自己的**保留式** hold。
+`session-watchdog-status` 打印两者的**并集**并指明谁在生效——`team-a: PAUSED — halted
+(agent_teams_halt)`、`team-a: PAUSED — held (watchdog hold)`、或 `team-a: not paused`——既出现在
+渲染文本中，也以每团队一个 `pause: {active, mechanism, halted, held}` 对象出现在 JSON 中。**不**新增
+任何 resume 动作：两种清除保持各自独立（`agent_teams_resume` / `session-watchdog-resume`），由该界面
+告诉用户该用哪一个。
+
+### AFTER (working tree)
+--- :245-247 ---
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`。写入采用
+  临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
+  派发**新**工作，绝不用于取消已有工作。它是团队暂停的**内部实现**——唯一的外部暂停是 `agent_teams_halt`（后者会取消所有未终结任务）。
+--- :266-273 ---
+### T-19 —— 同一个暂停面，并指明当前生效的机制
+
+外部暂停只有一种：`agent_teams_halt`（会**取消**所有未终结任务），由 `agent_teams_resume` 清除。
+本包自己的**保留式** hold 是这次暂停的**内部实现**，绝不是供调用方二选一的第二种机制。
+因此状态视图只报告**一种**暂停状态并指明外部机制——`team-a: PAUSED —
+mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
+active`，或 `team-a: not paused`——既出现在渲染文本中，也以每团队一个 `pause: {paused, mechanism,
+implementation, halted, held}` 对象出现在 JSON 中，其中 `halted`/`held` 只是诊断字段。

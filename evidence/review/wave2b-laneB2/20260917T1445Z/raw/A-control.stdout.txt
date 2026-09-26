@@ -1,0 +1,14 @@
+docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+repo /tmp/t21-revb2-scratch/control
+
+  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — none
+  ok   content:anchors — 5 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 5 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+
+[docs-claims] 9/9 checks passed, 0 failed, 5 citation(s) resolved, 0 symbol-first, 5 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative

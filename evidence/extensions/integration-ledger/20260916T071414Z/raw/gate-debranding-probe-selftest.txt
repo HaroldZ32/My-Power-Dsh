@@ -1,0 +1,6 @@
+[verify-debranding-full] self-test PASS - positive-control (real example + template) :: 26 field-probes, 0 findings
+[verify-debranding-full] self-test PASS - F7 coverage arm (superseded prober's probe scope) :: old probe = [flows.description, flows.id, flows.title, flows.whenToUse, skills.description, skills.name] ; uncovered by the old probe = [mcp.args, mcp.command, mcp.serverName, mcp.transport, roles.description, roles.name, roles.persona]
+[verify-debranding-full] self-test PASS - mutation (flow.whenToUse) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS - mutation (role.description — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS - mutation (mcp.serverName — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS: 5/5 arms

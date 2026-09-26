@@ -21,6 +21,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { readSessionEvents, findToolCall, recordedToolNames } from "./lib/session-evidence.mjs"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const ENUM_JOB = "Do only one thing: list all available tool names in your current session that start with the mcp__ prefix (one per line). Do not call any tools."
@@ -58,7 +60,7 @@ function realRun(job, timeoutMs = 600000) {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[mcp-call] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // Live-LLM cases must ALSO copy settings.yaml when present (AGENTS.md §7): homes whose
   // keys come from gateway providers (llm-pi-ai — opencode-go/scnet) configure the chain
   // there, and without it headless falls back to the base `deepseek-official` route and
@@ -84,7 +86,7 @@ function realRun(job, timeoutMs = 600000) {
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   try {
-    const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
+    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // NO MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-setting here (B8): this case
     // used to pin both to the checkout toolchain, which is exactly why it stayed
@@ -104,7 +106,8 @@ function realRun(job, timeoutMs = 600000) {
     writeFileSync(join(profileDir, "package.json"), JSON.stringify({ name: "dsh-profile-headless", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
     const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", join(sandbox, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
     if (inst.status !== 0) { console.error("[mcp-call] FAIL: staged install\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
-    const run = spawnSync("dsh", ["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], {
+    const runSpec = dshCommand(["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], env)
+    const run = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, {
       env, cwd: ws, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
     assertSessionsSandboxed(sandbox, sandbox, { label: "mcp-call" })

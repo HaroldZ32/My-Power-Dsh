@@ -1,0 +1,68 @@
+{
+  "task": "t12",
+  "driver": "t12-parity-attack.mjs",
+  "verifiedAt": "2026-09-18T04:19:54.907Z",
+  "checks": [
+    {
+      "id": "A1-schema-carries-three-slots",
+      "ok": true,
+      "detail": "slots=[\"slot1\",\"slot2\",\"slot3\"] defaults={\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"},\"slot2\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"},\"slot3\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}}"
+    },
+    {
+      "id": "A3-exactly-nine-slot-knobs-in-order",
+      "ok": true,
+      "detail": "knobs=22 slots=9"
+    },
+    {
+      "id": "A3-every-slot-knob-is-select-with-nonempty-declared-options",
+      "ok": true,
+      "detail": "[[\"teamModels.slot1.provider\",\"select\",1],[\"teamModels.slot1.model\",\"select\",4],[\"teamModels.slot1.reasoningEffort\",\"select\",4],[\"teamModels.slot2.provider\",\"select\",1],[\"teamModels.slot2.model\",\"select\",4],[\"teamModels.slot2.reasoningEffort\",\"select\",4],[\"teamModels.slot3.provider\",\"select\",1],[\"teamModels.slot3.model\",\"select\",4],[\"teamModels.slot3.reasoningEffort\",\"select\",4]]"
+    },
+    {
+      "id": "A3-hints-carry-dotted-key+disclosure+not-lost",
+      "ok": true,
+      "detail": "mpd.jsonc teamModels.slot1.provider — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session slot 1 is the default route of the slot-1 members (Architect, Planner, Reviewer, Lead, Senior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort"
+    },
+    {
+      "id": "A3-declared-lists-are-the-frozen-fallback-lists",
+      "ok": true,
+      "detail": "{\"provider\":[\"deepseek-official\"],\"model\":[\"deepseek-v4-flash\",\"deepseek-v4-flash-vision-exp\",\"deepseek-v4-pro\",\"deepseek-flash\"],\"reasoningEffort\":[\"off\",\"low\",\"high\",\"max\"]}"
+    },
+    {
+      "id": "A6-card-mirror-element-wise-equal",
+      "ok": true,
+      "detail": "22/22 rows agree on path+label+zh+kind+declared options"
+    },
+    {
+      "id": "A6-web-client-does-not-reference-the-declaration",
+      "ok": true,
+      "detail": "checked src/settings-card.js and BUILT client.js"
+    },
+    {
+      "id": "A6-card-disclosure-literals-identical",
+      "ok": true,
+      "detail": "card source quotes the declaration's BRIDGE_DISCLOSURE + BRIDGE_NOT_LOST + BRIDGE_RESTART_LIMIT verbatim"
+    },
+    {
+      "id": "A5-built-client-carries-nine-select-slot-rows",
+      "ok": true,
+      "detail": "select rows=9"
+    },
+    {
+      "id": "A4-built-tui-carries-slot-machinery",
+      "ok": true,
+      "detail": "TEAM_MODEL_SLOTS=true teamModelOptionLists=true branch-line=true"
+    },
+    {
+      "id": "A4-tui-declared-slot-fields-are-select",
+      "ok": true,
+      "detail": "tuiFields=22 slotFields=9"
+    },
+    {
+      "id": "A4-tui-hints-carry-key-and-disclosure",
+      "ok": true,
+      "detail": "mpd.jsonc teamModels.slot1.provider — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+    }
+  ],
+  "failed": []
+}

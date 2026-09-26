@@ -1,0 +1,71 @@
+{
+  "task": "t19 — lane B3",
+  "attemptId": "e8ba80b2-37bc-4160-a935-4cc2b8d3ffee",
+  "measuredAt": "2026-09-17T01:55:53.142Z",
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/members.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs"
+  ],
+  "commandsRun": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "233 pass / 0 fail / 1830 expect() calls across 66 files (test.log)"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "[patch-agent-teams-fixes] already applied: 65 mpd delta region(s) across 9 adopted file(s) (65 regions; regenerated 59→65 by --write-registry, never hand-edited)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "status": "passed",
+      "evidence": "$ tsgo --noEmit (typecheck.log)"
+    }
+  ],
+  "registry": {
+    "before": 59,
+    "after": 65
+  },
+  "mountedBoot": {
+    "driver": "driver.mjs",
+    "result": "result.json",
+    "assertions": {
+      "A1_captain_seat_classified": true,
+      "A2_member_lists_update_tool": true,
+      "A3_member_does_not_list_approve": true,
+      "A4_member_denied_write_tools": true,
+      "A5_captain_is_a_writer_seat": true,
+      "A6_artifact_written_from_the_readonly_seat": true,
+      "A7_task_records_the_artifact_path": true
+    },
+    "artifact": {
+      "path": "evidence/t19-probe/full-document.md",
+      "exists": true,
+      "bytes": 9017,
+      "expectedBytes": 9017,
+      "recorded": true,
+      "bodyHead": "FULL DELIVERABLE zzzzzzzzzzzzzzzzzzzzzzz"
+    },
+    "seatSurfaces": {
+      "captainTools": 99,
+      "memberTools": 83,
+      "attemptIdSeen": "58e1df1e-fee5-4842-82a7-5bdc2d50012c"
+    },
+    "bounds": [
+      "One boot window, one stub-driven team (captain + ONE read-only member whose toolDeny is the seven-name read-only set), one 9 KB artifact.",
+      "The artifact write is proven from the FILE ON DISK plus the task record the tool wrote, and the seat surfaces are read from the harness's own request payloads; the model itself is a local stub.",
+      "The probe measures whether a read-only seat CAN deliver through the channel, never a real model's choice to."
+    ]
+  },
+  "supersession": {
+    "file": "packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs",
+    "note": "t14-era CONTROL 2 asserted a RUNNING append is refused; T-46 makes that append the deliverable channel, so the control now asserts the append EXTENDS (asserted on the call return, because the post-lock kick may rotate the attempt). t14 verdict anchors for this file are SUPERSEDED by t19, recorded here rather than changed silently."
+  }
+}

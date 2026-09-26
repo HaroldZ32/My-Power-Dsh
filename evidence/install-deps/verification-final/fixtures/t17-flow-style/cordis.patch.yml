@@ -1,0 +1,5 @@
+# t17 adversarial fixture: a foreign layer that mounts the sidebar in FLOW-STYLE YAML (valid, and
+# the row-aware predicate is line/indent based) — if the predicate misses it, our row stays
+# ENABLED and the boot dies with duplicate prefix route.
+- insert:
+    - { id: t17-flow-row, name: 'dsh-better-sidebar' }

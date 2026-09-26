@@ -1,0 +1,19 @@
+{
+  "case": "install-deps/repair-r2/f3-negative-control",
+  "bootCommand": "dsh --profile w --patch /tmp/mpd-r2-negctl-vyFMnv/legacy-guard.yml --port 3421 --no-open",
+  "oldGuardSource": "evidence/install-deps/review/guard.raw.txt",
+  "composition": "package resolvable + web plane + foreign sidebar row in <profileDir>/cordis.patch.yml",
+  "expected": "the boot DIES with `duplicate prefix route` (the pre-repair guard cannot see the profile layer)",
+  "duplicatePrefixRoute": true,
+  "failedToApplyLoaderEntry": true,
+  "tokenPrinted": false,
+  "logTail": [
+    "        at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34",
+    "        at file:///tmp/mpd-r2-negctl-vyFMnv/dsh/profiles/w/#legacy-guard-probe",
+    "        at file:///tmp/mpd-r2-negctl-vyFMnv/dsh/profiles/w/#include",
+    "  }",
+    "}",
+    "Node.js v24.16.0"
+  ],
+  "ok": true
+}

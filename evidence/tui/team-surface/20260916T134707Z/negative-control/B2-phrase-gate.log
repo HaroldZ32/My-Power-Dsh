@@ -1,0 +1,75 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from a real record on disk) > renders the staged roster, the task DAG, counts and mail from the file [7.13ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the depth walk and the failed-dependency marking match the panel's own semantics [0.96ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.53ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > a corrupt / absent / cyclic record renders an empty state and never throws [1.16ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the REAL record of this session's own team projects without a hand-built object [13.15ms]
+(pass) team-workflow projection (read-only, from a real record on disk) > the board gains exactly the two T3 rows [2.07ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.90ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [1.15ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.69ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.85ms]
+(pass) surface T1 — the team workflow > a staged team opens the plan surface and `p` reaches the board [0.94ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [1.09ms]
+(pass) surface T1 — the team workflow > N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there) [0.94ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [2.27ms]
+(pass) surface T2 — the plan approval > shows the staged plan, the action block and an EMPTY confirmation echo [1.22ms]
+(pass) surface T2 — the plan approval > the precondition failure states the phase and offers only Esc [0.45ms]
+(pass) surface T2 — the plan approval > the precondition failure is READ-ONLY: no chord can mutate a non-staged team [0.98ms]
+608 |       discard: async () => ({ ok: true }),
+609 |     }
+610 |     const { kit, components } = mountScenes(workspace, { actions })
+611 |     render(kit, components[PLAN_SCENE_ID])
+612 |     const text = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+613 |     expect(calls).toHaveLength(0)
+                        ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:613:19)
+(fail) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.79ms]
+629 |     render(kit, components[PLAN_SCENE_ID])
+630 |     for (const character of "approve some-other-team") {
+631 |       pressAndRender(kit, components[PLAN_SCENE_ID], character)
+632 |     }
+633 |     const text = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
+634 |     expect(calls).toHaveLength(0)
+                        ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/team-surface.test.ts:634:19)
+(fail) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [2.34ms]
+(pass) surface T2 — the plan approval > the exact phrase approves through the injected executor and reports the tool's own result [2.15ms]
+(pass) surface T2 — the plan approval > a REFUSED tool result is rendered as a refusal, never as a success [2.16ms]
+(pass) surface T2 — the plan approval > an unavailable executor reports the tool as not registered [1.61ms]
+(pass) surface T2 — the plan approval > B5 — while a call is in flight EVERY key is ignored (single-flight) [2.47ms]
+(pass) surface T2 — the plan approval > the echo is empty again after an `r` refresh (no prefill, no carry-over) [1.73ms]
+(pass) surface T2 — the plan approval > contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase [1.66ms]
+(pass) surface T2 — the plan approval > BSpace is the only editing key [0.81ms]
+(pass) surface T2 — the plan approval > discard is two-step: one Ctrl+D arms, a second inside the window calls the tool [1.69ms]
+(pass) surface T2 — the plan approval > any other key clears the discard arm [1.87ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [1.38ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.59ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.53ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.66ms]
+(pass) package invariants > the built dist carries the two scene ids and no write primitive [0.95ms]
+(pass) package invariants > the frozen tool names are the adopted ones [0.08ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.64ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+
+2 tests failed:
+(fail) surface T2 — the plan approval > N2 — Ctrl+X with an EMPTY echo performs no tool call [1.79ms]
+(fail) surface T2 — the plan approval > N1 — the phrase for a DIFFERENT team id is inert [2.34ms]
+
+ 33 pass
+ 2 fail
+ 169 expect() calls
+Ran 35 tests across 2 files. [216.00ms]

@@ -1,0 +1,70 @@
+{
+  "task": "t7 (attempt 2) — ANCHORED re-run on the captain's instruction: 'pin the sha256 of these four files before and after the run and say explicitly that the verification is anchored to the working-tree digest of a dirty tree'",
+  "note": "t7 is FORMALLY TERMINAL (status completed, attempt 2) — agent_teams_claim_task returned 'task status cannot move from \"completed\" to \"claimed\"'. This directory therefore carries an EXTRA measurement requested by the captain, reported by message; it does not replace evidence/extensions/t7-verify/20260916T045829Z (the attempt-2 record) or …/20260916T044344Z (attempt 1, FAILED).",
+  "verdict": "PASS — all three contract commands exit 0 again on the current tree, and the four repair files' digests are identical before the run, after the run, and in the settle re-pin",
+  "revision": {
+    "head": "8777e4340f8b4cd0a8d0c0ac683054523d4b5739",
+    "anchoringStatement": "The verification is anchored to the WORKING-TREE DIGEST OF A DIRTY TREE, not to revision 8777e43 alone: HEAD is unchanged but the tree carries t13's uncommitted repair (4 tracked files modified, uncommitted, because the captain is the single git writer and the wave is not closed).",
+    "fourRepairFilesDigest_stable": {
+      "scripts/pack-mpd.mjs": "8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b",
+      "skills/dsh-qa/SKILL.md": "b20d73118f4db8cecf4b3c5f2a5260743f579ab99c28953140788b53dfb4bf76",
+      "skills/dsh-qa/scripts/extension-mcp-bridge.mjs": "3f2169889bc536b1bbb1e1702486a3ec717c2a85d7b9bd1dab63c944ec1c2fd9",
+      "VENDOR_LOCK.json": "d226534d3b2f9708699e6afae3e56490cb7b2ce9346bbd0813dd4b70dfb9fad6"
+    },
+    "fourFileGuard": "run-anchored.sh digests the four files before and after the run and ABORTS with exit 9 (no verdict) if any digest changes; it printed 'FOUR-FILE DIGESTS STABLE ACROSS THE RUN'. four-pre.sha == four-post.sha == the settle re-pin at 2026-09-16T05:05:40Z (>=50 s after the run ended 05:04:31Z).",
+    "restOfLaneSubject_stable": {
+      "packages/mpd-ext-plugin/dist/index.js": "7a91509eed2c40a263b018c970c28a7a30f8d47697ff658c2cf90d19f7a4ea65 (gitignored build output)",
+      "packages/mpd-mcp-lsp/dist/cli.js": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148 (gitignored build output)",
+      "packages/mpd-bundle/cordis.patch.yml": "11da3e4a4b68721336f2e0de8149ffc6b77d6c6e2577a9277958bd5bfa33d615",
+      "skills/dsh-qa/scripts/extension-lifecycle.mjs": "94213631e8187cb8336b85b165f0deaeeff1664e571f7cf4ff4095e4a344b314",
+      "skills/dsh-qa/scripts/extension-isolation.mjs": "67467b6d967aacd5dcdd9c97b22ca0529916688568a07e38b37d54dd39bbbfbb"
+    },
+    "vindicationOfT13Repin": "VENDOR_LOCK.json's digest d226534d… is the lock whose skills entry reads treeSha 7a48fdad90cc30f9c1e71009be216aeb8b2a1de797eb2bb1897032c41f6b51aa — the value `node scripts/verify-vendor.mjs` asserted OK in t13; the digest proves the verified lock is the one this run measured against."
+  },
+  "commands": [
+    { "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip", "exitCode": 0, "started": "2026-09-16T05:03:46Z", "ended": "2026-09-16T05:04:23Z", "evidenceDir": "evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z/", "consoleCopy": "extension-lifecycle.console.log", "decisiveLines": ["output.log:40 (and :50, and for every other boot) '[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: … | project plane: <session workspace>/.mpd/extensions (per call)'", "result.json steps.packed = {ok:true, packExit:0, rows:{mpdExtRowInPackedPatch:true}, assets:{pluginDist:true, extensionsAsset:true}} — the arm that was RED in attempt 1"], "arms": "install ok | main ok (7/7 calls succeeded) | failure ok | isolation ok | packed ok (exit 0, GREEN)" },
+    { "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip", "exitCode": 0, "started": "2026-09-16T05:04:23Z", "ended": "2026-09-16T05:04:30Z", "evidenceDir": "evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z/", "consoleCopy": "extension-mcp-bridge.console.log", "decisiveLines": ["output.log:34 '[mpd-ext] extension \"qa-mcp-schema\" mcp server \"qa_mcp_schema\": 2 tool(s) published, 1 skipped, 1 downgraded'", "result.json steps.schema = {vacuous:false, ok:true, goodToolOffered:true, badInputSkipped:true, badOutputOffered:true, badOutputSchemaDropped:true, reportedReason:true} — the arm that was RED in attempt 1"], "arms": "install ok | live ok | dead ok | hang ok | schema ok | dup ok | containment ok" },
+    { "command": "bun skills/dsh-qa/scripts/extension-isolation.mjs --self-test", "exitCode": 0, "started": "2026-09-16T05:04:30Z", "ended": "2026-09-16T05:04:31Z", "consoleCopy": "extension-isolation-self-test.console.log", "decisiveLines": ["'[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified'"] }
+  ],
+  "proofMap": {
+    "file": "proof.json",
+    "lifecycle": "mount line 37; request/header line 13 (99 tools); mpd_ext_list 18->20, mpd_ext_show 24->25, mpd_flow_show 34->35, skill 39->40, mpd_role_persona 44->45, mpd_role_spawn 49->51, every result isError=false; markers projectId 20 / userId 12 / project rejection 20 / flow 35 / skill 40 / persona 45 / role child 51; isolation session-a 12, session-b 12, decoy-cwd-control 12",
+    "mcpBridge": "mount line 35; schema publish line 31; live call 39->40 (isError=false); request/header line 13 (109 tools) offers mcp__qa_mcp_live__status and mcp__qa_mcp_schema__bad_output but NOT bad_input; dead/hang/dup server tools 0"
+  },
+  "isolation": {
+    "sandboxPaths": { "lifecycle": "/tmp/mpd-extension-lifecycle-AnVvy8", "mcpBridge": "/tmp/mpd-extension-mcp-bridge-id9Xly" },
+    "assertions": { "lifecycle.isolationFinal": "{ok:true, checked:4}", "mcpBridge.containment.isolation": "{ok:true, checked:1}" },
+    "note": "same mechanism as the main attempt-2 record (sandbox DSH_HOME + HOME + session cwd, then assertSessionsSandboxed)"
+  },
+  "skipped": ["nothing — both real lanes ran with --no-skip and printed no '[mpd-qa] SKIP' marker"],
+  "knownResidualWaived": {
+    "file": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+    "lines": "35-42",
+    "issue": "the ARMS header comment still says this wave expects a RED packed arm / the fix is t11's",
+    "status": "KNOWN RESIDUAL, ALREADY WAIVED by the captain — deliberately not fixed in this wave because a second skills/** edit would force a second VENDOR_LOCK re-pin (AGENTS.md §9/§11 wants exactly one re-pin per wave). Left alone by this run; no skills/** file was touched."
+  },
+  "concurrentWriters": "t9/t15 were editing docs/ and README files in parallel (docs/extensions*.md, docs/development*.md, package READMEs). Those files are not part of any lane's subject; they were not re-pinned and no lane was re-run because of them. `git status --porcelain` was captured in pin-pre.txt and pin-post.txt so the exact tracked-file set at both ends of the run is on disk.",
+  "evidencePaths": [
+    "evidence/extensions/t7-verify/20260916T050334Z/result.json",
+    "evidence/extensions/t7-verify/20260916T050334Z/output.log",
+    "evidence/extensions/t7-verify/20260916T050334Z/run-anchored.sh",
+    "evidence/extensions/t7-verify/20260916T050334Z/exit-codes.txt",
+    "evidence/extensions/t7-verify/20260916T050334Z/pin-pre.txt",
+    "evidence/extensions/t7-verify/20260916T050334Z/pin-post.txt",
+    "evidence/extensions/t7-verify/20260916T050334Z/pin-settle.txt",
+    "evidence/extensions/t7-verify/20260916T050334Z/four-pre.sha",
+    "evidence/extensions/t7-verify/20260916T050334Z/four-post.sha",
+    "evidence/extensions/t7-verify/20260916T050334Z/derive-proof.mjs",
+    "evidence/extensions/t7-verify/20260916T050334Z/proof.json",
+    "evidence/extensions/t7-verify/20260916T050334Z/proof-summary.txt",
+    "evidence/extensions/t7-verify/20260916T050334Z/extension-lifecycle.console.log",
+    "evidence/extensions/t7-verify/20260916T050334Z/extension-mcp-bridge.console.log",
+    "evidence/extensions/t7-verify/20260916T050334Z/extension-isolation-self-test.console.log",
+    "evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z/result.json",
+    "evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z/output.log",
+    "evidence/extensions/extension-lifecycle/2026-09-16T05-03-47.115Z/raw/main.session.decoded.jsonl",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z/result.json",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z/output.log",
+    "evidence/extensions/extension-mcp-bridge/2026-09-16T05-04-23.876Z/raw/mcp.session.decoded.jsonl"
+  ]
+}

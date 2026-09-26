@@ -1,0 +1,58 @@
+{
+  "revision_note": "re-taken by t43 at the working revision; the wave-2a readings are NOT inherited",
+  "not_toContain_occurrences": 42,
+  "not_toContain_per_corpus": {
+    "self-fix-tests": 25,
+    "test": 17
+  },
+  "literal_bearing_arms_parsed": 27,
+  "literal_bearing_per_corpus": {
+    "self-fix-tests": 20,
+    "test": 7
+  },
+  "subject_scoped_over_module_sources": 3,
+  "subject_scoped": [
+    {
+      "file": "self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs",
+      "subject": "toolsCode",
+      "literal": "watchdogHoldOf",
+      "moduleFile": "tools.js",
+      "full": false,
+      "code": false,
+      "commentOnly": false
+    },
+    {
+      "file": "self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs",
+      "subject": "toolsCode",
+      "literal": "mpd-delta watchdog-hold-reader",
+      "moduleFile": "tools.js",
+      "full": false,
+      "code": false,
+      "commentOnly": false
+    },
+    {
+      "file": "self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs",
+      "subject": "toolsCode",
+      "literal": "watchdog-hold-reader",
+      "moduleFile": "tools.js",
+      "full": false,
+      "code": false,
+      "commentOnly": false
+    }
+  ],
+  "reddened_on_full_text": 0,
+  "reddened_on_code_only": 0,
+  "comment_only_hits": 0,
+  "matcher_error_directions": [
+    {
+      "direction": "over-report",
+      "alternative": "test every literal against EVERY lib file (the subject binding ignored)",
+      "measured": "every one of the 27 literal-bearing arm(s) tested against every lib file instead of its own subject: 3 subject-scoped"
+    },
+    {
+      "direction": "under-report",
+      "alternative": "a *.mjs-only glob over both corpora (the file-type assumption)",
+      "measured": "32 occurrence(s) over 35 .mjs file(s), against 42 over 42 with no extension assumption"
+    }
+  ]
+}

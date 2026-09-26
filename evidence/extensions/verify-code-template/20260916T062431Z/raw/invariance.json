@@ -1,0 +1,119 @@
+{
+  "driver": "invariance-and-discovery.mjs",
+  "beforeDir": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z",
+  "afterDir": "evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-25-17.760Z",
+  "readings": {
+    "beforeExtLine": "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+    "afterExtLine": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+    "afterRolesLine": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+    "afterWithoutIdentity": "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+    "fallbackWarningLines": 0,
+    "fallbackIdentityLines": 0,
+    "providersBefore": "mpd-ext:mpd-ext-example, mpd-ext:project-plane",
+    "providersAfter": "mpd-ext:mpd-ext-example, mpd-ext:project-plane",
+    "laneStepsBefore": [
+      "boot=true",
+      "composed=true",
+      "install=true",
+      "layerDurability=true",
+      "noHomeCopy=true",
+      "uninstall=true"
+    ],
+    "laneStepsAfter": [
+      "boot=true",
+      "composed=true",
+      "install=true",
+      "layerDurability=true",
+      "noHomeCopy=true",
+      "uninstall=true"
+    ],
+    "templateMentionedInBoot": false
+  },
+  "checks": [
+    {
+      "id": "after.ext-identity-line-present",
+      "ok": true,
+      "detail": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+    },
+    {
+      "id": "after.roles-identity-line-present",
+      "ok": true,
+      "detail": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "id": "after.ext-identity-is-mounted",
+      "ok": true,
+      "detail": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+    },
+    {
+      "id": "after.roles-identity-is-mounted",
+      "ok": true,
+      "detail": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "id": "after.no-fallback-warning",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK lines: 0"
+    },
+    {
+      "id": "after.no-fallback-identity",
+      "ok": true,
+      "detail": "fallback identity lines: 0"
+    },
+    {
+      "id": "after.four-inspection-tools",
+      "ok": true,
+      "detail": "missing: []"
+    },
+    {
+      "id": "before.is-pre-change",
+      "ok": true,
+      "detail": "before line has no identity field: true"
+    },
+    {
+      "id": "invariance.ext-line-otherwise-byte-identical",
+      "ok": true,
+      "detail": "{\"before\":\"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\",\"afterWithoutIdentity\":\"[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\",\"equal\":true}"
+    },
+    {
+      "id": "invariance.discovery-providers-identical",
+      "ok": true,
+      "detail": "{\"before\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\",\"after\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\"}"
+    },
+    {
+      "id": "invariance.step-subjects-nonzero",
+      "ok": true,
+      "detail": "{\"before\":6,\"after\":6}"
+    },
+    {
+      "id": "invariance.lane-step-ok-flags-identical",
+      "ok": true,
+      "detail": "{\"before\":[\"boot=true\",\"composed=true\",\"install=true\",\"layerDurability=true\",\"noHomeCopy=true\",\"uninstall=true\"],\"after\":[\"boot=true\",\"composed=true\",\"install=true\",\"layerDurability=true\",\"noHomeCopy=true\",\"uninstall=true\"]}"
+    },
+    {
+      "id": "after.lane-every-step-ok",
+      "ok": true,
+      "detail": "[\"boot=true\",\"composed=true\",\"install=true\",\"layerDurability=true\",\"noHomeCopy=true\",\"uninstall=true\"]"
+    },
+    {
+      "id": "invariance.adapter-seams-identical",
+      "ok": true,
+      "detail": "{\"before\":\"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events\",\"after\":\"tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events\"}"
+    },
+    {
+      "id": "discovery.no-template-line-in-boot",
+      "ok": true,
+      "detail": "boot log mentions mpd-extension-template: false"
+    },
+    {
+      "id": "discovery.provider-set-unchanged",
+      "ok": true,
+      "detail": "{\"before\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\",\"after\":\"mpd-ext:mpd-ext-example, mpd-ext:project-plane\"}"
+    },
+    {
+      "id": "discovery.template-not-in-providers",
+      "ok": true,
+      "detail": "mpd-ext:mpd-ext-example, mpd-ext:project-plane"
+    }
+  ]
+}

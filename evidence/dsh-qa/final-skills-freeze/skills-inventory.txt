@@ -1,0 +1,60 @@
+# Lane C's skills/** inventory at FINAL (the list the wave's single re-pin is checked against)
+# captured: 2026-09-17T04:26:19Z · command: git status --porcelain skills/ && git diff --stat skills/
+
+## changed / untracked (git status --porcelain skills/)
+ M skills/dsh-qa/scripts/agent-teams-adopt.mjs
+ M skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+ M skills/dsh-qa/scripts/agent-teams-messaging.mjs
+ M skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+ M skills/dsh-qa/scripts/bundle-lifecycle.mjs
+ M skills/dsh-qa/scripts/codegraph-smoke.mjs
+ M skills/dsh-qa/scripts/dual-track-smoke.mjs
+ M skills/dsh-qa/scripts/explicit-team-trigger.mjs
+ M skills/dsh-qa/scripts/extension-template.mjs
+ M skills/dsh-qa/scripts/mcp-call.mjs
+ M skills/dsh-qa/scripts/memory-smoke.mjs
+ M skills/dsh-qa/scripts/mount-assert.mjs
+ M skills/dsh-qa/scripts/plan-c-smoke.mjs
+ M skills/dsh-qa/scripts/preset-conformance.mjs
+ M skills/dsh-qa/scripts/preset-register.mjs
+ M skills/dsh-qa/scripts/readonly-deny.mjs
+ M skills/dsh-qa/scripts/relocate-smoke.mjs
+ M skills/dsh-qa/scripts/session-start-team.mjs
+ M skills/dsh-qa/scripts/skill-catalog-probe.mjs
+ M skills/dsh-qa/scripts/software-smoke.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs
+ M skills/dsh-qa/scripts/team-watchdog-fault.mjs
+ M skills/dsh-qa/scripts/tool-output-validation.mjs
+ M skills/dsh-qa/scripts/ultrawork-smoke.mjs
+ M skills/dsh-qa/scripts/vision-smoke.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+ M skills/dsh-qa/scripts/workmate-team-member.mjs
+?? skills/dsh-qa/cases.json
+?? skills/dsh-qa/scripts/lib/credentials.mjs
+?? skills/dsh-qa/scripts/lib/immutable-output.mjs
+?? skills/dsh-qa/scripts/watchdog-redesign.mjs
+
+## diffstat
+ skills/dsh-qa/scripts/workmate-library.mjs       | 107 +++++-
+ skills/dsh-qa/scripts/workmate-team-member.mjs   |   5 +-
+ 28 files changed, 601 insertions(+), 125 deletions(-)
+
+## the four NEW files, with hashes
+54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e  skills/dsh-qa/cases.json
+f0ae6fbb407f8f7d9f66d8f7b9a675f31d8ed2843df73b5fb6da95f549b97639  skills/dsh-qa/scripts/lib/credentials.mjs
+5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976  skills/dsh-qa/scripts/lib/immutable-output.mjs
+98519dad94c53d78411d6e6a76e2650e73b11a179c9140ead7b51fec684a36ef  skills/dsh-qa/scripts/watchdog-redesign.mjs
+
+## newest writes (mtimes)
+11:55:59.7449626880  skills/dsh-qa/cases.json
+11:58:13.3733024520  skills/dsh-qa/scripts/watchdog-redesign.mjs
+12:12:36.0350378490  skills/dsh-qa/scripts/team-watchdog-fault.mjs
+
+## corpus reading at this revision (node scripts/repin-vendor.mjs, dry run)
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] asset          : skills
+[repin-vendor]   computed (LF) : treeSha=68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c fileCount=323 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : e4b51cd70c0cef18dc5f329874fbb3be8487558acc3b012f1378f25a8fedcee1   <- NEVER write this one
+[repin-vendor]   DELTA        : treeSha c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff -> 68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c
+[repin-vendor]   DELTA        : fileCount 319 -> 323

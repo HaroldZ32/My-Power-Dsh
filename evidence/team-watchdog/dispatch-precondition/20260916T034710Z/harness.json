@@ -1,0 +1,208 @@
+{
+  "task": "r7 \u2014 the staged-plan never-started flood",
+  "wave": "user-reported defect, fixed by the captain on dev (solo; no team \u2014 the complexity gate did not route this session)",
+  "title": "A staged plan is not a dispatch problem: an un-dispatched task is never observed",
+  "evidence_dir": "evidence/team-watchdog/dispatch-precondition/20260916T034710Z",
+  "reported_by": "the user, 2026-09-16, as the console burst pasted in the session",
+  "defect": {
+    "observed": "12 console lines `NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) \u2026` on host start, and again on the next host start (measured bursts at 03:41:08.696Z, 03:41:23.696Z, 03:41:38.700Z, 03:42:33.225Z)",
+    "record_under_observation": ".mpd/team/mpd-default/team.json \u2014 phase \"staged\", planReviewState \"awaiting_review\", no approvedAt, 12 tasks all pending with an assignee and ZERO attempt ids (43986 bytes)",
+    "mechanism": "candidateFor() filtered on assignee + non-terminal status only, so an un-dispatched task became a silence candidate; the machine classifies 'no stamp ever written for this task' as never-started, which the engine records ONE incident and ONE console line for",
+    "class": "false positive (the same class as r4's dead-team flood and r6's long-tool false positive), reached through the candidate set instead of the liveness gate"
+  },
+  "fix": {
+    "file": "packages/mpd-team-watchdog-plugin/src/machine.ts",
+    "function": "candidateFor",
+    "rule": "a task is observed only when it was HANDED TO SOMEBODY AT SOME POINT: a non-empty attemptId (written by lib/scheduler.js beginTaskAttempt at dispatch, before delivery) OR any stamp of its own, of any generation, scoped to this team (a stamped task WAS worked on, even when its attempt was later revoked/amended and the id cleared \u2014 the candidacy test therefore reads the UNFILTERED stamps, unlike the W11-2 slice that answers 'is the CURRENT generation silent')",
+    "untouched": "the WARN\u2192ESCALATE machine, streak keys, holds, scenes, the r4 liveness gate, the tool-in-flight rule, the adopted plugin, skills/**"
+  },
+  "dists": {
+    "watchdog": {
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js",
+      "before": {
+        "bytes": 125754,
+        "sha256": "810e0fb315e968ac897d44e297d073cb30063df8a5b8b0569d7effce2cb8d269"
+      },
+      "after": {
+        "bytes": 125566,
+        "sha256": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4"
+      },
+      "before_copy": "raw/dist-before/index.js",
+      "intermediate": {
+        "note": "an intermediate revision (e87da13c\u2026, 125398 B) was measured and then revised after the independent review: its stamp half used the W11-2-FILTERED slice, which hid a task whose attempt had been revoked after it was worked on",
+        "bytes": 125398,
+        "sha256": "e87da13c3d5fc46a5055314a93c49028c2ee043498c1f80d30322e492701d023"
+      }
+    },
+    "note": "the pre-fix bytes were COPIED into the evidence directory BEFORE the rebuild, so the BEFORE half of the measurement mounts the real pre-fix plugin; both halves run through the plugin's own apply()/engine.tickOnce()"
+  },
+  "measurement": {
+    "driver": "raw/dispatch-precondition-before-after.mjs",
+    "records": {
+      "staged": "byte copy of the real .mpd/team/mpd-default/team.json (12 pending tasks, 0 attempts)",
+      "dispatched": "the same record with the attempt id a real dispatch writes on every task (the falsifier / control)",
+      "revoked": "byte copy of the real record, no attempts, plus ONE real heartbeat stamp for member Planner on task t1 naming the EARLIER generation att-t1-1 (written with the plugin's own appendHeartbeat, so the member-key normalization cannot be got wrong by the driver)"
+    },
+    "results": {
+      "before_staged": {
+        "neverStarted": 12,
+        "incidents": 12,
+        "consoleLines": 12,
+        "tickDecisions": 0,
+        "holds": 0
+      },
+      "before_dispatched": {
+        "neverStarted": 12,
+        "incidents": 12,
+        "consoleLines": 12,
+        "tickDecisions": 0,
+        "holds": 0
+      },
+      "before_revoked": {
+        "neverStarted": 12,
+        "incidents": 12,
+        "consoleLines": 12,
+        "tickDecisions": 0,
+        "holds": 0
+      },
+      "after_staged": {
+        "neverStarted": 0,
+        "incidents": 0,
+        "consoleLines": 0,
+        "tickDecisions": 0,
+        "holds": 0
+      },
+      "after_dispatched": {
+        "neverStarted": 12,
+        "incidents": 12,
+        "consoleLines": 12,
+        "tickDecisions": 0,
+        "holds": 0
+      },
+      "after_revoked": {
+        "neverStarted": 1,
+        "neverStartedTasks": [
+          "t1"
+        ],
+        "incidents": 1,
+        "consoleLines": 1,
+        "tickDecisions": 0,
+        "holds": 0
+      }
+    },
+    "panel_payload": {
+      "builder": "buildWatchdogState (packages/mpd-bundle-plugin/src/watchdog-web.ts) \u2014 the function the /plugins/mpd-team-watchdog/state route calls",
+      "reader": "web-panel",
+      "before": {
+        "stuck": true,
+        "replay": true,
+        "unread": 42,
+        "banner": "warned"
+      },
+      "after": {
+        "stuck": false,
+        "replay": false,
+        "unread": 0,
+        "banner": null
+      }
+    }
+  },
+  "cleanup": {
+    "script": "raw/prune-defect-records.mjs (one-off; the log is the only file it rewrites)",
+    "defect_records_removed": 26,
+    "removed_shape": "kind=never-started with an EMPTY attemptId \u2014 a shape the corrected classifier can no longer produce (24 from the two staged-plan bursts + t83/t85 from 01:49/02:04Z, the same class)",
+    "kept": {
+      "never-started": 4,
+      "warn": 8,
+      "escalate": 4,
+      "total": 16
+    },
+    "archive": [
+      ".mpd/team/watchdog/incidents.jsonl.bak-20260916T034935Z",
+      "before/incidents.before.jsonl (byte copy)"
+    ],
+    "watermark": {
+      "reader": "web-panel",
+      "before": 0,
+      "after": 1789525136074,
+      "file": ".mpd/team/watchdog/read-watermark.json",
+      "note": "the panel's reader key is advanced to the newest remaining incident, i.e. every record at or below it counts as read for the web panel \u2014 the 4 legitimate never-started and the 8 warn + 4 escalate records included; all of them remain in the log and in the archive, no hold is live"
+    }
+  },
+  "gates": {
+    "bun test packages/mpd-team-watchdog-plugin": {
+      "result": "84 pass / 0 fail (18 files, 6 cases in the new file)",
+      "log": "gates/package-tests.out"
+    },
+    "bun run typecheck": {
+      "result": "exit 0",
+      "log": "gates/typecheck.out"
+    },
+    "bun run verify:docs": {
+      "result": "PASS \u2014 34 pairs, 0 failed, 0 violations, 16 exempt",
+      "log": "gates/docs-pairs.out"
+    },
+    "bun run verify:vendor": {
+      "result": "PASS",
+      "log": "gates/vendor.out"
+    },
+    "bun run test:qa": {
+      "result": "exit 0 \u2014 all self-tests passed",
+      "log": "gates/qa-self-tests.out"
+    },
+    "watchdog lanes": {
+      "result": "fault PASS 11/11, heartbeat PASS 13/13, boot verdict PASS",
+      "log": "gates/lane-fault.out, gates/lane-heartbeat.out, gates/lane-boot.out"
+    }
+  },
+  "tests": {
+    "new": "packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts",
+    "failing_first": "RED on the pre-fix source: raw/red.log shows the staged case producing 12 incidents (expected 0) and candidateFor returning t1 for an un-dispatched task",
+    "cases": [
+      "12 pending assigned tasks, no attempt and no stamp: no record, no console line, no hold",
+      "CONTROL: the same record with dispatch attempts still reports every never-started task (12 records, no hold)",
+      "a REVOKED generation (attempt cleared, one old stamp) stays observable \u2014 and only that task does",
+      "candidateFor: an un-dispatched task is not a candidate; a dispatched one is",
+      "candidateFor: a stamp for the task keeps it observable even without a live attempt",
+      "candidateFor: an EARLIER generation's stamp still proves the task was worked on; another TEAM's does not"
+    ]
+  },
+  "honest_limits": [
+    "A task whose attempt was cleared AND that carries no stamp at all (a first delivery that failed before the member's first stamp, lib/scheduler.js:669-687) is indistinguishable on disk from a staged task and is now silent; a task that HAD been stamped stays observable (measured: the revoked row).",
+    "A task the scheduler never dispatched although its dependencies were met is also silent: TeamTask carries no `dependencies`, so 'ready but never dispatched' cannot be told from 'blocked on dependencies'. A future wave that wants that signal must read `dependencies` and require every dependency completed.",
+    "The never-started dedupe is still per process (neverStarted is in-memory), so a genuinely dispatched task whose owner never stamped is re-reported after a restart \u2014 intended, since it is a real observation.",
+    "The panel's read watermark is a single reader key; other readers keep their own replay by design."
+  ],
+  "review": {
+    "reviewer": "Reviewer specialist (mpd_role_spawn, read-only), independent of the author",
+    "verified_by_reviewer": [
+      "re-ran the driver against the real staged team.json: pre-fix 12 incidents/12 lines, fixed dist 0/0, dispatched control 12/12 in both halves",
+      "the committed dist is byte-identical to a fresh `bun build src/index.ts`",
+      "raw/dist-before/index.js differs from the fixed dist only by bundle path comments plus the inserted gate lines (so the pair is falsifiable)",
+      "bun test packages/mpd-team-watchdog-plugin 84 pass / 0 fail; typecheck exit 0; verify:docs PASS; team-watchdog-fault PASS 11 checks",
+      "the gate is a pure restriction: no WARN/ESCALATE/scene/hold/r6-in-flight observation can be lost (tool-expired needs inFlightSince, which needs stamps)",
+      "custom probes on BOTH dists for the attempt-cleared shape, the next-generation stamp, the foreign-team stamp and the no-team stamp"
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "problem": "the comment promised that a stamp keeps a task observable 'even without a current attempt (a revoked or handoff generation)', which the W11-2 filter does not deliver: pre-fix 1 never-started record, then invisible",
+        "closed_by": "the candidacy half now reads the unfiltered, team-scoped stamps; measured BEFORE 12 / AFTER 1 on the revoked row, plus two new tests",
+        "status": "closed"
+      },
+      {
+        "severity": "medium",
+        "problem": "README EN + zh-CN read as AND ('two preconditions \u2026 in order') while the code is a disjunction",
+        "closed_by": "both READMEs rewritten as one disjunctive rule; verify:docs re-run green",
+        "status": "closed"
+      },
+      {
+        "severity": "low",
+        "problem": "the residual-limit row did not name the rolled-back-delivery class; the cleanup wording implied only defect records were acknowledged",
+        "closed_by": "both reworded",
+        "status": "closed"
+      }
+    ],
+    "reviewer_constraints_respected": "no new knob, no phase/planReviewState branch in the watchdog, no adopted-file or delta-region edit, no change to the r2/W11-2 filters or the r4 liveness gate, no VENDOR_LOCK re-pin, no deletion of other readers' watermark keys, everStampedForTask and its machine test kept"
+  }
+}

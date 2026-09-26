@@ -1,0 +1,46 @@
+== t21 FINAL verify-command reproduction 2026-09-17T03:08:05Z ==
+artifacts (sha256, first 20):
+ba9053b24a3d84f9e46c skills/dsh-qa/scripts/workmate-library.mjs
+354ecaf1345f76aec434 skills/dsh-qa/scripts/extension-template.mjs
+5b94f4c998836612d60a skills/dsh-qa/scripts/lib/immutable-output.mjs
+dfe260902b8ec1f1e8f0 evidence/extensions/docs-claims/check-citations.mjs
+eaf7703d38dc254e5af9 evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs
+
+$ bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip
+[exit 1]
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T03-08-05.586Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  flow: {"ok":false,"sample":"well (for the spawn task) — not strictly needed, but the spawn never ran. Also check the sandbox dir for the workmate library in case it exists elsewhere (e.g., MPD_DSH_WORKMATE_ALLOW_REAL_HOME). Let me do a quick glob for note.md under /
+  files: {"ok":false,"uses":null,"noteChars":0,"memoryChars":0,"note":"","wmRoot":"/tmp/mpd-wm-home-uEfyOH/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat
+
+$ bun skills/dsh-qa/scripts/extension-template.mjs --self-test
+[exit 0]
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+
+$ bun skills/dsh-qa/scripts/workmate-library.mjs --self-test
+[exit 0]
+[workmate-library self-test] ok: 19 checks
+
+$ node evidence/extensions/docs-claims/check-citations.mjs
+[exit 0]
+docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+repo /root/dshProj/my-power-dsh
+
+  ok   citations:docs/extension-authoring-guide.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 56 citation(s) (checked 53: path 41, dir 1, command 11; pending 0, illustrative 3), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 45 citation(s) (checked 44: path 29, dir 15, command 0; pending 0, illustrative 1), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — 12 illustrative citation(s) (extension-root-relative, not repo paths): docs/extension-authoring-guide.md:134 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.md:223 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.md:235 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:118 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | docs/extension-authoring-guide.zh-CN.md:199 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-authoring-guide.zh-CN.md:210 path mpd-dsh/mpd/scripts/mpd-ext.mjs — a path inside an installed bundle, not a repo path | EXTENSIONS-FOR-AGENTS.md:64 path personas/for-agents-skeleton-reviewer.md — the skeleton's own extension-root-relative asset paths | EXTENSIONS-FOR-AGENTS.md:89 path skills/for-agents-skeleton-skill/SKILL.md — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:90 path flows/for-agents-skeleton-flow.json — paths inside the extension root, not repo paths | EXTENSIONS-FOR-AGENTS.md:91 path personas/for-agents-skeleton-reviewer.md — paths inside the extension root, not repo paths | docs/extension-adaptation-report.md:419 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path | docs/extension-adaptation-report.zh-CN.md:220 path packages/mpd-ext-plugin/dist/validator.js — a pack-time artifact emitted by the packer into the artifact, not a repo path
+  ok   content:anchors — 41 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+  ok   guide-heading-tree — 10 EN heading(s) vs 10 zh-CN heading(s), levels identical
+  ok   split-headings — no heading text is shared between the human guide and the agent contract
+  ok   split-prose — no prose line (>= 60 chars, outside code fences) is reused
+  ok   skeleton-validates — the extracted manifest + the template's four assets: validate exit 0;   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+[docs-claims] evidence -> evidence/extensions/docs-claims/runs/run-2026-09-17T03-08-43.202Z
+
+[docs-claims] 12/12 checks passed, 0 failed, 244 citation(s) resolved, 0 pending, 12 illustrative

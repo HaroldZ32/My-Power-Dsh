@@ -1,0 +1,55 @@
+{
+  "task": "t12",
+  "lane": "L1b — adapter turn-submission surface for command handlers",
+  "member": "harness-engineer",
+  "attempt_id": "4105dc40-6f1d-426b-bde2-201449f3a994",
+  "attempt": 1,
+  "captured_at_sweep": "2026-09-18T00:24Z",
+  "base_revision": "5aa222a (dev)",
+  "spec": "evidence/ulw/requirements/20260918T001246Z/contract.md §2.1-§2.2 (the t1 freeze): a command handler runs 'without sending the command to the model', so starting a run needs the agent turn seam `agent.followup(message)` (in-tree precedent packages/mpd-agent-teams-plugin/lib/command.js); §2.2 leaves the seam NAME to the implementer and requires its own capability flag; the pre-step gesture needs no new seam because onEvent forwards to ctx.on verbatim.",
+  "reported_names": {
+    "capability_flag": "turnSubmit",
+    "adapter_method": "submitUserTurn(agent, message) => boolean",
+    "handler_surface": "invocation.submit(message) => boolean (bound by registerCommand on a COPY of the host invocation)"
+  },
+  "changed_files": [
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "sha256": "d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f",
+      "change": "DshCapabilities.turnSubmit; DshAdapter.submitUserTurn(agent, message) with measured JSDoc (installed dsh-agent-loop followup => send(input,'next-turn',true)); DshCommandInvocation.submit?; the turn-plane implementation (feature-detected on a callable agent.followup, bound call, never throws, boolean result); registerCommand now hands the plugin {...hostInvocation, submit} so the host's invocation object is never mutated and the plugin never reads agent.followup; capabilities() reports turnSubmit from a live-registry probe."
+    },
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts",
+      "sha256": "6598b8271f21763795a110692c5f2f3b472569738389b715bb0463836d5bc164",
+      "change": "fakeHarness() sample agent gained the host turn seam (followup captures submissions); new 'turn plane' describe (3 tests): handler submits through its invocation without mutating the host object; submitUserTurn reaches the followup (identity of the message) with every absent/broken surface a safe no-op; capabilities().turnSubmit truthful for a present and an absent agent surface."
+    },
+    {
+      "path": "evidence/ulw/l1b-turn-submit/20260918T002249Z/probe-turn-submit.ts",
+      "sha256": "8143813b769d84b03d97e3f5cc1680f4812c79843f6a6f2b8a2ccefd0c48109d",
+      "change": "the 14-check host probe (installed harness by absolute path)."
+    }
+  ],
+  "verify": [
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exitCode": 0, "key_output": "54 pass / 0 fail / 191 expect() calls (51 before t12; +3 turn-plane tests). Includes every t3 test." },
+    { "command": "bun run typecheck", "exitCode": 0, "key_output": "tsgo --noEmit clean" },
+    { "command": "bun test packages/mpd-codegraph-plugin", "exitCode": 0, "key_output": "9 pass / 0 fail (t3 regression guard, re-run after the t12 edit)" },
+    { "command": "bun run evidence/ulw/l1b-turn-submit/20260918T002249Z/probe-turn-submit.ts", "exitCode": 0, "key_output": "14/14 PASS against the installed harness" }
+  ],
+  "probe_checks": {
+    "A1.installed-followup-delegates-next-turn": "the installed dsh-agent-loop source contains exactly `followup(input) { this.send(input, \"next-turn\", true); }` — the semantics the seam promises",
+    "A2.method-lives-on-the-live-agent-class": "the method sits in `ReactLoopAgent`, which that package does NOT export; a live Agent from the registry is the only reachable handle",
+    "B1/B2/B3": "the seam returns true, calls followup with `this` === the agent handed in, and passes the message object verbatim",
+    "B4/B5": "five absent/broken surfaces (no followup, undefined, null, a string, a throwing driver) all return false and never throw",
+    "C1/C2": "capabilities().turnSubmit is true with a live agent exposing followup, false for an agent without it and for a composition with no agent registry",
+    "D1/D2/D3": "a registered handler's `invocation.submit(message)` returns success, the host's own invocation object gains NO `submit` key and keeps its keys, and the submission reaches the agent",
+    "D4": "the submitted message still matches the installed dsh-llm createUserMessage source tag and is frozen",
+    "D5": "the adapter surface exposes submitUserTurn and NO steer/inject/send"
+  },
+  "honest_bounds": [
+    "No live Agent: the installed `ReactLoopAgent` (which owns followup) is not exported and needs a scoped cordis context plus a full Session, so the probe measures the INSTALLED SOURCE of followup and the adapter-side binding contract. The live end-to-end path (a real agent from a real boot) is t2/t7's live case.",
+    "turnSubmit is a LIVE-REGISTRY probe (same shape as compactionForAgent): a composition with no live session reports false although the surface exists. The authoritative per-call gate is the boolean returned by submitUserTurn / invocation.submit.",
+    "t3's recorded file hashes (evidence/ulw/l1-adapter-command/20260918T001851Z/result.json) describe the t3 revision; t12 supersedes the two adapter files, and this sweep re-ran the whole adapter suite (54 pass) plus the codegraph regression (9 pass).",
+    "dist/** still intentionally NOT rebuilt (D6/T-88): the integration task owns dists.",
+    "The sweep ran on the shared tree, which also carries other lanes' concurrent edits."
+  ]
+}

@@ -1,0 +1,30 @@
+attribution for verify-dist-fresh STALE (lane D changed no packages/** file)
+--- git status of that package ---
+ M packages/mpd-team-watchdog-plugin/package.json
+ M packages/mpd-team-watchdog-plugin/src/actions.ts
+ M packages/mpd-team-watchdog-plugin/src/config-file.ts
+ M packages/mpd-team-watchdog-plugin/src/engine.ts
+ M packages/mpd-team-watchdog-plugin/src/index.ts
+ M packages/mpd-team-watchdog-plugin/src/machine.ts
+ M packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+--- src mtimes + hashes (lane C's in-flight edits) ---
+2026-09-17 15:30:22.257478647 +0800  69ca5fa9f63f80df packages/mpd-team-watchdog-plugin/src/actions.ts
+2026-09-17 15:28:29.792692578 +0800  5b48b4e55925a34e packages/mpd-team-watchdog-plugin/src/engine.ts
+2026-09-17 15:26:52.967289065 +0800  47511b5d415477e2 packages/mpd-team-watchdog-plugin/src/machine.ts
+--- committed dist mtime + hash ---
+2026-09-17 13:42:47.557952947 +0800  7b821135d24a9bdd packages/mpd-team-watchdog-plugin/dist/index.js
+--- does lane D appear in this package's diff? ---
+ packages/mpd-team-watchdog-plugin/src/machine.ts   |  53 +++++++++-
+ .../test/holds-lifecycle.test.ts                   |  25 +++--
+ 7 files changed, 220 insertions(+), 70 deletions(-)
+--- lane D's write set (mine, for contrast) ---
+ M scripts/run-qa-lanes.mjs
+ M skills/dsh-qa/cases.json
+ M skills/dsh-qa/scripts/extension-lifecycle.mjs
+ M skills/dsh-qa/scripts/team-watchdog-boot.mjs
+ M skills/dsh-qa/scripts/team-watchdog-config.mjs
+ M skills/dsh-qa/scripts/team-watchdog-fault.mjs
+ M skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+ M skills/dsh-qa/scripts/team-watchdog-notify.mjs
+ M skills/dsh-qa/scripts/team-watchdog-scene.mjs
+?? scripts/reconcile-register.py

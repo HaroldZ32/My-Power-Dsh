@@ -1,0 +1,208 @@
+{
+  "task": "t19",
+  "kind": "review",
+  "round": 1,
+  "object": "wave-2b lane A (t13) — 13 register rows + T-11 carrier",
+  "done_when": "evidence/requirements/wave2b-laneA/20260917T1405Z-wave2b-laneA-acceptance.md",
+  "verdict": "needs_revision",
+  "verdict_reason": "acceptance criterion 1 is unmet: 3 of 13 rows are delivered (T-87, T-84, T-64) and 10 have no deliverable at all; additionally T-64 is reported CLOSED while the acceptance's OBSERVABLE names cycles, which the implementation does not detect.",
+  "pin": {
+    "settled": true,
+    "settle_window_s": 50,
+    "files": {
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "a05c2a24bec3f2f9",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "2e01e8747cb18916",
+      "packages/mpd-agent-teams-plugin/lib/state.js": "e9c90db3187aeae3",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6ceff2ef931ba43c",
+      "agent-references/agent-teams-deltas.md": "a2120d45fca43ef1"
+    },
+    "git_head": "ca78033"
+  },
+  "reproduced": [
+    {
+      "reading": "lane driver, current revision",
+      "command": "node ./evidence/agent-teams/wave2b-laneA/20260917T141608Z/arm.mjs",
+      "mine": "RED-SIDE FAILURES: 0, exit 0",
+      "theirs": "0, exit 0",
+      "match": true
+    },
+    {
+      "reading": "self-fix-tests suite",
+      "command": "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/",
+      "mine": "109 pass / 0 fail / 15 files, exit 0",
+      "theirs": "109 / 15",
+      "match": true
+    },
+    {
+      "reading": "plugin package suite",
+      "command": "bun test ./packages/mpd-agent-teams-plugin/",
+      "mine": "266 pass / 0 fail / 39 files, exit 0",
+      "theirs": "266 / 39",
+      "match": true
+    },
+    {
+      "reading": "registry check",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "mine": "88 regions / 9 files, exit 0",
+      "theirs": "88 / 9",
+      "match": true
+    },
+    {
+      "reading": "docs gate + derived arm",
+      "command": "bun run verify:docs",
+      "mine": "PASS pairs=38 failed=0 violations=0 exempt=19 derived=3; 'carried 88/9 vs derived 88/9'",
+      "theirs": "PASS, 88/9",
+      "match": true
+    },
+    {
+      "reading": "region id-set diff HEAD vs now",
+      "command": "comm -13 ids-HEAD.txt ids-NOW.txt",
+      "mine": "81 -> 88; ADDED = the 7 named regions; REMOVED = none",
+      "theirs": "81 -> 88",
+      "match": true
+    }
+  ],
+  "negative_controls_run_by_reviewer": [
+    {
+      "arm": "lane driver against pre-fix bytes (git HEAD) in a scratch mirror",
+      "result": "RED-SIDE FAILURES: 6, exit 1",
+      "note": "the lane's recorded before-file says 7 — see finding R4"
+    },
+    {
+      "arm": "drift inside an existing region -> --check",
+      "result": "RED, exit 1",
+      "detail": "no longer matches this script's registered block — first difference at line 721"
+    },
+    {
+      "arm": "stripped end marker -> --check",
+      "result": "RED, exit 1",
+      "detail": "partially stripped: begin marker survived and its partner is gone"
+    },
+    {
+      "arm": "edit -> --write-registry -> --check (scratch mirror)",
+      "result": "88 -> GREEN",
+      "detail": "regenerated 88 regions, exit 0"
+    },
+    {
+      "arm": "NEW top-level region -> --write-registry -> --check (scratch mirror)",
+      "result": "89 regions, --check GREEN",
+      "detail": "the derived cycle works for a properly-anchored region"
+    },
+    {
+      "arm": "region nested INSIDE an existing region",
+      "result": "silently absorbed into the outer region's block (count unchanged), --check green",
+      "detail": "INSTRUMENT property reported as an observation, not a lane defect"
+    }
+  ],
+  "dangerous_direction": [
+    {
+      "row": "T-84",
+      "attack": "a FAILED command must still fail",
+      "result": "HOLDS: requiredStatus 'failed'"
+    },
+    {
+      "row": "T-84",
+      "attack": "OMITTED commandsRun",
+      "result": "HOLDS: refused"
+    },
+    {
+      "row": "T-84",
+      "attack": "reported entry whose command does NOT match the verify command",
+      "result": "HOLE (pre-existing): accepted when counts match — finding R5"
+    },
+    {
+      "row": "T-87",
+      "attack": "8-of-9 payload",
+      "result": "HOLDS: refused, naming 'item-9 (matched 8 of 9)'"
+    },
+    {
+      "row": "T-87",
+      "attack": "9 items with a wrong 9th NAME, all passed",
+      "result": "ACCEPTED (pre-existing length fallback) — finding R6"
+    },
+    {
+      "row": "T-64",
+      "attack": "phantom id",
+      "result": "HOLDS: named '[unresolved dep: t-phantom]'"
+    },
+    {
+      "row": "T-64",
+      "attack": "CYCLE (the acceptance's 'or a cycle')",
+      "result": "UNMET: reader returns [], note empty, state reads as ordinary blocking — finding R3"
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "blocker",
+      "problem": "10 of the 13 rows in the frozen DONE-WHEN have no deliverable: T-06, T-08, T-13, T-14, T-15, T-27, T-42, T-44, T-92, T-93. Verified by attribution of every added line of the lane's diff (5 files, +203/-11): row ids appear only for T-64 (7), T-84 (8), T-87 (4); no hunk implements any other row.",
+      "requiredFix": "Implement the missing halves named per row in the lane's README §3 (or have the captain amend the wave-2b DONE-WHEN with an explicit scope ruling). The registry/substrate work already landed is reusable.",
+      "file": "evidence/agent-teams/wave2b-laneA/20260917T141608Z/README.md",
+      "line": 52
+    },
+    {
+      "id": "R2",
+      "severity": "high",
+      "problem": "T-13, T-27 and T-44 are the A3 rows that may NOT be closed by a documented ruled form, and none of them has a deliverable at all (no `deferred` kind, no batch read, no text-surface approval path).",
+      "requiredFix": "Implement each as deliverable + verify + review per plan amendment A3; a ruled-form close is withdrawn for exactly these rows.",
+      "file": "evidence/agent-teams/wave2b-laneA/20260917T141608Z/README.md",
+      "line": 59
+    },
+    {
+      "id": "R3",
+      "severity": "medium",
+      "problem": "T-64 is reported CLOSED, but the acceptance's OBSERVABLE requires that a dependency naming a nonexistent id '(or a cycle)' be named in the scheduler/status output. Measured: unresolvedDependencies() filters on `byId.get(id) === undefined`, so a 2-cycle (t1<->t2, both pending) returns [], unresolvedDependencyNote() returns '', and dependencyStates() reports the cycle as an ordinary `blocking` entry — the 'reads as an ordinary parked/blocked state' the row exists to end, unrepaired for cycles. The lane's driver never tests a cycle.",
+      "requiredFix": "Extend the reader to cyclic ids (e.g. detect that every id in a blocking set is itself blocked) and add the seeded cycle arm as the row's red side; or have the captain amend the acceptance's OBSERVABLE and keep the row PARTIAL rather than CLOSED.",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 137
+    },
+    {
+      "id": "R4",
+      "severity": "medium",
+      "problem": "The committed red side does not correspond to the committed driver. arm-before.out.txt records 7 failures including 'dependencyStates names the unresolvable id separately', while the committed arm.mjs asserts 'a phantom dependency still BLOCKS (nothing satisfied it - the two-bucket shape is unchanged)'. Running the committed driver against the pre-fix bytes (git HEAD) yields 6 failures / exit 1, not 7. The recorded file is the red side of the SUPERSEDED first design; the shipped design's red side is therefore not demonstrated by the pair (and the substituted assertion is PASS in the reverted tree).",
+      "requiredFix": "Store the revert-state run of the committed arm.mjs (6 failures, exit 1) as the row's red side and nest the superseded log beside it with the replaced assertion named, so driver and red side are reproducible as a pair.",
+      "file": "evidence/agent-teams/wave2b-laneA/20260917T141608Z/arm-before.out.txt",
+      "line": 1
+    },
+    {
+      "id": "R5",
+      "severity": "low",
+      "problem": "verifyCovered()'s second branch is LENGTH-only, so an entry whose `command` does not name a required verify command satisfies coverage when the counts match (measured: verify ['bun run x'] + one {command:'SOME OTHER COMMAND', status:'reported', reason:'r'} -> {ok:true}; two such entries where one is required -> refused). The branch predates this lane (HEAD: `results.length === required.length && every(status==='passed')`) and this lane extended `covers` to include `reported`, so the hole is inherited rather than introduced — but the gate's own refusal text says 'no entry for bun run x', so message and predicate disagree about whether names are matched.",
+      "requiredFix": "Name-match in the fallback, or state the length-only semantics at the region so the refusal text stops implying a name comparison.",
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 683
+    },
+    {
+      "id": "R6",
+      "severity": "low",
+      "problem": "acceptanceCovered() carries the same length-only fallback: a 9-item payload whose ninth item is a DIFFERENT NAME (all statuses 'passed') is ACCEPTED (measured), while the unfilled/absent case is named correctly. The acceptance's negative control 'a payload with a genuinely wrong item is still refused' therefore holds under the STATUS reading (verified: status 'failed' -> refused, item-9 named) and not under the NAME reading.",
+      "requiredFix": "The captain states which reading the acceptance's control means; if the NAME reading, enforce name matching in acceptanceCovered.",
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 666
+    },
+    {
+      "id": "R7",
+      "severity": "low",
+      "problem": "The `reported` status is undiscoverable from the model-facing surface: the commandsRun parameter's SHAPE admits it (enum passed|failed|reported) and the parse step throws when `reason` is missing/blank, but the parameter's own description still reads 'status:\"passed\"|\"failed\"'. T-84's purpose is to give a seat a surface it can find and use.",
+      "requiredFix": "Extend the parameter description to name `reported` and its required `reason` label.",
+      "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "line": 1981
+    }
+  ],
+  "positives_verified": [
+    "registry: 81 -> 88 regions, exactly the 7 named ids added and ZERO removed; registry sha 6ceff2ef931ba43c equals the lane's citation",
+    "registry family end-to-end in a scratch mirror: drift -> RED; --write-registry -> 88; --check -> GREEN; a NEW top-level region -> 89, GREEN",
+    "both suites reproduce at the pinned revision with the ./ form and file counts (109/15, 266/39)",
+    "verify:docs PASS with the derived arm reading carried 88/9 vs derived 88/9",
+    "T-11 absence is COMPLIANT (A/2 is created only after A-1 is terminal; t13 is failed)",
+    "the lane's behaviour of naming the uncovered half per row is honest and matches what I measured"
+  ],
+  "not_verified": [
+    "no mounted dsh boot: the tool-surface regions (reported-red-parse / reported-red-schema) were read, not driven through a real tool call",
+    "--write-registry was NOT run in the real tree (writes lib/mpd-deltas.js, outside this review's inScope); the cycle was proven in a scratch mirror",
+    "the six integration-only aggregates were not run (verify:gates, test:qa, typecheck, verify-dist-fresh, verify-vendor, verify-pack-closure)",
+    "T-92's test/** split (README's 25/17) was not re-derived — that row is undelivered",
+    "lib/snapshot.js (T-06's panel half) and test/** (hop 2) untouched by both seats"
+  ],
+  "evidence_dir": "evidence/review/wave2b-laneA/20260917T142959Z/"
+}

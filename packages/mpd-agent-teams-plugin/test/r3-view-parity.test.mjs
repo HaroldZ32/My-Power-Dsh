@@ -89,11 +89,16 @@ test("F5: the schema default stateDir is the frozen .mpd/team", () => {
 
 test("F6: TEAM_TOOL_NAMES carries the frozen 14-name manual-entry set", () => {
     const frozen = JSON.parse(readFileSync(join(repoRoot, "evidence", "omo-align", "requirements", "frozen-contract.json"), "utf8")).manualEntryNames.tools
-    expect([...TEAM_TOOL_NAMES].sort()).toEqual([...frozen].sort())
-    expect(TEAM_TOOL_NAMES.length).toBe(14)
+    // The frozen policy is precise: `manualEntryNames.policy` reads "frozen — renaming any of
+    // these is forbidden; ADDING NEW NAMES IS ALLOWED". The assertion is therefore containment,
+    // not equality: every frozen name must still be present (no rename, no removal), while the
+    // surface may legitimately grow past the frozen 14 — wave 1 grew it with t20's three
+    // ownership/wave tools.
+    for (const name of frozen) expect(TEAM_TOOL_NAMES).toContain(name)
+    expect(TEAM_TOOL_NAMES.length).toBeGreaterThanOrEqual(frozen.length)
     expect(TEAM_TOOL_NAMES).toContain("agent_teams_task_contract")
     // the derived captain/member views stay consistent with the frozen set
     for (const name of MEMBER_TOOL_NAMES) expect(TEAM_TOOL_NAMES).toContain(name)
     for (const name of CAPTAIN_TOOL_NAMES) expect(TEAM_TOOL_NAMES).toContain(name)
-    expect(CAPTAIN_TOOL_NAMES).toContain("agent_teams_task_contract")
+    expect(MEMBER_TOOL_NAMES).toContain("agent_teams_task_contract")
 })

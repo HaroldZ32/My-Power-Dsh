@@ -1,0 +1,19 @@
+== t42 falsify-and-restore ==
+moment_utc 2026-09-17T15:13:54Z
+checker 453d3d7f499fc5660a9dc733584c59033326d5e3ce69e72439ce0da4f217f354
+restored: '{ files: 0, key_producers: 0, key_ids: new Set()' x1
+restored: 'bucket.key_ids.add(id)' x1
+restored: 'bucket.claim_ids.add(id)' x1
+restored: 'bucket.mismatched_ids.add(id)' x1
+restored: 'keys: bucket.key_ids.size' x1
+restored: 'claims: bucket.claim_ids.size' x1
+restored: 'violations: bucket.mismatched_ids.size' x1
+COPY now uses the PRE-FIX summing computation (arrays, .length)
+F1 summed-copy self-test exit=1 (expect 1)
+  FAIL t80-directory-scope-dedup — keys=6 claims=9 violations=3 key_producers=3 (DEDUPED at directory scope: expected 2 / 3 / 1 / 3 — the summing computation printed 6 / 8 / 2; the child MUST exit
+[driver-headers self-test] 3/4 arms passed (3 fixture arms + the seeded directory-scope counterexample)
+F2 seeded overlapping mismatches exit=1 (expect 1)
+dir ../../../tmp/t42-falsify/b/two/: keys=2 claims=3 violations=1
+scope violations: 1 | per-row mismatches: [('a.mjs', [3]), ('b.mjs', [3])]
+=> two files in ONE directory both mismatch A3: a SUM would print 2, the UNION prints 1
+scratch deleted: YES

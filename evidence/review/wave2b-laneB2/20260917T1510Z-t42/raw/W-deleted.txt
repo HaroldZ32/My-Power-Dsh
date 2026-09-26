@@ -1,0 +1,16 @@
+-// (immutable evidence: T-53, T-74).
+-  return { claims, references, claimLines }
+-  const { claims, references, claimLines } = parseHeaderClaims(text, { naive })
+-  log(`[driver-headers self-test] ${fixtures.length - failed}/${fixtures.length} arms passed`)
+-  const naive = process.argv.includes("--naive")
+-    const bucket = split.get(directory) ?? { files: 0, key_producers: 0, keys: 0, claims: 0, violations: 0, no_claim_set: 0 }
+-      bucket.keys += row.keys.length
+-      bucket.claims += row.claims.length
+-      bucket.violations += violations
+-    per_directory_split: Object.fromEntries([...split.entries()].sort()),
+-    violations: rows.reduce((total, row) => total + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0),
+-    mode: naive ? "driver-headers (naive matcher)" : "driver-headers",
+-  const files = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
+-      if (line.includes(patternArg)) hits.push({ path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) })
+-  const report = { task: "T-90 anchor scan", run_at: runAt, pattern: patternArg, scope: dirArg, files_scanned: files.length, matches: hits }
+-  log(`[anchor-scan] ${matches(hits)} match(es) in ${files.length} file(s) under ${dirArg}`)

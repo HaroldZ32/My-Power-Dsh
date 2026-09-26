@@ -1,0 +1,5 @@
+$ node evidence/extensions/docs-claims/check-citations.mjs --out=/root/dshProj/my-power-dsh/evidence/extensions/docs-citations-fix/20260917T024119Z/checker-run
+[exit=1]
+[docs-claims] evidence -> evidence/extensions/docs-citations-fix/20260917T024119Z/checker-run
+
+[docs-claims] 11/12 checks passed, 1 failed, 241 citation(s) resolved, 0 pending, 12 illustrative

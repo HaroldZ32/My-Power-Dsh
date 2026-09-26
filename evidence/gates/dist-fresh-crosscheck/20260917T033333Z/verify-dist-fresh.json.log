@@ -1,0 +1,289 @@
+$ node scripts/verify-dist-fresh.mjs --json   # 2026-09-17T03:33:33Z
+{
+  "generatedAt": "2026-09-17T03:33:35.141Z",
+  "root": "/root/dshProj/my-power-dsh",
+  "ok": true,
+  "durationMs": 1048,
+  "tmpRoot": null,
+  "counts": {
+    "targets": 20,
+    "fresh": 20,
+    "findings": 0,
+    "notCovered": 7
+  },
+  "targets": [
+    {
+      "pkg": "mpd-bootstrap-plugin",
+      "entry": "index",
+      "src": "packages/mpd-bootstrap-plugin/src/index.ts",
+      "dist": "packages/mpd-bootstrap-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7",
+      "builtSha256": "30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7",
+      "secondBuildSha256": "30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7",
+      "committedBytes": 30352,
+      "buildMs": 44
+    },
+    {
+      "pkg": "mpd-boulder-plugin",
+      "entry": "index",
+      "src": "packages/mpd-boulder-plugin/src/index.ts",
+      "dist": "packages/mpd-boulder-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe",
+      "builtSha256": "8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe",
+      "secondBuildSha256": "8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe",
+      "committedBytes": 48315,
+      "buildMs": 54
+    },
+    {
+      "pkg": "mpd-bundle-plugin",
+      "entry": "index",
+      "src": "packages/mpd-bundle-plugin/src/index.ts",
+      "dist": "packages/mpd-bundle-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "d4785951a7b2d647d8047ceb6f1c3a37b41f40931e4ba690d111de9ea3def1aa",
+      "builtSha256": "d4785951a7b2d647d8047ceb6f1c3a37b41f40931e4ba690d111de9ea3def1aa",
+      "secondBuildSha256": "d4785951a7b2d647d8047ceb6f1c3a37b41f40931e4ba690d111de9ea3def1aa",
+      "committedBytes": 11784,
+      "buildMs": 34
+    },
+    {
+      "pkg": "mpd-codegraph-plugin",
+      "entry": "index",
+      "src": "packages/mpd-codegraph-plugin/src/index.ts",
+      "dist": "packages/mpd-codegraph-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6",
+      "builtSha256": "0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6",
+      "secondBuildSha256": "0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6",
+      "committedBytes": 21914,
+      "buildMs": 32
+    },
+    {
+      "pkg": "mpd-comment-checker-plugin",
+      "entry": "index",
+      "src": "packages/mpd-comment-checker-plugin/src/index.ts",
+      "dist": "packages/mpd-comment-checker-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c",
+      "builtSha256": "1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c",
+      "secondBuildSha256": "1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c",
+      "committedBytes": 23877,
+      "buildMs": 48
+    },
+    {
+      "pkg": "mpd-config-plugin",
+      "entry": "index",
+      "src": "packages/mpd-config-plugin/src/index.ts",
+      "dist": "packages/mpd-config-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9",
+      "builtSha256": "11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9",
+      "secondBuildSha256": "11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9",
+      "committedBytes": 101028,
+      "buildMs": 59
+    },
+    {
+      "pkg": "mpd-dsh-adapter-plugin",
+      "entry": "index",
+      "src": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "dist": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206",
+      "builtSha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206",
+      "secondBuildSha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206",
+      "committedBytes": 20562,
+      "buildMs": 42
+    },
+    {
+      "pkg": "mpd-ext-plugin",
+      "entry": "index",
+      "src": "packages/mpd-ext-plugin/src/index.ts",
+      "dist": "packages/mpd-ext-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "builtSha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "secondBuildSha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "committedBytes": 152855,
+      "buildMs": 71
+    },
+    {
+      "pkg": "mpd-ext-plugin",
+      "entry": "sdk",
+      "src": "packages/mpd-ext-plugin/src/sdk.ts",
+      "dist": "packages/mpd-ext-plugin/dist/sdk.js",
+      "status": "FRESH",
+      "committedSha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195",
+      "builtSha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195",
+      "secondBuildSha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195",
+      "committedBytes": 1708,
+      "buildMs": 50
+    },
+    {
+      "pkg": "mpd-hashline-plugin",
+      "entry": "index",
+      "src": "packages/mpd-hashline-plugin/src/index.ts",
+      "dist": "packages/mpd-hashline-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6",
+      "builtSha256": "193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6",
+      "secondBuildSha256": "193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6",
+      "committedBytes": 55203,
+      "buildMs": 57
+    },
+    {
+      "pkg": "mpd-memory-plugin",
+      "entry": "index",
+      "src": "packages/mpd-memory-plugin/src/index.ts",
+      "dist": "packages/mpd-memory-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70",
+      "builtSha256": "f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70",
+      "secondBuildSha256": "f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70",
+      "committedBytes": 30776,
+      "buildMs": 40
+    },
+    {
+      "pkg": "mpd-modelchain-plugin",
+      "entry": "index",
+      "src": "packages/mpd-modelchain-plugin/src/index.ts",
+      "dist": "packages/mpd-modelchain-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93",
+      "builtSha256": "8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93",
+      "secondBuildSha256": "8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93",
+      "committedBytes": 23483,
+      "buildMs": 42
+    },
+    {
+      "pkg": "mpd-qa-roles-probe",
+      "entry": "index",
+      "src": "packages/mpd-qa-roles-probe/src/index.ts",
+      "dist": "packages/mpd-qa-roles-probe/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b",
+      "builtSha256": "a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b",
+      "secondBuildSha256": "a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b",
+      "committedBytes": 23704,
+      "buildMs": 49
+    },
+    {
+      "pkg": "mpd-roles-plugin",
+      "entry": "index",
+      "src": "packages/mpd-roles-plugin/src/index.ts",
+      "dist": "packages/mpd-roles-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f",
+      "builtSha256": "38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f",
+      "secondBuildSha256": "38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f",
+      "committedBytes": 39810,
+      "buildMs": 47
+    },
+    {
+      "pkg": "mpd-team-compact-plugin",
+      "entry": "index",
+      "src": "packages/mpd-team-compact-plugin/src/index.ts",
+      "dist": "packages/mpd-team-compact-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459",
+      "builtSha256": "23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459",
+      "secondBuildSha256": "23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459",
+      "committedBytes": 33610,
+      "buildMs": 63
+    },
+    {
+      "pkg": "mpd-team-watchdog-plugin",
+      "entry": "index",
+      "src": "packages/mpd-team-watchdog-plugin/src/index.ts",
+      "dist": "packages/mpd-team-watchdog-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "builtSha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "secondBuildSha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "committedBytes": 153319,
+      "buildMs": 79
+    },
+    {
+      "pkg": "mpd-tools-plugin",
+      "entry": "index",
+      "src": "packages/mpd-tools-plugin/src/index.ts",
+      "dist": "packages/mpd-tools-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75",
+      "builtSha256": "fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75",
+      "secondBuildSha256": "fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75",
+      "committedBytes": 19534,
+      "buildMs": 47
+    },
+    {
+      "pkg": "mpd-tui-plugin",
+      "entry": "index",
+      "src": "packages/mpd-tui-plugin/src/index.ts",
+      "dist": "packages/mpd-tui-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "d75ddd8917d434a85a20d05e1d31556afe5acb3be20712976d10f3038522b196",
+      "builtSha256": "d75ddd8917d434a85a20d05e1d31556afe5acb3be20712976d10f3038522b196",
+      "secondBuildSha256": "d75ddd8917d434a85a20d05e1d31556afe5acb3be20712976d10f3038522b196",
+      "committedBytes": 149134,
+      "buildMs": 79
+    },
+    {
+      "pkg": "mpd-ulw-plugin",
+      "entry": "index",
+      "src": "packages/mpd-ulw-plugin/src/index.ts",
+      "dist": "packages/mpd-ulw-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+      "builtSha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+      "secondBuildSha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+      "committedBytes": 37044,
+      "buildMs": 41
+    },
+    {
+      "pkg": "mpd-workmate-plugin",
+      "entry": "index",
+      "src": "packages/mpd-workmate-plugin/src/index.ts",
+      "dist": "packages/mpd-workmate-plugin/dist/index.js",
+      "status": "FRESH",
+      "committedSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+      "builtSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+      "secondBuildSha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+      "committedBytes": 55875,
+      "buildMs": 32
+    }
+  ],
+  "findings": [],
+  "notCovered": [
+    {
+      "path": "packages/mpd-mcp-astgrep/dist/BUILD.lock",
+      "reason": "build metadata, not a bun build artifact"
+    },
+    {
+      "path": "packages/mpd-mcp-astgrep/dist/cli.js",
+      "reason": "built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/"
+    },
+    {
+      "path": "packages/mpd-mcp-codegraph/dist/serve.js",
+      "reason": "sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/"
+    },
+    {
+      "path": "packages/mpd-mcp-gitbash/dist/BUILD.lock",
+      "reason": "build metadata, not a bun build artifact"
+    },
+    {
+      "path": "packages/mpd-mcp-gitbash/dist/cli.js",
+      "reason": "built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/dist/BUILD.lock",
+      "reason": "build metadata, not a bun build artifact"
+    },
+    {
+      "path": "packages/mpd-mcp-lsp/dist/cli.js",
+      "reason": "built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/"
+    }
+  ],
+  "summary": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 1048ms"
+}
+[exit=0]

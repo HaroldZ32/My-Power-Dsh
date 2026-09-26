@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases-ok.json sha256=5b398e1cce7c lanes=2 evidence=evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail
+[mpd-qa:(only)] PASS case=fixture-pass log=evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail/lanes/fixture-pass.log ms=34
+[mpd-qa:(only)] UNAVAILABLE case=fixture-unavailable reason=absent-fixture log=evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail/lanes/fixture-unavailable.log ms=28
+[mpd-qa:(only)] summary selected=2 pass=1 unavailable=1 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail
+[mpd-qa:(only)] exit 2 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

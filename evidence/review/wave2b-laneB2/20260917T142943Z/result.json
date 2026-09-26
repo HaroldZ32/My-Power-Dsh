@@ -1,0 +1,91 @@
+{
+  "task": "t21 — rev-B2 — falsify wave-2b lane B2 (citation / derived-value family, 3 rows)",
+  "reviewer": "agent-teams-engineer",
+  "reviewer_attempt": "1f218cba-384f-468f-abbd-33a8070ad721",
+  "reviewed_task": "t15",
+  "reviewed_attempt": "9371ef07-b30b-4d23-bdb2-fb9109d97e58",
+  "date": "2026-09-17T14:4xZ",
+  "verdict": "needs_revision",
+  "judged_against": {
+    "path": "evidence/requirements/wave2b-laneB2/20260917T1410Z-wave2b-laneB2-acceptance.md",
+    "sha256": "514ded6d797217d568bed4e9e330efdcbb02ad16c8f419958cd9e90d7e9e3714",
+    "lines": 182,
+    "note": "the lane's DONE-WHEN (body to VERDICT OF THIS FREEZE + ADDENDUM A), read in full"
+  },
+  "revisions": {
+    "checked_checker_worktree": "fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28",
+    "checked_checker_head": "c86f00cc978863ea28354f4f7ea45ad3a628a84b54b7008082d2d8e581ac5112",
+    "frozen_superseded": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+    "head": "ca780331abdaecdef2e35ad7cad643bb69d86d90",
+    "worktree_equals_head_at_both_endpoints": true,
+    "corpus_under_review_moved_at": "2026-09-17T14:35:00Z/14:35:45Z (skills/dsh-qa/scripts/**, lane D)",
+    "corpus_head_revisions": ["91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f", "f69c6f6136ef9589742d61e58c1bf40590094aaaabef5ee97b2e50becf4fce5f"],
+    "corpus_current_revisions": ["f18e3b3aa074543caa85fe7cfe08440025faaac4f328cc269ae549328aa5a52d", "826a39d4172701b89900b249e11e43b757f0a50c1100f0cd889b9eb48530ee26"]
+  },
+  "reproduced_readings": [
+    { "reading": "scoped citation run (acceptance-shaped, explicit --out)", "lane": "13/13, 249 citations, 19 symbol-first, 30 line-dependent, 0 rot, 0 pending, 12 illustrative", "mine": "identical", "evidence": "raw/R1-run.stdout.txt, run-verbatim/result.json" },
+    { "reading": "citation --self-test arms", "lane": "25/25, 0 failed (12 named arms)", "mine": "identical, arm-id set equal arm-by-arm", "evidence": "raw/R2-selftest.stdout.txt" },
+    { "reading": "T-80 fixture arms", "lane": "3/3", "mine": "identical", "evidence": "raw/R3-driver-headers-selftest.stdout.txt" },
+    { "reading": "live driver scan (53 files, 45+8)", "lane": "2 key producers, 0 claim sets, 2 NO-CLAIM-SET, 0 violations", "mine": "identical on a git-archive HEAD reconstruction whose driver hashes equal the HEAD blobs", "evidence": "raw/R11-reconstructed-head-live.stdout.txt" },
+    { "reading": "audit direction: whole-header token scan over-reports", "lane": "1 file / 2 keys vs 0", "mine": "identical, re-derived by my own scanner", "evidence": "raw/R12-reconstructed-head-naive.stdout.txt, raw/R9-audit-remeasure.json" },
+    { "reading": "audit direction: non-recursive glob under-reports", "lane": "1 vs 2", "mine": "identical", "evidence": "raw/R11, R9" },
+    { "reading": "audit direction: .js assumption under-reports", "lane": "0 vs 2", "mine": "identical", "evidence": "raw/R11, R9" },
+    { "reading": "audit direction: whole-repo literal scan over-reports", "lane": "25 vs 2", "mine": "identical (25 key-producing .mjs repo-wide by my own walk)", "evidence": "raw/R9-audit-remeasure.json" },
+    { "reading": "retained revisions in the run dir", "lane": "checker.mjs fbdc0256…, superseded.mjs dfe26090…", "mine": "identical hashes", "evidence": "sha256sum evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/*.mjs" },
+    { "reading": "ADDENDUM A(3) anchor scan", "lane": "0 matches in 11 files at 2026-09-17T14:25:20.609Z", "mine": "reproduces on its moment's file set: every text file that predates the moment is pattern-free; the 3 that contain the literal are the scan's OWN records", "evidence": "raw/R5-anchor-scan-laneB2.stdout.txt + the mtime reconstruction in README §7" }
+  ],
+  "falsified_instruments": [
+    { "instrument": "negative-control:t78-record-carries-the-rule", "seeded_rot": "a copy of the checker with the record's rules block emptied (doc_rewrite object gone; 71459 -> 70622 B)", "result": "FAIL in the negative copy, ok in the pristine control; the negated copy's record carries the RULE 0 and the COMMAND 0 times vs 1/1 in the control", "evidence": "raw/E6c-neg-selftest.stdout.txt, raw/E6c-ctl-selftest.stdout.txt" },
+    { "instrument": "T-80 claimed-but-unasserted", "seeded_rot": "corpus copies with a header claim the code never asserts", "result": "exit 1 naming A6,A7,A8,A9 + PATH + header phrase", "evidence": "raw/E5a-claimed-but-unasserted.stdout.txt" },
+    { "instrument": "T-80 asserted-but-unclaimed (near miss)", "seeded_rot": "corpus copy whose header under-claims", "result": "exit 1 naming A4,A5,A6,A7,A8,A10 + PATH", "evidence": "raw/E5b-asserted-but-unclaimed.stdout.txt" },
+    { "instrument": "citation rot: line-number-only anchor", "seeded_rot": "my own fixture doc", "result": "exit 1 with `line-number-only anchor `src/probe.ts:2`: a line number is not a citation`", "evidence": "raw/E-e2.stdout.txt" },
+    { "instrument": "T-90 anchor scan", "seeded_rot": "my own doc carrying a mailbox-record-id-shaped anchor", "result": "exit 1 naming file, line and phrase", "evidence": "raw/E1b-anchor-scan-seeded.stdout.txt" },
+    { "instrument": "T-82 retention", "seeded_rot": "my own one-line change between two runs of a pristine copy", "result": "changed pair diff non-empty at line 2 (// ARM CHANGE B); unchanged pair EMPTY; same-copy mirror pair EMPTY (440/0/0 B)", "evidence": "raw/E8b-diff-CHANGED-pair.txt, raw/E8b-diff-UnCHANGED-pair.txt, raw/E8b-diff-SAME-copy-pair.txt" },
+    { "instrument": "immutability guard", "seeded_rot": "a second run at the same --out", "result": "exit 3 `refusing to overwrite the existing retained revision (the running checker)`", "evidence": "raw/R7-immutability.stderr.txt" }
+  ],
+  "hazards_tested": [
+    { "hazard": "line-number-only anchor", "caught": true, "declared_out_of_scope": false, "evidence": "raw/E-e2.stdout.txt (exit 1, rot flagged)" },
+    { "hazard": "mailbox id used as evidence", "caught": true, "declared_out_of_scope": false, "evidence": "raw/E1b-anchor-scan-seeded.stdout.txt (exit 1)" },
+    { "hazard": "arm cited by POSITION", "caught": false, "declared_out_of_scope": false, "evidence": "raw/E-e3.stdout.txt (exit 0, 9/9, 0 citations checked)" },
+    { "hazard": "abbreviated path (basename)", "caught": false, "declared_out_of_scope": false, "evidence": "raw/E-e4.stdout.txt (exit 0, 9/9, 0 citations checked); the ellipsis form is caught only as nonexistent (raw/E-e4b.stdout.txt)" }
+  ],
+  "weakening_check": {
+    "arm_ids_head": 9,
+    "arm_ids_worktree": 12,
+    "arm_ids_removed": [],
+    "removed_diff_lines": 3,
+    "removed_diff_lines_detail": "two import statements and one comment line",
+    "narrowing_surfaces": "REFERENCE_MARKERS (a line naming another artefact's numbering is a REFERENCE — counted and printed per driver) and NO-CLAIM-SET (REPORTED with the file and its keys, not silently passed); both justified in the file's own comments and printed in the record"
+  },
+  "my_instrument_failures": [
+    { "attempt": "E6 (raw/run-seeded-arms.sh)", "why_invalid": "asserted `\"doc_rewrite\" not in file`, which the header comment naming rules.doc_rewrite makes false; the strip never ran and a PRISTINE copy produced identical 4278 B records in the negative and control runs", "outcome": "measured nothing; recorded, not reported as a pass" },
+    { "attempt": "E6b (raw/e6b-falsify-t78-arm.sh)", "why_invalid": "asserted the RULE string was absent from the FILE, impossible because the arm's own constants carry the same literal", "outcome": "measured nothing" },
+    { "attempt": "E6c (raw/e6c-falsify-t78-arm.sh)", "why_valid": "keeps the file valid and empties the REPORT's rules block, so the child's record can no longer satisfy the arm", "outcome": "the arm reddens — the falsification" }
+  ],
+  "findings": [
+    { "id": "F2", "severity": "medium", "file": "scripts/check-citations.mjs", "problem": "Two of the four citation hazards the review acceptance requires to be tested are neither caught nor declared out of the lane's scope: an arm cited by POSITION and a basename-only path both pass with exit 0 and 0 citations checked, and no surface (checker usage/RULE block, run record policy, acceptance artefact) names either class — a zero-hit grep for basename|abbreviat|position-?only|ordinal|cited by position|cannot see|not checkable|blind. A reader cannot distinguish 'checked and clean' from 'not in the family', which contradicts the lane's own principle that silence is not acceptable.", "requiredFix": "Add one named boundary clause to the checker's usage/RULE block AND to every run record's policy block, in the lane's own vocabulary: an arm cited by POSITION (no literal) and an abbreviated path (a basename with no `/`) are OUT OF FAMILY and pass silently, because the citation family's six addressing parameters require a repo-relative literal." },
+    { "id": "F1", "severity": "low", "file": "scripts/check-citations.mjs", "problem": "`--naive` is advertised as a mode in the lane's record (T80.mode) and read in driverHeadersMain, but the rows are built with `driverRow(file)` without passing `naive`, so `--driver-headers --naive` and `--driver-headers` produce identical readings and differ only in the record's `mode` label (measured on both revisions: R11 == R12, R13 == R14).", "requiredFix": "Either wire the flag (pass `{ naive }` to the row builder, keeping the audit's precise baseline separate) or drop `[--naive]` from the advertised usage and from the record's mode vocabulary." },
+    { "id": "F3", "severity": "low", "file": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json", "problem": "The record stores `revisions.durable_checker.lines = 1143` for the artefact its own `after` hash pins (fbdc0256…), which measures 1146 (`wc -l` and `awk END{NR}` agree; the file ends with a newline). A recorded reading that does not reproduce against the artefact it describes.", "requiredFix": "Re-measure and correct the count (or drop it: the hash is the identity, the count is decoration that rots)." },
+    { "id": "F4", "severity": "low", "file": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json", "problem": "The record declares exactly ONE exception to its own 'every run passes an explicit --out' rule (the verbatim verify), but TWO default-root runs exist under evidence/extensions/docs-claims/runs/: run-2026-09-17T14-24-29.334Z (a --self-test run: 21/21, 12 arms, output_target 'fresh timestamped run directory') and run-2026-09-17T14-25-20.731Z (13/13, no arms — the verbatim verify).", "requiredFix": "Name BOTH default-root runs in `declared_exception` (or re-run the self-test with an explicit --out), so the record's rule and its file set agree." }
+  ],
+  "bounds": [
+    "The corpus under review moved at 14:35Z (lane D); the lane's live readings are reproduced on a git-archive HEAD reconstruction with hashes verified equal to the HEAD blobs, and the same command on the current tree now reports 2 claim sets / 0 NO-CLAIM-SET / 0 violations.",
+    "No repository-wide aggregate was run (verify:gates, test:qa, test:qa:all, verify-vendor, verify-dist-fresh, typecheck) and no bun test — nothing here certifies the rest of the tree.",
+    "The citation checker's subject documents were judged only through the lane's tooling; their prose was not audited.",
+    "The --gates path (which spawns B3's docs gate) was NOT run: the lane's own acceptance puts it out of the verify list by name; its behaviour is unverified by me.",
+    "The anchor-scan 0-match reading cannot be re-taken on the FINISHED directory (4 matches in 16 text files, all self-references in the scan's own records); the reading is moment-bound by construction and the lane stated its moment."
+  ],
+  "scratch_derivation": {
+    "outside_workspace": true,
+    "deleted": true,
+    "scripts": [
+      "raw/scratch-derivation.v2.sh",
+      "raw/run-seeded-arms.sh",
+      "raw/e6b-falsify-t78-arm.sh",
+      "raw/e6c-falsify-t78-arm.sh",
+      "raw/reconstruct-head-corpus.sh",
+      "raw/audit-remeasure.py"
+    ],
+    "note": "This harness gives each bash call a FRESH /tmp (AGENTS.md T-23): the scratch is built, consumed and deleted inside one call."
+  }
+}

@@ -1,0 +1,9 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/20260917T142452Z · scope 16 text file(s) · moment 2026-09-17T14:46:43.803Z
+self-reference: the scan's OWN output under evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2 is EXCLUDED from the walk (0 file(s)), so this reading is re-takeable with the same command (t31/B2-F5)
+  MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log:2 — parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091
+  MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json:4 — "pattern": "ee9ec16",
+  MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …", "exit": 0, "matches": 0, "files_scanned": 11 },
+  MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …", "exit": 0, "evidence": "0 matches in 11 files" }
+
+[anchor-scan] 4 match(es) in 16 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z

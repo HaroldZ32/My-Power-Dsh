@@ -1,0 +1,66 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "ca50d08dc332beebf9514871c32e4ca9759e0b7f052ffa7422a404bdd10baa59",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T07:32:03.509Z",
+  "finishedAt": "2026-09-17T07:32:05.061Z",
+  "durationMs": 1552,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": [],
+    "guard": {
+      "required": [
+        "team-watchdog-boot",
+        "team-watchdog-config",
+        "team-watchdog-fault",
+        "team-watchdog-heartbeat",
+        "team-watchdog-notify",
+        "team-watchdog-scene",
+        "watchdog-redesign"
+      ],
+      "exemptCount": 38,
+      "undeclared": [],
+      "malformed": [],
+      "missingImports": [],
+      "empty": false
+    }
+  },
+  "lanes": [
+    {
+      "case": "qa-runner-self-test",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1548,
+      "command": "node scripts/run-qa-lanes.mjs --self-test",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/runner-run-proof/lanes/qa-runner-self-test.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

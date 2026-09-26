@@ -1,0 +1,6 @@
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+
+ 71 pass
+ 0 fail
+ 587 expect() calls
+Ran 71 tests across 8 files. [11.40s]

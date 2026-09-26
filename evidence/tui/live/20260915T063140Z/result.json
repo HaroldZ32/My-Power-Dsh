@@ -1,0 +1,143 @@
+{
+  "task": "t8",
+  "kind": "verification",
+  "owner": "Reviewer",
+  "attempt": 2,
+  "attemptId": "107e1eed-0cdc-47aa-bec9-8f99711aa4d4",
+  "subject": "Live-lane verification: re-run mount and panel lanes from a clean sandbox and audit every claim",
+  "verdict": "verification performed; the repaired package is LIVE and the panel result reproduces — with one lane defect and one host-side attribution, both recorded below",
+  "revisionPinned": {
+    "artifact": "packages/mpd-tui-plugin/dist/index.js",
+    "bytes": 98883,
+    "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "note": "Named by DIGEST, never by the size in any member's prose (t23's prose said 98788; the evidence file and the artifact both say 98883)."
+  },
+  "independence": {
+    "fs9_freshRoot": "/root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z",
+    "createdBy": "evidence/tui/live/20260915T063140Z/raw/install-fresh-root.sh (Reviewer, this run)",
+    "implementerWarmRootContrast": ".mpd/recon/qa (t7's recorded root — NOT used by this run)",
+    "sandboxKeysCreated": ["--root-dshProj-my-power-dsh-.mpd-recon-qa-t8-reviewer-20260915T063140Z-ws--"],
+    "sandboxKeysInherited": [],
+    "isolationOffenders": [],
+    "proofTheRootWasRead": "both lanes report sandboxRoot=my root; the profile manifest + sessions live under it; the install log is mine",
+    "noSilentCacheReuse": "the lanes have no hardcoded warm fallback: root comes from --sandbox-root (lib/tui-lane.mjs:117-135) and the default is a per-lane path under .mpd/recon/qa/tui-lanes/<lane>, never t7's shared root"
+  },
+  "liveResults": {
+    "tui-mount": {
+      "outcome": "PASS",
+      "exitCode": 0,
+      "artifacts": "lanes/tui-mount/",
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"],
+      "rowComposed": true,
+      "statusLine": true,
+      "counters": true,
+      "crashSignatures": [],
+      "preset": "mpd",
+      "sessionId": "2bad946f-86ba-4231-a8a1-900e845d5d1d",
+      "presetWitness": "lanes/tui-mount/preset.pane.txt + preset.session.json"
+    },
+    "tui-panels": {
+      "outcome": "RED on exactly one surface",
+      "exitCode": 1,
+      "artifacts": "lanes/tui-panels/",
+      "surfaces": {
+        "tuiStatus": true,
+        "tuiCommandTrees": true,
+        "commands": true,
+        "tuiScenes": true,
+        "tuiRenderers": false,
+        "tuiSettingsSections": true,
+        "tuiDialogs": true
+      },
+      "negativeControl": { "ok": false, "expected": false, "artifact": "lanes/tui-panels/negative/control.json", "intendedFailure": true },
+      "boardOpenedEventsInStore": 1,
+      "sceneReportedTranscriptRows": 0
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "tui-mount and tui-panels are re-run by the reviewer from a clean workspace-local sandbox (not the implementer's cached one) and their raw pane captures and logs are attached under evidence/tui/live/<timestamp>/.",
+      "status": "passed",
+      "evidence": "Ran from .mpd/recon/qa/t8-reviewer-20260915T063140Z (created by me; host+bundle installed by my own script, exit 0) and the raw pane captures/logs are copied to evidence/tui/live/20260915T063140Z/lanes/{tui-mount,tui-panels}/ (boot/scene/settings/dialog/renderer .pane.txt + tui-pane.log + result.json). Both results record sandboxRoot=my root, inherited session keys [], isolation offenders 0."
+    },
+    {
+      "criterion": "Every acceptance item of t4 and t5 that the lanes can witness is checked against a real artifact, and each result is recorded as passed/failed with the artifact path — no item is accepted on the implementer's word.",
+      "status": "passed",
+      "evidence": "See packageAudit below: t4-1/t4-3(repaired)/t4-4 and t5-3/t5-4 pass against artifacts from THIS run; t4-2(unit half)/t4-5, t5-1, t5-2, t5-5 are explicitly recorded as NOT witnessed by the live lanes with the owner named."
+    },
+    {
+      "criterion": "Every claim that did NOT reproduce, and every lane that had to be skipped (e.g. network unavailable), is reported explicitly with its consequence.",
+      "status": "passed",
+      "evidence": "Three explicit non-reproductions/skips recorded: (1) tui-mount --install SKIPPED with exit 0 on a fresh root (finding T8-F1, raw/tui-mount.console.log) so the install was performed by my own script; (2) the tuiRenderers transcript ROW did not reproduce (6/7 surfaces) — reproduced from my own root as a real, non-vacuous RED; (3) no renderer row could be produced even by an independent canary plugin (raw/canary/), and a real web-profile BOOT was not run (composition proxy only)."
+    },
+    {
+      "criterion": "A findings list is produced naming anything that renders, mounts or is attributed incorrectly, with the exact artifact that shows it.",
+      "status": "passed",
+      "evidence": "findings below: T8-F1 (lane defect, high, owner t7), T8-F2 (tuiRenderers attribution, host-side, artifact raw/canary/), T8-F3 (effect ledger cannot witness seam registrations, low), T8-F4 (superseded size in prose, info)."
+    }
+  ],
+  "packageAudit": {
+    "t4-1": { "status": "passed", "artifact": "lanes/tui-mount/result.json (rowComposed=true) + dump-config.txt", "note": "the row resolves to packages/mpd-tui-plugin/dist/index.js; dist digest 5dce2563… supersedes t4's 695f68c4…/93206 B" },
+    "t4-2": { "status": "not-witnessed-by-this-lane", "reason": "the contract/no-throw half is a unit-test claim (bun test), not a live-lane observable; live half IS witnessed (the plugin applies and six surfaces activate in a real boot)", "owner": "t4/t23 unit tests" },
+    "t4-3": { "status": "passed-for-the-repaired-mechanism", "artifact": "src/host.ts onService (deferred ctx.inject) + live panes", "note": "t4's text describes the pre-repair ctx.get(id,false) form; t23 replaced it with the deferred ctx.inject form, which is what my live run exercised (6 surfaces really render — the inject-free form could not)" },
+    "t4-4": { "status": "passed", "artifact": "packages/mpd-tui-plugin/ (no cordis.patch.yml) + lanes/tui-mount/result.json", "note": "row id mpd-tui is introduced by the bundle patch, not the package" },
+    "t4-5": { "status": "not-witnessed-by-this-lane", "reason": "typecheck/unit-test gates are not live-lane observables", "owner": "t9 regression lane" },
+    "t5-1": { "status": "not-re-run-by-me", "artifact": "t7's admission lane (evidence/tui/lanes/2026-09-15T06-26-38.862Z/plugins-check.pane.txt)", "reason": "my instructions scoped the re-run to the mount + panel lanes; the admission lane is a third lane and its artifact is the implementer's, not re-derived here" },
+    "t5-2": { "status": "not-witnessed-by-this-lane", "reason": "static manifest/capability traceability audit", "owner": "t13 admission-honesty review" },
+    "t5-3": { "status": "passed", "artifact": "lanes/tui-mount/result.json + my own duplicate-entry-id check", "note": "bundles triple in order, zero apply-crash signatures, mpd-tui composed exactly once, zero 'duplicate loader entry id' markers" },
+    "t5-4": { "status": "passed", "artifact": "lanes/tui-mount/preset.pane.txt + preset.session.json", "note": "session record created BY THIS RUN carries agentPreset=mpd" },
+    "t5-5": { "status": "artifact-checked, not live-witnessed", "artifact": "evidence/tui/composition/20260915T053445Z/ledger.json", "note": "25 packages, all 25 carry an observations[] entry; counts usable 22 / inert 2 / web-only 1; classifications were NOT re-derived from live runs by this task" }
+  },
+  "findings": [
+    {
+      "id": "T8-F1",
+      "severity": "high",
+      "owner": "t7 (lane author)",
+      "problem": "The lanes' own documented fresh-root remedy is unreachable, and the failure is a silent green. tui-mount.mjs:124 runs gateTuiPrereqs(...) BEFORE the --install block at :126, and gateTuiPrereqs (lib/tui-lane.mjs:370-377) calls process.exit(0) with a 'SKIP absent-fixture' marker. So `tui-mount --sandbox-root <fresh> --install` — exactly the command the lane's own PREREQ line and the shared remedy text advertise — exits 0 having installed nothing and produced no evidence.",
+      "artifact": "evidence/tui/live/20260915T063140Z/raw/tui-mount.console.log ([mpd-qa] SKIP case=tui-mount lane=real reason=absent-fixture … exit 0)",
+      "consequence": "A reviewer who satisfies F9 (clean root) and follows the lane's printed remedy gets exit 0 and zero artifacts; a green exit code here proves nothing. It also makes F9 and the lane's remedy mutually unsatisfiable as shipped, which is why this task had to install the profile itself.",
+      "requiredFix": "Run the prereq gate AFTER the --install block (or treat --install as satisfying the fixture prereq), and make a SKIP that would have been fixable by --install a non-zero outcome — a silent exit 0 must not be the signal for 'no evidence produced'."
+    },
+    {
+      "id": "T8-F2",
+      "severity": "medium",
+      "owner": "host-side (NOT our plugin); disclosure owned by t23/t5",
+      "problem": "The tuiRenderers transcript row does not render: 6 of 7 seam surfaces render, the log-only mpd-tui/board-opened event IS in the durable store, and the scene header itself reports 0 transcript row(s). Independently falsified against the host: a SECOND, independent plugin (my canary, composed only through the sandbox profile's own patch layer) entered apply, its deferred ctx.inject(['tuiRenderers']) callback fired, the service was reachable, register() returned a function without throwing — and still NO transcript row appeared, while the board scene (boardTitleRendered) and our status line rendered in the same run.",
+      "artifact": "evidence/tui/live/20260915T063140Z/raw/canary/{canary.result.json,canary.panes.json} + /root/dshProj/my-power-dsh/.mpd/recon/qa/t8-reviewer-20260915T063140Z/home/t8-canary-trace.log",
+      "supportingSourceEvidence": "installed payload @deepseek-harness-tui/dsh-tui@0.10.1 lib/types/dsh-adapter/channel.js:189 gives tuiSettingsSections a local fallback (getLocalSettingsSectionsHost, issue #557) while :195 captures tuiRenderers once with NO fallback; renderers.js keys its WeakMap by the runtime instance and getHostRenderers returns undefined on a miss.",
+      "consequence": "The surface is NOT CLAIMED (host-side projection gap) and I could NOT produce a row, so the finding does NOT flip back to a plugin defect. NOT fully settled: whether the captured runtime is undefined at channel construction (H1) or the host refuses/never projects plugin registrations (H2) — the host is READ-ONLY for us and exposes no read-back, so the discriminator is UNVERIFIED and both readings are host-side.",
+      "requiredFix": "Keep the NOT CLAIMED disclosure; the honest end-user-facing statement is 'the renderer row may not appear on this host build'. Our side already reports requested (never confirmed) — see src/renderers.ts outcome(). Upstream: give the renderer path the same local-fallback treatment as tuiSettingsSections, or expose a read-back."
+    },
+    {
+      "id": "T8-F3",
+      "severity": "low",
+      "owner": "nobody in this wave (host wiring)",
+      "problem": "The host's effect ledger cannot witness seam registrations in this composition: it contains only `command` records (36 in my run, all pluginId 'undeclared'), while scenes/status/shortcuts/renderers/themes registrations DO record to tuiEffectLedger in the installed source. So ctx.get('tuiEffectLedger') is not reachable from the extensions-row registration path.",
+      "artifact": ".mpd/recon/qa/t8-reviewer-20260915T063140Z/home/.dsh-tui/effect-ledger.jsonl (36 × kind:command only) + the host descriptor pane evidence/tui/lanes/2026-09-15T06-26-38.862Z/plugins-descriptor.pane.txt",
+      "consequence": "The absence of renderer records in the ledger is NOT evidence of a failed registration — I explicitly refused to use it as such. Anyone planning to cite the ledger as a registration witness for the TUI seams would be building on a false negative."
+    },
+    {
+      "id": "T8-F4",
+      "severity": "info",
+      "owner": "captain (already handled)",
+      "problem": "t23's prose reports dist/index.js as 98788 bytes while the artifact and its evidence file both say 98883 (digest matches in all three).",
+      "artifact": "packages/mpd-tui-plugin/dist/index.js (98883 B, 5dce2563…) vs evidence/tui/plugin/20260915T060934Z/result.json (98883) vs the task-output prose (98788)",
+      "consequence": "Cosmetic; no evidence file needs correcting. Verdicts here are anchored to the digest only."
+    }
+  ],
+  "notVerified": [
+    "A 96-line proof of the host's INTERNAL cause for the renderer gap (H1 vs H2): the host checkout is read-only and exposes no registration read-back. The observable facts (registration path reachable and non-throwing for two independent plugins, event present, scene rendered, no row) are recorded; the mechanism is not.",
+    "A real web-profile BOOT. Only a composition-level proxy was run (verify-rows-parity: 24 row ids match, mpd-tui included, exit 0) plus a dsh-tui dump-config showing mpd-tui composed once and zero duplicate-entry-id markers. Per AGENTS §4 a dump-config proves COMPOSITION ONLY and is not a plugin-load proof.",
+    "The admission lane was not re-run by me (my scope was mount + panels); t5-AC1 rests on the implementer's untouched artifact.",
+    "The 25-package ledger classifications were checked for structure (25/25 rows carry observations) but not re-derived from live runs."
+  ],
+  "commandsRun": [
+    { "command": "sh evidence/tui/live/20260915T063140Z/raw/install-fresh-root.sh <my root>", "status": "passed", "exitCode": 0, "evidence": "raw/install-fresh-root.log — host 74 pkgs + bundle added; profile manifest bundles = [dsh-base, dsh-tui, @mpd-dsh/mpd]" },
+    { "command": "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <my root> --install", "status": "failed", "exitCode": 0, "evidence": "raw/tui-mount.console.log — [mpd-qa] SKIP absent-fixture then exit 0 (finding T8-F1)" },
+    { "command": "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <my root>", "status": "passed", "exitCode": 0, "evidence": "lanes/tui-mount/result.json ok=true; bundles triple; statusLine+counters; crashes []; preset mpd; isolation 0" },
+    { "command": "bun skills/dsh-qa/scripts/tui-panels.mjs --sandbox-root <my root>", "status": "failed", "exitCode": 1, "evidence": "lanes/tui-panels/result.json 6/7 surfaces; tuiRenderers missing; negative control ok=false" },
+    { "command": "bun evidence/tui/live/20260915T063140Z/raw/canary/canary-drive.mjs <my root> <out> <canary module>", "status": "passed", "exitCode": 0, "evidence": "raw/canary/canary.result.json — canaryRowRendered=false, ourRowRendered=false, boardTitleRendered=true, statusLineRendered=true; trace: apply entered / inject callback fired / service reachable / register() returned function" },
+    { "command": "dsh --profile dsh-tui --dump-config (my sandbox)", "status": "passed", "exitCode": 0, "evidence": "exactly one `id: mpd-tui`; zero 'duplicate loader entry id' markers (COMPOSITION ONLY)" },
+    { "command": "node scripts/verify-rows-parity.mjs", "status": "passed", "exitCode": 0, "evidence": "24 row ids match (mpd-tui included) — composition proxy for the web plane, not a boot" }
+  ]
+}

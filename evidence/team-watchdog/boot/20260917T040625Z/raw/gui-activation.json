@@ -1,0 +1,64 @@
+{
+  "indexStatus": 200,
+  "discoveredClientUrls": 63,
+  "discoveredUrls": [
+    "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh-cordis-client-runner/client.js,@deepseek-ai/dsh-client-ui-theme/client.js,@deepseek-ai/dsh-client-locale/client.js,@deepseek-ai/dsh-client-ui-layout/client.js,@deepseek-ai/dsh-client-ui-renderer/client.js,@deepseek-ai/dsh-client-ui-session/client.js,@deepseek-ai/dsh-client-resources/client.js,@deepseek-ai/dsh-client-ui-sidebar/client.js,@deepseek-ai/dsh-client-ui-sidebar-right/client.js,@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client.js,@deepseek-ai/dsh-client-ui-sidebar-files/client.js,@deepseek-ai/dsh-client-ui-settings/client.js,@deepseek-ai/dsh-client-ui-settings-general/client.js,@deepseek-ai/dsh-client-ui-settings-models/client.js,@deepseek-ai/dsh-client-ui-settings-plugin-inventory/client.js,@deepseek-ai/dsh-client-ui-conversation/client.js,@deepseek-ai/dsh-client-ui-approval/client.js,@deepseek-ai/dsh-client-ui-chat/client.js,@deepseek-ai/dsh-client-ui-brand-official/client.js,@deepseek-ai/dsh-client-ui-attachment/client.js,@deepseek-ai/dsh-client-ui-tool/client.js,@deepseek-ai/dsh-client-ui-cordis/client.js,@deepseek-ai/dsh-client-ui-workflow-run/client.js,@deepseek-ai/dsh-client-ui-workspace/client.js,@deepseek-ai/dsh-client-ui-input-trigger/client.js,@deepseek-ai/dsh-client-ui-commands/client.js,@deepseek-ai/dsh-client-ui-skill/client.js,@deepseek-ai/dsh-client-ui-subagent/client.js,@deepseek-ai/dsh-client-ui-reference/client.js,@deepseek-ai/dsh-client-ui-jobs/client.js,@deepseek-ai/dsh-client-ui-goal/client.js,@deepseek-ai/dsh-client-ui-message-feedback/client.js,@deepseek-ai/dsh-client-ui-model-selection/client.js,@deepseek-ai/dsh-client-ui-permission-presets/client.js,@deepseek-ai/dsh-client-ui-agent-preset/client.js,@deepseek-ai/dsh-client-ui-settings-plugins/client.js,@deepseek-ai/dsh-client-ui-plan/client.js,@deepseek-ai/dsh-client-ui-user-questions/client.js,@deepseek-ai/dsh-client-ui-trajectory/client.js,@linxin666/dsh-web-all/client.js,@linxin666/dsh-i18n/client.js,@mpd-dsh/mpd/client.js,@deepseek-ai/dsh-session-log-export/client.js,@deepseek-ai/dsh-client-file-upload/client.js,@deepseek-ai/dsh-api-remotes/client.js,@deepseek-ai/dsh-client-ui-deliverables/client.js,dshmarket/client.js,@deepseek-ai/dsh-typert-registry/client.js,@deepseek-ai/dsh-client-connection/client.js,dsh-cost-meter/client.js,@deepseek-ai/dsh-api-workspace-controller/client.js,dsh-better-sidebar/client.js,@deepseek-ai/dsh-api-session-controller/client.js,@deepseek-ai/dsh-client-ui-directory-picker-browse/client.js&amp;rev=32de2d9f9d92",
+    "/plugins/??@deepseek-ai/dsh-client-modules/client.js&amp;rev=cddf5581d5d5",
+    "/plugins/??@deepseek-ai/dsh-api-gateway/client.js&rev=1a2afbb97e8ed346-0",
+    "/plugins/??@deepseek-ai/dsh-client-ui-open-in-app/client.js&rev=1a2afbb97e8ed346-1",
+    "/plugins/??@deepseek-ai/dsh-api-workspace-files/client.js&rev=1a2afbb97e8ed346-2",
+    "/plugins/??@deepseek-ai/dsh-client-hmr/client.js&rev=1a2afbb97e8ed346-3",
+    "/plugins/??@deepseek-ai/dsh-client-modules/client.js&rev=1a2afbb97e8ed346-4",
+    "/plugins/??@deepseek-ai/dsh-cordis-client-runner/client.js&rev=1a2afbb97e8ed346-5",
+    "/plugins/??@deepseek-ai/dsh-client-ui-theme/client.js&rev=1a2afbb97e8ed346-6",
+    "/plugins/??@deepseek-ai/dsh-client-locale/client.js&rev=1a2afbb97e8ed346-7",
+    "/plugins/??@deepseek-ai/dsh-client-ui-layout/client.js&rev=1a2afbb97e8ed346-8",
+    "/plugins/??@deepseek-ai/dsh-client-ui-renderer/client.js&rev=1a2afbb97e8ed346-9",
+    "/plugins/??@deepseek-ai/dsh-client-ui-session/client.js&rev=1a2afbb97e8ed346-10",
+    "/plugins/??@deepseek-ai/dsh-client-resources/client.js&rev=1a2afbb97e8ed346-11",
+    "/plugins/??@deepseek-ai/dsh-client-ui-sidebar/client.js&rev=1a2afbb97e8ed346-12",
+    "/plugins/??@deepseek-ai/dsh-client-ui-sidebar-right/client.js&rev=1a2afbb97e8ed346-13",
+    "/plugins/??@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client.js&rev=1a2afbb97e8ed346-14",
+    "/plugins/??@deepseek-ai/dsh-client-ui-sidebar-files/client.js&rev=1a2afbb97e8ed346-15",
+    "/plugins/??@deepseek-ai/dsh-client-ui-settings/client.js&rev=1a2afbb97e8ed346-16",
+    "/plugins/??@deepseek-ai/dsh-client-ui-settings-general/client.js&rev=1a2afbb97e8ed346-17"
+  ],
+  "ourUrls": [
+    "/plugins/??@mpd-dsh/mpd/client.js&rev=1a2afbb97e8ed346-46",
+    "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh-cordis-client-runner/client.js,@deepseek-ai/dsh-client-ui-theme/client.js,@deepseek-ai/dsh-client-locale/client.js,@deepseek-ai/dsh-client-ui-layout/client.js,@deepseek-ai/dsh-client-ui-renderer/client.js,@deepseek-ai/dsh-client-ui-session/client.js,@deepseek-ai/dsh-client-resources/client.js,@deepseek-ai/dsh-client-ui-sidebar/client.js,@deepseek-ai/dsh-client-ui-sidebar-right/client.js,@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client.js,@deepseek-ai/dsh-client-ui-sidebar-files/client.js,@deepseek-ai/dsh-client-ui-settings/client.js,@deepseek-ai/dsh-client-ui-settings-general/client.js,@deepseek-ai/dsh-client-ui-settings-models/client.js,@deepseek-ai/dsh-client-ui-settings-plugin-inventory/client.js,@deepseek-ai/dsh-client-ui-conversation/client.js,@deepseek-ai/dsh-client-ui-approval/client.js,@deepseek-ai/dsh-client-ui-chat/client.js,@deepseek-ai/dsh-client-ui-brand-official/client.js,@deepseek-ai/dsh-client-ui-attachment/client.js,@deepseek-ai/dsh-client-ui-tool/client.js,@deepseek-ai/dsh-client-ui-cordis/client.js,@deepseek-ai/dsh-client-ui-workflow-run/client.js,@deepseek-ai/dsh-client-ui-workspace/client.js,@deepseek-ai/dsh-client-ui-input-trigger/client.js,@deepseek-ai/dsh-client-ui-commands/client.js,@deepseek-ai/dsh-client-ui-skill/client.js,@deepseek-ai/dsh-client-ui-subagent/client.js,@deepseek-ai/dsh-client-ui-reference/client.js,@deepseek-ai/dsh-client-ui-jobs/client.js,@deepseek-ai/dsh-client-ui-goal/client.js,@deepseek-ai/dsh-client-ui-message-feedback/client.js,@deepseek-ai/dsh-client-ui-model-selection/client.js,@deepseek-ai/dsh-client-ui-permission-presets/client.js,@deepseek-ai/dsh-client-ui-agent-preset/client.js,@deepseek-ai/dsh-client-ui-settings-plugins/client.js,@deepseek-ai/dsh-client-ui-plan/client.js,@deepseek-ai/dsh-client-ui-user-questions/client.js,@deepseek-ai/dsh-client-ui-trajectory/client.js,@linxin666/dsh-web-all/client.js,@linxin666/dsh-i18n/client.js,@mpd-dsh/mpd/client.js,@deepseek-ai/dsh-session-log-export/client.js,@deepseek-ai/dsh-client-file-upload/client.js,@deepseek-ai/dsh-api-remotes/client.js,@deepseek-ai/dsh-client-ui-deliverables/client.js,dshmarket/client.js,@deepseek-ai/dsh-typert-registry/client.js,@deepseek-ai/dsh-client-connection/client.js,dsh-cost-meter/client.js,@deepseek-ai/dsh-api-workspace-controller/client.js,dsh-better-sidebar/client.js,@deepseek-ai/dsh-api-session-controller/client.js,@deepseek-ai/dsh-client-ui-directory-picker-browse/client.js&amp;rev=32de2d9f9d92",
+    "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh-cordis-client-runner/client.js,@deepseek-ai/dsh-client-ui-theme/client.js,@deepseek-ai/dsh-client-locale/client.js,@deepseek-ai/dsh-client-ui-layout/client.js,@deepseek-ai/dsh-client-ui-renderer/client.js,@deepseek-ai/dsh-client-ui-session/client.js,@deepseek-ai/dsh-client-resources/client.js,@deepseek-ai/dsh-client-ui-sidebar/client.js,@deepseek-ai/dsh-client-ui-sidebar-right/client.js,@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client.js,@deepseek-ai/dsh-client-ui-sidebar-files/client.js,@deepseek-ai/dsh-client-ui-settings/client.js,@deepseek-ai/dsh-client-ui-settings-general/client.js,@deepseek-ai/dsh-client-ui-settings-models/client.js,@deepseek-ai/dsh-client-ui-settings-plugin-inventory/client.js,@deepseek-ai/dsh-client-ui-conversation/client.js,@deepseek-ai/dsh-client-ui-approval/client.js,@deepseek-ai/dsh-client-ui-chat/client.js,@deepseek-ai/dsh-client-ui-brand-official/client.js,@deepseek-ai/dsh-client-ui-attachment/client.js,@deepseek-ai/dsh-client-ui-tool/client.js,@deepseek-ai/dsh-client-ui-cordis/client.js,@deepseek-ai/dsh-client-ui-workflow-run/client.js,@deepseek-ai/dsh-client-ui-workspace/client.js,@deepseek-ai/dsh-client-ui-input-trigger/client.js,@deepseek-ai/dsh-client-ui-commands/client.js,@deepseek-ai/dsh-client-ui-skill/client.js,@deepseek-ai/dsh-client-ui-subagent/client.js,@deepseek-ai/dsh-client-ui-reference/client.js,@deepseek-ai/dsh-client-ui-jobs/client.js,@deepseek-ai/dsh-client-ui-goal/client.js,@deepseek-ai/dsh-client-ui-message-feedback/client.js,@deepseek-ai/dsh-client-ui-model-selection/client.js,@deepseek-ai/dsh-client-ui-permission-presets/client.js,@deepseek-ai/dsh-client-ui-agent-preset/client.js,@deepseek-ai/dsh-client-ui-settings-plugins/client.js,@deepseek-ai/dsh-client-ui-plan/client.js,@deepseek-ai/dsh-client-ui-user-questions/client.js,@deepseek-ai/dsh-client-ui-trajectory/client.js,@linxin666/dsh-web-all/client.js,@linxin666/dsh-i18n/client.js,@mpd-dsh/mpd/client.js,@deepseek-ai/dsh-session-log-export/client.js,@deepseek-ai/dsh-client-file-upload/client.js,@deepseek-ai/dsh-api-remotes/client.js,@deepseek-ai/dsh-client-ui-deliverables/client.js,dshmarket/client.js,@deepseek-ai/dsh-typert-registry/client.js,@deepseek-ai/dsh-client-connection/client.js,dsh-cost-meter/client.js,@deepseek-ai/dsh-api-workspace-controller/client.js,dsh-better-sidebar/client.js,@deepseek-ai/dsh-api-session-controller/client.js,@deepseek-ai/dsh-client-ui-directory-picker-browse/client.js&rev=32de2d9f9d92"
+  ],
+  "fetchError": null,
+  "ourEntryUrl": "/plugins/??@mpd-dsh/mpd/client.js&rev=1a2afbb97e8ed346-46",
+  "status": 200,
+  "bytes": 295612,
+  "carriesTeamTabId": true,
+  "carriesWorkmateTabId": true,
+  "carriesBridge": true,
+  "carriesTeamPageModule": true,
+  "activationFailureLine": null,
+  "composition": {
+    "declared": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@linxin666/dsh-web-all",
+      "dshmarket",
+      "dsh-cost-meter",
+      "nowledge-mem-deepseek-harness",
+      "dsh-better-sidebar",
+      "@mpd-dsh/mpd"
+    ],
+    "mirrored": [
+      "@linxin666/dsh-web-all -> /root/.dsh/profiles/web/node_modules/@linxin666/dsh-web-all",
+      "dshmarket -> /root/.dsh/profiles/web/node_modules/dshmarket",
+      "dsh-cost-meter -> /root/.dsh/profiles/web/node_modules/dsh-cost-meter",
+      "nowledge-mem-deepseek-harness -> /root/.dsh/profiles/web/node_modules/nowledge-mem-deepseek-harness",
+      "dsh-better-sidebar -> /root/.dsh/profiles/web/node_modules/dsh-better-sidebar",
+      "@mpd-dsh/mpd -> /root/dshProj/my-power-dsh (checkout)"
+    ],
+    "unresolved": [
+      "@deepseek-ai/dsh-base (not resolved in /root/.dsh/profiles/web)",
+      "@deepseek-ai/dsh-web-app (not resolved in /root/.dsh/profiles/web)"
+    ]
+  }
+}

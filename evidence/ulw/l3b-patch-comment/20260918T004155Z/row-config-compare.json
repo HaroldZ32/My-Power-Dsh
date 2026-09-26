@@ -1,0 +1,18 @@
+{
+  "parser": "yaml (the installed DSH own parser: /root/.nvm/.../@deepseek-ai/dsh/node_modules/yaml)",
+  "whole_document_values_identical": true,
+  "agent_teams_row_config_identical": true,
+  "agent_teams_row_name_identical": true,
+  "session_team_policy_before_after_identical": true,
+  "sessionTeamPolicy_working": {
+    "mode": "off",
+    "autoRoute": true,
+    "profile": "mpd",
+    "presets": [
+      "mpd"
+    ],
+    "name": "MPD Default",
+    "approval": "required"
+  },
+  "reclaimStaleAfterMs_working": 3600000
+}

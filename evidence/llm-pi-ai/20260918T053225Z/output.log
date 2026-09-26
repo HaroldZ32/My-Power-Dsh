@@ -1,0 +1,4119 @@
+# llm-pi-ai mount feasibility — raw output
+# sandbox: /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z
+# every secret-bearing file lives under evidence/llm-pi-ai/sandbox/ (gitignored)
+
+===== evidence/llm-pi-ai/raw/dumpconfig-web.txt =====
+[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed. A green run is NOT a plugin load (AGENTS.md §4); for a load proof run a mounting boot.
+# == @deepseek-ai/dsh-base
+- id: timer
+  name: '@deepseek-ai/cordis-plugin-timer'
+- id: hmr
+  name: '@deepseek-ai/cordis-plugin-hmr'
+  disabled: true
+  config:
+    root:
+      - .
+- id: llm
+  name: '@deepseek-ai/dsh-llm'
+- id: deepseek-llm-api-extensions
+  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+- id: session
+  name: '@deepseek-ai/dsh-session'
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+- id: typert
+  name: '@deepseek-ai/dsh-typert-registry'
+- id: typert-loader
+  name: '@deepseek-ai/dsh-typert-loader'
+- id: typert-gateway
+  name: '@deepseek-ai/dsh-api-gateway'
+- id: session-title
+  name: '@deepseek-ai/dsh-session-title'
+  config:
+    fallbackMaxWords: 5
+    fallbackMaxBytes: 40
+    maxTitleBytes: 80
+- id: session-title-llm
+  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+  config:
+    targetWords: 5
+    targetCjkCharacters: 10
+    maxInputBytes: 4096
+    maxOutputTokens: 64
+    timeoutMs: 60000
+- id: user-questions
+  name: '@deepseek-ai/dsh-user-questions'
+- id: agent
+  name: '@deepseek-ai/dsh-agent'
+- id: plugin-package-inventory-deepseek
+  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: jobs
+  name: '@deepseek-ai/dsh-jobs-local'
+- id: llm-retry
+  name: '@deepseek-ai/dsh-llm-retry'
+- id: settings
+  name: '@deepseek-ai/dsh-settings-file'
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+- id: attachment-local
+  name: '@deepseek-ai/dsh-attachment-local'
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: ':memory:'
+    openAt: never
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+- id: storage
+  name: '@deepseek-ai/dsh-storage'
+- id: storage-json
+  name: '@deepseek-ai/dsh-storage-json'
+  config:
+    root: !!js dshHomePath('storages')
+- id: storage-domain
+  name: '@deepseek-ai/dsh-storage-domain'
+  config:
+    backend: json
+- id: session-projection-cache
+  name: '@deepseek-ai/dsh-session-projection-cache'
+  config:
+    writeEveryEvents: 200
+    writeIntervalMs: 5000
+- id: session-telemetry-otel
+  name: '@deepseek-ai/dsh-session-telemetry-otel'
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    shutdownTimeoutMillis: 3000
+    exporter:
+      url: !!js >-
+        process.env.DSH_TELEMETRY_OTLP_URL ??
+        'https://harness-telemetry.deepseeksvc.com/v1/logs'
+      compression: gzip
+      timeoutMillis: 1000
+    processor:
+      scheduledDelayMillis: 10000
+      maxQueueSize: 2048
+      maxExportBatchSize: 2048
+      exportTimeoutMillis: 1500
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.cwd()
+- id: bash-sandbox
+  name: '@deepseek-ai/dsh-bash-sandbox'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 60000
+- id: pwsh-sandbox
+  name: '@deepseek-ai/dsh-pwsh-sandbox'
+  disabled: !!js process.platform !== 'win32'
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: !!js >-
+      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===
+      'danger-full-access' ? 'never' : 'ask'
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  disabled: true
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+  disabled: true
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill
+  name: '@deepseek-ai/dsh-skill'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill-badge
+  name: '@deepseek-ai/dsh-skill-badge'
+  disabled: true
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: commands
+  name: '@deepseek-ai/dsh-commands'
+- id: command-feedback
+  name: '@deepseek-ai/dsh-command-feedback'
+- id: goal
+  name: '@deepseek-ai/dsh-goal'
+- id: goal-round-driver
+  name: '@deepseek-ai/dsh-goal-round-driver'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+  disabled: true
+- id: plan-mode
+  name: '@deepseek-ai/dsh-plan-mode'
+  config:
+    section: >
+      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or
+      the user switches the session mode. Imperative language to implement
+      changes means plan the implementation, not execute it. A user's
+      conversational agreement — including an answer confirming something you
+      asked — approves nothing and does not end plan mode; fold the confirmed
+      decision into the plan and submit it through exit_plan_mode.
+
+
+      Explore first. Use non-mutating reads, searches, static analysis, and
+      checks to ground the plan in the actual repository. Do not edit or write
+      files, change configuration, run formatters or code generation that
+      rewrites tracked files, commit, or otherwise carry out the plan. Prefer
+      existing functions and patterns over new machinery.
+
+
+      The tool catalog stays the same across modes for request-cache stability.
+      These plan-mode rules override any later tool description or guidance that
+      suggests using mutation tools; those tools remain listed only to keep the
+      request shape stable. Do not use todo_write to track this planning phase:
+      it tracks implementation after an approved plan, while the plan itself
+      belongs in exit_plan_mode.
+
+
+      Resolve discoverable facts by inspection. Use ask_user_question only for
+      user-owned choices or material ambiguity that inspection cannot answer. Do
+      not ask the user where code lives or how current behavior works when you
+      can find out.
+
+
+      Make the plan decision-complete: state the goal and success criteria;
+      group implementation changes by subsystem; identify public API, schema,
+      and data-flow changes; cover edge cases, failure modes, tests, acceptance
+      criteria, and explicit assumptions. Keep it concise enough to review but
+      detailed enough that another engineer can implement it without making
+      design decisions.
+
+
+      When ready, call exit_plan_mode with the complete plan markdown, starting
+      with a # title. Make exit_plan_mode the only and final tool call in that
+      assistant response: it presents the plan for approval, and implementation
+      begins only in a later step after approval. Do not paste the final plan as
+      a plain reply or ask "should I proceed?" through prose or
+      ask_user_question. If review rejects it, incorporate the feedback and
+      present again. If the review channel is unavailable or aborted, stay in
+      plan mode and ask the user to switch modes manually; do not proceed with
+      implementation.
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  disabled: true
+- id: command-compact
+  name: '@deepseek-ai/dsh-command-compact'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+- id: subagent-spawn-in-process
+  name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- id: subagent-fork-in-process
+  name: '@deepseek-ai/dsh-subagent-fork-in-process'
+  config:
+    providerName: fork
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-subagent-control
+  name: '@deepseek-ai/dsh-tool-subagent-control'
+  disabled: true
+- id: tool-subagent-list-agents
+  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+  disabled: true
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: spawn
+    toolName: subagent
+    backgroundMode: continuable
+  disabled: true
+- id: tool-subagent-fork
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: fork
+    toolName: subagent_fork
+    backgroundMode: one-shot
+  disabled: true
+- id: workflow-worker-thread
+  name: '@deepseek-ai/dsh-workflow-worker-thread'
+  config:
+    provider: spawn
+  disabled: true
+- id: tool-workflow
+  name: '@deepseek-ai/dsh-tool-workflow'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+- id: spill-local
+  name: '@deepseek-ai/dsh-spill-local'
+- id: spill-policy
+  name: '@deepseek-ai/dsh-spill-policy'
+  config:
+    maxInlineBytes: 50000
+- id: session-checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+  disabled: true
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+  disabled: true
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+  disabled: true
+- id: tool-ralph
+  name: '@deepseek-ai/dsh-tool-ralph'
+  config:
+    subagentProvider: spawn
+    maxRounds: 64
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds:
+      - 3
+      - 5
+      - 8
+    argumentsPreviewChars: 500
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: http
+- id: web-search-deepseek
+  name: '@deepseek-ai/dsh-web-search-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000
+  disabled: true
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: You are a coding agent powered by the {{model}} model.
+# == @deepseek-ai/dsh-base
+- id: agent-loop
+  name: '@deepseek-ai/dsh-agent-loop'
+  config:
+    agents: []
+- id: fs-sandbox
+  name: '@deepseek-ai/dsh-fs-sandbox'
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+# == @deepseek-ai/dsh-web-app
+- id: subagent-model-selection-settings
+  name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
+- id: code-runtime
+  name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+- id: message-feedback
+  name: '@deepseek-ai/dsh-message-feedback'
+  config:
+    maxNoteBytes: 8192
+- id: session-log-download
+  name: '@deepseek-ai/dsh-session-log-export'
+- id: open-in-app
+  name: '@deepseek-ai/dsh-host-open-in-app'
+  config:
+    probeTimeoutMs: 10000
+    iconTimeoutMs: 10000
+    launchWatchMs: 1000
+- id: ui-open-in-app
+  name: '@deepseek-ai/dsh-client-ui-open-in-app'
+- id: workspace
+  name: '@deepseek-ai/dsh-workspace'
+- id: session-reference
+  name: '@deepseek-ai/dsh-session-reference'
+- id: file-reference-local
+  name: '@deepseek-ai/dsh-file-reference-local'
+- id: session-stats
+  name: '@deepseek-ai/dsh-session-stats'
+- id: session-turn-outline
+  name: '@deepseek-ai/dsh-session-turn-outline'
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+- id: plugin-inventory
+  name: '@deepseek-ai/dsh-host-plugin-inventory'
+- id: session-controller
+  name: '@deepseek-ai/dsh-api-session-controller'
+- id: workspace-files
+  name: '@deepseek-ai/dsh-api-workspace-files'
+- id: settings-controller
+  name: '@deepseek-ai/dsh-api-settings-controller'
+- id: workspace-controller
+  name: '@deepseek-ai/dsh-api-workspace-controller'
+- id: cordis-host-runner
+  name: '@deepseek-ai/dsh-cordis-host-runner'
+- id: web-startup
+  name: '@deepseek-ai/dsh-web-app/startup'
+- id: webserver
+  name: '@deepseek-ai/dsh-host-webserver'
+  inject:
+    - webStartup
+  config:
+    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    port: !!js ctx.webStartup.port ?? 3080
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- id: web-runtime
+  name: '@deepseek-ai/dsh-web-app'
+  inject:
+    - webStartup
+  config:
+    openBrowser: !!js ctx.webStartup.openBrowser
+    printUrl: true
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+- id: client-hmr
+  name: '@deepseek-ai/dsh-client-hmr'
+- id: modules
+  name: '@deepseek-ai/dsh-client-modules'
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject:
+    - webRuntime
+  config:
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+- id: file-upload
+  name: '@deepseek-ai/dsh-client-file-upload'
+- id: api-remotes
+  name: '@deepseek-ai/dsh-api-remotes'
+- id: cordis-client-runner
+  name: '@deepseek-ai/dsh-cordis-client-runner'
+- id: ui-theme
+  name: '@deepseek-ai/dsh-client-ui-theme'
+- id: locale
+  name: '@deepseek-ai/dsh-client-locale'
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+- id: ui-renderer
+  name: '@deepseek-ai/dsh-client-ui-renderer'
+- id: ui-session
+  name: '@deepseek-ai/dsh-client-ui-session'
+- id: resources
+  name: '@deepseek-ai/dsh-client-resources'
+- id: ui-sidebar
+  name: '@deepseek-ai/dsh-client-ui-sidebar'
+- id: ui-sidebar-right
+  name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+- id: ui-sidebar-documentpreview
+  name: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview'
+- id: ui-sidebar-files
+  name: '@deepseek-ai/dsh-client-ui-sidebar-files'
+- id: ui-settings
+  name: '@deepseek-ai/dsh-client-ui-settings'
+- id: ui-settings-general
+  name: '@deepseek-ai/dsh-client-ui-settings-general'
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+- id: ui-settings-plugin-inventory
+  name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+- id: ui-conversation
+  name: '@deepseek-ai/dsh-client-ui-conversation'
+- id: ui-approval
+  name: '@deepseek-ai/dsh-client-ui-approval'
+- id: ui-chat
+  name: '@deepseek-ai/dsh-client-ui-chat'
+- id: ui-brand-official
+  name: '@deepseek-ai/dsh-client-ui-brand-official'
+- id: ui-attachment
+  name: '@deepseek-ai/dsh-client-ui-attachment'
+- id: ui-tool
+  name: '@deepseek-ai/dsh-client-ui-tool'
+- id: ui-cordis
+  name: '@deepseek-ai/dsh-client-ui-cordis'
+- id: ui-workflow-run
+  name: '@deepseek-ai/dsh-client-ui-workflow-run'
+- id: ui-deliverables
+  name: '@deepseek-ai/dsh-client-ui-deliverables'
+- id: ui-workspace
+  name: '@deepseek-ai/dsh-client-ui-workspace'
+- id: ui-input-trigger
+  name: '@deepseek-ai/dsh-client-ui-input-trigger'
+- id: ui-commands
+  name: '@deepseek-ai/dsh-client-ui-commands'
+- id: ui-skill
+  name: '@deepseek-ai/dsh-client-ui-skill'
+- id: ui-subagent
+  name: '@deepseek-ai/dsh-client-ui-subagent'
+- id: ui-reference
+  name: '@deepseek-ai/dsh-client-ui-reference'
+- id: ui-schedule
+  name: '@deepseek-ai/dsh-client-ui-schedule'
+  disabled: true
+- id: ui-jobs
+  name: '@deepseek-ai/dsh-client-ui-jobs'
+- id: ui-goal
+  name: '@deepseek-ai/dsh-client-ui-goal'
+- id: ui-message-feedback
+  name: '@deepseek-ai/dsh-client-ui-message-feedback'
+- id: ui-model-selection
+  name: '@deepseek-ai/dsh-client-ui-model-selection'
+- id: ui-permission
+  name: '@deepseek-ai/dsh-client-ui-permission-presets'
+- id: ui-agent-preset
+  name: '@deepseek-ai/dsh-client-ui-agent-preset'
+- id: ui-settings-plugins
+  name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+- id: ui-plan
+  name: '@deepseek-ai/dsh-client-ui-plan'
+- id: ui-user-questions
+  name: '@deepseek-ai/dsh-client-ui-user-questions'
+- id: ui-trajectory
+  name: '@deepseek-ai/dsh-client-ui-trajectory'
+# == @deepseek-ai/dsh-web-app, patched by @mpd-dsh/mpd
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js >-
+          (typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//,
+          "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"
+        trust: system
+# == @linxin666/dsh-web-all
+- id: web-ui-compat
+  name: '@linxin666/dsh-web-all'
+- id: web-ui-settings
+  name: '@linxin666/dsh-web-all/settings'
+  config:
+    plugin: '@linxin666/dsh-client-ui-web-ui-settings'
+- id: web-ui-plugin-manager
+  name: '@linxin666/dsh-web-all/plugin-manager'
+  config:
+    plugin: '@linxin666/dsh-client-ui-plugin-manager'
+- id: web-ui-community-plugins
+  name: '@linxin666/dsh-web-all/community-plugins'
+  config:
+    plugin: '@linxin666/dsh-client-ui-community-plugins'
+- id: web-ui-market
+  name: '@linxin666/dsh-web-all/market'
+  config:
+    plugin: '@linxin666/dsh-client-ui-market'
+- id: web-ui-task-board
+  name: '@linxin666/dsh-web-all/task-board'
+  config:
+    plugin: '@linxin666/dsh-client-ui-task-board'
+- id: web-ui-git-graph
+  name: '@linxin666/dsh-web-all/git-graph'
+  config:
+    plugin: '@linxin666/dsh-client-ui-git-graph'
+- id: web-ui-remote-web-ui
+  name: '@linxin666/dsh-web-all/remote-web-ui'
+  config:
+    plugin: '@linxin666/dsh-remote-web-ui'
+- id: web-ui-pet
+  name: '@linxin666/dsh-web-all/pet'
+  config:
+    plugin: '@linxin666/dsh-pet'
+- id: web-ui-ssh
+  name: '@linxin666/dsh-web-all/ssh'
+  config:
+    plugin: '@linxin666/dsh-ssh'
+  disabled: true
+- id: web-ui-describe-image
+  name: '@linxin666/dsh-web-all/describe-image'
+  config:
+    plugin: '@linxin666/dsh-tool-describe-image'
+  disabled: true
+- id: web-ui-liangshen
+  name: '@linxin666/dsh-web-all/liangshen'
+  config:
+    plugin: '@linxin666/dsh-liangshen'
+  disabled: true
+- id: web-ui-skill-explorer
+  name: '@linxin666/dsh-web-all/skill-explorer'
+  config:
+    plugin: '@linxin666/dsh-client-ui-skill-explorer'
+  disabled: true
+- id: web-ui-doctor
+  name: '@linxin666/dsh-web-all/doctor'
+  config:
+    plugin: '@linxin666/dsh-doctor'
+  disabled: true
+- id: web-ui-usage
+  name: '@linxin666/dsh-web-all/usage'
+  config:
+    plugin: '@linxin666/dsh-usage'
+- id: web-ui-session-archive
+  name: '@linxin666/dsh-web-all/session-archive'
+  config:
+    plugin: '@linxin666/dsh-session-archive'
+- id: web-ui-model-capabilities
+  name: '@linxin666/dsh-web-all/model-capabilities'
+  config:
+    plugin: '@linxin666/dsh-client-ui-model-capabilities'
+- id: web-ui-preset-center
+  name: '@linxin666/dsh-web-all/preset-center'
+  config:
+    plugin: '@linxin666/dsh-client-ui-preset-center'
+- id: web-ui-skin-center
+  name: '@linxin666/dsh-web-all/skin-center'
+  config:
+    plugin: '@linxin666/dsh-client-ui-skin-center'
+- id: web-ui-i18n
+  name: '@linxin666/dsh-i18n'
+- id: web-ui-better-sidebar
+  name: dsh-better-sidebar
+# == dshmarket
+- id: dsh-market
+  name: dshmarket
+# == dsh-cost-meter
+- id: cost-meter
+  name: dsh-cost-meter
+# == nowledge-mem-deepseek-harness
+- id: nowledge-mem
+  name: nowledge-mem-deepseek-harness
+  config:
+    sourceApp: deepseek-harness
+    importOrigin: deepseek-harness
+    contextOnSessionStart: true
+    recallOnPrompt: true
+    syncOnTurnEnd: true
+- id: nowledge-mem-mcp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: nowledge_mem
+    transport: streamable-http
+    url: !!js >-
+      (process.env.NMEM_MCP_URL ?? process.env.NOWLEDGE_MEM_MCP_URL ??
+      'http://127.0.0.1:14242/mcp').replace(/\/+$/, '')
+    headers: !!js |
+      Object.fromEntries(Object.entries({
+        APP: 'DeepSeek Harness',
+        'X-Nmem-Tool-Set': 'external-agent',
+        'X-Nowledge-Tool-Schema-Profile': 'slim',
+        Authorization: process.env.NMEM_API_KEY ? `Bearer ${process.env.NMEM_API_KEY}` : undefined,
+        'X-NMEM-API-Key': process.env.NMEM_API_KEY,
+        'X-NMEM-Agent-ID': process.env.NMEM_AGENT_ID,
+        'X-NMEM-Host-Agent-ID': process.env.NMEM_HOST_AGENT_ID,
+      }).filter(([, value]) => typeof value === 'string' && value.length > 0))
+    failOnStartupError: false
+    toolCallTimeoutMs: 60000
+# == @mpd-dsh/mpd
+- id: mcp-astgrep
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: ast_grep
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")
+    toolCallTimeoutMs: 60000
+- id: mcp-gitbash
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: git_bash
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-lsp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: lsp
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")
+      - mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-codegraph
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: codegraph
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")
+    toolCallTimeoutMs: 60000
+- id: mpd-web-compat
+  name: '@mpd-dsh/mpd'
+- id: mpd-dsh-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+- id: mpd-config
+  name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+- id: mpd-team-watchdog
+  name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+  config:
+    stateDir: .mpd/team
+    warnSilenceMs: 600000
+    tickIntervalMs: 15000
+    warnStreakToEscalate: 6
+    actionOnEscalate: warn-only
+    toolInFlightMaxMs: 900000
+    holdTtlMs: 900000
+- id: mpd-tools
+  name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+  config:
+    writeGuard: true
+    truncateMaxBytes: 8192
+- id: mpd-modelchain
+  name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+- id: mpd-ext
+  name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+  config:
+    quiet: false
+- id: mpd-roles
+  name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+- id: mpd-ulw
+  name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+  config:
+    maxRounds: 3
+- id: mpd-hashline
+  name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+  config:
+    guardEditTools: true
+- id: mpd-boulder
+  name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+- id: mpd-comment-checker
+  name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+  config:
+    autoCheck: false
+- id: mpd-codegraph
+  name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+  config:
+    autoInit: true
+    initTimeoutMs: 60000
+- id: mpd-memory
+  name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+  config:
+    vcs: git
+- id: mpd-workmate
+  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+- id: mpd-team-compact
+  name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+- id: mpd-bootstrap
+  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+- id: agent-teams
+  name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+  config:
+    stateDir: .mpd/team
+    memberProvider: spawn
+    memberMaxDepth: 1
+    maxMembers: 16
+    maxParallelMembers: 8
+    maxMessagesPerRun: 10000
+    maxWallClockMinutes: 120
+    maxMemberTurns: 500
+    messagePayloadMaxBytes: 32768
+    recipientUnreadMaxBytes: 262144
+    mailboxPollIntervalMs: 3000
+    enforcement: enforce
+    reclaimStaleAfterMs: 3600000
+    sessionTeamPolicy:
+      mode: 'off'
+      autoRoute: true
+      profile: mpd
+      presets:
+        - mpd
+      name: MPD Default
+      approval: required
+    profiles:
+      mpd:
+        description: >-
+          The specialist roster surfaced as normal-named teammate templates —
+          captain-planned (roster only; the captain designs the DAG during the
+          staged plan).
+        protocol: >-
+          Read-only members (Architect, Researcher, Planner, Explorer, Plan
+          Reviewer, Vision Analyst) take requirements/review/analysis tasks only
+          and never edit files. Workers (Senior Engineer, Junior Engineer, Deep
+          Worker, Lead, Reviewer) take implementation/verification/integration.
+          The captain leads, designs the DAG, and integrates results. Workmate
+          reuse: before delegating a role task, consult mpd_workmate_list /
+          mpd_workmate_match(task); if a workmate note matches well, delegate to
+          that workmate (member name = workmate name, so its persona/memory are
+          injected), otherwise initialize a fresh workmate with
+          mpd_workmate_init — never force a weak note match.
+        taskPlanning: captain
+        members:
+          - name: Architect
+            tier: 1
+            role: architecture review / deep debugging / self-review
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only architecture advisor. You advise, others execute — never
+              edit files. Favor simplicity and existing patterns; give one clear
+              recommendation with concise rationale and evidence.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Researcher
+            tier: 2
+            role: code / open-source evidence search
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only researcher. Gather evidence from the codebase, AST/LSP
+              and web sources; cite file:line and URLs; never edit files or
+              invent findings.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Planner
+            tier: 1
+            role: planning / task decomposition
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only planner. Produce decision-complete, step-ordered plans
+              with a checklist; never implement.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Explorer
+            tier: 2
+            role: read-only codebase exploration
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only explorer. Answer with evidence and absolute file paths;
+              never edit files.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Reviewer
+            tier: 1
+            role: correctness / risk review
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Deep reviewer. Produce correctness/risk findings with evidence;
+              recommend fixes but do not apply them.
+          - name: Plan Reviewer
+            tier: 2
+            role: work-plan QA review / UI-UX critique
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only plan reviewer. Verify plans are executable and
+              references valid; reject only true blockers; UI/UX critique only
+              when explicitly asked; never edit files.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Vision Analyst
+            route:
+              provider: deepseek-official
+              model: deepseek-v4-flash-vision-exp
+              reasoningEffort: high
+            role: image / diagram analysis
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only vision analyst. Describe screenshots/diagrams precisely;
+              never edit files or load anything by path.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Lead
+            tier: 1
+            role: orchestration / integration
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Orchestrator. Plan the macro structure, delegate independent units
+              in parallel, integrate and verify results.
+          - name: Deep Worker
+            tier: 3
+            role: autonomous goal-driven implementation
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Autonomous deep worker. Receive goals, execute them end-to-end
+              with tools, verify every change, report evidence-first.
+          - name: Senior Engineer
+            tier: 1
+            role: primary implementation
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Primary engineer. Plan small, execute with tools, keep diffs
+              minimal, verify every change, report honestly.
+          - name: Junior Engineer
+            tier: 3
+            role: small mechanical changes
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Fast executor. Small, well-scoped mechanical changes with quick
+              verification; keep diffs tiny.
+- id: mcp-context7
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: context7
+    transport: streamable-http
+    url: https://mcp.context7.com/mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-grepapp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: grep_app
+    transport: streamable-http
+    url: https://mcp.grep.app
+    toolCallTimeoutMs: 60000
+
+===== evidence/llm-pi-ai/raw/dumpconfig-web.err =====
+dsh: [@mpd-dsh/mpd] patch: entry "dsh-tui-agent-presets" not found
+
+===== evidence/llm-pi-ai/raw/probe-base-boot.log =====
+
+===== evidence/llm-pi-ai/raw/probe-web-boot.log =====
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[dsh-cost-meter] 已加载,账本:/root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/storages/cost-meter/ledger.json
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+
+===== evidence/llm-pi-ai/raw/probe-explicit-row-boot.log =====
+
+===== evidence/llm-pi-ai/raw/probe-disabled-row-boot.log =====
+
+===== evidence/llm-pi-ai/raw/probe-nosettings-boot.log =====
+
+===== evidence/llm-pi-ai/raw/real-home-eroffs.txt =====
+### SECTION 0: real-home write refusal (DSH_HOME unset -> real /root/.dsh)
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EROFS: read-only file system, open '/root/.dsh/profiles/web/cordis.yml'
+    at writeFileSync (node:fs:2422:20)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:209:2)
+    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:233:18)
+    at runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:283:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+exit=0
+
+===== probe results (verbatim, secret-free) =====
+----- /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe-base-result.json -----
+{
+  "waitedMs": 5000,
+  "providers": [
+    {
+      "id": "deepseek-official",
+      "name": "DeepSeek"
+    },
+    {
+      "id": "opencode-go",
+      "name": "opencode-go"
+    }
+  ],
+  "perProvider": {
+    "deepseek-official": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek-V41-Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek-V4-Flash"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek-V4-Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek-V4-Flash-Vision-Exp"
+        }
+      ],
+      "modelInfo": {
+        "deepseek-flash": {
+          "name": "DeepSeek-V41-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek-V4-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek-V4-Pro",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek-V4-Flash-Vision-Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        }
+      },
+      "callConfig": {
+        "deepseek-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        }
+      },
+      "errors": []
+    },
+    "opencode-go": {
+      "models": [
+        {
+          "id": "minimax-m3",
+          "name": "MiniMax-M3"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "name": "Qwen3.8 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek V4 Flash Vision Exp"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro (New)"
+        },
+        {
+          "id": "glm-5.1",
+          "name": "GLM-5.1"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "GLM-5.2"
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3"
+        },
+        {
+          "id": "glm-5.3-flash",
+          "name": "GLM-5.3-Flash (2x usage)"
+        },
+        {
+          "id": "hy3",
+          "name": "Hy3"
+        },
+        {
+          "id": "hy4-preview",
+          "name": "Hy4 preview"
+        },
+        {
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6"
+        },
+        {
+          "id": "kimi-k2.7-code",
+          "name": "Kimi K2.7 Code"
+        },
+        {
+          "id": "kimi-k3",
+          "name": "Kimi K3"
+        },
+        {
+          "id": "longcat-2.0",
+          "name": "LongCat-2.0"
+        },
+        {
+          "id": "mimo-v2.5",
+          "name": "MiMo V2.5"
+        },
+        {
+          "id": "mimo-v2.5-pro",
+          "name": "MiMo V2.5 Pro"
+        },
+        {
+          "id": "minimax-m2.7",
+          "name": "MiniMax-M2.7"
+        },
+        {
+          "id": "omen-alpha",
+          "name": "Omen Alpha"
+        },
+        {
+          "id": "qwen3.6-plus",
+          "name": "Qwen3.6 Plus"
+        },
+        {
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max"
+        },
+        {
+          "id": "qwen3.7-plus",
+          "name": "Qwen3.7 Plus"
+        },
+        {
+          "id": "qwen3.8-max",
+          "name": "Qwen3.8 Max"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna"
+        },
+        {
+          "id": "grok-4.6",
+          "name": "Grok 4.6"
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "name": "Muse Spark 1.2 Contributor"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "name": "Muse Spark 1.3 Contributor"
+        }
+      ],
+      "modelInfo": {
+        "minimax-m3": {
+          "name": "MiniMax-M3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-flash": {
+          "name": "Qwen3.8 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro (New)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.1": {
+          "name": "GLM-5.1",
+          "contextWindow": 202752,
+          "defaultMaxTokens": 32768,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.2": {
+          "name": "GLM-5.2",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3": {
+          "name": "GLM-5.3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3-flash": {
+          "name": "GLM-5.3-Flash (2x usage)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "hy3": {
+          "name": "Hy3",
+          "contextWindow": 256000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "hy4-preview": {
+          "name": "Hy4 preview",
+          "contextWindow": 1024000,
+          "defaultMaxTokens": 64000,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 262144,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k3": {
+          "name": "Kimi K3",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "longcat-2.0": {
+          "name": "LongCat-2.0",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5": {
+          "name": "MiMo V2.5",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "name": "MiMo V2.5 Pro",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "minimax-m2.7": {
+          "name": "MiniMax-M2.7",
+          "contextWindow": 204800,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "omen-alpha": {
+          "name": "Omen Alpha",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.6-plus": {
+          "name": "Qwen3.6 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-max": {
+          "name": "Qwen3.7 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-plus": {
+          "name": "Qwen3.7 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-max": {
+          "name": "Qwen3.8 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "gpt-5.6-luna": {
+          "name": "GPT-5.6 Luna",
+          "contextWindow": 1050000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "grok-4.6": {
+          "name": "Grok 4.6",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 500000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "name": "Muse Spark 1.2 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "name": "Muse Spark 1.3 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        }
+      },
+      "callConfig": {
+        "minimax-m3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "qwen3.8-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "glm-5.1": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 32768,
+          "reasoningEffort": null
+        },
+        "glm-5.2": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "hy3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "hy4-preview": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 64000,
+          "reasoningEffort": null
+        },
+        "kimi-k2.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "kimi-k2.7-code": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 262144,
+          "reasoningEffort": null
+        },
+        "kimi-k3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "longcat-2.0": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "minimax-m2.7": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "omen-alpha": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "qwen3.6-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.8-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "gpt-5.6-luna": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "grok-4.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 500000,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        }
+      },
+      "errors": []
+    }
+  },
+  "credential": {
+    "servicePresent": true,
+    "OPENCODE_GO_API_KEY": {
+      "resolved": true,
+      "valueLengthClass": "nonempty"
+    }
+  },
+  "catalog": {
+    "default": {
+      "provider": "probe-default",
+      "model": "probe-model"
+    },
+    "routableProviders": [
+      "deepseek-official",
+      "opencode-go"
+    ],
+    "groups": [
+      {
+        "id": "deepseek-official",
+        "name": "DeepSeek",
+        "modelCount": 4,
+        "models": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ]
+      },
+      {
+        "id": "opencode-go",
+        "name": "opencode-go",
+        "modelCount": 27,
+        "models": [
+          "minimax-m3",
+          "qwen3.8-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "glm-5.1",
+          "glm-5.2",
+          "glm-5.3",
+          "glm-5.3-flash",
+          "hy3",
+          "hy4-preview",
+          "kimi-k2.6",
+          "kimi-k2.7-code",
+          "kimi-k3",
+          "longcat-2.0",
+          "mimo-v2.5",
+          "mimo-v2.5-pro",
+          "minimax-m2.7",
+          "omen-alpha",
+          "qwen3.6-plus",
+          "qwen3.7-max",
+          "qwen3.7-plus",
+          "qwen3.8-max",
+          "gpt-5.6-luna",
+          "grok-4.6",
+          "muse-spark-1.2-contributor",
+          "muse-spark-1.3-contributor"
+        ]
+      }
+    ],
+    "failures": []
+  },
+  "errors": []
+}
+----- /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe-web-result.json -----
+{
+  "waitedMs": 9000,
+  "providers": [
+    {
+      "id": "deepseek-official",
+      "name": "DeepSeek"
+    },
+    {
+      "id": "opencode-go",
+      "name": "opencode-go"
+    }
+  ],
+  "perProvider": {
+    "deepseek-official": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek-V41-Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek-V4-Flash"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek-V4-Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek-V4-Flash-Vision-Exp"
+        }
+      ],
+      "modelInfo": {
+        "deepseek-flash": {
+          "name": "DeepSeek-V41-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek-V4-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek-V4-Pro",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek-V4-Flash-Vision-Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        }
+      },
+      "callConfig": {
+        "deepseek-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        }
+      },
+      "errors": []
+    },
+    "opencode-go": {
+      "models": [
+        {
+          "id": "minimax-m3",
+          "name": "MiniMax-M3"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "name": "Qwen3.8 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek V4 Flash Vision Exp"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro (New)"
+        },
+        {
+          "id": "glm-5.1",
+          "name": "GLM-5.1"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "GLM-5.2"
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3"
+        },
+        {
+          "id": "glm-5.3-flash",
+          "name": "GLM-5.3-Flash (2x usage)"
+        },
+        {
+          "id": "hy3",
+          "name": "Hy3"
+        },
+        {
+          "id": "hy4-preview",
+          "name": "Hy4 preview"
+        },
+        {
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6"
+        },
+        {
+          "id": "kimi-k2.7-code",
+          "name": "Kimi K2.7 Code"
+        },
+        {
+          "id": "kimi-k3",
+          "name": "Kimi K3"
+        },
+        {
+          "id": "longcat-2.0",
+          "name": "LongCat-2.0"
+        },
+        {
+          "id": "mimo-v2.5",
+          "name": "MiMo V2.5"
+        },
+        {
+          "id": "mimo-v2.5-pro",
+          "name": "MiMo V2.5 Pro"
+        },
+        {
+          "id": "minimax-m2.7",
+          "name": "MiniMax-M2.7"
+        },
+        {
+          "id": "omen-alpha",
+          "name": "Omen Alpha"
+        },
+        {
+          "id": "qwen3.6-plus",
+          "name": "Qwen3.6 Plus"
+        },
+        {
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max"
+        },
+        {
+          "id": "qwen3.7-plus",
+          "name": "Qwen3.7 Plus"
+        },
+        {
+          "id": "qwen3.8-max",
+          "name": "Qwen3.8 Max"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna"
+        },
+        {
+          "id": "grok-4.6",
+          "name": "Grok 4.6"
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "name": "Muse Spark 1.2 Contributor"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "name": "Muse Spark 1.3 Contributor"
+        }
+      ],
+      "modelInfo": {
+        "minimax-m3": {
+          "name": "MiniMax-M3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-flash": {
+          "name": "Qwen3.8 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro (New)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.1": {
+          "name": "GLM-5.1",
+          "contextWindow": 202752,
+          "defaultMaxTokens": 32768,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.2": {
+          "name": "GLM-5.2",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3": {
+          "name": "GLM-5.3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3-flash": {
+          "name": "GLM-5.3-Flash (2x usage)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "hy3": {
+          "name": "Hy3",
+          "contextWindow": 256000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "hy4-preview": {
+          "name": "Hy4 preview",
+          "contextWindow": 1024000,
+          "defaultMaxTokens": 64000,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 262144,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k3": {
+          "name": "Kimi K3",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "longcat-2.0": {
+          "name": "LongCat-2.0",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5": {
+          "name": "MiMo V2.5",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "name": "MiMo V2.5 Pro",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "minimax-m2.7": {
+          "name": "MiniMax-M2.7",
+          "contextWindow": 204800,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "omen-alpha": {
+          "name": "Omen Alpha",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.6-plus": {
+          "name": "Qwen3.6 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-max": {
+          "name": "Qwen3.7 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-plus": {
+          "name": "Qwen3.7 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-max": {
+          "name": "Qwen3.8 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "gpt-5.6-luna": {
+          "name": "GPT-5.6 Luna",
+          "contextWindow": 1050000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "grok-4.6": {
+          "name": "Grok 4.6",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 500000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "name": "Muse Spark 1.2 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "name": "Muse Spark 1.3 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        }
+      },
+      "callConfig": {
+        "minimax-m3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "qwen3.8-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "glm-5.1": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 32768,
+          "reasoningEffort": null
+        },
+        "glm-5.2": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "hy3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "hy4-preview": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 64000,
+          "reasoningEffort": null
+        },
+        "kimi-k2.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "kimi-k2.7-code": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 262144,
+          "reasoningEffort": null
+        },
+        "kimi-k3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "longcat-2.0": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "minimax-m2.7": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "omen-alpha": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "qwen3.6-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.8-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "gpt-5.6-luna": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "grok-4.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 500000,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        }
+      },
+      "errors": []
+    }
+  },
+  "credential": {
+    "servicePresent": true,
+    "OPENCODE_GO_API_KEY": {
+      "resolved": true,
+      "valueLengthClass": "nonempty"
+    }
+  },
+  "catalog": {
+    "default": {
+      "provider": "probe-default",
+      "model": "probe-model"
+    },
+    "routableProviders": [
+      "deepseek-official",
+      "opencode-go"
+    ],
+    "groups": [
+      {
+        "id": "deepseek-official",
+        "name": "DeepSeek",
+        "modelCount": 4,
+        "models": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ]
+      },
+      {
+        "id": "opencode-go",
+        "name": "opencode-go",
+        "modelCount": 27,
+        "models": [
+          "minimax-m3",
+          "qwen3.8-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "glm-5.1",
+          "glm-5.2",
+          "glm-5.3",
+          "glm-5.3-flash",
+          "hy3",
+          "hy4-preview",
+          "kimi-k2.6",
+          "kimi-k2.7-code",
+          "kimi-k3",
+          "longcat-2.0",
+          "mimo-v2.5",
+          "mimo-v2.5-pro",
+          "minimax-m2.7",
+          "omen-alpha",
+          "qwen3.6-plus",
+          "qwen3.7-max",
+          "qwen3.7-plus",
+          "qwen3.8-max",
+          "gpt-5.6-luna",
+          "grok-4.6",
+          "muse-spark-1.2-contributor",
+          "muse-spark-1.3-contributor"
+        ]
+      }
+    ],
+    "failures": []
+  },
+  "errors": []
+}
+----- /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe-explicit-row-result.json -----
+{
+  "waitedMs": 5000,
+  "providers": [
+    {
+      "id": "deepseek-official",
+      "name": "DeepSeek"
+    },
+    {
+      "id": "opencode-go",
+      "name": "opencode-go"
+    }
+  ],
+  "perProvider": {
+    "deepseek-official": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek-V41-Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek-V4-Flash"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek-V4-Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek-V4-Flash-Vision-Exp"
+        }
+      ],
+      "modelInfo": {
+        "deepseek-flash": {
+          "name": "DeepSeek-V41-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek-V4-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek-V4-Pro",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek-V4-Flash-Vision-Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        }
+      },
+      "callConfig": {
+        "deepseek-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        }
+      },
+      "errors": []
+    },
+    "opencode-go": {
+      "models": [
+        {
+          "id": "minimax-m3",
+          "name": "MiniMax-M3"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "name": "Qwen3.8 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek V4 Flash Vision Exp"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro (New)"
+        },
+        {
+          "id": "glm-5.1",
+          "name": "GLM-5.1"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "GLM-5.2"
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3"
+        },
+        {
+          "id": "glm-5.3-flash",
+          "name": "GLM-5.3-Flash (2x usage)"
+        },
+        {
+          "id": "hy3",
+          "name": "Hy3"
+        },
+        {
+          "id": "hy4-preview",
+          "name": "Hy4 preview"
+        },
+        {
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6"
+        },
+        {
+          "id": "kimi-k2.7-code",
+          "name": "Kimi K2.7 Code"
+        },
+        {
+          "id": "kimi-k3",
+          "name": "Kimi K3"
+        },
+        {
+          "id": "longcat-2.0",
+          "name": "LongCat-2.0"
+        },
+        {
+          "id": "mimo-v2.5",
+          "name": "MiMo V2.5"
+        },
+        {
+          "id": "mimo-v2.5-pro",
+          "name": "MiMo V2.5 Pro"
+        },
+        {
+          "id": "minimax-m2.7",
+          "name": "MiniMax-M2.7"
+        },
+        {
+          "id": "omen-alpha",
+          "name": "Omen Alpha"
+        },
+        {
+          "id": "qwen3.6-plus",
+          "name": "Qwen3.6 Plus"
+        },
+        {
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max"
+        },
+        {
+          "id": "qwen3.7-plus",
+          "name": "Qwen3.7 Plus"
+        },
+        {
+          "id": "qwen3.8-max",
+          "name": "Qwen3.8 Max"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna"
+        },
+        {
+          "id": "grok-4.6",
+          "name": "Grok 4.6"
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "name": "Muse Spark 1.2 Contributor"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "name": "Muse Spark 1.3 Contributor"
+        }
+      ],
+      "modelInfo": {
+        "minimax-m3": {
+          "name": "MiniMax-M3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-flash": {
+          "name": "Qwen3.8 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro (New)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 384000,
+          "reasoningEfforts": [
+            "off",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.1": {
+          "name": "GLM-5.1",
+          "contextWindow": 202752,
+          "defaultMaxTokens": 32768,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.2": {
+          "name": "GLM-5.2",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3": {
+          "name": "GLM-5.3",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "glm-5.3-flash": {
+          "name": "GLM-5.3-Flash (2x usage)",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "hy3": {
+          "name": "Hy3",
+          "contextWindow": 256000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "hy4-preview": {
+          "name": "Hy4 preview",
+          "contextWindow": 1024000,
+          "defaultMaxTokens": 64000,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "contextWindow": 262144,
+          "defaultMaxTokens": 262144,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "kimi-k3": {
+          "name": "Kimi K3",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "longcat-2.0": {
+          "name": "LongCat-2.0",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5": {
+          "name": "MiMo V2.5",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "name": "MiMo V2.5 Pro",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "minimax-m2.7": {
+          "name": "MiniMax-M2.7",
+          "contextWindow": 204800,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "omen-alpha": {
+          "name": "Omen Alpha",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.6-plus": {
+          "name": "Qwen3.6 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-max": {
+          "name": "Qwen3.7 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.7-plus": {
+          "name": "Qwen3.7 Plus",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 65536,
+          "reasoningEfforts": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ],
+          "defaultEffort": null
+        },
+        "qwen3.8-max": {
+          "name": "Qwen3.8 Max",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "gpt-5.6-luna": {
+          "name": "GPT-5.6 Luna",
+          "contextWindow": 1050000,
+          "defaultMaxTokens": 128000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "defaultEffort": null
+        },
+        "grok-4.6": {
+          "name": "Grok 4.6",
+          "contextWindow": 500000,
+          "defaultMaxTokens": 500000,
+          "reasoningEfforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "name": "Muse Spark 1.2 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "name": "Muse Spark 1.3 Contributor",
+          "contextWindow": 1048576,
+          "defaultMaxTokens": 131072,
+          "reasoningEfforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "defaultEffort": null
+        }
+      },
+      "callConfig": {
+        "minimax-m3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "qwen3.8-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 384000,
+          "reasoningEffort": null
+        },
+        "glm-5.1": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 32768,
+          "reasoningEffort": null
+        },
+        "glm-5.2": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "glm-5.3-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "hy3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "hy4-preview": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 64000,
+          "reasoningEffort": null
+        },
+        "kimi-k2.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "kimi-k2.7-code": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 262144,
+          "reasoningEffort": null
+        },
+        "kimi-k3": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "longcat-2.0": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "mimo-v2.5-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "minimax-m2.7": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "omen-alpha": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "qwen3.6-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.7-plus": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 65536,
+          "reasoningEffort": null
+        },
+        "qwen3.8-max": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "gpt-5.6-luna": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 128000,
+          "reasoningEffort": null
+        },
+        "grok-4.6": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 500000,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.2-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        },
+        "muse-spark-1.3-contributor": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider"
+          ],
+          "maxTokens": 131072,
+          "reasoningEffort": null
+        }
+      },
+      "errors": []
+    }
+  },
+  "credential": {
+    "servicePresent": true,
+    "OPENCODE_GO_API_KEY": {
+      "resolved": true,
+      "valueLengthClass": "nonempty"
+    }
+  },
+  "catalog": {
+    "default": {
+      "provider": "probe-default",
+      "model": "probe-model"
+    },
+    "routableProviders": [
+      "deepseek-official",
+      "opencode-go"
+    ],
+    "groups": [
+      {
+        "id": "deepseek-official",
+        "name": "DeepSeek",
+        "modelCount": 4,
+        "models": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ]
+      },
+      {
+        "id": "opencode-go",
+        "name": "opencode-go",
+        "modelCount": 27,
+        "models": [
+          "minimax-m3",
+          "qwen3.8-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "glm-5.1",
+          "glm-5.2",
+          "glm-5.3",
+          "glm-5.3-flash",
+          "hy3",
+          "hy4-preview",
+          "kimi-k2.6",
+          "kimi-k2.7-code",
+          "kimi-k3",
+          "longcat-2.0",
+          "mimo-v2.5",
+          "mimo-v2.5-pro",
+          "minimax-m2.7",
+          "omen-alpha",
+          "qwen3.6-plus",
+          "qwen3.7-max",
+          "qwen3.7-plus",
+          "qwen3.8-max",
+          "gpt-5.6-luna",
+          "grok-4.6",
+          "muse-spark-1.2-contributor",
+          "muse-spark-1.3-contributor"
+        ]
+      }
+    ],
+    "failures": []
+  },
+  "errors": []
+}
+----- /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe-disabled-row-result.json -----
+{
+  "waitedMs": 5000,
+  "providers": [
+    {
+      "id": "deepseek-official",
+      "name": "DeepSeek"
+    }
+  ],
+  "perProvider": {
+    "deepseek-official": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek-V41-Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek-V4-Flash"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek-V4-Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek-V4-Flash-Vision-Exp"
+        }
+      ],
+      "modelInfo": {
+        "deepseek-flash": {
+          "name": "DeepSeek-V41-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek-V4-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek-V4-Pro",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek-V4-Flash-Vision-Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        }
+      },
+      "callConfig": {
+        "deepseek-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        }
+      },
+      "errors": []
+    }
+  },
+  "credential": {
+    "servicePresent": true,
+    "OPENCODE_GO_API_KEY": {
+      "resolved": true,
+      "valueLengthClass": "nonempty"
+    }
+  },
+  "catalog": {
+    "default": {
+      "provider": "probe-default",
+      "model": "probe-model"
+    },
+    "routableProviders": [
+      "deepseek-official"
+    ],
+    "groups": [
+      {
+        "id": "deepseek-official",
+        "name": "DeepSeek",
+        "modelCount": 4,
+        "models": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ]
+      }
+    ],
+    "failures": []
+  },
+  "errors": []
+}
+----- /root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome-nosettings/probe-nosettings-result.json -----
+{
+  "waitedMs": 5000,
+  "providers": [
+    {
+      "id": "deepseek-official",
+      "name": "DeepSeek"
+    }
+  ],
+  "perProvider": {
+    "deepseek-official": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "DeepSeek-V41-Flash"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek-V4-Flash"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek-V4-Pro"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek-V4-Flash-Vision-Exp"
+        }
+      ],
+      "modelInfo": {
+        "deepseek-flash": {
+          "name": "DeepSeek-V41-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek-V4-Flash",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek-V4-Pro",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek-V4-Flash-Vision-Exp",
+          "contextWindow": 1000000,
+          "defaultMaxTokens": 256000,
+          "reasoningEfforts": [
+            "off",
+            "low",
+            "high",
+            "max"
+          ],
+          "defaultEffort": "high"
+        }
+      },
+      "callConfig": {
+        "deepseek-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-pro": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "ok": true,
+          "keys": [
+            "maxTokens",
+            "model",
+            "provider",
+            "reasoningEffort"
+          ],
+          "maxTokens": 256000,
+          "reasoningEffort": "high"
+        }
+      },
+      "errors": []
+    }
+  },
+  "credential": {
+    "servicePresent": true,
+    "OPENCODE_GO_API_KEY": {
+      "resolved": true,
+      "valueLengthClass": "nonempty"
+    }
+  },
+  "catalog": {
+    "default": {
+      "provider": "probe-default",
+      "model": "probe-model"
+    },
+    "routableProviders": [
+      "deepseek-official"
+    ],
+    "groups": [
+      {
+        "id": "deepseek-official",
+        "name": "DeepSeek",
+        "modelCount": 4,
+        "models": [
+          "deepseek-flash",
+          "deepseek-v4-flash",
+          "deepseek-v4-pro",
+          "deepseek-v4-flash-vision-exp"
+        ]
+      }
+    ],
+    "failures": []
+  },
+  "errors": []
+}
+===== evidence/llm-pi-ai/raw/probe-web-inrepo-refusal.log (the client-modules multi-source refusal arm) =====
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[dsh-cost-meter] 已加载,账本:/root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/storages/cost-meter/ledger.json
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+... (stack frames elided) ...
+      [cause]: ClientPackageCompositionError [AggregateError]: client-modules: 1 client package failed to compose:
+        other failures:
+          - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/, "file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe/llm-probe.mjs" from file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/; remove one entry
+          at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:479:34)
+          at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+          at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+          at file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/#modules
+          at file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/#include {
+        [errors]: [
+          Error: client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/, "file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/probe/llm-probe.mjs" from file:///root/dshProj/my-power-dsh/evidence/llm-pi-ai/sandbox/20260918T053225Z/dshhome/profiles/web/; remove one entry
+              at ClientModuleRegistry.reconcilePackage (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:818:10)
+              at ClientModuleRegistry.processOne (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:794:13)
+              at ClientModuleRegistry.flush (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:841:14)
+              at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:478:8)
+              at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+              at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+              at composeError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:199:18)
+              at Fiber._execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1136:10)
+              at Fiber._reload (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1355:16)
+              at async Fiber.await (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1399:24)
+        ]
+      }
+    }
+  }
+}
+
+Node.js v24.16.0
+

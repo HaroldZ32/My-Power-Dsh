@@ -1,0 +1,24 @@
+=== T-72 final verification pass (settled) — 2026-09-17T07:35:11Z ===
+
+-- revision hashes BEFORE --
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+
+-- 1/3: node scripts/check-citations.mjs --self-test --
+exit=1
+
+[docs-claims] 19/21 checks passed, 2 failed, 249 citation(s) resolved, 17 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2/3: node scripts/check-citations.mjs (repo-wide) --
+exit=1
+
+[docs-claims] 11/13 checks passed, 2 failed, 249 citation(s) resolved, 17 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3/3: bun run verify:docs --
+exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS
+
+-- revision hashes AFTER (no drift) --
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+=== end 2026-09-17T07:35:12Z ===

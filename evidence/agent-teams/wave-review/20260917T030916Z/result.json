@@ -1,0 +1,87 @@
+{
+  "task": "t31 (review of t20; lane B: the adopted-plugin batches)",
+  "attempt_id": "4b0b4894-5411-4491-8cdb-62b5a5c6ab5e",
+  "verdict": "pass",
+  "batchToEvidence": {
+    "D2 hold guards (t9)": {
+      "claimUpdateHalf": "self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs (6 pass / 0 fail) \u2014 'D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write)' + 'D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own' + 'D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL' (I ran this file alone and it passed)",
+      "dispatchHalf": "MY OWN fault-lane run (skills/dsh-qa/scripts/team-watchdog-fault.mjs --out <review dir>): check F6 PASSED \u2014 'the pause PRESERVES: team.json byte-unchanged across the held kicks, ZERO deliveries while held, nothing cancelled ({\"unchanged\":true,\"deliveries\":0,\"preserved\":true})' -> the write-unblock did NOT unblock dispatch"
+    },
+    "contract tool on every seat (t9)": {
+      "reading": "lib/tool-names.js:10 'agent_teams_task_contract' in TEAM_TOOL_NAMES and :30 in MEMBER_TOOL_NAMES (CAPTAIN_TOOL_NAMES derives by filter at :36); the t25 mount proof (evidence/agent-teams/wave-verify/20260917T024718Z/mount-proof-result.json) reports captain.hasContractTool=true AND member.hasContractTool=true with member.hasWriteTools=false and member.hasApproveTool=false; test 'DEFECT 3: the full agent-teams tool surface registers, with the contract tool among it' passes"
+    },
+    "amend path (t14)": [
+      "T-02: a member amends its OWN contract at claim time WITHOUT an attempt_id; elsewhere it stays refused",
+      "T-02: a captain amends a member-owned IN-FLIGHT contract without a takeover \u2014 the attempt survives",
+      "a MEMBER's amend is refused loudly instead of silently persisting nothing",
+      "a PENDING task is amendable (status enum accepts pending) and the amendment persists",
+      "captain amend on a RUNNING task settles instead of self-deadlocking the team lock",
+      "inScope/outOfScope are amendable by the captain"
+    ],
+    "edit_plan contract (t14)": [
+      "T-03: edit_plan.add_task carries the full quality contract through the same gate as create_task"
+    ],
+    "terminal output repairable (t14/T-52)": [
+      "T-52: a terminal output is repaired APPEND-ONLY; every other terminal write and a running append stay refused"
+    ],
+    "artifact channel (t19)": [
+      "T-09: the artifact channel carries the full text, records it on the task, and guards the path",
+      "T-46: a long deliverable is EXTENDED by output_append, and a byte-dropping replacement is loud",
+      "mount proof A6_artifact_written_from_the_readonly_seat=true and A7_task_records_the_artifact_path=true"
+    ],
+    "read-only write path (t19)": [
+      "mount proof A4_member_denied_write_tools=true",
+      "test/member-readonly-deny.test.mjs passes"
+    ],
+    "eliminated wasted wake (t19)": [
+      "T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake"
+    ],
+    "ownership query/move-path (t20)": [
+      "T-01: `who owns <path>` names the owner and is READ-ONLY",
+      "T-01: an overlapping create is refused NAMING the owner, and after the move the same create can be declared",
+      "T-01: the move refuses a path the donor does not own, an unknown target, a terminal target and an ambiguous donor"
+    ],
+    "wave label (t20)": [
+      "T-12: rollover archives the closed wave WITH its tasks, advances the label, and status shows both"
+    ]
+  },
+  "adoptedCodeDiscipline": {
+    "registryCheck": {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "reading": "already applied: 73 mpd delta region(s) across 9 adopted file(s)"
+    },
+    "registryGenerated": {
+      "reading": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js header: 'Generated from the //#region mpd-delta markers ... Never hand-edit: edit the adopted file's marked region and regenerate'; 73 entries with ids == the 73 regions --check reports"
+    },
+    "suites": {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "reading": "243 pass / 0 fail across 70 files",
+      "selfFixTestsAlone": "86 pass / 0 fail across 22 files"
+    },
+    "replacementShapedMarked": {
+      "reading": "5 regions carry the **REPLACEMENT-shaped** marking in agent-references/agent-teams-deltas.md (D13, D14, D21-D22 pool-capability-select, D28 update-task-amend-owned-task, D29 member-amend-at-claim-time), each stating the re-materialize REFUSAL and the remedy; the two NEW ones (D28/D29) also carry the refusal text inside their own region comment (mpd-deltas.js entries for mpd-delta update-task-amend-owned-task and mpd-delta output-append-any-status)"
+    }
+  },
+  "regressionPins": {
+    "deliveriesWhileHeld===0": "PASS in my own fault-lane run (F6, deliveries: 0)",
+    "dispatch-stall": "test/dispatch-stall-regression.test.mjs 4 pass / 0 fail (ran alone)",
+    "s1-s4": "test/s1-s4-semantics.test.mjs 5 pass / 0 fail (ran alone)",
+    "pool capability guard": "self-fix-tests/pool-capability-guard.test.mjs passes: a pooled write task is LEFT IN THE POOL for a read-only member and reported; a write-capable member still gets it"
+  },
+  "falseGreenCheck": "t25's lane-B verification evidence is execution-based and self-critical: verify-lane-b.result.json (11/11 cases incl. 'D2: claim_task SUCCEEDS while a working hold is live', 'the durable record really moved', 'every hold read came from the DISPATCH half (scheduler.js)') plus a real MOUNTED boot (mount-proof-result.json, 7 assertions, sandboxed DSH_HOME/HOME, stub model) whose honest_bounds state the stub-model limit, the single boot window and that the probe measures capability not a model's choice. The lane also disclosed its own F1 (the mount driver's header describes an A4 session-log assertion its shipped assertion set no longer implements; the decoded member session shows agent_teams_update_task only) \u2014 a real but self-reported low issue about prose, not a functional regression. My independent runs reproduced the load-bearing claims (both D2 halves, contract-tool seating, suites).",
+  "observationOutsideScope": {
+    "id": "O1",
+    "severity": "medium",
+    "file": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+    "problem": "The QA fault lane currently exits 1 with 3 failed checks (F2 fixture cases mid-turn-stall/escalate-3x/scene-restore/long-tool-bound-disabled-control/completed-tool-not-in-flight; F4 escalation applies no hold; F9 scene-restore ENOENT on the hold sidecar) while the watchdog plugin's OWN suite is 127 pass / 0 fail. That discriminator says the engine is internally consistent and the QA lane's expectations are stale relative to the redesigned engine \u2014 the F9 ENOENT is a cascade of F4 (no escalation -> no hold file). NOT a lane B defect and NOT used to fail t31; belongs to lane A's verification (t29) or the lane owner. The `deliveriesWhileHeld === 0` pin inside the same run PASSED.",
+    "requiredFix": "Route to t29 / the watchdog lane owner: re-baseline the fault lane's fixture expectations against the redesigned engine (or fix the engine if the escalation loss is unintended). Do not read lane A as verified until this is resolved."
+  },
+  "revisions": {
+    "laneScript": "skills/dsh-qa/scripts/team-watchdog-fault.mjs a5d91a75\u2026",
+    "fixture": "packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs c3294141\u2026",
+    "mpdDeltas": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js 73 entries == --check's 73 regions",
+    "note": "lane B's own writers were terminal before I started; the only concurrent writer in the tree during this review is t21's (skills/dsh-qa/scripts) - the fault-lane script is NOT in its edit window (mtime 2026-09-16 09:43)"
+  }
+}

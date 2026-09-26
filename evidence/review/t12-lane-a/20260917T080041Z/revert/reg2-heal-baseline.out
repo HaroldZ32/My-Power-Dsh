@@ -1,0 +1,297 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:125:24)
+(fail) t2: strip-healing ALL adopted files from the same state is byte-identical [18.85ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:143:16)
+(fail) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [10.01ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:163:16)
+(fail) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [3.61ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:207:32)
+(fail) t2: a region heals to its canonical position under partial insertion histories [2.40ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [7.70ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.19ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [21.68ms]
+287 |             dropLine(path, (line) => line.trim() === `//#endregion ${outer}`)
+288 |             const lines = readFileSync(path, "utf8").split("\n")
+289 |             const resolved = findRegion(lines, outer)
+290 |             expect(resolved.orphan, `${outer} orphan`).toBe("end")
+291 |             const message = healError(root, false)
+292 |             expect(message, `${outer}: ${message}`).toContain(`MISSING from`)
+                                                          ^
+error: mpd-delta scope-overlap: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+
+Expected to contain: "MISSING from"
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:292:53)
+(fail) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [3.01ms]
+306 |             const path = libPath(root, file)
+307 |             dropLine(path, (line) => line.trim().startsWith(`//#region ${outer} (`))
+308 |             const lines = readFileSync(path, "utf8").split("\n")
+309 |             expect(findRegion(lines, outer).orphan, `${outer} orphan`).toBe("begin")
+310 |             const message = healError(root, false)
+311 |             expect(message, `${outer}: ${message}`).toContain(`MISSING from`)
+                                                          ^
+error: mpd-delta scope-overlap: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+
+Expected to contain: "MISSING from"
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:311:53)
+(fail) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [2.81ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:331:32)
+(fail) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [2.88ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.61ms]
+392 |         writeLines(path, lines)
+393 |         expect(() => findRegion(readLines(path), "mpd-delta scope-glob")).toThrow(/half-open marker pair/)
+394 |         const before = readFileSync(path, "utf8")
+395 |         for (const write of [false, true]) {
+396 |             const message = healError(root, write)
+397 |             expect(message, `write=${write}`).toMatch(/half-open marker pair/)
+                                                    ^
+error: write=false
+
+Expected substring or pattern: /half-open marker pair/
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:397:47)
+(fail) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [3.21ms]
+413 |             const { begin, end } = regionSpanOf(readLines(path), outer)
+414 |             const lines = readLines(path)
+415 |             lines.splice(end, 1)
+416 |             writeLines(path, lines)
+417 |             expect(findRegion(readLines(path), outer).orphan, `${outer} orphan`).toBe("end")
+418 |             expect(healError(root, false), `${outer} check`).toMatch(/MISSING from/)
+                                                                   ^
+error: mpd-delta scope-overlap check
+
+Expected substring or pattern: /MISSING from/
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:418:62)
+(fail) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [7.48ms]
+440 |         lines[begin + 1] = `${lines[begin + 1]} // drifted body`
+441 |         writeLines(path, lines)
+442 |         const drifted = readFileSync(path, "utf8")
+443 |         for (const write of [false, true]) {
+444 |             const message = healError(root, write)
+445 |             expect(message, `write=${write}`).toContain(CANON_ID)
+                                                    ^
+error: write=false
+
+Expected to contain: "mpd-delta repair-scope"
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:445:47)
+(fail) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [5.41ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:466:28)
+(fail) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [2.71ms]
+481 |         const lines = readLines(path)
+482 |         const { begin, end } = regionSpanOf(lines, CANON_ID)
+483 |         lines.splice(begin, end - begin)
+484 |         writeLines(path, lines)
+485 |         const message = healError(root, false)
+486 |         expect(message).toContain(CANON_ID)
+                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "mpd-delta repair-scope"
+Received: "ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:486:25)
+(fail) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [2.17ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.80ms]
+535 |                 return { code: error.status ?? 1, out: String(error.stdout ?? "") + String(error.stderr ?? "") }
+536 |             }
+537 |         }
+538 |         const refused = run("--check")
+539 |         expect(refused.code).toBe(1)
+540 |         expect(refused.out).toContain("FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)")
+                                  ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)"
+Received: "node:internal/modules/esm/resolve:271\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/mpd-w3-registry-AClUgb/pkgs/mpd-agent-teams-plugin/lib/mpd-deltas.js' imported from /tmp/mpd-w3-registry-AClUgb/scripts/patch-agent-teams-fixes.mjs\n    at finalizeResolution (node:internal/modules/esm/resolve:271:11)\n    at moduleResolve (node:internal/modules/esm/resolve:865:10)\n    at defaultResolve (node:internal/modules/esm/resolve:992:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)\n    at #resolve (node:internal/modules/esm/loader:673:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)\n    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///tmp/mpd-w3-registry-AClUgb/pkgs/mpd-agent-teams-plugin/lib/mpd-deltas.js'\n}\n\nNode.js v24.16.0\n"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:540:29)
+(fail) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [333.17ms]
+47 |   // A region can only be registered from a file the registry already names, so a NEW
+48 |   // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+49 |   // --write-registry. Discover the adopted lib files that carry region markers and are
+50 |   // not registered yet — the registry stays the authority, this only seeds it once.
+51 |   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
+52 |   const discovered = readdirSync(libDir)
+                          ^
+error: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib'
+      at mpdDeltaFiles (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:52:22)
+      at applyAgentTeamsFixes (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/scripts/patch-agent-teams-fixes.mjs:404:17)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:569:28)
+(fail) t9: all four states of the ONLY shared seam heal byte-identically [4.59ms]
+58 |  * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+59 |  * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+60 |  * edit fail here instead of silently weakening an assertion.
+61 |  */
+62 | function pristineUpstream(name) {
+63 |     const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+                      ^
+error: ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/tools.js'
+      at pristineUpstream (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:63:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:585:30)
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [1.58ms]
+58 |  * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+59 |  * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+60 |  * edit fail here instead of silently weakening an assertion.
+61 |  */
+62 | function pristineUpstream(name) {
+63 |     const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+                      ^
+error: ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/tools.js'
+      at pristineUpstream (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:63:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:614:31)
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [1.26ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/pkgs/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+ 5 pass
+ 16 fail
+ 682 expect() calls
+Ran 21 tests across 41 files. [10.56s]

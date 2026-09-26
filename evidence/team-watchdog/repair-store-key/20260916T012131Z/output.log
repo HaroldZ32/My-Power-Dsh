@@ -1,0 +1,473 @@
+================================================================================
+t79 (r2) — team-scoped heartbeat READ + per-team rotation + the ledger's two legs
+repo: /root/dshProj/my-power-dsh   revision: b53a6515e6fcae95f3fc538f8f223314b4527df7
+generated: 2026-09-16T01:27:49Z
+================================================================================
+
+── raw/dist-before.txt ─────────────────────────────────────────────────────────────────────
+size=115720
+sha256=2e196de99a98973f21673e24c9194aff16fa39e55c6182d355d10caabc6d55fe
+
+── raw/dist-after-final.txt ─────────────────────────────────────────────────────────────────────
+size=116353
+sha256=275e6afe7ade5c22405f3243439a68c1b4105039daf8032495c41bb137f9f7b5
+
+── raw/before-fix.json ─────────────────────────────────────────────────────────────────────
+{
+  "dist": "packages/mpd-team-watchdog-plugin/dist/index.js",
+  "candidates": [
+    {
+      "teamId": "team-alpha",
+      "taskId": "t1",
+      "lastSeen": 1000000000000,
+      "everStampedForTask": true
+    },
+    {
+      "teamId": "team-beta",
+      "taskId": "t1",
+      "lastSeen": 1000000000000,
+      "everStampedForTask": true
+    }
+  ],
+  "decisions": [],
+  "falseNegativeReproduced": true,
+  "note": "team-beta is WEDGED (its newest stamp is 10 thresholds old) yet its candidate reports team-alpha's RECENT stamp and the engine raises NOTHING — the pre-repair behaviour, measured on the shipped artifact."
+}
+
+── raw/rotation.json ─────────────────────────────────────────────────────────────────────
+{
+  "input": {
+    "lines": 13,
+    "teamBetaStamps": 1
+  },
+  "removedRuleModelled": {
+    "note": "a MODEL of the rule this repair replaced (global keep-last-N turn-starts) — NOT the old code",
+    "kept": 9,
+    "teamBetaStampsKept": 0,
+    "evictsTheOtherTeamsEvidence": true
+  },
+  "currentRuleCalled": {
+    "note": "the REAL `rotateHeartbeats` from src/store.ts — per-team groups",
+    "rotated": true,
+    "kept": 10,
+    "teamBetaStampsKept": 1,
+    "teamAlphaGenerations": 3,
+    "preservesTheOtherTeamsEvidence": true
+  }
+}
+
+── raw/probe.log ─────────────────────────────────────────────────────────────────────
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-beta task=t1 member=Architect silence=900001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws/.mpd/team/watchdog/scene/team-beta/20010909T014640Z-warn.json
+{
+  "task": "t79",
+  "defect": "the heartbeat FILE is keyed by member NAME per workspace, so two teams whose members share a name share one file; the candidate filter was by task+attempt but NOT by team, so the other team's stamp satisfied this candidate and a WEDGED member looked alive (false negative)",
+  "fix": "read-side: the candidate's stamps are now filtered by the stamp's own teamId (permissive when the stamp carries none) — no store migration",
+  "structuralCause": {
+    "file": "evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws/.mpd/team/watchdog/heartbeat/architect.jsonl",
+    "teamsSharingIt": [
+      "team-alpha",
+      "team-beta"
+    ]
+  },
+  "removedPredicateModel": {
+    "stampsKeptForTeamB": [
+      {
+        "teamId": "team-alpha",
+        "at": 1000000000000
+      },
+      {
+        "teamId": "team-beta",
+        "at": 999999100000
+      }
+    ],
+    "newestAt": 1000000000000,
+    "newestTeam": "team-alpha",
+    "silenceMs": 0,
+    "wouldWarn": false
+  },
+  "realCandidateTeamB": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 999999100000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "realCandidateTeamA": {
+    "teamId": "team-alpha",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "shippedEngineDecisions": [
+    {
+      "type": "warn",
+      "teamId": "team-beta",
+      "taskId": "t1",
+      "silenceMs": 900001
+    }
+  ],
+  "sameTeamControl": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "teamlessStampControl": {
+    "teamId": "team-beta",
+    "taskId": "t1",
+    "attemptId": "att-1",
+    "assignee": "Architect",
+    "memberKey": "Architect",
+    "lastSeen": 1000000000000,
+    "lastKind": "step",
+    "everStampedForTask": true
+  },
+  "checks": [
+    {
+
+── raw/harness-run.log ─────────────────────────────────────────────────────────────────────
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[second-team-dispatch] team fault-probe is HELD through the plugin's own action: true (holds on disk: ["fault-probe.json"])
+[second-team-dispatch] deliveries in the same window — held team: 0, NEIGHBOUR team: 1
+[second-team-dispatch] the held team's decline: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 978ac47d-72fa-4e6c-baee-7c6aa1744fb1 since 2026-09-16T01:25:46.822Z: silence)
+[second-team-dispatch] the neighbour kept dispatching: task status claimed, halted=false
+[second-team-dispatch] => the hold is TEAM-scoped: a neighbour in the same workspace is untouched (AC-7)
+[watchdog-fixture] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[disabled-control] the watchdog row is DISABLED (knobs.enabled=false): every tick reports skipped=["disabled","disabled","disabled","disabled"]
+[disabled-control] no WARN, no ESCALATE: [[],[],[],[]]
+[disabled-control] scenes 0, incidents 0, holds 0
+[disabled-control] on disk: scene dir exists=false, holds=[], incidents file=false
+[disabled-control] the team record is byte-identical: true
+[disabled-control] => the negative control is falsifiable at the FIXTURE level (AC-10)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-f0ck8b/.mpd/team/watchdog/incidents.jsonl
+[never-started-recorded] the claimed task was never picked up: no heartbeat file exists for its owner
+[never-started-recorded] tick => [] (recorded once; the second tick repeats nothing: [])
+[never-started-recorded] durable incident: [{"kind":"never-started","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested"}]
+[never-started-recorded] notice: [watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-f0ck8b/.mpd/team/watchdog/incidents.jsonl
+[never-started-recorded] no scene (0), no hold (0), record byte-identical: true
+[never-started-recorded] => T69-ESCALATE-2: the dispatch problem is now RECORDED and NOTICED, not silent — while still never pausing the team
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[completed-turn-idle] the member COMPLETED its turn: the newest stamp for t1/att-1 is `turn-end` at 1700000002500
+[completed-turn-idle] ticks at silence 90001/180001/270001 ms (the last is > 2x the frozen 90000)
+[completed-turn-idle] decisions: [] — NO WARN, NO ESCALATE
+[completed-turn-idle] scenes 0, incidents 0, holds 0, record byte-identical: true
+[completed-turn-idle] => a completed turn with no re-dispatch is a healthy idle member, not a wedge (T69-ESCALATE-1 fixed)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-vcqoz0/.mpd/team/watchdog/scene/fault-probe/20231114T221452Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=180001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-vcqoz0/.mpd/team/watchdog/scene/fault-probe/20231114T221622Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=270001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-vcqoz0/.mpd/team/watchdog/scene/fault-probe/20231114T221752Z-escalate.json
+[mid-turn-stall] the member STALLED mid-turn: the newest stamp for t1/att-1 is still a `step` at 1700000002000
+[mid-turn-stall] ticks at silence 90001/180001/270001 ms
+[mid-turn-stall] decisions: ["warn","warn","escalate"] — the wedge STILL escalates
+[mid-turn-stall] hold applied: 1 {"id":"12bc9c8a-d8b4-4e95-9a9f-954f1286fd6e","taskId":"t1","attemptId":"att-1"}
+[mid-turn-stall] => the boundary fix does not silence the fault the wave exists for
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-il9jgk/.mpd/team/watchdog/scene/fault-probe/20231114T221452Z-warn.json
+[member-stops-stepping] the member's turn produced 3 step stamps at 1700000000000, 1700000001000, 1700000002000 and then stopped stepping
+[member-stops-stepping] silence is measured from the LAST stamp (1700000002000)
+[member-stops-stepping] tick at +89 000 => decisions [] (below the frozen 90 000 threshold)
+[member-stops-stepping] tick at +90 001 => decisions ["warn"] (the fault is observed)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t9 member=captain silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-fu19ze/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[captain-wedge] NO agent turn was driven: nothing but the process-level tick runs (agentTurnsDriven 0)
+[captain-wedge] the captain's own silence is flagged: [{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}]
+[captain-wedge] the member is untouched (its stamp at 50 000 keeps it alive): memberFlagged=false
+[captain-wedge] scene written: 1, incident recorded: 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-avvpw1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[warn-90s] frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3
+[warn-90s] tick at silence 89999 ms => 0 decision(s)
+[warn-90s] tick at silence 90001 ms => exactly 1 WARN
+[warn-90s] snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-avvpw1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[warn-90s] snapshot fields: {"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1}
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-kstyt7/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-kstyt7/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-kstyt7/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=applied scene=none
+[escalate-3x] tick sequence => ["warn","warn","escalate",""] (warn, warn, escalate, NOTHING)
+[escalate-3x] exactly one ESCALATE for the task+attempt, no fourth WARN: true
+[escalate-3x] predecessors recorded as WARNs with snapshot paths: true
+[escalate-3x] hold applied once: true {"id":"9d5bc4f1-5708-4cb7-91ef-4fbdd3f6354e","taskId":"t1","attemptId":"att-1"}
+[escalate-3x] retry with a NEW attemptId starts a clean streak: [{"type":"warn","streak":1}]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[pause-preserves] the hold landed through the plugin's own action while t1 was in flight: true
+[pause-preserves] sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))
+[pause-preserves] deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 1af35585-9f72-4075-a6a3-9611c80e0583 since 2026-09-16T01:25:46.859Z: silence))
+[pause-preserves] task after the hold: {"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"}
+[pause-preserves] resume cleared the hold and dispatch resumed: true / deliveries 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[pause-preserves-halt-control] the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1
+[pause-preserves-halt-control] t1: {"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"}  =>  {"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null}
+[pause-preserves-halt-control] sha256(team.json) CHANGED: true (this is what reddens AC-17)
+[pause-preserves-halt-control] AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-kbtepa/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/repair-store-key/20260916T012131Z/raw/ws-cases/fault-kbtepa/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+
+── raw/tests-package.log ─────────────────────────────────────────────────────────────────────
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the pre-step listener DELEGATES: the decision reaches the harness unchanged [11.00ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the listener delegates DOWNSTREAM: a later listener still runs and its decision wins [2.24ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > NEGATIVE CONTROL: the retired shape really does clobber the decision [0.96ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > no listener we install returns a value on a non-waterfall dispatch (emit/serial) [1.60ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > a THROWING stamp still delegates: a heartbeat failure never vetoes the step [1.49ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [0.67ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.49ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.62ms]
+(pass) heartbeat store > the POST tool hook stamps a completed tool call, never a pre-dispatch one [0.60ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [2.52ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [15.50ms]
+(pass) heartbeat store > r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence [1.03ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.48ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.88ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.66ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=1
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [1.70ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [1.34ms]
+[mpd-team-watchdog] ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=none hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.32ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.27ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [0.91ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.35ms]
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-WaIqAe/.mpd/team/watchdog/scene/team-a/20260916T012728Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-WaIqAe/.mpd/team/watchdog/scene/team-a/20260916T012728Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-WaIqAe/.mpd/team/watchdog/scene/team-a/20260916T012728Z-escalate.json
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [6.55ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-Zm2uAQ/.mpd/team/watchdog/scene/team-a/20260916T012628Z-warn.json
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [1.60ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.61ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [1.53ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.64ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+(pass) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [2.47ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=120000 tickIntervalMs=60000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.45ms]
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [1.60ms]
+(pass) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.63ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-liLFo8/.mpd/team/watchdog/scene/team-a/20260916T012728Z-warn.json
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.18ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.79ms]
+[mpd-team-watchdog] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.41ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives beside team.json and never changes a byte of it [0.56ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.38ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.31ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.45ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.31ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.74ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.30ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [0.93ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.09ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.16ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.11ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.12ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.07ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.25ms]
+(pass) the machine > a new attemptId starts a clean streak [0.10ms]
+
+── raw/tests-all.log ─────────────────────────────────────────────────────────────────────
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-mcp-shared/bin-resolve.test.mjs:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [2.57ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.26ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.24ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.16ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.26ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.14ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.45ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.41ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle> [0.06ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [9.59ms]
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [4.83ms]
+(pass) engine alias and 2-fruitless-waves stop [0.54ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.91ms]
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [41.74ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [102.86ms]
+(pass) both vcs: commits to git and svn [145.70ms]
+(pass) svn backend wiring with fake svn CLIs [18.08ms]
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-Cfopl5/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > one registration, applies:'restart', and the base is the FILE layer — never the resolved value [6.03ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > a refused registration names the host's reason and leaves the TUI fallback to own it [0.33ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-slU22c/ws, /tmp/mpd-wiring-PH60Ep/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-slU22c/ws, /tmp/mpd-wiring-PH60Ep/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-slU22c/ws, /tmp/mpd-wiring-PH60Ep/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-slU22c/ws","/tmp/mpd-wiring-PH60Ep/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace [1.29ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-3O2fBI/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > L3 outranks the file layers, and a missing L3 key falls back to the file [1.07ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-2wbQD1/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > the in-namespace marker never becomes config and never reaches the file [0.67ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) read-in precedence (design §1.1/§10.4, U12) > with the namespace unserved the file layers still resolve (degraded, not fatal) [0.40ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge WROTE: {"writtenTo":["/tmp/mpd-wiring-3eRkHL/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/tmp/mpd-wiring-3eRkHL/ws","file":"/tmp/mpd-wiring-3eRkHL/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-3eRkHL/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > U1/A2: one live root — a front-door edit rewrites exactly that file, comments intact [2.47ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).
+[mpd-config] settings bridge: saved to settings — not yet written to any .mpd/mpd.jsonc (no live session). Start a session in the intended workspace to persist it.
+[mpd-config] settings bridge no-live-session: {"writtenTo":[],"skipped":"no-live-session","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U13: zero live roots writes NOTHING anywhere and says so [0.53ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-6m0Wy3/ws, /tmp/mpd-wiring-8yOfr4/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-6m0Wy3/ws, /tmp/mpd-wiring-8yOfr4/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-6m0Wy3/ws, /tmp/mpd-wiring-8yOfr4/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-6m0Wy3/ws","/tmp/mpd-wiring-8yOfr4/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U14 must-fail-on-fanout: two live roots REFUSE, name both, and touch no file [0.89ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > A6 negative control: the switch disables the FILE write only, never the value [0.59ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the design's flat key (`writeBack:false`) disables it too, and both spellings are reported [0.55ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off) [0.51ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-Se4k3I/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a provider reload is a READ-IN only: it never echoes into a file write [0.72ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-bu8BY5/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a raw-section change with NO new leaf writes nothing (the loop gate) [0.64ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-P1JepY/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=5).
+
+── raw/typecheck.log ─────────────────────────────────────────────────────────────────────
+$ tsgo --noEmit
+exit=0
+
+── raw/delta-check.log ─────────────────────────────────────────────────────────────────────
+[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+── raw/lane-selftest.log ─────────────────────────────────────────────────────────────────────
+[self-test] ok   healthy-observation: 11 checks passed on the healthy observation
+[self-test] ok   negative:case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that failed
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:no-hold: the mutated observation FAILED its own check(s) ["F4"] — an escalation that applied no hold
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (10 checks, 0 failed)
+exit=0
+
+── raw/lane-run.log ─────────────────────────────────────────────────────────────────────
+[team-watchdog-fault] fixture: /root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs
+[team-watchdog-fault] cases: second-team-dispatch, disabled-control, never-started-recorded, completed-turn-idle, mid-turn-stall, member-stops-stepping, captain-wedge, warn-90s, escalate-3x, pause-preserves, pause-preserves-halt-control, scene-restore
+[team-watchdog-fault] FROZEN: {"warnSilenceMs":90000,"tickIntervalMs":15000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-fxnu98/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-56fa8m/.mpd/team/watchdog/scene/fault-probe/20231114T221452Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=180001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-56fa8m/.mpd/team/watchdog/scene/fault-probe/20231114T221622Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=270001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-56fa8m/.mpd/team/watchdog/scene/fault-probe/20231114T221752Z-escalate.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-ca47kd/.mpd/team/watchdog/scene/fault-probe/20231114T221452Z-warn.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t9 member=captain silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-r5zftv/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-ugrggc/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=applied scene=none
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json
+[watchdog-fixture] WARN fault-probe task=t1 member=Architect silence=105001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json
+[watchdog-fixture] ESCALATE fault-probe task=t1 member=Architect silence=120001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json
+[team-watchdog-fault] case second-team-dispatch: ok {"injected":"silence","holdApplied":true,"holdsOnDisk":["fault-probe.json"],"deliveriesToHeldTeam":0,"deliveriesToNeighbourTeam":1,"heldTeamDeclined":true,"declineLines":["agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 070fb035-2490-46a8-a186-595525beabd0 since 2026-09-16T01:26:19.603Z: silence)"],"neighbourRecordByteIdentical":false,"neighbourTaskStatus":"claimed","neighbourHalted":false}
+[team-watchdog-fault] case disabled-control: ok {"injected":"silence, watchdog DISABLED (row config enabled:false)","knobsEnabled":false,"ticks":[{"silenceMs":90001,"skipped":"disabled","decisions":[],"scenes":0,"holds":0},{"silenceMs":180001,"skipped":"disabled","decisions":[],"scenes":0,"holds":0},{"silenceMs":270001,"skipped":"disabled","decisions":[],"scenes":0,"holds":0},{"silenceMs":360001,"skipped":"disabled","decisions":[],"scenes":0,"holds":0}],"everyTickSkippedDisabled":true,"stats":{"ticks":4,"scenes":0,"incidents":0,"holdsApplied":0,"neverStarted":0},"sceneDirExists":false,"holdDirContents":[],"incidentsFileExists":false,"heartbeatStillWritten":1,"recordByteIdentical":true}
+[team-watchdog-fault] case never-started-recorded: ok {"injected":"no heartbeat ever written for the claimed task","decisions":[],"decisionsOnSecondTick":[],"incidents":[{"kind":"never-started","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested"}],"recordedKind":"never-started","recordedSceneIsNull":true,"noticeLines":["[watchdog-fixture] NEVER-STARTED fault-probe task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-fxnu98/.mpd/team/watchdog/incidents.jsonl"],"noticeIsNotOnlyALogLine":true,"scenesWritten":0,"holdsApplied":0,"neverStartedCounted":1,"recordByteIdentical":true}
+[team-watchdog-fault] case completed-turn-idle: ok {"injected":"silence","newestStampKind":"turn-end","ticks":[{"silenceMs":90001,"decisions":[],"scenes":0,"holds":0},{"silenceMs":180001,"decisions":[],"scenes":0,"holds":0},{"silenceMs":270001,"decisions":[],"scenes":0,"holds":0}],"beyondTwiceTheThreshold":true,"decisions":[],"scenesWritten":0,"incidents":0,"holdsApplied":0,"recordByteIdentical":true}
+[team-watchdog-fault] case mid-turn-stall: ok {"injected":"silence","newestStampKind":"step","ticks":[{"silenceMs":90001,"decisions":["warn"],"scenes":1,"holds":0},{"silenceMs":180001,"decisions":["warn"],"scenes":1,"holds":0},{"silenceMs":270001,"decisions":["escalate"],"scenes":1,"holds":1}],"decisions":["warn","warn","escalate"],"scenesWritten":3,"incidents":3,"holdsApplied":1,"hold":{"id":"18a1dfdf-8779-4e86-beb5-b0bf21bde3d4","taskId":"t1","attemptId":"att-1"}}
+[team-watchdog-fault] case member-stops-stepping: ok {"injected":"silence","stamps":[1700000000000,1700000001000,1700000002000],"distinctStampTimes":3,"lastStampAt":1700000002000,"tickBelowThreshold":{"silenceMs":89000,"decisions":[]},"tickAboveThreshold":{"silenceMs":90001,"decisions":["warn"]},"measuredFromLastStamp":true}
+[team-watchdog-fault] case captain-wedge: ok {"injected":"silence","agentTurnsDriven":0,"decisions":[{"type":"warn","assignee":"captain","memberKey":"captain","taskId":"t9","silenceMs":90001}],"captainFlagged":true,"memberFlagged":false,"scenesWritten":1,"incidents":1,"holdServicePublished":true}
+[team-watchdog-fault] case warn-90s: ok {"injected":"silence","rootsTicked":["/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-ugrggc"],"heartbeatFiles":["architect.jsonl"],"frozenKnobsUsed":{"warnSilenceMs":90000,"warnStreakToEscalate":3},"knobsAreTheFrozenDefaults":true,"belowThreshold":{"at":1700000089999,"decisions":0},"aboveThreshold":{"at":1700000090001,"warnCount":1,"silenceMs":90001},"warnLatencyWithinThresholdPlus5s":true,"snapshot":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-ugrggc/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json","snapshotFields":{"schemaVersion":1,"reason":"warn","cause":{"kind":"silence","ms":90001},"tasks":1,"members":1},"scenesWritten":1}
+[team-watchdog-fault] case escalate-3x: ok {"injected":"silence","ticks":[{"at":1700000090001,"decisions":[{"type":"warn","streak":1,"silenceMs":90001}],"scenes":1,"holds":0},{"at":1700000105001,"decisions":[{"type":"warn","streak":2,"silenceMs":105001}],"scenes":1,"holds":0},{"at":1700000120001,"decisions":[{"type":"escalate","streak":3,"silenceMs":120001}],"scenes":1,"holds":1},{"at":1700000135001,"decisions":[],"scenes":0,"holds":0}],"kinds":["warn","warn","escalate",""],"exactlyOneEscalatePerTaskAttempt":true,"noFourthWarn":true,"warnPredecessorsRecordedWithSnapshots":true,"incidents":[{"kind":"warn","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json","hold":"not-requested"},{"kind":"warn","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json","hold":"not-requested"},{"kind":"escalate","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-i85x4q/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json","hold":"applied"}],"hold":{"id":"0c4a00dd-395c-4bf8-8b07-d12b9843a763","taskId":"t1","attemptId":"att-1"},"holdAppliedOnce":true,"stats":{"scenes":3,"incidents":3,"holdsApplied":1},"retryWithNewAttemptId":{"stamps":1,"decisions":[{"type":"warn","streak":1}]}}
+[team-watchdog-fault] case pause-preserves: ok {"injected":"silence","holdApplied":true,"sha256UnchangedAcrossHeldKicks":true,"sha256AfterResume":"changed (the re-arm minted the next attempt)","deliveriesWhileHeld":0,"declineLines":["agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 1b2d4431-62ce-46f1-8273-3c5b8dd61db5 since 2026-09-16T01:26:19.640Z: silence)","agent-teams: dispatch declined for fault-probe/Architect: the team is held by the team watchdog (hold 1b2d4431-62ce-46f1-8273-3c5b8dd61db5 since 2026-09-16T01:26:19.640Z: silence)"],"before":{"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"},"after":{"status":"in_progress","attemptId":"att-live","attempt":3,"output":"partial result","handoffId":"handoff-1"},"cancelled":false,"resumed":true,"deliveriesAfterResume":1,"preserved":true}
+[team-watchdog-fault] case pause-preserves-halt-control: ok {"injected":"silence","mechanism":"haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed","cancelledTasks":1,"alreadyHalted":false,"halted":true,"sha256Changed":true,"before":{"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"},"after":{"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null},"cancelled":true,"wouldReddenAC17":true}
+[team-watchdog-fault] case scene-restore: ok {"injected":"silence","readWith":"plain fs + JSON.parse (no plugin reader) — the fresh-process shape","sceneFiles":["20231114T221450Z-warn.json","20231114T221505Z-warn.json","20231114T221520Z-escalate.json","latest.json"],"latest":{"schemaVersion":1,"at":1700000120001,"reason":"escalate","cause":{"kind":"silence","ms":120001},"team":{"id":"fault-probe","name":"Fault probe","phase":"running","halted":null,"haltedAt":null,"hold":{"id":"5b68318e-784c-47e7-862d-309b7d558d3e","since":1789521979650,"cause":"silence","taskId":"t1","attemptId":"att-1"}},"taskCount":1,"memberCount":1,"parkedAttempts":{"child-architect-fault":"att-1"}},"hold":{"id":"5b68318e-784c-47e7-862d-309b7d558d3e","since":1789521979650,"cause":"silence","taskId":"t1","attemptId":"att-1"},"incidents":[{"kind":"warn","taskId":"t1","attemptId":"att-1","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json","hold":"not-requested"},{"kind":"warn","taskId":"t1","attemptId":"att-1","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221505Z-warn.json","hold":"not-requested"},{"kind":"escalate","taskId":"t1","attemptId":"att-1","scene":"/root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/raw/ws/fault-m1kym1/.mpd/team/watchdog/scene/fault-probe/20231114T221520Z-escalate.json","hold":"applied"}]}
+[team-watchdog-fault] REPEATING the fixture's NOT_CLAIMED verbatim:
+[team-watchdog-fault] NOT CLAIMED: W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.
+[team-watchdog-fault] NOT CLAIMED: The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.
+[team-watchdog-fault] NOT CLAIMED: No live dsh host, no model credential, no network: the fixture never boots a session.
+[team-watchdog-fault] NOT CLAIMED: `haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it.
+[team-watchdog-fault] PASS — 11 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/lanes/20260916T012619Z-fault/result.json)
+[team-watchdog-fault] NOT CLAIMED: W-3: a GENUINE provider wedge is not reproducible here. Every case injects SILENCE (the absence of new heartbeats); no case may claim that a real wedge was caught.
+[team-watchdog-fault] NOT CLAIMED: The harness is stubbed (ctx services, agents, subagents, logger). The scheduler, the watchdog engine/machine/store and the halt path are the REAL modules; the surrounding host is not.
+[team-watchdog-fault] NOT CLAIMED: No live dsh host, no model credential, no network: the fixture never boots a session.
+[team-watchdog-fault] NOT CLAIMED: `haltTeamWork` cancels; the fixture does not claim that the halt path is ever the RIGHT mechanism — it exists to show that AC-17 goes RED when the pause is built on it.
+exit=0
+
+── raw/skills-status.log ─────────────────────────────────────────────────────────────────────
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+?? skills/dsh-qa/scripts/lib/watchdog-lane.mjs
+?? skills/dsh-qa/scripts/team-watchdog-boot.mjs
+?? skills/dsh-qa/scripts/team-watchdog-config.mjs
+?? skills/dsh-qa/scripts/team-watchdog-fault.mjs
+?? skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+?? skills/dsh-qa/scripts/team-watchdog-notify.mjs
+?? skills/dsh-qa/scripts/team-watchdog-scene.mjs

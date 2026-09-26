@@ -1,0 +1,146 @@
+{
+  "task": "t64",
+  "kind": "verification",
+  "attemptId": "ff9bdc35-60fb-411a-ba80-df0b8f72db6c",
+  "NON_AUTHOR": true,
+  "non_author_note": "the guard's author is platform-engineer (t62); this seat only READS the shipped bytes and measured the pre-fix mechanism, so this is not a self-approval",
+  "measured_at": "2026-09-17T03:41:08.801Z",
+  "revision": {
+    "dist": "packages/mpd-workmate-plugin/dist/index.js",
+    "dist_sha256": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d",
+    "dist_bytes": 56585,
+    "dist_mtime": "2026-09-17T03:37:33.924Z",
+    "every_arm_imported": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d",
+    "src_dist_correspondence": "node scripts/verify-dist-fresh.mjs read 20/20 fresh immediately before the arms, so the shipped dist is the build of the fixed src",
+    "bound": "the verdict is bound to this dist hash; a later rebuild voids it"
+  },
+  "arms": [
+    {
+      "id": "A1",
+      "runtime": "node",
+      "why": "the QA-boot shape that FAILED pre-fix: sandbox HOME and DSH_HOME set AT PROCESS START",
+      "expect": "ALLOWED",
+      "observed": "ALLOWED",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home",
+        "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home/dsh"
+      }
+    },
+    {
+      "id": "A2",
+      "runtime": "bun",
+      "why": "the runtime where os.homedir() freezes at process start — the compiler of the old bug",
+      "expect": "ALLOWED",
+      "observed": "ALLOWED",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home",
+        "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home/dsh"
+      }
+    },
+    {
+      "id": "A3",
+      "runtime": "node",
+      "why": "normal session: DSH_HOME unset, the early return must stay untouched",
+      "expect": "ALLOWED",
+      "observed": "ALLOWED",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home",
+        "DSH_HOME": "<unset>"
+      }
+    },
+    {
+      "id": "A4",
+      "runtime": "node",
+      "why": "isolated boot whose HOME is the REAL home: the guard must still refuse — a passive guard would mutate the real library",
+      "expect": "REFUSED real-home-refused",
+      "observed": "REFUSED real-home-refused",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root",
+        "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home/dsh"
+      }
+    },
+    {
+      "id": "A5",
+      "runtime": "node",
+      "why": "the documented override still releases the guard (NOT covered by the platform lane's 4x2 pre-flight — stated new coverage)",
+      "expect": "ALLOWED",
+      "observed": "ALLOWED",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home",
+        "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home/dsh",
+        "MPD_DSH_WORKMATE_ALLOW_REAL_HOME": "1"
+      }
+    },
+    {
+      "id": "C1",
+      "runtime": "node",
+      "why": "DISCRIMINATING CONTROL: plain node, HOME repointed to the sandbox AT RUNTIME. Pre-fix this was REFUSED because node's homedir() follows the live env while bun's is frozen; post-fix the passwd entry decides, so a pass here shows the fix does not depend on the freeze quirk",
+      "expect": "ALLOWED",
+      "observed": "ALLOWED",
+      "pass": true,
+      "exit": 0,
+      "env_at_process_start": {
+        "HOME": "/root",
+        "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/review/workmate-guard-postfix/20260917T034040Z/sandbox-home/dsh"
+      }
+    }
+  ],
+  "control_note": "C1 is the discriminating control: it would have been REFUSED pre-fix under plain node, so a pass here is evidence the fix works independently of the os.homedir() freeze quirk rather than the quirk having moved the problem",
+  "real_library_invariant": {
+    "path": "~/.mpd/workmate",
+    "before": {
+      "exists": true,
+      "entries": 33,
+      "digest": "b764aa195badeeb1e3f376c7ab8f24c15b974c8e5f016de86f16f6ea2d7bda36"
+    },
+    "after": {
+      "exists": true,
+      "entries": 33,
+      "digest": "b764aa195badeeb1e3f376c7ab8f24c15b974c8e5f016de86f16f6ea2d7bda36"
+    },
+    "unchanged": true
+  },
+  "verifier_command": "bun test packages/mpd-workmate-plugin",
+  "ok": true,
+  "verifier_result": {
+    "command": "bun test packages/mpd-workmate-plugin",
+    "exit": 0,
+    "reading": "28 pass / 0 fail / 333 expect() calls / 4 files"
+  },
+  "settle": {
+    "dist_hash_before": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d",
+    "dist_hash_after": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d",
+    "src_hash": "63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559",
+    "note": "no arm rebuilt anything: the dist hash is identical before and after the arm set, and verify-dist-fresh read 20/20 fresh both times"
+  },
+  "preflight_mapping": [
+    "the platform lane pre-flighted 4 arms x 2 runtimes = 8 rows on a SCRATCH module (staged patch logic, env set at spawn), RED pre-fix on arm A in both runtimes",
+    "A1 reproduces the pre-fix FAILING arm (sandbox HOME at process start, node) - now ALLOWED (covered by the pre-flight)",
+    "A2 is the same shape in bun, the runtime that froze os.homedir at process start - now ALLOWED (covered)",
+    "A3 (DSH_HOME unset) and A4 (real HOME -> REFUSED) are the negative/positive pair carried from t23s cases (covered)",
+    "A5 (override) is NEW COVERAGE: not in the 4x2 pre-flight set, so this is its only post-fix reading",
+    "C1 (runtime repoint, plain node) is NEW COVERAGE added by this task as the discriminating control"
+  ],
+  "red_side_bound": "the pre-fix readings (A1 REFUSED, C1 REFUSED) were measured ad-hoc at ~03:23Z against the THEN-current dist, which the 03:37:33Z rebuild replaced; those probes pinned no dist hash. Corroboration: this seats t28 ADDENDUM 3 and the platform lanes own pre-flight (arm A FAIL in both runtimes pre-patch). This bound is stated rather than implied.",
+  "corrections": [
+    {
+      "at": "2026-09-17T03:50:57.316Z",
+      "field": "preflight_mapping",
+      "wrong": "A5 (override) is NEW COVERAGE: not in the 4x2 pre-flight set, so this is its only post-fix reading",
+      "correct": "A5 is NOT new coverage. The authors harness declares the same arm (`evidence/platform/workmate-real-home-guarard/20260917T032852Z/guard-arms.mjs` ARMS[3] id \"D\" = sandbox HOME + override -> ALLOWED) and the PERMANENT suite pin declares it twice (`packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:102` and in the control table at :120) - so the shape is covered by the authors harness, by the permanent suite, and by the `bun test` reading this seat ran.",
+      "who": "platform-engineer (the guard author) caught it; this seat verified the three declarations before correcting",
+      "actually_new": "C1 (the runtime-HOME-repoint control) - neither the pre-flight nor the suite arms assert it: it discriminates `the fix decides by the passwd entry` from `the fix merely rides buns start-frozen os.homedir()`. C1 is this seats only genuinely new coverage.",
+      "note": "A5 remains a valid reading (it re-measures the override shape against the shipped dist) - only the COVERAGE CLAIM was wrong."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+    "exit": 1,
+    "refusal": [
+      "[patch-agent-teams-fixes] FAIL: region \"mpd-delta plan-format-seed\" (line 558) is NESTED inside region \"mpd-delta session-start-gate\" (line 86) — a marker must be a SIBLING, never a child: move \"mpd-delta plan-format-seed\" outside \"mpd-delta session-start-gate\"'s span (or teach the registry, every count and this scan to represent the nesting)"
+    ],
+    "tail": [
+      "[patch-agent-teams-fixes] FAIL: region \"mpd-delta plan-format-seed\" (line 558) is NESTED inside region \"mpd-delta session-start-gate\" (line 86) — a marker must be a SIBLING, never a child: move \"mpd-delta plan-format-seed\" outside \"mpd-delta session-start-gate\"'s span (or teach the registry, every count and this scan to represent the nesting)"
+    ]
+  },
+  "step3_checkOnRenested": {
+    "exit": 1,
+    "tail": [
+      "[patch-agent-teams-fixes] FAIL: delta \"mpd-delta session-start-gate\" in packages/mpd-agent-teams-plugin/lib/session-start.js (lines 86-648) no longer matches this script's registered block — first difference at line 558; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it"
+    ]
+  },
+  "verdict": "PASS — the shipped guard REFUSES the nesting by name and span, and the drift is caught too"
+}

@@ -1,0 +1,63 @@
+{
+  "task": "t68",
+  "kind": "implementation",
+  "agent": "docs-gate-engineer",
+  "attemptId": "563878de-8644-4ab7-8d94-7ff92c47426e",
+  "date": "2026-09-17T04:33Z",
+  "verdict": "pass",
+  "headline": "Every line-number anchor in EXTENSIONS-FOR-AGENTS.md is now a symbol-first citation the checker RESOLVES against the cited file: 12 lines / 14 tokens / 13 spans converted, 0 anchors left, symbol_only_anchors_verified 0 → 17 with the file's citation totals unchanged (59/55), a seeded invented symbol fails with exit 1, and the reverse substitution reproduces the pre-edit sha exactly.",
+  "fileIdentity": {
+    "path": "EXTENSIONS-FOR-AGENTS.md",
+    "before": { "sha256": "9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb", "bytes": 15684 },
+    "after": { "sha256": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27", "bytes": 15660 },
+    "delta_bytes": -24,
+    "reverse_substitution_match": true,
+    "reconstruction_artefact": "evidence/extensions/docs-claims/t68-symbol-first-20260917T043200Z/REVERSED-pre-t68.md"
+  },
+  "driver": {
+    "path": "evidence/extensions/docs-claims/check-citations.mjs",
+    "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+    "bytes": 30345
+  },
+  "conversion": {
+    "lines_hit_before": 12,
+    "distinct_path_line_tokens_before": 14,
+    "converted_spans": 13,
+    "symbols": ["MPD_EXT_CONTRACT", "safeRegisterTool", "mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show", "EXPECTED_TOOLS", "childEnv", "publicToolName", "validateDescriptor", "projectRejectionReason", "refuseHostKind", "McpServerState", "docs/extensions.md (section 11 heading, no line)"],
+    "note_on_42": "`enabled` was the descriptor KEY, not a symbol the file declares; the enclosing export `validateDescriptor` (registry.ts:530) is what normalizes it, so that is the symbol cited.",
+    "note_on_233": "docs/extensions.md:524 → the section 11 heading 'v1 limits and follow-ups' (:513); a claim-less path is valid and no line anchor remains."
+  },
+  "checkerReadings": {
+    "before": { "run": "evidence/extensions/docs-claims/runs/run-2026-09-17T04-30-29.971Z", "passed": "12/12", "citations_checked": 249, "content_verified": 46, "symbol_only_anchors_verified": 0, "without_a_claim": 0, "pending": 0, "file_line": "citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; pending 0, illustrative 4), 0 unresolved" },
+    "after": { "run": "evidence/extensions/docs-claims/runs/run-2026-09-17T04-32-08.100Z", "passed": "12/12", "citations_checked": 249, "content_verified": 49, "symbol_only_anchors_verified": 17, "without_a_claim": 0, "pending": 0, "file_line": "citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; pending 0, illustrative 4), 0 unresolved" }
+  },
+  "negativeControl": {
+    "mutation": "`safeRegisterTool` → `safeRegisterToolXYZ` (invented symbol), 1 site, sha 3fd99ba0c162eb6e…",
+    "result": "checker exit 1, `FAIL citations:EXTENSIONS-FOR-AGENTS.md — … 7 unresolved: doc line 23: the cited file does not contain the claim `safeRegisterToolXYZ` (packages/mpd-ext-plugin/src/index.ts) | doc line 24 | 25 | 26`",
+    "restored_sha": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27",
+    "conclusion": "the resolution arm is reachable in the failing direction on this file, so the passing after-reading is evidence rather than prose"
+  },
+  "acceptance": [
+    { "criterion": "Zero line-number anchors remain (`! grep -qE '\\.(ts|js|mjs|yml|json|md):[0-9]+'` exits 0); the before-count it removed is stated (captain measured 12; a different number must be explained).", "status": "passed", "evidence": "grep-negation exit 0 on the final bytes (final-verify.log). Before-state reconciled on the artifact: 12 LINES matched the grep, carrying 14 distinct `path:line` tokens (lines 25 and 36 carry two each) and converted as 13 spans — so the captain's 12 is the line count and the token count is 14, both measured, neither silently substituted." },
+    { "criterion": "Every converted citation names a symbol that check-citations.mjs RESOLVES against the cited file; arm count and resolved-citation count reported BOTH before and after.", "status": "passed", "evidence": "before 12/12 · 249 resolved · content_verified 46 · symbol_only 0 → after 12/12 · 249 resolved · content_verified 49 · **symbol_only 17**; the file's own line unchanged at 59 citations / checked 55 / 0 unresolved in both runs (run dirs cited in checkerReadings)." },
+    { "criterion": "Meaning preserved — proven by the checker resolving each named symbol; a wrong or invented symbol must fail, and the author shows that failure is reachable.", "status": "passed", "evidence": "every symbol was read out of the cited file before use (see the table in output.log §1; `enabled` was replaced by `validateDescriptor` because it is not a symbol the file declares); the seeded `safeRegisterToolXYZ` control makes the checker exit 1 with 'the cited file does not contain the claim' at lines 23-26, and the file was restored byte-exact (5d935524…)." },
+    { "criterion": "Change is minimal and confined to the citation spans: before/after sha256 + byte counts recorded, and the reconstruction arithmetic reproduces the recorded pre-edit identity byte-for-byte.", "status": "passed", "evidence": "15,684 B 9a157363… → 15,660 B 5d935524… (−24 B); reverting the 13 spans in a copy yields 9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb / 15,684 B exactly (REVERSED-pre-t68.md). Every replacement asserted unique before the write; the first pass ABORTED on a line-wrap mismatch and nothing was written." },
+    { "criterion": "`bun run verify:docs` exit 0 and `bun run verify:rows` exit 0 after the edit (the file is agent-facing English-only; the docs/ pair is NOT touched).", "status": "passed", "evidence": "verify:docs exit 0 'pairs=37 failed=0 violations=0 exempt=17 — PASS'; verify:rows exit 0 'ok: 25 row ids match the bundle patch insert list'. No `docs/**` byte written (only read, to locate the section heading)." }
+  ],
+  "verify": [
+    { "command": "! grep -qE '\\.(ts|js|mjs|yml|json|md):[0-9]+' EXTENSIONS-FOR-AGENTS.md", "status": "passed", "exitCode": 0, "evidence": "exit 0 on 5d935524b7db27ea…" },
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs", "status": "passed", "exitCode": 0, "evidence": "12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative" },
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "bun run verify:rows", "status": "passed", "exitCode": 0, "evidence": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" }
+  ],
+  "scope": {
+    "inScopeTouched": ["EXTENSIONS-FOR-AGENTS.md", "evidence/extensions/docs-claims/t68-symbol-first-20260917T043200Z/**", "evidence/extensions/docs-claims/runs/run-2026-09-17T04-30-29.971Z/**", "evidence/extensions/docs-claims/runs/run-2026-09-17T04-31-30.230Z/**", "evidence/extensions/docs-claims/runs/run-2026-09-17T04-32-08.100Z/**"],
+    "outOfScopeUntouched": ["skills/**", "packages/**", "docs/**", "AGENTS.md", "VENDOR_LOCK.json"],
+    "gitWrites": "none (the captain commits)",
+    "sequencing": "this lands BEFORE t35's re-pack: EXTENSIONS-FOR-AGENTS.md is a REQUIRED root file of the artifact since t70, so the artifact must be regenerated after this edit."
+  },
+  "artifacts": {
+    "evidenceDir": "evidence/extensions/docs-claims/t68-symbol-first-20260917T043200Z/",
+    "files": ["result.json", "output.log", "checker-after.log", "negative-control.log", "final-verify.log", "after-keep.md", "REVERSED-pre-t68.md"]
+  }
+}

@@ -1,0 +1,6 @@
+== rebuild mpd-tui-plugin dist ==
+Bundled 23 modules in 16ms
+
+  index.js  115.37 KB  (entry point)
+
+exit=0

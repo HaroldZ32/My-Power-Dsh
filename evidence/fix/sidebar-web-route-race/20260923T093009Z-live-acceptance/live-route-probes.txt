@@ -1,0 +1,12 @@
+LIVE ACCEPTANCE — the same server, before and after the fix
+
+BEFORE (pre-fix module cached in the old process, PID 12496, measured 2026-09-23T08:41:51Z):
+  404  /plugins/mpd-team-watchdog/state?reader=web-panel
+  200  /plugins/mpd-workmate/list
+  200  /plugins/mpd-workmate/roster
+
+AFTER (user restarted dsh web; new process PID 11712, measured 2026-09-23T09:30:09Z):
+  200  http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel
+  200  http://127.0.0.1:3080/plugins/mpd-workmate/list
+
+PID changed 12496 -> 11712, so the answer comes from the REBUILT dist/index.js, not the cached module (T-21).

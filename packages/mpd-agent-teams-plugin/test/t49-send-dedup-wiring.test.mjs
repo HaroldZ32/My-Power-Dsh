@@ -70,7 +70,8 @@ test("R1 WIRING: two identical agent_teams_send_message calls -> ONE durable rec
     const send = tools.get("agent_teams_send_message")
     const args = { to: "Senior Engineer", content: "identical payload" }
     const first = await send.execute(args, { agent: captain })
-    const second = await send.execute(args, { agent: captain })
+    // t48 (P1d): a deliberate repeat must say so — the gate refuses an unconfirmed duplicate.
+    const second = await send.execute({ ...args, confirm_duplicate: true }, { agent: captain })
     expect(first.message_id).toBeDefined()
     // the durable mailbox holds ONE record for the two sends, folded to dupCount=2
     const records = await readMailbox(stateRoot, teamId, "Senior Engineer")
@@ -102,7 +103,7 @@ test("R1 WIRING: the captain path dedups too (both append sites are wired)", asy
   try {
     const send = tools.get("agent_teams_send_message")
     await send.execute({ to: "captain", content: "same report" }, { agent: member })
-    await send.execute({ to: "captain", content: "same report" }, { agent: member })
+    await send.execute({ to: "captain", content: "same report", confirm_duplicate: true }, { agent: member })
     const records = await readMailbox(stateRoot, teamId, CAPTAIN_KEY)
     expect(records.length).toBe(1)
     expect(records[0].dupCount).toBe(2)
@@ -116,7 +117,7 @@ test("R1 WIRING: two identical sends with live delivery DOWN -> the scheduler de
     const send = tools.get("agent_teams_send_message")
     const args = { to: "Senior Engineer", content: "identical payload" }
     const first = await send.execute(args, { agent: captain })
-    const second = await send.execute(args, { agent: captain })
+    const second = await send.execute({ ...args, confirm_duplicate: true }, { agent: captain })
     expect(first.delivered).toBe("mailbox")
     expect(second.delivered).toBe("duplicate") // folded, and it must NOT retry the wake
     expect(deliveries.length).toBe(0)
@@ -151,7 +152,7 @@ test("R1 SEAM: the scheduler's last delivery gate drops CLEARED tombstones", asy
     await appendMailbox(stateRoot, teamId, "Senior Engineer", {
       id: "cleared-1", from: CAPTAIN_KEY, to: "Senior Engineer", content: "cleared payload", ts: 1,
     })
-    await clearMailboxToWatermark(stateRoot, teamId, "Senior Engineer", 1, { now: 1_000 })
+    await clearMailboxToWatermark(stateRoot, teamId, "Senior Engineer", 1, { force: true, now: 1_000 })
     const cleared = (await readMailbox(stateRoot, teamId, "Senior Engineer")).find((record) => record.id === "cleared-1")
     expect(cleared?.tombstone).toBe(true)
     await runtime.kickMember(workspace, teamId, "Senior Engineer")
@@ -175,7 +176,7 @@ test("R1 WIRING: two identical sends -> exactly ONE delivery and exactly ONE tas
     const mailboxPrompts = () => deliveries.map((request) => JSON.stringify(request)).filter((text) => text.includes("identical payload"))
     // SHIPPED PATH: the real agent_teams_send_message tool, called exactly as the captain calls it
     await send.execute(args, { agent: captain })
-    await send.execute(args, { agent: captain })
+    await send.execute({ ...args, confirm_duplicate: true }, { agent: captain })
     // CALL COUNT: two identical sends -> exactly ONE mailbox delivery
     expect(mailboxPrompts().length).toBe(1)
     // the assignment is still owed (the one record was already consumed live), and this
@@ -208,7 +209,7 @@ test("R1 WIRING: a duplicate send AFTER an acknowledged delivery cannot re-open 
     await send.execute(args, { agent: captain })
     expect(deliveries.length).toBe(1)
     // the fold now runs against an ALREADY ACKNOWLEDGED row: it must not resurrect it
-    const duplicate = await send.execute(args, { agent: captain })
+    const duplicate = await send.execute({ ...args, confirm_duplicate: true }, { agent: captain })
     expect(duplicate.delivered).toBe("duplicate")
     expect(deliveries.length).toBe(1)
     const records = await readMailbox(stateRoot, teamId, "Senior Engineer")

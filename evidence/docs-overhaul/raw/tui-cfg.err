@@ -1,0 +1,18 @@
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EROFS: read-only file system, open '/root/.dsh/profiles/dsh-tui/cordis.yml'
+    at writeFileSync (node:fs:2422:20)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:209:2)
+    at runDumpConfig (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/dump-config-lFgMwK8i.js:25:17)
+    at runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:162:4)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  errno: -30,
+  code: 'EROFS',
+  syscall: 'open',
+  path: '/root/.dsh/profiles/dsh-tui/cordis.yml'
+}
+
+Node.js v24.16.0

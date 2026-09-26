@@ -1,0 +1,11 @@
+[ulw-command] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/l2b-gesture-fix/ulw-command-2026-09-18T01-19-36.728Z
+  install: {"ok":true,"exit":0}
+  artifact: {"ok":true,"sources":{"mpd-dsh-adapter":{"source":"src-built","path":"/tmp/mpd-ulw-command-QEzvoL/src-build/mpd-dsh-adapter.js","missingInShipped":["registerCommand","submitUserTurn"],"buildExit":0},"mpd-ulw":{"source":"src-built","path":"/tmp/mpd-ulw-command-QEzvoL/src-build/mpd-ulw.js","missingInS
+  shippedComposition: {"ok":false,"problems":["the live command registry does not list ulw","the live command registry does not list ultrawork","the empty invocation did not resolve (the name is not registered)","the non-empty invocation did not resolve (the name is not registered)","the session log carries no command/ru
+  resolvedArtifacts: {"ok":true,"problems":[],"listing":["agent-teams","agent-teams-mpd","compact","feedback","goal","mpd","permission","plan","ultrawork","ulw"],"usage":{"commandId":"cmd-29de4d3d-1","kind":"error","text":"usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that ob
+  gesture: {"ok":true,"problems":[],"gating":true,"finding":null,"rewritten":true,"clauses":["triage","gate","team","loop","fixOnSight","closeOut"],"numbered":6,"commandRuns":0,"objectiveSeen":true}
+  stubServed: {"ok":true,"requests":7}
+  workspacesSandboxed: {"ok":true,"sandbox":"/tmp/mpd-ulw-command-QEzvoL","gatedWorkspace":"/tmp/mpd-ulw-command-QEzvoL/ws-resolved"}
+  equivalenceTableTools: {"ok":true,"observed":true,"toolCount":103,"missing":[]}
+  gatedProblems: []
+[ulw-command] PASS

@@ -1,0 +1,9 @@
+== R7 ==
+R7 PASS
+R7 exit=0
+== R8 ==
+R8 PASS
+R8 exit=0
+== identity ==
+identity OK urn:dsh:distribution:mpd:my-power-dsh 0.9.1
+identity exit=0

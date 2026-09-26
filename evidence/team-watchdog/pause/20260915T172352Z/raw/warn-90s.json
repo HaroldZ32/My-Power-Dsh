@@ -1,0 +1,47 @@
+{
+  "case": "warn-90s",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "rootsTicked": [
+      "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T172352Z/raw/ws/fault-20knjq"
+    ],
+    "heartbeatFiles": [
+      "architect.jsonl"
+    ],
+    "frozenKnobsUsed": {
+      "warnSilenceMs": 90000,
+      "warnStreakToEscalate": 3
+    },
+    "knobsAreTheFrozenDefaults": true,
+    "belowThreshold": {
+      "at": 1700000089999,
+      "decisions": 0
+    },
+    "aboveThreshold": {
+      "at": 1700000090001,
+      "warnCount": 1,
+      "silenceMs": 90001
+    },
+    "warnLatencyWithinThresholdPlus5s": true,
+    "snapshot": "/root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T172352Z/raw/ws/fault-20knjq/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+    "snapshotFields": {
+      "schemaVersion": 1,
+      "reason": "warn",
+      "cause": {
+        "kind": "silence",
+        "ms": 90001
+      },
+      "tasks": 1,
+      "members": 1
+    },
+    "scenesWritten": 1
+  },
+  "lines": [
+    "frozen knobs used: warnSilenceMs=90000, warnStreakToEscalate=3",
+    "tick at silence 89999 ms => 0 decision(s)",
+    "tick at silence 90001 ms => exactly 1 WARN",
+    "snapshot: /root/dshProj/my-power-dsh/evidence/team-watchdog/pause/20260915T172352Z/raw/ws/fault-20knjq/.mpd/team/watchdog/scene/fault-probe/20231114T221450Z-warn.json",
+    "snapshot fields: {\"schemaVersion\":1,\"reason\":\"warn\",\"cause\":{\"kind\":\"silence\",\"ms\":90001},\"tasks\":1,\"members\":1}"
+  ]
+}

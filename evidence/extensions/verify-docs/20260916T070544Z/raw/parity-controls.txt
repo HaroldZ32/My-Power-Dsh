@@ -1,0 +1,12 @@
+### docs-parity negative controls (guide pair CHECKED, not exempt)
+
+[verify-docs-parity] root=/tmp/tmp.tR3lBsf0gQ pairs=1 failed=1 violations=0 exempt=0 — FAIL
+
+[verify-docs-parity] root=/tmp/tmp.tR3lBsf0gQ pairs=1 failed=1 violations=0 exempt=0 — FAIL
+
+[verify-docs-parity] root=/tmp/tmp.tR3lBsf0gQ pairs=1 failed=0 violations=0 exempt=0 — PASS
+
+### is the guide pair listed as CHECKED in the real run, and absent from the exemptions?
+5:ok   docs/extension-authoring-guide.md
+0
+0 exemption lines mention the guide

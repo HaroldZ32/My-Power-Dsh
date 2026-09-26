@@ -1,0 +1,87 @@
+{
+  "task": "t51 (attempt 1, attempt_id 0d2c7f42-9e6f-4508-ac05-ca867a5e6879)",
+  "objective": "name the repo-root cwd rule in verify-dist-fresh's own STALE/MISSING failure lines so a developer meets the T-67 trap AT the point of failure",
+  "generatedAt": "2026-09-17T03:01:14Z",
+  "fileHashes": {
+    "before": "30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29cb8f5cf0fd9b0ca1f",
+    "after": "04e7dc41ecade9189b7d92e52e1aebfd6aac1d89f354b1df951c0b81ca55b0c7"
+  },
+  "edit": {
+    "kind": "WORDS ONLY, two template strings",
+    "lines": [
+      {
+        "message": "MISSING detail",
+        "before": "${target.src} exists but there is no committed ${target.dist} (rebuild: bun build ${target.src} --target node --format esm --outfile ${target.dist})",
+        "after": "${target.src} exists but there is no committed ${target.dist} (rebuild from the repository root \u2014 a package-directory build is flagged, because bun writes the entry path relative to cwd: bun build ${target.src} --target node --format esm --outfile ${target.dist})"
+      },
+      {
+        "message": "STALE detail",
+        "before": "\u2026 \u2014 rebuild: bun build ${target.src} --target node --format esm --outfile ${target.dist}",
+        "after": "\u2026 \u2014 rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build ${target.src} --target node --format esm --outfile ${target.dist}"
+      }
+    ]
+  },
+  "wordsOnlyProof": {
+    "method": "reverse-substitute the two new clauses back to the old text and hash the reconstruction (git cannot show a diff: the gate script is UNTRACKED, created by t18 this wave)",
+    "reconstructedBeforeSha256": "30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29cb8f5cf0fd9b0ca1f",
+    "recordedBeforeSha256": "30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29cb8f5cf0fd9b0ca1f",
+    "verdict": "EQUAL \u2014 exactly the two clauses differ, nothing else in the file moved",
+    "afterSha256": "04e7dc41ecade9189b7d92e52e1aebfd6aac1d89f354b1df951c0b81ca55b0c7",
+    "artifact": "/root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/reconstructed-before.mjs"
+  },
+  "seededRun": {
+    "command": "node scripts/verify-dist-fresh.mjs --root <evidence fixture, one byte appended to packages/alpha/dist>",
+    "exit": 1,
+    "staleLineVerbatim": "STALE: packages/alpha/dist/index.js \u2014 committed packages/alpha/dist/index.js (220 B, a7a8265d4fd7ac32\u2026) != fresh build of packages/alpha/src/index.ts (177 B, ff933aef75dde688\u2026) \u2014 rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/alpha/src/index.ts --target node --format esm --outfile packages/alpha/dist/index.js",
+    "missingLineVerbatim": "MISSING: packages/beta/dist/index.js \u2014 packages/beta/src/index.ts exists but there is no committed packages/beta/dist/index.js (rebuild from the repository root \u2014 a package-directory build is flagged, because bun writes the entry path relative to cwd: bun build packages/beta/src/index.ts --target node --format esm --outfile packages/beta/dist/index.js)",
+    "whyAFixture": "the acceptance wants the seeded STALE wording from a REAL RUN; the fixture is built and run by this lane (source + dist produced from its own root, then one byte appended), so the line above is an actual gate output, not a source read"
+  },
+  "selfTest": {
+    "before": "[verify-dist-fresh self-test] 10/10 arms passed \u2014 PASS (exit 0)",
+    "after": "[verify-dist-fresh self-test] 10/10 arms passed \u2014 PASS (exit 0)",
+    "command": "node scripts/verify-dist-fresh.mjs --self-test"
+  },
+  "realTreeReading_NOTAPassFailClaim": {
+    "reading": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 929ms (exit 0)",
+    "supersession": "the contract's premise was 'the real gate is expected RED because packages/mpd-workmate-plugin/dist/index.js is stale and t48 owns that rebuild'. By the time of my BEFORE capture t48's rebuild had LANDED, so the real tree is green; I re-ran before and after and both read 20/20. The real-tree STALE wording therefore cannot be quoted from the real tree \u2014 the seeded run supplies it instead. Recorded as a READING, never as a pass/fail verdict.",
+    "noDistWasRebuilt": "this lane rebuilt NO dist: the only builds were inside its own temporary fixture (and the gate's own temp-dir rebuilds); packages/** was not touched"
+  },
+  "notCoveredUnchanged": {
+    "before": {
+      "count": 7,
+      "entries": 7
+    },
+    "after": {
+      "count": 7,
+      "entries": 7
+    },
+    "identicalEntriesAndReasons": true,
+    "sample": [
+      "packages/mpd-mcp-astgrep/dist/BUILD.lock \u2014 build metadata, not a bun build artifact",
+      "packages/mpd-mcp-astgrep/dist/cli.js \u2014 built offline by scripts/build-mcp.mjs from the upstream checkout \u2014 no local src/",
+      "packages/mpd-mcp-codegraph/dist/serve.js \u2014 sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) \u2014 no local src/"
+    ]
+  },
+  "comparisonUntouched": {
+    "byteExact": true,
+    "internalCwd": "runBuild(join(root, target.src), out, root) \u2014 every target is still built with cwd = the repo root (unchanged)",
+    "normalizationRejected": "REJECTED and recorded: measured 2026-09-17, the two build forms are not banner-only \u2014 inlined module paths in the BODY differ too (\u2212276 B for mpd-ext-plugin) \u2014 so normalizing would bless two byte-different builds of one source and HIDE the trap instead of naming it"
+  },
+  "logs": {
+    "beforeSelfTest": "/root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/before-selftest.log",
+    "beforeRuns": "/root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/before-runs.log",
+    "afterSelfTest": "/root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/after-selftest.log",
+    "afterRuns": "/root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/after-runs.log"
+  },
+  "evidenceBound": "every quoted line above is from a real gate run on this tree at 2026-09-17 ~03:00Z; the file hashes pin the revision (untracked file, so hashes ARE the revision identifier).",
+  "t67FamilyClosure": {
+    "verified": "the T-67 family is now named consistently at all three places a developer meets it",
+    "places": [
+      "AGENTS.md \u00a76 Build line (t45): 'from the REPO ROOT, with path-qualified args' + the package-directory trap + the three packages that still carry such a script",
+      "AGENTS.md \u00a74 Dist-freshness row (t18/t45): names the canonical REBUILD command (repo root, path-qualified args) and the package-directory trap",
+      "scripts/verify-dist-fresh.mjs STALE/MISSING detail (this task, t51): 'rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd)' \u2014 the rule at the exact point of failure"
+    ],
+    "wordingMatches": true,
+    "noFurtherAction": "no code or doc change needed here; recorded so the wave report can state the family is closed coherently rather than in one place only"
+  }
+}

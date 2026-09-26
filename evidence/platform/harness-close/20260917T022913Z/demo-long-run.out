@@ -1,0 +1,35 @@
+### T-23 DEMO (real, >2 min): helper run + kernel-only probe, log in the workspace — 2026-09-17T02:29:13Z
+[mpd-bg] started pid=13 log=/root/dshProj/my-power-dsh/evidence/platform/harness-close/20260917T022913Z/demo-long.log pidfile=/root/dshProj/my-power-dsh/evidence/platform/harness-close/20260917T022913Z/demo-long.log.pid
+[mpd-bg] note: start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)
+
+--- probe 1 (02:29:28Z)
+[mpd-bg] RUNNING pid=13
+--- probe 2 (02:29:43Z)
+[mpd-bg] RUNNING pid=13
+--- probe 3 (02:29:59Z)
+[mpd-bg] RUNNING pid=13
+--- probe 4 (02:30:14Z)
+[mpd-bg] RUNNING pid=13
+--- probe 5 (02:30:29Z)
+[mpd-bg] RUNNING pid=13
+--- probe 6 (02:30:44Z)
+[mpd-bg] RUNNING pid=13
+--- probe 7 (02:30:59Z)
+[mpd-bg] RUNNING pid=13
+--- probe 8 (02:31:14Z)
+[mpd-bg] RUNNING pid=13
+--- probe 9 (02:31:29Z)
+[mpd-bg] RUNNING pid=13
+--- probe 10 (02:31:44Z)
+[mpd-bg] DEAD pid=13
+LONG-DONE seen
+
+### final probe (expect DEAD)
+[mpd-bg] DEAD pid=13
+
+### log tail
+progress 7/10 2026-09-17T02:30:59.068Z
+progress 8/10 2026-09-17T02:31:14.076Z
+progress 9/10 2026-09-17T02:31:29.092Z
+progress 10/10 2026-09-17T02:31:44.106Z
+LONG-DONE

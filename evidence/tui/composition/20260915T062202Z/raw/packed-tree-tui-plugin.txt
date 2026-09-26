@@ -1,0 +1,5 @@
+dist/mpd-package/packages/mpd-tui-plugin/dist/index.js
+dist/mpd-package/packages/mpd-tui-plugin/README.md
+dist/mpd-package/packages/mpd-tui-plugin/README.zh-CN.md
+dist/mpd-package/packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md
+dist/mpd-package/packages/mpd-tui-plugin/themes/mpd-tui.json

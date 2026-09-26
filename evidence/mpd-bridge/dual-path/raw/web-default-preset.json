@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "envelopeKeys": [
+    "type",
+    "rpcId",
+    "result"
+  ],
+  "resultKeys": [
+    "ok",
+    "value"
+  ],
+  "createdSessions": [
+    {
+      "sessionId": "session-",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/dual-path/sandbox/ws"
+    }
+  ],
+  "note": "created WITHOUT agentPreset in the request — agentPreset here is what the web plane resolved by itself"
+}

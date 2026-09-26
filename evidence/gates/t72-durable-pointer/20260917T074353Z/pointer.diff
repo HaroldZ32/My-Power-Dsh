@@ -1,0 +1,13 @@
+diff --git a/EXTENSIONS-FOR-AGENTS.md b/EXTENSIONS-FOR-AGENTS.md
+index 266c801..a2429bb 100644
+--- a/EXTENSIONS-FOR-AGENTS.md
++++ b/EXTENSIONS-FOR-AGENTS.md
+@@ -46,7 +46,7 @@ refused at every level — descriptor, `contributes`, and each item.
+ ## 3. Manifest skeleton (validates as written)
+ 
+ The skeleton below is extracted from this file by
+-`evidence/extensions/docs-claims/check-citations.mjs`, materialized next to the template's four
++`scripts/check-citations.mjs`, materialized next to the template's four
+ assets, and validated with the CLI; the run must exit 0.
+ 
+ <!-- citation-check: illustrative: the skeleton's own extension-root-relative asset paths -->

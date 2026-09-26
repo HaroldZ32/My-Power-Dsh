@@ -1,0 +1,283 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-c1d8e46e-4845-4c70-b0e7-fcde91e042e4",
+  "createdAt": 1789656817065,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789656817065
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656817065,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656817065,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656817065,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656817065,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Gate audit: classify every legacy plugin-spec reference, and test the patch's completeness",
+      "description": "Read-only analysis seat. If bash is denied to you, satisfy the verify commands through the grep/glob/read tools and report them with status \"reported\", quoting the equivalent evidence. Your deliverable is a long text: attach it with the task-artifact channel at evidence/audit/gate-audit.md (read-only seats may write under evidence/** only). Reference paths are read-only: /root/dshProj/tui/dsh-TUI (host) and /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec (pristine submodule). The working copy you audit against is dsh-ecosystem-spec/ in the workspace. The trap to test explicitly: the string appears 4 times but only 2 are stale.\n\nVERDICT SEMANTICS (kind=requirements): verdict=pass means THIS AUDIT is complete and evidence-backed — it does NOT mean the tree is perfect. If you discover a stale reference the patch misses, report it as a finding (acceptance item 6) and still submit verdict=pass. Only submit needs_revision if the audit itself could not be completed, and then you must include structured findings (id, severity, problem, requiredFix) and the task will fail.",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1789657202759,
+      "updatedAt": 1789657226855,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Produce an evidence-backed gate audit, attached as evidence/audit/gate-audit.md, answering from the bytes on disk: (1) every place the legacy token `plugin-spec` appears in the target repo dsh-ecosystem-spec (excluding vendor/ and .git/) and in the host repo dsh-TUI's scripts/ and package.json, each classified as load-bearing (a gate that must keep naming the legacy path) or stale documentation (a doc that must be corrected); (2) whether the rename src/plugin-spec -> src/adapter/standard is real and complete, juxtaposing the canonical module list against the legacy-shim list the gates themselves assert absent; (3) whether upstream/adapter-cross-repo-sync.patch is a COMPLETE sweep of the stale references in dsh-ecosystem-spec, or whether it misses any, naming file:line for anything missed; (4) whether either patched doc is reachable from any boot-visible artifact. READ FIRST: /tmp/mpd-sst-rzQJpS/side/complex/2/ws/evidence/ENVIRONMENT.md — it pins the read-only reference paths, the measured baseline facts, and the gate/boot commands. This task is analysis only: report findings, never fix them.",
+      "inScope": [
+        "evidence/audit/**"
+      ],
+      "acceptance": [
+        "Every occurrence of the token `plugin-spec` in dsh-ecosystem-spec (excluding vendor/ and .git/) is listed with file:line, the exact line, and a classification (load-bearing gate name vs stale path) each with a one-line reason.",
+        "The patch's claims are checked line by line against that list: exactly which occurrences it changes, which it leaves, and why leaving them is correct — the npm script name `verify:plugin-spec` must be shown to still exist in the host package.json so that leaving it is justified.",
+        "The canonical-path claim is verified against disk (src/plugin-spec absent, src/adapter/standard present in the host repo), with the canonical module list set beside the legacy-shim list that scripts/verify-adapter-skeleton.ts and scripts/verify-compat-removal.ts assert absent.",
+        "Every host gate that names the legacy path is classified with file:line and the direction of its assertion (asserts-absent vs asserts-present), so nobody 'fixes' a load-bearing gate.",
+        "A boot-impact section states, with the read or command that produced it, whether either patched doc is present in the installed payload under /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/.",
+        "Any stale reference the patch does NOT cover is reported as an explicit finding with file:line and severity — reported, never silently fixed (the implementation task's inScope is the two doc files only).",
+        "The audit is attached as evidence/audit/gate-audit.md; every claim carries the file:line or command that produced it, and anything not measured is labelled INFERRED."
+      ],
+      "verify": [
+        "grep -rn 'plugin-spec' dsh-ecosystem-spec --exclude-dir=vendor --exclude-dir=.git",
+        "grep -rn 'plugin-spec' /root/dshProj/tui/dsh-TUI/scripts /root/dshProj/tui/dsh-TUI/package.json",
+        "ls -d /root/dshProj/tui/dsh-TUI/src/plugin-spec /root/dshProj/tui/dsh-TUI/src/adapter/standard",
+        "ls /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/dsh-ecosystem-spec"
+      ],
+      "deliverables": [
+        "evidence/audit/gate-audit.md"
+      ],
+      "coverageOf": [
+        "1. Read the patch file",
+        "2. Audit the gates"
+      ],
+      "contractVersion": 2,
+      "contractAmendedAt": 1789657226855,
+      "contractAmendedBy": "captain"
+    },
+    {
+      "id": "t2",
+      "subject": "Apply the cross-repo sync patch to the spec working copy",
+      "description": "The patch is the artifact: apply it with git apply, do not hand-edit around it and do not edit the patch itself. Read evidence/ENVIRONMENT.md first — it pins the exact gate and boot commands, the baseline digests, and the vendor/dsh-std offline stand-in. Chain the three gates with && or capture each exit code separately so a failure is never masked. If the audit (t1) reports a stale reference the patch misses, do NOT widen scope: report it in your completion output and leave it to the captain.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 1,
+      "createdAt": 1789657208577,
+      "updatedAt": 1789657208577,
+      "kind": "implementation",
+      "round": 1,
+      "objective": "Apply upstream/adapter-cross-repo-sync.patch to the workspace working copy dsh-ecosystem-spec/ so the two stale documentation references name the canonical `src/adapter/standard/` path, and nothing else in the tree changes. Inputs: upstream/adapter-cross-repo-sync.patch (the patch), evidence/audit/gate-audit.md (the classification of what must and must not change), and evidence/ENVIRONMENT.md (the pinned commands and baseline digests).",
+      "inScope": [
+        "dsh-ecosystem-spec/adapters/dsh-tui-v0.15.md",
+        "dsh-ecosystem-spec/docs/plugin-admission-and-development.md",
+        "evidence/implementation/**"
+      ],
+      "outOfScope": [
+        "dsh-ecosystem-spec/vendor/**",
+        "dsh-ecosystem-spec/conformance/**",
+        "dsh-ecosystem-spec/registry/**",
+        "dsh-ecosystem-spec/protocols/**",
+        "dsh-ecosystem-spec/schemas/**",
+        "dsh-ecosystem-spec/scripts/**",
+        "upstream/**",
+        "audit/**",
+        "evidence/baseline/**"
+      ],
+      "acceptance": [
+        "`git -C dsh-ecosystem-spec apply` succeeds on the pristine baseline (commit 147fc3f); if it does not, stop and report the conflict verbatim instead of adapting or rewriting the patch.",
+        "`git -C dsh-ecosystem-spec diff --stat` reports exactly 2 files changed, 1 insertion and 1 deletion each, and `git status --porcelain` shows no other path in the working copy modified.",
+        "The final bytes of dsh-ecosystem-spec/adapters/dsh-tui-v0.15.md:6 and dsh-ecosystem-spec/docs/plugin-admission-and-development.md:132 name `src/adapter/standard/`, read back from the working tree (never from the patch text).",
+        "The two `verify:plugin-spec` npm-script occurrences (adapters/dsh-tui-v0.15.md:120 and docs/plugin-admission-and-development.md:130) are byte-unchanged; state the check that proves it.",
+        "`node scripts/conformance.mjs --standalone --no-build` exits 0 and `node conformance/tests/validate-manifest.cli.test.js` exits 0 on the patched tree, with raw output saved under evidence/implementation/.",
+        "The host composition control (env HOME=$PWD/.sandbox/home DSH_HOME=$PWD/.sandbox/dshhome dsh --profile dsh-tui --dump-config, run from the workspace root) exits 0 and its dump is byte-identical to evidence/baseline-composition.log (sha256 26892a0fe8f4e527e0cbcb611ad038623ecb83c7ff83b44e26054801a6bc4016).",
+        "evidence/implementation/ holds the command log with exit codes, the diff, and the before/after digests; the completion payload reports commandsRun for every verify command and changedPaths for exactly the two doc files."
+      ],
+      "verify": [
+        "git -C dsh-ecosystem-spec apply --check upstream/adapter-cross-repo-sync.patch",
+        "git -C dsh-ecosystem-spec apply upstream/adapter-cross-repo-sync.patch",
+        "git -C dsh-ecosystem-spec diff --stat && git -C dsh-ecosystem-spec status --porcelain",
+        "grep -n 'plugin-spec' dsh-ecosystem-spec/adapters/dsh-tui-v0.15.md dsh-ecosystem-spec/docs/plugin-admission-and-development.md",
+        "cd dsh-ecosystem-spec && node scripts/conformance.mjs --standalone --no-build",
+        "cd dsh-ecosystem-spec && node conformance/tests/validate-manifest.cli.test.js",
+        "env HOME=$PWD/.sandbox/home DSH_HOME=$PWD/.sandbox/dshhome dsh --profile dsh-tui --dump-config"
+      ],
+      "deliverables": [
+        "dsh-ecosystem-spec/adapters/dsh-tui-v0.15.md",
+        "dsh-ecosystem-spec/docs/plugin-admission-and-development.md",
+        "evidence/implementation/"
+      ],
+      "coverageOf": [
+        "3. Implement the change"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Independently verify the applied change and the boot plane",
+      "description": "Reproduce, do not trust: run every command yourself from your own invocation, including the two spec gates and the composition control. Read evidence/ENVIRONMENT.md for the pinned commands and the baseline digests, and evidence/audit/gate-audit.md for the classification you are testing. Do NOT edit the two docs or anything else the change owns — if you find a defect, report it as a finding and let the repair route own the fix. A confirmation-only pass is a failed verification: the falsification attempts are the point.",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t2"
+      ],
+      "attempt": 1,
+      "createdAt": 1789657213670,
+      "updatedAt": 1789657213670,
+      "kind": "verification",
+      "round": 1,
+      "objective": "Independently verify, on the current bytes, the two claims the change rests on: (a) that the applied edit is exactly the intended rename and touches nothing a gate or a boot path reads; (b) that the host boot plane is unaffected. Re-run both spec gates and the composition control yourself, and actively try to falsify the 'docs-only / off the boot path' claim rather than confirming it.",
+      "inScope": [
+        "evidence/verification/**"
+      ],
+      "outOfScope": [
+        "dsh-ecosystem-spec/adapters/dsh-tui-v0.15.md",
+        "dsh-ecosystem-spec/docs/plugin-admission-and-development.md",
+        "upstream/**",
+        "audit/**",
+        "evidence/baseline/**",
+        "evidence/implementation/**"
+      ],
+      "acceptance": [
+        "Both spec gates are re-run by you on the patched tree and their exit codes are reported verbatim; if you cite the JSON report, state the assertion semantics from conformance/tests/run.js (expected-pass vs expected-fail fixtures) instead of the raw pass field.",
+        "The docs-only claim is upheld or falsified with evidence: `git -C dsh-ecosystem-spec diff --stat` and `git status --porcelain` are quoted, and it is shown that no file under conformance/, registry/, protocols/, schemas/, scripts/ or vendor/ changed.",
+        "The off-the-boot-path claim is TESTED, not assumed: a command shows neither patched doc exists anywhere in the installed payload under /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/, and the post-change composition dump is compared by sha256 against the baseline digest 26892a0fe8f4e527e0cbcb611ad038623ecb83c7ff83b44e26054801a6bc4016.",
+        "The rename's correctness is independently re-derived from disk (src/plugin-spec absent, src/adapter/standard present) rather than taken from the audit or from the patch's own text.",
+        "At least one genuine falsification attempt is recorded with its result, including a negative result — for example grepping the installed payload and the host source for readers of the two patched doc filenames, or checking whether any gate/script/config in either repo references adapters/dsh-tui-v0.15.md.",
+        "The honest limit is stated explicitly: `dsh --profile dsh-tui --dump-config` composes rows and never executes plugin code, and no live session boot is reachable here (no credentials/model route), so the boot claim is scoped to the composition plane plus payload absence.",
+        "Evidence lands under evidence/verification/, and the completion payload carries commandsRun with real exit codes plus an acceptanceResults entry per criterion."
+      ],
+      "verify": [
+        "cd dsh-ecosystem-spec && node scripts/conformance.mjs --standalone --no-build",
+        "cd dsh-ecosystem-spec && node conformance/tests/validate-manifest.cli.test.js",
+        "git -C dsh-ecosystem-spec diff --stat && git -C dsh-ecosystem-spec status --porcelain",
+        "find /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui -name 'plugin-admission-and-development.md' -o -name 'dsh-tui-v0.15.md'",
+        "env HOME=$PWD/.sandbox/home DSH_HOME=$PWD/.sandbox/dshhome dsh --profile dsh-tui --dump-config"
+      ],
+      "deliverables": [
+        "evidence/verification/"
+      ],
+      "coverageOf": [
+        "4. Verify the boot"
+      ]
+    },
+    {
+      "id": "t4",
+      "subject": "Review the cross-repo sync implementation against its contract",
+      "description": "Read-only quality gate. Judge the implementation on its latest bytes: evidence/audit/gate-audit.md (the classification), the working-tree diff, and evidence/verification/ (the independent re-run). Do not edit anything — read-only seats attach under evidence/** only. If the implementation is honest and complete, verdict=pass completes this task; if a criterion is unmet or a claim is unsupported, you must return needs_revision or reject WITH structured findings and fail the task.",
+      "status": "pending",
+      "assignee": "Architect",
+      "dependencies": [
+        "t2",
+        "t3"
+      ],
+      "attempt": 1,
+      "createdAt": 1789657222690,
+      "updatedAt": 1789657222690,
+      "kind": "review",
+      "round": 1,
+      "objective": "Judge whether applying upstream/adapter-cross-repo-sync.patch satisfied the user's step 3 and its contract: the two stale references now name the canonical path, the two npm-script-name occurrences are untouched, the change is confined to the two declared files, and the audit plus verification evidence actually supports those claims. Do not accept a claim you cannot trace to a file:line, a command, or a digest.",
+      "inScope": [
+        "evidence/review/**"
+      ],
+      "outOfScope": [
+        "dsh-ecosystem-spec/**",
+        "upstream/**",
+        "audit/**",
+        "evidence/baseline/**",
+        "evidence/implementation/**",
+        "evidence/verification/**"
+      ],
+      "acceptance": [
+        "The two changed lines are quoted from the working tree (not from the patch text) and shown to name `src/adapter/standard/`.",
+        "The two `verify:plugin-spec` npm-script occurrences are quoted and shown unchanged, and the review states why renaming them would be wrong (that script name still exists in the host package.json).",
+        "Scope discipline is checked on the working tree: no file outside the two declared docs was modified, and dsh-ecosystem-spec/vendor/ (the offline std stand-in) is untracked and absent from the diff.",
+        "The review states explicitly whether the change can reach the boot plane, on the strength of the payload check, and flags any over-claiming it finds in the other members' evidence (for example a boot claim that outruns what --dump-config can prove).",
+        "The review records what it inspected (file:line, commands, digests) so the verdict is falsifiable, and lands it under evidence/review/."
+      ],
+      "deliverables": [
+        "evidence/review/"
+      ],
+      "reviewedTaskId": "t2",
+      "coverageOf": [
+        "Review of step 3 (implement) and step 4 (verify)"
+      ]
+    }
+  ],
+  "taskSeq": 4
+}

@@ -1,0 +1,19 @@
+=== seeded control: a WHOLLY ABSENT package dir vs both omission instruments — 2026-09-17T03:53:04Z UTC (host +0800) ===
+step 1: copy the artifact (18 MB) and delete ONE declared PLUGIN_PKG dir, nothing else
+  original packages/mpd-team-compact-plugin files: 3
+  copy: removed dir -> ABSENT
+  copy packages/ entries: 23   original: 24
+
+step 2: instrument v3 (packed-twin-scan.mjs, sha256 fa2a256ac575f9bb) on the copy
+  scan_exit=1
+  {"identical":1179,"drift":3,"missing":["skills/dsh-qa/scripts/watchdog-redesign.mjs"],"ok":false}
+  occurrences of 'mpd-team-compact-plugin' in the scan output: 0
+
+step 3: my closure gate on the same copy
+  gate_exit=0
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/hole2-QzG5/pack (378 asset files); agent references 3/3
+  occurrences of 'mpd-team-compact-plugin' in the gate output: 0
+
+step 4: original artifact untouched
+  original packages/mpd-team-compact-plugin files: 3 (before: 3)
+  scratch copy removed

@@ -1,0 +1,587 @@
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus TWO id-targets
+# (the two preset-roster rows below: `agent-presets` on the web/base plane and
+# `dsh-tui-agent-presets` on the dsh-tui plane — each exists in exactly ONE
+# composition, so neither target can ever duplicate the other's loader entry id).
+# Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
+# agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
+# WHOLE stock config and would wipe the stock model list / provider defaults.
+# DeepSeek official provider ships with dsh-base as-is; this bundle adds only:
+# MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
+# bundle-served preset root (the skill corpus is served by the mpd-bootstrap
+# row's ctx.skills provider — nothing is copied into $DSH_HOME any more).
+
+# ── preset roster: serve the bundle's own presets (no $DSH_HOME copy) ───────
+# The bundle ships its presets at <bundle>/presets and serves them from there by
+# adding a `system`-trust root, so ONE `dsh plugin add` makes the mpd preset
+# selectable and ONE `dsh plugin remove` takes it away with the bundle — no
+# $DSH_HOME/.agent-presets copy, no stale-copy refresh dance.
+#
+# This is an id-target (replace), not an insert: dsh-web-app's own patch already
+# inserts this row with `default: standard`, and a second insert would be a
+# duplicate loader entry id (fatal at boot). The stock row's whole config is
+# exactly `default` — its own comment says "This row only names the default and
+# any deployment-added roots" — so restating it here is complete, and both keys
+# are required to keep the roster working.
+#
+# Profiles WITHOUT the row (headless) log "patch: entry agent-presets not found"
+# and skip it: headless never had a preset roster, so nothing regresses.
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+        trust: system
+
+# ── preset roster, dsh-tui plane: the same default, for the TUI composition ──
+# MEASURED (2026-09-15, dsh-tui@0.10.1 + engine 0.1.5-rc.2, isolated sandbox):
+# the id-target above is SKIPPED in a dsh-tui profile, because no layer of that
+# composition inserts an `agent-presets` row — dsh-web-app owns it, and dsh-tui
+# does not use that layer. The TUI's own roster row carries the scoped id
+# `dsh-tui-agent-presets` (name `@deepseek-ai/dsh-agent-presets`, config
+# `{ default: 'standard' }`, `disabled: <an enabled `agent-presets` entry
+# exists>`), so a live session recorded `agentPreset: "standard"` — user
+# decision D10 ("TUI sessions must default to the mpd preset") was NOT satisfied
+# by the web-plane row alone.
+#
+# This id-target replaces that row's WHOLE config (loader semantics), so the
+# stock config is restated: `default: mpd` plus the bundle's own preset root —
+# exactly the same two keys the web-plane row above declares. The stock
+# expression's other branch (a fallback root for legacy packages that ship NO
+# bundled `presets/` directory) is deliberately NOT restated: the validated pin
+# `@deepseek-ai/dsh-agent-presets@0.1.5-rc.2` ships `presets/{standard,ptc,
+# cordis,minimal}`, so that branch is dead here, and re-adding the dsh CLI's own
+# preset directory as a second root would shadow preset ids the package already
+# serves. Its `disabled` expression is left untouched (no override), so the row
+# stays enabled in a dsh-tui composition.
+#
+# Safety of the pair: each row exists in exactly one composition (the TUI row is
+# minted by dsh-tui's own patch, the plain row by dsh-web-app's), so the other
+# profile only logs `patch: entry <id> not found` and applies nothing — no
+# duplicate loader entry id is possible in either. Loader semantics that make the
+# pair safe and this id-target complete: an id-target is a per-key shallow
+# override (cordis-plugin-include src/index.ts:120-124 assigns only the keys this
+# file carries and skips `id`), so the host row's own `disabled` expression
+# survives; a missing id-target is a WARN (same file, :112), never an error; a
+# duplicate entry id is fatal (cordis-plugin-loader src/config/group.ts:64).
+#
+# Evidence, split by claim — every citation names an artifact that exists AND says
+# what it proves (a `--dump-config` file proves COMPOSITION only, never a load):
+#  • D10 (a TUI session really ran the mpd preset) — SESSION RECORDS, shipped as
+#    durable byte-identical copies inside this bundle's own evidence dir (sha256
+#    asserted equal to the sandbox original; every record, relied-upon or not, is
+#    indexed in evidence/tui/composition/20260915T053445Z/raw/session-records-index.json):
+#      · evidence/tui/composition/20260915T053445Z/raw/sessions/--root-dshProj-my-power-dsh--/
+#        683c0f89-d2ea-4bf1-817e-3593eb765441/session.v3.jsonl.zstd
+#        sha256 d78ddb81aafad905ba8085db6f86d64807f5043ddadb884f39337c9f9e147689 — agentPreset "mpd"
+#        (concatenated-zstd frames, header line `{"type":"session",…,"agentPreset":"mpd"}`)
+#      · the same directory holds a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1
+#        (sha256 225152d4eb4bb04c037b9d455562d8af03c136a898ea287d37fb9f5c958c8763) and
+#        c7f6db60-5246-4223-9b2c-ad38ac87eea6
+#        (sha256 4471a31dab863c1fda8733de49bb29e3edaa2ec61e0366e08077780409671f03), each "mpd".
+#    The CONTRAST ships beside them: the same-shaped records from BEFORE this id-target
+#    existed, each recording `agentPreset: "standard"` — the measured "before" this fix
+#    answers (de5fde53-…/sha256 0e67008c…, 1a5d7e6f-…/ff7954b5…, e11887f7-…/6f3e02ec…,
+#    all three in the index).
+#  • The web profile is unchanged — a COMPOSITION check only:
+#    evidence/tui/composition/20260915T053445Z/raw/web-dump-config.err (its sole
+#    warning is `patch: entry "dsh-tui-agent-presets" not found`) and
+#    …/raw/web-dump-config.txt (exactly ONE @deepseek-ai/dsh-agent-presets row).
+#    The BOOT proof for that profile is the bundle-lifecycle mounting boot (R6,
+#    `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`), which really mounts the web
+#    profile — never a `--dump-config` result, which only composes rows (AGENTS.md §4).
+- id: dsh-tui-agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+        trust: system
+
+# ── runtime plugin dependency: the sidebar HOST the bundle's GUI needs ──────
+# MEASURED DEFECT (evidence/install-deps/red-baseline/20260920T030832Z/result.json):
+# a clean install of this bundle alone composed ZERO `dsh-better-sidebar` rows, so
+# the `betterSidebar` service never existed and the bundle's two sidebar pages
+# (mpd-agent-teams, mpd-workmate) registered nothing — the reported "the sidebar
+# cannot display". The package is declared in the bundle manifest's `dependencies`
+# (dsh-better-sidebar 0.19.0-alpha.1) and MOUNTED here.
+#
+# BOTH halves are required. The declaration alone never mounts anything: `dsh plugin
+# add` reconciles only PROFILE-level dependencies into `dsh.profile.bundles`, so a
+# bundle's dependency never becomes a layer and the package's own guarded patch never
+# applies. The row alone would be boot-fatal when the module is unresolvable
+# (`assertEntriesLoaded`). What makes the row resolvable is
+# `@deepseek-ai/dsh-app-boot#healProfileModuleFallback`, which materializes the
+# dependency closure of every non-installation bundle layer into
+# `<profile>/node_modules` before the loader runs (measured; see the ledger under
+# evidence/install-deps/implementation/**).
+#
+# THE ENTRY ID IS DELIBERATELY `mpd-better-sidebar`, byte-different from the
+# package's own patch id (`better-sidebar`) and from the aggregate's id
+# (`web-ui-better-sidebar`, @linxin666/dsh-web-all): a duplicate loader ENTRY ID is
+# fatal even when the guard would have disabled one of the two, so we never reuse an
+# id another layer may mint.
+#
+# THE GUARD IS ORDER-INDEPENDENT — the property that makes BOTH install orders safe.
+# `[...ctx.loader.entries()]` is FORWARD-BLIND at first evaluation (measured: the
+# same expression re-evaluates later with every entry visible, but `Entry.refresh()`
+# returns early once `this.fiber` exists, so the FIRST evaluation decides), and
+# @linxin666/dsh-web-all mounts the sidebar with an UNGUARDED row. A guard that read
+# only the entry list would kill a boot that works today whenever the aggregate is
+# installed AFTER this bundle. So the guard reads DECLARATIONS instead:
+#   1. no `dsh-better-sidebar` resolvable from `<profile>/node_modules` -> disable
+#      (degrade to "no sidebar" with one warning, never fail the boot);
+#   2. `dsh-better-sidebar` is itself a declared `dsh.profile.bundles` layer -> its
+#      own patch mounts it -> disable;
+#   3. every OTHER bundle layer's `dsh.bundle.patch` is scanned for a MOUNT (the row rule
+#      below). Self-exclusion is by IDENTITY (the layer whose `package.json` name is
+#      `@mpd-dsh/mpd` is SKIPPED), never by a substring of our own row id (review R4);
+#   4. EVERY other patch layer the loader composes is scanned the same way (review R1):
+#      `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`
+#      (`<profileDir>/../../cordis.patch.yml`) and every `--patch` overlay path
+#      recovered from `process.argv` (both `--patch X` and `--patch=X`, repeatable).
+#      A sidebar row in any of them under a DIFFERENT entry id is exactly the
+#      `duplicate prefix route` boot-killer (requirements F3) and is now seen;
+#   5. no enabled `@deepseek-ai/dsh-host-webserver` ENTRY -> disable. The web-plane
+#      clause is fail-closed (review R3): the raw `options.disabled` node must be
+#      absent or literally `false`, so a webserver row disabled by an expression is NOT
+#      "present", and the `@deepseek-ai/dsh-web-app` layer no longer enables this row on
+#      its own — the service the sidebar injects is the entry's, not the layer's.
+#
+# THE ROW RULE (repair F1, stated verbatim — this IS the contract a reviewer tests):
+#   1. Strip YAML comments before matching (a `#` that is not inside quotes ends the
+#      line's content).
+#   2. Find candidate ROWS that name `dsh-better-sidebar` (the `name:` value, quoted or
+#      bare).
+#   3. A candidate counts as a MOUNT unless it carries a LITERAL `disabled: true`.
+#   4. Unknown / `!!js`-valued `disabled` counts as a MOUNT (conservative: we back off
+#      rather than risk a duplicate).
+#   5. Any parsing doubt falls back to the CURRENT behaviour (treat as a mount ->
+#      DISABLED).
+# The bias direction is unchanged and deliberate — a false disable costs the sidebar (one
+# log line, the session keeps running); a false enable kills the whole boot with
+# `webserver: duplicate route`. What changed with repair F1 is only HOW a candidate is
+# recognised inside those files: a comment that mentions the package, or a foreign row
+# that is literally `disabled: true`, mounts nothing and no longer suppresses our only
+# mount (the verification lane measured both as a SILENT loss of the sidebar). When in
+# doubt this guard disables.
+# The whole guard is one try/catch that returns TRUE (disabled) on ANY throw, so the
+# worst case is a missing sidebar, never a dead boot. It logs ONE line per distinct
+# decision with the stable prefix `[mpd-better-sidebar] mount guard: ` — that line is
+# how a verifier sees the decision in the boot log. Raw `e.options.disabled` is read
+# on purpose: reading another entry's EVALUATED `disabled` getter re-enters its own
+# `!!js` expression (measured: mutual recursion, stack overflow).
+- insert:
+    - id: mpd-better-sidebar
+      name: dsh-better-sidebar
+      disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+
+- insert:
+    # B8 (wave 2): this row names NO binary path any more. It launches
+    # packages/mpd-mcp-astgrep/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the
+    # optionalDependency -> <bundle>/.toolchain/node_modules/.bin/ast-grep|sg) and
+    # sets MPD_AST_GREP_SG_PATH only when the caller left it unset, before the
+    # adopted server reads it. The old `env.MPD_AST_GREP_SG_PATH = <baseUrl>/node_modules/.bin/sg`
+    # pin was packed-layout-only AND named the deprecated `sg` wrapper (exit 1);
+    # a mounting boot with no env pin is the gate (never `--dump-config`).
+    - id: mcp-astgrep
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ast_grep
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")'
+        toolCallTimeoutMs: 60000
+    # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
+    # Windows deployments can change this row to disabled: false to enable it.
+    - id: mcp-gitbash
+      name: '@deepseek-ai/dsh-mcp-client'
+      disabled: true
+      config:
+        serverName: git_bash
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
+        toolCallTimeoutMs: 60000
+    - id: mcp-lsp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: lsp
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
+          - mcp
+        toolCallTimeoutMs: 60000
+    # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
+    # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+    # bundle-relatively (env pin -> createRequire of the optionalDependency ->
+    # <bundle>/.toolchain/node_modules/.bin/codegraph) and sets MPD_CODEGRAPH_BIN
+    # only when the caller left it unset, then calls runCodegraphServe() (serve.js
+    # self-starts only when IT is argv[1]). The old env pin was packed-layout-only,
+    # and a wrong MPD_CODEGRAPH_BIN disables the adopted bundled/provisioned/PATH/
+    # download chain entirely. Project index init/skip-home discipline is handled
+    # by the mpd-codegraph plugin row below.
+    - id: mcp-codegraph
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: codegraph
+        transport: stdio
+        command: node
+        args:
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")'
+        toolCallTimeoutMs: 60000
+    # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
+    # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
+    # that the user installs with pipx or plain pip — NO venv required (the
+    # venv iron rule belongs to cocotb only; pipx keeps the two tools isolated
+    # on its own if their mcp SDK versions ever conflict). A missing or
+    # mismatched mcp SDK on the launching python crashed the MCP client at boot
+    # (ModuleNotFoundError: No module named 'mcp.server.mcpserver'), taking the
+    # whole GUI/agent down → boot-safety rule: optional rows stay COMMENTED
+    # until the tools are installed and the env bins are pinned. To enable:
+    #   1) pipx install wave-mcp && pipx install traceweave-mcp
+    #      (or run node scripts/install-mcp.mjs --with-wave --activate-wave)
+    #   2) export MPD_DSH_WAVE_MCP_BIN=$(command -v wave-mcp)
+    #      export MPD_DSH_TRACEWEAVE_BIN=$(command -v traceweave-mcp)
+    #   3) uncomment the two example rows below (command resolves env-first,
+    #      PATH second).
+    # - id: mcp-wave-mcp
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: wave_mcp
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_WAVE_MCP_BIN || "wave-mcp"'
+    #     # NO --session at startup: wave-mcp 0.1.1 treats --session as an
+    #     # OPTIONAL auto-open and exits with FileNotFoundError when the dir has
+    #     # no session.json yet. The plugin creates the session after a sim run
+    #     # via mcp__wave_mcp__prepare_session.
+    #     toolCallTimeoutMs: 120000
+    # - id: mcp-traceweave
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config:
+    #     serverName: traceweave
+    #     transport: stdio
+    #     command: !!js 'process.env.MPD_DSH_TRACEWEAVE_BIN || "traceweave-mcp"'
+    #     # No env block: the EDA environment (VERDI_HOME/NOVAS_HOME/VCS_HOME +
+    #     # license vars) is inherited from the dsh launching shell; docs instruct
+    #     # exporting them there before starting dsh.
+    #     toolCallTimeoutMs: 120000
+
+# ── B-line plugins (self-written; production uses @mpd-dsh/<pkg> package names) ──
+- insert:
+    # Web-compat self-registration (mirrors @linxin666/dsh-web-ui-all's web-ui-compat
+    # row): the bundle's web client loads only if a LOADER ENTRY named exactly
+    # `@mpd-dsh/mpd` exists — client-modules resolves client rows against
+    # `ctx.loader.entries()` entry names, and entry names come from a patch row's
+    # `name` field. This self-row (loading the bundle's own no-op main plugin)
+    # provides that entry; without it the agent-teams/workmate web client never
+    # appears in the boot graph.
+    - id: mpd-web-compat
+      name: '@mpd-dsh/mpd'
+    # mpd-dsh-adapter FIRST: it is the bundle's ONLY contact surface with the
+    # harness tool/agent/skill/preset seams (ctx.tools register/guard/execute/
+    # post-execute, ctx.subagents.start, ctx.skills.registerProvider,
+    # ctx.agentPresets.resolve). Every mpd row below calls through it, so a
+    # harness release that reshapes a seam is absorbed in that one package.
+    - id: mpd-dsh-adapter
+      name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+    # mpd-config next: it provides the mpdConfig service that the rows below
+    # read (apply-time config merges for tools/waterfalls).
+    - id: mpd-config
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+    # Team watchdog (w3 core): per-step/per-tool heartbeat store for members AND the
+    # captain, the configurable WARN→ESCALATE machine over the `mpd` namespace's
+    # watchdog.* knobs, the atomic restorable scene snapshot, and the durable
+    # watchdogHold + incident/read-watermark sidecars written BESIDE the adopted
+    # `team.json` (that record keeps its single writer, state.js). It owns its own
+    # `session-watchdog-hold`/`-resume` actions; wiring the adopted dispatch gates
+    # that honour a hold is a later task, so this row registers the contract only.
+    # HOST plane on purpose: a preset row's listeners are scoped to one agent, so a
+    # preset-mounted tick could not witness a wedged CAPTAIN (AC-9).
+    - id: mpd-team-watchdog
+      name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+      config:
+        # The ROW layer of the T-18 three-layer defaults table: every value here must equal
+        # `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and
+        # `packages/mpd-config-plugin/src/settings-schema.ts` `SettingsSchema.watchdog`. A
+        # composition that writes no `watchdog` section in the `mpd` namespace keeps these.
+        # A settings edit reaches the RUNNING engine only through the settings-document
+        # re-read (`engine.ts` `onSettingsDocumentUpdated`); a `.mpd/mpd.jsonc` edit is read
+        # once at plugin mount, so it applies at the next dsh boot and never mid-process.
+        stateDir: '.mpd/team'
+        warnSilenceMs: 600000
+        tickIntervalMs: 15000
+        warnStreakToEscalate: 6
+        actionOnEscalate: warn-only
+        toolInFlightMaxMs: 900000
+        holdTtlMs: 900000
+    - id: mpd-tools
+      name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+      config:
+        writeGuard: true
+        truncateMaxBytes: 8192
+    - id: mpd-modelchain
+      name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+    # mpd-ext: the extension registry — it provides the `mpdExtensions` service and the
+    # four model-facing tools (mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show).
+    # POSITION (bundle-patch change, plan [REV3] §1.4): after mpd-dsh-adapter and mpd-config,
+    # directly above mpd-roles — its first consumer. Row order is deliberately NOT the
+    # dependency mechanism here (docs/design.md: a sibling-provided service is read
+    # lazily at tool-execute time; the dependency mechanism that exists is `inject`), so the
+    # row works anywhere in this band and the band documents the intended direction:
+    #   · ABOVE mpd-dsh-adapter the row's apply-time `ctx.get("mpdDsh")` finds no mounted
+    #     adapter and takes the `?? createDshAdapter(ctx)` fallback — the hazard, and the fix
+    #     for it, are described ONCE in the canonical note at
+    #     packages/mpd-ext-plugin/src/index.ts (resolveAdapter) and are NOT restated here; this
+    #     bullet only states the placement rule. The branch now warns once per apply
+    #     (`adapterIdentity=fallback:createDshAdapter`) instead of staying silent, so a
+    #     misordered composition is visible in a boot log.
+    #   · BELOW mpd-roles inverts the direction: today mpd-roles resolves the service with a
+    #     per-call `ctx.get("mpdExtensions")`, but any later conversion of that lazy get into
+    #     a hard `inject: ["mpdExtensions"]` would make mpd-roles a FATAL `pending` loader
+    #     entry (the measured class that takes the whole plugin tree down) AND lose every
+    #     extension-contributed role, because the provider row applies after its consumer.
+    # `quiet` is the plugin's ONLY config key (MpdExtPluginConfig); false keeps the one-line
+    # apply summary.
+    - id: mpd-ext
+      name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+      config:
+        quiet: false
+    - id: mpd-roles
+      name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+    - id: mpd-ulw
+      name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+      config:
+        maxRounds: 3
+    - id: mpd-hashline
+      name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+      config:
+        guardEditTools: true
+    - id: mpd-boulder
+      name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+    - id: mpd-comment-checker
+      name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+      config:
+        autoCheck: false
+    - id: mpd-codegraph
+      name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+      config:
+        autoInit: true
+        initTimeoutMs: 60000
+    - id: mpd-memory
+      name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+      config:
+        vcs: git
+    - id: mpd-workmate
+      name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+    # Compacts a FINISHED team's members (every task terminal AND every member idle).
+    # Members only — the captain is compacted by the human /compact command. The engine is
+    # resolved per member through that member's OWN scoped context; the host-plane engine is
+    # a different object serving a different realm (measured: sameObject false), so the
+    # lookup lives in ONE adapter helper. Audit lands under <workspace>/.mpd/team-compact/;
+    # this row never writes .mpd/team (that state belongs to the agent-teams plugin).
+    - id: mpd-team-compact
+      name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+    # Bundle asset provisioning (no home writes since 0.3.0): registers the
+    # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
+    # project/custom/user roots) and removes the version-stamped copies that
+    # bundle <= 0.2.6 left in $DSH_HOME/skills + $DSH_HOME/.agent-presets.
+    # The preset side is served by the agent-presets row at the top of this file.
+    - id: mpd-bootstrap
+      name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+    # DSH-TUI edition (D1/D2/D6/D10): the TUI-native surface package for this
+    # bundle. It binds the host's activation-gated UI service seams (tuiStatus,
+    # tuiRenderers, tuiSettingsSections, tuiScenes, tuiCommandTrees,
+    # tuiShortcuts, tuiDialogs) and probes every one of them with
+    # `ctx.get(id, false)` + warn-once degrade, so under a profile that provides
+    # none of them (web/headless) the row degrades instead of taking the boot
+    # down. The same package's admission facet is declared ONCE, bundle-level, by
+    # dsh-plugin.json at the repo root (`facets.host.entry` = the module below);
+    # the package ships NO cordis.patch.yml of its own, so this row is the only
+    # mount and no composition can duplicate the `mpd-tui` loader entry id
+    # (verify-rows-parity + the boot-log scan are the gates).
+    - id: mpd-tui
+      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+
+# ── Remote MCP rows (public services; network required, optional per use) ──
+- insert:
+    # The adopted team plugin is FIRST-CLASS MAIN CODE at
+    # packages/mpd-agent-teams-plugin (MIT provenance; upstream
+    # @nanmicoder/dsh-agent-teams 0.1.16-rc.3-mpd) and loads through the bundle exports map:
+    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
+    # into the profile root, so a plain package-name row would silently self-disable.
+    # Its server runtime closure is vendored at packages/mpd-agent-teams-plugin/_deps
+    # (see scripts/vendor-agent-teams.mjs), so the row always resolves — no guard.
+    - id: agent-teams
+      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+      config:
+        stateDir: .mpd/team
+        memberProvider: spawn
+        memberMaxDepth: 1
+        maxMembers: 16
+        # CONFIGURATION PLANE (goal 4): aligned to upstream team_mode
+        # (packages/team-core/src/config.ts:6-14) with the user's decision that
+        # OUR ceilings stay the more permissive local values. `enforcement`
+        # mirrors upstream ('enforce' blocks over-limit sends, 'observe' logs
+        # only; default enforce). Every key is absent-safe: a profile without
+        # them still boots on these defaults.
+        maxParallelMembers: 8
+        maxMessagesPerRun: 10000
+        maxWallClockMinutes: 120
+        maxMemberTurns: 500
+        messagePayloadMaxBytes: 32768
+        recipientUnreadMaxBytes: 262144
+        mailboxPollIntervalMs: 3000
+        enforcement: enforce
+        # R3: empty staged teams older than this are ARCHIVED at the next session
+        # start (never deleted), excluding the running session's own team.
+        reclaimStaleAfterMs: 3600000
+        # SESSION-START TEAM GATE (binding): a session starts with NO team — a
+        # team is NOT a precondition. mode=off is the default (upstream parity:
+        # team_mode.enabled defaults to false) and means "no auto-provision, no
+        # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
+        # (default enabled): at the session's first pre-step it evaluates the
+        # frozen complexity gate, whose predicate is
+        #   trigger = explicit flag OR (matchedSignals >= 1)
+        # with signals A (a `team:` prefix or `!team`, the marker is consumed),
+        # B (>=4 distinct deliverable verbs), C (>=3 enumerated lines / action
+        # verbs / clauses) and D (a `.mpd/plans/*.md` artifact exists).
+        # A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state
+        # is created) — the plugin injects ONE advisory notice that names the
+        # fired signals, states that no team was staged, and tells the captain to
+        # stage one on demand with agent_teams_create(approval="required",
+        # profile="mpd") at the moment the work actually warrants a team
+        # (otherwise continue solo and say so). An explicit `team:` / `!team`
+        # request still PROVISIONS the staged default team (profile `mpd`,
+        # approval=required — nothing spawns until the user approves the Web
+        # plan), and mode=auto keeps the legacy unconditional provisioning as an
+        # explicit opt-in; mode=instruct keeps the legacy instruction notice.
+        # presets: [mpd] scopes the gate to mpd-preset sessions (sessions without
+        # any preset, e.g. headless direct runs, are covered too), and
+        # subagent/member sessions (they carry parentSession) never qualify. The
+        # gate runs on the PRE-STEP, before any sizing doctrine, so it can
+        # actually prevent a team.
+        sessionTeamPolicy:
+          mode: off
+          autoRoute: true
+          profile: mpd
+          presets:
+            - mpd
+          name: MPD Default
+          approval: required
+        # The specialists become teammate instantiation templates for the
+        # adopted dsh-agent-teams plugin (reusing its architecture + Web GUI).
+        # One named profile `mpd` holds the full normal-named roster and
+        # `taskPlanning: captain` means only the roster is fixed: the captain
+        # designs the task DAG after a staged plan the user reviews in the panel.
+        # /agent-teams --profile mpd <goal> instantiates the roster explicitly.
+        profiles:
+          mpd:
+            description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+            taskPlanning: captain
+            # fallback.provider is ALWAYS deepseek-official (never the bare
+            # "deepseek" compat-track provider): the original layered design
+            # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+            # that row is OFF by default (install-profile --with-compat-track is
+            # gone) and the harness only registers deepseek-official
+            # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+            # NO_ADAPTER exactly when the fallback is needed.
+            # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
+            # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
+            # TUI /settings section and in the Web settings card). The frozen class mapping is
+            # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
+            # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
+            # Engineer), tier 4 = the vision member (Vision Analyst). Slot 4's DEFAULT is Vision
+            # Analyst's own vision route (deepseek-v4-flash-vision-exp at `high`), so routing it
+            # through the slot is behaviour-preserving while making its model configurable. A slot
+            # edit applies at the next dsh boot, like every other mpd knob.
+            members:
+              - name: Architect
+                tier: 1
+                role: architecture review / deep debugging / self-review
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+                # Read-only members are MECHANICALLY restricted, not just instructed: these
+                # names are the same seven the one-shot roster path denies
+                # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+                # data because the adopted plugin cannot import across packages. Without
+                # them a "read-only" member in a team kept write/edit/bash (measured
+                # 2026-09-14: a member's own session ran `pwd` for real).
+
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Researcher
+                tier: 2
+                role: code / open-source evidence search
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Planner
+                tier: 1
+                role: planning / task decomposition
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Explorer
+                tier: 2
+                role: read-only codebase exploration
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Reviewer
+                tier: 1
+                role: correctness / risk review
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+              - name: Plan Reviewer
+                tier: 2
+                role: work-plan QA review / UI-UX critique
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Vision Analyst
+                tier: 4
+                role: image / diagram analysis
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+              - name: Lead
+                tier: 1
+                role: orchestration / integration
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+              - name: Deep Worker
+                tier: 3
+                role: autonomous goal-driven implementation
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+              - name: Senior Engineer
+                tier: 1
+                role: primary implementation
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+              - name: Junior Engineer
+                tier: 3
+                role: small mechanical changes
+                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+                executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+- insert:
+    - id: mcp-context7
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: context7
+        transport: streamable-http
+        url: https://mcp.context7.com/mcp
+        toolCallTimeoutMs: 60000
+    - id: mcp-grepapp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: grep_app
+        transport: streamable-http
+        url: https://mcp.grep.app
+        toolCallTimeoutMs: 60000

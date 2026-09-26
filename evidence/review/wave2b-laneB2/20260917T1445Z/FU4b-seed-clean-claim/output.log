@@ -1,0 +1,4 @@
+driver-header claim check (T-80)
+parameters: claims \bA(\d+)\b + \bA(\d+)\s*[–-]\s*A?(\d+)\b (markers \b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b; references (design|acceptance|\bplan\b|§|\bt\d+\b)) · keys add\(\s*"A(\d+)[^"]*" · mode one offline process · unit one driver file · scope /tmp/t21-seed-clean/a · moment 2026-09-17T14:41:12.066Z
+
+  FAIL driver:../../../tmp/t21-seed-clean/a/clean-claim.mjs — CLAIMED-BUT-UNASSERTED A11 (header phrase: "CHECKS A11 as well (a seeded claim with NO reference token on the line)")

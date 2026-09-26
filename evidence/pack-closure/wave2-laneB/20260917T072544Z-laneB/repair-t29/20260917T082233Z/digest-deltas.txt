@@ -1,0 +1,23 @@
+Digest deltas of the t29 regeneration (own-dir run of the fixed driver).
+
+PRE  = measured on the files review-B F1 saw, just before the fixed own-dir run. The four harness .json
+       files there were MANUAL artifacts (mtime 15:28:13-15:37:52, i.e. older than the driver's own 15:38
+       .log runs) - exactly the finding: the driver parsed four readings out of files it never wrote.
+       The PRE-fix DRIVER revision is `abbc33335219766a` (the digest quoted in the t9 completion); the
+       driver file already carried the fix when the PRE block below was captured, hence cae90588897ecb0d.
+
+POST = after the fixed driver ran in its own dir (`repair-t29` run, exit 0, 25 artifacts digested).
+LIVE = re-measured now, to show the POST values are the ones on disk (the four .json artifacts and
+       result.json are PER-RUN: their `captured_at` and readings move with every regeneration).
+
+file                               PRE                POST               LIVE               note
+t67-build-form-diff.json           57d599c7baef32bf   b46fcd346c9c95b2   b46fcd346c9c95b2   per-run (captured_at + measured comments) [MATCHES POST]
+t63-t76-seeded-mutation.json       023b9c81cd822243   9f9f3e656b54f4d2   9f9f3e656b54f4d2   per-run (mutated-copy digests + microsecond order) [MATCHES POST]
+t63-out-flag-equivalence.json      0540f71472896301   c96a41f59daa68bf   c96a41f59daa68bf   per-run (staged-file listing) [MATCHES POST]
+t67-round-trip.json                f936177242617360   2efd9054a785622a   2efd9054a785622a   per-run (dist mtimes inside the round trip) [MATCHES POST]
+result.json                        1994f94603230381   f1ef332092dfcb68   f1ef332092dfcb68   per-run container; excludes itself from its own digest map [MATCHES POST]
+run-laneB-evidence.mjs             cae90588897ecb0d   cae90588897ecb0d   cae90588897ecb0d   the repaired driver: unchanged by the regeneration (same revision as PRE)
+
+Superseded on the record: the t9 completion quoted `result.json` `6e4f4ec88ccba3db` and `run-laneB-evidence.mjs`
+`abbc33335219766a`; both belong to the pre-repair revision. The repaired driver is `cae90588897ecb0d`, and the
+current `result.json` digest is printed by every run (`regenerated.result_json_digest`).

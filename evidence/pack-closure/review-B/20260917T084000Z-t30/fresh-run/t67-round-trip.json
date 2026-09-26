@@ -1,0 +1,57 @@
+{
+  "schema": "laneB/t67-round-trip/1",
+  "captured_at": "2026-09-17T08:35:11.854Z",
+  "readings": [
+    {
+      "arm": "(cd packages/mpd-ext-plugin && bun run build) then verify-dist-fresh --only packages/mpd-ext-plugin --quiet",
+      "build_exit": 0,
+      "build_tail": "  sdk.js  1.71 KB  (entry point)",
+      "dist_before": "f6097fd3383f2fa7",
+      "dist_after": "f6097fd3383f2fa7",
+      "dist_byte_identical": true,
+      "dist_mtime_before": "2026-09-17T08:31:56.795Z",
+      "dist_mtime_after": "2026-09-17T08:35:11.876Z",
+      "verify_exit": 0,
+      "verify_tail": "[verify-dist-fresh] ok: 2/2 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 61ms"
+    },
+    {
+      "arm": "(cd packages/mpd-tui-plugin && bun run build) then verify-dist-fresh --only packages/mpd-tui-plugin --quiet",
+      "build_exit": 0,
+      "build_tail": "  index.js  149.13 KB  (entry point)",
+      "dist_before": "d75ddd8917d434a8",
+      "dist_after": "d75ddd8917d434a8",
+      "dist_byte_identical": true,
+      "dist_mtime_before": "2026-09-17T08:31:56.956Z",
+      "dist_mtime_after": "2026-09-17T08:35:12.028Z",
+      "verify_exit": 0,
+      "verify_tail": "[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 45ms"
+    }
+  ],
+  "not_run": [
+    {
+      "pkg": "mpd-team-watchdog-plugin",
+      "reason": "t10 (lane C) has in-flight src edits (src/engine.ts, src/machine.ts, src/actions.ts) — a build here would bake a half-edited source into the committed dist; that dist is lane C's to rebuild",
+      "src_mtimes": [
+        {
+          "path": "packages/mpd-team-watchdog-plugin/src/index.ts",
+          "mtime": "2026-09-17T07:31:26.505Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+          "mtime": "2026-09-17T07:40:09.359Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/src/machine.ts",
+          "mtime": "2026-09-17T07:26:52.967Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/src/actions.ts",
+          "mtime": "2026-09-17T07:30:22.257Z"
+        }
+      ],
+      "dist_mtime": "2026-09-17T07:40:20.988Z"
+    }
+  ],
+  "ok": true,
+  "verdict": "BOTH ROUND TRIPS PASS AND REPRODUCE THE COMMITTED BYTES"
+}

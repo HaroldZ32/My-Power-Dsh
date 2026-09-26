@@ -1,0 +1,83 @@
+{
+  "schema": "review-B/t13-falsification/2",
+  "captured_at": "2026-09-17T08:14:34.696Z",
+  "method_note": "differential: each mutated scratch pack is compared finding-line-by-finding-line against a CLEAN scratch pack read in the same run; the first harness's pinned-stamp method is recorded in the file header as withdrawn (it reddened the clean control for a valid reason).",
+  "question": "was any moved rule made green by weakening it?",
+  "repo_head": "c826f16",
+  "gate_script_sha256": "c0814334013c0da50317e8e64a4b6a341ae31cb6402cdc9dbf937dfd1b745e7d",
+  "artifact_read_only": {
+    "before": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "after": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "identical": true
+  },
+  "control": {
+    "candidates_unchanged_since_pack": [
+      {
+        "rel": "templates/mpd-extension/server.mjs",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/personas/mpd-extension-template-reviewer.md",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/README.zh-CN.md",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      }
+    ],
+    "artifact_newest_mtime": "2026-09-17T05:19:48.265Z",
+    "control_exit": 0,
+    "control_content_bytes": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-TI3tOm/clean (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js",
+    "control_completeness": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-TI3tOm/clean (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+  },
+  "legs": {
+    "mutation_bytes": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 1,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 26 closure violation(s)",
+        "  CONTENT-DRIFT - skills/dsh-qa/cases.json differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/cases.json (source 5dcaffb99b91… / 22730 B, artifact 54585caba9a5… / 14542 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.083Z (source mtime 2026-09-17T07:35:55.372Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  CONTENT-DRIFT - skills/dsh-qa/scripts/extension-lifecycle.mjs differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/extension-lifecycle.mjs (source 10f593a84deb… / 39924 B, artifact f8a4af525f4b… / 29682 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.083Z (source mtime 2026-09-17T07:39:21.293Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  CONTENT-DRIFT - skills/dsh-qa/scripts/lib/immutable-output.mjs differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/lib/immutable-output.mjs (source 412f0cdf9e46… / 4925 B, artifact 5b94f4c99883… / 4823 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.083Z (source mtime 2026-09-17T07:51:28.379Z) - the artifact ships bytes no reading was taken on (T-63)"
+      ]
+    },
+    "mutation_deleted": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 2 closure violation(s)",
+        "  packed tree: /tmp/t13-falsify-TI3tOm/deleted-file (378 asset files); content bytes: 1180 file(s) compared, 1155 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 1 absent; pack stamp 2026-09-17T05:19:48.265Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))"
+      ]
+    },
+    "mutation_root_file": {
+      "target": "EXTENSIONS-FOR-AGENTS.md",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 25 closure violation(s)",
+        "  CONTENT-DRIFT - skills/dsh-qa/cases.json differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/cases.json (source 5dcaffb99b91… / 22730 B, artifact 54585caba9a5… / 14542 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.481Z (source mtime 2026-09-17T07:35:55.372Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  CONTENT-DRIFT - skills/dsh-qa/scripts/extension-lifecycle.mjs differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/extension-lifecycle.mjs (source 10f593a84deb… / 39924 B, artifact f8a4af525f4b… / 29682 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.481Z (source mtime 2026-09-17T07:39:21.293Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  CONTENT-DRIFT - skills/dsh-qa/scripts/lib/immutable-output.mjs differs byte-wise from /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/lib/immutable-output.mjs (source 412f0cdf9e46… / 4925 B, artifact 5b94f4c99883… / 4823 B) and the source was NOT written after the artifact stamp 2026-09-17T08:14:34.481Z (source mtime 2026-09-17T07:51:28.379Z) - the artifact ships bytes no reading was taken on (T-63)"
+      ]
+    }
+  },
+  "verdict": {
+    "clean_control_green": true,
+    "packed_byte_mutation_reddens_and_is_NAMED": true,
+    "packed_file_deletion_detected": true,
+    "root_file_packed_mutation_class": "REPORTED (expected class)"
+  }
+}

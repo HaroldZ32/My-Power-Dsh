@@ -1,0 +1,73 @@
+{
+  "item": "T-79 (STATE HALF)",
+  "register_row": "[trap] Terminal tasks are RE-DISPATCHED with their old attempt id, and the wave's fix is inert in-process. P1.",
+  "register_source": ".mpd/TODO.md §8.6 line 535 (read from the file)",
+  "scope_decision": {
+    "source": ".mpd/plans/friction-p2-wave.md D-1(a) + .mpd/plans/friction-p2-wave-captain-log.md §A-1",
+    "state_half_owner": "t8 (this task): the attempt ROTATION primitive + the stale-capability answer on terminal work",
+    "delivery_half_owner": "t10 (lane C, lib/scheduler.js; the register's two-halves pattern)",
+    "not_written": "packages/mpd-agent-teams-plugin/lib/scheduler.js — lane C's file, untouched (verified: no diff)"
+  },
+  "starting_reading": {
+    "wave_2_replay": "the scheduler re-dispatched the already-terminal `t1` carrying the SAME old attempt id 35503430-5a3b-4306-b6f2-d38d416cb438; claim_task refused with `task status cannot move from \"completed\" to \"claimed\"`; the terminal bytes stayed untouched; cost = one member turn",
+    "quoted_from": ".mpd/plans/friction-p2-wave-captain-log.md §A-1 'Accepted evidence, routed into this lane'",
+    "wave_1_instances": "t25, t43, t49 (twice), t34, t31 — .mpd/plans/friction-p1-wave.md (T-79 row, line 227)"
+  },
+  "surface": {
+    "modules": [
+      "packages/mpd-agent-teams-plugin/lib/state.js",
+      "packages/mpd-agent-teams-plugin/lib/tools.js"
+    ],
+    "symbols": [
+      "assertTaskRearmable (state.js)",
+      "activateTaskAttempt / beginTaskAttempt (state.js — the symbol lib/scheduler.js's compose calls)",
+      "agent_teams_update_task terminal branch (tools.js)"
+    ],
+    "regions": [
+      "mpd-delta terminal-task-rearm-refusal",
+      "mpd-delta terminal-stale-attempt-refusal"
+    ]
+  },
+  "red_leg_as_committed": {
+    "method": "scratch lib/ copy with HEAD (c826f16) tools.js + state.js + quality-gates.js; _deps symlinked",
+    "driver": "evidence/agent-teams/terminal-redispatch/20260917T072501Z/driver.mjs",
+    "reading": {
+      "rotation": "beginTaskAttempt(completedTask, 'Architect') -> refused=false, minted a FRESH id cbb2b389-…, status 'completed' -> 'claimed', attempt 1 -> 2, outputWiped true (the earned summary was CLEARED)",
+      "tool_path": "update_task on the completed task with a capability that is NOT the stored one -> threw=false, returned the stored record (a SUCCESS answer for an ended attempt)"
+    }
+  },
+  "green_leg": {
+    "rotation": "refused=true: 'task t1 is completed: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was left untouched). Retry failed/cancelled work with agent_teams_reassign_task, which re-opens it with a fresh attempt id.' — status/attempt/attemptId/output all unchanged, outputWiped false",
+    "tool_path": "refused: 'task t1 is completed: the supplied attempt_id \"attempt-from-the-replayed-ticket\" does not match the stored capability (35503430-…) — terminal work is never re-armed, so a stale capability cannot update it.'"
+  },
+  "arms": {
+    "path": "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs",
+    "cases": [
+      "T-79(a): the compose's ROTATION PRIMITIVE refuses terminal work, naming the status (pure-function leg; the refusal fires before the first mutation)",
+      "T-79(b): the real scheduler, IN-PROCESS, never re-arms or delivers a TERMINAL task — three-task fixture (completed t1 holding the stored old id + pending t2 + t3 blocked by t2); t1's serialized record is byte-identical after the kick",
+      "T-79(c): the sanctioned revive path survives — agent_teams_reassign_task on a FAILED task re-opens it with a FRESH attempt id and attempt 2",
+      "T-79(d): a STALE capability on terminal work is REFUSED (the captain's idempotent path), and the idempotent call carrying the STORED capability still answers with the record",
+      "T-79 negative control: with both guards removed in a scratch lib/ copy, the SAME calls rotate (status claimed, attempt 2, output WIPED) and answer SUCCESS",
+      "T-79 restart leg: a FRESH bun child process imports the current tree and sees the same refusal with the record untouched"
+    ]
+  },
+  "restart_re_observation": {
+    "method": "a child process spawned from the arm (bun, fresh module graph) importing lib/state.js and calling beginTaskAttempt on the terminal fixture",
+    "reading": "refused=true, message names 'task t1 is completed', status/attempt/attemptId/output unchanged",
+    "honest_bound": "the PRE-restart inertness of a long-lived dsh process is T-21's measured defect (ESM module cache), NOT a regression of this fix; no lane-A claim rests on live re-dispatch behaviour after the fix, and the delivery half is observable only on lane C's side (t10/F2)."
+  },
+  "evidence_logs": [
+    "evidence/agent-teams/terminal-redispatch/20260917T072501Z/driver.mjs",
+    "evidence/agent-teams/terminal-redispatch/20260917T072501Z/output.log"
+  ],
+  "live_instance_count": {
+    "required_by": "t8 contract revision 4 (amended by the captain): name the predicate and say whether the count is per-seat or wave-wide",
+    "predicate": "'a terminal task was re-offered — a scheduler wake/ticket carrying its stored (OLD) attempt id — to the seat that had already completed it', counted per OFFER EVENT and WAVE-WIDE",
+    "why_event_counted": "wave 1's t49 was re-offered TWICE to one seat, so a per-seat count undercounts the route (wave 1: six offers, five distinct seats)",
+    "wave_2_reading_at_the_amendment": "FOUR wave-wide: t1 (this lane's t1 instance, old attempt id 35503430-5a3b-4306-b6f2-d38d416cb438), t2, t3 (to this lane's sibling seat) and t5 (to the Planner)",
+    "wave_2_reading_now": "the same ledger has since advanced: a FIFTH (t4, old attempt id fda7e84c…) and a SIXTH (t22) — '.mpd/plans/friction-p2-wave-captain-log.md' records 'per-seat 6, wave-wide 7 with the Planner's t5'",
+    "per_seat_alternative": "the Architect's own seat counted THREE (t1, t2, t3); both readings are correct once their predicate is named",
+    "outcome_in_every_instance": "the seat refused at claim_task ('task status cannot move from \"completed\" to \"claimed\"') and nothing was redone; starvation is UNOBSERVED in all of them",
+    "source": ".mpd/plans/friction-p2-wave-captain-log.md: §A-1 'Accepted evidence', §A-3 addendum, addendum 2 item (g), and the later counters at the end of that file"
+  }
+}

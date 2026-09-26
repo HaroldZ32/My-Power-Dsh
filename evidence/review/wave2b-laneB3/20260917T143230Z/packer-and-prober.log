@@ -1,0 +1,31 @@
+=== t22 review readings — 2026-09-17T14:33:45Z ===
+
+-- budget verdict + bytes --
+      "label": "agents",
+      "verdict": "GREEN (full content injected)"
+
+-- T-47 prober --self-test (mutation arm) --
+exit=0
+[verify-debranding-full] self-test PASS - mutation (role.description — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS - mutation (mcp.serverName — NEVER probed by the old prober) :: findings=1 names-the-field=true example-quoted 13 -> 12 (expected -1)
+[verify-debranding-full] self-test PASS: 5/5 arms
+
+-- PACKER: AGENTS.md exclusion comment + ROOT_ASSET_DIRS --
+110:const ROOT_ASSET_DIRS = [
+136:// ROOT_ASSET_DIRS and for the same measured reason: a file that no table names is simply NOT
+192:  // Root assets (skills / presets / extensions / templates / docs): see ROOT_ASSET_DIRS for
+128:  // plugin's delta registry) and index.md. AGENTS.md itself deliberately stays out of the
+
+-- PACKER: is AGENTS.md in the artifact? is templates/? --
+ls: cannot access 'dist/mpd-package/AGENTS.md': No such file or directory
+total 48
+drwxr-xr-x 5 root root 4096 Sep 17 16:55 .
+drwxr-xr-x 3 root root 4096 Sep 17 16:55 ..
+drwxr-xr-x 2 root root 4096 Sep 17 16:55 flows
+-rw-r--r-- 1 root root 1091 Sep 17 16:55 mpd-ext.json
+
+-- template README pair: source vs packed (pre-pack drift by design?) --
+8e1fbb893fcb428b4059bb04cceca6980aec7d8f9f104b3c76a85de2cf13e316  templates/mpd-extension/README.md
+832ad62f8099b20a55ef5914c2b511e90cfc26e049500360dfdbce7bbfb914f5  templates/mpd-extension/README.zh-CN.md
+2943a10c46ab80a8f117ac19e7d44541e5a8a968d1af0006f24e4b114ac708d1  dist/mpd-package/templates/mpd-extension/README.md
+8a11d7ac6a796c4da42a154b2313d56351768ef27ac7b8f472d8ab9783ac5820  dist/mpd-package/templates/mpd-extension/README.zh-CN.md

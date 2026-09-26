@@ -1,0 +1,8 @@
+[workmate-library] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T16-05-39.796Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0,"attempts":1,"retryNotes":[]}
+  flow: {"ok":true,"calls":{"mpd_workmate_init":{"called":true,"succeeded":true},"mpd_workmate_list":{"called":true,"succeeded":true},"mpd_workmate_spawn":{"called":true,"succeeded":true},"mpd_workmate_reflect":{"called":true,"succeeded":true},"mpd_workmate_match":{"c
+  files: {"ok":true,"uses":2,"noteChars":299,"memoryChars":519,"note":"Deep Worker-based workmate \"alice\". General-purpose Deep Worker (was seeded \"Verilog counter specialist\"); handles file reading, summaries and general repo task","wmRoot":"/tmp/mpd-wm-home-BPuMa
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".arch
+[workmate-library] PASS

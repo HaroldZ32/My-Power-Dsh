@@ -1,0 +1,18 @@
+=== BEFORE (fixed revision) sha256 ===
+1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37  packages/mpd-ulw-plugin/src/index.ts
+
+=== mutation apply (planFile emitted unconditionally -> null when plan=false) ===
+mutation applied: planFile is emitted unconditionally again (retired t16 shape)
+sha256 now 44a48b4f82cb91016d231ef3c16459cba8a494beb349c27dd1d7816116ad1ae1
+
+=== bun test packages/mpd-ulw-plugin on the MUTATED tree (expect the schema tests RED) ===
+(fail) the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results [2.31ms]
+ 13 pass
+ 1 fail
+
+=== mutation restore ===
+restored from /root/dshProj/my-power-dsh/evidence/ulw/l2c-schema-fix/20260918T015142Z/index.ts.fixed
+sha256 now 1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37
+
+=== AFTER (restored) sha256 — must equal the BEFORE line ===
+1e10df6ef960b4d0c0927d67f26ecebbb30b3870310396997b747a4e5fd9aa37  packages/mpd-ulw-plugin/src/index.ts

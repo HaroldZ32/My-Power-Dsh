@@ -1,0 +1,3 @@
+[mpd-team-watchdog] this context exposes no event seam — heartbeat writers not installed
+[mpd-team-watchdog] this context exposes no event seam — heartbeat writers not installed
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (12345); clamped — using 4115

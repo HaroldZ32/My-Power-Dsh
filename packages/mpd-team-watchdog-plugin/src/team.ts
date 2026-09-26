@@ -1,0 +1,351 @@
+// READ-ONLY projection of the OFFICIAL Agent Teams readout.
+//
+// 0.1.7 retired the vendored `mpd-agent-teams-plugin` and its `<stateDir>/<teamId>/team.json`
+// record: team state now lives in the LEAD SESSION LOG of the official
+// `@deepseek-ai/dsh-experimental-agent-team` service and is read through the adapter
+// (`dsh.teamLiveTeams()`), which folds the live agent registry into one view per live Team.
+//
+// This module never writes and never reads a team file: it PROJECTS the adapter's
+// {@link DshTeamView} onto the vocabulary the watchdog's fold was written in, so the four-state
+// machine, the heartbeat store and the scene schema keep their meaning. Every projection below
+// is field-for-field and named, because a silent mismatch here is a watchdog that watches the
+// wrong thing.
+//
+// WHAT THE OFFICIAL VIEW DOES NOT CARRY, and what replaces it (stated, never hidden):
+//   * `attemptId` — the official board has NO per-attempt id. It has a monotonic, every-mutation
+//     `revision` (compare-and-set), which plays the SAME role: a re-claim, a re-open or an edit
+//     starts a new generation, so a stale streak/stamp cannot be spent on it. `attemptId` is
+//     therefore the revision rendered as a string.
+//   * `createdAt`/`approvedAt` — no record timestamps exist, so T-16's generation floor is
+//     `null` (PERMISSIVE, the documented §0/A3 convention): the revision in the streak key is
+//     what scopes a stamp to a generation now.
+//   * `activityAt` — likewise absent. It only fed the r4 dead-record fallback, and a team can no
+//     longer APPEAR in the readout without a live agent, so a dead record cannot be read at all.
+//   * `halted`/`haltedAt`/`phase` — the official service exposes no halt; `phase` is DERIVED
+//     here from the roster's live statuses so the diagnostics keep a word for it.
+import type { DshAdapter, DshTeamMemberView, DshTeamTaskView, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
+
+/**
+ * Task statuses the watchdog never considers live.
+ *
+ * The first two are the official `TeamTaskStatus` terminal values. `failed`/`cancelled` are
+ * TOLERATED rather than produced: if a harness release ever adds one, reading it as live would
+ * make the watchdog warn about a task nobody can advance.
+ */
+export const TERMINAL_STATUSES: readonly string[] = ["completed", "deleted", "failed", "cancelled"]
+
+/**
+ * The captain's key inside the projected record.
+ *
+ * The official roster names the Lead pseudo-row `lead`; `ownerName` on a Lead-owned task carries
+ * that same word. The watchdog's whole captain path (stamps, `currentTask`, the scene's
+ * `members[]`) was written against the retired record's `captain` key, so the projection
+ * NORMALISES `lead` to this constant and nothing downstream has to know the difference.
+ */
+export const CAPTAIN_KEY = "captain"
+
+/** The official Lead pseudo-row's model-facing name (the value normalised to {@link CAPTAIN_KEY}). */
+export const OFFICIAL_LEAD_NAME = "lead"
+
+/** One task of the projected record (only the fields the watchdog reads). */
+export interface TeamTask {
+  id: string
+  status: string
+  assignee?: string
+  /** The official board `revision` (the generation counter; see the module header). */
+  attempt?: number
+  /** The generation token: the revision as a string, or `undefined` for a hand-built fixture. */
+  attemptId?: string
+  updatedAt?: number
+  /**
+   * T-20 (§8): the task ids this task depends on (the official `blockedBy`). Carried because the
+   * watchdog derives "this member is blocked and has nothing claimable" from the readout ALONE —
+   * no new member-facing wait tool is added, and no other process has to tell the watchdog.
+   */
+  dependencies?: string[]
+  /**
+   * Whether the board shows this task as HANDED to somebody.
+   *
+   * The official board sets an owner exactly at claim/reassign time, so an owned row IS a
+   * dispatched row — that is the r7 dispatch precondition's new spelling (the retired record
+   * carried a separate `attemptId` written at dispatch, which no longer exists).
+   */
+  dispatched?: boolean
+}
+
+/** One member of the projected record (only the fields the watchdog reads). */
+export interface TeamMember {
+  id: string
+  name: string
+  status?: string
+}
+
+/** The projected team, in the vocabulary the watchdog's fold and scene were written in. */
+export interface TeamRecord {
+  /** The official team identity: the Lead Session id (`TeamId(root.id)`). */
+  id: string
+  name: string
+  phase?: string
+  /** Always absent: the official service has no halt (kept so a consumer reads a real field). */
+  halted?: boolean
+  haltedAt?: number
+  captainSessionId?: string
+  members: TeamMember[]
+  tasks: TeamTask[]
+  /**
+   * Always `null`: the official view carries no timestamps. Kept so the r4/freshness call sites
+   * read one shape; `null` is the PERMISSIVE reading (see the module header).
+   */
+  activityAt: number | null
+  /** Always `null`: no record creation time exists (T-16's floor is permissive by convention). */
+  createdAt: number | null
+  approvedAt: number | null
+  /** The raw projected view, kept for byte-level honesty checks in tests/lanes. */
+  raw: Record<string, unknown>
+}
+
+/** A live agent, as far as identity resolution needs to see it. */
+export interface AgentLike {
+  id?: unknown
+  session?: { id?: unknown; header?: { cwd?: unknown } }
+  [key: string]: unknown
+}
+
+/** What an agent's session says about who it is. */
+export interface AgentIds {
+  agentId: string
+  sessionId: string
+  cwd: string | undefined
+}
+
+/**
+ * Read the identity facts off a live agent (or a harness event payload).
+ *
+ * @param agent - the agent (or a payload wrapping one).
+ * @returns the agent id, the session id and the session's workspace cwd.
+ */
+export function agentIds(agent: unknown): AgentIds {
+  const candidate = (agent ?? {}) as AgentLike
+  const id = typeof candidate.id === "string" ? candidate.id : ""
+  const sessionId = typeof candidate.session?.id === "string" ? candidate.session.id : ""
+  const cwd = typeof candidate.session?.header?.cwd === "string" ? candidate.session.header.cwd : undefined
+  return { agentId: id, sessionId, cwd }
+}
+
+/**
+ * Whether a live-team view is a TEAM the watchdog should watch.
+ *
+ * The adapter's readout is deliberately broad: the official service models every top-level
+ * Session as the Lead of its own implicit Team, so a SOLO session appears there with exactly one
+ * member (its own Lead row) and no tasks. Watching those would (a) report nothing — there is no
+ * task to be silent on — and (b) key every solo session's heartbeats under the shared `captain`
+ * member key instead of its own session key, which is a real regression for the store. A team is
+ * therefore a view with at least one TEAMMATE row, or at least one task on its board.
+ */
+export function isWatchedTeam(view: DshTeamView): boolean {
+  const members = Array.isArray(view.members) ? view.members : []
+  if (members.some((member) => member.role === "teammate")) return true
+  return Array.isArray(view.tasks) && view.tasks.length > 0
+}
+
+/** The generation token the watchdog's streak/stamp vocabulary uses for one task row. */
+function generationToken(task: DshTeamTaskView): string | undefined {
+  return typeof task.revision === "number" && Number.isFinite(task.revision) ? String(task.revision) : undefined
+}
+
+/** The Lead pseudo-row of a roster, or undefined when the view carries none. */
+function leadRow(members: readonly DshTeamMemberView[]): DshTeamMemberView | undefined {
+  return members.find((member) => member.role === "lead")
+}
+
+/**
+ * Project one official Team view onto {@link TeamRecord}.
+ *
+ * The transform is total: a view with a missing/odd field yields the same record with that field
+ * absent, never a throw — this runs inside a tick, and a watchdog that dies on a shape it did not
+ * expect is worse than one that reports nothing about that team.
+ *
+ * @param view - one `dsh.teamLiveTeams()` row.
+ * @returns the projected record.
+ */
+export function projectTeamView(view: DshTeamView): TeamRecord {
+  const rawMembers = (Array.isArray(view.members) ? view.members : []).filter(
+    (member): member is DshTeamMemberView => member !== null && typeof member === "object",
+  )
+  const lead = leadRow(rawMembers)
+  // The Lead pseudo-row is NOT a roster member: it is the captain, and the captain is addressed
+  // through `captainSessionId` (exactly the split the retired record used). Keeping it in
+  // `members` would let a roster scan mistake the Lead for a teammate.
+  const teammates = rawMembers.filter((member) => member.role !== "lead")
+  const rawTasks = (Array.isArray(view.tasks) ? view.tasks : []).filter(
+    (task): task is DshTeamTaskView => task !== null && typeof task === "object",
+  )
+  const tasks: TeamTask[] = rawTasks.map((task) => {
+    const owner = typeof task.ownerName === "string" && task.ownerName !== "" ? task.ownerName : undefined
+    const assignee = owner === OFFICIAL_LEAD_NAME ? CAPTAIN_KEY : owner
+    const token = generationToken(task)
+    return {
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...(assignee === undefined ? {} : { assignee }),
+      ...(typeof task.revision === "number" && Number.isFinite(task.revision) ? { attempt: task.revision } : {}),
+      ...(token === undefined ? {} : { attemptId: token }),
+      ...(owner === undefined ? {} : { dispatched: true }),
+      ...(Array.isArray(task.blockedBy)
+        ? { dependencies: (task.blockedBy as unknown[]).filter((id): id is string => typeof id === "string") }
+        : {}),
+    }
+  })
+  const running = teammates.some((member) => member.status === "running" || member.status === "provisioning")
+  return {
+    id: String(view.teamId ?? ""),
+    name: String(lead?.name ?? view.leadName ?? ""),
+    // A word for the diagnostics: the roster has live work, or it is between dispatches.
+    phase: running ? "active" : "idle",
+    ...(typeof view.leadSessionId === "string" && view.leadSessionId !== "" ? { captainSessionId: view.leadSessionId } : {}),
+    members: teammates.map((member) => ({
+      id: String(member.id ?? ""),
+      name: String(member.name ?? ""),
+      ...(typeof member.status === "string" ? { status: member.status } : {}),
+    })),
+    tasks,
+    activityAt: null,
+    createdAt: null,
+    approvedAt: null,
+    raw: view as unknown as Record<string, unknown>,
+  }
+}
+
+/**
+ * Every Team the adapter's live readout reports, projected and filtered to REAL teams.
+ *
+ * Degrade: `[]` when the adapter cannot answer (no team service, no agent registry, or a stub
+ * without the seam). This is the read the tick and the status tool both use, so an absent service
+ * reads as "no team to report" — never as an exception inside a tick.
+ *
+ * @param dsh - the adapter (the ONE harness contact surface).
+ * @returns the projected records, in adapter order.
+ */
+export function readTeams(dsh: DshAdapter): TeamRecord[] {
+  let views: DshTeamView[]
+  try {
+    views = dsh.teamLiveTeams() ?? []
+  } catch {
+    return []
+  }
+  return views.filter(isWatchedTeam).map(projectTeamView)
+}
+
+/** One Team by id, or undefined when the live readout does not carry it. */
+export function readTeam(dsh: DshAdapter, teamId: string): TeamRecord | undefined {
+  const wanted = String(teamId)
+  return readTeams(dsh).find((team) => team.id === wanted)
+}
+
+/** The watched team ids in this process (sorted). */
+export function listTeamIds(dsh: DshAdapter): string[] {
+  return readTeams(dsh)
+    .map((team) => team.id)
+    .sort()
+}
+
+/** Every non-terminal task of a team, in record order. */
+export function liveTasks(team: TeamRecord): TeamTask[] {
+  return team.tasks.filter((task) => !TERMINAL_STATUSES.includes(task.status))
+}
+
+/**
+ * T-20 (§8): is this member blocked on unfinished dependencies?
+ *
+ * A member whose ONLY open tasks are blocked by dependencies that are not terminal has
+ * nothing claimable: it is WAITING, not silent, and the watchdog must report it `PARKED`
+ * rather than warn about it. Derived from the readout alone.
+ *
+ * Two deliberate readings, both conservative in the SAFE direction for a watchdog:
+ *   * a dependency naming a task that is NOT in the readout counts as unfinished — a task that
+ *     cannot be shown finished has not been shown finished;
+ *   * a member with NO open task is not "blocked" (there is nothing to wait for), which is the
+ *     `candidateFor` precondition's job, not this one.
+ *
+ * @param team - the projected record.
+ * @param assignee - the member name (or `captain`).
+ * @returns whether every open task of that member waits on an unfinished dependency, with the
+ *          blocking ids for diagnostics.
+ */
+export function dependencyBlocked(team: TeamRecord, assignee: string): { blocked: boolean; waiting: string[] } {
+  const owned = liveTasks(team).filter((task) => task.assignee === assignee)
+  if (owned.length === 0) return { blocked: false, waiting: [] }
+  const waiting: string[] = []
+  const blocked = owned.every((task) => {
+    const deps = task.dependencies ?? []
+    const unfinished = deps.filter((id) => {
+      const target = team.tasks.find((candidate) => candidate.id === id)
+      return target === undefined || !TERMINAL_STATUSES.includes(target.status)
+    })
+    waiting.push(...unfinished)
+    return unfinished.length > 0
+  })
+  return { blocked, waiting: [...new Set(waiting)].sort() }
+}
+
+/**
+ * The task one assignee currently owns, or undefined.
+ *
+ * Preference order: `in_progress`, then the official board's owned-and-pending row, then
+ * `pending`. A member with an explicitly owned pooled task keeps it in every status the field
+ * distinguishes, so the attempt the heartbeat is attributed to is the task the member is
+ * actually expected to advance.
+ */
+export function currentTask(team: TeamRecord, assignee: string): TeamTask | undefined {
+  const owned = liveTasks(team).filter((task) => task.assignee === assignee)
+  if (owned.length === 0) return undefined
+  for (const status of ["in_progress", "claimed", "pending"]) {
+    const found = owned.filter((task) => task.status === status)
+    if (found.length > 0) return found[found.length - 1]
+  }
+  return owned[owned.length - 1]
+}
+
+/** Who a live agent is, in the team's vocabulary. */
+export interface Identity {
+  /** The member name (or `captain`), or null when the agent is not in this team. */
+  member: string | null
+  isCaptain: boolean
+  agentId: string
+  sessionId: string
+}
+
+/**
+ * Resolve a live agent against a team record.
+ *
+ * The captain is matched by the team's Lead Session id; members are matched by agent id (which
+ * the official roster carries as the member's Session id — the same identity the agent registry
+ * keys on). An agent that matches neither belongs to no team of this workspace and is stamped
+ * under a per-session key instead of being dropped (the stamp is still evidence that the process
+ * is alive, and the file key keeps writers disjoint).
+ */
+export function resolveIdentity(team: TeamRecord | undefined, agent: unknown): Identity {
+  const ids = agentIds(agent)
+  if (team === undefined) return { member: null, isCaptain: false, ...ids }
+  if (ids.sessionId !== "" && team.captainSessionId === ids.sessionId) {
+    return { member: CAPTAIN_KEY, isCaptain: true, ...ids }
+  }
+  const byAgent = team.members.find((entry) => entry.id !== "" && entry.id === ids.agentId)
+  if (byAgent !== undefined) return { member: byAgent.name, isCaptain: false, ...ids }
+  return { member: null, isCaptain: false, ...ids }
+}
+
+/**
+ * The team in `teams` a live agent belongs to, or undefined.
+ *
+ * When the agent matches a member/captain of exactly one team that team wins.
+ * When it belongs to none (a plain session, or a staged agent with no id yet)
+ * the caller gets `undefined` and stamps under its session key.
+ */
+export function teamOf(teams: readonly TeamRecord[], agent: unknown): TeamRecord | undefined {
+  for (const team of teams) {
+    const identity = resolveIdentity(team, agent)
+    if (identity.member !== null) return team
+  }
+  return undefined
+}

@@ -1,0 +1,168 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=6 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c11
+[mpd-qa:(only)] PASS case=qa-lane-drift log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-lane-drift.log ms=52
+[mpd-qa:(only)] PASS case=qa-runner-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-runner-self-test.log ms=1401
+[mpd-qa:(only)] PASS case=mpd-ext-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-self-test.log ms=1994
+[mpd-qa:(only)] PASS case=mpd-ext-validate-example log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-example.log ms=112
+[mpd-qa:(only)] PASS case=mpd-ext-validate-template log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-template.log ms=121
+[mpd-qa:(only)] FAIL case=pack-closure reason=exit-1 exit=1 log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/pack-closure.log ms=109
+[mpd-qa:(only)] summary selected=6 pass=5 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c11
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 6,
+  "startedAt": "2026-09-17T04:37:31.411Z",
+  "finishedAt": "2026-09-17T04:37:35.217Z",
+  "durationMs": 3806,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "qa-lane-drift",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 52,
+      "command": "node scripts/run-qa-lanes.mjs --check-drift",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-lane-drift.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "qa-runner-self-test",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1401,
+      "command": "node scripts/run-qa-lanes.mjs --self-test",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-runner-self-test.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-self-test",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1994,
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-self-test.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-validate-example",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 112,
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-example.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-validate-template",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 121,
+      "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-template.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "pack-closure",
+      "kind": "gate",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 109,
+      "command": "node scripts/verify-pack-closure.mjs",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/pack-closure.log",
+      "outputTail": [
+        "  ROOT-FILE - the packed tree does not carry EXTENSIONS-FOR-AGENTS.md - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)",
+        "  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs",
+        "  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs",
+        "  packages dir: /root/dshProj/my-power-dsh/packages",
+        "  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml",
+        "  packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (378 asset files)"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 5,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}
+[c11 exit=1] 2026-09-17T04:37:35Z

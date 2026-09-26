@@ -1,0 +1,13 @@
+REVIEWER'S OWN FIXTURES — both revisions, SAME fixture root (--citations-only, DOCS_CLAIMS_REPO)
+arm                                 frz  dur  frozen        | durable       | durable summary
+baseline-symbol-first                 0    0  GREEN         | GREEN         | [docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 1 symbol-fi
+rot-bare                              1    1  FROZEN-no-claim | ROT           | [docs-claims] 6/9 checks passed, 3 failed, 1 citation(s) resolved, 0 symbol-fi
+rot-shadowed                          0    1  GREEN         | ROT           | [docs-claims] 6/9 checks passed, 3 failed, 2 citation(s) resolved, 0 symbol-fi
+line-dependent-accepted               0    0  GREEN         | GREEN         | [docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 0 symbol-fi
+symbol-first-survives-shift           0    0  GREEN         | GREEN         | [docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 1 symbol-fi
+line-dependent-drifted                1    1  CONTENT-MISS  | CONTENT-MISS  | [docs-claims] 8/9 checks passed, 1 failed, 1 citation(s) resolved, 0 symbol-fi
+rot-pending-annotated                 0    0  GREEN         | GREEN         | [docs-claims] 9/9 checks passed, 0 failed, 0 citation(s) resolved, 0 symbol-fi
+symbol-first-wrong-then-right         1    1  GREEN         | GREEN         | [docs-claims] 8/9 checks passed, 1 failed, 2 citation(s) resolved, 0 symbol-fi
+symbol-first-right-then-wrong         0    0  GREEN         | GREEN         | [docs-claims] 9/9 checks passed, 0 failed, 2 citation(s) resolved, 2 symbol-fi
+
+FLIPS (exit differs): ['rot-shadowed']

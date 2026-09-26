@@ -1,0 +1,964 @@
+{
+  "task": "t26",
+  "attemptId": "2cd3bfd1-b6e4-4d33-92d6-41a4f786381e",
+  "note": "attempt 9 is the live attempt (the ledger advanced 6 -> 7 -> 9 while this board was being built; the artefacts under t26-attempt7/ are the same work)",
+  "generatedAt": "2026-09-17T05:12:03+00:00",
+  "multiJob": true,
+  "singleRunComplete": false,
+  "selected": 33,
+  "lanesRun": 34,
+  "selectedEntriesCovered": 33,
+  "additiveEntries": [
+    "team-watchdog-fault"
+  ],
+  "counts": {
+    "pass": 31,
+    "unavailable": 0,
+    "fail": 3
+  },
+  "runs": {
+    "run1": {
+      "pin": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+      "complete": false,
+      "finishedAt": null,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "note": "killed after 2 verdicts; the two verdicts are stitched"
+    },
+    "run2": {
+      "pin": null,
+      "complete": null,
+      "finishedAt": null,
+      "note": "killed inside lane 1 \u2014 the bound's witness, no verdicts stitched"
+    }
+  },
+  "chunks": [
+    {
+      "dir": "c1",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 4,
+      "startedAt": "2026-09-17T04:37:17.930Z",
+      "finishedAt": "2026-09-17T04:38:19.649Z",
+      "complete": true,
+      "counts": {
+        "pass": 4,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "extension-lifecycle",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 42092,
+          "evidencePath": "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z"
+        },
+        {
+          "case": "extension-mcp-bridge",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 8163,
+          "evidencePath": "evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z"
+        },
+        {
+          "case": "extension-template",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 10863,
+          "evidencePath": "evidence/extensions/extension-template/2026-09-17T04-38-08.476Z"
+        },
+        {
+          "case": "mount-assert",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 587,
+          "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T04-38-19.639Z"
+        }
+      ]
+    },
+    {
+      "dir": "c10",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:51.973Z",
+      "finishedAt": "2026-09-17T04:39:50.069Z",
+      "complete": true,
+      "counts": {
+        "pass": 2,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "vision-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 1654,
+          "evidencePath": "evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z"
+        },
+        {
+          "case": "workmate-library",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 56432,
+          "evidencePath": "evidence/plan-f/workmate-library/2026-09-17T04-38-53.905Z"
+        }
+      ]
+    },
+    {
+      "dir": "c11",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 6,
+      "startedAt": "2026-09-17T04:37:31.411Z",
+      "finishedAt": "2026-09-17T04:37:35.217Z",
+      "complete": true,
+      "counts": {
+        "pass": 5,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "qa-lane-drift",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 52,
+          "evidencePath": null
+        },
+        {
+          "case": "qa-runner-self-test",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 1401,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-self-test",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 1994,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-validate-example",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 112,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-validate-template",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 121,
+          "evidencePath": null
+        },
+        {
+          "case": "pack-closure",
+          "verdict": "fail",
+          "reason": "exit-1",
+          "durationMs": 109,
+          "evidencePath": null
+        }
+      ]
+    },
+    {
+      "dir": "c11b-gates-post-pack",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 6,
+      "startedAt": "2026-09-17T04:43:48.812Z",
+      "finishedAt": "2026-09-17T04:43:51.231Z",
+      "complete": true,
+      "counts": {
+        "pass": 6,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "qa-lane-drift",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 54,
+          "evidencePath": null
+        },
+        {
+          "case": "qa-runner-self-test",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 1241,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-self-test",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 932,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-validate-example",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 59,
+          "evidencePath": null
+        },
+        {
+          "case": "mpd-ext-validate-template",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 60,
+          "evidencePath": null
+        },
+        {
+          "case": "pack-closure",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 68,
+          "evidencePath": null
+        }
+      ]
+    },
+    {
+      "dir": "c12-watchdog-additive",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:42:45.786Z",
+      "finishedAt": "2026-09-17T04:42:49.293Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "team-watchdog-fault",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 3502,
+          "evidencePath": "evidence/team-watchdog/lanes/20260917T044245Z-fault/result.json"
+        }
+      ]
+    },
+    {
+      "dir": "c13-agent-teams-adopt",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:49:05.920Z",
+      "finishedAt": "2026-09-17T04:49:54.861Z",
+      "complete": true,
+      "counts": {
+        "pass": 0,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "agent-teams-adopt",
+          "verdict": "fail",
+          "reason": "unauthorized",
+          "durationMs": 48927,
+          "evidencePath": "evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log"
+        }
+      ]
+    },
+    {
+      "dir": "c14b-agent-teams-dispatch",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:56:06.724Z",
+      "finishedAt": "2026-09-17T05:11:37.557Z",
+      "complete": true,
+      "counts": {
+        "pass": 0,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "agent-teams-dispatch",
+          "verdict": "fail",
+          "reason": "exit-1",
+          "durationMs": 930827,
+          "evidencePath": "evidence/dsh-qa/agent-teams-dispatch/2026-09-17T04-56-06.775Z"
+        }
+      ]
+    },
+    {
+      "dir": "c2",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 4,
+      "startedAt": "2026-09-17T04:37:31.348Z",
+      "finishedAt": "2026-09-17T04:40:28.399Z",
+      "complete": true,
+      "counts": {
+        "pass": 4,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "skill-catalog-probe",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 18380,
+          "evidencePath": "evidence/plan-d/skill-catalog/2026-09-17T04-37-31.389Z"
+        },
+        {
+          "case": "tool-output-validation",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 24491,
+          "evidencePath": "evidence/fix/boulder-status-planprogress/2026-09-17T04-38-03.030Z"
+        },
+        {
+          "case": "web-client-adapt",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 29461,
+          "evidencePath": "evidence/plan-f/web-client-adapt/2026-09-17T04-38-14.301Z"
+        },
+        {
+          "case": "web-settings-bridge",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 104705,
+          "evidencePath": "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z"
+        }
+      ]
+    },
+    {
+      "dir": "c3",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:38:13.825Z",
+      "finishedAt": "2026-09-17T04:38:50.401Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "agent-teams-sidebar",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 36570,
+          "evidencePath": "evidence/agent-teams/sidebar-migration/2026-09-17T04-38-13.953Z"
+        }
+      ]
+    },
+    {
+      "dir": "c4",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:13.830Z",
+      "finishedAt": "2026-09-17T04:40:14.688Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "preset-conformance",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 81418,
+          "evidencePath": "evidence/dsh-qa/preset-conformance/2026-09-17T04-38-13.944Z"
+        },
+        {
+          "case": "bundle-lifecycle",
+          "verdict": "fail",
+          "reason": "exit-1",
+          "durationMs": 39415,
+          "evidencePath": "evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-39-35.384Z"
+        }
+      ]
+    },
+    {
+      "dir": "c4b-bundle-lifecycle-serial",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:41:04.591Z",
+      "finishedAt": "2026-09-17T04:41:23.570Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "bundle-lifecycle",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 18976,
+          "evidencePath": "evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-41-04.634Z"
+        }
+      ]
+    },
+    {
+      "dir": "c5",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:14.086Z",
+      "finishedAt": "2026-09-17T04:48:18.138Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "session-start-team",
+          "verdict": "fail",
+          "reason": "exit-1",
+          "durationMs": 472514,
+          "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-17T04-38-14.171Z"
+        },
+        {
+          "case": "workmate-team-member",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 131528,
+          "evidencePath": "evidence/plan-f/workmate-team-member/2026-09-17T04-46-06.677Z"
+        }
+      ]
+    },
+    {
+      "dir": "c5b-workmate-team-member",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:44:21.964Z",
+      "finishedAt": "2026-09-17T04:45:24.830Z",
+      "complete": true,
+      "counts": {
+        "pass": 1,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "workmate-team-member",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 62862,
+          "evidencePath": "evidence/plan-f/workmate-team-member/2026-09-17T04-44-22.004Z"
+        }
+      ]
+    },
+    {
+      "dir": "c5d-session-start-team-rerun",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 1,
+      "startedAt": "2026-09-17T04:56:06.798Z",
+      "finishedAt": "2026-09-17T05:07:05.778Z",
+      "complete": true,
+      "counts": {
+        "pass": 0,
+        "unavailable": 0,
+        "fail": 1
+      },
+      "exitCode": 1,
+      "lanes": [
+        {
+          "case": "session-start-team",
+          "verdict": "fail",
+          "reason": "exit-1",
+          "durationMs": 658976,
+          "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-17T04-56-06.842Z"
+        }
+      ]
+    },
+    {
+      "dir": "c6",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 4,
+      "startedAt": "2026-09-17T04:38:43.320Z",
+      "finishedAt": "2026-09-17T04:40:42.166Z",
+      "complete": true,
+      "counts": {
+        "pass": 4,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "codegraph-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 22454,
+          "evidencePath": "evidence/dsh-qa/codegraph/2026-09-17T04-39-05.759Z"
+        },
+        {
+          "case": "memory-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 20539,
+          "evidencePath": "evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z"
+        },
+        {
+          "case": "team-route-rewire",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 60970,
+          "evidencePath": "evidence/plan-e/e4-team-vendor/2026-09-17T04-39-26.580Z"
+        },
+        {
+          "case": "relocate-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 14865,
+          "evidencePath": "evidence/plan-d/relocate/2026-09-17T04-40-27.341Z"
+        }
+      ]
+    },
+    {
+      "dir": "c7",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:43.757Z",
+      "finishedAt": "2026-09-17T04:40:24.522Z",
+      "complete": true,
+      "counts": {
+        "pass": 2,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "dual-track-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 52444,
+          "evidencePath": "evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T04-39-36.187Z"
+        },
+        {
+          "case": "mcp-call",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 48316,
+          "evidencePath": "evidence/dsh-qa/mcp-call/2026-09-17T04-40-24.491Z"
+        }
+      ]
+    },
+    {
+      "dir": "c8",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:43.765Z",
+      "finishedAt": "2026-09-17T04:39:54.432Z",
+      "complete": true,
+      "counts": {
+        "pass": 2,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "plan-c-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 44974,
+          "evidencePath": "evidence/plan-c/plan-c-smoke/2026-09-17T04-38-43.882Z"
+        },
+        {
+          "case": "preset-register",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 25680,
+          "evidencePath": "evidence/dsh-qa/preset-register/2026-09-17T04-39-54.405Z"
+        }
+      ]
+    },
+    {
+      "dir": "c9",
+      "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+      "selected": 2,
+      "startedAt": "2026-09-17T04:38:51.753Z",
+      "finishedAt": "2026-09-17T04:40:38.321Z",
+      "complete": true,
+      "counts": {
+        "pass": 2,
+        "unavailable": 0,
+        "fail": 0
+      },
+      "exitCode": 0,
+      "lanes": [
+        {
+          "case": "software-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 19746,
+          "evidencePath": "evidence/dsh-qa/software-smoke/2026-09-17T04-38-51.954Z"
+        },
+        {
+          "case": "ultrawork-smoke",
+          "verdict": "pass",
+          "reason": null,
+          "durationMs": 86807,
+          "evidencePath": "evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z"
+        }
+      ]
+    }
+  ],
+  "canonicalSelection": {
+    "definition": "sha256(json.dumps([(case, script, args, suites) for each selected entry], sort_keys=True))",
+    "manifestPins": {
+      "current": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    "selectedCount": 33,
+    "hash": "58128ebd1ed1c7488f5adb99da2d0ad22a54ee504827186bcfb39f3ab89eecc7",
+    "corroboration": "watchdog-engineer's --list diff of the two pins: exactly one ADDED lane (watchdog-redesign, suites: []) \u21d2 same 33 by (case, suites, script); bound: --list omits args and the old revision was overwritten in place"
+  },
+  "historicalVoid": {
+    "run": "20260917T034900Z-t26-attempt3",
+    "pin": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+    "killedShell": true,
+    "verdicts": [
+      {
+        "case": "agent-teams-adopt",
+        "verdict": "pass",
+        "durationMs": 110503
+      },
+      {
+        "case": "agent-teams-dispatch",
+        "verdict": "fail",
+        "durationMs": 934665
+      }
+    ],
+    "why": "settled-tree check at 03:50:36Z/03:53Z predates its own corpus writes 03:55:59Z/03:58:13Z/04:12:36Z"
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-adopt",
+      "verdict": "fail",
+      "reason": "unauthorized",
+      "durationMs": 48927,
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log",
+      "chunk": "c13-agent-teams-adopt",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "agent-teams-dispatch",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "durationMs": 930827,
+      "evidencePath": "evidence/dsh-qa/agent-teams-dispatch/2026-09-17T04-56-06.775Z",
+      "chunk": "c14b-agent-teams-dispatch",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "agent-teams-sidebar",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 36570,
+      "evidencePath": "evidence/agent-teams/sidebar-migration/2026-09-17T04-38-13.953Z",
+      "chunk": "c3",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "bundle-lifecycle",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 18976,
+      "evidencePath": "evidence/dsh-qa/bundle-lifecycle/2026-09-17T04-41-04.634Z",
+      "chunk": "c4b-bundle-lifecycle-serial",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "codegraph-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 22454,
+      "evidencePath": "evidence/dsh-qa/codegraph/2026-09-17T04-39-05.759Z",
+      "chunk": "c6",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "dual-track-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 52444,
+      "evidencePath": "evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T04-39-36.187Z",
+      "chunk": "c7",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "extension-lifecycle",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 42092,
+      "evidencePath": "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z",
+      "chunk": "c1",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "extension-mcp-bridge",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 8163,
+      "evidencePath": "evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z",
+      "chunk": "c1",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "extension-template",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 10863,
+      "evidencePath": "evidence/extensions/extension-template/2026-09-17T04-38-08.476Z",
+      "chunk": "c1",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "mcp-call",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 48316,
+      "evidencePath": "evidence/dsh-qa/mcp-call/2026-09-17T04-40-24.491Z",
+      "chunk": "c7",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "memory-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 20539,
+      "evidencePath": "evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z",
+      "chunk": "c6",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "mount-assert",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 587,
+      "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T04-38-19.639Z",
+      "chunk": "c1",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "mpd-ext-self-test",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 932,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "mpd-ext-validate-example",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 59,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "mpd-ext-validate-template",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 60,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "pack-closure",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 68,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "plan-c-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 44974,
+      "evidencePath": "evidence/plan-c/plan-c-smoke/2026-09-17T04-38-43.882Z",
+      "chunk": "c8",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "preset-conformance",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 81418,
+      "evidencePath": "evidence/dsh-qa/preset-conformance/2026-09-17T04-38-13.944Z",
+      "chunk": "c4",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "preset-register",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 25680,
+      "evidencePath": "evidence/dsh-qa/preset-register/2026-09-17T04-39-54.405Z",
+      "chunk": "c8",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "qa-lane-drift",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 54,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "qa-runner-self-test",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 1241,
+      "evidencePath": null,
+      "chunk": "c11b-gates-post-pack",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "relocate-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 14865,
+      "evidencePath": "evidence/plan-d/relocate/2026-09-17T04-40-27.341Z",
+      "chunk": "c6",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "session-start-team",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "durationMs": 658976,
+      "evidencePath": "evidence/dsh-qa/session-start-team/2026-09-17T04-56-06.842Z",
+      "chunk": "c5d-session-start-team-rerun",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "skill-catalog-probe",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 18380,
+      "evidencePath": "evidence/plan-d/skill-catalog/2026-09-17T04-37-31.389Z",
+      "chunk": "c2",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "software-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 19746,
+      "evidencePath": "evidence/dsh-qa/software-smoke/2026-09-17T04-38-51.954Z",
+      "chunk": "c9",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "team-route-rewire",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 60970,
+      "evidencePath": "evidence/plan-e/e4-team-vendor/2026-09-17T04-39-26.580Z",
+      "chunk": "c6",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "team-watchdog-fault",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 3502,
+      "evidencePath": "evidence/team-watchdog/lanes/20260917T044245Z-fault/result.json",
+      "chunk": "c12-watchdog-additive",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "tool-output-validation",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 24491,
+      "evidencePath": "evidence/fix/boulder-status-planprogress/2026-09-17T04-38-03.030Z",
+      "chunk": "c2",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "ultrawork-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 86807,
+      "evidencePath": "evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z",
+      "chunk": "c9",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "vision-smoke",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 1654,
+      "evidencePath": "evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z",
+      "chunk": "c10",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "web-client-adapt",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 29461,
+      "evidencePath": "evidence/plan-f/web-client-adapt/2026-09-17T04-38-14.301Z",
+      "chunk": "c2",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "web-settings-bridge",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 104705,
+      "evidencePath": "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z",
+      "chunk": "c2",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "workmate-library",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 56432,
+      "evidencePath": "evidence/plan-f/workmate-library/2026-09-17T04-38-53.905Z",
+      "chunk": "c10",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    },
+    {
+      "case": "workmate-team-member",
+      "verdict": "pass",
+      "reason": null,
+      "durationMs": 62862,
+      "evidencePath": "evidence/plan-f/workmate-team-member/2026-09-17T04-44-22.004Z",
+      "chunk": "c5b-workmate-team-member",
+      "runPin": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e"
+    }
+  ]
+}

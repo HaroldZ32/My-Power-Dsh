@@ -1,0 +1,48 @@
+{
+  "ok": false,
+  "harnessRoot": "C:\\Users\\zhao.yinan\\AppData\\Roaming\\npm\\node_modules\\@deepseek-ai\\dsh",
+  "note": "session/create mounts the mpd preset and refuses on any inactive row, so its ok answer is the mount proof; the negative control boots the same sandbox with the retired `text:` persona form and must fail.",
+  "steps": {
+    "conformance": {
+      "ok": true,
+      "checked": 31,
+      "schemaFree": 6,
+      "parity": {
+        "reference": 31,
+        "ours": 31,
+        "missing": [],
+        "extra": []
+      },
+      "problems": []
+    },
+    "auth": {
+      "ok": true,
+      "tokenSeen": true,
+      "cookieSession": true
+    },
+    "sessionCreate": {
+      "ok": true,
+      "status": 200,
+      "sessionId": "session-1d0ea6a0-cdeb-4201-a450-f499f23a289e",
+      "agentPreset": "mpd",
+      "raw": "{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1790069991430\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-1d0ea6a0-cdeb-4201-a450-f499f23a289e\",\"agentPreset\":\"mpd\"}}}"
+    },
+    "sessionHeader": {
+      "ok": true,
+      "agentPreset": "mpd",
+      "log": "C:\\Users\\ZHAO~1.YIN\\AppData\\Local\\Temp\\mpd-preset-main-ecJ57v\\home\\sessions\\--C-Users-ZHAO~007E1.YIN-AppData-Local-Temp-mpd-preset-main-ecJ57v-ws--\\session-1d0ea6a0-cdeb-4201-a450-f499f23a289e\\session.v3.jsonl.zstd"
+    },
+    "bootLog": {
+      "ok": true,
+      "signatures": []
+    },
+    "negativeControl": {
+      "ok": false,
+      "code": null,
+      "message": "the mutated preset mounted — the assertion is not falsifiable",
+      "mutations": [
+        "persona prefix: -> text:"
+      ]
+    }
+  }
+}

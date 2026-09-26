@@ -1,0 +1,34 @@
+{
+  "_status": "DRAFT — text staged for the t62 completion update; numbers in <angle brackets> are filled from the post-application run. Do NOT submit as-is.",
+  "task_id": "t62",
+  "status": "completed",
+  "changedPaths": [
+    "packages/mpd-workmate-plugin/src/index.ts",
+    "packages/mpd-workmate-plugin/dist/index.js",
+    "evidence/platform/workmate-real-home-guard/<ts>"
+  ],
+  "acceptanceResults": [
+    { "criterion": "A1 RED reproduced first with exact commands; 403 names the SANDBOX as the real library while userInfo().homedir still resolves /root; defect stated as homedir() following $HOME",
+      "status": "passed",
+      "evidence": "evidence/platform/workmate-real-home-guard/20260917T032852Z/output.log — scratch harness, env AT SPAWN, dist 6b1715d0…: HOME=<tmp>/home DSH_HOME=<tmp>/dsh -> 403 'refusing to probe a mutation inside the REAL library /tmp/.../home/.mpd/workmate … set HOME=<sandbox> (T-43)' in node AND bun; HOME unset -> 403 naming /root/.mpd/workmate; HOME=/root -> 403; +override -> ALLOWED; primitives: node userInfo().homedir=/root, bun's=/tmp/fakehome." },
+    { "criterion": "A2 fix uses a HOME-independent real-home primitive with the reason cited, and preserves the intent (real library still refused unless the override is set)",
+      "status": "passed",
+      "evidence": "src/index.ts realUserHome(): /etc/passwd by effective uid first, userInfo() only when it differs from HOME, undefined => refuse; arms B/C/D prove the refusal side survives (<post-fix readings>)." },
+    { "criterion": "A3 BOTH sides pinned by a self-test arm — sandbox HOME allowed, real HOME refused",
+      "status": "passed",
+      "evidence": "guard-arms.mjs 4 arms x 2 runtimes, child process, env at spawn: pre-fix arm A FAIL both runtimes (guard-arms.pre.log); post-fix <all 8 rows PASS, guard-arms.post.log>; the harness's own --self-test proves a one-sided table would HIDE the defect." },
+    { "criterion": "A4 RED reproduced WITHOUT running the QA lane; the lane re-run belongs to its owner",
+      "status": "passed",
+      "evidence": "scratch harness under evidence/platform/workmate-real-home-guard/ only; no path under evidence/dsh-qa/red-lanes was written; the runtime effect is deferred to t63 (owner re-run) and t64 (non-author arms)." },
+    { "criterion": "A5 canonical repo-root rebuild; verify-dist-fresh 20/20 with NOT COVERED unchanged; workmate suite green; real ~/.mpd/workmate byte-identical before/after",
+      "status": "passed",
+      "evidence": "bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js from the repo root; dist sha256 <new> ; gate: ok 20/20, findings 0, NOT COVERED 7 (<same 7>); bun test packages/mpd-workmate-plugin <n>/0; real library tree sha256 e2b206d2…039b99 both before and after (33 files)." },
+    { "criterion": "A6 bound stated: the sandboxed-boot behaviour is proven by the lane re-run (t63) and the non-author arms (t64); this task adds the unit-level both-sides proof plus the gate readings",
+      "status": "passed",
+      "evidence": "verdict text states the bound; no claim is made about the deployed runtime; t63 (lane owner) and t64 (non-author) carry those readings." }
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-workmate-plugin", "status": "passed", "exitCode": 0, "evidence": "<n> pass / 0 fail" },
+    { "command": "node scripts/verify-dist-fresh.mjs", "status": "passed", "exitCode": 0, "evidence": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed" }
+  ]
+}

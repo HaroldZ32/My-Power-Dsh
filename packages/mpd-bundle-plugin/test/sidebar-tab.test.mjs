@@ -9,7 +9,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadMpdClient } from "./client-harness.mjs";
+import { loadMpdClient, createHarness } from "./client-harness.mjs";
 
 const ROOT = join(import.meta.dirname, "..", "..", "..");
 process.env.MPD_REPO_ROOT = ROOT;
@@ -17,9 +17,12 @@ process.env.MPD_REPO_ROOT = ROOT;
 const built = readFileSync(join(ROOT, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
 const source = readFileSync(join(ROOT, "packages", "mpd-bundle-plugin", "src", "web-client.js"), "utf8");
 
-const LISTED = { workmates: [{ name: "gui-alice", baseId: "hephaestus", baseName: "Deep Worker", readonly: false, uses: 3, updatedAt: "2026-09-10T01:00:00.000Z", note: "Writes RTL testbenches" }] };
-const ROSTER = { bases: [{ id: "hephaestus", name: "Deep Worker", description: "deep work", readonly: false }] };
-const READ_ONLY = { name: "gui-alice", baseId: "hephaestus", baseName: "Deep Worker", readonly: true, uses: 3 };
+// The workmate wire payloads carry the functional NAME only (C3): the roster's internal id is
+// never sent, so no fixture here may carry `id`/`baseId` — a client that read one would render
+// `undefined`.
+const LISTED = { workmates: [{ name: "gui-alice", baseName: "Deep Worker", readonly: false, uses: 3, updatedAt: "2026-09-10T01:00:00.000Z", note: "Writes RTL testbenches" }] };
+const ROSTER = { bases: [{ name: "Deep Worker", description: "deep work", readonly: false }] };
+const READ_ONLY = { name: "gui-alice", baseName: "Deep Worker", readonly: true, uses: 3 };
 /** Only the list route answers — used when a case must prove NO mutation was sent. */
 const LIST_ONLY = { "/plugins/mpd-workmate/list": LISTED, "/plugins/mpd-workmate/roster": ROSTER };
 
@@ -121,8 +124,10 @@ describe("with DSH-better-sidebar installed", () => {
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
     expect(definitions.some((definition) => definition.name === "conversation.chat.node")).toBe(false);
-    // The slash-command admission surface stays: it is not a GUI panel.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview"]);
+    // Non-sidebar surfaces: the slash-command admission row (never a GUI panel) and the t35
+    // settings UI, which since w14 targets its OWN top-level settings section instead of the
+    // Plugins tab's keyed item slot.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
   });
   test("the adopted client half is never applied (it would re-register the removed surfaces)", () => {
     expect(client.calls.agentTeamsApplied).toBeUndefined();
@@ -145,6 +150,33 @@ describe("with DSH-better-sidebar installed", () => {
   });
 });
 
+describe("a sidebar provider REMOUNT keeps both tabs", () => {
+  // The user-visible intermittency: the right sidebar itself disappears and comes back, and the
+  // "+" menu's AgentTeams/Workmates rows go with it. `ctx.inject` re-fires the pages' callback
+  // when the provider rebinds, so the registration must be IDEMPOTENT for the same service (the
+  // real `registerTab` THROWS on a duplicate id) and COMPLETE for a fresh one (an EMPTY registry
+  // must get both tabs back) — otherwise a remount permanently loses the pages until a reload.
+  test("a re-fire against the SAME service never double-registers", () => {
+    const client = loadMpdClient({ sidebarAtApply: true });
+    client.exports.apply(client.ctx);
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    client.refireInjections();
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
+    expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
+    restore(client);
+  });
+  test("a FRESH service (the remount) receives both tabs again", () => {
+    const client = loadMpdClient({ sidebarAtApply: true });
+    client.exports.apply(client.ctx);
+    const fresh = client.createSidebarService();
+    client.provideService("betterSidebar", fresh);
+    expect(fresh.getTab("mpd-agent-teams")).toBeDefined();
+    expect(fresh.getTab("mpd-workmate")).toBeDefined();
+    restore(client);
+  });
+});
+
 describe("workmate page", () => {
   test("renders the library from the host routes", async () => {
     const client = loadMpdClient({ responses: { "/plugins/mpd-workmate/list": LISTED, "/plugins/mpd-workmate/roster": ROSTER } });
@@ -162,6 +194,55 @@ describe("workmate page", () => {
     expect(flat).toContain("gui-alice");
     expect(flat).toContain("Deep Worker");
     restore(client);
+  });
+});
+
+describe("workmate page base picker (C3: the functional NAME is the only base key)", () => {
+  /**
+   * Drive the AUTHORITATIVE source (src/web-client.js) instead of the derived
+   * packages/mpd-bundle-plugin/client.js. client.js is a build artifact rebuilt by the
+   * settings-card lane and by integration, so the lane that changes the source must be able
+   * to prove the new option value/label before the artifact is regenerated — reading the
+   * built file here would only ever assert the PREVIOUS build.
+   */
+  function loadFromSource(options = {}) {
+    const harness = createHarness(options);
+    const factory = new Function("return (" + source + ")")();
+    const exports = factory(harness.require);
+    const saved = globalThis.fetch;
+    globalThis.fetch = harness.fetchImpl;
+    harness.restore = () => { globalThis.fetch = saved; };
+    return { exports, ...harness };
+  }
+
+  test("the base <option> value and label are the functional NAME, with no id suffix", async () => {
+    const client = loadFromSource({ responses: { "/plugins/mpd-workmate/list": LISTED, "/plugins/mpd-workmate/roster": ROSTER } });
+    try {
+      client.exports.apply(client.ctx);
+      const tree = await client.hooks.render(client.exports.WorkmateLibraryView, { t: (key) => key });
+      const option = findFirst(tree, (candidate) => candidate.type === "option");
+      expect(option).not.toBeNull();
+      expect(option.props.value).toBe("Deep Worker");
+      expect(flatText(option.props.children)).toBe("Deep Worker");
+      // no surface of the page can render an id: the payloads never carry one, and neither does
+      // the detail panel (baseName only) or the fallback copy.
+      expect(JSON.stringify(tree)).not.toContain("hephaestus");
+      expect(source).not.toContain("d.baseId");
+      expect(source).not.toContain('b.name + " (" + b.id + ")"');
+    } finally { restore(client); }
+  });
+
+  test('the "type the base id" fallback copy is gone from BOTH dictionaries', () => {
+    const client = loadFromSource();
+    try {
+      const { zh, en } = client.exports.dictionaries;
+      expect(en["panel.rosterUnavailable"]).toBe("roster unavailable — type the base name");
+      expect(zh["panel.rosterUnavailable"]).toBe("roster 不可用，请手填 base 名称");
+      for (const dict of [zh, en]) for (const value of Object.values(dict)) expect(String(value)).not.toContain("base id");
+      // ...and the placeholder teaches a functional name, never an id
+      expect(en["panel.basePlaceholder"]).not.toMatch(/hephaestus/);
+      expect(zh["panel.basePlaceholder"]).not.toMatch(/hephaestus/);
+    } finally { restore(client); }
   });
 });
 
@@ -571,9 +652,12 @@ describe("without DSH-better-sidebar", () => {
       console.warn = original;
     }
     expect(client.calls.registerTab.length).toBe(0);
-    // No overlay, no footer toggle: the ONLY registration left is the non-GUI slash-command
-    // admission row that hides the duplicated command result.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview"]);
+    // No overlay, no footer toggle: the registrations left are the non-GUI slash-command
+    // admission row and the t35 settings UI (which since w14 targets its OWN top-level settings
+    // section, not the sidebar) — a profile without the sidebar still gets both. The section's own
+    // ACTUAL registration additionally needs the `settingsScope` service, which this harness does
+    // not mount; its own test file provides it and asserts that registration.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.map((definition) => definition.name)).toEqual(["conversation.chat.commandview"]);
     // Nothing is registered, and nothing is warned about either: the injection simply never

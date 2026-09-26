@@ -1,0 +1,72 @@
+# t12 review — raw command output (Reviewer), tree settled at 2026-09-18T04:23:52Z
+# All commands below were run by the review lane on the settled tree; hashes re-checked identical.
+
+## node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 123 mpd delta region(s) across 10 adopted file(s)
+EXIT=0
+
+## bun run verify:docs
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **123**/10 vs derived 123/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE ... all ten files agree
+EXIT=0
+
+## grep -rn baseId packages/mpd-workmate-plugin/src packages/mpd-bundle-plugin/src
+packages/mpd-workmate-plugin/src/index.ts:180:  name: string; baseId: string; baseName: string; description: string
+packages/mpd-workmate-plugin/src/index.ts:190:    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), ... }
+packages/mpd-workmate-plugin/src/index.ts:194:/** Public projection of an instance's metadata (C3): the roster `baseId` is INTERNAL provenance.
+packages/mpd-workmate-plugin/src/index.ts:199:  delete out.baseId
+packages/mpd-workmate-plugin/src/index.ts:210:type IndexEntry = { name: string; baseId: string; baseName: string; uses: number; updatedAt: string }
+packages/mpd-workmate-plugin/src/index.ts:223:  return { name: key, baseId: meta.baseId, baseName: meta.baseName, ... }
+packages/mpd-workmate-plugin/src/index.ts:609:      let n = existing.filter((i) => i.meta.baseId === base.id).length + 1
+packages/mpd-workmate-plugin/src/index.ts:616:    const meta: Meta = { name, baseId: base.id, baseName: base.name, ... }
+=> 8 hits, ALL internal plumbing (type / reader / public projection + comment / index type + maker / auto-name counter / meta.json write); ZERO hits in packages/mpd-bundle-plugin/src
+
+## bun evidence/model-slots/review/20260918T041911Z/driver/t12-slot-attack.mjs
+PASS B3-tier-mapping … PASS B3-vision-explicit-route … PASS A2-fresh-defaults-materialised … PASS A2-read-path-does-not-mutate-input …
+PASS A2-partial-slot-merge … PASS B4-staged-routes-from-slots (11 members: slot1 max / slot2 high / slot3 high / Vision Analyst vision@high) …
+PASS F4-unknown-model-names-member-and-slot … PASS F4-no-team-state … PASS F5-effort-reaches-adapter-verbatim ({"provider":"deepseek-official","model":"deepseek-v4-flash","reasoningEffort":"ultra"}) …
+PASS F5-unsupported-effort-names-member-and-slot … PASS F5-no-team-state … PASS F1-service-absent-names-member-and-slot … PASS F1-no-team-state …
+PASS F2-empty-slot-answered-undefined … PASS F3-blank-leaf-is-incomplete-not-defaulted … PASS F2/F3-no-team-state … PASS F7-no-slot-source-keeps-captain-route … PASS B2-both-tier-and-route-refused
+18/18 checks passed
+
+## bun evidence/model-slots/review/20260918T041911Z/driver/t12-parity-attack.mjs
+PASS A1-schema-carries-three-slots … PASS A3-exactly-nine-slot-knobs-in-order … PASS A3-every-slot-knob-is-select-with-nonempty-declared-options …
+PASS A3-hints-carry-dotted-key+disclosure+not-lost … PASS A3-declared-lists-are-the-frozen-fallback-lists … PASS A6-card-mirror-element-wise-equal (22/22)
+PASS A6-web-client-does-not-reference-the-declaration … PASS A6-card-disclosure-literals-identical … PASS A5-built-client-carries-nine-select-slot-rows …
+PASS A4-built-tui-carries-slot-machinery … PASS A4-tui-declared-slot-fields-are-select … PASS A4-tui-hints-carry-key-and-disclosure
+12/12 checks passed
+
+## bun evidence/model-slots/review/20260918T041911Z/driver/t12-workmate-attack.mjs
+PASS C1-seven-workmate-tools … PASS C2-auto-name-from-functional-name (deep-worker-1) … PASS C3-init-result-carries-no-baseId …
+PASS C2-second-instance-increments (deep-worker-2) … PASS C1-case/space/hyphen spellings resolve to the same base …
+PASS C1-every-roster-id-is-REFUSED (oracle, librarian, prometheus, hephaestus, sisyphus, atlas, explore, metis, momus, multimodal-looker, sisyphus-junior) …
+PASS C1-refusal-message-lists-NAMES-only-no-id ("unknown base — use a functional NAME from mpd_roles_list (Architect, …)") …
+PASS C3-no-tool-surface-exposes-baseId-or-an-id … PASS C3-grep-contract-command-returns-internal-plumbing-only … PASS C4-meta.json-keeps-baseId …
+PASS C3-service-list/get/read-strip-baseId … PASS C3-list-route-has-no-baseId … PASS C3-roster-route-has-no-id … PASS C3-get-route-has-no-baseId …
+PASS C5-reflect-and-match-still-work-and-stay-clean
+15/15 checks passed
+
+## bun test packages/mpd-agent-teams-plugin
+320 pass / 0 fail / 3005 expect() calls — Ran 320 tests across 3969 files. [23.21s]
+
+## node scripts/verify-dist-fresh.mjs   (D2 = t13's declared scope; recorded as reported)
+[verify-dist-fresh] FAIL - 14 of 20 targets not fresh (STALE: 14)
+STALE (exactly t13's declared list): bootstrap, boulder, codegraph, comment-checker, ext, hashline, memory, modelchain, qa-roles-probe, roles, team-compact, team-watchdog, tools, ulw
+FRESH (the four lane-owned artifacts): mpd-config-plugin, mpd-dsh-adapter-plugin, mpd-tui-plugin, mpd-workmate-plugin
+CAUSE MEASURED: committed packages/mpd-roles-plugin/dist/index.js has 0 occurrences of `llmCatalog`; a fresh canonical build has 7; committed 41468 B vs fresh 45111 B (+3643 B — the inlined mpd-dsh-adapter seam from t2).
+
+## registry-provenance probe (in a COPY of the tree)
+$ node /tmp/.../scripts/patch-agent-teams-fixes.mjs --write-registry
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (123 regions)
+$ diff -q <repo>/packages/mpd-agent-teams-plugin/lib/mpd-deltas.js <copy>/.../mpd-deltas.js
+=> IDENTICAL: the committed registry is byte-for-byte the product of regeneration from the marked regions
+
+## re-materialize probe (in a COPY: HEAD revisions of the 10 adopted files, then --write)
+REFUSED: [patch-agent-teams-fixes] FAIL: delta "mpd-delta team-model-slot-routes" is MISSING from
+packages/mpd-agent-teams-plugin/lib/tools.js and the lines before its afterContext window do not match
+the registered beforeContext — the adopted file drifted; restore the marked file, or re-establish the
+region's site and re-run --write-registry — the applier never guesses an insertion site
+aggregate sha256 of the 10 files before = after (byte-untouched); no duplicate staging loop was produced
+
+## settle check
+Input hashes pinned at 04:15Z and re-measured at 04:23:52Z: identical (and identical to t9's/t10's pins).

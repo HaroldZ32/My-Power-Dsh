@@ -32,14 +32,32 @@
 //                     two-sided control (a decoy extension in the LAUNCHER cwd is
 //                     visible to no session; the same decoy IS listed when a
 //                     session's own cwd is that directory).
-//   packed          — runs `node scripts/pack-mpd.mjs` and records the state of
-//                     the packed tree. This wave's expectation is a RED: the
-//                     packed tree does not yet carry `packages/mpd-ext-plugin` or
-//                     `extensions/`, so the packed boot cannot resolve the row.
-//                     THE FIX IS t11's (`PLUGIN_PKGS` + the `extensions/` asset +
-//                     the packed manifest `files`/`exports`) and t11 must produce
-//                     the GREEN packed boot; this case only RECORDS which of the
-//                     two states the tree is in, with the observable evidence.
+//   packed          — packs into a SCRATCH out-dir and asserts the packed tree is
+//                     CLOSED: `PLUGIN_PKGS` carries `mpd-ext-plugin`
+//                     (scripts/pack-mpd.mjs:42), `cpAssets()` copies
+//                     `<bundle>/extensions/` (scripts/pack-mpd.mjs:93-98) and the
+//                     packed patch carries the `mpd-ext` row. The arm's `ok` is
+//                     the pure predicate `packedStateOk()` — FALSE when the row,
+//                     the plugin or the discovery root is missing, so a green
+//                     exit can never accompany a red packed state. Because the
+//                     archived RED this lane once recorded was a property of that
+//                     older tree (not of this case), the predicate is proven
+//                     falsifiable on every run by a NEGATIVE CONTROL over fixture
+//                     packed trees (closed vs. each asset removed), recorded in
+//                     result.json and re-run in --self-test.
+//                     T-85: the arm NEVER writes the canonical `dist/mpd-package`.
+//                     The rule it implements is "the artifact has exactly ONE
+//                     writer at a time". Route, in order of preference:
+//                     (1) the packer's own sanctioned `--out <dir>` flag
+//                     (`scripts/pack-mpd.mjs`, whose own docstring says that flag
+//                     exists FOR this lane change); (2) the t70 scratch-COPY
+//                     fallback, used only when the packer source carries no `--out`
+//                     (copy + exactly two rewritten path constants + a REFUSAL on
+//                     a drifted packer). The route actually taken is recorded in
+//                     result.json, and the canonical artifact's content STAMP is
+//                     read before and after the arm and must be identical, so a
+//                     lane run that moved the delivered artifact could not report
+//                     green.
 //
 // PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
 // PREREQ: absent-runtime packages/mpd-ext-plugin/dist/index.js "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js"
@@ -49,6 +67,7 @@
 // protocol, and the composed-row/CLI wiring. Evidence ->
 // evidence/extensions/extension-lifecycle/<ts>/{result.json,output.log}.
 import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -126,7 +145,11 @@ async function selfTest() {
   check(existsSync(registry), "the runtime validator source is missing")
   if (existsSync(registry)) {
     const result = spawnSync("bun", ["-e", [
-      'import { validateDescriptor } from "' + registry + '"',
+      // pathToFileURL, not the raw path: a bare absolute Windows path inside the `-e` SOURCE is
+      // mangled by JS string escapes before bun ever sees it (measured: `C:\MyDoc\...` became
+      // `C:MyDocDshProj...`, so the probe imported nothing and all four arms read as failures). A
+      // file:// URL carries no backslashes and is the same specifier on every platform.
+      'import { validateDescriptor } from "' + pathToFileURL(registry).href + '"',
       'const bad = validateDescriptor({ apiVersion: 1, id: "x", contributes: { skills: [{ root: "skills", rank: Number.NaN }], flows: [{ dir: "../escape" }] } })',
       'const version = validateDescriptor({ apiVersion: 9, id: "x" })',
       'const noId = validateDescriptor({ apiVersion: 1 })',
@@ -186,11 +209,44 @@ async function selfTest() {
     rmSync(mutateDir, { recursive: true, force: true })
   }
 
+  // 6) F9 FALSIFIABILITY (offline, temp dirs only): the packed-tree predicate the
+  //    real arm gates on must be FALSE for every broken fixture tree — otherwise
+  //    "the packed tree is closed" would be a claim no tree could contradict.
+  const negative = packedNegativeDriver()
+  check(negative.falsifiable, "the packed predicate is not falsifiable: " + JSON.stringify(negative.trees))
+  check(negative.packerExitGated, "a non-zero packer exit must fail the packed predicate")
+  check(negative.trees.closed.ok === true && Object.keys(negative.trees).length === 4, "the negative driver must build one closed tree and three broken ones")
+
+  // 7) T-85 FALSIFIABILITY (offline): the ROUTE CHOICE must react to the packer's own source, and the
+  //    copy fallback must rewrite exactly two anchors and REFUSE a drifted packer. Driven over synthetic
+  //    sources ON PURPOSE: asserting against the LIVE packer's shape reddened this lane the moment the
+  //    packer legitimately changed (measured 2026-09-17, when `--out` landed and this arm threw).
+  const scratchFixture = join(tmpdir(), "mpd-scratch-pack-fixture")
+  const withOutFlag = ['const flag = argv.indexOf("--out")', "const outDir = OUT.dir", ""].join("\n")
+  const legacyTwoAnchors = [
+    "const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))",
+    'const outDir = join(repoRoot, "dist", "mpd-package")',
+    "",
+  ].join("\n")
+  check(choosePackRoute(withOutFlag) === "flag", "a packer exposing --out must route through the sanctioned flag")
+  check(choosePackRoute(legacyTwoAnchors) === "copy", "a packer WITHOUT --out must fall back to the scratch COPY route")
+  const patchedLegacy = patchPackerSource(legacyTwoAnchors, { repo: REPO, out: scratchFixture })
+  check(patchedLegacy.refused === false && patchedLegacy.patched.length === 2, "the copy route must rewrite exactly two anchors: " + JSON.stringify(patchedLegacy))
+  check(patchedLegacy.text.includes(JSON.stringify(scratchFixture)), "the patched copy must point at the scratch out-dir")
+  check(!patchedLegacy.text.includes('join(repoRoot, "dist", "mpd-package")'), "the patched copy must no longer point at the canonical dist/mpd-package")
+  const driftedPackerSource = legacyTwoAnchors.replace(/^const outDir = .*$/m, "const outDir = join(repoRoot, 'somewhere', 'else')")
+  const patchedDrifted = patchPackerSource(driftedPackerSource, { repo: REPO, out: scratchFixture })
+  check(patchedDrifted.refused === true && /outDir/.test(patchedDrifted.reason), "a drifted packer must be REFUSED, never patched: " + JSON.stringify(patchedDrifted))
+  const anchorlessPacker = patchPackerSource("// a packer that carries neither anchor\n", { repo: REPO, out: scratchFixture })
+  check(anchorlessPacker.refused === true, "a packer source with no anchors must be refused")
+  // The LIVE packer is READ and RECORDED, never asserted: a packer change must not redden this lane.
+  console.log("[self-test] live packer route = " + choosePackRoute(readFileSync(PACKER, "utf8")) + " (recorded, not asserted)")
+
   if (problems.length > 0) {
     for (const problem of problems) console.error("[" + SLUG + " self-test] FAIL: " + problem)
     process.exit(1)
   }
-  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + fixtures verified")
+  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified")
 }
 
 // ── arms ────────────────────────────────────────────────────────────────────
@@ -359,33 +415,237 @@ async function failureArm({ box, outDir, logs }) {
   }
 }
 
-async function packedArm({ outDir, logs }) {
-  const packRun = await runAsync(process.execPath, [join(REPO, "scripts", "pack-mpd.mjs")], { cwd: REPO, timeoutMs: 900000 })
-  const packed = join(REPO, "dist", "mpd-package")
-  const packedPlugin = join(packed, "packages", "mpd-ext-plugin")
-  const packedExtensions = join(packed, "extensions")
-  const packedPatch = join(packed, "cordis.patch.yml")
-  const patchText = existsSync(packedPatch) ? readFileSync(packedPatch, "utf8") : ""
-  const hasRow = /- id: mpd-ext\b/.test(patchText)
-  const hasPlugin = existsSync(packedPlugin)
-  const hasExtensions = existsSync(packedExtensions)
-  // Import-time artifact of the reference extension: the packed tree must carry it
-  // BEFORE the row can contribute anything, which is exactly what t11 fixes.
-  const red = hasRow && (!hasPlugin || !hasExtensions)
-  logs.push("=== packed arm (pack exit " + packRun.status + ") ===\n" + packRun.out.slice(-3000))
+const PACKER = join(REPO, "scripts", "pack-mpd.mjs")
+const CANONICAL_PACKED = join(REPO, "dist", "mpd-package")
+
+/** sha256 of a text/blob, the same digest shape the QA lanes use elsewhere. */
+function digest(text) {
+  return createHash("sha256").update(text).digest("hex")
+}
+
+/** sha256 of a file's bytes, or null when the file is absent. */
+function fileSha(path) {
+  return existsSync(path) ? digest(readFileSync(path)) : null
+}
+
+/**
+ * T-85: a cheap, deterministic STAMP of the canonical packed artifact — the file count plus the two
+ * files that define the packed tree. A reader can recompute it without trusting this lane, which is
+ * what makes "the lane did not move the delivered artifact" checkable instead of asserted.
+ */
+export function canonicalArtifactStamp(root = CANONICAL_PACKED) {
+  if (!existsSync(root)) return { present: false, root, files: 0, manifestSha256: null, patchSha256: null }
+  let files = 0
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(join(dir, entry.name))
+      else files += 1
+    }
+  }
+  walk(root)
   return {
-    ok: packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red),
-    packExit: packRun.status,
+    present: true,
+    root,
+    files,
+    manifestSha256: fileSha(join(root, "package.json")),
+    patchSha256: fileSha(join(root, "cordis.patch.yml")),
+  }
+}
+
+/**
+ * T-85 / t70 `scratch-pack.mjs` pattern: rewrite EXACTLY the two path constants of the real packer
+ * (`repoRoot`, `outDir`) and REFUSE when either anchor does not match exactly once — a drifted packer
+ * fails loudly instead of silently packing from something else. Pure (no IO), so --self-test drives it
+ * over the real source and a deliberately drifted one.
+ */
+export function patchPackerSource(source, { repo, out }) {
+  const anchors = [
+    { name: "repoRoot", re: /^const repoRoot = dirname\(dirname\(fileURLToPath\(import\.meta\.url\)\)\)$/, replacement: "const repoRoot = " + JSON.stringify(repo) },
+    { name: "outDir", re: /^const outDir = join\(repoRoot, "dist", "mpd-package"\)$/, replacement: "const outDir = " + JSON.stringify(out) },
+  ]
+  const lines = source.split("\n")
+  const patched = []
+  for (const anchor of anchors) {
+    const hits = lines.map((line, index) => (anchor.re.test(line) ? index : -1)).filter((index) => index >= 0)
+    if (hits.length !== 1) {
+      return {
+        refused: true,
+        reason: "anchor `" + anchor.name + "` matched " + hits.length + " line(s), expected exactly 1 — refusing to patch a packer that has drifted",
+        anchors: anchors.map((entry) => entry.name),
+      }
+    }
+    patched.push(hits[0])
+    lines[hits[0]] = anchor.replacement
+  }
+  return { refused: false, patched, anchors: anchors.map((entry) => entry.name), text: lines.join("\n") }
+}
+
+/**
+ * T-85 route choice — PREFERENCE ORDER, decided from the packer's OWN source so the lane cannot
+ * silently keep staging into a canonical dir: the sanctioned `--out <dir>` flag when the packer
+ * exposes it, else the t70 scratch-COPY fallback. Pure, so --self-test drives it both ways.
+ */
+export function choosePackRoute(source) {
+  return /indexOf\("--out"\)/.test(source) ? "flag" : "copy"
+}
+
+/**
+ * Run the REAL packer against a SCRATCH out-dir. The canonical `dist/mpd-package` is never a target:
+ * route (1) is the packer's own `--out <dir>`; route (2) is the t70 copy, used only when the flag is
+ * absent. The route taken is recorded in the arm's result.
+ */
+async function scratchPack({ outDir, logs }) {
+  const source = readFileSync(PACKER, "utf8")
+  const scratchRoot = join(outDir, "scratch-pack")
+  const scratchOut = join(scratchRoot, "mpd-package")
+  mkdirSync(scratchRoot, { recursive: true })
+  const route = choosePackRoute(source)
+  if (route === "flag") {
+    const run = await runAsync(process.execPath, [PACKER, "--out", scratchOut], { cwd: REPO, timeoutMs: 900000 })
+    logs.push("=== scratch pack via the sanctioned --out flag (exit " + run.status + ", out-dir " + scratchOut + ") ===\n" + run.out.slice(-3000))
+    return { refused: false, route, run, packedRoot: scratchOut, scratchRoot, packerSha256: digest(source).slice(0, 16), packerSupportsOut: true }
+  }
+  const patched = patchPackerSource(source, { repo: REPO, out: scratchOut })
+  if (patched.refused) {
+    logs.push("=== scratch pack REFUSED (copy route) ===\n" + patched.reason)
+    return { refused: true, route, reason: patched.reason, scratchRoot, packerSha256: digest(source).slice(0, 16), packerSupportsOut: false }
+  }
+  const scratchPacker = join(scratchRoot, "pack-mpd.scratch.mjs")
+  writeFileSync(scratchPacker, patched.text)
+  const run = await runAsync(process.execPath, [scratchPacker], { cwd: REPO, timeoutMs: 900000 })
+  logs.push("=== scratch pack via the copy fallback (exit " + run.status + ", out-dir " + scratchOut + ") ===\n" + run.out.slice(-3000))
+  logs.push("=== scratch packer provenance ===\nrepoRoot+outDir rewritten only; other lines byte-identical ("
+    + (patched.text.split("\n").length - 2) + " of " + patched.text.split("\n").length + " lines unchanged); packer sha "
+    + digest(source).slice(0, 16) + " -> patched sha " + digest(patched.text).slice(0, 16))
+  return {
+    refused: false,
+    run,
+    packedRoot: scratchOut,
+    scratchRoot,
+    scratchPacker,
+    packerSha256: digest(source).slice(0, 16),
+    patchedSha256: digest(patched.text).slice(0, 16),
+  }
+}
+
+async function packedArm({ outDir, logs }) {
+  const canonicalBefore = canonicalArtifactStamp()
+  const scratch = await scratchPack({ outDir, logs })
+  const packed = scratch.refused ? null : scratch.packedRoot
+  const facts = packed === null ? { hasRow: false, hasPlugin: false, hasExtensions: false } : packedStateOf(packed)
+  const negative = packedNegativeDriver()
+  const canonicalAfter = canonicalArtifactStamp()
+  const canonicalUnmoved = JSON.stringify(canonicalBefore) === JSON.stringify(canonicalAfter)
+  logs.push("=== packed negative control (fixture trees) ===\n" + JSON.stringify(negative.trees, null, 2))
+  logs.push("=== canonical artifact stamp (before/after) ===\n" + JSON.stringify({ canonicalBefore, canonicalAfter, canonicalUnmoved }, null, 2))
+  const packExit = scratch.refused ? null : scratch.run.status
+  return {
+    ok: scratch.refused === false
+      && packedStateOk({ packExit, hasRow: facts.hasRow, hasPlugin: facts.hasPlugin, hasExtensions: facts.hasExtensions })
+      && negative.falsifiable
+      && canonicalUnmoved,
+    route: (scratch.route === "flag"
+      ? "sanctioned `--out <dir>` flag on scripts/pack-mpd.mjs (the packer's own documented route for this lane change): no copy, no rewritten constant"
+      : "t70 scratch-COPY fallback (the packer source carries no `--out`): copy + rewrite repoRoot+outDir only + refuse a drifted packer"),
+    packerSupportsOut: scratch.packerSupportsOut,
+    packExit,
     packedRoot: packed,
-    rows: { mpdExtRowInPackedPatch: hasRow },
-    assets: { pluginDist: hasPlugin, extensionsAsset: hasExtensions },
-    // The RED is a PROPERTY OF THE TREE, not of this case: t11 owns the fix and
-    // the GREEN packed boot (PLUGIN_PKGS + the extensions/ asset + the packed
-    // manifest files/exports). This case records which state the tree is in.
-    status: hasPlugin && hasExtensions ? "GREEN (t11's pack fix has landed: the packed tree carries the plugin and extensions/)" : "RED (expected for this wave: the packed tree cannot resolve the mpd-ext row / discover <bundle>/extensions; the GREEN is t11's)",
-    greenOwner: "t11",
-    note: "no packed-tree file was modified by this case; the expectation is recorded, never patched",
-    packTail: packRun.out.trim().split("\n").slice(-3).join(" | ").slice(0, 300),
+    scratch: {
+      root: scratch.scratchRoot,
+      packer: scratch.scratchPacker ?? null,
+      packerSha256: scratch.packerSha256,
+      patchedSha256: scratch.patchedSha256 ?? null,
+      refused: scratch.refused,
+      reason: scratch.reason ?? null,
+    },
+    canonical: {
+      before: canonicalBefore,
+      after: canonicalAfter,
+      unmoved: canonicalUnmoved,
+      rule: "the artifact has exactly ONE writer at a time (T-85): this lane is not a writer for dist/mpd-package, and a movement across the arm would be visible here",
+    },
+    rows: { mpdExtRowInPackedPatch: facts.hasRow },
+    assets: { pluginDist: facts.hasPlugin, extensionsAsset: facts.hasExtensions },
+    // The predicate above is the gate: FALSIFIABLE by construction, because the
+    // same function is driven over fixture trees that each miss one fact.
+    negativeControl: negative,
+    status: facts.hasRow && facts.hasPlugin && facts.hasExtensions
+      ? "GREEN (the SCRATCH packed tree carries the mpd-ext row, the plugin and the extensions/ discovery root)"
+      : "RED (the scratch packed tree is missing the mpd-ext row, the plugin and/or the extensions/ discovery root — scripts/pack-mpd.mjs must never exit 0 for such a tree, and this case now exits 1 with it)",
+    note: "the packed arms read and write a SCRATCH tree under this run's evidence dir; the canonical dist/mpd-package is only stamped (read), never written, by this case",
+    packTail: scratch.refused ? scratch.reason : scratch.run.out.trim().split("\n").slice(-3).join(" | ").slice(0, 300),
+  }
+}
+
+// ── packed-tree contract + its negative driver ──────────────────────────────
+
+/**
+ * The packed-tree contract as a PURE predicate (F9): a packed tree is closed only
+ * when the packer exited 0 AND the packed patch carries the `mpd-ext` row AND the
+ * plugin package AND the `<bundle>/extensions/` discovery root are both present.
+ *
+ * It is a function of facts, never of this case's expectation: the archived `ok`
+ * used to be `... && (hasPlugin && hasExtensions ? true : red)`, which was TRUE in
+ * BOTH states, so exit 0 could accompany a red packed tree. Exported so the
+ * negative driver below (and the offline `--self-test`) can falsify it directly.
+ */
+export function packedStateOk({ packExit, hasRow, hasPlugin, hasExtensions }) {
+  return packExit === 0 && hasRow === true && hasPlugin === true && hasExtensions === true
+}
+
+/** The three facts the predicate reads, derived from ONE tree on disk. */
+export function packedStateOf(root) {
+  const patchPath = join(root, "cordis.patch.yml")
+  const hasRow = existsSync(patchPath) && /- id: mpd-ext\b/.test(readFileSync(patchPath, "utf8"))
+  return {
+    hasRow,
+    hasPlugin: existsSync(join(root, "packages", "mpd-ext-plugin")),
+    hasExtensions: existsSync(join(root, "extensions")),
+  }
+}
+
+/**
+ * NEGATIVE DRIVER: build fixture packed trees in a temp dir — one CLOSED tree and
+ * one per missing fact (no plugin package, no `extensions/` root, no `mpd-ext`
+ * row) — and drive the SAME predicate the real arm uses over each. `falsifiable`
+ * is true only when the closed tree passes and EVERY broken tree fails, so the
+ * real arm's green cannot be a predicate that is true regardless of the tree.
+ * Called from the real packed arm AND from `--self-test` (offline, temp dirs only).
+ */
+export function packedNegativeDriver() {
+  const root = mkdtempSync(join(tmpdir(), "mpd-packed-fixture-"))
+  const trees = {}
+  try {
+    const build = (name, { row = true, plugin = true, extensions = true } = {}) => {
+      const dir = join(root, name)
+      mkdirSync(dir, { recursive: true })
+      const line = row
+        ? "    - id: mpd-ext\n      name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'\n"
+        : "    - id: mpd-tools\n      name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'\n"
+      writeFileSync(join(dir, "cordis.patch.yml"), "- insert:\n" + line)
+      if (plugin) mkdirSync(join(dir, "packages", "mpd-ext-plugin", "dist"), { recursive: true })
+      if (extensions) mkdirSync(join(dir, "extensions"), { recursive: true })
+      return dir
+    }
+    const fixtures = {
+      closed: build("closed"),
+      "no-plugin-package": build("no-plugin-package", { plugin: false }),
+      "no-extensions-root": build("no-extensions-root", { extensions: false }),
+      "no-mpd-ext-row": build("no-mpd-ext-row", { row: false }),
+    }
+    for (const [name, dir] of Object.entries(fixtures)) {
+      const facts = packedStateOf(dir)
+      trees[name] = { ...facts, ok: packedStateOk({ packExit: 0, ...facts }) }
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  const broken = ["no-plugin-package", "no-extensions-root", "no-mpd-ext-row"]
+  return {
+    falsifiable: trees.closed?.ok === true && broken.every((name) => trees[name]?.ok === false),
+    // A packer that exited non-zero must also fail the predicate (the fourth fact).
+    packerExitGated: packedStateOk({ packExit: 1, hasRow: true, hasPlugin: true, hasExtensions: true }) === false,
+    trees,
   }
 }
 
@@ -417,7 +677,7 @@ async function runReal() {
   const wrote = writeEvidence(outDir, SLUG, {
     ok,
     sandbox: box.sandbox,
-    arms: "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (t5 records the state; t11 owns the GREEN)",
+    arms: "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (a SCRATCH pack — the canonical dist/mpd-package is never written by this lane, its stamp is asserted unmoved)",
     rankLadder: "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
     steps,
   }, logs.join("\n\n"))

@@ -1,0 +1,443 @@
+{
+  "case": "t9-settings-surfaces-web-mount",
+  "startedAt": "2026-09-18T03:52:25.717Z",
+  "repo": "/root/dshProj/my-power-dsh",
+  "probe": {
+    "probe": "t9-web-probe",
+    "adapter": {
+      "found": true,
+      "hasSettingsReader": true,
+      "hasSettingsMutate": true,
+      "hasExecuteTool": true
+    },
+    "namespace": {
+      "revision": 0,
+      "applies": "restart",
+      "topLevelKeys": [
+        "boulder",
+        "commentChecker",
+        "hashline",
+        "memory",
+        "team",
+        "teamModels",
+        "ulw",
+        "watchdog"
+      ],
+      "teamModels": {
+        "slot1": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max"
+        },
+        "slot2": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        },
+        "slot3": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        }
+      },
+      "slotPaths": [
+        "teamModels.slot1.model",
+        "teamModels.slot1.provider",
+        "teamModels.slot1.reasoningEffort",
+        "teamModels.slot2.model",
+        "teamModels.slot2.provider",
+        "teamModels.slot2.reasoningEffort",
+        "teamModels.slot3.model",
+        "teamModels.slot3.provider",
+        "teamModels.slot3.reasoningEffort"
+      ]
+    },
+    "namespaceRaw": {
+      "topLevelKeys": [
+        "boulder",
+        "commentChecker",
+        "hashline",
+        "memory",
+        "team",
+        "teamModels",
+        "ulw",
+        "watchdog"
+      ],
+      "hasTeamModels": true,
+      "teamModels": {
+        "slot1": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max"
+        },
+        "slot2": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        },
+        "slot3": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        }
+      }
+    },
+    "service": {
+      "rawNoKeyKeys": [],
+      "rawNoKeyHasTeamModels": false,
+      "keyedTeamModels": {
+        "slot1": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max"
+        },
+        "slot2": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        },
+        "slot3": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high"
+        }
+      },
+      "keyed_slot1": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "max"
+      },
+      "keyed_slot2": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high"
+      },
+      "keyed_slot3": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high"
+      }
+    },
+    "tool": {
+      "noKey": {
+        "ok": true,
+        "isError": false,
+        "value": {
+          "config": {
+            "watchdog": {
+              "actionOnEscalate": "warn-only"
+            },
+            "teamModels": {
+              "slot1": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "max"
+              },
+              "slot2": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              },
+              "slot3": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              }
+            }
+          }
+        }
+      },
+      "keyedTeamModels": {
+        "ok": true,
+        "isError": false,
+        "value": {
+          "config": {
+            "watchdog": {
+              "actionOnEscalate": "warn-only"
+            },
+            "teamModels": {
+              "slot1": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "max"
+              },
+              "slot2": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              },
+              "slot3": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              }
+            }
+          },
+          "key": "teamModels",
+          "value": {
+            "slot1": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "max"
+            },
+            "slot2": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            },
+            "slot3": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            }
+          }
+        }
+      },
+      "keyedSlot1": {
+        "ok": true,
+        "isError": false,
+        "value": {
+          "config": {
+            "watchdog": {
+              "actionOnEscalate": "warn-only"
+            },
+            "teamModels": {
+              "slot1": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "max"
+              },
+              "slot2": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              },
+              "slot3": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash",
+                "reasoningEffort": "high"
+              }
+            }
+          },
+          "key": "teamModels.slot1",
+          "value": {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash",
+            "reasoningEffort": "max"
+          }
+        }
+      }
+    },
+    "mutate": {
+      "revisionBefore": 0,
+      "result": {
+        "ok": true
+      },
+      "namespaceAfter": {
+        "provider": "t9-probe-provider",
+        "model": "t9-probe-model",
+        "reasoningEffort": "low"
+      },
+      "toolAfter": {
+        "config": {
+          "watchdog": {
+            "actionOnEscalate": "warn-only"
+          },
+          "teamModels": {
+            "slot1": {
+              "provider": "t9-probe-provider",
+              "model": "t9-probe-model",
+              "reasoningEffort": "low"
+            },
+            "slot2": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            },
+            "slot3": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "key": "teamModels.slot1",
+        "value": {
+          "provider": "t9-probe-provider",
+          "model": "t9-probe-model",
+          "reasoningEffort": "low"
+        }
+      },
+      "serviceAfter": {
+        "provider": "t9-probe-provider",
+        "model": "t9-probe-model",
+        "reasoningEffort": "low"
+      },
+      "slot2After": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high"
+      },
+      "slot3After": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high"
+      }
+    },
+    "afterUnset": {
+      "result": {
+        "ok": true
+      },
+      "toolAfter": {
+        "config": {
+          "watchdog": {
+            "actionOnEscalate": "warn-only"
+          },
+          "teamModels": {
+            "slot1": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "max"
+            },
+            "slot2": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            },
+            "slot3": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "key": "teamModels.slot1",
+        "value": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max"
+        }
+      },
+      "serviceAfter": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "max"
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  "sandbox": "/tmp/mpd-t9-i68SL6",
+  "isolation": {
+    "dshHome": "/tmp/mpd-t9-i68SL6/home",
+    "home": "/tmp/mpd-t9-i68SL6/userhome",
+    "workspace": "/tmp/mpd-t9-i68SL6/ws",
+    "sessionsSandboxed": "ok: no session store key for the real checkout",
+    "note": "DSH_HOME + HOME + cwd are all inside the sandbox"
+  },
+  "boot": {
+    "exit": null,
+    "crashSignatures": [],
+    "loaderAborts": [],
+    "mpdTuiLine": null,
+    "aborted": false,
+    "rowsComposed": {
+      "note": "COMPOSITION ONLY — dsh --dump-config never executes plugin code; cited only to print the composed row set, never as load evidence",
+      "hasMpdConfig": true,
+      "hasMpdTui": true,
+      "hasAdapter": true
+    }
+  },
+  "verdict": {
+    "ok": true,
+    "checks": [
+      {
+        "id": "M1",
+        "ok": true,
+        "detail": "boot carried no apply-crash signature and no loader abort ([])"
+      },
+      {
+        "id": "M2",
+        "ok": true,
+        "detail": "the mpd-config and mpd-tui rows are composed in the mpd bundle patch (composition only — the LOAD proof is the probe answering + the crash-signature scan)"
+      },
+      {
+        "id": "M3",
+        "ok": true,
+        "detail": "the adapter seam answered inside the boot: {\"found\":true,\"hasSettingsReader\":true,\"hasSettingsMutate\":true,\"hasExecuteTool\":true}"
+      },
+      {
+        "id": "M4",
+        "ok": true,
+        "detail": "the served `mpd` namespace descriptor carries teamModels (revision 0)"
+      },
+      {
+        "id": "M4b",
+        "ok": true,
+        "detail": "the SERVED namespace descriptor reports exactly the NINE new slot knobs: [\"teamModels.slot1.model\",\"teamModels.slot1.provider\",\"teamModels.slot1.reasoningEffort\",\"teamModels.slot2.model\",\"teamModels.slot2.provider\",\"teamModels.slot2.reasoningEffort\",\"teamModels.slot3.model\",\"teamModels.slot3.provider\",\"teamModels.slot3.reasoningEffort\"]"
+      },
+      {
+        "id": "M5.slot1",
+        "ok": true,
+        "detail": "keyed service read get(\"teamModels.slot1\") = {\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"}"
+      },
+      {
+        "id": "M5.slot2",
+        "ok": true,
+        "detail": "keyed service read get(\"teamModels.slot2\") = {\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}"
+      },
+      {
+        "id": "M5.slot3",
+        "ok": true,
+        "detail": "keyed service read get(\"teamModels.slot3\") = {\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}"
+      },
+      {
+        "id": "M6",
+        "ok": true,
+        "detail": "mpd_config_get({key:\"teamModels\"}) payload.value = {\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"},\"slot2\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"},\"slot3\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}}"
+      },
+      {
+        "id": "M7",
+        "ok": true,
+        "detail": "mpd_config_get({}) payload.config.teamModels = {\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"},\"slot2\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"},\"slot3\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}}"
+      },
+      {
+        "id": "M8",
+        "ok": true,
+        "detail": "NEGATIVE CONTROL: the parameterless get() is the RAW merged view and does NOT materialise teamModels (documented asymmetry, not a defect)"
+      },
+      {
+        "id": "M9",
+        "ok": true,
+        "detail": "settingsMutate(\"mpd\", set teamModels.slot1.{provider,model,reasoningEffort}) = {\"ok\":true}"
+      },
+      {
+        "id": "M10",
+        "ok": true,
+        "detail": "the mutated values are the RESOLVED config after the write: {\"provider\":\"t9-probe-provider\",\"model\":\"t9-probe-model\",\"reasoningEffort\":\"low\"}"
+      },
+      {
+        "id": "M11",
+        "ok": true,
+        "detail": "the keyed service read and the namespace descriptor agree after the mutate: service {\"provider\":\"t9-probe-provider\",\"model\":\"t9-probe-model\",\"reasoningEffort\":\"low\"}"
+      },
+      {
+        "id": "M12",
+        "ok": true,
+        "detail": "the untouched slots kept their defaults across the mutate"
+      },
+      {
+        "id": "M13",
+        "ok": true,
+        "detail": "after the unset the schema default is back on the tool surface: {\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"}"
+      },
+      {
+        "id": "M14",
+        "ok": true,
+        "detail": "the probe recorded no error: []"
+      }
+    ],
+    "failed": []
+  },
+  "finishedAt": "2026-09-18T03:52:34.350Z"
+}

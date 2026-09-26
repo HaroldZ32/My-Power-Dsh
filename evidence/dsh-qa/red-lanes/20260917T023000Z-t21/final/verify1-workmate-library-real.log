@@ -1,0 +1,8 @@
+[workmate-library] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T03-40-51.394Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0,"attempts":1,"retryNotes":[]}
+  flow: {"ok":true,"calls":{"mpd_workmate_init":{"called":true,"succeeded":true},"mpd_workmate_list":{"called":true,"succeeded":true},"mpd_workmate_spawn":{"called":true,"succeeded":true},"mpd_workmate_reflect":{"called":true,"succeeded":true},"mpd_workmate_match":{"c
+  files: {"ok":true,"uses":2,"noteChars":267,"memoryChars":324,"note":"Deep Worker-based workmate \"alice\". Verilog counter specialist; workspace is the mpd workmate e2e sandbox (README titles it my-power-dsh); the workmate instance","wmRoot":"/tmp/mpd-wm-home-w6uvoV/
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat
+[workmate-library] PASS

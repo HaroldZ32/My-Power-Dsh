@@ -1,0 +1,76 @@
+{
+  "task": "t8",
+  "kind": "implementation",
+  "attemptId": "18e9131c-b3b9-4769-860b-8daa29267062",
+  "member": "Junior Engineer",
+  "wave": "w1",
+  "moment": {
+    "verificationRead": "2026-09-20T03:42:09Z",
+    "editsApplied": "2026-09-20T03:43:0xZ",
+    "gateRunStart": "2026-09-20T03:44:59Z",
+    "gateRunEnd": "2026-09-20T03:45:14Z"
+  },
+  "verification": {
+    "verdict": "the floater is GONE; the three claims (AGENTS.md §3 tree line, docs/tui.md surface-mapping row, docs/tui.md NOT-CLAIMED item 3) are FALSE; docs/design.md's opposite claim is CORRECT",
+    "symbols": {
+      "buildGate": "scripts/build-mpd-client.mjs -> const LEGACY_SURFACES (labels 'agent-teams activity floater', 'in-conversation chat card', 'workmate overlay floater', 'workmate footer toggle') and the loop that console.error + process.exit(1) when webClientFactory.includes(legacy) || teamPageFactory.includes(legacy)",
+      "sourcesClean": "packages/mpd-bundle-plugin/src/{web-client.js,team-page.js}: ZERO hits for any LEGACY_SURFACES needle (grep exit 1); web-client.js carries the comment 'this bundle contributes nothing else (no overlay floater, no footer toggle)'",
+      "onlyRegistrantNeverInvoked": "packages/mpd-agent-teams-plugin/lib/client.js: function apply(ctx) is the ONLY code that registers the floater (ctx.slots.inject(\"shell.overlay\", ... id: \"agent-teams-activity\")) and it is merely exported (exports.apply = apply); the embedded module is registered under id '@nanmicoder/dsh-agent-teams' while the bundle patch mounts the adopted plugin under entry name '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js' (id agent-teams), so nothing ever calls that apply",
+      "qaCase": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs: LEGACY_PATTERNS; steps.sourcesRegisterNoRemovedSurface (hits.length === 0 over src/web-client.js + src/team-page.js); steps.adoptedNeverApplied (ok: client.reads.adoptedApply === undefined) with artifactStillContainsAdoptedStrings (the adopted TEXT stays in the artifact by design while staying UNREGISTERED); steps.noLegacyRegistration; steps.noFloaterDefined; steps.buildGatePresent",
+      "greps": "evidence/install-deps/floater-claims/verification.txt (raw output, measured before any edit)"
+    }
+  },
+  "edits": [
+    {
+      "file": "AGENTS.md",
+      "what": "§3 tree line for packages/mpd-bundle-plugin: '(..., with the bundle floater as fallback; built by scripts/build-mpd-client.mjs)' -> '(... — both GUI surfaces are sidebar-only, no floater fallback; built by scripts/build-mpd-client.mjs)'. Tree structure, indentation and the scripts/build-mpd-client.mjs path token are untouched.",
+      "extraDisclosed": "AGENTS.md line 12 (docs-parity policy sentence) also changed, to repair a PRE-EXISTING red of node scripts/verify-manual-paths.mjs: the sentence used `./x` as a code span, which the auditor reads as the literal relative path x and reports as unresolved ('FAIL unresolved=1 — the manual names paths that do not exist at the repo root: x (AGENTS.md:12)'). The 2026-09-19 commit e820cbd introduced that wording. The fix writes the shapes as placeholders (`./<path>`, `<path>`, `../<path>`, `/<path>`), which the auditor's own PLACEHOLDER_RE bucket exempts and which states the intent more accurately. This is disclosed, not silent: it is inside this task's inScope file and is required for the contract's second verify command to exit 0. Revert it if the captain prefers a separate task."
+    },
+    {
+      "file": "docs/tui.md",
+      "what": "§3 surface-mapping row web cell: 'Bundle floater' -> '—' (the table's own idiom for a row with no web counterpart; the TUI-side cells — tuiStatus rendered, tuiRenderers not projected, NOT-CLAIMED #10 — are unchanged). §11 NOT-CLAIMED item 3: 'the agent-teams sidebar, the workmate tab and the bundle floater' -> 'the agent-teams sidebar and the workmate tab'."
+    },
+    {
+      "file": "docs/tui.zh-CN.md",
+      "what": "Same two corrections in Chinese: row web cell 'Bundle 悬浮窗' -> '—'; NOT-CLAIMED item 3 '与 bundle 悬浮窗' removed. Switch links and heading tree untouched."
+    }
+  ],
+  "reportedNotRewritten": [
+    {
+      "file": "docs/user-guide.md",
+      "line": "§? surface table row '| Bundle floater | the `tuiStatus` line |'",
+      "note": "Confirmed present (docs/user-guide.md:312 and docs/user-guide.zh-CN.md:284 '| bundle 悬浮面板 | `tuiStatus` 状态行 |'). This is the FOURTH stale floater claim and it is already covered by task t10 (Senior Engineer) — deliberately NOT touched here."
+    }
+  ],
+  "gates": {
+    "before": "evidence/install-deps/floater-claims/gates.before.log — verify:docs exit 0; verify-manual-paths exit 1 (PRE-EXISTING: unresolved=1 -> x (AGENTS.md:12))",
+    "after": "evidence/install-deps/floater-claims/gates.after.log — verify:docs exit 0 ('pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS'); verify-manual-paths exit 0 ('PASS resolved=116 over-report=87 under-report=91 declared=2')",
+    "hashSandwich": {
+      "start": "2026-09-20T03:44:59Z",
+      "end": "2026-09-20T03:45:14Z (15 s settle)",
+      "result": "IDENTICAL for all three files",
+      "files": {
+        "AGENTS.md": "529c0f6e4d8a5fc1da580d719a7f1624cd1e5cc3d9c2302a28972b4ea53d1153",
+        "docs/tui.md": "05d09f936d3109d5010ec52a94200ba1b91752bdddc061da20489b0c2cdccc74",
+        "docs/tui.zh-CN.md": "c47704c55f49405299dfe2ec9a596f0b1ecd162431a0379b766f2cd0356bfe80"
+      }
+    },
+    "diffstat": "AGENTS.md 4 ++--, docs/tui.md 4 ++--, docs/tui.zh-CN.md 4 ++-- (2 hunks each; 6 insertions / 6 deletions total)"
+  },
+  "notTouched": [
+    "skills/** (the wave's single skills writer is t3)",
+    "VENDOR_LOCK.json",
+    "scripts/** (the manual-paths auditor itself is out of scope)",
+    "docs/user-guide.md + docs/user-guide.zh-CN.md (t10 owns the fourth claim)",
+    "every other file"
+  ],
+  "evidenceFiles": [
+    "evidence/install-deps/floater-claims/verification.txt",
+    "evidence/install-deps/floater-claims/gates.before.log",
+    "evidence/install-deps/floater-claims/gates.after.log",
+    "evidence/install-deps/floater-claims/hashes.start.txt",
+    "evidence/install-deps/floater-claims/hashes.postedit.start.txt",
+    "evidence/install-deps/floater-claims/hashes.postedit.end.txt",
+    "evidence/install-deps/floater-claims/result.json"
+  ]
+}

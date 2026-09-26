@@ -1,0 +1,1355 @@
+{
+  "startedAt": "2026-09-17T03:58:17.329Z",
+  "finishedAt": "2026-09-17T03:59:07.660Z",
+  "scope": {
+    "rows": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f"
+    ],
+    "full": true
+  },
+  "red": {
+    "root": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+    "generation": "legacy",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause",
+      "toolInFlightMaxMs": 900000
+    },
+    "fingerprints": {
+      "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "channel": "(absent)",
+      "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+      "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+      "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    }
+  },
+  "green": {
+    "root": "/root/dshProj/my-power-dsh",
+    "generation": "fold",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    },
+    "fingerprints": {
+      "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+      "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+      "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+    }
+  },
+  "fingerprints": {
+    "before": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+        "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+        "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+      }
+    },
+    "after": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+        "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+        "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+      }
+    }
+  },
+  "settleMs": 50000,
+  "settled": true,
+  "redPinned": true,
+  "rows": [
+    {
+      "id": "a",
+      "title": "a member streaming a long answer, no tool call, 10+ min simulated",
+      "required": "NO warn, NO hold — the open step is ALIVE while the answer streams",
+      "redPrediction": "a stale-but-current stamp earns WARN at the legacy 90 s threshold and ESCALATE on the 3rd tick",
+      "kind": "contrast",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "a",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/a-red-WdTIpj",
+        "ticks": [
+          {
+            "offset": 601000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 700000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 800000,
+            "decisions": [
+              "escalate"
+            ],
+            "holds": [
+              "team-a"
+            ],
+            "holdOnDisk": true
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 3,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 3,
+          "sceneFailures": 0,
+          "holdsApplied": 1,
+          "holdsFailed": 0,
+          "incidents": 3,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {
+          "warn": 2,
+          "escalate": 1
+        },
+        "firstWarnAt": 601000,
+        "firstEscalateAt": 800000,
+        "anyWarn": true,
+        "anyEscalate": true,
+        "anyHold": true,
+        "holdOnDiskAtEnd": true,
+        "noWarnBelowThreshold": false,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "a",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/a-green-uzQLIm",
+        "ticks": [
+          {
+            "offset": 601000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 700000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "channel",
+        "states": {
+          "a1": "ALIVE"
+        },
+        "stats": {
+          "ticks": 3,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 0,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "channelEvents": 2,
+          "channelFallbacks": 0,
+          "streamFrames": 5,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 0,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": true,
+        "channelParked": false
+      }
+    },
+    {
+      "id": "b",
+      "title": "a member whose open tasks are all dependency-blocked",
+      "required": "NO warn, NO hold, and the member is reported PARKED (dependency projection)",
+      "redPrediction": "the old stamp is silence, so the ladder warns, escalates and HOLDS a team that is merely waiting",
+      "kind": "contrast",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "b",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/b-red-rfXwFW",
+        "ticks": [
+          {
+            "offset": 601000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 700000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 800000,
+            "decisions": [
+              "escalate"
+            ],
+            "holds": [
+              "team-a"
+            ],
+            "holdOnDisk": true
+          },
+          {
+            "offset": 900000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": true
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 4,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 3,
+          "sceneFailures": 0,
+          "holdsApplied": 1,
+          "holdsFailed": 0,
+          "incidents": 3,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {
+          "warn": 2,
+          "escalate": 1
+        },
+        "firstWarnAt": 601000,
+        "firstEscalateAt": 800000,
+        "anyWarn": true,
+        "anyEscalate": true,
+        "anyHold": true,
+        "holdOnDiskAtEnd": true,
+        "noWarnBelowThreshold": false,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "b",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/b-green-vzEQEy",
+        "ticks": [
+          {
+            "offset": 601000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 700000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 900000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "channel",
+        "states": {
+          "a1": "OUTSTANDING"
+        },
+        "stats": {
+          "ticks": 4,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 0,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "channelEvents": 2,
+          "channelFallbacks": 0,
+          "streamFrames": 0,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 4,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      }
+    },
+    {
+      "id": "c",
+      "title": "work finished on disk, terminal `update_task` pending, a hold on the team",
+      "required": "the terminal `update_task` SUCCEEDS while the hold exists (and `claim_task` too)",
+      "redPrediction": "`update_task` throws `team … is held by the team watchdog` at the tool boundary",
+      "kind": "tools",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "c",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/c-red-bnevA6",
+        "registeredTools": 17,
+        "toolNames": [
+          "agent_teams_claim_task",
+          "agent_teams_update_task"
+        ],
+        "update": {
+          "ok": false,
+          "error": "team probe-team is held by the team watchdog (hold hold-probe-1 since 2026-09-17T03:58:17.394Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work",
+          "mutated": false
+        },
+        "claim": {
+          "ok": false,
+          "error": "team probe-team is held by the team watchdog (hold hold-probe-1 since 2026-09-17T03:58:17.394Z: silence); the team must be released with the watchdog's own session-watchdog-resume action before any further work",
+          "mutated": false
+        },
+        "reinject": {
+          "ran": false,
+          "rejected": false,
+          "error": "not run: the guard is present in this tree's lib/tools.js, so the control is not applicable"
+        },
+        "holdOnDisk": true,
+        "holdReads": {
+          "total": 2,
+          "fromTools": 2,
+          "frames": [
+            "at watchdogHoldOf (/root/dshProj/my-power-dsh/.mpd/red-baseline/packages/mpd-agent-teams-plugin/lib/tools.js:50:72)",
+            "at watchdogHoldOf (/root/dshProj/my-power-dsh/.mpd/red-baseline/packages/mpd-agent-teams-plugin/lib/tools.js:50:72)"
+          ]
+        },
+        "guardInToolsSource": true
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "c",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/c-green-jr0aHl",
+        "registeredTools": 20,
+        "toolNames": [
+          "agent_teams_claim_task",
+          "agent_teams_update_task"
+        ],
+        "update": {
+          "ok": true,
+          "value": {
+            "task_id": "t2",
+            "status": "completed",
+            "attempt": 1,
+            "attempt_id": "att-2",
+            "output": "hold probe complete"
+          },
+          "mutated": true
+        },
+        "claim": {
+          "ok": true,
+          "value": {
+            "task_id": "t1",
+            "status": "claimed",
+            "assignee": "Architect",
+            "attempt": 1,
+            "attempt_id": "620bf612-f431-487f-bb07-3a536d957e4a"
+          },
+          "mutated": true
+        },
+        "reinject": {
+          "ran": true,
+          "rejected": true,
+          "error": "team probe-team is held by the team watchdog (hold hold-probe-1); the team must be released with the watchdog's own session-watchdog-resume action before any further work"
+        },
+        "holdOnDisk": true,
+        "holdReads": {
+          "total": 1,
+          "fromTools": 0,
+          "frames": [
+            "at watchdogHoldOf (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/scheduler.js:162:72)"
+          ]
+        },
+        "guardInToolsSource": false
+      }
+    },
+    {
+      "id": "d",
+      "title": "an OUTSTANDING request with no response — the ladder and its numbers",
+      "required": "first WARN only at this tree's `warnSilenceMs`, then ESCALATE per the ladder, and NO hold while `actionOnEscalate` is warn-only",
+      "redPrediction": "the first WARN fires at ~90 s and the 3rd consecutive tick escalates + holds",
+      "kind": "contrast",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "d",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/d-red-NBBMQZ",
+        "ticks": [
+          {
+            "offset": 91000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 181000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 271000,
+            "decisions": [
+              "escalate"
+            ],
+            "holds": [
+              "team-a"
+            ],
+            "holdOnDisk": true
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 3,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 3,
+          "sceneFailures": 0,
+          "holdsApplied": 1,
+          "holdsFailed": 0,
+          "incidents": 3,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {
+          "warn": 2,
+          "escalate": 1
+        },
+        "firstWarnAt": 91000,
+        "firstEscalateAt": 271000,
+        "anyWarn": true,
+        "anyEscalate": true,
+        "anyHold": true,
+        "holdOnDiskAtEnd": true,
+        "noWarnBelowThreshold": false,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "d",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/d-green-5ImNEW",
+        "ticks": [
+          {
+            "offset": 599000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 600001,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 610000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 620000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 630000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 640000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 650000,
+            "decisions": [
+              "escalate"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 660000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "channel",
+        "states": {
+          "a1": "OUTSTANDING"
+        },
+        "stats": {
+          "ticks": 8,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 6,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 6,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "channelEvents": 2,
+          "channelFallbacks": 0,
+          "streamFrames": 0,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 0,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {
+          "warn": 5,
+          "escalate": 1
+        },
+        "firstWarnAt": 600001,
+        "firstEscalateAt": 650000,
+        "anyWarn": true,
+        "anyEscalate": true,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      }
+    },
+    {
+      "id": "e",
+      "title": "a tool call past `toolInFlightMaxMs` — the r6 PIN",
+      "required": "exactly ONE `tool-expired`, never a hold (the contract's RED column says r6 was already green)",
+      "redPrediction": "PIN, not contrast: the same reading is REQUIRED on both trees, and a difference is itself the defect signal",
+      "kind": "pin",
+      "redVerdict": "pin",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "e",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/e-red-OCRANs",
+        "ticks": [
+          {
+            "offset": 900001,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 2,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 1,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 1,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "e",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/e-green-yR7ODN",
+        "ticks": [
+          {
+            "offset": 900001,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "heartbeat",
+        "states": {},
+        "stats": {
+          "ticks": 2,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 1,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 1,
+          "channelEvents": 0,
+          "channelFallbacks": 2,
+          "streamFrames": 0,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 0,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      }
+    },
+    {
+      "id": "f",
+      "title": "a team whose only evidence is a PREVIOUS generation's stamp (and a task nobody attempted)",
+      "required": "never holdable: no hold, no escalate, and the pre-`createdAt` stamp is reported never-started, not silence",
+      "redPrediction": "the pre-`createdAt` stamp leaks through the permissive rule and holds the team",
+      "kind": "contrast",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "red",
+        "scenario": "f",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/f-red-rDKx88",
+        "ticks": [
+          {
+            "offset": 1000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 2000,
+            "decisions": [
+              "warn"
+            ],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 3000,
+            "decisions": [
+              "escalate"
+            ],
+            "holds": [
+              "team-a"
+            ],
+            "holdOnDisk": true
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 3,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 3,
+          "sceneFailures": 0,
+          "holdsApplied": 1,
+          "holdsFailed": 0,
+          "incidents": 3,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {
+          "warn": 2,
+          "escalate": 1
+        },
+        "firstWarnAt": 1000,
+        "firstEscalateAt": 3000,
+        "anyWarn": true,
+        "anyEscalate": true,
+        "anyHold": true,
+        "holdOnDiskAtEnd": true,
+        "noWarnBelowThreshold": false,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "f",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw/f-green-Yz4L5I",
+        "ticks": [
+          {
+            "offset": 601000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 700000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 900000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1000000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1100000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "heartbeat",
+        "states": {},
+        "stats": {
+          "ticks": 6,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 1,
+          "incidentFailures": 0,
+          "neverStarted": 1,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 0,
+          "channelEvents": 0,
+          "channelFallbacks": 6,
+          "streamFrames": 0,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 0,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      }
+    }
+  ],
+  "replay": {
+    "path": "/root/dshProj/my-power-dsh/.mpd/team/watchdog/incidents.jsonl",
+    "sha256": "3d62027e31fb5343740d439514877ca89676ea8cd25763ddee84e3bc8960392b",
+    "bytes": 57630,
+    "lines": 189,
+    "rows": 189,
+    "malformed": 0,
+    "kinds": {
+      "never-started": 67,
+      "warn": 91,
+      "escalate": 31
+    },
+    "causes": {
+      "never-started": 67,
+      "silence": 122
+    },
+    "escalateRows": 31,
+    "escalateDistinct": 25,
+    "escalateHeld": 18,
+    "silenceRows": 122,
+    "silenceDistinct": 40,
+    "reconstruction": true,
+    "bound": "the recorded rows carry no channel state, so each silence row is replayed as the MOST PESSIMISTIC candidate (OUTSTANDING since `at - cause.ms`); the counts are an UPPER BOUND on what that predicate would produce, never a replay of the recorded run — and the §4 variant (`foldReportOnly`) is the other bound, where the fold has no evidence at all",
+    "legacy": {
+      "mode": "channel",
+      "counts": {
+        "warn": 70,
+        "escalate": 25
+      },
+      "heldEscalationsReproduced": 13,
+      "heldKeysReproduced": [
+        {
+          "key": "mpd-default|t10|",
+          "recordedRows": 3,
+          "maxSilenceMs": 638803,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t12|",
+          "recordedRows": 6,
+          "maxSilenceMs": 3064494,
+          "kinds": {
+            "warn": 4,
+            "escalate": 2
+          }
+        },
+        {
+          "key": "mpd-default|t16|",
+          "recordedRows": 12,
+          "maxSilenceMs": 681335,
+          "kinds": {
+            "warn": 9,
+            "escalate": 3
+          }
+        },
+        {
+          "key": "mpd-default|t18|",
+          "recordedRows": 12,
+          "maxSilenceMs": 681605,
+          "kinds": {
+            "warn": 9,
+            "escalate": 3
+          }
+        },
+        {
+          "key": "mpd-default|t21|",
+          "recordedRows": 3,
+          "maxSilenceMs": 128844,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t4|",
+          "recordedRows": 3,
+          "maxSilenceMs": 126364,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t5|",
+          "recordedRows": 3,
+          "maxSilenceMs": 126261,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t6|",
+          "recordedRows": 3,
+          "maxSilenceMs": 122387,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t82|084849fe-3c93-4b7e-a564-123690412e9e",
+          "recordedRows": 3,
+          "maxSilenceMs": 131049,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t83|8fed7e08-0d89-4111-9ae1-1dac1ecbd4cd",
+          "recordedRows": 3,
+          "maxSilenceMs": 134349,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t84|97ac0a80-8acb-49dd-8a93-17ae7bc334e3",
+          "recordedRows": 3,
+          "maxSilenceMs": 124207,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t85|a3483d21-261a-4368-877a-969785ebb827",
+          "recordedRows": 3,
+          "maxSilenceMs": 133050,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        },
+        {
+          "key": "mpd-default|t8|",
+          "recordedRows": 3,
+          "maxSilenceMs": 638988,
+          "kinds": {
+            "warn": 2,
+            "escalate": 1
+          }
+        }
+      ]
+    },
+    "fold": {
+      "mode": "channel",
+      "counts": {
+        "warn": 79,
+        "escalate": 4
+      },
+      "heldEscalationsReproduced": 3,
+      "heldKeysReproduced": [
+        {
+          "key": "mpd-default|t12|",
+          "recordedRows": 6,
+          "maxSilenceMs": 3064494,
+          "kinds": {
+            "warn": 4,
+            "escalate": 2
+          }
+        },
+        {
+          "key": "mpd-default|t16|",
+          "recordedRows": 12,
+          "maxSilenceMs": 681335,
+          "kinds": {
+            "warn": 9,
+            "escalate": 3
+          }
+        },
+        {
+          "key": "mpd-default|t18|",
+          "recordedRows": 12,
+          "maxSilenceMs": 681605,
+          "kinds": {
+            "warn": 9,
+            "escalate": 3
+          }
+        }
+      ]
+    },
+    "foldReportOnly": {
+      "mode": "reportOnly",
+      "counts": {
+        "warn": 32
+      },
+      "heldEscalationsReproduced": 0,
+      "heldKeysReproduced": []
+    }
+  },
+  "contractRed": {
+    "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+    "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+    "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+  },
+  "reconstructionOf": {
+    "incidents": "/root/dshProj/my-power-dsh/.mpd/team/watchdog/incidents.jsonl"
+  },
+  "ok": true,
+  "checks": [
+    {
+      "id": "CLEAN",
+      "ok": true,
+      "detail": "every row in scope ran exactly once, both trees (a,b,c,d,e,f of a,b,c,d,e,f)"
+    },
+    {
+      "id": "R-a",
+      "ok": true,
+      "detail": "row (a) RED red: counts={\"warn\":2,\"escalate\":1} firstWarnAt=601000 firstEscalateAt=800000 holdFileAtEnd=true states=null depParked=null source=null"
+    },
+    {
+      "id": "G-a",
+      "ok": true,
+      "detail": "row (a) GREEN green: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={\"a1\":\"ALIVE\"} depParked=0 source=channel"
+    },
+    {
+      "id": "R-b",
+      "ok": true,
+      "detail": "row (b) RED red: counts={\"warn\":2,\"escalate\":1} firstWarnAt=601000 firstEscalateAt=800000 holdFileAtEnd=true states=null depParked=null source=null"
+    },
+    {
+      "id": "G-b",
+      "ok": true,
+      "detail": "row (b) GREEN green: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={\"a1\":\"OUTSTANDING\"} depParked=4 source=channel"
+    },
+    {
+      "id": "R-c",
+      "ok": true,
+      "detail": "row (c) RED red: update=rejected claim=rejected holdReadsFromTools=2 reInjectRejected=false guardInSource=true tools=17 error=\"team probe-team is held by the team watchdog (hold hold-probe-1 since 2026-09-17T03:58:17.394Z: silence); the team must be released with th"
+    },
+    {
+      "id": "G-c",
+      "ok": true,
+      "detail": "row (c) GREEN green: update=resolved claim=resolved holdReadsFromTools=0 reInjectRejected=true guardInSource=false tools=20"
+    },
+    {
+      "id": "R-d",
+      "ok": true,
+      "detail": "row (d) RED red: counts={\"warn\":2,\"escalate\":1} firstWarnAt=91000 firstEscalateAt=271000 holdFileAtEnd=true states=null depParked=null source=null"
+    },
+    {
+      "id": "G-d",
+      "ok": true,
+      "detail": "row (d) GREEN green: counts={\"warn\":5,\"escalate\":1} firstWarnAt=600001 firstEscalateAt=650000 holdFileAtEnd=false states={\"a1\":\"OUTSTANDING\"} depParked=0 source=channel"
+    },
+    {
+      "id": "R-e",
+      "ok": true,
+      "detail": "row (e) RED PIN pin: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states=null depParked=null source=null"
+    },
+    {
+      "id": "G-e",
+      "ok": true,
+      "detail": "row (e) GREEN green: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat"
+    },
+    {
+      "id": "R-f",
+      "ok": true,
+      "detail": "row (f) RED red: counts={\"warn\":2,\"escalate\":1} firstWarnAt=1000 firstEscalateAt=3000 holdFileAtEnd=true states=null depParked=null source=null"
+    },
+    {
+      "id": "G-f",
+      "ok": true,
+      "detail": "row (f) GREEN green: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat"
+    },
+    {
+      "id": "SCOPE",
+      "ok": true,
+      "detail": "the FULL §9 contract scope ran (all 6 rows)"
+    },
+    {
+      "id": "KNOBS",
+      "ok": true,
+      "detail": "the two trees carry the two tuples the contract names: RED {\"enabled\":true,\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\",\"toolInFlightMaxMs\":900000} vs §3 {\"enabled\":true,\"warnSilenceMs\":600000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":6,\"actionOnEscalate\":\"warn-only\",\"toolInFlightMaxMs\":900000,\"holdTtlMs\":900000}"
+    },
+    {
+      "id": "PIN-RED",
+      "ok": true,
+      "detail": "the RED tree reproduces the contract's §0/A2 hashes and carries NO channel.ts ({\"machine\":\"fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef\",\"engine\":\"f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b\",\"channel\":\"(absent)\",\"team\":\"02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58\",\"dist\":\"09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4\",\"tools\":\"49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2\"})"
+    },
+    {
+      "id": "SETTLED",
+      "ok": true,
+      "detail": "fingerprints identical across the settle window: true"
+    },
+    {
+      "id": "FOLD-AUTHORITY",
+      "ok": true,
+      "detail": "on the working tree the fold is the AUTHORITY for rows a,b,d (predicateSource [\"channel\",\"channel\",\"channel\"]), so the suppression cannot be credited to the heartbeat fallback"
+    },
+    {
+      "id": "REPLAY",
+      "ok": true,
+      "detail": "the recorded incidents were replayed through BOTH machines on the pinned file (189 rows, sha256 3d62027e31fb…): the legacy machine reproduces 25 escalations (the reconstruction is faithful), while of the 18 recorded escalations that HELD a team the fold predicate reproduces 3 when the channel is reconstructed pessimistically (OUTSTANDING) and 0 under §4 report-only (no channel evidence)"
+    }
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z"
+}

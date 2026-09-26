@@ -1,0 +1,132 @@
+==================================================================
+t84 (r6) — raw run log. Assembled from the captures in raw/ and raw/gates/.
+Every section is the unedited output of the command named in its header.
+==================================================================
+
+### 1. dist BEFORE (copied before the rebuild)
+17031 packages/mpd-dsh-adapter-plugin/dist/index.js
+119753 packages/mpd-team-watchdog-plugin/dist/index.js
+ea232983e5571af4e56a4a1d0e177f98f23f6872b0b4527a23188886af3498cb  packages/mpd-dsh-adapter-plugin/dist/index.js
+54f1f41ce60629651d96320cffe573e5c0079d742f1a024213c07e733681935b  packages/mpd-team-watchdog-plugin/dist/index.js
+
+### 2. dist AFTER
+17472 packages/mpd-dsh-adapter-plugin/dist/index.js
+125754 packages/mpd-team-watchdog-plugin/dist/index.js
+d98cc6984d8d85c72931c258b9b7b32851bcfba8691bbcf2dc59ecd86c891125  packages/mpd-dsh-adapter-plugin/dist/index.js
+810e0fb315e968ac897d44e297d073cb30063df8a5b8b0569d7effce2cb8d269  packages/mpd-team-watchdog-plugin/dist/index.js
+
+### 3. BEFORE/AFTER driver: raw/long-tool-before-after.mjs (exit 0)
+BEFORE dist 119753 B 54f1f41ce606 pre-hook subscribed: false
+BEFORE stamp stream: ["step"] decisions: ["warn","warn","escalate"] hold: "silence"
+AFTER  dist 125754 B 810e0fb315e9 pre-hook subscribed: true
+AFTER  stamp stream: ["step","tool-start"] decisions: ["","",""] hold: null
+real command (before/after): 1622 / 1620 ms; beyond 3 windows at the last tick: true / true
+verdict: {"beforeHeldTheTeam":true,"afterHeldNothing":true,"beforeHadNoPreHook":true,"afterHasThePreHook":true,"sameRealCommandDuration":true} ok=true
+
+### 4. observe-only driver: raw/observe-only-real-call.mjs (exit 0)
+WITHOUT hook: gate {"kind":"allow"} real result {"status":0,"stdout":"","stderr":"","ranAsAChildProcess":true} in 271 ms
+WITH    hook: gate {"kind":"allow"} real result {"status":0,"stdout":"","stderr":"","ranAsAChildProcess":true} in 268 ms
+the hook observed {"name":"bash","callId":"call-observe-1","decisionKind":"allow","at":1789525904986} BEFORE the command started: true
+same gate / same result / same post decision: {"gateIdentical":true,"resultIdentical":true,"postDecisionIdentical":true,"commandRanForReal":true,"hookActuallyRan":true,"observedBeforeTheCommandRan":true,"noHookNoObservation":true}
+
+### 5. the four r6 fixture cases (exit 0)
+ok   long-tool-no-hold
+       a REAL command ran 1622 ms (exit 0) inside ONE tool call
+       the pre hook stamped ["step","tool-start"] and the POST closed it: ["step","tool-start","tool"]
+       ticks (silence from the member's last real stamp => decisions): [[509,[]],[912,[]],[1313,[]]]
+       the LAST tick is 1313 ms past the last stamp, i.e. beyond 3 windows (900 ms): true
+       WARNs/ESCALATEs/holds/scenes/incidents: {"holdsApplied":0,"scenes":0,"incidents":0,"toolStarts":1} — hold file: null
+       observations the in-flight rule explained away: 3
+       => r6: a member working inside a long tool call is NO LONGER PAUSED
+ok   long-tool-bound-disabled-control
+       the pre hook STILL stamps tool-start (["step","tool-start"]) — the rule is what is disabled, not the observation
+       ticks => ["warn","warn","escalate"] (warn, warn, escalate) and a hold: {"id":"793d1941-8b42-4cc2-ae9a-ab518d59c693","taskId":"t1","attemptId":"att-1"}
+       => FALSIFIER: with the bound disabled the same scenario holds the team, so the silence in `long-tool-no-hold` is the RULE, not a vacuous fixture
+ok   completed-tool-not-in-flight
+       the newest stamp is the COMPLETION of call-done-1, so nothing is in flight
+       ticks => ["warn","warn","escalate"] + a hold: {"id":"826c4b0f-0df1-464a-b1b0-a19737d7ccdd","taskId":"t1"}
+       => a completed tool call buys no silence: the wedge rule still fires (in-flight suppressions: 0)
+ok   tool-inflight-expired
+       inside the bound (500 ms): {"decisions":[],"holds":0} — still explained activity
+       past the bound (700 ms > 600 ms): {"decisions":[],"scenes":0,"holds":0} — the entry STOPS suppressing
+       durable report: [{"kind":"tool-expired","taskId":"t1","attemptId":"att-1","scene":null,"hold":"not-requested","cause":{"kind":"tool-expired","ms":700,"tool":"bash"}}]
+       reported ONCE (a later tick at 60 s adds nothing): true
+       holds/scenes: {"holdsApplied":0,"scenes":0,"toolStarts":0} hold file: null
+       => the handover is bounded and fail-open: a killed tool can never leave a member permanently un-watchable, and the bound never PAUSES a team
+casesInFixture=18 allR6CasesOk=true
+
+### 6. bun test packages/mpd-team-watchdog-plugin packages/mpd-dsh-adapter-plugin
+ 114 pass
+ 0 fail
+ 473 expect() calls
+Ran 114 tests across 18 files. [2.83s]
+exit=0
+
+### 7. bun test packages (in-repo cwd)
+(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd() [1.67ms]
+(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.37ms]
+
+ 730 pass
+ 2 fail
+ 5242 expect() calls
+Ran 732 tests across 138 files. [23.58s]
+exit=1
+
+### 8. the same 732 tests from a CLEAN cwd (no .mpd/mpd.jsonc)
+ 732 pass
+ 0 fail
+ 5243 expect() calls
+Ran 732 tests across 69 files. [23.30s]
+exit=0
+
+### 9. attribution of the 2 in-repo failures
+### isolated: repo cwd (the captain's TEMPORARY .mpd/mpd.jsonc exists) ###
+
+ 21 pass
+ 2 fail
+ 96 expect() calls
+Ran 23 tests across 2 files. [164.00ms]
+
+### isolated: clean cwd (no .mpd/mpd.jsonc; same file, same code) ###
+
+ 23 pass
+ 0 fail
+ 97 expect() calls
+Ran 23 tests across 1 file. [76.00ms]
+
+### 10. bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+### 11. node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+### 12. bun run verify:docs
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=34 failed=0 violations=0 exempt=16 — PASS
+exit=0
+
+### 13. team-watchdog-fault lane (18 cases, redirected with --out)
+PASS — 11 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-fault/result.json)
+
+### 14. team-watchdog-config lane
+PASS — 10 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-config/result.json)
+
+### 15. team-watchdog-heartbeat lane (H5 is the OBSOLETE byte assertion; see harness.json handover)
+[team-watchdog-heartbeat] tools registered: session-watchdog-hold,session-watchdog-resume,session-watchdog-status
+[team-watchdog-heartbeat] FAIL — 13 checks, 1 failed (evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/long-tool-false-positive/20260916T015821Z/raw/lane-heartbeat/result.json)
+[team-watchdog-heartbeat] NOT CLAIMED: No LIVE member turn was driven: this sandbox has no dsh host, no model credential and no network (the fixture's own NOT_CLAIMED #3). The witness is the mounted boot plus the events the host would fire, read back by a fresh process.
+[team-watchdog-heartbeat] NOT CLAIMED: No pre-dispatch tool stamp exists or is claimed (W-9): the tool stamp is POST-completion only.
+
+### 16. bun run test:qa (stops at the first failure)
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs
+error: script "test:qa" exited with code 1
+exit=1
+
+### 17. every QA self-test individually + who changed skills/**
+41
+FAIL skills/dsh-qa/scripts/agent-teams-messaging.mjs (exit 1) :: [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=317/5aec4b643065 tree=317/3c0c2bdf5418 (re-pin in the same commit, AGENTS.md §9)
+
+### attribution: who changed skills/** (read-only git status) ###
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/team-watchdog-boot.mjs

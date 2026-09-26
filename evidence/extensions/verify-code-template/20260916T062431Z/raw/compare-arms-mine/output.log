@@ -1,0 +1,42 @@
+t5 evidence driver — stamp 20260916T061238Z
+repo /root/dshProj/my-power-dsh
+template /root/dshProj/my-power-dsh/templates/mpd-extension
+  ok   templates/mpd-extension exists and declares a placeholder id — id="mpd-extension-template"
+  ok   the template manifest is in canonical JSON.stringify(…, 2) form (so both copy arms can be byte-compared)
+  ok   the template manifest declares all four contribution kinds — kinds=[skills,flows,roles,mcp]
+  ok   every declared asset exists on disk
+  ok   validate templates/mpd-extension exits 0 with four kinds — exit=0
+  ok   the shipped example still validates (the template did not collide with it) — exit=0
+  ok   scaffold --with-mcp exits 0 — exit=0 
+  ok   the --with-mcp copy passes validate — exit=0
+  ok   with-mcp: the copy's file set is the template's, renamed — missing=[] extra=[]
+  ok   with-mcp: every file byte-equal to the template modulo the token rewrite (7 files) — differing=0
+  ok   with-mcp: no file still carries the placeholder token — leftovers=[]
+  ok   scaffold without the flag exits 0 — exit=0 
+  ok   the default copy passes validate — exit=0
+  ok   the default copy contributes three kinds and zero mcp servers
+  ok   the default copy drops server.mjs
+  ok   the default copy has no mcp block in its manifest
+  ok   the --with-mcp copy keeps server.mjs
+  ok   plain: the copy's file set is the template's, renamed — missing=[] extra=[]
+  ok   plain: every file byte-equal to the template modulo the token rewrite (6 files) — differing=0
+  ok   plain: no file still carries the placeholder token — leftovers=[]
+  ok   every derived name is rewritten (id, serverName, skill dir, flow file, persona, role name, description) — id=demo-ext serverName=demo-ext
+  ok   a deliberately broken copy makes validate exit 1 with per-item errors — exit=1 reported=[typoKey,surprise,serverName,persona file does not exist,frontmatter] missing=[]
+  ok   templates/ is not equal to and not under any of the three discovery roots — roots=[/root/dshProj/my-power-dsh/.mpd/extensions,/root/.mpd/extensions,/root/dshProj/my-power-dsh/extensions]
+  ok   `mpd-ext list` output is byte-identical to the pre-template baseline — baseline=/root/dshProj/my-power-dsh/evidence/extensions/template-scaffold/20260916T061238Z/raw/list-before-template.txt
+  ok   the bundle plane still discovers exactly the shipped example
+  ok   scripts/pack-mpd.mjs is byte-unchanged (md5 vs the pre-change reading) — before=48423930ff3e7f2b17ec2176936e4ce9 after=48423930ff3e7f2b17ec2176936e4ce9
+  ok   the packer's copy list carries no templates/ entry, so the template cannot be packed
+  ok   the CLI carries no inline generator (no SCAFFOLD_SERVER, no inline asset writes)
+  ok   the CLI resolves the template directory as its only source
+  ok   the CLI self-test covers both arms and the negative control
+  ok   server.mjs imports node stdlib only (no package.json, no dependency) — imports=[node:fs,node:path,node:url]
+  ok   server.mjs answers initialize / tools/list / tools/call over newline-delimited JSON-RPC — exit=0 lines=3
+  ok   the scaffolded copy's server answers with the COPY id (the source carries no placeholder) — exit=0
+  ok   the template README pair exists, switches both ways and the zh file carries real CJK
+  ok   the README pair states the --with-mcp semantics and that the default copy is a three-kind extension
+  ok   bun scripts/mpd-ext.mjs --self-test exits 0 — [mpd-ext] --self-test passed (41 checks)
+  ok   bun scripts/mpd-ext.mjs validate templates/mpd-extension exits 0 —   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  ok   bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example exits 0 —   contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  ok   node scripts/verify-docs-parity.mjs exits 0 — [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS

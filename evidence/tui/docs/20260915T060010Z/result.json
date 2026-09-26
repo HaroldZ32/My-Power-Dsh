@@ -1,0 +1,124 @@
+{
+  "task": "t6 — Write dsh-distribution.json and the bilingual TUI documentation",
+  "producedBy": "Junior Engineer (attempt 2)",
+  "measuredAt": "2026-09-15T06:04:22.003Z",
+  "verdict": "passed",
+  "deliverables": {
+    "dsh-distribution.json": {
+      "sha256": "a0177b0b2a53e0538b7467c0a7d614cb71380edd5bdf7046db6d5d0264980691",
+      "identity": "urn:dsh:distribution:mpd:my-power-dsh",
+      "version": "0.9.1"
+    },
+    "docs/tui.md": {
+      "sha256": "ebe629202288d4b63aef80d0df64f168202956121a3fcaf605d16228b7dbbf00"
+    },
+    "docs/tui.zh-CN.md": {
+      "sha256": "0895c5674c6301a5e5b2b7915952ab46ec14f441ab56239efcf38c0f0668e067"
+    },
+    "docs/index.md": {
+      "sha256": "aa3d8c0ba839c54f0659f4832b37db93844880b64185d11475fb5bcfc1504f13"
+    },
+    "docs/index.zh-CN.md": {
+      "sha256": "9387bb4caae2ba4192cbe4d450b513686db5d63dc1dda5841f09dfb12ecd39b8"
+    },
+    "README.md": {
+      "sha256": "62e2b58bf3f32b73ea87e41ce9f239071a108c5c58adb9342f84024dac23fb33"
+    },
+    "README.zh-CN.md": {
+      "sha256": "82c95c97c92cde5f77e6b1482a2eb6bf0b1e77677188cc15ac31519d87fdd68f"
+    }
+  },
+  "gates": {
+    "R7": {
+      "status": "passed",
+      "exitCode": 0,
+      "stdout": "R7 PASS"
+    },
+    "R8": {
+      "status": "passed",
+      "exitCode": 0,
+      "stdout": "R8 PASS"
+    },
+    "descriptor-identity": {
+      "status": "passed",
+      "exitCode": 0,
+      "stdout": "identity OK urn:dsh:distribution:mpd:my-power-dsh 0.9.1"
+    },
+    "descriptor-structural-check": {
+      "status": "passed",
+      "exitCode": 0,
+      "stdout": "{\n  \"descriptor\": \"dsh-distribution.json\",\n  \"pins\": {\n    \"packages/core/schema/descriptor.schema.json\": \"2437906cdb3f134f250a4acb893a0701e533b75ee3ae8c4c5a54353ec498af9a\",\n    \"packages/composition/schema/composition.schema.json\": \"4e6eef9c19b27eaf76aa3706eb749dd7c530f7bbbb551bb1a585052529e298c8\",\n    \"packages/layout/schema/layout.schema.json\": \"4b5b0b65e3d99671a00bda61c79200f56d799480524961b86a12cd3e29f751f5\",\n    \"packages/layout/src/index.ts\": \"1998980572897e8e70c1594a268418847e30109e745418e62dc14fbdf0abd4d7\"\n  },\n  \"checks\": [\n    {\n      \"id\": \"parse\",\n      \"status\": \"passed\",\n      \"detail\": \"dsh-distribution.json parsed as JSON\"\n    },\n    {\n      \"id\": \"descriptor.additionalProperties\",\n      \"status\": \"passed\",\n      \"detail\": \"only schema-declared top-level keys\"\n    },\n    {\n      \"id\": \"descriptor.required\",\n      \"status\": \"passed\",\n      \"detail\": \"present: apiVersion, kind, distribution, protocols\"\n    },\n    {\n      \"id\": \"descriptor.apiVersion\",\n      \"status\": \"passed\",\n      \"detail\": \"distribution.dsh.dev/v1alpha1\"\n    },\n    {\n      \"id\": \"descriptor.kind\",\n      \"status\": \"passed\",\n      \"detail\": \"DistributionDescriptor\"\n    },\n    {\n      \"id\": \"distribution.id\",\n      \"status\": \"passed\",\n      \"detail\": \"urn:dsh:distribution:mpd:my-power-dsh\"\n    },\n    {\n      \"id\": \"distribution.version\",\n      \"status\": \"passed\",\n      \"detail\": \"0.9.1\"\n    },\n    {\n      \"id\": \"distribution.version-matches-package-json\",\n      \"status\": \"passed\",\n      \"detail\": \"@mpd-dsh/mpd@0.9.1\"\n    },\n    {\n      \"id\": \"protocols[0].composition\",\n      \"status\": \"passed\",\n      \"detail\": \"8 components, every dependsOn edge resolved in-composition\"\n    },\n    {\n      \"id\": \"protocols[1].layout\",\n      \"status\": \"passed\",\n      \"detail\": \"9 resources, roles/ownership/portability/sensitivity consistent\"\n    },\n    {\n      \"id\": \"not-declared.EnvironmentLifecycle\",\n      \"status\": \"passed\",\n      \"detail\": \"omitted on purpose: no implemented capability backs it (see docs/tui.md)\"\n    },\n    {\n      \"id\": \"not-declared.EnvironmentPortability\",\n      \"status\": \"passed\",\n      \"detail\": \"omitted on purpose: no implemented capability backs it (see docs/tui.md)\"\n    },\n    {\n      \"id\": \"not-declared.EnvironmentDiscovery\",\n      \"status\": \"passed\",\n      \"detail\": \"omitted on purpose: no implemented capability backs it (see docs/tui.md)\"\n    }\n  ],\n  \"failed\": 0\n}"
+    }
+  },
+  "wording": {
+    "forbiddenHits": [],
+    "requiredMisses": [],
+    "status": "passed"
+  },
+  "citedEvidence": [
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/ledger.json",
+      "exists": true,
+      "sha256": "a292c88b95c8cf1f0566fa8a13e3276e2447db44079834554bb7178686974bf3"
+    },
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/ledger.md",
+      "exists": true,
+      "sha256": "02c9cce61e1fdaeb9ead979eaf6c6703817bcb4511746aa413eecf85674704ab"
+    },
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/raw/tool-list.json",
+      "exists": true,
+      "sha256": "c58a714d6f18cdb6b193b59eda34e61719c7e20daeaa591771a27bcaff83f8f5"
+    },
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/raw/dsh-tui-dump-config.txt",
+      "exists": true,
+      "sha256": "755f186be195bdd528f88b051252ed955f90fcb4e28770de3f7ab72508929f1a"
+    },
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/raw/plugins-check.pane.txt",
+      "exists": true,
+      "sha256": "c03c5f2afa8b6cc2b6e47881f850c9bd989d4d33b11c6399c4a853ede2c9fc34"
+    },
+    {
+      "path": "evidence/tui/composition/20260915T053445Z/raw/admission-static.json",
+      "exists": true,
+      "sha256": "03d3f16ce1f585e73312517d78c64290b84c6c0694fc6d751060e67fb3c2ad2a"
+    },
+    {
+      "path": "evidence/tui/plugin/20260915T054343Z/result.json",
+      "exists": true,
+      "sha256": "ddb9c9999969dbf5e7a306674e1a8de0bc3187a813d89483fa8c1942a87f8e61"
+    },
+    {
+      "path": "evidence/tui/plugin-followup/20260915T060032Z/result.json",
+      "exists": true,
+      "sha256": "9fd7bc942f6b794537063e318d9c3335ad459558bba3833e6f5b50ea70561be3"
+    },
+    {
+      "path": "evidence/tui/plugin-followup/20260915T060032Z/disclosure.json",
+      "exists": true,
+      "sha256": "a2153c9e97ae96748f9cf1cf0f5b3be2aed69145f8a32477649bd5d153d4bba9"
+    },
+    {
+      "path": "evidence/tui/docs/20260915T060010Z/descriptor-check.json",
+      "exists": true,
+      "sha256": "fc7ab34d9a6fa32ac867c973012a9968d9cf68aada5481a437ede0cbc6183c83"
+    }
+  ],
+  "planRevision": {
+    "path": ".mpd/plans/dsh-tui-edition.md",
+    "sha256": "051030c52d135c02ed579880635337dbb6c2bd4c928683902539f45fdc2aea1b"
+  },
+  "disclosure": {
+    "descriptor-cli": "NOT run here: the protocol conformance CLI is AC-13 (t9) and its evidence is pending; this task ran a structural check only.",
+    "pending-lanes": [
+      "panels (t7/t8)",
+      "live-mount re-run (t8)",
+      "admission/distribution/spec-conformance (t9)",
+      "web regression (t8/R6)"
+    ],
+    "ledger-staleness": "t5 ledger recorded mpd-tui-plugin dist sha256 695f68c4858745cc…; the artifact is now 710d3eef5d0f451bff220da151f45c9ccccb5b264ecfc215ce61be8b667e9fc3 after the t21 follow-up rebuild — the docs disclose this."
+  }
+}

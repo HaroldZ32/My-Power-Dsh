@@ -43,9 +43,10 @@ function moduleIds(source) {
 }
 
 describe("shipped bundle client after the AgentTeams sidebar migration", () => {
-  test("registers exactly the three loader modules, including the sidebar page", () => {
+  test("registers exactly the four loader modules: the sidebar page plus the isolated settings card", () => {
     expect(moduleIds(ARTIFACT).sort()).toEqual([
       "@mpd-dsh/mpd",
+      "@mpd-dsh/settings-card",
       "@mpd-dsh/team-page",
       "@nanmicoder/dsh-agent-teams",
     ]);

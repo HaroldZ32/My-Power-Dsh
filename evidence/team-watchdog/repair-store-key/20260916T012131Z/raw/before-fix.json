@@ -1,0 +1,20 @@
+{
+  "dist": "packages/mpd-team-watchdog-plugin/dist/index.js",
+  "candidates": [
+    {
+      "teamId": "team-alpha",
+      "taskId": "t1",
+      "lastSeen": 1000000000000,
+      "everStampedForTask": true
+    },
+    {
+      "teamId": "team-beta",
+      "taskId": "t1",
+      "lastSeen": 1000000000000,
+      "everStampedForTask": true
+    }
+  ],
+  "decisions": [],
+  "falseNegativeReproduced": true,
+  "note": "team-beta is WEDGED (its newest stamp is 10 thresholds old) yet its candidate reports team-alpha's RECENT stamp and the engine raises NOTHING — the pre-repair behaviour, measured on the shipped artifact."
+}

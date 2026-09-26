@@ -1,0 +1,78 @@
+{
+  "instrument": "t17 reviewer independent recount (own regexes)",
+  "subjects": {
+    "docs/extension-authoring-guide.md": {
+      "doc_lines_analyzed": 271,
+      "clause_line_free": 0,
+      "clause_line_bearing": 10,
+      "bare_path_citations": 44,
+      "bare_path_citations_with_line": 10,
+      "line_free_claims": []
+    },
+    "docs/extension-authoring-guide.zh-CN.md": {
+      "doc_lines_analyzed": 243,
+      "clause_line_free": 0,
+      "clause_line_bearing": 10,
+      "bare_path_citations": 44,
+      "bare_path_citations_with_line": 10,
+      "line_free_claims": []
+    },
+    "EXTENSIONS-FOR-AGENTS.md": {
+      "doc_lines_analyzed": 237,
+      "clause_line_free": 14,
+      "clause_line_bearing": 0,
+      "bare_path_citations": 42,
+      "bare_path_citations_with_line": 0,
+      "line_free_claims": [
+        "\"No reload\"",
+        "EXPECTED_TOOLS",
+        "MPD_EXT_CONTRACT",
+        "McpServerState",
+        "childEnv",
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show",
+        "projectRejectionReason",
+        "publicToolName",
+        "refuseHostKind",
+        "safeRegisterTool",
+        "validateDescriptor"
+      ]
+    },
+    "docs/extension-adaptation-report.md": {
+      "doc_lines_analyzed": 74,
+      "clause_line_free": 1,
+      "clause_line_bearing": 5,
+      "bare_path_citations": 30,
+      "bare_path_citations_with_line": 5,
+      "line_free_claims": [
+        "cpDist"
+      ]
+    },
+    "docs/extension-adaptation-report.zh-CN.md": {
+      "doc_lines_analyzed": 67,
+      "clause_line_free": 1,
+      "clause_line_bearing": 5,
+      "bare_path_citations": 30,
+      "bare_path_citations_with_line": 5,
+      "line_free_claims": [
+        "cpDist"
+      ]
+    }
+  },
+  "totals": {
+    "clauses_line_free": 16,
+    "clauses_line_bearing": 30,
+    "bare_path_citations": 190,
+    "bare_path_citations_with_line": 30
+  },
+  "comparison": {
+    "checker_symbol_only_anchors_verified": 19,
+    "checker_line_dependent_anchors_verified": 30,
+    "recount_line_free_clauses": 16,
+    "recount_line_bearing_clauses": 30,
+    "match_line_free": false,
+    "match_line_bearing": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "task": "w1",
+  "author": "Architect",
+  "source_task": "t52",
+  "persisted_by": "Lead (t56)",
+  "path": "evidence/team-watchdog/design/DESIGN.md",
+  "bytes": 37242,
+  "sha256": "c83541eee84bc6585d5c53f20c9b2dc1b28d96b8ae54df60996791f4a2721e12",
+  "verbatim": true,
+  "repo_revision": "ebd1fa7d5015bea5a907c5f4292d369a2dc613fc",
+  "transcribed_at": "20260915T154132Z",
+  "body_bytes": 36583,
+  "body_sha256": "874cd0ed6c0ec7d90cbff26794a006f38a6c00f9fda7672bf9c9b1cf6d767e0f",
+  "provenance_header_complete": true,
+  "verbatim_recheck": "body after the provenance header is byte-identical to the source task's completion output (checked by evidence/team-watchdog/design/verify-verbatim.mjs)",
+  "notes": "design freeze (w1) text taken from t52's completion payload in .mpd/team/mpd-default/team.json (36377 chars); body written unmodified, provenance header added by t56. No source, skills/**, VENDOR_LOCK.json or package.json touched.",
+  "verified_by_command": "node evidence/team-watchdog/design/verify-verbatim.mjs",
+  "verification_log": "evidence/team-watchdog/design/VERBATIM-CHECK.log",
+  "checker_sha256": "318c17d272fa19a29fffdf83d0e52c2d81242fe33aadf623c13a013a9774f84c",
+  "header_bytes": 659,
+  "trailing_bytes_note": "the source completion payload does not end with a newline; the persisted body reproduces it exactly (no byte added, none removed)"
+}

@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-lo0778",
+  "wmHome": "/tmp/mpd-wm-home-RPu7IP",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": true,
+      "sample": "rize in one sentence\"}`** → status **complete**: |    - summary: README.md is a two-line stub declaring the project \"my-power-dsh\" and labeling the repository a \"workmate e2e workspace\". |    - recommendation: no action needed — no build/install/usage instructions, so treat it as an identity/purpose stub. |    - details: read the full 2-line file at `/tmp/mpd-wm-home-RPu7IP/ws/README.md` (`# my-power-dsh` / `workmate e2e workspace`); no files modified (read-only discipline honored). |  | 4. **`mpd_workmate_reflect {name:\"alice\", task:\"summarize README\", outcome:\"provided a one-sentence summary"
+    },
+    "files": {
+      "ok": true,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; also reliable for trivial read-only workspace lookups such as README summarization. Workspace RE",
+      "wmRoot": "/tmp/mpd-wm-home-RPu7IP/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-RPu7IP",
+      "sandboxRoot": "/tmp/mpd-wm-home-RPu7IP/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

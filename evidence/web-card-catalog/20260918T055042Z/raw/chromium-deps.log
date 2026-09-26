@@ -1,0 +1,14 @@
+[104:104:0918/140557.482412:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[104:104:0918/140557.482646:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[104:116:0918/140557.550481:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+
+DevTools listening on ws://127.0.0.1:35659/devtools/browser/fdd98c31-0ac4-49a4-82c7-d92b30e22619
+[104:104:0918/140557.630124:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.DBus.Error.UnixProcessIdUnknown: Failed to set unit properties: No such process
+[104:116:0918/140557.786791:ERROR:crypto/nss_util.cc:256] Error initializing NSS with a persistent database (sql:/root/.local/share/pki/nssdb): NSS error code: -8126
+[98:98:0918/140716.069977:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[98:98:0918/140716.070208:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+[98:119:0918/140716.129190:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:208] open /root/.config/google-chrome-for-testing/Crash Reports/settings.dat: Read-only file system (30)
+
+DevTools listening on ws://127.0.0.1:36387/devtools/browser/9f57c28d-ffe4-463e-95c9-264e8be3b5af
+[98:98:0918/140716.191926:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.DBus.Error.UnixProcessIdUnknown: Failed to set unit properties: No such process
+[98:116:0918/140716.299732:ERROR:crypto/nss_util.cc:256] Error initializing NSS with a persistent database (sql:/root/.local/share/pki/nssdb): NSS error code: -8126

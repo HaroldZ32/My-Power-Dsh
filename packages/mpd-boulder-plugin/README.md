@@ -23,6 +23,6 @@ written before the retarget keep resuming (see `src/vendor/constants.ts`,
 ## Build / test
 
 ```sh
-bun build src/index.ts --outdir dist --target node --format esm
+bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
 bun test
 ```

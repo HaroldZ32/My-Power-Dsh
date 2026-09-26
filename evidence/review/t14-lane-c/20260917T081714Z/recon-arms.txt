@@ -1,0 +1,9 @@
+=== lane-c-wave2.test.ts arms ===
+
+=== holds-lifecycle tool-name pin ===
+12://              (`agent_teams_halt`), with the watchdog's preserving hold named ONLY as that
+342:        expect(teams.find((team) => team.teamId === "team-a")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "none", halted: true, held: false })
+343:        expect(teams.find((team) => team.teamId === "team-b")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "watchdog-hold", halted: false, held: true })
+344:        expect(text).toContain("team-a: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation none")
+345:        expect(text).toContain("team-b: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation active")
+348:        for (const old of ["PAUSED — halted (agent_teams_halt)", "PAUSED — held (watchdog hold)", "both (agent_teams_halt + watchdog hold)"]) {

@@ -1,0 +1,45 @@
+MODULE /root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/quality-gates.js
+A review, verify=[], commandsRun OMITTED, verdict=pass        (the no-code shape, omitted list)
+    kindOf=review -> {"ok":true}
+B review, verify=[], commandsRun=[], verdict=pass             (explicit empty list)
+    kindOf=review -> {"ok":true}
+C review, verify=[1 cmd], command FAILED, verdict=pass        (control: must FAIL the task)
+    kindOf=review -> {"ok":true}
+D review, verify=[1 cmd], command PASSED, verdict=pass        (control: must complete)
+    kindOf=review -> {"ok":true}
+E review, verify=[], commandsRun=[], NO verdict               (must refuse: review needs a verdict)
+    kindOf=review -> {"ok":false,"error":"review cannot complete without verdict=pass"}
+F review, verify=[], commandsRun=[], verdict=needs_revision + findings (must FAIL the task)
+    kindOf=review -> {"ok":false,"error":"review with verdict=needs_revision cannot complete"}
+G review, verify=[], commandsRun=[], verdict=pass, NO acceptanceResults (must refuse)
+    kindOf=review -> {"ok":true}
+H[implementation] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=implementation
+      omitted -> {"ok":false,"error":"implementation completion requires a passed commandsRun entry for every verify command"}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+H[repair] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=repair
+      omitted -> {"ok":false,"error":"repair completion requires a passed commandsRun entry for every verify command"}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+H[verification] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=verification
+      omitted -> {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command"}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+H[integration] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=integration
+      omitted -> {"ok":false,"error":"integration completion requires a passed commandsRun entry for every verify command"}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+H[requirements] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=requirements
+      omitted -> {"ok":true}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":true}
+H[plan] verify=[], commandsRun OMITTED / [] / one FAILED  (kind matrix)
+    kindOf=plan
+      omitted -> {"ok":true}
+      []      -> {"ok":true}
+      1 FAILED-> {"ok":true}

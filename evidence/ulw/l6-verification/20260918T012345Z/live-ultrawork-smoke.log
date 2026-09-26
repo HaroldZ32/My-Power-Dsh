@@ -1,0 +1,12 @@
+[ultrawork-smoke] installing...
+[ultrawork-smoke] install done=true
+[ultrawork-smoke] live run starting...
+[ultrawork-smoke] live done=true bytes=8569
+[ultrawork-smoke] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-c/c2-ultrawork/2026-09-18T01-42-03.723Z
+  installer: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  state: {"ok":true,"stateAny":{"id":"ulw-b2135282","status":"complete","verdict":"n/a","rounds":1,"planFile":null}}
+  ledger: {"ok":true,"rows":2}
+  planFile: {"ok":true}
+  commentCheck: {"ok":true}
+[ultrawork-smoke] PASS

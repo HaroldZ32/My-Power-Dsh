@@ -1,0 +1,13 @@
+{
+  "hintCellWidths": [
+    90,
+    93,
+    82,
+    79,
+    82,
+    80
+  ],
+  "maxHintCells": 93,
+  "budget": "title/label 120 cells per the t3 brief; hints stay under it",
+  "fits": true
+}

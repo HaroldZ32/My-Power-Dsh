@@ -1,0 +1,14 @@
+### SECTION 0: real-home write refusal (DSH_HOME unset -> real /root/.dsh)
+node:fs:2422
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EROFS: read-only file system, open '/root/.dsh/profiles/web/cordis.yml'
+    at writeFileSync (node:fs:2422:20)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:209:2)
+    at composeProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:233:18)
+    at runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:283:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+exit=0

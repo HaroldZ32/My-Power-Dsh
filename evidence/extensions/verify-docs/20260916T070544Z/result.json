@@ -1,0 +1,84 @@
+{
+  "task": "t12",
+  "attempt": 2,
+  "attempt_id": "485548c3-7daf-4d73-8c14-b6fb05f34312",
+  "verifier": "Lead",
+  "status": "completed",
+  "verdict": "PASS - 7/7 acceptance criteria, 0 findings; all three attempt-1 findings verified fixed on fresh coverage after the t21/t25 repairs.",
+  "revision_pinned": {
+    "branch": "dev",
+    "head": "1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f",
+    "pinned_at_utc": "2026-09-16T07:09:13Z",
+    "settle_result": "no hash moved across the 50 s window (raw/hashes-final.txt vs raw/hashes-settle.txt)",
+    "hashes": {
+      "docs/extension-authoring-guide.md": "f8f771e83790f17998e5ba39ba0e0070bca21e706e28a48c4df3b8bf297887ce",
+      "docs/extension-authoring-guide.zh-CN.md": "07f7f9ff6b20739070beb9996222cf954614daa1cf2a0dd2c72fa470d457da68",
+      "EXTENSIONS-FOR-AGENTS.md": "9a34622cc2843eddc10bcda810efbfa027f676dfa32108ff92d504e2985edf18",
+      "docs/extension-adaptation-report.md": "ed903aaf42a39a189694f0cd14d9391040ccc528465a70c1b1c28e7d27dccb5f",
+      "docs/extension-adaptation-report.zh-CN.md": "34daae0118897dbdbe4ae7455d8e6155863a92a8fcfc90f6ab8168e049a764e8",
+      "README.md": "8367a10e8cb938ee8b689df2259a85c38992fb1b373f78985a32e86612fe3718",
+      "README.zh-CN.md": "4cbda5db79aa17dfa74671604afc74878237d11870ed8517a2092d7f96807a03",
+      "docs/index.md": "f90ea958bf11b0532ff9efd5a7eb92a2647239b460e6e8c1520f614ec081df81",
+      "docs/index.zh-CN.md": "f8715202b4182f0e2ef8a30c3a3f29f83d036ccdb44adee9f3e91df366ea3b93",
+      "packages/mpd-ext-plugin/src/index.ts": "dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0",
+      "packages/mpd-roles-plugin/src/index.ts": "9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c",
+      "VENDOR_LOCK.json": "6b65176a935f573eaf4c9766c9a42d6ad3c48d3fc4d5e6a0797bade6992449ff",
+      "scripts/mpd-ext.mjs": "60d7901245381d9874094604de4b05b9d8c07b14f766b8adb8a8a40eea2618af",
+      "skills/dsh-qa/scripts/extension-lifecycle.mjs": "f8a4af525f4b86591b913390c2e008f9f6b32bef8e6193b6f70dca74407a0ac2",
+      "skills/dsh-qa/scripts/extension-mcp-bridge.mjs": "42cfd27d731d14663e4cd65ba9c665241e2767700c5057bc6e1afbc408c89a87",
+      "skills/dsh-qa/scripts/extension-template.mjs": "42a46bf16b766d2d909fb1fec989b9544722a868a6af991729f6afed2467336c",
+      "package.json": "ea608ea2b39b2c9494a2d741bb2bcbf669a304830b6ba75713d8f8f3f719d723"
+    },
+    "anchor_targets_unchanged_since_attempt_1": true
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "`node scripts/verify-docs-parity.mjs` exits 0 with the new pairs discovered (the human guide pair is checked, not exempt)",
+      "status": "passed",
+      "evidence": "exit 0, pairs=36 failed=0 violations=0 exempt=16, with `ok   docs/extension-authoring-guide.md` and zero exemption lines mentioning the guide. Controls via --root <tmp>: zh twin deleted -> exit 1 `FAIL docs/extension-authoring-guide.md - missing zh-CN file`; switch link deleted -> exit 1 `FAIL ... EN switch link missing/not under the title`; faithful copy -> exit 0. raw/gate-docs-parity.txt, raw/parity-controls.txt"
+    },
+    {
+      "criterion": "the citation checker is re-run by the verifier and every repo path, line anchor and command cited by the three docs resolves; a citation that no longer resolves is a FAIL with the token named",
+      "status": "passed",
+      "evidence": "Current author checker (sha256 471aec42...) re-run by the verifier from a COPY in this evidence dir: 15/15 checks, 219 citations resolved, 0 pending, 4 illustrative, its t21 CONTENT claims and negative control included (raw/author-checker.txt). Independent re-implementation (verify-docs-independent3.mjs + anchor-sweep3.mjs + 41 hand-picked semantic samples): 56 live line-anchor citations in scope, 0 flagged (0 missing, 0 out-of-range, 0 blank), 41/41 semantic samples carry the cited symbol. All attempt-1 failures are fixed: AI doc tool anchors now `:715`/`:807`/`:930`/`:984` (+ wrapper `:537`, gated list `:548`), guide `:659` (redactedDescriptor), guide `:1062` (connectExtensionMcpServers), report `:102` (resolveAdapter) and `:59` (CANONICAL NOTE), mcp.ts `:42` (stderrTail). raw/anchor-sweep3.txt, raw/independent-run.txt, independent-result.json, samples.json"
+    },
+    {
+      "criterion": "every relative link in README.md/README.zh-CN.md that points at a doc or directory in this repo is resolved by the verifier (target exists; a heading anchor matches a real heading)",
+      "status": "passed",
+      "evidence": "112 relative links across README.md, README.zh-CN.md, docs/index.md, docs/index.zh-CN.md, the guide pair and the AI doc; 6 with heading anchors; 0 unresolved. README.md/README.zh-CN.md/docs/index*.md are byte-identical to attempt 1 (hashes 8367a10e / 4cbda5db / f90ea958 / f8715202), where the anchors were additionally proven by controls (the CJK slug #终端界面dsh-tui resolves; an invented anchor is rejected). raw/independent-run.txt, raw/controls.txt"
+    },
+    {
+      "criterion": "the report's status section is checked against reality: every F-item it calls fixed has a corresponding evidence dir with a result, and every item it calls deferred is genuinely absent from the change set",
+      "status": "passed",
+      "evidence": "F1/F5 -> evidence/extensions/f1-adapter-identity/20260916T061318Z/result.json; F7 -> evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs (exact file); F11 -> evidence/extensions/pack-closure-check/20260916T061527Z/result.json + scripts/verify-pack-closure.mjs; F8 -> no `greenOwner` token left in extension-lifecycle.mjs; F9 -> extension-lifecycle/2026-09-16T06-31-40.371Z/result.json steps.packed.negativeControl {falsifiable:true, packerExitGated:true, three broken fixture trees ok:false, closed tree ok:true}; F10 -> extension-mcp-bridge/2026-09-16T06-31-25.127Z/result.json steps.stderr {cap:2000, floodLength:3053, reportedTailLength:2000, headDropped:true, tailKept:true, vacuous:false}; the 'three lanes re-read by the verification task' claim -> evidence/extensions/verify-skills/20260916T064350Z/ exists with result.json; the template-lane claim -> extension-template/2026-09-16T06-31-12.171Z/result.json ok:true; the VENDOR_LOCK paragraph now states the true AFTER value (318 / a8ba96b8...) and verify-vendor exits 0; F6 deferred -> none of the eight pre-c239407 dirs is in `git status --porcelain`; the new packed-tree deviation resolves to evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json (arms A/B) and .mpd/TODO.md T-51 (line 268), described as NOT fixed. raw/status-f8f9f10.txt, raw/status-rest.txt, raw/gate-verify-vendor.txt"
+    },
+    {
+      "criterion": "the AI doc's manifest skeleton is validated for real (`mpd-ext validate` over an extracted copy) and the human guide's walkthrough commands are executable as written",
+      "status": "passed",
+      "evidence": "Independent extraction + materialization: validate exit 0, `contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)`; NEGATIVE control (declared persona deleted) exit 1 `2 problem(s) - this extension would not load`. Guide section 5 verbatim with sandboxed HOME/cwd: default scaffold exit 0 (3 kinds), validate exit 0 `loadable`, list exit 0, cp -r arm exit 0, --with-mcp arm exit 0 and the host-free server answered tools/list; AI doc section 6 worked copy exit 0 in both planes. Cheap gate commands: `bun scripts/mpd-ext.mjs --self-test` exit 0 (52 checks); `bun test packages/mpd-ext-plugin` exit 0 (74 pass / 0 fail). The only non-zero step is the smoke against the DEFAULT copy, whose server.mjs section 5 documents as dropped without --with-mcp. The three live lanes were not re-executed here (their case scripts write evidence outside this task's inScope); their recorded runs are verified in the criterion-4 evidence. raw/walkthrough.txt, raw/gate-bun-test-ext.txt, raw/independent-run.txt"
+    },
+    {
+      "criterion": "the structural split is tested, not asserted: no heading is shared between the human and AI docs and no paragraph is duplicated (a mechanical comparison recorded in the evidence)",
+      "status": "passed",
+      "evidence": "Independent mechanical comparison on the repaired text: 20 machine headings vs 27 human headings, 0 shared; 17 machine paragraphs (>= 80 normalised chars, fences/tables excluded) vs 27 human, 0 duplicated. The comparator's falsifiability was proven by controls (controls.mjs): guide-vs-guide reports 25 shared paragraphs, an invented heading anchor is rejected, and the four real anchors resolve. raw/independent-run.txt, raw/controls.txt"
+    },
+    {
+      "criterion": "the verifier's record (commands, exit codes, raw readings) lives under its own evidence dir, and unreproducible claims are reported as findings",
+      "status": "passed",
+      "evidence": "evidence/extensions/verify-docs/20260916T070544Z/ holds report.md, result.json, independent-result.json, anchor-sweep3.json, samples.json, the re-implemented checkers (verify-docs-independent3.mjs, anchor-sweep3.mjs, controls.mjs, walkthrough.sh), the copied author checker with its result/log, and raw/ (parity + controls, vendor, bun test, sweeps, walkthrough, status checks, hashes final/settle). No unreproducible claim was found; 0 findings. Four observations (O-1..O-5) are recorded, each explained, none requiring an edit."
+    }
+  ],
+  "findings": [],
+  "observations": [
+    {"id": "O-1", "severity": "low", "file": "docs/extension-adaptation-report.md", "line": 381, "problem": "The F9 row (and zh:185) QUOTES the retired citation form `exits 0 (`:385`)` when describing what skills/dsh-qa/SKILL.md no longer says. SKILL.md is 138 lines, so a quote-unaware scanner reports it out of range. The sentence explicitly frames it as the old wording; the current author checker does not extract it. Classification recorded, no edit suggested."},
+    {"id": "O-2", "severity": "low", "file": "docs/extension-authoring-guide.md", "line": 167, "problem": "Four unattributed continuation tokens are false positives of my own cross-line rule: `:1` from the JSON literal `\"id\":1` inside the fenced server-smoke command (guide EN:167 / ZH:148) and `:58` from the labelled hint `(hint `:58-92`)` on the report F1 row (EN:376 / ZH:180). The hint is correct: the canonical note spans index.ts 58-92."},
+    {"id": "O-3", "severity": "low", "file": "EXTENSIONS-FOR-AGENTS.md", "line": 23, "problem": "The four tool anchors are a single path plus wrapping continuations (`:715`, `:807` on line 23; `:930`, `:984` on line 24). Correct at the settled revision, but a scanner handling only same-line continuations sees two of four; the current t21 checker resolves all four."},
+    {"id": "O-4", "severity": "low", "file": "docs/extension-adaptation-report.md", "line": 31, "problem": "Section 6 still carries `F8 (low, WAIVED this wave)` / `F9 (low, same waiver family)` while section 12 marks them fixed. Section 12's preamble states the section-6 register is left unchanged on purpose as the audit's own record. Intended, not drift (matches the t26 review note carried to t17)."},
+    {"id": "O-5", "severity": "low", "file": "evidence/extensions/docs-claims/check-citations.mjs", "line": 466, "problem": "The author checker writes result.json/output.log/raw next to itself, so a normal run rewrites evidence/extensions/docs-claims. This task copied it to evidence/extensions/verify-docs/author-check-citations2.mjs before running; the author's evidence dir was NOT rewritten by t12 (its newest write, 15:05:13, is another seat's; my run's outputs are 15:08:01 inside this evidence dir)."}
+  ],
+  "task_level_notes": {
+    "fresh_coverage": "attempt 1's terminal verdict was not reused; the whole battery was re-run against the repaired text (guide f8f771e8, AI doc 9a34622c, report ed903aaf vs attempt 1's df231162 / dbdb9d14 / 4bf61ade)",
+    "evidence_dir": "evidence/extensions/verify-docs/20260916T070544Z",
+    "scope_discipline": "only evidence/extensions/verify-docs was written; no repo file edited; the walkthrough used a sandbox HOME + cwd and left <repo>/.mpd/extensions absent"
+  }
+}

@@ -1,0 +1,17 @@
+[t27 arm set before] checker under test: /root/dshProj/my-power-dsh/scripts/check-citations.mjs
+
+baseline-symbol-first           frozen: ACCEPTED (exit 0)  durable: ACCEPTED (exit 0)
+rot-bare                        frozen: FLAGGED (exit 1)   durable: FLAGGED (exit 1)
+    FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/reviewprobe.ts
+rot-shadowed                    frozen: ACCEPTED (exit 0)  durable: FLAGGED (exit 1)
+    FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/reviewprobe.ts
+line-dependent-accepted         frozen: ACCEPTED (exit 0)  durable: ACCEPTED (exit 0)
+symbol-first-survives-shift     frozen: ACCEPTED (exit 0)  durable: ACCEPTED (exit 0)
+line-dependent-drifted          frozen: FLAGGED (exit 1)   durable: FLAGGED (exit 1)
+    FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the cla
+rot-pending-annotated           frozen: ACCEPTED (exit 0)  durable: ACCEPTED (exit 0)
+symbol-first-wrong-then-right   frozen: FLAGGED (exit 1)   durable: FLAGGED (exit 1)
+    FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 2 unresolved: doc line 3: the cited file does not contain the claim `
+symbol-first-right-then-wrong   frozen: ACCEPTED (exit 0)  durable: ACCEPTED (exit 0)
+
+[t27 arm set before] wrote /root/dshProj/my-power-dsh/evidence/gates/t27-symbol-first-site-binding/20260917T075343Z/arm-set-before.json

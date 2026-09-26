@@ -1,0 +1,7 @@
+#!/bin/sh
+# t8 replay arm: boot the REAL dsh-tui RESUMING a session that already carries the
+# log-only `mpd-tui/board-opened` event, so the durable transcript REPLAY path is the
+# one under test (the live-append arm was the canary run's test). The lane helper
+# boots a bare `dsh-tui`, so a PATH shim is the least invasive way to add the flag
+# while keeping the lane's own env/capture discipline.
+exec /root/.nvm/versions/node/v24.16.0/bin/dsh-tui --resume b003aeb8-495c-4ca0-9917-474626b9eef6 "$@"

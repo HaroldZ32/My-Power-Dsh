@@ -1,0 +1,33 @@
+=== commit-shape check (t28 addendum, measured 2026-09-17T03:01:14Z, HEAD 646d801) ===
+--- new (untracked) files inside shipped/pinned trees that the wave's claims depend on ---
+?? agent-references/agent-teams-deltas.md
+?? agent-references/index.md
+?? agent-references/troubleshooting.md
+?? packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs
+?? packages/mpd-team-watchdog-plugin/src/channel.ts
+?? packages/mpd-team-watchdog-plugin/src/config-file.ts
+?? packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts
+?? packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+?? packages/mpd-team-watchdog-plugin/test/predicate.test.ts
+?? scripts/dump-config.mjs
+?? scripts/mpd-bg.mjs
+?? scripts/repin-vendor.mjs
+?? scripts/run-qa-lanes.mjs
+?? scripts/verify-dist-fresh.mjs
+?? skills/dsh-qa/cases.json
+?? skills/dsh-qa/scripts/lib/credentials.mjs
+?? skills/dsh-qa/scripts/lib/immutable-output.mjs
+--- how many are named BY AGENTS.md as binding gates/helpers or as the closure documentation? ---
+  scripts/verify-dist-fresh.mjs                UNTRACKED
+  scripts/mpd-bg.mjs                           UNTRACKED
+  scripts/repin-vendor.mjs                     UNTRACKED
+  scripts/dump-config.mjs                      UNTRACKED
+  agent-references/troubleshooting.md          UNTRACKED
+--- consequence ---
+  AGENTS.md SS4 names verify-dist-fresh.mjs as a binding gate, SS12 names mpd-bg.mjs for 4 frictions, SS4/SS11 name repin-vendor.mjs, SS4 names dump-config.mjs, and SS12 points the 5 harness-close frictions at agent-references/troubleshooting.md.
+  A selective `git add` of MODIFIED paths would commit the pointers and omit the targets: the wave's 'closed by documentation + helper' claims would not exist in the commit.
+  Recommendation for the captain (single git writer): stage with `git add -A` (or an explicit list incl. these 21 paths) and re-run the static gates on the STAGED tree before committing.

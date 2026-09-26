@@ -1,0 +1,9 @@
+## git status --porcelain (my inScope paths)
+ M package.json
+?? scripts/verify-pack-closure.mjs
+
+scripts/pack-mpd.mjs: UNCHANGED vs HEAD (READ-ONLY respected)
+
+## sha256
+8beb91c3f62640b5b72ad383d1d28809435a77fb50f9291db6b5412bada9458b  scripts/pack-mpd.mjs
+9decb0830f327f6d220e7738aafb9237cc0cc318f2356c66433d5b10b61135df  scripts/verify-pack-closure.mjs

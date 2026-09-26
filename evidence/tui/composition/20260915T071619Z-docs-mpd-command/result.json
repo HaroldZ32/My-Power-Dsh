@@ -1,0 +1,117 @@
+{
+  "task": "t29 — repair-round-3: verify the t27 repairs against the bytes; land the /mpd commands-service disclosure docs-side",
+  "producedBy": "Junior Engineer (attempt 3)",
+  "measuredAt": "2026-09-15T07:17:51.315Z",
+  "disposition": "t27 already satisfied items 1 and 2 (verified against the bytes, not re-edited). Item 3 was NOT satisfied on disk: neither doc carried the harness commands-service rationale. It is now landed in docs/tui.md (the only doc in this task inScope); the zh mirror is NOT landed and is prepared as zh-6.4-snippet.md.",
+  "anchors": {
+    "dsh-plugin.json": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+    "packages/mpd-tui-plugin/dist/index.js": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f"
+  },
+  "anchorsNote": "Both frozen anchors re-measured unchanged: the manifest must not be edited (it is t9/t12/t13 anchor), and it was not.",
+  "docs": {
+    "docs/tui.md": {
+      "sha256": "0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767",
+      "was": "0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767"
+    },
+    "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+  },
+  "verification": {
+    "task": "t29 — repair-round-3 verification (bytes) + /mpd commands-service disclosure",
+    "measuredAt": "2026-09-15T07:16:40.754Z",
+    "anchors": {
+      "manifest": "84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9",
+      "entry": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f"
+    },
+    "docDigestsAtT27": {
+      "docs/tui.md": "1afda0fd7a88d8274cf67964f1da63856f1937a2db3d732daa429b7b13807a9c",
+      "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+    },
+    "docDigestsNow": {
+      "docs/tui.md": "0d899a4d308fdf17f340efc9a97811c5152416399e5302949ddf270014321767",
+      "docs/tui.zh-CN.md": "6e7a61a9ffcf5d030e3633d66a5f815da1b38d4355eede3bdf937b186fa1c0e7"
+    },
+    "pendingAmendmentForT27Scope": [
+      "docs/tui.zh-CN.md",
+      "evidence/tui/docs/"
+    ],
+    "checks": [
+      {
+        "id": "manifest-unmoved",
+        "status": "passed",
+        "detail": "dsh-plugin.json still 84ed4a5d…"
+      },
+      {
+        "id": "entry-unmoved",
+        "status": "passed",
+        "detail": "packages/mpd-tui-plugin/dist/index.js still 5dce2563…"
+      },
+      {
+        "id": "item1.docs/tui.md",
+        "status": "passed",
+        "detail": "renderer disclosure, citations, limits present; no superseded digest"
+      },
+      {
+        "id": "item1.docs/tui.zh-CN.md",
+        "status": "passed",
+        "detail": "renderer disclosure, citations, limits present; no superseded digest"
+      },
+      {
+        "id": "item1.softened.docs/tui.md",
+        "status": "passed",
+        "detail": "renderer no longer asserted as a delivered surface"
+      },
+      {
+        "id": "item1.softened.docs/tui.zh-CN.md",
+        "status": "passed",
+        "detail": "renderer no longer asserted as a delivered surface"
+      },
+      {
+        "id": "item2.docs/tui.md",
+        "status": "passed",
+        "detail": "bound to delivered digests + delivered lane evidence; no pending panels row"
+      },
+      {
+        "id": "item2.docs/tui.zh-CN.md",
+        "status": "passed",
+        "detail": "bound to delivered digests + delivered lane evidence; no pending panels row"
+      },
+      {
+        "id": "item2.chain-note",
+        "status": "passed",
+        "detail": "the full chain is recorded as history in REVISION-BINDING.md"
+      },
+      {
+        "id": "item3.docs/tui.md",
+        "status": "passed",
+        "detail": "commands-service rationale sharpened docs-side"
+      },
+      {
+        "id": "item3.docs/tui.zh-CN.md",
+        "status": "failed",
+        "detail": "zh mirror NOT landed — docs/tui.zh-CN.md is not in this task's inScope; the ready-to-paste Chinese text is zh-6.4-snippet.md in this evidence directory"
+      },
+      {
+        "id": "wiring.docs/tui.md",
+        "status": "passed",
+        "detail": "switch link, R8 keys, wording clean"
+      },
+      {
+        "id": "wiring.docs/tui.zh-CN.md",
+        "status": "passed",
+        "detail": "switch link, R8 keys, wording clean"
+      }
+    ],
+    "verdict": "failed"
+  },
+  "gates": {
+    "bun run typecheck": "exit 0",
+    "node scripts/verify-rows-parity.mjs": "exit 0 (24 row ids)",
+    "node skills/dsh-qa/scripts/preset-conformance.mjs": "PASS exit 0 (31/31 parity, session create 200 agentPreset mpd, bootLog [], negative control RED)"
+  },
+  "openGap": {
+    "what": "docs/tui.zh-CN.md does not yet carry the §6.4 /mpd commands-service mirror",
+    "why": "docs/tui.zh-CN.md is not in t29 inScope (dsh-plugin.json, packages/mpd-bundle/cordis.patch.yml, presets/, evidence/tui/composition/, scripts/install-profile.mjs, docs/tui.md) and the dispatch says to work only in-scope paths",
+    "remedy": "paste evidence/tui/composition/20260915T071619Z-docs-mpd-command/zh-6.4-snippet.md into docs/tui.zh-CN.md, or amend the inScope to include it and re-dispatch one bilingual pass"
+  },
+  "forT14": "State which reading the ecosystem takes for the /mpd registration: this bundle takes the UNATTRIBUTED harness 'commands' service path (contributing commands: [] is truthful because the manifest-mediated Command contribution surface is unused), so the effect ledger records the registration as 'undeclared'; declaring the command instead would need a granted commands.invoke permission plus an admission path a profile-installed plugin cannot reach. ALSO carry the revision binding: manifest 84ed4a5d5aac3fb07949f0f62bb7e7afdfa1e96de2c19de02974381eeb1201c9 and entry 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f (98883 bytes), with 695f68c4 -> 710d3eef -> 5dce2563 as HISTORY."
+}

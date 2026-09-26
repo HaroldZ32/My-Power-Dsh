@@ -1,0 +1,142 @@
+=== t2 / L6 independent verification — run log (captured 2026-09-18T01:45:38Z) ===
+member: Senior Engineer | attempt 17 | attempt_id 43dcf0f2-f5c0-408d-851e-2c2ffef0acbd
+lane scope: evidence/ulw/l6-verification/**  (nothing else written; packages/*/dist/** and VENDOR_LOCK.json untouched)
+
+--- REVISION PIN (taken 2026-09-18T01:23Z) -------------------------------------
+branch dev | HEAD 5aa222a144e4238b67453731c5decd806db6db94 | tree DIRTY (the wave's uncommitted set)
+tracked-diff sha256 032568798ab5410ba0684cd24c2d33a797910c4bb66b6919f9d0c24a0e19ec27
+bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee  packages/mpd-ulw-plugin/src/index.ts
+d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f  packages/mpd-dsh-adapter-plugin/src/index.ts
+4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8  packages/mpd-agent-teams-plugin/lib/session-start.js
+a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116  packages/mpd-bundle/cordis.patch.yml
+ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b  presets/mpd/agent.cordis.yml
+f9fb3f4ffab47c5508855b63e93ba576bf3b0c17a13873066e085dc0a3cfc2be  skills/dsh-qa/scripts/session-start-team.mjs
+5e03eec31c685370da69f75c08c047a8e2c7ce5591e73564372b3924a94add5f  skills/dsh-qa/scripts/ulw-command.mjs
+dbad6a4360281d12cc0aba0f60d6bcfabe425cbef73de3e79322d018232fba30  skills/dsh-qa/scripts/ultrawork-smoke.mjs
+02bd398e6784c10ac807d90f7f1b1acbcc99c7ebd8f37cc22dafebff49464e7c  skills/dsh-qa/scripts/lib/ulw-command-probe.mjs
+ac080728790b9100a4136010b7cf52dd27a385be5a50bfb78a0f60c86d1483b8  skills/dsh-qa/scripts/lib/gate-probe.mjs
+cfc6aee6d7ae5971d3777811277a68f5f57a566518e98389064a04d7f0a95581  packages/mpd-ulw-plugin/test/commands.test.ts
+
+--- SETTLE RE-CHECK (2026-09-18T01:45:38Z, 1360 s window) ----------------------
+HEAD identical: 5aa222a144e4238b67453731c5decd806db6db94
+tracked-diff sha256 identical: 032568798ab5410ba0684cd24c2d33a797910c4bb66b6919f9d0c24a0e19ec27
+all 11 key-file sha256 values identical -> every verdict below is anchored to this revision
+(the session-start-team case independently re-checked its own 50 s window: rev 5aa222a1, gateHash 4888f69fad5c…)
+
+--- [1] bun test (root test script `bun run test` = `bun test packages`) — REPORTED (exit 1) ---
+NOT GREEN, quoted verbatim:
+  975 pass / 3 fail / 7239 expect() calls / Ran 978 tests across 7857 files. [53.67s]   exit=1
+the three reds, each classified non-wave:
+  (1)(2) mpd-roles-plugin/test/adapter-identity.test.ts + mpd-ext-plugin/test/adapter-identity.test.ts
+         `F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62)`
+         committed dist inlines the PRE-t12 adapter (submitUserTurn=0, registerCommand=0)
+         fresh canonical build of the same src inlines the t12 adapter (submitUserTurn=2, registerCommand=1)
+         `git diff HEAD --stat -- packages/mpd-roles-plugin packages/mpd-ext-plugin` = EMPTY (no wave edit there)
+         -> the deferred stale-dist class owned by t8 (pre-authorised as reported)
+  (3)    mpd-mcp-shared/bin-resolve.test.mjs `REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails`
+         probeAstGrep() greps `<bin> --version` for 'ast-grep'; installed .toolchain sg (0.45.3) prints `ast-grep 0.45.3`
+         -> installed-toolchain drift, unreachable by any wave edit  (finding L6-F4)
+bare `bun test` (no script arg) also exits 1 — 4120 pass / 607 fail / Ran 4744 tests across 27052 files — because it
+discovers VENDORED SCRATCH TREES under evidence/**; package.json defines the gate as `bun test packages`, and AGENTS.md §4
+says `bun test` (per package). Full log: gates-test-typecheck.log
+
+--- [2] bun run typecheck — PASSED -------------------------------------------------
+$ tsgo --noEmit   exit=0
+
+--- [3] bun run verify:rows — PASSED ----------------------------------------------
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (…, mpd-ulw, …)   exit=0
+
+--- [4] bun run verify:docs — PASSED ----------------------------------------------
+[verify-docs-parity] pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS            exit=0
+(DERIVED re-checks: adopted-tree region claim carried 120/10 vs derived 120/10; per-file registry-vs-live ids agree in all 10 files)
+
+--- [5] preset-conformance --self-test — PASSED -----------------------------------
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema),
+persona prefix=true, row parity 31/31                                                      exit=0
+
+--- [6] bun run test:qa — REPORTED (exit 1) --------------------------------------
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=324/2c039e4c49b9 tree=326/fe85578e5c86   exit=1
+  = the pre-authorised VENDOR_LOCK pairing red (L5's two new case files move the corpus 324->326; the single re-pin is the captain's, t8)
+  supporting measurement: node scripts/verify-vendor.mjs exit 1 -> `asset skills count drifted: 326 vs 324` + treeSha mismatch; find skills -type f = 326
+per-script sweep (the aggregate loop stops at the first failure, so every script was run):
+  48 skills/dsh-qa/scripts/*.mjs --self-test -> exactly ONE non-zero: agent-teams-messaging rc=1; the other 47 rc=0
+  scripts/mpd-ext.mjs --self-test rc=0 ; scripts/mpd-ext.mjs validate extensions/mpd-ext-example rc=0
+logs: gates-test-qa.log , gates-test-qa-per-script.log
+
+--- [7] session-start-team.mjs (LIVE, isolated) — REPORTED (exit 1) — FALSE RED, finding L6-F1 ---
+settled {ok:true, rev 5aa222a1…, gateHash 4888f69fad5c…}   installer ok   patchRow ok (mode off + autoRoute true)   compose ok
+simple 3/3      -> 0 teams, no notice                                     ok
+soft-complex 0  -> 1 staged team (mpd, phase staged, 7 members) + ADVISORY notice 1, provisioned 0, signals [C]   FAIL: "an advisory route must stage NOTHING (clause 4)"
+soft-complex 1  -> 0 teams + ADVISORY notice 1, provisioned 0, signals [C]                                        ok
+explicit        -> EXACTLY 1 staged team (profile mpd, phase staged, 11 members, 0 spawned) + PROVISIONED notice 1, advisory 0   ok
+negative control (autoRoute disarmed) -> 0 teams, no notice                                                        ok
+threeWay.ok=false — only for soft-complex 0.
+WHY IT IS A FALSE RED (decisive counter-evidence, same run):
+  advisory text (verbatim, user-role): "[AgentTeams] Session-start team rule: this session shows complexity signals C, and
+    NO team was staged — the gate is ADVISORY and stages nothing while complexity is merely being judged. - Stage a team at
+    the moment the work actually warrants one: call agent_teams_create(approval="required", profile="mpd") …"
+  soft-complex/0 decoded session log tool calls: [bash, web_fetch, agent_teams_create, agent_teams_status,
+    agent_teams_create_task, job_output, agent_teams_edit_plan] — 9 x agent_teams_create; the team.json description is a
+    model-written paragraph and captainSessionId is that side's session id.
+  => the GATE injected the advisory notice and provisioned NOTHING; the LIVE MODEL staged the team because the notice tells
+     it to. The case's assertion cannot distinguish the two actors (L5's own three runs: red/green/green — model-dependent).
+logs: live-session-start-team.log , session-start-team-2026-09-18T01-29-15.614Z/** (incl. sides/**)
+
+--- [8] ultrawork-smoke.mjs (LIVE, isolated, real credential in an ephemeral sandbox) — PASSED (exit 0) -----
+[ultrawork-smoke] PASS   installer {ok,exit 0}   live {ok,exit 0}
+state {ok:true, stateAny:{id ulw-b2135282, status complete, verdict n/a, rounds 1, planFile null}}   ledger {ok:true, rows 2}   planFile {ok:true}
+the model independently re-verified the deliverable: utils.txt = alpha\nbeta\ngamma\n, sha256 4fdbc441ea7b… (matches the recorded evidence)
+TWO DISCLOSURES:
+  L6-F2 — the tool RESULT was invalid on EVERY call: `Error: tool "mpd_ultrawork" returned invalid output: "value.planFile" must be a string`
+          (schema `planFile: {type:"string"}` vs the engine's `string|null` when plan=false; PRESENT AT HEAD, unchanged by the wave; no test covers it)
+  L6-F3 — the run exercised the shipped PRE-WAVE engine dist (no dist rebuild happened), so it proves the engine loop, not the wave's new src.
+evidence relocated verbatim into this lane (the case hard-codes evidence/plan-c/…): ultrawork-smoke-2026-09-18T01-42-03.723Z/
+`git status --porcelain -- evidence/plan-c` = CLEAN.  log: live-ultrawork-smoke.log
+
+--- [9] ulw-command.mjs (LIVE + mount-instrumented, isolated) — PASSED (exit 0) ----
+[ulw-command] PASS
+artifact.pendingIntegrationRebuild = true (both shipped dists stale: missingInShipped registerCommand / ULW_ACTIVATION_DIRECTIVE / usage: /ulw
+  for mpd-ulw, registerCommand / submitUserTurn for mpd-dsh-adapter)
+shippedComposition ok=false, gating=false, applyFailure=FALSE — the shipped composition BOOTS (no apply abort) and registers neither command
+resolvedArtifacts ok=true — live registry lists + executes both names (the CONSISTENT composition: both src entries rebuilt in the sandbox)
+gesture ok=true / gating=true / rewritten=true / finding=null / commandRuns=0 / clauses 6 — the t15 fix verified in the REAL composition
+  (raw prompt seq 3 followed by user-role notices; the directive is now injected; `grep -c ULTRAWORK`=3 in the decoded log)
+equivalenceTableTools ok (103 tools offered by the real request header); workspacesSandboxed ok; gatedProblems []
+log: live-ulw-command.log , ulw-command-2026-09-18T01-32-47.140Z/**
+
+--- [10] own mount-instrumented boot (acceptance 4) — PASSED ----------------------
+node evidence/ulw/l6-verification/20260918T012345Z/mount-boot.mjs -> ok=true (all steps green)
+BOOT A shipped-consistent : exit 0, crashes [], applyAbort false, tools {mpd_ultrawork:true, mpd_ulw:true},
+                            commands [agent-teams, agent-teams-mpd, compact, feedback, goal, mpd, permission, plan] -> NEITHER ulw nor ultrawork
+                            (staleConsistent true: the shipped dist predates the wave)
+BOOT B sandbox-built      : exit 0, crashes [], applyAbort false, tools {mpd_ultrawork:true, mpd_ulw:true},
+                            commands [..., ultrawork, ulw] with descriptions + input hint 'objective'
+                            (row ids KEPT: the retarget happens in the SANDBOX copy of the profile patch)
+compositionOnly (dump-config, with --patch; labelled composition-only per AGENTS.md §4): lists id: mpd-ulw + the probe row
+isolationSessions: ok — 2 sandbox session keys, 0 escaped
+logs: mount-boot.log , mount-boot/{result.json,output.log,raw/**}
+
+--- DIAGNOSTICS (pre-authorised reds owned by t8) --------------------------------
+node scripts/verify-dist-fresh.mjs  exit 1 -> `FAIL - 18 of 20 targets not fresh (STALE: 18)`
+  stale: mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline,
+         mpd-memory, mpd-modelchain, mpd-qa-roles-probe, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui,
+         mpd-ulw, mpd-workmate   |   fresh: mpd-bundle-plugin/dist/index.js, mpd-ext-plugin/dist/sdk.js
+  -> the footprint is every package whose bundle inlines the t12-changed adapter src, NOT only the two rows the mount note names
+node scripts/verify-vendor.mjs      exit 1 -> skills count 326 vs lock 324 + treeSha mismatch (single re-pin reserved to the captain)
+
+--- FINDINGS ---------------------------------------------------------------------
+L6-F1 high  QA case defect     skills/dsh-qa/scripts/session-start-team.mjs — assert the plugin-side property and attribute
+                               the team record's origin (no agent_teams_create tool call) instead of `stagedTotal === 0`.
+L6-F2 high  product defect     packages/mpd-ulw-plugin/src/index.ts — `planFile` schema must accept null (plan=false is the
+             (pre-existing,    /ulw default); add a unit test validating a plan=false result against the declared schema.
+              R1 candidate)    NOT fixed here: outside this lane's inScope.
+L6-F3 medium correction        stale-dist footprint 18/20; the "shipped composition aborts" claim is NOT reproduced
+                               (shipped boots cleanly; only a MIXED composition aborts).
+L6-F4 low   environment        mpd-mcp-shared toolchain probe vs the installed sg 0.45.3 output.
+
+--- SCOPE / ISOLATION ------------------------------------------------------------
+Every file this lane wrote is under evidence/ulw/l6-verification/** (git status shows no other new path attributable to it).
+Live cases used temp DSH_HOME + sandboxed HOME + explicit sandbox workspace; credentials were copied into the ephemeral sandbox only.
+Dist freshness asserted nowhere; packages/*/dist/**, VENDOR_LOCK.json and all src files untouched.
+Unverifiable here, not claimed: the frozen contract's U1 (a full live /ulw run that autonomously stages a team end-to-end).
+=== END ===

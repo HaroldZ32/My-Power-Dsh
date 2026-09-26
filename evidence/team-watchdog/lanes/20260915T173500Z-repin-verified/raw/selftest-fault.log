@@ -1,0 +1,11 @@
+[self-test] ok   healthy-observation: 11 checks passed on the healthy observation
+[self-test] ok   negative:case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that failed
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:no-hold: the mutated observation FAILED its own check(s) ["F4"] — an escalation that applied no hold
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (10 checks, 0 failed)

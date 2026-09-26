@@ -1,0 +1,157 @@
+{
+  "task": "t44 — self-filed CORRECTION of one magnitude in ../result.json (verdict unchanged)",
+  "filed_by": "platform-engineer",
+  "filed_at": "2026-09-17T03:08:56.494Z",
+  "what_was_wrong": "mechanism_for_the_wave_report in ../result.json said the 13 stale dists were \"58-74 B SMALLER\". That range is wrong: it captured only the small tail. The decisive refutation is my own table — the t44 `before` hash for mpd-team-watchdog-plugin (ddb30834942b3b4f…) IS the package-dir-form build, and root-minus-package-dir is +528 B, not ≤74 B.",
+  "corrected_finding": "A package-dir build (`bun build src/index.ts`, cwd=packages/<p>) is SMALLER than the canonical repo-root build by 34-528 B across these 13 targets: bun writes the entry path RELATIVE TO CWD (banner, where emitted) and rewrites every inlined sibling-module/import comment the same way. Measured example: packages/mpd-ext-plugin in package-dir form starts with `// ../mpd-dsh-adapter-plugin/src/index.ts` while the canonical form carries `// packages/mpd-dsh-adapter-plugin/src/index.ts`.",
+  "independence": "packaging-engineer measured the same law independently (mpd-ext-plugin -276 B, mpd-team-watchdog-plugin -528 B, mpd-tui-plugin -480 B, mpd-tools-plugin -58 B). Their -528/-58 match my rows to the byte. Those three bigger packages were FRESH at t44 and so are not among my 13, but they obey the same rule — which is why ONE canonical form is the only reconciliation (banner-only normalization can never fix a 528 B gap).",
+  "unchanged_by_this_correction": [
+    "the 13 stale targets and every before/after hash",
+    "the package-dir banner observation `// src/index.ts` (true for the files that emit a banner; see packageDirFirstLine for the two whose first line is a bun helper)",
+    "the remedy (one repo-root bulk rebuild) and the green gate afterwards",
+    "T-67: only the repo-root form reconciles the two builds"
+  ],
+  "decisive_extra_evidence": "in this same pass every one of the 13 packages rebuilt from the repo root is byte-IDENTICAL to its committed dist — an independent re-verification that the t44 landing is exactly what the gate reproduces.",
+  "range_measured": {
+    "minDelta": 34,
+    "maxDelta": 528,
+    "n": 13,
+    "allRootEqualCommitted": true
+  },
+  "table": [
+    {
+      "pkg": "mpd-bootstrap-plugin",
+      "committedBytes": 30352,
+      "rootBytes": 30352,
+      "packageDirBytes": 30286,
+      "deltaRootMinusPkgDir": 66,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-boulder-plugin",
+      "committedBytes": 48315,
+      "rootBytes": 48315,
+      "packageDirBytes": 48029,
+      "deltaRootMinusPkgDir": 286,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-codegraph-plugin",
+      "committedBytes": 21914,
+      "rootBytes": 21914,
+      "packageDirBytes": 21848,
+      "deltaRootMinusPkgDir": 66,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-comment-checker-plugin",
+      "committedBytes": 23877,
+      "rootBytes": 23877,
+      "packageDirBytes": 23799,
+      "deltaRootMinusPkgDir": 78,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-hashline-plugin",
+      "committedBytes": 55203,
+      "rootBytes": 55203,
+      "packageDirBytes": 54791,
+      "deltaRootMinusPkgDir": 412,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-memory-plugin",
+      "committedBytes": 30776,
+      "rootBytes": 30776,
+      "packageDirBytes": 30716,
+      "deltaRootMinusPkgDir": 60,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-modelchain-plugin",
+      "committedBytes": 23483,
+      "rootBytes": 23483,
+      "packageDirBytes": 23415,
+      "deltaRootMinusPkgDir": 68,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-qa-roles-probe",
+      "committedBytes": 23704,
+      "rootBytes": 23704,
+      "packageDirBytes": 23670,
+      "deltaRootMinusPkgDir": 34,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-team-compact-plugin",
+      "committedBytes": 33610,
+      "rootBytes": 33610,
+      "packageDirBytes": 33538,
+      "deltaRootMinusPkgDir": 72,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-team-watchdog-plugin",
+      "committedBytes": 153319,
+      "rootBytes": 153319,
+      "packageDirBytes": 152791,
+      "deltaRootMinusPkgDir": 528,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-tools-plugin",
+      "committedBytes": 19534,
+      "rootBytes": 19534,
+      "packageDirBytes": 19476,
+      "deltaRootMinusPkgDir": 58,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-ulw-plugin",
+      "committedBytes": 37044,
+      "rootBytes": 37044,
+      "packageDirBytes": 36990,
+      "deltaRootMinusPkgDir": 54,
+      "rootEqualsCommitted": true
+    },
+    {
+      "pkg": "mpd-workmate-plugin",
+      "committedBytes": 55875,
+      "rootBytes": 55875,
+      "packageDirBytes": 55811,
+      "deltaRootMinusPkgDir": 64,
+      "rootEqualsCommitted": true
+    }
+  ],
+  "inlining_packages_measured_against_committed": [
+    {
+      "pkg": "mpd-ext-plugin",
+      "committedBytes": 152855,
+      "rootBytes": 152855,
+      "packageDirBytes": 152579,
+      "deltaRootMinusPkgDir": 276,
+      "packageDirFirstLine": "// ../mpd-dsh-adapter-plugin/src/index.ts"
+    },
+    {
+      "pkg": "mpd-team-watchdog-plugin",
+      "committedBytes": 153319,
+      "rootBytes": 153319,
+      "packageDirBytes": 152791,
+      "deltaRootMinusPkgDir": 528,
+      "packageDirFirstLine": "var __create = Object.create;"
+    },
+    {
+      "pkg": "mpd-tui-plugin",
+      "committedBytes": 149134,
+      "rootBytes": 149134,
+      "packageDirBytes": 148654,
+      "deltaRootMinusPkgDir": 480,
+      "packageDirFirstLine": "var __create = Object.create;"
+    }
+  ],
+  "gate_reading_in_this_pass": null,
+  "ag6_state_in_this_pass": "AGENTS.md:347-354 ALREADY names the repo-root canonical form, the package-directory trap, the three packages (mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin) and T-67 — so 'the manual documents the wrong form' is no longer true on disk; only the three package.json scripts remain.",
+  "method": "bash: rebuild both forms into mktemp -d; compare with stat -c%s + sha256sum; cwd=repo root for the root form, cwd=packages/<p> for the package-dir form. Raw capture: output.log (same dir).",
+  "bound": "the byte deltas are exact for the two build invocations recorded here; 'delta grows with the number/length of inlined import comments' is the explanation, not a separately proven formula."
+}

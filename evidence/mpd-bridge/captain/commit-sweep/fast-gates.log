@@ -1,0 +1,27 @@
+== captain commit sweep: fast gates (2026-09-15T09:53:19Z) ==
+
+--- typecheck ---
+$ tsgo --noEmit
+exit=0
+
+--- bun test packages ---
+ 634 pass
+ 0 fail
+ 4682 expect() calls
+Ran 634 tests across 120 files. [20.29s]
+
+--- R4 rows parity ---
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+
+--- R7 switch links / linkage ---
+R7 ok
+
+--- R8 NOT-CLAIMED keys ---
+R8 ok
+
+--- R11 PLUGIN_PKGS parity ---
+R11 ok: 16 patch rows in PLUGIN_PKGS
+
+--- installer dry-run ---
+installer dry-run exit=0

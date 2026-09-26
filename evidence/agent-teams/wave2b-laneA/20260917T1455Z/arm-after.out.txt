@@ -1,0 +1,11 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/wave2b-laneA-product-rows.test.mjs:
+(pass) T-13 deferred kind: never offered, never claimed, rendered as itself, and it never consumes the allowance [45.00ms]
+(pass) T-27 batch contract read: N contracts in one call, a missing id as itself, batch-of-one == single, empty refused [19.38ms]
+(pass) T-44 text-surface approval: the same transition the panel path runs, and a member is refused [18.04ms]
+
+ 3 pass
+ 0 fail
+ 31 expect() calls
+Ran 3 tests across 1 file. [241.00ms]

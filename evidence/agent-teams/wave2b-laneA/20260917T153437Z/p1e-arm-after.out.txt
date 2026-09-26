@@ -1,0 +1,11 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t47-mailbox-window.test.mjs:
+(pass) P1e: the default window is 30 min, and a repeat at ~10 min FOLDS [6.70ms]
+(pass) P1e: a configured window of 0 folds NOTHING — the disabled value, proven by an arm [1.00ms]
+(pass) P1e: genuinely different content NEVER folds, whatever the window [0.89ms]
+
+ 3 pass
+ 0 fail
+ 8 expect() calls
+Ran 3 tests across 1 file. [55.00ms]

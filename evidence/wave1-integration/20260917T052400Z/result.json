@@ -1,0 +1,291 @@
+{
+  "task": "t35",
+  "attempt_id": "f6093e63-a385-465c-aeb5-239b385f061c",
+  "seat": "packaging-engineer",
+  "kind": "integration",
+  "recorded_at_utc": "2026-09-17T05:50:21Z",
+  "deliverables": [
+    ".mpd/TODO.md",
+    "evidence/wave1-integration/20260917T052400Z/"
+  ],
+  "settled_revision": {
+    "pins": [
+      {
+        "log": "settle-pin-1.log",
+        "pin_at_utc": "2026-09-17T05:25:30Z",
+        "dirty_entries": 284,
+        "vendor_lock_sha256_prefix": "6ca531d2b20afb19",
+        "skills_files": 323,
+        "packer_prefix": "79563bc5fdd6",
+        "closure_prefix": "b82941ec2d4c",
+        "artifact_manifest_prefix": "eaa0919702bf5b33",
+        "artifact_files": 1190,
+        "artifact_manifest_mtime_utc": "05:19:48Z",
+        "twin_instrument_prefix": "858cd130b6ca"
+      },
+      {
+        "log": "settle-pin-2.log",
+        "pin_at_utc": "2026-09-17T05:26:15Z",
+        "dirty_entries": 284,
+        "vendor_lock_sha256_prefix": "6ca531d2b20afb19",
+        "skills_files": 323,
+        "packer_prefix": "79563bc5fdd6",
+        "closure_prefix": "b82941ec2d4c",
+        "artifact_manifest_prefix": "eaa0919702bf5b33",
+        "artifact_files": 1190,
+        "artifact_manifest_mtime_utc": "05:19:48Z",
+        "twin_instrument_prefix": "858cd130b6ca"
+      }
+    ],
+    "pin_identity": {
+      "readings_identical": true,
+      "compared_fields": [
+        "dirty_entries",
+        "vendor_lock_sha256_prefix",
+        "skills_files",
+        "packer_prefix",
+        "closure_prefix",
+        "artifact_manifest_prefix",
+        "artifact_files",
+        "artifact_manifest_mtime_utc",
+        "twin_instrument_prefix"
+      ],
+      "excluded_fields": [
+        "log",
+        "pin_at_utc"
+      ],
+      "gap_seconds": 45
+    }
+  },
+  "merged_tip_gates": [
+    {
+      "gate": "pack-closure",
+      "command": null,
+      "exit_code": 0,
+      "log": "gate-pack-closure.log",
+      "log_bytes": 472,
+      "reading": {
+        "verdict": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-refe",
+        "packed_tree": "/root/dshProj/my-power-dsh/dist/mpd-package",
+        "packed_asset_files": 379,
+        "agent_references": "3/3",
+        "root_files": "1/1",
+        "declared_packages": "23/23"
+      }
+    },
+    {
+      "gate": "patch-check",
+      "command": null,
+      "exit_code": 0,
+      "log": "gate-patch-check.log",
+      "log_bytes": 91,
+      "reading": {
+        "verdict": "[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)",
+        "regions": 73,
+        "adopted_files": 9
+      }
+    },
+    {
+      "gate": "test-packages",
+      "command": null,
+      "exit_code": 1,
+      "log": "gate-test-packages.log",
+      "log_bytes": 193073,
+      "reading": {
+        "verdict": "Ran 883 tests across 164 files. [27.51s]",
+        "pass": 882,
+        "fail": 1,
+        "ran": "Ran 883 tests across 164 files",
+        "failing_arm": "T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake",
+        "failing_arm_location": "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:176"
+      }
+    },
+    {
+      "gate": "test-qa",
+      "command": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\"",
+      "exit_code": 0,
+      "log": "gate-test-qa.log",
+      "log_bytes": 25389,
+      "reading": {
+        "verdict": "[test:qa] all self-tests passed"
+      }
+    },
+    {
+      "gate": "typecheck",
+      "command": "tsgo --noEmit",
+      "exit_code": 0,
+      "log": "gate-typecheck.log",
+      "log_bytes": 16,
+      "reading": {
+        "verdict": "clean: `tsgo --noEmit` printed no diagnostics (exit 0)",
+        "diagnostics": 0
+      }
+    },
+    {
+      "gate": "verify-docs",
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-docs.log",
+      "log_bytes": 3038,
+      "reading": {
+        "verdict": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS",
+        "pairs": 37,
+        "failed": 0,
+        "violations": 0,
+        "exempt": 17
+      }
+    },
+    {
+      "gate": "verify-rows",
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-rows.log",
+      "log_bytes": 451,
+      "reading": {
+        "verdict": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mp",
+        "row_ids": 25
+      }
+    },
+    {
+      "gate": "verify-vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-vendor.log",
+      "log_bytes": 616,
+      "reading": {
+        "verdict": "[verify-vendor] PASS",
+        "skills_files": 323
+      }
+    }
+  ],
+  "t07_isolated_repeats": [
+    {
+      "log": "t07-repeat-1.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [254.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.15ms]"
+    },
+    {
+      "log": "t07-repeat-2.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [252.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.17ms]"
+    },
+    {
+      "log": "t07-repeat-3.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [247.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.17ms]"
+    }
+  ],
+  "packed_artifact": {
+    "manifest_sha256": "eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c",
+    "manifest_stamp_utc": "2026-09-17T05:19:48.266Z",
+    "files": 1188,
+    "twin_scan": {
+      "identical": 1187,
+      "drift": [],
+      "missing": [],
+      "byDesign": [
+        "package.json",
+        "packages/mpd-ext-plugin/dist/validator.js"
+      ],
+      "noTwin": 1,
+      "afterPack": [],
+      "ok": true
+    },
+    "relative_links": {
+      "scan_line": "[check-relative-links] markdown files scanned: 291; relative links seen: 449",
+      "extensions_for_agents_links": "[check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)",
+      "model_templates_path_note": []
+    }
+  },
+  "register_partition": {
+    "check_log": "register-partition-check.log",
+    "check_json": "register-partition-check.json",
+    "check_script": "reconcile-register.py",
+    "check_run": "python3 reconcile-register.py \u2014 exit 0 = reconciled; THREE directions: the internal partition of \u00a78.2-\u00a78.5, the wave's own coverage list in .mpd/team/friction-p1-wave/team.json, and \u00a78.1's prose vs the sections",
+    "todo_sha256_prefix": "c0046ee33e4b0785",
+    "fixed_section_rows": 36,
+    "already_fixed": 3,
+    "partial": 5,
+    "touched_originals": 44,
+    "untouched_originals_listed": 16,
+    "sum": 60,
+    "new_rows_appended": 22,
+    "direction_1_internal": "clean",
+    "direction_2_coverage": "clean",
+    "direction_3_prose": {
+      "fixed": 36,
+      "touched": 44,
+      "untouched": 16,
+      "new rows": 22
+    },
+    "prose_matches_sections": true,
+    "disagreements": [],
+    "section_5_non_original_ids": [
+      "T-67"
+    ],
+    "corrections_disclosed": [
+      "draft 1: 31 fixed / 40 touched claimed against a 34-row \u00a78.2 table, T-52 named nowhere, and the NEW row T-67 folded into the original-60 partition",
+      "draft 2: 34 fixed / 42 touched with T-52 and T-56 listed as untouched \u2014 direction 2 (the wave's coverage list) caught both: lane B2 fixed T-52, lane C3 fixed T-56; both are now \u00a78.2 rows",
+      "final: 36 fixed + 3 already + 5 partial = 44 touched, 16 untouched, both directions clean; T-67 stays in \u00a78.5 as a \u00a78.6 new row (by design, not a disagreement)"
+    ]
+  },
+  "vendor_lock_repin_delta": [],
+  "changed_paths": {
+    "list_file": "changed-paths.txt",
+    "command": "git status --porcelain (read-only, repo root)",
+    "total": 24,
+    "xy_histogram": {
+      " M": 11,
+      "??": 13
+    },
+    "staged_modified": 0,
+    "unstaged_modified": 11,
+    "staged_added": 0,
+    "re_add_required": [],
+    "untracked": [
+      ".qa-before-dir",
+      ".qa-run-stamp",
+      ".qa-t15-dir",
+      ".qa-t17-after",
+      ".qa-t17-after-runner",
+      ".qa-t17-dir",
+      ".qa-t17-final",
+      ".qa-t21-dir",
+      "evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/correction-2026-09-17T05-45-24Z-mtimes-refreshed-by-checkout.md",
+      "evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/correction-20260917T134500Z-mtime-and-revision/",
+      "evidence/gates/checkout-mtime-restamp/",
+      "evidence/wave1-integration/20260917T052400Z/POST-COMPLETION-append-channel-unreachable.md",
+      "evidence/wave1-integration/20260917T052400Z/correction-20260917T054822Z-append-channel-restart-blocked.md"
+    ],
+    "do_not_stage_untracked": [
+      ".qa-before-dir",
+      ".qa-run-stamp",
+      ".qa-t15-dir",
+      ".qa-t17-after",
+      ".qa-t17-after-runner",
+      ".qa-t17-dir",
+      ".qa-t17-final",
+      ".qa-t21-dir"
+    ],
+    "staged_raw_noise": {
+      "paths": 0,
+      "top_dirs": {},
+      "bytes_of_top_dirs": {},
+      "judgement": "regenerable per-check raw output that a `git add` of the evidence tree swept into the index; the captain decides before committing (the bulk is this seat's own evidence/pack-closure \u2026/raw/final)"
+    },
+    "register_tracked": false,
+    "register_ignore_rule": ".gitignore:21:.mpd/"
+  },
+  "invariants": [
+    "no git write command was run by this task",
+    "no file under packages/** or skills/** was edited by this task",
+    "VENDOR_LOCK.json content was not written by this task (re-pin is the captain's step)",
+    "the only workspace-state file edited is .mpd/TODO.md"
+  ]
+}

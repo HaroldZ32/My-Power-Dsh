@@ -1,0 +1,11 @@
+[agent-teams-adopt] ok=false -> /tmp/prewave3/evidence/plan-c/c1-team/2026-09-16T08-20-39.096Z
+  installer: {"ok":true,"exit":0}
+  bundleRow: {"ok":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-headless"]}
+  override: {"ok":true,"hasPatch":true}
+  compose: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  teamState: {"ok":true,"teamIds":["c1qa"],"inbox":[["captain.jsonl"]],"teamJson":[{"name":"c1qa","id":"c1qa","description":"C1 adoption QA","captainSessionId":"session-7fd5d2db-30da-49a4-b0ef-8200e1aae23b","createdAt":1789546865764,"members":[{"id":"8274efe7-63b2-4777-a5ed-243c9c931a30","name":"oracle","role":"
+  archive: {"ok":true,"archiveIds":["c1qa"]}
+  taskTerminal: {"ok":true,"tasks":2,"taskTerminal":true}
+  webInstaller: {"ok":true,"exit":0}
+  webRoute: {"ok":false,"status":401,"body":"{\"error\":\"unauthorized\"}","webLog":"/tmp/prewave3/evidence/plan-c/c1-team/2026-09-16T08-20-39.096Z/web.log"}

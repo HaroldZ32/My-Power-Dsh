@@ -1,0 +1,19 @@
+$ bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 48540,
+      "renderedBytes": 48844,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    }
+  ]
+}
+[exit=0]

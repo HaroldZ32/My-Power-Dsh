@@ -1,0 +1,135 @@
+t1 [completed] Architect :: Requirements — re-validate the frozen watchdog contract against the current tree and emit lane A's executable 
+    out: [t1 re-validation — part 3/3: EXECUTABLE ACCEPTANCE for lane A + ownership] Format per item: OBSERVABLE | DECISIVE | NEG CONTROL | EVIDENCE. Commands are repos-relative; every test path exists today unless marked NEW. Run tests with the package path (`bun test
+t2 [completed] Architect :: Requirements — emit lane B's executable acceptance for the adopted agent-teams items
+    out: t2 DELIVERED (3 parts in this task's output). VERDICT pass. Lane B acceptance is executable: 10 code items (T-01 query+move half, T-02 captain amend + contract-version stamp, T-03 edit_plan quality-kind preservation, T-05/T-07 wake suppression, T-09+T-46 artif
+t3 [completed] Explorer :: Requirements/evidence — measure the 27-lane QA baseline and emit the credential + acceptance matrix
+    out: T3 DELIVERABLE — 27-lane QA baseline matrix + credential chain (lane C acceptance). METHOD (binding caveat): this seat has NO bash. Every row below is a STATIC READ of `package.json:32` + the 27 scripts/helpers; the "last verdict" column is the last RECORDED r
+t6 [completed] Architect :: Requirements — freeze the acceptance for the docs/gate lane and the packaging lane
+    out: t6 DELIVERED (3 parts in this task's output). VERDICT pass. Lane D + E acceptance is executable. THREE findings change the plan and need a captain ruling: (F1) `scripts/verify-pack-closure.mjs:207-213` currently PROHIBITS any `templates` reference by the packe
+t7 [completed] Explorer :: Requirements — freeze the acceptance for the harness-close lane and the adapter item
+    out: T7 DELIVERABLE — executable acceptance for lane F (T-21, T-23, T-24, T-26, T-43, T-50, T-54, T-55). METHOD: static reads only (no bash in this seat). Every "today" line cites what I read; nothing here is an execution of mine. F0. WHERE THE NOTES LIVE (applies 
+t8 [completed] watchdog-engineer :: Impl — lane A1: four-state channel predicate, §3 ladder, §4 degradation, status source (T-48/D1+D3+D4)
+    out: Lane A1 (T-48/D1+D3+D4) implemented, verified and evidenced. WHAT CHANGED - NEW `src/channel.ts`: the four-state channel fold (OUTSTANDING / IN-FLIGHT / ALIVE / PARKED) — a pure, incremental fold over the member session's own record stream, keyed by the sessio
+t9 [completed] agent-teams-engineer :: Impl — lane B1: D2 deletes the two hold guards; the contract tool reaches every seat; the pause surface names 
+    out: t9 lane B1 DONE. D2: the two tool-boundary hold guards and lib/tools.js's copy of the watchdog-hold-reader region are DELETED (lib/scheduler.js keeps its copy + 3 dispatch call sites, untouched); a hold can no longer refuse claim_task/update_task. T-49: agent_
+t10 [completed] platform-engineer :: Impl — lane A3: three-layer knob agreement + honest restart disclosure in both front doors (T-18, §3/§7.1)
+    out: lane A3 (T-18) done against the original contract. §3 defaults 600000/15000/6/warn-only/900000/900000 + NEW holdTtlMs 900000 now agree across all three layers; verified side-by-side by a new checker plus a reddening negative control. Both front doors state 'ap
+t11 [completed] packaging-engineer :: Impl — lane E: the packed artifact ships templates/ + docs/, the packed CLI runs, and the closure rule is loud
+    out: Lane E done (T-35/T-36/T-45/T-51). Three scripts + four EN/zh doc pairs changed; every claim measured against a REAL `npm run pack` (evidence/pack-closure/impl/20260917T011849Z/{result.json,output.log}, raw/before + raw/final). BEFORE: npm run pack exited 0 wh
+t12 [completed] platform-engineer :: Impl — lane F1: lazy adapter resolution with an honest warning (T-50)
+    out: T-50 implemented src-only per the captain's ruling. `createLazyDshAdapter` (adapter package) resolves `mpdDsh` on EVERY use as a stable Proxy facade, caches only a successful STRICT read, and distinguishes a registered-but-not-ACTIVE provider (ONE 'provider no
+t13 [completed] watchdog-engineer :: Impl — lane A2: generation-scoped + self-clearing holds, PARKED derivation, knob divergence surfaced (T-16, T-
+    out: Lane A2 (t13) done: hold lifecycle + PARKED derivation + pause union + knob divergence, all evidenced. WHAT CHANGED (all inside packages/mpd-team-watchdog-plugin) - T-16 (§6, §0/A3): `machine.generationFloorOf` + the floor applied to the SILENCE slice (`forTas
+t14 [completed] agent-teams-engineer :: Impl — lane B2: member-owned contracts become repairable; staged plans cannot downgrade a task; terminal outpu
+    out: t14 lane B2 DONE. T-02: a captain now amends a member-owned IN-FLIGHT contract WITHOUT a takeover (the ownership guard exempts amend; the running-amend branch preserves the live attempt and invalidates nothing), the amendment is stamped (contractVersion/By/At)
+t15 [completed] platform-engineer :: Impl — lane C1: manifest-driven QA runner that continues past an unavailable lane and prints a per-lane summar
+    out: t15 HANDOVER FILED — attribution is explicit. AUTHORED BY qa-lane-engineer (attempt 1, evidence 20260917T013759Z-t15): scripts/run-qa-lanes.mjs, skills/dsh-qa/cases.json, the thin package.json test:qa:all, SKILL.md docs. RE-RUN BY ME on the current tree: all f
+t16 [completed] docs-gate-engineer :: Impl — lane D1: AGENTS.md fits the instruction budget with an on-demand reference index (T-22)
+    out: T-22 DONE. AGENTS.md 78283 -> 42954 bytes (34% headroom under the 65536 budget). Moved verbatim into an on-demand, English-only agent-facing tree: agent-references/troubleshooting.md (former §12 body, 29408 B / 52 lines) and agent-references/agent-teams-deltas
+t17 [completed] qa-lane-engineer :: Impl — lane C2: live lanes receive the credential the host actually has (T-58)
+t18 [completed] docs-gate-engineer :: Impl — lane D2: dist freshness, unmissable row/parity gates, a derivable vendor re-pin, and a composition-only
+    out: t18 DONE (lane D2: T-37, T-39, T-40, T-33, T-31) — with one routed tree defect. DELIVERED: `scripts/verify-dist-fresh.mjs` (30b796c2…, self-test 10/10: rebuilds every packages/*/src entry twice into a temp dir, byte-compares for determinism, loud NOT COVERED s
+t19 [completed] agent-teams-engineer :: Impl — lane B3: deliverables stop vanishing and read-only seats get a durable channel (T-46, T-09, T-10, T-05)
+    out: t19 lane B3 DONE. T-46: `output_append` now extends the stored summary on ANY status and a byte-dropping `output` replacement is refused loudly (replace_output:true to confirm; both channels refused together). T-09: first-class `artifact:{path,text}` channel c
+t20 [completed] watchdog-engineer :: Impl — lane B4: path ownership becomes queryable and repairable; teams carry a wave boundary (T-01, T-12)
+    out: t20 (lane B4) COMPLETE — T-01 (path ownership queryable + repairable) and T-12 (explicit wave boundary) landed, with the captain's blocker clearance verified. DELIVERED (in-scope files only: lib/tools.js, lib/quality-gates.js, lib/state.js, lib/mpd-deltas.js, 
+t21 [completed] captain :: Impl — lane C3: the remaining red lanes, immutable-by-default evidence writes, one product formula (T-60, T-53
+    out: t21 CLOSED BY CAPTAIN TAKEOVER under the T-81 deadlock: the guard repair (t62) acquired an implicit dependency on t21 while t21's verify 1 was blocked by the very defect t62 must fix, and neither side could be amended (the takeover verb refuses a dependency-bl
+t22 [completed] docs-gate-engineer :: Impl — lane D3: the config plugin's tests become cwd-hermetic (T-57)
+    out: T-57 DONE (lane D3). The config plugin's two cwd-coupled assertions are hermetic; test-only change. Change (single file, +39 lines): `packages/mpd-config-plugin/test/settings-wiring.test.ts` — the fake adapter's mount-time fallback is now an explicit fixture: 
+t23 [completed] platform-engineer :: Impl — lane F2: harness-owned frictions closed by documentation + helper/guard (T-21, T-23, T-24, T-26, T-43, 
+    out: t23 (lane F2) DONE — the five harness-owned frictions plus T-54/T-55 are closed by documentation + a working helper/guard. NEW: scripts/mpd-bg.mjs (run / probe / reload-check / check-write; 13/13 self-test arms) is the one-command fallback for T-21 (RESTART-RE
+t24 [completed] captain :: Impl — lane A driver: the RED→GREEN watchdog driver in the QA lane (contract §9)
+    out: t24 COMPLETED — but note WHO filed it and WHY, because it matters for how the record should be read: the AUTHOR (qa-lane-engineer) did the work and produced every reading below; the CAPTAIN filed the completion, and only after re-running both verify commands i
+t25 [completed] platform-engineer :: Verify — lane B: the adopted-plugin batches behave as claimed in a real boot and a real call
+    out: t25 (lane-B verification) VERDICT: PASS with ONE finding. Behaviour over source: my from-scratch driver (11/11) shows claim_task + update_task SUCCEED under a live hold with the durable record moved and EVERY hold read coming from scheduler.js (zero tool-bound
+t26 [completed] docs-gate-engineer :: Verify — lane C: the suite runs to the last lane on this host and reports honest per-lane verdicts
+    out: t26 DONE — the multi-job lane-C board is complete: 18 chunks, every one `complete:true` with a non-null `finishedAt`, **33/33 selected entries carried** (plus the additive watchdog lane), counts **31 pass / 0 unavailable / 3 classified reds**, every verdict pi
+t27 [completed] agent-teams-engineer :: Verify — lane D: every new gate fails on a seeded violation and the documented claims re-measure
+    out: t27 (verification, lane D) DONE — independently falsified, no gate authored by me. VERDICT pass. (1) dist freshness: seeded byte → exit 1 '1 of 20 targets not fresh', restored sha-identical → exit 0. (2) row parity: seeded insert-id rename in the bundle patch 
+t28 [completed] watchdog-engineer :: Verify — lanes E+F: the packed artifact is self-sufficient and the harness-close notes hold up
+    out: t28 PASS — lanes E+F verified on HEAD 646d8018 + the working tree, in two passes because the artifact ages under any writer. AUTHORITATIVE pass 2 (packed 2026-09-17T02:56:59.067Z, 141 s after the last copied-tree writer; 7 fingerprints identical to pass 1): th
+t29 [completed] code-reviewer :: Verify — lane A: the watchdog redesign behaves as the frozen contract requires (RED before, GREEN after)
+    out: t29 COMPLETED, verdict=**pass** — lane A's watchdog redesign verified independently against the frozen contract §9, every reading my own, in fresh processes (the four RESTART-REQUIRED modules are irrelevant to these instruments by construction). (1) §9's THREE
+t30 [completed] platform-engineer :: Review — lane A: the watchdog claims hold up under independent re-execution
+    out: t30 REVIEW — verdict=pass, everything below REPRODUCED BY ME in fresh processes (no reading inherited), with five findings, none blocking. MY OWN COMMANDS AND READINGS (t29's claims are in [brackets]; every one matched): 1) `bun skills/dsh-qa/scripts/watchdog-
+t31 [completed] code-reviewer :: Review — lane B: the adopted-plugin batches do what the register items demand
+    out: t31 VERDICT=PASS — lane B's batches behave as claimed, verified with my own runs, and the adopted-code + regression discipline holds. D2 (the wave's central rework) verified on BOTH halves: (a) claim/update SUCCEED under a LIVE hold — with a NEGATIVE CONTROL t
+t32 [completed] code-reviewer :: Review — lane C: the QA baseline is honestly reported and the plumbing works
+    out: t32 COMPLETED, verdict=**pass** — lane C's runner, credential path, drift guard, red classifications and the T-53 refusal all reproduced by me; two findings routed (neither is a false claim of t21). RUNNER OUTCOMES (my own runs; the repo's manifest and lane sc
+t33 [completed] Architect :: Review — lane D: the new gates catch their class and the manual lost no rule
+    out: t33 REVIEW lane D — VERDICT pass (with three non-blocking findings). Judged: budget measured against the artifact (pre-split RED 78,283→65,143 with the truncation record; post-split GREEN 43,258, truncated []), the split audit covers all 610 pre-split lines in
+t34 [completed] code-reviewer :: Review — lanes E+F: the packed artifact and the harness-close notes hold up
+    out: t34 VERDICT=PASS — lanes E+F hold up under independent re-execution, judged on the ARTIFACT and the helpers, not on prose. Anchored to artifact tree f945d153…/1188 files; mpd-bg 0b294972…, packer b4aff7cc…, closure checker b7f940b4… all identical to my pre-cla
+t35 [in_progress] packaging-engineer :: Integrate — wave 1: register reconciliation, merged-tip gate sweep, and the wave report
+t36 [completed] watchdog-engineer :: Impl — lane B5: a terminal task is never re-offered to a seat (T-07, measured live)
+    out: t36 (lane B5) DONE — T-07 closed at the route, with one acceptance premise REFUTED by measurement and that refutation recorded instead of papered over. THE ROUTE (named from the code, symbol-addressed): `lib/scheduler.js` `kickMember` composes the ticket INSID
+t37 [completed] Explorer :: Triage — wave-2 candidates: re-measure the P2 register items at the settled tip (read-only)
+    out: T37 DELIVERABLE — wave-2 triage of the P2 register items at the current tip (read-only, static reads only; no bash, no writes). TIP NOTE (matters for every row): the tree is on branch `fix/todo-register-p1` (`.git/HEAD`, tip `646d8018a44bffb2d6e1c30afa090056f8
+t38 [completed] platform-engineer :: Impl — knob-count pins: the two hardcoded 12s become 13 with the new watchdog knob (T-18 consequence)
+    out: t38 done: the two knob-count pins now follow the 13th knob (`watchdog.holdTtlMs`) — packages/mpd-tui-plugin/test/plugin.test.ts 12 -> 13 and packages/mpd-bundle-plugin/test/settings-card.test.mjs 12 -> 13 plus the title 'twelve fields' -> 'thirteen fields'. Bo
+t39 [completed] agent-teams-engineer :: Impl — apply BOTH delta-table handoffs to the table's REAL home, and fix the two nonexistent doc paths AGENTS.
+    out: t39 DONE — both wave-1 handoffs applied to the table's REAL home (`agent-references/agent-teams-deltas.md`), replayed by their author. Rows now present (12/12 verified, 0 missing): D23–D24 (the surviving dispatch half: reader is scheduler.js ONLY + kick declin
+t40 [completed] platform-engineer :: Impl — rebuild the two loaded dists and prove T-50's lazy resolution is live in a mounted boot
+    out: T-50 is LIVE (re-run attempt 4 under the captain's amended inScope). Three dists rebuilt and hash-verified unchanged at re-run time: adapter f8b56131->a0308580, ext 0ebad657->f6097fd3, roles 22595b92->38d4a459; all carry createLazyDshAdapter + dshAdapterIdenti
+t41 [completed] agent-teams-engineer :: Impl — pin T-49's two refusal paths (non-participant, unknown task id) in the self-fix suite
+    out: t41 DONE (pins only, no library change). Added ONE test to self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs pinning the contract tool's two refusal paths: (a) a NON-PARTICIPANT is refused with the verbatim 'you do not lead or belong to any active t
+t42 [completed] docs-gate-engineer :: Impl — land the watchdog §1 rule-3 asymmetry row in agent-references/troubleshooting.md
+    out: t42 DONE — the watchdog §1 rule-3 asymmetry row is in `agent-references/troubleshooting.md` as ONE table row (inserted at line 40, right after the long-tool-call watchdog row it is the sibling of): bytes 34,292 → 35,534, lines 69 → 70, sha256 67bc579b… → b4032
+t43 [completed] docs-gate-engineer :: Impl — correct the two doc claims that the packed-CLI fix made stale
+    out: t43 DONE — three regions corrected, nothing else touched, both gates green. (1) `EXTENSIONS-FOR-AGENTS.md` §9: the FALSE packed-CLI limit is replaced by the measured positive statement — the CLI (`validate`/`scaffold`/`--self-test`/`--validator`) works from a 
+t44 [completed] platform-engineer :: Impl — bulk-rebuild the 13 stale package dists so the freshness gate is green
+    out: t44 DONE — the freshness gate is GREEN: `node scripts/verify-dist-fresh.mjs` exit 0, "20/20 targets fresh (each rebuilt twice, byte-identical)" (was exit 1 with 13 STALE). All 13 dists rebuilt with before/after sha256 recorded; typecheck 0; no src file touched
+t45 [completed] docs-gate-engineer :: Impl — T-67 (manual half): §4/§6 name the ONE canonical dist build form and state the script residual
+    out: t45 DONE — the manual now names exactly one canonical build form, proves it from disk, and states the residual. (1) `AGENTS.md` §6's Build clause: "Build — from the REPO ROOT, with path-qualified args", with the exact command `bun build packages/<pkg>/src/inde
+t46 [completed] code-reviewer :: Review — t45: is the named build form really the one the gate reproduces, and is the residual exact?
+    out: t46 VERDICT=PASS — t45's two clauses hold against the GATE and the COMMITTED BYTES, re-measured by me. CANONICAL FORM (my own builds, temp outfiles in my review dir, sha256 vs committed): the documented repo-root command reproduces the committed dist IDENTICAL
+t47 [completed] packaging-engineer :: Repair — re-anchor the four extension docs so the citation checker stops failing on them (T-55's live instance
+    out: t47 DONE — the four extension docs are green against the citation checker, and the checker itself was not touched. RED -> GREEN (verbatim): BEFORE `6/12 checks passed, 6 failed, 249 citations resolved` with the four docs/extension-* files holding 5+5+4+4 unres
+t48 [completed] agent-teams-engineer :: Repair — rebuild the workmate dist that t23's src edit left stale (verify-dist-fresh 1/20 → 20/20)
+    out: t48 DONE — the binding dist-freshness gate is back to 20/20. RED reproduced first and quoted raw: exit 1, `FAIL - 1 of 20 targets not fresh (STALE: 1)` naming packages/mpd-workmate-plugin/dist/index.js with committed 54704 B / 401573a0173b03db… vs a fresh 5587
+t49 [completed] code-reviewer :: Review — t47: are the re-anchored citations TRUE, and was the checker left byte-identical?
+    out: t49 VERDICT=PASS — t47's four re-anchored docs are TRUE against the current source, and the checker was not touched. Reproduced independently, not read off t47's evidence. 1) ANCHORS (my own line readings on the CURRENT source, 5/5): index.ts:643 redactedDescr
+t50 [completed] docs-gate-engineer :: Repair — the last failing citation: EXTENSIONS-FOR-AGENTS.md:24's EXPECTED_TOOLS anchor (after t43's window)
+    out: t50 DONE — the citation blocker is CLOSED: `node evidence/extensions/docs-claims/check-citations.mjs` now exits **0** (12/12 checks, `EXTENSIONS-FOR-AGENTS.md` 0 unresolved, annotations: 0 pending / 12 illustrative), which is t21's fourth verify. THE RED, quot
+t51 [completed] packaging-engineer :: Repair — name the repo-root cwd in verify-dist-fresh's STALE line (closes the T-67 trap where a developer meet
+    out: t51 DONE — the freshness gate's own failure lines now name the cwd rule, at the exact point a developer meets the T-67 trap, and the change is provably words-only. WHAT CHANGED (scripts/verify-dist-fresh.mjs, two message templates only): - STALE: `… != fresh b
+t52 [completed] watchdog-engineer :: Repair — restore the T-23 friction id on its troubleshooting row (grep T-23 returns 0 today)
+    out: t52 DONE — the T-23 harness-close row is greppable by its own friction id, and the change is proven to be exactly the 7-byte insertion. WHAT CHANGED (one file, one line): `agent-references/troubleshooting.md` row 17 (the `nohup` / `bwrap --die-with-parent` / `
+t53 [completed] agent-teams-engineer :: Repair — AGENTS.md §6's delta-table pointer reverted to A1–D26 (restore D38 after t45 arrived with the pre-t39
+    out: t53 DONE — AGENTS.md's two delta-table pointers agree again, and the value came from the ARTIFACT. BEFORE: line 38 said `A1–D38` while line 295 (§6) said `A1–D26` (disagreeing). AFTER: both say `A1–D38`. The target was derived from `agent-references/agent-team
+t54 [completed] code-reviewer :: Verify — re-judge t47's four docs under the MOVED checker (O2 fired: 5e56c82c… → e332da70…)
+    out: t54 COMPLETED, verdict=**pass** — the four `docs/extension-*` files are RE-JUDGED green on the frozen final checker revision, with every reading measured by me at verdict time. THE PAIR AT VERDICT TIME (mine): checker `dfe260902b8ec1f1e8f0858126ea5466c0915563f
+t55 [completed] agent-teams-engineer :: Repair — the deliverables driver's HEADER claims an A4 tool/call its code does not make (t25's F1; contract re
+    out: t55 COMPLETED (attempt 4, 47807835) — the prepared header is applied and the stale claim is gone. TARGET PROVEN: the claim lived in evidence/agent-teams/deliverables/20260917T015207Z/driver.mjs (header A4 = session-log tool/call for agent_teams_task_contract) 
+t56 [completed] watchdog-engineer :: Repair — T-23's SECOND symptom row (fresh /tmp) still lacks its friction id (t34's F2)
+    out: t56 DONE — T-23's SECOND symptom row is now greppable too; both of its rows carry the id. WHAT CHANGED (one file, one line): `agent-references/troubleshooting.md` ROW 16 — the fresh-`/tmp` row — now ends `… never assume /tmp persistence between calls (T-23). |
+t57 [completed] docs-gate-engineer :: Repair — anchor the five rotted bare line refs in EXTENSIONS-FOR-AGENTS.md (invisible to the driver today)
+    out: t57 DONE — the five rotted bare refs are now CHECKED anchors, and the driver's citation count proves it arithmetically. THE INVISIBILITY, demonstrated: the refs (`the wrapper at :537; the four name: lines at :715, :807, :930, :984`) read GREEN in the driver (5
+t58 [completed] watchdog-engineer :: Verify — the friction-id census: does EVERY symptom row for T-21/T-23/T-24/T-26/T-43 carry its id?
+    out: t58 DONE — the friction-id census is complete and its answer is ZERO APPENDS: every symptom row for all five harness-close ids already carries its id. THE CENSUS (six symptom rows across five ids, all id-greppable): | id | symptom rows | lines | ids missing | 
+t59 [completed] code-reviewer :: Verify — discriminate the QA watchdog fault lane's F2/F4/F9: stale lane expectations or a REAL escalation loss
+    out: t59 VERDICT: **STALE LANE EXPECTATION for all three failed checks (F2, F4, F9) — NO lane-A regression, so no BLOCKER is raised; and the lane must not be read as verified.** PER CHECK. F2 (mid-turn-stall, escalate-3x, scene-restore, long-tool-bound-disabled-con
+t60 [completed] docs-gate-engineer :: Repair — §6's build-form sentence must name the 26 bundled-module path comments, not \"the first line\"
+    out: DONE — t60 repair landed, evidence on disk. CHANGE (words only, ONE hunk, no command touched): AGENTS.md §6's build-form sentence no longer says `bun build` "writes the entry path RELATIVE TO CWD into the artifact's first line". It now says it writes EVERY bun
+t61 [pending] watchdog-engineer :: Verify — independently re-measure the FINAL post-t35 pack on its frozen revision (t28 is bound to superseded b
+t62 [completed] platform-engineer :: Repair — the T-43 real-home guard refuses the SANDBOX it is supposed to allow (os.homedir() follows $HOME)
+t63 [completed] qa-lane-engineer :: Verify — re-run workmate-library green after the guard fix (the leg t21 deferred under the proven product defe
+    out: t63 DONE — the deferred leg is closed with a real GREEN and a two-sided isolation proof. COMMAND (the contract's own verify): `bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip` → **exit 0, PASS** at 2026-09-17T04:03:49Z. WHAT THE RUN PROVES - The 403 `
+t64 [completed] watchdog-engineer :: Verify — independent second reading of the real-home guard under the PROCESS-START shape (both runtimes), afte
+    out: t64 DONE — the guard fix has a NON-AUTHOR reading in the exact shape that failed, in BOTH runtimes: **6/6 arms PASS**, real library untouched. REVISION (bound): `packages/mpd-workmate-plugin/dist/index.js` sha256 `5a1863b2…` (56,585 B, mtime 03:37:33.924Z) — t
+t65 [completed] qa-lane-engineer :: Repair — the watchdog fault lane expects pre-redesign behaviour; drive the §1 escalation end-to-end with a rea
+    out: t65 DONE — the fault lane now measures BOTH surfaces instead of inheriting stale expectations. WHAT CHANGED (`skills/dsh-qa/scripts/team-watchdog-fault.mjs`, sha256 `797b426f5e330eaae358c7c4dfcf95d18deaef6851adc9e1f66abf01b633f9c3`) - **S1 §1 escalation arm, e
+t66 [completed] docs-gate-engineer :: Repair — §6's path-comment count is 13 per build, not 26 (the 26 is a diff-side / artifact-wide total)
+    out: t66 DONE — §6's path-comment count is now the per-build number, and both origins of the old 26 are named. THE FIX (words only, ONE span): AGENTS.md §6 now reads "… writes EVERY bundled module's path RELATIVE TO CWD into the artifact's path comments — **13 of t
+t67 [completed] platform-engineer :: Repair — land the guard's both-sides spawn-shape arms in the PACKAGE suite (the missing coverage that let the 
+t68 [completed] docs-gate-engineer :: Repair — EXTENSIONS-FOR-AGENTS.md: convert every line-number anchor to the symbol-first form (T-55 / T-72)
+    out: t68 DONE — EXTENSIONS-FOR-AGENTS.md is off line-number anchors: every citation is symbol-first and the checker RESOLVES each one against the cited file. CONVERSION: 12 lines / 14 distinct `path:line` tokens / 13 spans (the captain's 12 = the line count; lines 
+t69 [completed] code-reviewer :: Review — citation conversion semantics: every converted anchor denotes the code its line pointer denoted
+    out: t69 COMPLETED, verdict=**pass** — every one of the 12 converted sites re-resolves and still denotes the code its removed line pointer denoted, judged by reading the cited source (my own commands, never the author's log). METHOD: extracted the 14 removed tokens
+t70 [completed] packaging-engineer :: Lane E defect — ship EXTENSIONS-FOR-AGENTS.md in the artifact and make the closure gate see an undeclared-asse
+    out: t70 COMPLETE — all four pinned verify commands green, in order, unpiped, on settled fingerprints. FINGERPRINTS: `scripts/pack-mpd.mjs` `79563bc5fdd6518e` · `scripts/verify-pack-closure.mjs` `b82941ec2d4cd744` · link checker `509ba82c623a184f` · scratch harness
+t71 [completed] platform-engineer :: Instrument defect — the twin scan cannot see a missing REQUIRED ROOT FILE (hardcoded list vs the packer's ROOT
+    out: t71 COMPLETED (attempt 4) — six acceptance items, all six met under the amended contract, with the ordering and the incident stated rather than smoothed over. ORDERING (as the captain asked): the v6 fix PRECEDED the first claim, because the freeze was imminent
+t72 [completed] platform-engineer :: Repair — the twin scan's declaration PARSER truncated PLUGIN_PKGS at a comment's bracket (two declared package
+    out: t72 COMPLETED — the carrier for a fix that had already landed, filed with its readings re-verified at the FROZEN revision rather than restated. WHAT IT CARRIES: `declaredPackages()` used a non-greedy regex that stopped at the FIRST `]`, which sits inside a COM

@@ -1,0 +1,1 @@
+[agent-teams-sidebar self-test] ok: 17 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/settings-card,@mpd-dsh/mpd)

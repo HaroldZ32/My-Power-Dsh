@@ -1,0 +1,7 @@
+# t66 evidence artefacts — final hashes
+61f70ccd28e1414a81cee17ec4abe949672dbf59126ecc5a3f6c69bb8d77aa39  evidence/gates/build-form/20260917T040500Z-t66/checks.log
+bb4f6c8b9e7522bb39ca0af3e2a86dab43d0ef1290bdc048bfc6257138212bb7  evidence/gates/build-form/20260917T040500Z-t66/measure.log
+94d9e02bbeb4fdb01f3c8f0b8dfc24d6d40c7798f9a30e72af1140ed71bd732a  evidence/gates/build-form/20260917T040500Z-t66/output.log
+24b925b2b12cb3bb67edce0f138b30d1f3059d6216a9a75a777d2a6e6ea1edbd  evidence/gates/build-form/20260917T040500Z-t66/result.json
+1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4  evidence/gates/build-form/20260917T040500Z-t66/REVERSED-pre-t66.AGENTS.md
+90f4296d9aed4144edefd8b89d7399cefa3d4f34769aa7c628c13a30b8b36d2e  evidence/gates/build-form/20260917T040500Z-t66/verify-docs.log

@@ -18,7 +18,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path';
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { hasValidQualityTaskFields, isReviewPolicy, normalizeBlankOptionalTaskFields } from "./quality-gates.js";
-export { buildCoverageMatrix, canDeclareDelivery, classifyChangedPath, collectChangedPaths, defaultQualityDeliveryGraph, describeQualityLoop, evaluateQualityCompletion, hasValidQualityTaskFields, isQualityKind, normalizeBlankOptionalTaskFields, pathMatchesScope, planQualityFollowUp, qualityPlanningPrompt, resumeTeamState, sanitizeReviewAcceptance, sanitizeReviewObjective, taskKindOf, validateCreateTask, } from "./quality-gates.js";
+export { buildCoverageMatrix, canDeclareDelivery, classifyChangedPath, collectChangedPaths, defaultQualityDeliveryGraph, describeQualityLoop, contractContradiction, describeScopeOwner, evaluateQualityCompletion, hasValidQualityTaskFields, inScopeOverlap, isOpenTaskStatus, isQualityKind, normalizeBlankOptionalTaskFields, pathMatchesScope, planQualityFollowUp, qualityPlanningPrompt, resumeTeamState, sanitizeReviewAcceptance, sanitizeReviewObjective, scopeOwners, taskKindOf, validateCreateTask, } from "./quality-gates.js";
 /** Mailbox key of the captain. */
 export const CAPTAIN_KEY = 'captain';
 /** A crashed live-delivery attempt becomes retryable after this interval. */
@@ -127,6 +127,65 @@ export function dependencyStates(tasks, dependencies) {
     return { blocking, failed };
 }
 /**
+ * T-64 (wave 2b, lane A): the dependency ids that name NO task — the UNRESOLVABLE ones.
+ *
+ * ADDITIVE BY DESIGN: `dependencyStates` keeps its exact two-bucket shape (four pins assert it,
+ * and three of them live in `test/**`, outside this lane's write set), so the new bucket is a
+ * READER rather than a third key. A phantom id still blocks — nothing satisfied it — and it is now
+ * namable in its own right, which is what stops "unresolvable" from reading as an ordinary park.
+ */
+/**
+ * T-29 (review R3, captain's EXTEND ruling): the ids that can NEVER be satisfied — a phantom id (no
+ * such task) and the members of a dependency CYCLE (every task in the cycle waits on another member,
+ * so no completion can ever satisfy it; before this the 2-cycle read as an ordinary park).
+ */
+function phantomDependencies(tasks, dependencies) {
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    return (dependencies ?? []).filter((id) => byId.get(id) === undefined);
+}
+/** The first dependency cycle reachable from `dependencies`, as a PATH with its root repeated. */
+function dependencyCycle(tasks, dependencies) {
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    for (const root of new Set(dependencies ?? [])) {
+        if (byId.get(root) === undefined)
+            continue;
+        const stack = [[root, [root]]];
+        const seen = new Set();
+        while (stack.length > 0) {
+            const [id, path] = stack.pop();
+            for (const next of byId.get(id)?.dependencies ?? []) {
+                if (next === root)
+                    return [...path, root];
+                if (seen.has(next) || byId.get(next) === undefined)
+                    continue;
+                seen.add(next);
+                stack.push([next, [...path, next]]);
+            }
+        }
+    }
+    return [];
+}
+export function unresolvedDependencies(tasks, dependencies) {
+    return [...phantomDependencies(tasks, dependencies), ...new Set(dependencyCycle(tasks, dependencies))];
+}
+/**
+ * T-64 (wave 2b, lane A): the status note for a task whose dependencies include an unresolvable
+ * id. It NAMES the id; absence is printed as absence (an empty string), never as a phrase.
+ */
+export function unresolvedDependencyNote(task, tasks) {
+    const dependencies = task?.dependencies ?? [];
+    const parts = [...phantomDependencies(tasks, dependencies)];
+    const cycle = dependencyCycle(tasks, dependencies);
+    // T-29 (R3): the cycle is reported AS ITSELF — the word and the PATH, not a bare id list.
+    // t43 / t30-F1: but ONLY while it still blocks. An OPT-1 FAILED member does not block, so a
+    // `failed` cycle leaves `blocking` empty, the task CLAIMABLE — and a note pinned to it would tell a
+    // captain that a DISPATCHABLE task has an unresolved dependency. Same for an all-COMPLETED cycle.
+    // `renderStatus` appends this line to EVERY task line, so an over-claim is not cosmetic.
+    if (cycle.length > 0 && dependencyStates(tasks, dependencies).blocking.length > 0)
+        parts.push(`cycle ${cycle.join('\u2192')}`);
+    return parts.length === 0 ? '' : ` [unresolved dep: ${parts.join(', ')}]`;
+}
+/**
  * Whether `dependencies` are all satisfied (every named task exists and is
  * completed) for the given task list. OPT-1: a FAILED dependency does not block.
  * @param tasks - the team's tasks.
@@ -163,20 +222,80 @@ export function transitionError(current, next) {
     }
     return undefined;
 }
+//#region mpd-delta terminal-task-rearm-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-79 STATE HALF (wave 2, lane A) — a terminal task must never be RE-ARMED.
+//
+// MEASURED (wave 1 and again in wave 2, `.mpd/plans/friction-p2-wave-captain-log.md` A-1): the
+// scheduler re-dispatched the already-`completed` `t1` carrying the SAME stored attempt id
+// (`35503430-…`); the member correctly refused with `task status cannot move from "completed" to
+// "claimed"`. The primitive underneath every dispatch is HERE: `activateTaskAttempt` used to set
+// `status='claimed'`, mint a FRESH attemptId, drop `handoffId`/`reassigning` and CLEAR `output`
+// unconditionally, so a ticket composed over a terminal task rotated the capability, wiped the
+// earned summary and left a claim the member could not honour — the terminal record was rewritten
+// by the dispatch itself.
+//
+// The refusal is raised BEFORE the first mutation (in `beginTaskAttempt` before its `attempt`
+// increment, and again in `activateTaskAttempt` for direct callers), so a refused rotation leaves
+// the record byte-identical. The sanctioned revive path is unaffected: `agent_teams_reassign_task`
+// routes a `failed`/`cancelled` task through `invalidateTaskAttempt` (status -> `pending`) BEFORE
+// any attempt is minted, so its fresh-attempt semantics still hold; `claim_task` reaches
+// `transitionError` first. A `completed` task has no revive path by design (immutable).
+export function assertTaskRearmable(task) {
+    if (TERMINAL_TASK_STATUSES.includes(task.status)) {
+        throw new Error(`task ${task.id} is ${task.status}: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was left untouched). Retry failed/cancelled work with agent_teams_reassign_task, which re-opens it with a fresh attempt id.`);
+    }
+}
+//#endregion mpd-delta terminal-task-rearm-refusal
 /** Activate the task's current generation for one owner and return its capability id. */
 export function activateTaskAttempt(task, assignee) {
+    assertTaskRearmable(task);
+    //#region mpd-delta composed-ticket-output-preserved (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-73 (wave 2, t24) — a COMPOSED TICKET must not silently DELETE a stored deliverable.
+    //
+    // MEASURED (wave 1, `t36`'s author; re-measured by this lane at HEAD `c826f16`,
+    // `evidence/agent-teams/composed-ticket-output/20260917T075659Z/driver.mjs`): ONE `kickMember`
+    // over an `in_progress` task holding a stored deliverable left the record at `output: null`,
+    // `status: claimed`, `attempt: 1 -> 2` — DETERMINISTIC, not a race, because the compose rotates
+    // the attempt on EVERY dispatched ticket. The dispatch-boundary re-check (`mpd-delta
+    // terminal-dispatch-recheck`, `lib/scheduler.js`) runs AFTER this function, so it can prevent the
+    // WAKE and never the WIPE. The phantom-claim family's mechanical cause is therefore a silent
+    // DELETE, not a spurious wake.
+    //
+    // SHAPE (i) of the two the wave-1 record names (`terminal-dispatch/20260917T023700Z/result.json`,
+    // `second_data_loss_vector.where_the_fix_belongs`) — chosen because it is the shape this lane can
+    // EXERCISE in-process: `output` SURVIVES a rotation that stays inside the SAME generation, i.e. the
+    // task is still OPEN (`claimed`/`in_progress`, so nothing invalidated it) and the incoming assignee
+    // IS its current owner (the `recoverOwned` re-dispatch of the same seat). Every other rotation keeps
+    // clearing `output` exactly as before: a first dispatch of a `pending` task, any generation
+    // invalidated by an amend, and a handover — the reassign path clears it EXPLICITLY through
+    // `invalidateTaskAttempt` before the new owner is armed. Clearing thus becomes an explicit invalidate
+    // action instead of a side effect of every compose.
+    //
+    // Shape (ii) (snapshot before the compose + restore in the refusal path) is NOT shipped: the wave-1
+    // record judges it in-process-untestable on a path no harness can steer, and this lane does not ship
+    // a repair it cannot exercise.
+    //
+    // BOUND (stated, not hidden): a later COMPLETE on the same generation that supplies a DIFFERENT
+    // summary longer than 240 chars meets T-46's existing loud replacement guard
+    // (`replace_output: true` / `output_append`) instead of silently discarding the preserved bytes —
+    // a refusal WITH a remedy, never a loss.
+    const sameGenerationRedispatch = (task.status === 'claimed' || task.status === 'in_progress')
+        && task.assignee === assignee;
+    //#endregion mpd-delta composed-ticket-output-preserved
     const attemptId = randomUUID();
     task.status = 'claimed';
     task.assignee = assignee;
     task.attemptId = attemptId;
     task.handoffId = undefined;
     task.reassigning = false;
-    task.output = undefined;
+    if (!sameGenerationRedispatch)
+        task.output = undefined;
     task.updatedAt = Date.now();
     return attemptId;
 }
 /** Start a fresh task generation for one owner. */
 export function beginTaskAttempt(task, assignee) {
+    assertTaskRearmable(task);
     task.attempt = (task.attempt ?? 0) + 1;
     return activateTaskAttempt(task, assignee);
 }
@@ -258,9 +377,91 @@ export function invalidateTaskAttempt(task, nextAssignee, reassigning = false) {
  * @param stateRoot - resolved absolute state root directory.
  * @param state - the initial team record.
  */
+//#region mpd-delta wave-labels (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-12 (wave 1, t20): the team carries an EXPLICIT WAVE LABEL, and rolling a wave over is an
+ * explicit captain action with a durable archive.
+ *
+ * Measured motivation: one team reached 86 tasks across four waves, and every `agent_teams_status`
+ * re-rendered all of them — the boundary existed only as captain discipline, so the context kept
+ * inflating. A record written before this delta reads as `w1`, opened at its `createdAt`.
+ */
+export const TEAM_WAVE_SUBDIR = 'waves';
+/** The team's current wave, normalized (legacy records are `w1`). */
+export function waveOf(team) {
+    const raw = team === undefined || team === null ? undefined : team.wave;
+    if (raw !== null && raw !== undefined && typeof raw === 'object' && typeof raw.label === 'string' && raw.label.trim() !== '') {
+        return {
+            label: raw.label,
+            index: typeof raw.index === 'number' && Number.isFinite(raw.index) && raw.index > 0 ? raw.index : 1,
+            openedAt: typeof raw.openedAt === 'number' && Number.isFinite(raw.openedAt) ? raw.openedAt : (typeof team.createdAt === 'number' ? team.createdAt : 0),
+        };
+    }
+    return { label: 'w1', index: 1, openedAt: typeof team?.createdAt === 'number' ? team.createdAt : 0 };
+}
+/** The wave that follows one, opened now. */
+export function nextWave(wave, now) {
+    const index = (typeof wave?.index === 'number' && Number.isFinite(wave.index) ? wave.index : 1) + 1;
+    return { label: `w${index}`, index, openedAt: now };
+}
+/**
+ * Write ONE closed wave's archive record: `<stateRoot>/<teamId>/waves/<label>.json`.
+ *
+ * The record carries the label (so the archive names the wave it closed), the open/close
+ * timestamps, and the CLOSED TASKS THEMSELVES — the live record drops them, and a boundary that
+ * silently discards work would be worse than the context it saves. Durable and atomic; the
+ * `waves/` directory travels with the team dir into `archive/` on delete.
+ */
+export async function writeWaveArchive(stateRoot, teamId, archive) {
+    const dir = join(stateRoot, teamId, TEAM_WAVE_SUBDIR);
+    await mkdir(dir, { recursive: true });
+    const path = join(dir, `${sanitizeKey(archive.label)}.json`);
+    await atomicWriteText(path, JSON.stringify(archive, null, 2));
+    return path;
+}
+/** Every archived wave of one team, oldest label first (a torn file is skipped, never fatal). */
+export async function listWaveArchives(stateRoot, teamId) {
+    const dir = join(stateRoot, teamId, TEAM_WAVE_SUBDIR);
+    let names;
+    try {
+        names = await readdir(dir);
+    }
+    catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+            return [];
+        throw error;
+    }
+    const archives = [];
+    for (const name of names.sort()) {
+        if (!name.endsWith('.json'))
+            continue;
+        try {
+            const parsed = JSON.parse(stripLeadingBom(await readFile(join(dir, name), 'utf8')));
+            archives.push({
+                label: typeof parsed.label === 'string' ? parsed.label : name.slice(0, -'.json'.length),
+                opened_at: typeof parsed.openedAt === 'number' ? parsed.openedAt : null,
+                closed_at: typeof parsed.closedAt === 'number' ? parsed.closedAt : null,
+                archived_tasks: Array.isArray(parsed.tasks) ? parsed.tasks.length : 0,
+            });
+        }
+        catch {
+            // a torn archive record is skipped: the rest of the index still answers
+        }
+    }
+    return archives;
+}
+//#endregion mpd-delta wave-labels
 export async function createTeamDir(stateRoot, state) {
     const dir = join(stateRoot, state.id);
     await mkdir(join(dir, 'inbox'), { recursive: true });
+    //#region mpd-delta team-revision-open (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-06 (wave 2b, lane A): the record's OPENING write stamps its first token too. Measured: this
+    // function is the only OTHER `team.json` writer in `lib/**` besides `writeTeam`, and all three of
+    // its call sites CREATE a fresh team (the `create_team` path and the two profile-seed drafts), so
+    // there is no prior counter to preserve — a team whose status read would otherwise print
+    // "unrecorded" opens at 1, and every subsequent write is the funnel's.
+    bumpTeamRevision(state);
+    //#endregion mpd-delta team-revision-open
     await atomicWriteText(join(dir, 'team.json'), JSON.stringify(state, null, 2));
 }
 /**
@@ -316,7 +517,35 @@ export function readTeamSync(stateRoot, teamId) {
  * @param stateRoot - resolved absolute state root directory.
  * @param state - the record to persist.
  */
+//#region mpd-delta team-revision-token (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-06 (wave 2b, lane A): THE monotone revision token. The row's defect is a READ that cannot tell
+// which write it observed — "claimed" printed after a terminal transition (and the reverse) — so the
+// record carries a counter that moves on EVERY durable write and is printed beside the task states it
+// belongs to. A COUNTER, never a clock: two writes inside the same millisecond still differ, and a
+// clock that steps backwards cannot make the token regress. A legacy record (no token) reads as 0 and
+// is upgraded by its next write; `isTeamState` refuses a malformed one in the same shape chain.
+// (The region sits in the JSDoc→signature gap only because the applier's beforeContext must be
+// UNIQUE; the JSDoc above documents `writeTeam`, not these two helpers.)
+/** The team's monotone revision token; 0 for a record that never carried one. */
+export function teamRevisionOf(team) {
+    const value = team?.['revision'];
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+/** Advance the token in place and return the new value — the ONE bump site (see `writeTeam`). */
+export function bumpTeamRevision(team) {
+    const next = teamRevisionOf(team) + 1;
+    team['revision'] = next;
+    return next;
+}
+//#endregion mpd-delta team-revision-token
 export async function writeTeam(stateRoot, state) {
+    //#region mpd-delta team-revision-bump (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-06 (wave 2b, lane A): the bump lives in the FUNNEL, never at the call sites. Every durable
+    // write goes through this function (call sites at the t50 measurement: `members.js` 3,
+    // `scheduler.js` 6, `tools.js` 20, `state.js` 1), so a token bumped at a call site would leave
+    // the other paths silently stale — and the arm's funnel census reddens on exactly that.
+    bumpTeamRevision(state);
+    //#endregion mpd-delta team-revision-bump
     await atomicWriteText(join(stateRoot, state.id, 'team.json'), JSON.stringify(state, null, 2));
 }
 /** Parse the durable retired-member index, rejecting malformed content. */
@@ -461,8 +690,28 @@ export async function appendMailbox(stateRoot, teamId, agentKey, message) {
     await atomicWriteText(file, `${existing}${separator}${JSON.stringify(message)}\n`);
 }
 //#region mpd-delta message-channel-r1 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-/** Duplicate window for the R1 delivery-idempotency key (from+to+content). */
-export const MAILBOX_DEDUP_WINDOW_MS = MAILBOX_DELIVERY_LEASE_MS;
+/**
+ * P1e (t47): the duplicate window is a CONFIGURED value with its own default, NOT the delivery lease
+ * constant it used to borrow. MEASURED basis: the lease is 60 s, while the exact-repeat groups this
+ * mailbox actually produced sit at a median of 43.3 s and a maximum of 1,131.6 s — so the borrowed
+ * constant could only see 4 of 7, and across every team and archive 2,084 records carry `dupCount`
+ * with EVERY value 1, i.e. no fold has ever happened. 30 min covers all seven; `0` (or any
+ * non-positive value) DISABLES the fold — proven by an arm, not by this sentence.
+ */
+export const MAILBOX_DEDUP_WINDOW_DEFAULT_MS = 30 * 60 * 1000;
+/**
+ * P1b (t49): the retention window for the AUTOMATIC prune. MEASURED justification for 7 days: the
+ * longest exact-repeat gap this mailbox ever produced is 1,131.6 s (19 min) and the dedup window is
+ * 30 min, so a week is ~500x beyond any evidence the fold could still need; meanwhile the workspace
+ * holds 116 inbox files / 3,302 records (largest 1.0 MB / 410 records) with NO automatic tombstone
+ * ever created — so the window is long enough to keep anything reviewable and short enough to
+ * actually reclaim. 0 disables the prune (proven by an arm).
+ */
+export const MAILBOX_RETENTION_DEFAULT_MS = 7 * 24 * 60 * 60 * 1000;
+/** How many records one bounded prune may reclaim (the sweep never becomes a scan of the mailbox). */
+export const MAILBOX_RETENTION_BATCH = 64;
+/** Back-compat alias: the default window, no longer the lease constant. */
+export const MAILBOX_DEDUP_WINDOW_MS = MAILBOX_DEDUP_WINDOW_DEFAULT_MS;
 /** Interjection requests still unanswered after this are DENIED by default. */
 export const INTERJECTION_TTL_MS = 30 * 60 * 1000;
 /** Lane that holds interjection REQUESTS awaiting the captain's decision. */
@@ -474,6 +723,24 @@ export function messageDedupKey(message) {
     return `${message.from}\u0000${message.to}\u0000${message.content}`;
 }
 /**
+ * P1d (t48): every existing record a message would REPEAT — same identity, same recipient, same
+ * content — at ANY age. The fold window decides FOLDABILITY, never VISIBILITY: a sender must be able
+ * to see a repeat from three days ago, which is the whole point of the pre-send gate. Cleared
+ * tombstones are not repeats (their content is empty by construction).
+ */
+export function mailboxDuplicatesFor(existing, message, windowMs) {
+    const key = messageDedupKey(message);
+    return (existing ?? [])
+        .filter((candidate) => candidate.tombstone !== true && messageDedupKey(candidate) === key)
+        .map((candidate) => ({
+            id: candidate.id,
+            ts: candidate.ts,
+            dup_count: candidate.dupCount ?? 1,
+            within_fold_window: Number.isFinite(windowMs) && windowMs > 0 && Math.abs(message.ts - candidate.ts) <= windowMs,
+        }))
+        .sort((left, right) => right.ts - left.ts);
+}
+/**
  * Fold one message into the mailbox for DELIVERY idempotency: when the same
  * (from,to,content) was appended inside the window, the existing record's
  * `dupCount` is incremented and NO second record is written, so a redelivery can
@@ -483,11 +750,16 @@ export function messageDedupKey(message) {
  * @returns the record that now holds the message (new or folded).
  */
 export async function appendMailboxDeduped(stateRoot, teamId, agentKey, message, options = {}) {
-    const windowMs = options.windowMs ?? MAILBOX_DEDUP_WINDOW_MS;
+    // P1e: `windowMs <= 0` is OFF — a configured 0 must fold NOTHING, not "fold only same-millisecond
+    // records", which is what `Math.abs(...) <= 0` would have meant.
+    const windowMs = options.windowMs ?? MAILBOX_DEDUP_WINDOW_DEFAULT_MS;
+    const foldable = Number.isFinite(windowMs) && windowMs > 0;
     const existing = await readMailbox(stateRoot, teamId, agentKey);
     const key = messageDedupKey(message);
-    const hit = existing.find((candidate) => messageDedupKey(candidate) === key
-        && Math.abs(message.ts - candidate.ts) <= windowMs);
+    const hit = foldable
+        ? existing.find((candidate) => messageDedupKey(candidate) === key
+            && Math.abs(message.ts - candidate.ts) <= windowMs)
+        : undefined;
     if (hit !== undefined) {
         // R1: the surviving record keeps its OWN delivery/read markers. Dropping them
         // would clear a live claim (or an acknowledgement) and let a folded duplicate be
@@ -519,9 +791,19 @@ export async function appendMailboxDeduped(stateRoot, teamId, agentKey, message,
  */
 export async function clearMailboxToWatermark(stateRoot, teamId, agentKey, watermark, options = {}) {
     const messages = await readMailbox(stateRoot, teamId, agentKey);
-    const cleared = messages.filter((message) => message.ts <= watermark && message.tombstone !== true);
+    const inScope = messages.filter((message) => message.ts <= watermark && message.tombstone !== true);
+    // P1c (t43, the user's directive): a WATERMARK alone can silently destroy undelivered work — the
+    // measured instance is the captain's own `9999999999999` call, which tombstoned a member's entire
+    // delivery view (162 records, 0 live) while the tool reported FAILURE. A record that was never
+    // DELIVERED or never READ is therefore PROTECTED unless the caller passes `force: true`, and the
+    // split is REPORTED so the caller sees what it was about to lose. The sidecar is what keeps the
+    // operation recoverable, and this guard is what keeps it from being unnecessary.
+    const protectedRecords = inScope.filter((message) => message.deliveredAt === undefined || message.readAt === undefined);
+    const forced = options.force === true;
+    const cleared = forced ? inScope : inScope.filter((message) => !protectedRecords.includes(message));
+    const skipped = forced ? [] : protectedRecords.map((message) => message.id);
     if (cleared.length === 0) {
-        return { cleared: [], sidecar: undefined, audit: undefined };
+        return { cleared: [], skipped_unread: skipped, sidecar: undefined, audit: undefined };
     }
     const clearedIds = new Set(cleared.map((message) => message.id));
     // archive-first: the recoverable copy is written AND flushed before the live
@@ -551,11 +833,12 @@ export async function clearMailboxToWatermark(stateRoot, teamId, agentKey, water
         agentKey,
         watermark,
         clearedCount: cleared.length,
+        skippedUnreadCount: skipped.length,
         clearedIds: [...clearedIds],
         sidecar,
         at: options.now ?? Date.now(),
     };
-    return { cleared: [...clearedIds], sidecar, audit };
+    return { cleared: [...clearedIds], skipped_unread: skipped, sidecar, audit };
 }
 /**
  * Read only the records that are NOT tombstones (the live view after a clear).
@@ -902,7 +1185,7 @@ export async function releaseMailboxDelivery(stateRoot, teamId, agentKey, messag
  * Mark selected durable mailbox records delivered/read while preserving
  * malformed lines for diagnostics. Callers serialize this with the team lock.
  */
-export async function acknowledgeMailbox(stateRoot, teamId, agentKey, messageIds) {
+export async function acknowledgeMailbox(stateRoot, teamId, agentKey, messageIds, options = {}) {
     const now = Date.now();
     await mutateMailbox(stateRoot, teamId, agentKey, messageIds, (message) => {
         const { deliveryClaimedAt: _claimed, ...rest } = message;
@@ -912,6 +1195,65 @@ export async function acknowledgeMailbox(stateRoot, teamId, agentKey, messageIds
             readAt: message.readAt ?? now,
         };
     });
+    // P1b (t49): the DELIVERY path is where the backlog grows, so the retention prune rides it — no
+    // timer, deterministic, and bounded per call. `retentionMs` comes from the caller's live config when
+    // it has one; otherwise the single-sourced default applies (never cached at apply time).
+    await pruneMailboxRetention(stateRoot, teamId, agentKey, {
+        retentionMs: options.retentionMs ?? MAILBOX_RETENTION_DEFAULT_MS,
+        limit: options.retentionLimit ?? MAILBOX_RETENTION_BATCH,
+        now,
+    });
+}
+/**
+ * P1b (t49): reclaim DELIVERED AND ACKNOWLEDGED records older than the retention window, archive-first.
+ * Eligibility (each armed independently in `self-fix-tests/t49-retention-prune.test.mjs`):
+ *   (a) `deliveredAt` AND `readAt` are set — an UNREAD record is never touched;
+ *   (b) the record is older than the window;
+ *   (c) it is NOT currently leased (`deliveryClaimedAt` cleared or past the lease).
+ * The bytes land in the sidecar BEFORE the live file is rewritten, and the tombstone keeps
+ * id/ts/from/to plus its read/delivery markers, so it can never re-open as unread or be delivered
+ * twice. `retentionMs <= 0` disables the prune entirely.
+ */
+export async function pruneMailboxRetention(stateRoot, teamId, agentKey, options = {}) {
+    const windowMs = options.retentionMs ?? MAILBOX_RETENTION_DEFAULT_MS;
+    if (!(Number.isFinite(windowMs) && windowMs > 0))
+        return { pruned: [], sidecar: undefined, audit: undefined, disabled: true };
+    const limit = Number.isSafeInteger(options.limit) && options.limit > 0 ? options.limit : MAILBOX_RETENTION_BATCH;
+    const now = options.now ?? Date.now();
+    const messages = await readMailbox(stateRoot, teamId, agentKey);
+    const eligible = messages.filter((message) => message.tombstone !== true
+        && message.deliveredAt !== undefined
+        && message.readAt !== undefined
+        && now - message.deliveredAt >= windowMs
+        && (message.deliveryClaimedAt === undefined || now - message.deliveryClaimedAt >= MAILBOX_DELIVERY_LEASE_MS));
+    if (eligible.length === 0)
+        return { pruned: [], sidecar: undefined, audit: undefined, disabled: false };
+    const batch = eligible.slice(0, limit);
+    const prunedIds = new Set(batch.map((message) => message.id));
+    const archiveDir = join(stateRoot, teamId, 'inbox', 'archive');
+    await mkdir(archiveDir, { recursive: true });
+    const sidecar = join(archiveDir, `${sanitizeKey(agentKey)}.retention.${now}.jsonl`);
+    await atomicWriteText(sidecar, batch.map((message) => JSON.stringify(message)).join('\n') + '\n');
+    await mutateMailbox(stateRoot, teamId, agentKey, [...prunedIds], (message) => ({
+        id: message.id,
+        from: message.from,
+        to: message.to,
+        content: '',
+        ts: message.ts,
+        tombstone: true,
+        prunedAt: now,
+        retentionWindowMs: windowMs,
+        archivedTo: sidecar,
+        ...message.readAt === undefined ? {} : { readAt: message.readAt },
+        ...message.deliveredAt === undefined ? {} : { deliveredAt: message.deliveredAt },
+        ...message.dupCount === undefined ? {} : { dupCount: message.dupCount },
+    }));
+    return {
+        pruned: [...prunedIds],
+        sidecar,
+        disabled: false,
+        audit: { kind: 'mailbox-retention-pruned', agentKey, windowMs, prunedCount: batch.length, eligibleCount: eligible.length, sidecar },
+    };
 }
 /** Remove the optional UTF-8 BOM some editors prepend to JSON text. */
 function stripLeadingBom(value) {
@@ -1153,6 +1495,13 @@ function isTeamState(value, expectedId) {
         && (value['escalated'] === undefined || typeof value['escalated'] === 'boolean');
     if (!validShape)
         return false;
+    //#region mpd-delta team-revision-shape (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-06 (wave 2b, lane A): the token is validated HERE, in the same shape chain as `taskSeq` — a
+    // record whose token is not a non-negative safe integer is refused at the same point a bad
+    // `taskSeq` is, so a malformed token can never be read as a valid one and then re-bumped from 0.
+    if (value['revision'] !== undefined && !(Number.isSafeInteger(value['revision']) && value['revision'] >= 0))
+        return false;
+    //#endregion mpd-delta team-revision-shape
     const members = value['members'];
     const tasks = value['tasks'];
     const memberIds = new Set();

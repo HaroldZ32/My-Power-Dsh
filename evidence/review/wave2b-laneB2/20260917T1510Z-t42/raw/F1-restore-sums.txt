@@ -1,0 +1,8 @@
+restored: '{ files: 0, key_producers: 0, key_ids: new Set()' x1
+restored: 'bucket.key_ids.add(id)' x1
+restored: 'bucket.claim_ids.add(id)' x1
+restored: 'bucket.mismatched_ids.add(id)' x1
+restored: 'keys: bucket.key_ids.size' x1
+restored: 'claims: bucket.claim_ids.size' x1
+restored: 'violations: bucket.mismatched_ids.size' x1
+COPY now uses the PRE-FIX summing computation (arrays, .length)

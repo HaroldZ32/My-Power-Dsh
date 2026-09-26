@@ -1,0 +1,4 @@
+b0547996c1980ab353cfb4b2bd3260ee6c4d8e9beaaaecbb96e34f92828cc527  packages/mpd-agent-teams-plugin/lib/tools.js
+b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js
+0e8cb8c4da85fe6cb5299c8315dd1b3990427b22117c58400211631ca605fd79  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+6852eb66670b0693266df4893bdfd5934bcc961137241419964463df23a590e3  packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs

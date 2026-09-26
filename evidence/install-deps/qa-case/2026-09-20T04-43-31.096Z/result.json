@@ -1,0 +1,458 @@
+{
+  "case": "install-dependencies",
+  "ok": true,
+  "checkedAt": "2026-09-20T04-43-31.096Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "claims": {
+    "composition": "--dump-config via scripts/dump-config.mjs: rows composed, no plugin code executed (AGENTS.md §4). NEVER cited as load evidence.",
+    "load": "a REAL mounting boot in a hand-built isolated profile (web: HTTP token + served index + the sidebar route; tui: a tmux dsh-tui boot) for every arm."
+  },
+  "installRecipe": {
+    "why": "the sandbox cannot run `dsh plugin add`: pnpm's store index lives outside the workspace (ERR_SQLITE_ERROR) and its registry requests time out here. The case writes profiles/<p>/package.json (link dependency + dsh.profile.bundles), pnpm-workspace.yaml and the node_modules/@mpd-dsh/mpd symlink instead — the shape a checkout install IS; the harness's own module fallback then materializes the DECLARED dependency, which is the install step under test.",
+    "redBaseline": "evidence/install-deps/red-baseline/20260920T030832Z/result.json",
+    "steps": [
+      "mkdir -p <root>/dsh/profiles/<p>/node_modules/@mpd-dsh <root>/home <root>/ws",
+      "package.json: dependencies {'@mpd-dsh/mpd': 'link:<repo>'} + dsh.profile.bundles = the arm's stack",
+      "pnpm-workspace.yaml: packages ['.'] / nodeLinker: hoisted / autoInstallPeers: false",
+      "ln -s <repo> <root>/dsh/profiles/<p>/node_modules/@mpd-dsh/mpd",
+      "seed <root>/dsh/.credentials.yaml + settings.yaml (a boot without them dies MISSING_CREDENTIAL)",
+      "DSH_HOME=<root>/dsh HOME=<root>/home dsh --profile <p> ... with cwd <root>/ws"
+    ]
+  },
+  "arms": [
+    {
+      "name": "bundle-only",
+      "order": 1,
+      "purpose": "the user's own composition: the bundle alone on the web plane mounts exactly ONE sidebar host and really serves it (the reported symptom).",
+      "ok": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+        "command": "node scripts/dump-config.mjs --profile w --json",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "stderrTail": [
+          "[dump-config] ---- the composed rows below are the child's own output ----",
+          "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+          "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+        ],
+        "evidenceArtifact": "dump-bundle-only.txt",
+        "composedBytes": 34899,
+        "rowCount": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "literalEnabledCount": 0,
+        "literalEnabledIds": [],
+        "expectRowCountMin": 1,
+        "expectRowCountMax": 1,
+        "expectLiteralEnabledMax": 0,
+        "ok": true
+      },
+      "load": {
+        "claim": "REAL mounting boot (an isolated profile really boots and serves; never --dump-config)",
+        "bootCommand": "dsh --profile w --port 3371 --no-open",
+        "logPath": "/tmp/mpd-install-dependencies-bundle-only-iSzEWM/web-bundle-only.log",
+        "port": 3371,
+        "booted": true,
+        "indexStatus": 200,
+        "servedClientCarriesSidebar": true,
+        "servedClientUrlCount": 59,
+        "servedClientSample": "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh",
+        "sidebarRoute": {
+          "path": "/sidebar/api",
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "sidebarRouteMounted": true,
+        "signatures": {
+          "hits": [],
+          "markers": [],
+          "healthy": true
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+        ],
+        "logTail": [
+          "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+          "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3371/?token[redacted:43ch]"
+        ],
+        "evidenceLog": "boot-bundle-only.log",
+        "guardDecision": "ENABLED",
+        "expectSidebarServed": true,
+        "servedClaim": {
+          "servedClientCarriesSidebar": true,
+          "sidebarRouteMounted": true,
+          "expectSidebarServed": true,
+          "activeEntryEvidence": "the entry ACTIVATED: its route answers (/sidebar/api -> 405) AND its browser bundle is composed into the served client table"
+        },
+        "ok": true
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "realHomeUntouched": true
+    },
+    {
+      "name": "aggregate-first",
+      "order": 2,
+      "purpose": "another bundle already mounts the sidebar and is installed FIRST (@linxin666/dsh-web-all, whose row web-ui-better-sidebar is UNGUARDED): still exactly one mount, healthy boot.",
+      "ok": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+        "command": "node scripts/dump-config.mjs --profile w --json",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "web-ui-better-sidebar",
+            "disabledRaw": null,
+            "enabled": true
+          },
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "stderrTail": [
+          "[dump-config] ---- the composed rows below are the child's own output ----",
+          "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+          "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+        ],
+        "evidenceArtifact": "dump-aggregate-first.txt",
+        "composedBytes": 37428,
+        "rowCount": 2,
+        "rowIds": [
+          "web-ui-better-sidebar",
+          "mpd-better-sidebar"
+        ],
+        "literalEnabledCount": 1,
+        "literalEnabledIds": [
+          "web-ui-better-sidebar"
+        ],
+        "expectRowCountMin": 1,
+        "expectRowCountMax": 2,
+        "expectLiteralEnabledMax": 1,
+        "ok": true
+      },
+      "load": {
+        "claim": "REAL mounting boot (an isolated profile really boots and serves; never --dump-config)",
+        "bootCommand": "dsh --profile w --port 3372 --no-open",
+        "logPath": "/tmp/mpd-install-dependencies-aggregate-first-2l85JG/web-aggregate-first.log",
+        "port": 3372,
+        "booted": true,
+        "indexStatus": 200,
+        "servedClientCarriesSidebar": true,
+        "servedClientUrlCount": 61,
+        "servedClientSample": "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh",
+        "sidebarRoute": {
+          "path": "/sidebar/api",
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "sidebarRouteMounted": true,
+        "signatures": {
+          "hits": [],
+          "markers": [],
+          "healthy": true
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        ],
+        "logTail": [
+          "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+          "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3372/?token[redacted:43ch]"
+        ],
+        "evidenceLog": "boot-aggregate-first.log",
+        "guardDecision": "DISABLED",
+        "expectSidebarServed": true,
+        "servedClaim": {
+          "servedClientCarriesSidebar": true,
+          "sidebarRouteMounted": true,
+          "expectSidebarServed": true,
+          "activeEntryEvidence": "the entry ACTIVATED: its route answers (/sidebar/api -> 405) AND its browser bundle is composed into the served client table"
+        },
+        "ok": true
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "realHomeUntouched": true
+    },
+    {
+      "name": "mpd-first-aggregate-after",
+      "order": 3,
+      "purpose": "the SAME aggregate installed AFTER this bundle — the ordering a forward-blind entry-list guard cannot see: still exactly one mount, healthy boot.",
+      "ok": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+        "command": "node scripts/dump-config.mjs --profile w --json",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "web-ui-better-sidebar",
+            "disabledRaw": null,
+            "enabled": true
+          }
+        ],
+        "stderrTail": [
+          "[dump-config] ---- the composed rows below are the child's own output ----",
+          "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+          "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+        ],
+        "evidenceArtifact": "dump-mpd-first-aggregate-after.txt",
+        "composedBytes": 37428,
+        "rowCount": 2,
+        "rowIds": [
+          "mpd-better-sidebar",
+          "web-ui-better-sidebar"
+        ],
+        "literalEnabledCount": 1,
+        "literalEnabledIds": [
+          "web-ui-better-sidebar"
+        ],
+        "expectRowCountMin": 1,
+        "expectRowCountMax": 2,
+        "expectLiteralEnabledMax": 1,
+        "ok": true
+      },
+      "load": {
+        "claim": "REAL mounting boot (an isolated profile really boots and serves; never --dump-config)",
+        "bootCommand": "dsh --profile w --port 3373 --no-open",
+        "logPath": "/tmp/mpd-install-dependencies-mpd-first-aggregate-after-w6MXXS/web-mpd-first-aggregate-after.log",
+        "port": 3373,
+        "booted": true,
+        "indexStatus": 200,
+        "servedClientCarriesSidebar": true,
+        "servedClientUrlCount": 61,
+        "servedClientSample": "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh",
+        "sidebarRoute": {
+          "path": "/sidebar/api",
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "sidebarRouteMounted": true,
+        "signatures": {
+          "hits": [],
+          "markers": [],
+          "healthy": true
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        ],
+        "logTail": [
+          "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+          "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3373/?token[redacted:43ch]"
+        ],
+        "evidenceLog": "boot-mpd-first-aggregate-after.log",
+        "guardDecision": "DISABLED",
+        "expectSidebarServed": true,
+        "servedClaim": {
+          "servedClientCarriesSidebar": true,
+          "sidebarRouteMounted": true,
+          "expectSidebarServed": true,
+          "activeEntryEvidence": "the entry ACTIVATED: its route answers (/sidebar/api -> 405) AND its browser bundle is composed into the served client table"
+        },
+        "ok": true
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "realHomeUntouched": true
+    },
+    {
+      "name": "tui-plane",
+      "order": 4,
+      "purpose": "the dsh-tui plane never provides webServer/webRuntime: the sidebar row must be absent/disabled and the real TUI boot must stay green.",
+      "ok": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+        "command": "node scripts/dump-config.mjs --profile dsh-tui --json",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "stderrTail": [
+          "[dump-config] ---- the composed rows below are the child's own output ----",
+          "dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found",
+          "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+        ],
+        "evidenceArtifact": "dump-tui-plane.txt",
+        "composedBytes": 35638,
+        "rowCount": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "literalEnabledCount": 0,
+        "literalEnabledIds": [],
+        "expectRowCountMin": 1,
+        "expectRowCountMax": 1,
+        "expectLiteralEnabledMax": 0,
+        "ok": true
+      },
+      "load": {
+        "claim": "REAL dsh-tui mounting boot in tmux (lib/tui-lane.mjs), pane capture + raw terminal log",
+        "bootCommand": "dsh-tui (default profile, in tmux)",
+        "booted": true,
+        "failures": [],
+        "signatures": {
+          "hits": [],
+          "markers": [],
+          "healthy": true
+        },
+        "guardLines": [
+          "\u001b[?2004l\r[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition\r"
+        ],
+        "paneFile": "/root/dshProj/my-power-dsh/evidence/install-deps/qa-case/2026-09-20T04-43-31.096Z/tui-tui-plane/boot.pane.txt",
+        "logFile": "/root/dshProj/my-power-dsh/evidence/install-deps/qa-case/2026-09-20T04-43-31.096Z/tui-tui-plane/tui-pane.log",
+        "evidenceLog": "tui-tui-plane/tui-pane.log",
+        "guardDecision": "DISABLED",
+        "expectSidebarServed": false,
+        "ok": true
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-install-dependencies-tui-plane-Eje1Cs-ws--"
+        ]
+      },
+      "realHomeUntouched": true
+    },
+    {
+      "name": "package-absent",
+      "order": 5,
+      "purpose": "the declared dependency is NOT resolvable from the profile (staged bundle copy without node_modules): the boot still SUCCEEDS, degraded to no sidebar.",
+      "ok": true,
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs -> the harness --dump-config composes rows and never executes plugin code, AGENTS.md §4)",
+        "command": "node scripts/dump-config.mjs --profile w --json",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          }
+        ],
+        "stderrTail": [
+          "[dump-config] ---- the composed rows below are the child's own output ----",
+          "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+          "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+        ],
+        "evidenceArtifact": "dump-package-absent.txt",
+        "composedBytes": 34899,
+        "rowCount": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "literalEnabledCount": 0,
+        "literalEnabledIds": [],
+        "expectRowCountMin": 1,
+        "expectRowCountMax": 1,
+        "expectLiteralEnabledMax": 0,
+        "ok": true
+      },
+      "load": {
+        "claim": "REAL mounting boot (an isolated profile really boots and serves; never --dump-config)",
+        "bootCommand": "dsh --profile w --port 3374 --no-open",
+        "logPath": "/tmp/mpd-install-dependencies-package-absent-f0338y/web-package-absent.log",
+        "port": 3374,
+        "booted": true,
+        "indexStatus": 200,
+        "servedClientCarriesSidebar": false,
+        "servedClientUrlCount": 58,
+        "servedClientSample": "/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.js,@deepseek-ai/dsh-client-hmr/client.js,@deepseek-ai/dsh",
+        "sidebarRoute": {
+          "path": "/sidebar/api",
+          "status": 404,
+          "body": ""
+        },
+        "sidebarRouteMounted": false,
+        "signatures": {
+          "hits": [],
+          "markers": [],
+          "healthy": true
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+        ],
+        "logTail": [
+          "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+          "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3374/?token[redacted:43ch]"
+        ],
+        "evidenceLog": "boot-package-absent.log",
+        "guardDecision": "DISABLED",
+        "expectSidebarServed": false,
+        "servedClaim": {
+          "servedClientCarriesSidebar": false,
+          "sidebarRouteMounted": false,
+          "expectSidebarServed": false,
+          "activeEntryEvidence": "no positive activation evidence"
+        },
+        "ok": true
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "realHomeUntouched": true
+    }
+  ],
+  "skippedArms": [],
+  "ranArms": 5,
+  "redDemonstration": {
+    "artifact": "evidence/install-deps/red-baseline/20260920T030832Z/composed-config.txt",
+    "result": "evidence/install-deps/red-baseline/20260920T030832Z/result.json",
+    "claim": "the SAME composition predicate run on the REAL pre-fix composition captured before the fix landed parses ZERO sidebar rows, so arm `bundle-only` (rows >= 1, then a mounted + served host) was RED before the row existed; the self-test re-asserts that parse on every offline run.",
+    "sidebarRowsAtRedBaseline": 0
+  },
+  "sourceHashes": {
+    "measuredAtUtc": "2026-09-20T04:44:53.288Z",
+    "packages/mpd-bundle/cordis.patch.yml": "1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f",
+    "package.json": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+    "skills/dsh-qa/scripts/install-dependencies.mjs": "108134dc4698af32c93e3ec716fb3444bf5950ce00ff098491b40f1a216a5a66"
+  }
+}

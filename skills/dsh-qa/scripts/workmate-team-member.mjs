@@ -17,7 +17,11 @@ import { cpSync, existsSync, readdirSync, mkdirSync, mkdtempSync, readFileSync, 
 import { homedir, tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
+const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = `Perform this exact sequence with the tools and report each result:
 1) mpd_workmate_init {base:"hephaestus", name:"alice"}
@@ -39,8 +43,15 @@ function selfTest() {
   checks.push(["agent_teams_create param name", tools.includes("agent_teams_create") && tools.includes("name: { type: 'string', required: true, description: 'Name for the new team")])
   checks.push(["agent_teams_add_member param name", tools.includes("agent_teams_add_member") && tools.includes("Unique member name inside the team")])
   checks.push(["agent_teams_create_task subject", tools.includes("agent_teams_create_task") && tools.includes("Required non-empty title for this task")])
-  const preset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
-  checks.push(["mpd preset TEAM WORK + WORKMATE guidance", preset.includes("agent_teams_create") && preset.includes("WORKMATE LIBRARY")])
+  // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list in
+  // the `preset-mpd` row of the manifest's second bundle patch — there is no
+  // `presets/mpd/` directory any more. Read the DECLARED source, never a path.
+  const preset = readMpdPresetSource(repoRoot)
+  // RETIREMENT (2026-09-27): team work runs on the OFFICIAL Agent Teams plugin now
+  // (`spawn_teammate` / `team_task_create` / `list_agents`), not the retired
+  // vendored `agent_teams_*` surface — so the preset must name the ADOPTED
+  // vocabulary, and the workmate guidance must still be there.
+  checks.push(["mpd preset TEAM WORK (official tools) + WORKMATE guidance", preset.includes("spawn_teammate") && preset.includes("team_task_create") && preset.includes("WORKMATE LIBRARY")])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
   console.log("[workmate-team-member self-test] ok: " + checks.length + " checks")
@@ -63,7 +74,7 @@ function runReal() {
   const wmHome = mkdtempSync(join(tmpdir(), "mpd-wtm-home-"))
   const ws = join(wmHome, "ws")
   mkdirSync(ws, { recursive: true })
-  cpSync(creds, join(dshHome, ".credentials.yaml"))
+  seedSandboxCredentials(dshHome, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -73,18 +84,22 @@ function runReal() {
   const qaSettings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(qaSettings)) cpSync(qaSettings, join(dshHome, "settings.yaml"))
   writeFileSync(join(ws, "README.md"), "# my-power-dsh\nworkmate team-member e2e workspace\n")
-  const env = { ...process.env, DSH_HOME: dshHome, HOME: wmHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: wmHome  })
   const steps = {}
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     return { status: r.status, out: (r.stdout || "") + (r.stderr || "") }
   }
 
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.install = { ok: inst.status === 0, exit: inst.status }
 
-  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
-  steps.dump = { ok: dump.status === 0 && dump.out.includes("id: mpd-workmate") && dump.out.includes("id: mpd-roles") && dump.out.includes("id: agent-teams"), exit: dump.status }
+  // T-69: compose through the wrapper (the banner lands on STDERR under `--json`, so the child's
+  // own output stays parseable and the "composition only" claim travels with the reading).
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+  const dumpText = safeJson(dump.out)?.stdout ?? dump.out
+  steps.dump = { ok: dump.status === 0 && dumpText.includes("id: mpd-workmate") && dumpText.includes("id: mpd-roles") && dumpText.includes("id: agent-teams"), exit: dump.status }
 
   const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
   const out = live.out

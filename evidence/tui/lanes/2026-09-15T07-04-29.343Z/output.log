@@ -1,0 +1,5 @@
+PRIMARY suite root /root/dshProj/my-power-dsh/.mpd/recon/spec-root @ c582254
+three-way identity reproduced=true
+pinned-cli -> status=0
+pinned-suite -> status=1
+requirements: BASE-STD-001=pass TUI-PKG-001=pass TUI-PKG-002=pass TUI-PRIVATE-001=pass TUI-HOST-001=pass TUI-OBS-001=pass TUI-TRUST-001=pass

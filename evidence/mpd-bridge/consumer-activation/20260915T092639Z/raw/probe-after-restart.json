@@ -1,0 +1,30 @@
+{
+  "ws": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws",
+  "target": "/root/dshProj/my-power-dsh/evidence/mpd-bridge/consumer-activation/20260915T092639Z/sandbox/ws/consumer-target.txt",
+  "mode": "once",
+  "steps": [
+    {
+      "phase": "apply",
+      "pid": 196,
+      "consumerDiffLength": null,
+      "fileValue": 31415,
+      "configLayerValue": 31415,
+      "registeredTools": [
+        "mpd_config_get",
+        "mpd_config_reload",
+        "mpd_hashline_read",
+        "mpd_hashline_edit",
+        "mpd_hashline_format",
+        "mpd_hashline_restore"
+      ]
+    },
+    {
+      "phase": "first-observation",
+      "pid": 196,
+      "consumerDiffLength": 1032,
+      "fileValue": 31415,
+      "configLayerValue": 31415,
+      "diffHead": "--- /root/dshProj/my-power-dsh/evidence/"
+    }
+  ]
+}

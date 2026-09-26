@@ -1,0 +1,9 @@
+[mpd-ext] validate /tmp/t5-evidence-DE6GMr/broken-copy (plane=user)
+  extension "broken-copy": loadable
+  contributes: 0 skill(s), 0 flow(s), 0 role(s), 0 mcp server(s)
+  error descriptor.typoKey: unknown key "typoKey"
+  error contributes.mcp[0].surprise: unknown key "surprise"
+  error contributes.mcp[0].serverName: serverName is required and must match ^[A-Za-z0-9_-]{1,32}$
+  error contributes.skills[0]/demo-ext-skill: missing YAML frontmatter in /tmp/t5-evidence-DE6GMr/broken-copy/skills/demo-ext-skill/SKILL.md
+  error contributes.roles[0].persona: persona file does not exist: /tmp/t5-evidence-DE6GMr/broken-copy/personas/absent.md
+  error contributes.roles[0]: refused: persona file is not readable: /tmp/t5-evidence-DE6GMr/broken-copy/personas/absent.md

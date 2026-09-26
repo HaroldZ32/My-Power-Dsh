@@ -1,0 +1,126 @@
+{
+  "task": "w5",
+  "surface": "web",
+  "producedBy": "Lead",
+  "startedAt": "2026-09-15T16:46:34.217Z",
+  "checks": [
+    {
+      "id": "route-registered",
+      "status": "passed",
+      "detail": "state=true ack=true paths=/plugins/mpd-team-watchdog/state,/plugins/mpd-team-watchdog/ack"
+    },
+    {
+      "id": "S1-route-payload",
+      "status": "passed",
+      "detail": "status=200 reader=web-panel stuck=true replay=true banner=held/alpha"
+    },
+    {
+      "id": "S1-banner-fields",
+      "status": "passed",
+      "detail": "incident=inc-1 hold=hold-alpha-1 cause=silence for 120000 ms"
+    },
+    {
+      "id": "S1-one-activity-record",
+      "status": "passed",
+      "detail": "activity=1 id=inc-1 ackRequired=true"
+    },
+    {
+      "id": "S2-first-poll-replays",
+      "status": "passed",
+      "detail": "watchdog fetches without user action = 1 (url=/plugins/mpd-team-watchdog/state?reader=web-panel)"
+    },
+    {
+      "id": "S3-state-reached-render",
+      "status": "passed",
+      "detail": "store.slice.payload.banner=held (props passed to the render: ctx,scope,tab,visible,store)"
+    },
+    {
+      "id": "S3-banner-is-top-child",
+      "status": "passed",
+      "detail": "children[0].data-watchdog-banner=incident cause=silence for 120000 ms team=alpha reader=web-panel"
+    },
+    {
+      "id": "S3-activity-record-rendered",
+      "status": "passed",
+      "detail": "records=1 id=inc-1 kind=escalate"
+    },
+    {
+      "id": "S4-ack-advances-watermark",
+      "status": "passed",
+      "detail": "status=200 ok=true before=0 after=1789460000000 file[reader]=1789460000000"
+    },
+    {
+      "id": "S4-watermark-bytes-changed",
+      "status": "passed",
+      "detail": "before sha=f60d3ea9ac994e4a (21 B) after sha=1ec3539f806314d8 (51 B)"
+    },
+    {
+      "id": "S4-other-reader-preserved",
+      "status": "passed",
+      "detail": "other reader key kept: tui-panel=5"
+    },
+    {
+      "id": "S5-replay-stops-after-ack",
+      "status": "passed",
+      "detail": "payload.replay=false unread=[] activity=0 renderedRecords=0 bannerNow=hold (the incident replay stopped; the DURABLE hold still reports the team as paused)"
+    },
+    {
+      "id": "S5-banner-is-durable-state",
+      "status": "passed",
+      "detail": "after the hold sidecar was removed: stuck=false banner=null renderedTopChild=header"
+    },
+    {
+      "id": "S6-restart-no-replay",
+      "status": "passed",
+      "detail": "restart stuck=0 topChild=header (the acknowledged incident does not replay; the hold was resumed separately)"
+    },
+    {
+      "id": "S7-new-incident-replays",
+      "status": "passed",
+      "detail": "unread=[\"inc-2\"] banner=inc-2 top=incident records=1"
+    },
+    {
+      "id": "S8-adopted-plugin-untouched",
+      "status": "passed",
+      "detail": "before=\"M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\\n M packages/mpd-agent-teams-plugin/lib/tools.js\" after=\"M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\\n M packages/mpd-agent-teams-plugin/lib/tools.js\" (identical; the pre-existing entries are w7's delta regions, not this pass)"
+    },
+    {
+      "id": "negative-control-no-route",
+      "status": "passed",
+      "detail": "with no watchdog payload the panel renders exactly the pre-banner shape (banner absent, not empty-stringed)"
+    }
+  ],
+  "invariants": {
+    "watermark": {
+      "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/notify/web/20260915T163907Z/raw/ws/.mpd/team/watchdog/read-watermark.json",
+      "beforeSha256": "f60d3ea9ac994e4a0be62d2f92791d3aeeeaf3f4570dce4acf52c8ae15969698",
+      "afterSha256": "1ec3539f806314d8eb01e3edeacb0efbc618ab5880f4f5bfed980ff9b8aef039",
+      "beforeBytes": 21,
+      "afterBytes": 51,
+      "beforeText": "{\n  \"tui-panel\": 5\n}\n",
+      "afterText": "{\n  \"tui-panel\": 5,\n  \"web-panel\": 1789460000000\n}\n"
+    },
+    "adoptedPluginGitStatus": {
+      "atStart": "M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\n M packages/mpd-agent-teams-plugin/lib/tools.js",
+      "atEnd": "M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\n M packages/mpd-agent-teams-plugin/lib/tools.js",
+      "identical": true
+    }
+  },
+  "verdict": "passed",
+  "finishedAt": "2026-09-15T16:46:34.287Z",
+  "notClaimed": [
+    "a real browser render and a click-driven save — no browser binary exists in this environment; the rendered claims above come from the offline hook runtime driving the REAL built client"
+  ],
+  "attempt4": {
+    "at": "2026-09-15T16:46Z",
+    "note": "fresh attempt after the captain's inScope amendment (attempt 4); all five contract gates + the driver re-run on the settled tree, artifacts unchanged from the delivered pins",
+    "gates": {
+      "test": "68 pass / 0 fail",
+      "build": "idempotent (see raw/attempt4-sha1.txt / sha2.txt)",
+      "typecheck": "exit 0 (a TRANSIENT failure was observed mid-edit inside the untracked packages/mpd-team-watchdog-plugin/src/holds.ts — duplicate `view` implementation at that moment — and cleared 60 s later; not this task's file)",
+      "verifyDocs": "pairs=34 failed=0 PASS",
+      "sidebarSelfTest": "ok: 17 checks",
+      "driver": "verdict=passed 17/17"
+    }
+  }
+}

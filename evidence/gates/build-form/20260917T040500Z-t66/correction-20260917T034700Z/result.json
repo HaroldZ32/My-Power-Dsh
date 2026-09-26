@@ -1,0 +1,19 @@
+{
+  "kind": "correction",
+  "corrects": "../result.json (t66) — measurements.artifact_wide_26_origin",
+  "agent": "docs-gate-engineer",
+  "date": "2026-09-17T03:47Z",
+  "trigger": "captain's refinement: the artifact-wide origin was superseded by a measurement (validator.js = 16 by the platform lane), which contradicted my evidence's 13+13 = 26 claim",
+  "verdict": "the artifact-wide origin is RETIRED; the sole surviving origin is the diff side (13 positions × 2 sides)",
+  "measurements": {
+    "conventions": "grep -c '^// ' | grep -cE '^// .*\\.(ts|js)$' | grep -o '// [A-Za-z0-9_./-]*\\.ts' | wc -l | distinct paths",
+    "packages/mpd-ext-plugin/dist/index.js": { "bytes": 152855, "mtime": "2026-09-17 09:33:52 +0800", "all_double_slash_lines": 13, "path_comment_lines": 13, "packaging_pattern": 13, "distinct_paths": 11 },
+    "dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js": { "bytes": 153262, "mtime": "2026-09-17 10:56:59 +0800", "all_double_slash_lines": 16, "path_comment_lines": 13, "packaging_pattern": 13, "distinct_paths": 11, "extra_lines_are": "the packer shim note at lines 3920-3922 ('Appended by scripts/pack-mpd.mjs (VALIDATOR_SHIM_EXPORTS) …')" },
+    "sum_check": "13 + 13 = 26 only under the path-comment subset; 13 + 16 = 29 under all `^//` lines — neither is a stable artifact-wide statement, so the hypothesis is retired",
+    "surviving_origin": "13 differing positions × 2 diff sides = 26 diff lines (13 removed + 13 added) — the origin named in the landed §6 sentence"
+  },
+  "first_line_fact": "the artifact's first line is the first inlined module's comment (// packages/mpd-dsh-adapter-plugin/src/index.ts) in BOTH forms — there is no entry banner, which is why 'not one banner line' is literally true",
+  "edit_impact": "none — §6 requires no change; the retired claim lived only in this task's evidence",
+  "artifacts": ["RETIRE-artifact-wide-origin.md", "result.json (this file)"],
+  "process_note": "the parent evidence directory is left byte-untouched; this nested correction dir follows the t44 precedent (evidence/gates/dist-rebuild/20260917T021906Z/correction-20260917T030844Z/)"
+}

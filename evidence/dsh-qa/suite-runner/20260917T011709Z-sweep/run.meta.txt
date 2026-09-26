@@ -1,0 +1,3 @@
+ts=20260917T011709Z
+dir=evidence/dsh-qa/suite-runner/20260917T011709Z-sweep
+cmd=bun run test:qa:all

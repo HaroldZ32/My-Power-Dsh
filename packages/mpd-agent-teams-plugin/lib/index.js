@@ -24,13 +24,19 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectArchivedTeamsActivity, collectTeamsActivity } from "./snapshot.js";
-import { findTeamByCaptain } from "./state.js";
+import { findTeamByCaptain, MAILBOX_DEDUP_WINDOW_DEFAULT_MS, MAILBOX_RETENTION_DEFAULT_MS } from "./state.js";
 import { formatProfilesForPrompt } from "./profiles.js";
 import { qualityPlanningPrompt } from "./quality-gates.js";
 import { installInterjectionExpirySweep, installSessionTeamPolicy } from "./session-start.js";
 import { installTeamCapabilities } from "./capabilities.js";
 import { TEAM_TOOL_NAMES } from "./tool-names.js";
 import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from "./web-routes.js";
+//#region mpd-delta adapter-facade-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// AGENTS.md §6 closure: the adopted tree reaches every harness seam through `mpd-dsh-adapter`. This
+// is the ONLY new module binding it needs — the facade built at the top of `apply` is handed to
+// every consumer below, so the other five edited files import only the two scope helpers.
+import { createAgentTeamsCtx } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-facade-import
 /** Web-server service key candidates, newest first. */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'];
 /** Workspace registry service key candidates, newest first. */
@@ -46,6 +52,12 @@ const fallbackRouteConfig = z.union([
 ]);
 export const Config = z.object({
     stateDir: z.string().default('.mpd/team'),
+    // P1e (t47): the duplicate window, configured rather than borrowed from the delivery lease.
+    // 0 disables the fold (proven by an arm); the default covers every measured repeat group (30 min).
+    mailboxDedupWindowMs: z.number().default(MAILBOX_DEDUP_WINDOW_DEFAULT_MS),
+    // P1b (t49): the retention window for the automatic prune, configured the SAME way as the dedup
+    // window: one schema default, single-sourced from state.js, 0 = off.
+    mailboxRetentionMs: z.number().default(MAILBOX_RETENTION_DEFAULT_MS),
     memberProvider: z.string().default('spawn'),
     memberModel: z.string(),
     executionPrompt: z.string(),
@@ -106,11 +118,13 @@ export const Config = z.object({
     reclaimStaleAfterMs: z.natural().default(3600000),
     promptSectionOrder: z.natural().default(117),
     slashCommand: z.boolean().default(true),
-    // Session-start team policy: a session starts with NO team unless the
-    // mechanical complexity gate fires (see lib/session-start.js). `mode` keeps
-    // its three legacy values and defaults to 'off' = no auto-provision and no
-    // unconditional notice; `autoRoute` is the DECOUPLED mechanical gate and
-    // defaults ON, so the complexity gate is evaluated without a mandatory team.
+    // Session-start team policy: a session starts with NO team, and the
+    // mechanical complexity gate is ADVISORY (see lib/session-start.js) — when it
+    // fires it injects a notice asking the captain to stage a team ONLY if the
+    // work warrants one, so nothing is pre-staged while complexity is being
+    // judged. `mode` keeps its three legacy values and defaults to 'off' = no
+    // auto-provision and no unconditional notice; `autoRoute` is the DECOUPLED
+    // mechanical advisory gate, defaults ON, and provisions nothing by itself.
     sessionTeamPolicy: z.object({
         mode: z.union([z.const('off'), z.const('auto'), z.const('instruct')]).default('off'),
         autoRoute: z.boolean().default(true),
@@ -138,8 +152,18 @@ export function usageSectionText(toolNames, profilesText = '') {
 Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`;
 }
 export function apply(ctx, config) {
+    //#region mpd-delta adapter-facade-wiring (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // D1/D2: ONE facade per plugin instance, built HERE and handed to every consumer below
+    // (including the calls INSIDE pre-existing regions). `resolveCtx` stays the RAW plugin ctx so a
+    // scoped/proxy ctx can never fail the `mpdDsh` probe; `ctx` from this line on is the facade, and
+    // its fallback column executes today's raw-ctx expressions exactly when no adapter is mounted.
+    const harnessCtx = ctx;
+    ctx = createAgentTeamsCtx(harnessCtx, { resolveCtx: harnessCtx });
+    //#endregion mpd-delta adapter-facade-wiring
     const resolved = {
         stateDir: config.stateDir ?? '.agent-teams',
+        mailboxDedupWindowMs: config.mailboxDedupWindowMs ?? MAILBOX_DEDUP_WINDOW_DEFAULT_MS,
+        mailboxRetentionMs: config.mailboxRetentionMs ?? MAILBOX_RETENTION_DEFAULT_MS,
         memberProvider: config.memberProvider ?? 'spawn',
         memberModel: config.memberModel,
         executionPrompt: config.executionPrompt,
@@ -374,10 +398,15 @@ export function apply(ctx, config) {
                         // control message. steer wakes an idle captain or joins its next
                         // step; the tool approve path already returns to the model itself.
                         try {
-                            captain.steer(createUserMessage({
+                            //#region mpd-delta adapter-steer-approval-notice (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                            // F2: the Agent's `steer` seam is adapter-mediated (throwing verbatim
+                            // forwarder, gated on capabilities().agentTurnSteer); with no adapter the
+                            // facade runs the identical `captain.steer(msg)` inside this try/catch.
+                            ctx.steerAgentTurn(captain, createUserMessage({
                                 content: [{ type: 'text', text: stagedPlanApprovedContext(team.name) }],
                                 source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
                             }));
+                            //#endregion mpd-delta adapter-steer-approval-notice
                         }
                         catch (error) {
                             // Approval is already committed. Do not report a failed approval

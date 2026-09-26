@@ -1,0 +1,6 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  OMISSION [mpd-ext-plugin] - the bundle patch mounts packages/mpd-ext-plugin/dist/index.js but the packer's PLUGIN_PKGS/MCP_PKGS does not list mpd-ext-plugin
+  offending packages: mpd-ext-plugin
+  packer: /tmp/t11-closure-YaorZT/pack-mpd-omission.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml

@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z",
+  "bootLog": "/root/dshProj/my-power-dsh/evidence/agent-teams/adapter-wiring/verification/20260919T160002Z/adapter-enabled-boot.log",
+  "checks": {
+    "install": {
+      "ok": true,
+      "status": 0
+    },
+    "adapterRowProvided": {
+      "ok": true,
+      "occurrences": 1
+    },
+    "fallbackWitnesses": {
+      "ok": true,
+      "absent": 0,
+      "pending": 0,
+      "mounted": 1
+    },
+    "mountedWitness": {
+      "ok": true,
+      "occurrences": 1
+    },
+    "tools21": {
+      "ok": true,
+      "line": "VERIF_AGENT_TEAMS_TOOLS=21/21"
+    },
+    "scopeShape": {
+      "ok": true,
+      "members": "context,effect,on,tools",
+      "identity": "true"
+    },
+    "f1Signature": {
+      "ok": true,
+      "occurrences": 0
+    },
+    "br1Witness": {
+      "lines": 0
+    },
+    "presetProbe": {
+      "verdict": "PASS"
+    },
+    "isolation": {
+      "dshHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/home",
+      "userHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/userhome",
+      "workspace": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/ws",
+      "sessionsSandboxed": true
+    }
+  }
+}

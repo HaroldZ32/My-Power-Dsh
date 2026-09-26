@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wtm-dsh-dtqRk3",
+  "wmHome": "/tmp/mpd-wtm-home-39AUb2",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": "sent the team's results to the user, then agent_teams_delete the team unless the user wants to keep working with it.\" |  | The user asked for an exact sequence ending with DONE. The task is verification-oriented. Should I delete the team? The protocol says present results then delete the team unless the user wants to keep working. This was a verification exercise with no further work; deleting is the protocol-default. But the user's instruction was an exact sequence ending \"End with the word DONE.\" Deleting is an extra step not in the sequence. Hmm. |  | The protocol guidance is fairly explicit: present the team's results to the user, then agent_teams_delete the team unless the user wants to"
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-17T04:44:39.178Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-17T04:44:56.869Z — report build token\nMy independent workmate memory says the build token "
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+[R5] refused: {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command — no entry for bun run x; nearest provided: \"SOME OTHER COMMAND\" (matched 0 of 1)"}
+  PASS [R5/green] a right-COUNT payload whose command is a DIFFERENT NAME no longer covers the required command
+  PASS [R5/green] the refusal NAMES the near-miss
+  PASS [R5/control] the legitimate passed+reported pair still covers both commands
+  PASS [R5/control] a genuinely FAILED command still fails the task
+[R6] refused: {"ok":false,"error":"implementation completion requires passed acceptanceResults for every acceptance item — no entry for item-9; nearest provided: \"item-9-UNDER-A-DIFFERENT-NAME\" (matched 8 of 9)"}
+  PASS [R6/green] a wrong-NAMED ninth item of the right COUNT is refused (the count-only reading is withdrawn)
+  PASS [R6/green] the refusal NAMES the near-miss
+  PASS [R6/control] a paraphrase (case + whitespace) still passes
+  PASS [R6/control] the exact-name payload still completes
+[R7] description: Verification evidence in contract order: {command, status:"passed"|"failed"|"reported", reason?, exitCode?, evidence?}. Supply one item per verify command. A "r
+  PASS [R7/green] the commandsRun description names the `reported` status
+  PASS [R7/green] the description names the required `reason` label
+
+RED-SIDE FAILURES: 0

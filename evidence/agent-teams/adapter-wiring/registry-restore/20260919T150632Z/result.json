@@ -1,0 +1,123 @@
+{
+  "task": "t6",
+  "attempt_id": "7f503aea-c1a2-4b9f-aa38-a7432e06550f",
+  "lane": "registry-restore",
+  "generated_at_utc": "2026-09-19T15:07:21.044Z",
+  "precondition_measurement": {
+    "measured_at_utc": "2026-09-19T15:03:03Z",
+    "bridge_file": "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js",
+    "registry_entries_for_bridge": 1,
+    "entry_id": "mpd-delta adapter-ctx-bridge",
+    "entry_keys": [
+      "afterContext",
+      "beforeContext",
+      "block",
+      "file",
+      "id"
+    ],
+    "checked_in_sha256": "ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b",
+    "reconstructed_sha256": "ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b",
+    "reconstruction_exact": true,
+    "bytes": 22935,
+    "lines": 447,
+    "beforeContext_lines": 1,
+    "block_lines": 444,
+    "afterContext_lines": 1
+  },
+  "rule_a": {
+    "statement": "writeRegistry() refuses to register a create-class file (lib/mpd-*.js, != mpd-deltas.js, exactly one region) unless beforeContext + block + afterContext + \"\\n\" equals the CURRENT file bytes exactly.",
+    "blast_radius": "--write-registry only; --check and --write unaffected",
+    "scratch_proof": {
+      "cli_exit": 0,
+      "refused": false,
+      "regenerated_sha256": "3bf538b4fbb6e023826604143b6ebaf6c6d0668909d1015dcb3b575eb213e551",
+      "checked_in_sha256": "3bf538b4fbb6e023826604143b6ebaf6c6d0668909d1015dcb3b575eb213e551",
+      "byte_identical": true,
+      "output": "[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (151 regions)"
+    }
+  },
+  "guard_changes": [
+    "existsSync DISPOSITION branch in applyAgentTeamsFixes: a missing create-class file is reported by name (--check) or recreated (--write); any other missing file refuses by name — no code path reaches a bare readFileSync",
+    "CREATE CLASS helper createClassBase(file): name-derived (lib/mpd-*.js), excludes lib/mpd-deltas.js; exactly ONE registry entry required by createClassEntry",
+    "reconstructCreateClassFile(entry): beforeContext + block + afterContext + \"\\n\" (exactly one trailing newline)",
+    "ROUND-TRIP RULE: after a create, re-read + findRegion + assertRegionMatches + validateHealedFile + newline check; on failure rmSync the created file and throw naming the file",
+    "RULE A in writeRegistry(): registration-time refusal for the create class",
+    "writeRegistry(): missing registered file => loud named FAIL telling the caller to run --write first (never ENOENT, never a silent entry drop)"
+  ],
+  "arms": [
+    {
+      "test": "AC8: --check missing bridge fails loudly by name, never ENOENT",
+      "status": "passed"
+    },
+    {
+      "test": "AC8: --write recreates the bridge byte-identically (sha256 vs checked-in), one trailing newline, other files untouched, --check green afterwards",
+      "status": "passed"
+    },
+    {
+      "test": "create predicate refuses every OTHER missing registered file by name (never ENOENT, never created)",
+      "status": "passed"
+    },
+    {
+      "test": "predicate-1 exclusion: lib/mpd-deltas.js is NEVER create-class",
+      "status": "passed"
+    },
+    {
+      "test": "RULE A blast radius: --write-registry accepts the bridge, regenerates byte-identically",
+      "status": "passed"
+    },
+    {
+      "test": "RULE A refuses a create-class file whose windows do not reproduce its bytes (remedy named, registry untouched)",
+      "status": "passed"
+    },
+    {
+      "test": "--write-registry meeting a MISSING registered file is a loud named FAIL (run --write first)",
+      "status": "passed"
+    },
+    {
+      "test": "round-trip rule: a create that fails re-verification is DELETED again",
+      "status": "passed"
+    },
+    {
+      "test": "the real tree is NEVER mutated: bridge + registry sha256 unchanged",
+      "status": "passed"
+    }
+  ],
+  "round_trip_bound": "The round-trip rule catches a corrupt or half-written create, NOT truncation — RULE A is what prevents a truncated reconstruction from ever being registered.",
+  "commands_run": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "21 pass / 0 fail / 1508 expect() calls"
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "9 pass / 0 fail"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "already applied: 151 mpd delta region(s) across 13 adopted file(s)"
+    },
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin/self-fix-tests",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "151 pass / 0 fail / 2359 expect() calls (whole guard suite incl. the new arms)"
+    }
+  ],
+  "changed_paths": [
+    "scripts/patch-agent-teams-fixes.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs"
+  ],
+  "settled_hashes": {
+    "guard": "f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3",
+    "test": "7cfbd1e5adca619937794b2fd5bc52eed259572700327c8943910cb6ef5e56c5",
+    "bridge": "ab4942c620abf9ab54b08f0c366617f9f63a9e8c3f7a18883eb5a124429d393b",
+    "registry": "3bf538b4fbb6e023826604143b6ebaf6c6d0668909d1015dcb3b575eb213e551"
+  },
+  "evidence_log": "output.log (same directory); settled-hash sandwich start == end"
+}

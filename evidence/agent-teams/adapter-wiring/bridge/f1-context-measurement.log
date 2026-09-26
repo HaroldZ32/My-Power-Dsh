@@ -1,0 +1,26 @@
+bridge sha256: 01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3
+bridge mtime (UTC): 2026-09-19T15:11:35.581Z
+pre-fix one-liner occurrences in the bridge: 0
+
+[a] plain-object raw ctx: read '.context' -> undefined
+[b] throwing-proxy raw ctx: read '.context' -> THREW cannot get property "context" without inject
+[b] so `scope.context ?? scope` CANNOT rescue this shape: the read throws before `??` runs.
+
+[c/plain] shape=["context","effect","on","tools"] context-is-identity=true read context/tools/on/effect -> object/object/function/function
+[c/plain] members callable: restrict=function on=function effect=function
+[agent-teams] adapter: per-agent scope substituted a NO-OP for a member the agent ctx cannot provide — a member that cannot be tool-restricted is a MEMBER PRIVILEGE LOSS, not a cosmetic degrade [substituted: on, effect]
+[c/hostile] shape=["context","effect","on","tools"] context-is-identity=true read context/tools/on/effect -> object/object/function/function
+[c/hostile] members callable: restrict=function on=function effect=function
+
+[d1] grep steerAgentTurn|injectAgentMessage over lib/*.js:
+     mpd-adapter-ctx.js: 6 occurrence(s)
+     index.js: 1 occurrence(s)
+     members.js: 1 occurrence(s)
+     tools.js: 1 occurrence(s)
+     mpd-deltas.js: 9 occurrence(s)
+[d2] three-arm test markers in test/adapter-facade.test.mjs:
+     "F1: agentScopeOf returns ONE shape in ALL THREE arms" -> PRESENT
+     "absent-with-a-throwing-proxy" -> absent
+     "new Proxy(" -> PRESENT
+     "ARM 1" -> PRESENT
+     "ARM 3" -> PRESENT

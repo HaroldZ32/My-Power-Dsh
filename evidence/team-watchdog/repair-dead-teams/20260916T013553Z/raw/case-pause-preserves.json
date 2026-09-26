@@ -1,0 +1,40 @@
+{
+  "case": "pause-preserves",
+  "ok": true,
+  "observation": {
+    "injected": "silence",
+    "holdApplied": true,
+    "sha256UnchangedAcrossHeldKicks": true,
+    "sha256AfterResume": "changed (the re-arm minted the next attempt)",
+    "deliveriesWhileHeld": 0,
+    "declineLines": [
+      "agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 0d23fc62-9900-43fe-b47f-1123d11aba35 since 2026-09-16T01:37:12.160Z: silence)",
+      "agent-teams: dispatch declined for fault-probe/Architect: the team is held by the team watchdog (hold 0d23fc62-9900-43fe-b47f-1123d11aba35 since 2026-09-16T01:37:12.160Z: silence)"
+    ],
+    "before": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3,
+      "output": "partial result",
+      "handoffId": "handoff-1"
+    },
+    "after": {
+      "status": "in_progress",
+      "attemptId": "att-live",
+      "attempt": 3,
+      "output": "partial result",
+      "handoffId": "handoff-1"
+    },
+    "cancelled": false,
+    "resumed": true,
+    "deliveriesAfterResume": 1,
+    "preserved": true
+  },
+  "lines": [
+    "the hold landed through the plugin's own action while t1 was in flight: true",
+    "sha256(team.json) unchanged across the held kicks: true (after the resume it is changed (the re-arm minted the next attempt))",
+    "deliveries while held: 0 (each decline says: agent-teams: dispatch declined for fault-probe/*: the team is held by the team watchdog (hold 0d23fc62-9900-43fe-b47f-1123d11aba35 since 2026-09-16T01:37:12.160Z: silence))",
+    "task after the hold: {\"status\":\"in_progress\",\"attemptId\":\"att-live\",\"attempt\":3,\"output\":\"partial result\",\"handoffId\":\"handoff-1\"}",
+    "resume cleared the hold and dispatch resumed: true / deliveries 1"
+  ]
+}

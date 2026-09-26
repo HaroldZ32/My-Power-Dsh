@@ -10,6 +10,8 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = [""].join("")
@@ -39,7 +41,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-c", "plan-c-smoke", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-wa-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -50,7 +52,7 @@ async function runReal() {
   if (existsSync(qaSettings)) cpSync(qaSettings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   const steps = {}
 
   const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
@@ -66,7 +68,8 @@ async function runReal() {
     "Report: the config value, the workId and status, and the final note.txt content."
   ].join(" ")
 
-  const live = spawnSync("dsh", ["--profile", "mpd-headless", task], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  const liveSpec = dshCommand(["--profile", "mpd-headless", task], env)
+  const live = liveSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(liveSpec.command, liveSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   steps.live = { ok: live.status === 0, exit: live.status }
 

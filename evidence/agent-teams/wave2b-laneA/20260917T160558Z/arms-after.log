@@ -1,0 +1,12 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t51-reoffer-routing.test.mjs:
+(pass) T-93 (1/4): the GENERATOR routes the repair to a seat that can EXECUTE it (never the read-only author) [5.37ms]
+(pass) T-93 (2/4): NEG CONTROL — a team whose ONLY seat is read-only produces a CAPTAIN ROUTE, never an unexecutable repair [0.42ms]
+(pass) T-93 (3/4): the DELIVERY routing class — keyed on BOTH halves, reproducing this wave's nine-instance shape [0.35ms]
+(pass) T-93 (4/4): the predicate is a PURE READER and the dispatch boundary CONSULTS it (wiring assert) [0.87ms]
+
+ 4 pass
+ 0 fail
+ 36 expect() calls
+Ran 4 tests across 1 file. [104.00ms]

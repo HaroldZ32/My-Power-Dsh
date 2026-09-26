@@ -1,0 +1,58 @@
+t4 — F1 + F5 (adapter identity made loud AND assertable) — EVIDENCE INDEX
+attempt_id b3031e50-6d5b-44ff-912d-5f52764a6f4b · HEAD 1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+subject: packages/mpd-ext-plugin (src/dist/test), packages/mpd-roles-plugin (src/dist/test), packages/mpd-bundle/cordis.patch.yml
+
+WHAT CHANGED
+- one local `resolveAdapter(ctx)` per row returns { dsh, adapterIdentity, usedFallback }:
+    mounted:mpdDsh            when ctx.get("mpdDsh") resolves
+    fallback:createDshAdapter when the private adapter is built (the hazard)
+- fallback = exactly ONE warning per apply, on stdout AND ctx.logger.warn:
+    [mpd-ext]   ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ...
+    [mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ...
+- assertable surface, field name `adapterIdentity`:
+    boot line: [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=<id> | tools: ...
+               [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=<id>
+    service:   mpdExtensions.adapterIdentity / mpdRoles.adapterIdentity
+- F5: the hazard is described ONCE (CANONICAL NOTE in mpd-ext src, next to resolveAdapter);
+  mpd-roles carries a cross-reference; cordis.patch.yml's row-order bullet now points at the
+  canonical note and no longer claims the fallback is silent (untrue after the fix).
+
+READINGS (all raw files in raw/)
+1. healthy REAL mount — evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-16-02.409Z/
+     [bundle-lifecycle] PASS (every step ok=true)
+     boot.log:5 '[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | ...'
+     boot.log:6 '[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh'
+     0 x 'ADAPTER FALLBACK', 0 x 'adapterIdentity=fallback:'
+     checker: raw/result.json — 14/14 checks ok (identity present, no warning, four tools, pre/post
+     line byte-identical apart from the inserted field, discovery providers unchanged, lane steps equal)
+2. FALLBACK REAL boot — raw/fallback-boot.result.json (passed=true)
+     overlay raw/disable-adapter.yml = '- id: mpd-dsh-adapter / disabled: true' (real loader id-target)
+     adapter_row_applied=0 · mpd_ext_fallback_warnings=1 · mpd_roles_fallback_warnings=1
+     4 identity readings (2 warnings + 2 summaries) · four tools still registered · 0 apply-crash
+     signatures · boot_exit=124 (a serving profile at the 180 s cap)
+     This closes the report's own gap ('F1 was not reproduced live in a boot that misses mpdDsh', §9).
+3. unit tests — both arms, per package
+     raw/ext-after.test.log   72 pass / 0 fail (baseline 66, +6)   raw/ext-before.test.log   66 pass
+     raw/roles-after.test.log 30 pass / 0 fail (baseline 24, +6)   raw/roles-before.test.log 24 pass
+4. gates — raw/mpd-ext-selftest.log (41 checks ok), raw/rows-parity.log (25 row ids match),
+   raw/typecheck.log (tsgo --noEmit clean)
+5. hashes — raw/before-hashes.txt vs raw/after-hashes.txt (src AND dist changed for both packages)
+
+COMMANDS / EXIT CODES
+  bun test packages/mpd-ext-plugin                                    -> 0
+  bun test packages/mpd-roles-plugin                                  -> 0
+  bun build .../mpd-ext-plugin/src/index.ts -> dist/index.js          -> 0
+  bun build .../mpd-roles-plugin/src/index.ts -> dist/index.js        -> 0
+  bun scripts/mpd-ext.mjs --self-test                                 -> 0
+  node scripts/verify-rows-parity.mjs                                 -> 0
+  bun skills/dsh-qa/scripts/bundle-lifecycle.mjs                      -> 0 (PASS)
+  node evidence/.../check-boot-identity.mjs <before> <after>          -> 0 (14/14)
+  bash evidence/.../live-fallback-boot.sh                             -> 0
+  bun run typecheck                                                   -> 0
+
+CAVEATS (stated, not hidden)
+- The fallback boot disables only mpd-dsh-adapter, so the OTHER rows also take the unsilent `??`
+  branch; no task in this wave instruments them (t4 inScope = these two rows).
+- Comparison baseline is the immutable pre-change run 2026-09-16T02-55-38.803Z.
+- Concurrent wave edits (templates/, scripts/verify-pack-closure.mjs, package.json, scripts/mpd-ext.mjs)
+  were in the tree during these lanes; none is loaded by the boot and none was touched here.

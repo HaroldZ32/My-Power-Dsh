@@ -1,0 +1,12 @@
+135 | 
+136 |   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
+137 |   steps.install = { ok: inst.status === 0, exit: inst.status }
+138 | 
+139 |   // T-69: composition goes through the wrapper; the tree comes from the --json child output.
+140 |   const dump = runSync(process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+                                                     ^
+ReferenceError: REPO is not defined
+      at runReal (/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/workmate-library.mjs:140:48)
+      at /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/workmate-library.mjs:231:6
+
+Bun v1.3.14 (Linux x64)

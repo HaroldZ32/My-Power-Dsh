@@ -1,0 +1,33 @@
+credential: {"provider":"deepseek","keyName":"DEEPSEEK_API_KEY","present":true,"source":"shell-profile","file":"/root/.bashrc","line":129,"length":35,"reason":null,"tried":[{"tier":"environment","detail":"DEEPSEEK_API_KEY","outcome":"unset"},{"tier":"credentials-file","detail":"/root/.dsh/.credentials.yaml","outcome":"present but carries no DEEPSEEK_API_KEY entry"},{"tier":"shell-profile","detail":"/root/.bashrc:129","outcome":"hit"}]}
+
+---
+
+$ install-profile --dsh-home <sandbox> --profile mpd-headless
+[exit=0]
+
+---
+
+### l1-tool-staged  [exit=0]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t10-live-n9kmpt/l1-tool-staged/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+Team "t10-live" plan created under /tmp/mpd-t10-live-n9kmpt/l1-tool-staged/ws/.mpd/team/t10-live. It is staged: finish the roster and DAG, then wait for the user to edit and approve it. Do not start or approve it yourself.
+[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s).
+dsh: reasoning:
+The user asks me
+
+---
+
+### l2-tool-broken-slot  [exit=0]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t10-live-n9kmpt/l2-tool-broken-slot/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+Error: member "Architect" route from teamModels.slot1 failed: unknown member model "no-such-model-xyz" for provider "deepseek-official" (available: deepseek-flash, deepseek-v4-flash, deepseek-v4-pro, deepseek-v4-flash-vision-exp) (fix teamModels.slot1.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)

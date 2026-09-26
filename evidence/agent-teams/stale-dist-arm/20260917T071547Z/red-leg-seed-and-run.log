@@ -1,0 +1,13 @@
+== SEEDED (a comment line appended to each dist). dist sha256 now: ==
+7b9fa6a899c79b3be123f62d206af0ef63e58a5b1b8980478700caf10b557278  packages/mpd-roles-plugin/dist/index.js
+840137a6407640c886d80d4366545be32b7ff094696e7e77ef1f74213ccef026  packages/mpd-ext-plugin/dist/index.js
+0b49fecf5e0159ea4442f74e9af70e94200783fdd0ded362535ec881434df916  packages/mpd-ext-plugin/dist/sdk.js
+
+== TODAY (pre-fix) bun test ...adapter-identity.test.ts (both files) ==
+TEST_EXIT=0
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+ 15 pass
+ 0 fail
+ 52 expect() calls
+Ran 15 tests across 4 files. [213.00ms]

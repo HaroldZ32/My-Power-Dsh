@@ -1,0 +1,109 @@
+### 2026-09-18T00:42:01Z t13 comment repair — gate evidence
+file: packages/mpd-bundle/cordis.patch.yml (comment-only edit above sessionTeamPolicy)
+
+--- comment-before.txt (git show HEAD, lines 365-383)
+        # SESSION-START TEAM GATE (binding): a session starts with NO team — a
+        # team is NOT a precondition. mode=off is the default (upstream parity:
+        # team_mode.enabled defaults to false) and means "no auto-provision, no
+        # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
+        # (default enabled): at the session's first pre-step it evaluates the
+        # frozen complexity gate — trigger = (matchedSignals >= 2) OR
+        # anyExplicitFlag, with signals A (a `team:` prefix or `!team`, the
+        # marker is consumed), B (>=4 distinct deliverable verbs), C (>=3
+        # enumerated lines / action verbs / clauses) and D (a `.mpd/plans/*.md`
+        # artifact exists). On a hit it provisions the STAGED default team
+        # (profile `mpd`, approval=required — nothing spawns until the user
+        # approves the Web plan) and injects ONE startup notice saying the
+        # session was routed by the gate. presets: [mpd] scopes the gate to
+        # mpd-preset sessions (sessions without any preset, e.g. headless direct
+        # runs, are covered too), and subagent/member sessions (they carry
+        # parentSession) never qualify. The gate runs on the PRE-STEP, before any
+        # sizing doctrine, so it can actually prevent a team.
+        # mode=auto keeps the legacy unconditional provisioning as an explicit
+        # opt-in; mode=instruct keeps the legacy instruction notice.
+
+--- comment-after.txt (working tree, lines 365-389)
+        # SESSION-START TEAM GATE (binding): a session starts with NO team — a
+        # team is NOT a precondition. mode=off is the default (upstream parity:
+        # team_mode.enabled defaults to false) and means "no auto-provision, no
+        # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
+        # (default enabled): at the session's first pre-step it evaluates the
+        # frozen complexity gate — trigger = explicit flag OR (matchedSignals >=
+        # 1), with signals A (a `team:` prefix or `!team`, the marker is
+        # consumed), B (>=4 distinct deliverable verbs), C (>=3 enumerated lines
+        # / action verbs / clauses) and D (a `.mpd/plans/*.md` artifact exists).
+        # A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state
+        # is created) — the plugin injects ONE advisory notice that names the
+        # fired signals, states that no team was staged, and tells the captain to
+        # stage one on demand with agent_teams_create(approval="required",
+        # profile="mpd") at the moment the work actually warrants a team
+        # (otherwise continue solo and say so). An explicit `team:` / `!team`
+        # request still PROVISIONS the staged default team (profile `mpd`,
+        # approval=required — nothing spawns until the user approves the Web
+        # plan), and mode=auto keeps the legacy unconditional provisioning as an
+        # explicit opt-in; mode=instruct keeps the legacy instruction notice.
+        # presets: [mpd] scopes the gate to mpd-preset sessions (sessions without
+        # any preset, e.g. headless direct runs, are covered too), and
+        # subagent/member sessions (they carry parentSession) never qualify. The
+        # gate runs on the PRE-STEP, before any sizing doctrine, so it can
+        # actually prevent a team.
+        sessionTeamPolicy:
+
+### 2026-09-18T00:42:06Z bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[exit=0]
+
+### 2026-09-18T00:42:06Z node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[exit=0]
+
+### 2026-09-18T00:42:22Z node evidence/ulw/l3b-patch-comment/20260918T004155Z/consistency-check.mjs (comment vs shipped code)
+[exit=1]
+consistency ok=false checks=17
+ RED: comment: frozen predicate
+
+### FINAL REVISION 2026-09-18T00:42:43Z — predicate reflowed onto its own line after the consistency check caught the split token
+sha256(packages/mpd-bundle/cordis.patch.yml) = a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116
+--- comment-after.txt (final)
+        # SESSION-START TEAM GATE (binding): a session starts with NO team — a
+        # team is NOT a precondition. mode=off is the default (upstream parity:
+        # team_mode.enabled defaults to false) and means "no auto-provision, no
+        # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
+        # (default enabled): at the session's first pre-step it evaluates the
+        # frozen complexity gate, whose predicate is
+        #   trigger = explicit flag OR (matchedSignals >= 1)
+        # with signals A (a `team:` prefix or `!team`, the marker is consumed),
+        # B (>=4 distinct deliverable verbs), C (>=3 enumerated lines / action
+        # verbs / clauses) and D (a `.mpd/plans/*.md` artifact exists).
+        # A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state
+        # is created) — the plugin injects ONE advisory notice that names the
+        # fired signals, states that no team was staged, and tells the captain to
+        # stage one on demand with agent_teams_create(approval="required",
+        # profile="mpd") at the moment the work actually warrants a team
+        # (otherwise continue solo and say so). An explicit `team:` / `!team`
+        # request still PROVISIONS the staged default team (profile `mpd`,
+        # approval=required — nothing spawns until the user approves the Web
+        # plan), and mode=auto keeps the legacy unconditional provisioning as an
+        # explicit opt-in; mode=instruct keeps the legacy instruction notice.
+        # presets: [mpd] scopes the gate to mpd-preset sessions (sessions without
+        # any preset, e.g. headless direct runs, are covered too), and
+        # subagent/member sessions (they carry parentSession) never qualify. The
+        # gate runs on the PRE-STEP, before any sizing doctrine, so it can
+        # actually prevent a team.
+
+--- node consistency-check.mjs
+[exit=0]
+consistency ok=true checks=17
+
+--- bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[exit=0]
+
+--- node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[exit=0]
+
+--- changed lines that are NOT comments (must be empty)
+(none — comment-only)

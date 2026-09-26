@@ -1,0 +1,65 @@
+{
+  "task": "t33 — de-brand the RTL/EDA surface",
+  "measuredAt": "2026-09-15T07:51:05.889Z",
+  "grepCommand": "grep -rniE '\\brtl\\b|verilog|vhdl|verilator|cocotb|iverilog|yosys|netlist|systemverilog|数字IC' README.md README.zh-CN.md AGENTS.md docs/*.md packages/*/README.md packages/*/README.zh-CN.md extensions/ scripts/ | grep -v '^docs/plan-tui-edition'",
+  "grepOutput": "(empty)",
+  "shippedExample": {
+    "skillDescription": "Reference extension skill: triage a code change before review (what changed, what it touches, which risks deserve a reader). Use when a code diff needs a first pass before a human or reviewer looks at it.",
+    "flowId": "change-triage-flow",
+    "role": "Code Reviewer",
+    "server": "lint-mcp"
+  },
+  "checks": [
+    {
+      "id": "quotes.docs/extensions.md",
+      "status": "passed",
+      "detail": "quoted snippets match the shipped example verbatim"
+    },
+    {
+      "id": "quotes.docs/extensions.zh-CN.md",
+      "status": "passed",
+      "detail": "quoted snippets match the shipped example verbatim"
+    },
+    {
+      "id": "grep.zero-rtl",
+      "status": "passed",
+      "detail": "ZERO user-visible RTL/EDA hits"
+    },
+    {
+      "id": "example.four-kinds",
+      "status": "passed",
+      "detail": "flows,mcp,roles,skills"
+    },
+    {
+      "id": "example.role-name",
+      "status": "passed",
+      "detail": "Code Reviewer"
+    },
+    {
+      "id": "example.server-name",
+      "status": "passed",
+      "detail": "lint-mcp"
+    },
+    {
+      "id": "example.flow-id",
+      "status": "passed",
+      "detail": "change-triage-flow"
+    },
+    {
+      "id": "rename.no-old-names",
+      "status": "passed",
+      "detail": "none of rtl-triage, rtl-verilog, verilog-reviewer, rtl-lint, rtl-demo, Verilog Reviewer survive on the user-visible surface"
+    },
+    {
+      "id": "gitignore.dropped",
+      "status": "passed",
+      "detail": "dropped .venv-rtl/, simv_iverilog (both absent from the workspace; .venv-rtl/ is subsumed by .venv*/)"
+    },
+    {
+      "id": "gitignore.kept",
+      "status": "passed",
+      "detail": "kept 8 patterns"
+    }
+  ],
+  "verdict": "passed"
+}

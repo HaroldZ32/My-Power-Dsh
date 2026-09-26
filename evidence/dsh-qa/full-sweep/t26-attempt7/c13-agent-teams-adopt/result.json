@@ -1,0 +1,62 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T04:49:05.920Z",
+  "finishedAt": "2026-09-17T04:49:54.861Z",
+  "durationMs": 48941,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "unauthorized",
+      "note": "the lane's own output/evidence records this failure — the service answered and refused",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 48927,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "signature": {
+        "code": "unauthorized",
+        "label": "HTTP 401 / unauthorized route",
+        "file": "(the lane's own stdout)",
+        "line": 11
+      },
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c13-agent-teams-adopt/lanes/agent-teams-adopt.log",
+      "outputTail": [
+        "  live: {\"ok\":true,\"exit\":0}",
+        "  teamState: {\"ok\":true,\"teamIds\":[\"c1qa\"],\"inbox\":[[\"captain.jsonl\"]],\"teamJson\":[{\"name\":\"c1qa\",\"id\":\"c1qa\",\"description\":\"C1 adoption QA\",\"captainSessionId\":\"session-0ec47b76-5430-41f5-8323-0b0c664b76ba\",\"createdAt\":1789620564608,\"members\":[{\"id\":\"fbaec5fa-eeb7-4753-95df-f8e9cd33b86f\",\"name\":\"librarian\",\"role",
+        "  archive: {\"ok\":false,\"archiveIds\":[]}",
+        "  taskTerminal: {\"ok\":true,\"tasks\":2,\"taskTerminal\":true}",
+        "  webInstaller: {\"ok\":true,\"exit\":0}",
+        "  webRoute: {\"ok\":true,\"arm\":\"fence-refusal\",\"status\":401,\"body\":\"{\\\"error\\\":\\\"unauthorized\\\"}\",\"webLog\":\"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log\"}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

@@ -1,0 +1,63 @@
+{
+  "task": "t25",
+  "kind": "implementation",
+  "issue": "T-72 carry-forward (prose re-point)",
+  "agent": "citation-checker-engineer",
+  "attemptId": "23f48da1-f641-4b7c-95f0-fcbee06e9c04",
+  "attempt": 2,
+  "date": "2026-09-17T07:43:53Z",
+  "headline": "EXTENSIONS-FOR-AGENTS.md line 49 now points at the citation checker's durable home `scripts/check-citations.mjs` instead of the frozen evidence-side copy; the edit is a single token on one line (236 lines before and after, heading `## 3.` untouched), and the checker's own three subject arms for this file (skeleton-validates, split-headings, split-prose) plus the repo-wide citation run and `--self-test` all stay green.",
+  "edit": {
+    "path": "EXTENSIONS-FOR-AGENTS.md",
+    "line": 49,
+    "before": "`evidence/extensions/docs-claims/check-citations.mjs`, materialized next to the template's four",
+    "after": "`scripts/check-citations.mjs`, materialized next to the template's four",
+    "scope": "one backticked path token; the sentence's meaning — extracted from this file, materialized next to the template's four assets, validated with the CLI, run must exit 0 — is unchanged and still performed by the durable checker (`skeletonFromDoc()` + `materializeSkeleton()` + `bun scripts/mpd-ext.mjs validate`)",
+    "structural_delta": "lines 236 → 236; `## 3. Manifest skeleton (validates as written)` still on line 46; the ```json skeleton block and the `<!-- citation-check: illustrative … -->` annotation untouched",
+    "diff": "pointer.diff"
+  },
+  "hashes": {
+    "EXTENSIONS-FOR-AGENTS.md": { "before": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27", "after": "a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5" },
+    "evidence/extensions/docs-claims/check-citations.mjs": { "before": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c", "after": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c", "state": "BYTE-UNTOUCHED — this task never wrote it (it is superseded beside itself: evidence/extensions/docs-claims/SUPERSEDED-check-citations.md)" },
+    "scripts/check-citations.mjs": { "before": "d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13", "after": "d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13", "state": "NOT touched — t25 is a prose re-point, not a checker change" }
+  },
+  "verify": [
+    {
+      "command": "node scripts/check-citations.mjs",
+      "exitCode": 0,
+      "evidence": "13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative; content:anchors — 49 citation(s) verified against their claim: 19 symbol-first (line-free, whole file), 30 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot; content:rot — no line-number-only anchors",
+      "raw": "checker-run.stdout"
+    },
+    {
+      "command": "node scripts/check-citations.mjs --self-test",
+      "exitCode": 0,
+      "evidence": "21/21 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative",
+      "raw": "checker-selftest.stdout"
+    }
+  ],
+  "subject_arms_the_edit_could_have_disturbed": [
+    "ok skeleton-validates — the extracted manifest + the template's four assets: validate exit 0; contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)",
+    "ok split-headings — no heading text is shared between the human guide and the agent contract",
+    "ok split-prose — no prose line (>= 60 chars, outside code fences) is reused"
+  ],
+  "extra_observation_not_a_verify_command": {
+    "command": "bun run verify:docs",
+    "exitCode": 0,
+    "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS",
+    "why": "EXTENSIONS-FOR-AGENTS.md is agent-facing English-only and has no *.zh-CN.md twin, so it is outside the parity gate's discovery roots (root README pair, docs/**, extensions/**/README.md, packages/*/README.md); the run confirms the re-point disturbed none of the 37 pairs"
+  },
+  "second_site_reported_by_lane_B2": {
+    "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+    "lines": "14-15",
+    "verbatim": "// Used by evidence/extensions/docs-claims/check-citations.mjs and\n// evidence/extensions/debranding-probe/<ts>/verify-debranding-full.mjs (T-53's named drivers).",
+    "classification": "ACCURATE-BUT-INCOMPLETE — every word is still true (the frozen copy still exists and still imports the library), but it no longer names the checker that is now the live driver, `scripts/check-citations.mjs`.",
+    "action": "NONE — `skills/**` is lane D's single-writer tree and any edit there invalidates the corpus treeSha; the wave's ONE re-pin must stay lane D's. If it is ever fixed it must ride a `skills/**` writer's change (in flight: t11), never a separate edit after the re-pin. What is required is a deliberate decision to ride or to freeze, not a silent leftover; routed to the captain."
+  },
+  "scope_compliance": {
+    "inScope": ["EXTENSIONS-FOR-AGENTS.md", "evidence/gates/**"],
+    "changed": ["EXTENSIONS-FOR-AGENTS.md", "evidence/gates/t72-durable-pointer/"],
+    "not_touched": ["scripts/check-citations.mjs (t16's durable checker)", "evidence/extensions/docs-claims/** (t16's sealed evidence)", "skills/** (lane D)", "packages/**", "docs/**", "VENDOR_LOCK.json (T-72 contributes NO re-pin)"],
+    "packing_note": "EXTENSIONS-FOR-AGENTS.md is a declared packed root file, so this edit changes packed content; t18's single re-pack absorbs it (the stale dist/mpd-package copies are already a recorded handoff)."
+  },
+  "raw_artifacts": ["final-verify.log", "pointer.diff", "checker-run.stdout", "checker-selftest.stdout", "verify-docs.log"]
+}

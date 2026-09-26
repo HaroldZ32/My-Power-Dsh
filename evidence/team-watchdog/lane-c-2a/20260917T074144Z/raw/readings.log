@@ -1,0 +1,568 @@
+== REVISION PIN — Thu Sep 17 07:43:23 AM UTC 2026 ==
+packages/mpd-team-watchdog-plugin/src/machine.ts                       47511b5d415477e2  39596 bytes  2026-09-17 15:26:52.967289065 +0800
+packages/mpd-team-watchdog-plugin/src/engine.ts                        a82913cc7566dae2  64621 bytes  2026-09-17 15:40:09.359025127 +0800
+packages/mpd-team-watchdog-plugin/src/actions.ts                       69ca5fa9f63f80df  17874 bytes  2026-09-17 15:30:22.257478647 +0800
+packages/mpd-team-watchdog-plugin/src/index.ts                         31f6dfbd9d15acd8  16987 bytes  2026-09-17 15:31:26.505073568 +0800
+packages/mpd-team-watchdog-plugin/src/config-file.ts                   c535df9eb04decf2  3953 bytes  2026-09-17 15:31:34.222265137 +0800
+packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts         133f3c6342961c64  26905 bytes  2026-09-17 15:30:51.263198735 +0800
+packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts            d4384a0f26255ab1  33057 bytes  2026-09-17 15:39:04.585442653 +0800
+packages/mpd-team-watchdog-plugin/dist/index.js                        6aa3069c5cb89f97  156398 bytes  2026-09-17 15:40:20.988310130 +0800
+agent-references/troubleshooting.md                                    c8ebe4755a00acf3  37618 bytes  2026-09-17 15:41:30.516022546 +0800
+
+== src -> dist correspondence (the shipped artifact is dist; the arms import src) ==
+0
+0
+
+== T-19 surface readings ==
+-- (1) the watchdog's own registered tool descriptions (src/actions.ts, live from the module) --
+session-watchdog-hold: Persist the team watchdog's PRESERVING hold for one team. This is the INTERNAL implementation of a team pause, not a second pause mechanism: the external pause a user operates is `agent_teams_halt` (the web Stop-team route), cleared by `agent_teams_resume`. The hold stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, assignee and attemptId. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.
+session-watchdog-resume: Clear the team watchdog's internal hold for one team (the implementation record only — the team pause itself is operated through `agent_teams_halt` / `agent_teams_resume`). A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the adopted dispatch gates that honour it are wired by w7.
+session-watchdog-status: READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and (T-19) the ONE pause state per team: the external mechanism is `agent_teams_halt` and the watchdog's preserving hold is reported only as its INTERNAL implementation. Use it to inspect what a lane or a restarting process would read from disk.
+
+-- (2) lib/tools.js team-status PAUSE line (lane A / t21 owns this file; quoted read-only) --
+3520:        `Pause: agent-teams halt ${team.halted ? 'ACTIVE' : 'not active'} · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)`,
+
+-- (3) the watchdog README pair rows naming a release verb (t20 owns the pair; quoted read-only) --
+258:A manual hold is still cleared immediately by `session-watchdog-resume` (or by hand from the
+303:  stays preserving, exactly like `session-watchdog-resume`. A hold written before this field
+326:clears stay distinct (`agent_teams_resume` / `session-watchdog-resume`) and the surface tells the
+391:| `session-watchdog-resume` | clear it; a team that is not held is a **no-op** (`reason:'not-held'`), never an error |
+216:hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar 手工删除）。
+254:  `session-watchdog-resume` 完全一致。早于该字段存在的 hold 读作 `ttlMs: 0`，因此绝不会为它凭空
+272:任何 resume 动作：两种清除保持各自独立（`agent_teams_resume` / `session-watchdog-resume`），由该界面
+328:| `session-watchdog-resume` | 清除它；未处于 hold 的团队是**无操作**（`reason:'not-held'`），绝不是错误 |
+
+-- (4) the tool-list pin (test/holds-lifecycle.test.ts) stays green --
+372:        expect([...ctx.__stub.tools.keys()].sort()).toEqual(["session-watchdog-hold", "session-watchdog-resume", "session-watchdog-status"])
+
+== T-79 independent control: the RED baseline tree carries NO terminal re-check ==
+75018a1 chore(evidence): captain addendum and the merged-tip gate sweep
+0
+-- shipped tree (2 = region open + close) --
+2
+-- RED baseline DOES carry the kick hold gates (why the kick control is a scratch neuter, not RED) --
+4
+
+== ADDENDUM 1 (correction, appended not rewritten): the src -> dist correspondence probe ==
+The first probe used a long pattern ('the file layer is applied live for its other values') and
+read 0, which is a PATTERN artifact, not a stale artifact: the bundled literal wraps across the
+concatenation the bundler emits. Re-measured with three patterns:
+  grep -c "the file layer is applied live for its other values" 0
+  grep -c "was applied live for its other values"            1
+  grep -c "liveWithoutRestart\|fileApplied"                  6
+Second probe was ILL-CHOSEN BY DESIGN: it searched a COMMENT ('T-18 (wave 2): the re-read is NOT
+conditional'), which the bundler strips — 0 there proves nothing either way. Withdrawn in place.
+dist sha256: 6aa3069c5cb89f97  mtime 2026-09-17 15:40:20.988310130 +0800
+The authoritative freshness reading remains: node scripts/verify-dist-fresh.mjs -> ok: 20/20 targets fresh (raw/gates.log [5]).
+
+== ADDENDUM 3 (appended correction, not a rewrite): the T-48 leg audit (t23 scope) ==
+The contract's acceptance [0] narrows T-48: THREE of the four D-2 legs are the fault lane's
+instruments and must NOT be re-instrumented; the open leg is the FOURTH — a named decline that
+REACHES THE CALLER. Audit against the shipped instruments (read-only; fault lane untouched):
+  RELIED ON  skills/dsh-qa/scripts/team-watchdog-fault.mjs F6 (sha256UnchangedAcrossHeldKicks,
+             deliveriesWhileHeld === 0, preserved, !cancelled) and F7 (resumed,
+             deliveriesAfterResume >= 1, holdApplied), driven by test/fixtures/inject.mjs case
+             'pause-preserves', with the three mutants not-preserving / deliveries / no-contrast.
+             These stay the AUTHORITATIVE instruments for those three legs; the lane-C arms
+             re-measure no-delivery / byte-identity / after-resume delivery IN THE SAME RUN only
+             as the contrast that makes the fourth leg falsifiable (no fault-lane file edited).
+  ADDED      the fourth leg, in packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+             kickMember RESOLVES and returns UNDEFINED (measured: the name is NOT carried by the
+             return value), while the decline seam carries the name verbatim — hold id, the
+             since timestamp as ISO, and the reason — matching /hold [0-9a-f-]{8,} since <ISO>/.
+             CAUSALITY: the control that neuters the hold read produces NO decline line at all
+             and DELIVERS instead, so the named line cannot appear without the refusal.
+  BOUND      the carrier is the decline seam (ctx.logger.warn via noteDispatchDecline, deduped
+             per team/member/reason) — the same carrier every other refusal in that file uses.
+             A caller that inspects ONLY the return value receives no name; that is the shipped
+             shape and it is measured, not assumed. Making the return value carry the name would
+             be a behaviour change to a shared adopted file with no caller that reads it.
+
+== ADDENDUM 5 (captain-requested, 2026-09-17): the T-87 row added to agent-references/troubleshooting.md ==
+WHICH ROWS THIS LANE ADDED TO THAT FILE (all three, in table order):
+  1. T-18 row  — 'a `watchdog.*` knob edited in `.mpd/mpd.jsonc` seems to need a `dsh` restart'  (line 41)
+  2. T-19 row  — 'a team shows PAUSED and it is unclear which of two mechanisms holds it…'      (line 42)
+  3. T-87 row  — '`agent_teams_update_task` refuses a completion with a message about the WRONG cause…' (line 43, ADDED NOW)
+Rows 1-2 were landed in the T-19 edit (before this addendum); the T-87 row is the captain-requested
+single edit and is the only line changed now.
+
+-- BEFORE (snapshot kept at /tmp/troubleshooting.before.md):
+   sha256   lines   table rows 
+-- AFTER:
+   sha256 7ca5240d05b273fa  lines 72  table rows 59
+-- the exact diff (before -> after):
+
+-- the new row as landed (verbatim, single line):
+| `agent_teams_update_task` refuses a completion with a message about the WRONG cause (`… requires passed acceptanceResults for every acceptance item` / `… requires a passed commandsRun entry for every verify command`), and the payload you built from the PRINTED contract cannot satisfy it | **T-87 (registered 2026-09-17 after three seats were refused by this class): a completion payload must echo the contract's STORED acceptance items VERBATIM — the printed contract display joins some items into one sentence (one measured case: the display reads 8 where the stored array holds 9), so a payload built from the display is refused forever with a message that names the wrong cause.** Read the stored array (`agent_teams_task_contract`, or `.mpd/team/<team>/team.json` read-only) and echo those strings. Second, measured half: a completion payload is STATELESS per call — `acceptanceResults`, `commandsRun` and `changedPaths` must ALL travel in the SAME `update_task` call; sending them in separate calls leaves the earlier ones unstored (`t10`, 2026-09-17, hit this exact class twice). Falsifier: build a payload from `agent_teams_task_contract`'s stored strings and send all arrays in one call — the refusal disappears with no change to the work |
+
+-- the measured instance this row records (t10, from THIS lane's own completion attempts):
+   1st refusal: 'implementation completion requires passed acceptanceResults for every acceptance item'
+   2nd refusal: 'implementation completion requires a passed commandsRun entry for every verify command' — the second call had carried acceptanceResults only; all three arrays had to travel in ONE call.
+   3rd attempt (all arrays in one call, strings read back from agent_teams_task_contract rev 6): completed.
+   Precondition that made it visible: the contract had been amended several times, so the PRINTED display and the STORED array disagreed (r2's display showed 7 where the stored array holds 8).
+
+== ADDENDUM 6 (correction, appended): the ADDENDUM 5 BEFORE readings were lost to the per-call /tmp ==
+MEASURED CAUSE: the before-snapshot was taken with 'cp ... /tmp/troubleshooting.before.md' in one bash
+call; the readings call ran in a DIFFERENT sandbox and its /tmp is a fresh tmpfs (T-23: 'fresh /tmp per
+bash call'), so the snapshot did not exist. The BEFORE hash/lines printed as empty in ADDENDUM 5 are a
+SNAPSHOT-LOSS artifact, not evidence — they are withdrawn here in place, and the artifacts now live in
+this evidence dir (never /tmp).
+
+PROOF OF THE BEFORE-STATE (reconstruction equality, not a claim): the only change of the captain-
+requested edit is one inserted table row, so the pre-edit revision is reconstructed by deleting line 43.
+  recorded BEFORE sha256 (measured at the time of the edit): c8ebe4755a00acf3…
+  reconstructed BEFORE sha256:                              c8ebe4755a00acf3
+  EQUAL: yes
+  lines 71 -> 72 · table rows 58 -> 59 · AFTER sha256 7ca5240d05b273fa
+  diff: 42a43 (one inserted row) — full text in raw/troubleshooting.{before,after}.txt
+
+ROWS THIS LANE ADDED TO agent-references/troubleshooting.md (final): T-18 (line 41), T-19 (line 42, both
+from the T-19 edit) and T-87 (line 43, the captain-requested single edit recorded here).
+
+== ADDENDUM 7 (captain-requested, 2026-09-17): the DIGEST row added to agent-references/troubleshooting.md ==
+REQUEST QUOTED VERBATIM FROM THE CAPTAIN (as instructed):
+  "A digest is a reading of a MOMENT, never a fact. VENDOR_LOCK.json's corpus treeSha changes the instant ANY
+   skills/** file moves — including a comment-only edit. Never write a lock from a digest copied out of a
+   message (including a captain's); re-derive it with node scripts/repin-vendor.mjs (dry run) immediately
+   before the write, and if the number you were given no longer matches, say so and name the superseded
+   reading instead of using it."
+
+ROWS THIS LANE HAS ADDED TO THIS FILE (final, table order):
+  41  T-18  the .mpd/mpd.jsonc knob that seemed to need a dsh restart
+  42  T-19  one pause state / one external mechanism
+  43  T-87  the completion payload must echo the STORED contract items; all arrays in one call
+  44  DIGEST (ledger family, no id assigned) — a digest is a reading of a MOMENT, never a fact   <- ADDED NOW
+
+BEFORE/AFTER (snapshots inside THIS evidence dir, never /tmp — see ADDENDUM 6):
+  BEFORE sha256 7ca5240d05b273fa  lines 72  table rows 59
+  AFTER  sha256 c8568855302a1ee4  lines 73  table rows 60
+  the edit is ONE insertion (43a44) — diff:
+43a44
+> | `VENDOR_LOCK.json`'s corpus `treeSha` no longer matches what you were handed, or `verify-vendor` reddens right after a digest was taken 
+
+  CUMULATIVE: this lane's four rows took the file from 69 lines / 55 rows (pre-wave-2, sha256 f6b4d1be…-family
+  per the wave-1 record) to 73 lines / 60 rows.
+  Every row is a create or an in-scope edit; no other lane's row was touched.
+
+== ADDENDUM 8 (correction): the ADDENDUM-7 'CUMULATIVE' line carried an UNMEASURED row count ==
+ADDENDUM 7 said the pre-wave-2 file was '69 lines / 55 rows'. The 69 lines is from the wave-1 record
+(t58's census, sha f6b4d1be…); the '55 rows' was NOT measured — it is withdrawn. Measured now from the
+committed revision (git show HEAD:agent-references/troubleshooting.md, read-only):
+  HEAD baseline: sha256 f6b4d1bec8745da6  bytes 35548  lines 69  table rows 56
+  AFTER this lane's four rows: lines 73  table rows 60  (+4 rows, exactly the four this lane added)
+  NOTE the revision difference: HEAD's copy is what the wave-1/t22 record filed, not necessarily the
+  byte-identical pre-edit working-tree state (other lanes may hold uncommitted edits to this file).
+  What is PROVEN is the per-edit relation: before-digest-row.txt -> after-digest-row.txt is one insertion (43a44).
+
+== ADDENDUM 9 (correction + reconciliation, appended): the dist scope note, and --only ==
+-- my own --only run (I had refused to quote a flag I had not run):
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 96ms
+  exit=0
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 102ms
+  exit=0
+  usage line, read from the script: const USAGE = `usage: node scripts/verify-dist-fresh.mjs [--json] [--quiet] [--only <substr>] [--keep-tmp]
+
+-- SCOPE STATUS CORRECTION (lane B's item 2, verified by me):
+  The declared-deviation note in this record describes the WINDOW BEFORE the hop: at completion-attempt time
+  the platform refused 'packages/mpd-team-watchdog-plugin/dist/index.js is undeclared'.
+  FINAL state, read back from agent_teams_task_contract: t10 contract REVISION 6, inScope includes
+  packages/mpd-team-watchdog-plugin/src/**, test/**, dist/**, lib/scheduler.js, agent-references/troubleshooting.md,
+  evidence/team-watchdog/** — so dist/index.js is DECLARED (r6, the hop) and the deviation note is historical only.
+
+-- SHA TIMELINE, reconciled with lane B (both pairs right for their own minute):
+  07:33Z lane B fresh-build reading 43fc1f52… | 07:38Z fresh build of then-current src 6aa3069c…
+  07:40:20Z this lane's canonical rebuild = 6aa3069c5cb89f97… | 7b821135… = the pre-rebuild committed sha
+  settled: dist mtime 07:40:20Z, sha 6aa3069c5cb89f97…, verify-dist-fresh exit 0 / 20/20 fresh
+
+== ADDENDUM 10 (self-correction, appended): the T-79 loaded-revision residual has a probe, and its verdict
+   qualifies MY earlier stale-host phrasing ==
+T-21's own helper is the sanctioned instrument for exactly this question:
+  node scripts/mpd-bg.mjs reload-check packages/mpd-agent-teams-plugin/lib/scheduler.js
+    -> FRESH: 'module ... mtime=2026-09-17T05:42:47.546Z newest-session=...49d06a77... mtime=2026-09-17T07:20:24.795Z — the module predates the newest session'
+  node scripts/mpd-bg.mjs reload-check packages/mpd-team-watchdog-plugin/dist/index.js
+    -> RESTART-REQUIRED (mtime 07:40:20Z, after the newest session 07:20:24Z)
+  node scripts/mpd-bg.mjs reload-check packages/mpd-team-watchdog-plugin/src/engine.ts
+    -> RESTART-REQUIRED (mtime 07:40:09Z)
+
+BOUND OF THAT VERDICT (why it does NOT settle T-79): the helper compares the module's mtime against the
+NEWEST SESSION's directory mtime. It therefore cannot see a long-lived host PROCESS that predates the
+module (ESM caching is per process, T-21), so 'FRESH' means 'the file is older than the newest session',
+never 'the running host loaded this revision'.
+
+CONSEQUENCE, stated against my own earlier claim: my phrasing to the register was that the six live T-79
+replays are 'CONSISTENT with a host predating the fix'. That is still not disproven, but the probe's verdict
+does not SUPPORT it either — a session that began at 07:20:24Z, AFTER wave 1's fix (scheduler.js 05:42:47Z),
+is weak evidence the fix WAS loaded, unless the host process itself is older than the session. I could NOT
+date the host process:     PID TTY          TIME CMD
+      1 ?        00:00:00 bwrap
+      2 ?        00:00:00 bash
+      3 ?        00:00:00 ps sees only the pid-namespaced sandbox (measured), the parent session id
+6d36d97f-… has no store directory under any /root/.dsh/sessions/* project key (measured), and
+/root/.dsh/dsh-usage only carries recent activity. So the residual stays UNRESOLVED, and the honest
+register wording is 'unresolved, with a named probe whose verdict does not support the stale-host reading'
+rather than 'consistent with a stale host'.
+
+DECISIVE TEST FOR 2b (named, not attempted here): make the running host answer for its own loaded revision
+(a status/runtime probe that reports the module revision it consumed), or restart the host and re-run one
+replay — this session cannot settle it without a restart.
+
+== ADDENDUM 11 (appended): independent confirmation of the T-21 probe's semantics, and the 2b test's
+   interpretation ==
+The Architect verified the probe at the SOURCE (not by trusting my verdict): scripts/mpd-bg.mjs header
+('there is no plugin hot reload (T-21) ... is the module NEWER than the newest session of this
+workspace?'), the exit contract (0 FRESH/NO-LIVE-SESSION, 1 RESTART-REQUIRED), the FRESH message, and
+its three self-test cases (no session / older -> FRESH / newer -> RESTART-REQUIRED). So the bound in
+ADDENDUM 10 is the TOOL'S OWN semantics: it compares a FILE mtime against the NEWEST SESSION's dir
+mtime and cannot see a host PROCESS. Recorded as independent corroboration of my reading, by a
+different seat, from the implementation rather than from my report.
+
+INTERPRETATION OF THE DECISIVE 2b TEST (stated so its outcome cannot be read two ways):
+  restart the host + re-run ONE terminal-task replay:
+   * the member IS woken for a TERMINAL task -> staleness is REFUTED as the explanation, and the wake is
+     a LIVE delivery-boundary hole to hunt. My in-process instrument says the boundary itself refuses
+     (0 deliveries + the named decline, with the stripped-region control delivering), so that hunt must
+     look at the OTHER wake routes: approval/spawn-time dispatch, the idle edge, memberSelections, or a
+     stale on-disk snapshot rather than the recheck.
+   * the member is NOT woken -> consistent with the stale-host explanation; the residual closes as
+     'stale host', with the mechanism claim still REFUTED-for-a-fresh-process as filed.
+  Reuse one of the six recorded live shapes (terminal task + idle member + a kick) as the fixture; the
+  wake needs a path that COMPOSES a ticket, so a bare status read cannot produce it.
+
+== ADDENDUM 12 (T-89 self-audit, appended): the plain-form 'bun test <dir>' census was contaminated ==
+THE TRAP (captain, register row T-89, measured by lane A): 'bun test <dir>' treats its positional
+argument as a SUBSTRING FILTER, not a path, so files elsewhere in the tree whose paths contain that
+string are discovered too.
+
+AUDITED AGAINST MY OWN READINGS (measured now, both forms in the same call):
+  bun test packages/mpd-team-watchdog-plugin        -> 139 pass / 0 fail, 'Ran 139 tests across 1053 files'
+  bun test ./packages/mpd-team-watchdog-plugin/     -> 139 pass / 0 fail, 'Ran 139 tests across 13 files'
+  real test set: 13 files
+  contributor to the census that exists PERMANENTLY under the tree: the RED BASELINE git worktree,
+  .mpd/red-baseline/packages/mpd-team-watchdog-plugin/test/*.test.ts (12 files) — so the trap does not
+  need a transient revert copy to fire; the worktree alone triggers it for anyone using the plain form.
+
+VERDICT ON MY OWN EVIDENCE: the EXECUTED SET and every figure I reported are UNCHANGED (139 pass,
+0 fail, 684 expect() calls in both forms), so no t10 verdict moves. What WAS contaminated is the
+DISCOVERY CENSUS (1053 vs 13 files) and with it the risk: a foreign copy carrying failing tests would
+have been summed into my reading, and I could not have told. The corrected basis for my evidence is the
+path-qualified form: 'bun test ./packages/mpd-team-watchdog-plugin/' -> 13 files / 139 tests / 0 fail.
+From here on the 'Ran ... across N files' line is quoted from the './' form only.
+
+NO REVERT COPY OF MINE LIVES UNDER THE WORKSPACE: every scratch tree my instruments create is under
+mkdtempSync(join(tmpdir(), ...)) — named in the harnesses themselves (lane-c-wave2.test.ts: 'lane-c-lib-',
+'lane-c-src-'; lane-c-live.mjs: 'lane-c-live-', 'lane-c-live-mutant-'; review-falsification-2.mjs:
+'t13-falsify-') — i.e. outside the tree a './' command can reach, and inside the per-call tmpfs (T-23).
+
+T-13 IS UNAFFECTED: its evidence dir contains NO 'bun test' invocation at all (grepped: zero hits), so
+no review-B reading could have been a sum over copies.
+
+== ADDENDUM 13 (appended): cross-seat confirmation of the src/dist pair, and a premise this record
+   never carried ==
+LANE A RE-TOOK THE READINGS INDEPENDENTLY (not acceptance of my claim) and they match exactly:
+  src/engine.ts sha256 a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece
+  dist/index.js sha256 6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd
+  node scripts/verify-dist-fresh.mjs --only mpd-team-watchdog-plugin --quiet -> ok: 1/1 targets fresh, exit 0
+  bun run typecheck -> exit 0, zero diagnostics; engine.ts:30 carries '  type KnobIssue,'
+So the shipped dist IS the byte-identical product of the current src on TWO seats' readings — the
+strongest available form of the src/dist correspondence check for the hop this record requested.
+
+PREMISE CHECKED, NOT ASSUMED: lane A corrected a premise they read in my earlier heads-up (that
+'bun run typecheck' was on t8's verify list and that their lane could be blocked by my dist / need a
+branch cut). Their authority read: t8 verify = ['bun test packages/mpd-agent-teams-plugin/self-fix-tests/',
+'bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts packages/mpd-ext-plugin/test/adapter-identity.test.ts'],
+t24 verify = ['bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/'] — typecheck was removed by the
+captain's r4 amendment, and no member cuts a branch (the captain is the single git writer, §5).
+THIS RECORD NEVER CARRIED THAT PREMISE: the only 't8' entries on disk are about T-79's STATE half
+('coverage stays on t8', plan D-1) and about the aggregate belonging to t18 — both unchanged by the
+correction. The refuted premise existed only in my message, so there is nothing on disk to withdraw,
+and the record is not edited for it.
+
+== ADDENDUM 14 (provenance precision, appended): who owns which half of the ADDENDUM-11 corroboration ==
+The Architect flagged the split, correctly: ADDENDUM 11's WORDING is lane C's summary; the READING it
+describes is first-party on their side. Measured provenance for this entry:
+  * first-party on the Architect's side: reading scripts/mpd-bg.mjs itself — header, exit contract
+    (0 FRESH/NO-LIVE-SESSION vs 1 RESTART-REQUIRED), the FRESH message, and the three self-test cases.
+  * first-party on lane C's side: the probe RUNS (scheduler.js -> FRESH with module mtime 05:42:47.546Z
+    vs newest session 07:20:24.795Z; my own 07:40Z edits -> RESTART-REQUIRED) and the bound drawn from
+    them (a file mtime against the newest session dir mtime cannot see a host PROCESS).
+  * SECOND-HAND: the sentence in ADDENDUM 11 that attributes their source reading — written by lane C.
+    The Architect has confirmed the substance but has NOT reviewed that wording (message, 2026-09-17).
+So the citation chain is: their reading (tool semantics) + my runs (verdicts) -> my wording (this file).
+A reader citing ADDENDUM 11 should cite it as lane C's summary of a first-party reading by the
+Architect, not as a co-signed statement.
+
+== ADDENDUM 12b (appended): lane A's refinement of the T-89 exposure, with the mechanism and my instance ==
+LANE A'S REFINEMENT (theirs, first-party): the bare form's discovery surface includes every non-dot
+  copy whose path contains the argument; copies under a DOT-prefixed path component are skipped for
+  EXECUTION. Their instance: bun test v1.3.14 (0d9b296a) -> 17 pass / 0 fail, 56 expect() calls,
+  'Ran 17 tests across 162 files' (bare) vs '2 files' (./), with FOUR copies of that test in the tree
+  (2 real + 2 under ). Their conclusion: the exposure was LATENT there (dot path),
+  whereas the wave's earlier FIRING event had its copy under a NON-dot path (evidence/review/...) and
+  executed it (331 ran / 164 failed / 324 errors).
+
+MY INSTANCE RE-READ THROUGH THAT MECHANISM (my readings, their explanation):
+  bare: 139 pass / 0 fail / 684 expects / 'Ran 139 tests across 1053 files'
+  ./  : 139 pass / 0 fail / 684 expects / 'Ran 139 tests across 13 files'
+  and the copies inflating the census are ALL under  — a DOT-prefixed path (verified by find just now). So the census inflated (1053) while
+  the EXECUTED set stayed at the real 13 files' 139 tests, which is exactly why my figures never moved.
+  Not re-derived by me: the dot-skip MECHANISM is lane A's reading; what is mine is the measurement that
+  the executed set was identical in both forms on my package.
+
+REFINED RULE STATEMENT FOR THE WAVE (supersedes my blunt 'the bare form is contaminated'):
+  the bare form's discovery surface includes every copy whose path contains the argument; a copy under a
+  NON-dot path EXECUTES (the firing class: evidence/review/...), a copy under a DOT path does not
+  (~/.mpd/..., latent). Pin with  regardless, and if a revert copy must live in the tree, put it
+  under a dot path AND name it in the evidence. The census number ('across N files') is the cheap tell.
+
+THE PIN IS THE CAPTAIN'S CALL, NOT OURS (lane A's position, agreed): t8 is terminal and re-pinning its
+  verify re-runs it and its dependents for a reading that is already clean; lane A handed the captain the
+  measurement and the choice (re-pin at the integration sweep, or leave the historical entry with its
+  reading, which was honest when taken — no non-dot copy existed then).
+
+== ADDENDUM 12c (correction, appended): ADDENDUM 12b was DAMAGED by my own shell, and here is the intended text ==
+
+WHAT WENT WRONG (mine, recorded not smoothed): I wrote ADDENDUM 12b inside a double-quoted shell echo and
+left BACKTICK-quoted snippets in it, so the shell performed COMMAND SUBSTITUTION instead of printing them.
+Three holes resulted, all in that block and nowhere else:
+  * readings.log:313 — "Their instance: `bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts
+    packages/mpd-ext-plugin/test/adapter-identity.test.ts` ..." printed the SUBSTITUTED bun output
+    ("bun test v1.3.14 (0d9b296a)") in place of the command text;
+  * readings.log:315 — the fragment "`.mpd/red-baseline/`" was EXECUTED (bash reported it as a directory)
+    and substituted empty, leaving "(2 real + 2 under ).";
+  * readings.log:322 — the same treatment for the find expression, leaving "are ALL under  — a
+    DOT-prefixed path".
+The block is otherwise the intended text and no earlier line was touched. Per the wave's practice the
+damaged block STAYS (never rewritten) with this correction beside it.
+
+INTENDED TEXT, RESTATED VERBATIM (no backticks executed here):
+  * lane A's instance: 'bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts
+    packages/mpd-ext-plugin/test/adapter-identity.test.ts' -> 17 pass / 0 fail, 56 expect() calls,
+    "Ran 17 tests across 162 files" (bare) vs "2 files" (./); FOUR copies of that test exist in the tree
+    (2 real files + 2 under the dot-prefixed path ".mpd/red-baseline/").
+  * my instance's census contributors are all under ".mpd/red-baseline/packages/mpd-team-watchdog-plugin/"
+    — a dot-prefixed path (verified by find).
+
+THE UNINTENDED SIDE EFFECT, disclosed: the first substitution actually RAN lane A's multi-path command in a
+shell. Its output was 9 pass / 0 fail / 31 expect() calls / "Ran 9 tests across 81 files" — NOT a valid
+reading of their command (only the ext-plugin file's tests appear in it), so it is recorded here as an
+ARTIFACT OF MY ERROR, never as evidence. Nothing was written by it: `verify-dist-fresh --only
+mpd-ext-plugin --quiet` -> ok 2/2 fresh, exit 0, and `--only mpd-roles-plugin --quiet` -> ok 1/1 fresh,
+exit 0 (measured immediately after), so the committed dists those arms read are unchanged.
+
+RULE FOR MY OWN RECORD, earned here: shell echo blocks that carry code fragments must use SINGLE quotes (or
+a heredoc with a quoted delimiter), because a backtick inside double quotes is a command, not a character.
+
+== ADDENDUM 15 (appended): costing of an edit under packages/mpd-agent-teams-plugin/self-fix-tests/** ==
+
+Measured while costing lane A's offered comment-only refinement
+(`self-fix-tests/terminal-rearm-refusal.test.mjs`):
+  * the tree does NOT ship: `scripts/pack-mpd.mjs` carries the filter
+    `!/(^|\/)(test|self-fix-tests)(\/|$)/` with the comment "Exclude test/self-fix-tests dirs: they are
+    dev-only and must not ship", and the packed tree confirms it — `dist/mpd-package/packages/
+    mpd-agent-teams-plugin/` holds `assets _devs lib LICENSE package.json README*.md` and no
+    `self-fix-tests`;
+  * the closure gate's sweep mentions `self-fix-tests` ZERO times, so an edit there cannot create a
+    `CONTENT-DRIFT-EXPECTED` line. Contrast: `agent-references/**` IS swept, which is why t35 had a
+    pre-re-pack window at all.
+  * the arm's reading on the current revision, `./` form (T-89): 6 pass / 0 fail / 44 `expect(` calls /
+    "Ran 6 tests across 1 file" — matching lane A's own 6/44 (a second independent reading).
+  * lane A's relabel is on disk and correct: the header and the second site say the live-replay attribution
+    is an INFERENCE and the state UNRESOLVED, with the probe named; "inert in-process" no longer appears.
+
+CONSEQUENCE RECORDED: for a path under `self-fix-tests/**`, "land before the re-pack" vs "carry to 2b" is
+NOT an ordering question — the pack and the gate are both blind to it. The choice is scope discipline only
+(terminal owner needs a task with that path in scope), and that is what I told the captain and lane A.
+
+== ADDENDUM 16 (appended): a known one-word imprecision in the t35 rows, priced and left standing ========
+
+LANE A'S NIT, VERIFIED ON DISK: Row 2 ("a path or number quoted in a REPORT does not resolve / does not
+reproduce") says "the three full paths above resolve", while Row 1 holds TWO of the three
+(evidence/pack-closure/review-B/20260917T081003Z-t13/REVIEW.md and
+evidence/pack-closure/review-B/20260917T084000Z-t30/result.json) and the third
+(evidence/team-watchdog/lane-c-2a/20260917T074144Z/raw/readings.log) is named in Row 2 ITSELF. A reader who
+counts "above" finds two, so the word is off by one. The three paths are all present and resolving —
+only the counting word is loose.
+
+DISPOSITION, and the reasoning: NOT worth a task of its own. The file is at the t35 revision
+(sha256 5f0b4b3659bad486..., 41,863 B / 75 lines / 62 rows, mtime 2026-09-17T08:48:26.379Z, cmp-identical to
+the frozen after-copy) and t35 is terminal, so an edit now needs a task with the file in scope; a task
+created for one word costs more than the word. If something legitimately touches the file BEFORE the
+re-pack it rides along for free (pre-re-pack edits are absorbed — priced in A12b), otherwise it stands as a
+recorded imperfection rather than a silent one.
+
+READY WORDING, so a future editor spends nothing to fix it: replace
+  "the abbreviations `review-B/...` and `lane-c-2a/...` fail `-e` while the three full paths above resolve"
+with
+  "the abbreviations `review-B/...` and `lane-c-2a/...` fail `-e` while the three full paths named in these
+   two rows resolve".
+
+== ADDENDUM 17 (appended): lane A's clause sharpens MY wording in A12b — the census is a HINT, the './' form is the CONTROL ==
+
+MY A12b SAID: "the 'across N files' census number is the cheap tell". LANE A'S CLAUSE (accepted, theirs):
+the census is a cheap tell ONLY IF you know the tree's baseline — 162 files is meaningless without knowing
+the real set is 2 — so the './' form is the CONTROL and the census is only a HINT. That is sharper than my
+version and it is their clause applied to my sentence; the corrected rule as it should be quoted is:
+
+  THE BARE FORM'S DISCOVERY SURFACE INCLUDES EVERY NON-DOT COPY WHOSE PATH CONTAINS THE ARGUMENT.
+  READ THE './' FORM AS THE CONTROL; treat the "across N files" census only as a HINT, and only against a
+  known baseline. A revert copy kept in the tree belongs under a DOT path AND named in the evidence
+  (constructive half: what to DO, not what to fear). A non-dot copy fires (evidence/review/... : 331 ran /
+  164 failed / 324 errors); a dot-prefixed copy is skipped for execution (.mpd/red-baseline/: census
+  inflated, executed set unchanged — my measurement, their mechanism reading).
+
+THE THIRD CONFIRMATION (lane A re-took my load-bearing claim instead of accepting it, correctly):
+  verify-dist-fresh --only mpd-ext-plugin --quiet -> ok 2/2 fresh, exit 0;
+  verify-dist-fresh --only mpd-roles-plugin --quiet -> ok 1/1 fresh, exit 0;
+  copy census `find . -name 'adapter-identity.test.ts'` -> 2 under ./packages/... + 2 under ./.mpd/... (all
+  foreign copies dot-prefixed). So "nothing was written by my accidental run" now has two independent seats.
+
+== ADDENDUM 18 (appended): WAVE-LEVEL BOUND — the instruments are durable in the REPO, never in the shipped artifact ==
+
+Lane A raised this for their `t37` negative-control lane (which lives in the dev-only `self-fix-tests/**`).
+Measured for MY lane and for the wave, from the PACKED TREE and the PACKER (not from a report):
+  SHIPPED      packages/mpd-team-watchdog-plugin/dist/index.js        (the built code — my deliverable)
+  SHIPPED      agent-references/troubleshooting.md                     (my four+two rows)
+  NOT SHIPPED  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts   (my 12 arms)
+  NOT SHIPPED  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs  (lane A's lane)
+  NOT SHIPPED  evidence/**                                             (every lane's harnesses + records)
+And the packaged form of the watchdog package is only `dist/ README.md README.zh-CN.md` — no `src/`, no
+`test/` — while the agent-teams package ships whole minus `test|self-fix-tests` (pack-mpd.mjs:214 filter).
+
+CONSEQUENCES, stated because they cut against the wave's own deliverables:
+  * every instrument this wave built is repo-durable and artifact-invisible BY DESIGN ("dev-only and must
+    not ship"): a future agent working from a packed install gets the CODE and the reference rows, never
+    the arms;
+  * my own arms could not run from a packed tree even in principle: they import `../src/...` (actions,
+    engine, machine, holds, sidecars, support), and `src/` is not shipped for this package — so the durable
+    reddening proof requires a checkout, always;
+  * therefore wave 2b verification of a PACKED install must run the arms from the repo (or a checkout) and
+    can only assert the shipped artifact's BEHAVIOUR; it cannot cite these arms as artifact-internal
+    evidence. The shipped proof of my lane is the behaviour of `dist/index.js` (rebuilt, 20/20 fresh).
+
+== ADDENDUM 19 (appended, POST-WAVE): the re-pack absorbed my rows, measured on the shipped artifact ==
+
+The wave landed (captain commit 3979366 -> merge 96010d8; re-pack at 08:55:56Z, stamp
+2026-09-17T08:55:57.244Z). My lane's shipped claim was bounded in ADDENDUM/NOTE form as "the EXPECTED line
+the re-pack absorbs" — here is that claim MEASURED after the pack:
+  * `node scripts/verify-pack-closure.mjs` -> exit 0; `content bytes: 1181 file(s) compared, 1181 identical,
+    0 drift, 0 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present,
+    1 declared exemption(s), 0 absent`; EXPECTED lines 0, FAIL lines 0; `pack stamp 2026-09-17T08:55:57.244Z`.
+  * `dist/mpd-package/agent-references/troubleshooting.md` is BYTE-IDENTICAL to the source
+    (both sha256 5f0b4b3659bad486...), and BOTH new rows are present in the shipped copy
+    ("reading of the SEARCH" x1, "sentence that carries it" x1). So t35's deliverable traveled, exactly as
+    the pre-pack window predicted.
+  * t35's own pre-pack reading (25 expected-after-pack, this file named) is thereby superseded by
+    `expected-after-pack: 0` — the same number moved by the pack, not by a rewrite.
+
+PROCESS SELF-CORRECTION (mine, recorded): my FIRST post-repack probe was mis-constructed — a stray character
+broke the redirect and it wrote to the per-call tmpfs, so it reported `exit=2` with an empty log and I nearly
+read that as a gate failure. It is a COMMAND-BUILD artifact, not a reading; the valid reading is the one
+above, captured in this directory (`closure-after-repack.log`). Same family as A12c/A16: the instrument,
+not the tree.
+
+== ADDENDUM 20 (appended): F-3-class self-audit for lane C — every slip of this lane now has a durable record ==
+
+Triggered by t34's F-3 ("a slip with no durable record"): I audited THIS lane's slips by grepping my own
+evidence for each and asking whether it exists on disk or only in traffic.
+  RECORDED ON DISK (checked, not assumed):
+    * the two invalid falsification methods (pinned-stamp-to-now; copy-inferred stamps) -> falsification.v1.json
+      / v2.json plus the method_note in falsification.json;
+    * the pattern-artifact grep misses (twice: the wrapped dist literal; the negated class crossing '-' in a
+      filename) -> readings.log ADDENDUM 1 (t13 evidence) and ADDENDUM 12c/16 here;
+    * the accidental command execution from backticks -> ADDENDUM 12c, with the side effect bounded and the
+      "nothing was written" claim re-measured (A17);
+    * the unmeasured "55 rows" number -> ADDENDUM 8 / A8;
+    * the abbreviated example paths -> A14 in this file + the t55-t90 row that carries the `-e` measurement;
+    * the mis-constructed post-pack probe (exit=2 from a broken redirect) -> ADDENDUM 19.
+  MESSAGE-LEVEL ONLY, NOW RECORDED HERE: the closing line "the re-pack waits only on t32" appeared in a
+  message to lane A while the wave was already in its review/repair loop (t32 had COMPLETED pass, t34 had
+  FAILED needs_revision, t38 was claimed by the captain, t39 pending). It is a STALE-STATE CLAIM, not a
+  measurement: superseded within the same hour by my own post-pack verification (stamp 2026-09-17T08:55:57Z,
+  closure 1181/1181/0 drift/0 expected) and by the authority read-back in this addendum. No artifact or
+  reading changed because of it.
+  RESULT: lane C has no slip that lives only in traffic. That is stated as a claim about MY lane and about the
+  slips I can enumerate, not as a claim about anyone else's.
+
+== ADDENDUM 21 (correction of MY OWN A18 sentence, appended): the artifact is not instrument-free wholesale ==
+
+LANE A'S CORRECTION, RE-TAKEN BY ME ON THE PACKED TREE (their count, my re-measurement — identical):
+  `find dist/mpd-package -name '*.test.*' -type f` -> SEVEN files, all under the SKILLS corpus:
+    skills/programming/scripts/typescript/check-no-excuse-rules.test.ts
+    skills/visual-qa/scripts/{ansi,cli,east-asian-width,image-diff,png-decode,tui-grid}.test.ts
+  and `find dist/mpd-package/packages -name '*.test.*'` -> ZERO. The plugged packages ship
+  `dist README.md README.zh-CN.md` (watchdog) and `assets _deps lib …` (agent-teams), with no test trees.
+
+SO MY A18 SENTENCE "only BEHAVIOUR travels with the artifact" IS TOO BROAD as written. The precise form,
+which supersedes it:
+  * NO PLUGIN ARM TRAVELS: lane C's 12 arms, lane A's `self-fix-tests/**` lane and `evidence/**` in its
+    entirety are repo-only, and my arms cannot even resolve from a pack (`../src/...` is not shipped for the
+    watchdog package) — the bound stands where it matters;
+  * BUT the artifact is not instrument-free: the SKILLS CORPUS ships seven of its own script tests, which
+    are corpus assets (lane D's turf), NOT plugin instruments, and no reddening proof for a plugin delta.
+  A report sentence like "no test ships in the artifact" would be FALSE as measured; the safe sentence is
+  "no plugin ARM travels; the skills corpus ships its own seven script tests".
+  * The attribution split: the bound is lane C's (A18); the correction and its 7-file count are lane A's; my
+    re-measurement above is the second seat. Lane A also disclosed a mislabel in their own first `find`
+    ("(empty = no instrument travels)" while the output showed hits) — recorded as theirs, not smoothed.
+
+== ADDENDUM 22 (appended): a citation I AVOIDED, and the surviving homes for the ARTIFACT-BEHAVIOUR pair ==
+
+Lane A reports (and I re-measured nothing of theirs — this is their news, taken as theirs) that the captain
+ruled the shipping bound gets exactly TWO homes — captain log §A-48 and report §6 as a post-review addendum
+— and that their `wave2b-notes/2b-refinements.md` §7 (the section I had praised for naming
+ARTIFACT-BEHAVIOUR vs REPO-ARM READING) was therefore DELETED, so that 2b has no third home to reconcile.
+
+CHECKED ON MY SIDE, because I had cited §7 in a message: a grep of my evidence for `2b-refinements`,
+`wave2b-notes`, `§7` and `section 7` finds NO citation of it — the only hits are an unrelated
+"design §B.2/§7" inside an old lane log from a different plugin's test names. So nothing of mine needs
+withdrawing; what I must do is simply NOT cite §7 from here on, and I have not.
+
+SURVIVING HOMES FOR THE PAIR I LIKED: lane C's A18/A21 (this file) + §A-48 / report §6. That is now the
+ruling's shape, not a preference: two homes, one of them mine, and no third carrier — which is also why my
+offer to "leave the pair as it stands" turns out to have been the ruling rather than a courtesy.
+
+THE GUARD THAT TRAVELS WITH THE NUMBERS (lane A's, accepted): any sentence of the form "no test ships" is
+FALSE as measured — seven corpus script tests DO ship under `dist/mpd-package/skills/**` — so the report's
+wording must carry the corpus exception explicitly: "no plugin ARM travels; the skills corpus ships its own
+seven script tests."
+
+== ADDENDUM 23 (appended): the wave archived under me — how to cite an archived task, and lane C's live status ==
+
+MEASURED 2026-09-17T09:40Z (read-only), because the previous few messages of mine quoted state that had
+already moved:
+  * `agent_teams_status` wave line: "Wave: w2 (open since 2026-09-17T09:28:54.223Z) · archived:
+    w1-wave-2a-closed -> 42 task(s) at 2026-09-17T09:28:54.223Z". So wave 2a is CLOSED and archived; my
+    earlier "t42 in_progress, the only open item" was a read of a wave that then closed.
+  * the ARCHIVE `.mpd/team/friction-p2-wave/waves/w1-wave-2a-closed.json` (742,953 B, keys team_id ..
+    closedBy, 42 tasks) carries the loop's final states: t32 completed/pass · t34 failed/needs_revision ·
+    t37 completed · t38 completed · t39 failed/needs_revision · t40 completed/pass · t41 completed ·
+    t42 completed/pass. So the 2a review loop ended with t42 PASS.
+  * LIVE list in w2: t1 completed (the 2b plan), t2 FAILED/needs_revision (plan review, 2 findings),
+    t3 claimed (repair-round-2, Planner), t4 pending (review-round-2, Plan Reviewer). Lane C has NO live
+    task in w2: the open work is planning/plan-review, and the scheduler assigns lane-C work if the captain
+    creates it.
+
+THE CITATION RULE (lane A's formulation, accepted; four instances now, all in ~40 minutes and all the same
+shape): cite an ARCHIVED task by **id + wave label + archive file** — e.g. `t42` + `w1-wave-2a-closed` +
+`.mpd/team/friction-p2-wave/waves/w1-wave-2a-closed.json` — and re-verify its STATUS from the archive rather
+than from the quote, because `agent_teams_task_contract` on an archived id answers only the LIVE list
+("known tasks: t1") and no surface redirects a reader to the archive. Instances: mine (t42 as "in_progress,
+the only open item"), lane A's (t42 as in_progress), the Architect's (corrected by lane A), and — measured
+while writing this — lane A's own latest message's "t2 in_progress" is already superseded (t2 is now
+FAILED with 2 findings, t3 claimed, t4 pending). Four seats, four instances, no disagreement about any FILE.

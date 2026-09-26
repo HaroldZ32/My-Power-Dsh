@@ -1,0 +1,96 @@
+# t10 evidence - independent verification of t4 (F1/F5) + t5 (template/scaffold)
+# utc: 20260916T062431Z
+
+===== my drivers (written and run by the verifier) =====
+  arms-adapter-identity.mjs  sha256 d2bebe9b74f8a055783f3af3dbd4753cc62fc33a767dbed58b03e4d667324581
+  invariance-and-discovery.mjs  sha256 8771e84c9217225c9d4e5616f9a72add752fc55a7f8da9d7290d9300dfa7a3bb
+  falsify-preset-rewrite.mjs  sha256 b0b3c5ce6fb8896d3cab73dfc686c4dfc46c1c60f99ea1b394eef0f19c605292
+
+===== V2/V3: real mounted boot I started =====
+boot evidence dir: evidence/dsh-qa/bundle-lifecycle/2026-09-16T06-25-17.760Z/
+pre-change baseline: evidence/dsh-qa/bundle-lifecycle/2026-09-16T02-55-38.803Z/ (committed, pre-change)
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-16T06-25-17.760Z
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_PATH=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-16T06-25-17.760Z/home/profiles/w/node_modules/@mpd-dsh/mpd/presets/mpd/agent.cordis.yml trust=system
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,agents,events ABSENT=compaction,compactionForAgent
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer
+[roles-probe] AGENT_TEAMS_TOOLS=7/7
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=true
+[roles-probe] TEAM_COMPACT_TOOLS=2/2
+[roles-probe] TOOL_PARAM_SCHEMAS=56/56
+[roles-probe] SKILLS=18 BUNDLED=18 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/root/dshProj/my-power-dsh/skills/svn-master bytes=5210
+[roles-probe] PASS
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+
+===== V3: dist freshness (rebuild into temp, diff) =====
+c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe  packages/mpd-ext-plugin/dist/index.js
+c5c6f9e0619e36c4e59a283a9feaf3eaa0654d93efc4d4219059fde28c4a9bbe  evidence/extensions/verify-code-template/20260916T062431Z/tmp/mpd-ext-plugin.rebuilt.js
+dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0  packages/mpd-roles-plugin/dist/index.js
+dc803f5b98c2d2c51f062d4122c7b6a60e21ac075f055e6164220357369da5f0  evidence/extensions/verify-code-template/20260916T062431Z/tmp/mpd-roles-plugin.rebuilt.js
+
+===== V4: template validate + scaffold arms + negative controls =====
+[mpd-ext] validate /root/dshProj/my-power-dsh/templates/mpd-extension (plane=user)
+  extension "mpd-extension-template": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+exit=0
+--- scaffold --with-mcp + validate ---
+  next: bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/with-mcp/demo-ext
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/with-mcp/demo-ext (plane=user)
+  extension "demo-ext": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "demo-ext" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+--- scaffold default + validate ---
+  next: bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/default/demo-two
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/default/demo-two (plane=user)
+  extension "demo-two": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok
+--- neg-broken-persona (exit ) ---
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona (plane=user)
+  extension "demo-ext": loadable
+  contributes: 1 skill(s), 1 flow(s), 0 role(s), 1 mcp server(s)
+  error contributes.roles[0].persona: persona file does not exist: /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona/personas/nope.md
+  error contributes.roles[0]: refused: persona file is not readable: /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-persona/personas/nope.md
+  pending contributes.mcp[0]: pending: server "demo-ext" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+--- neg-missing-id (exit ) ---
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-no-id (plane=user)
+  extension "unnamed": REJECTED
+  error id: id is required and must match ^[a-z0-9][a-z0-9-]{0,63}$
+[mpd-ext] 1 problem(s) — this extension would not load
+--- neg-missing-skill-root (exit ) ---
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root (plane=user)
+  extension "demo-ext": loadable
+  contributes: 0 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  error contributes.skills[0]: cannot read skills root /root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root/skills: ENOENT: no such file or directory, scandir '/root/dshProj/my-power-dsh/evidence/extensions/verify-code-template/20260916T062431Z/raw/scaffold/neg-skill-root/skills'
+  pending contributes.mcp[0]: pending: server "demo-ext" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] 1 problem(s) — this extension would not load
+
+===== other commands =====
+--- cli-self-test (exit n/a) ---
+--- ext-unit-tests (exit n/a) ---
+--- roles-unit-tests (exit n/a) ---
+--- docs-parity (exit n/a) ---
+--- rows-parity (exit n/a) ---
+--- discovery-roots (exit n/a) ---
+--- pack-mpd.md5 (exit n/a) ---
+48423930ff3e7f2b17ec2176936e4ce9  scripts/pack-mpd.mjs
+--- scaffold-server-count.txt (exit n/a) ---
+0
+
+===== author driver re-run by me (--out into MY dir) =====
+  ok   node scripts/verify-docs-parity.mjs exits 0 — [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=36 failed=0 violations=0 exempt=16 — PASS
+
+[t5 evidence] 39/39 checks passed, 0 failed

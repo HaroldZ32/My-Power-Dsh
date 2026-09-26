@@ -1,0 +1,15 @@
+== every mpd-delta region block, per adopted file (region markers) ==
+command.js                               1
+index.js                                 2
+members.js                               1
+profiles.js                              3
+quality-gates.js                         7
+scheduler.js                             13
+session-start.js                         2
+state.js                                 4
+tools.js                                 20
+
+== registry module ==
+53
+== --check ==
+[patch-agent-teams-fixes] already applied: 53 mpd delta region(s) across 9 adopted file(s)

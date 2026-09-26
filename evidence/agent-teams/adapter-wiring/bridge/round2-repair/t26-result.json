@@ -1,0 +1,59 @@
+{
+  "task": "t26 — repair round 3 (findings F2..F5 of review round 2)",
+  "seat": "Senior Engineer",
+  "attempt": 1,
+  "attempt_id": "79222e7e-74db-47b3-ac94-84d3d83ce34e",
+  "read_moment": "2026-09-19T16:16:49Z",
+  "item1_captain_ruling": "option (a) adopted by the captain: review rounds are scoped at TASK level to AC1-AC13/AC15/AC16 and AC14 is carried by the integration lane t10 (whose acceptance item 1 IS AC14). No contract edit by this lane; recorded here as the ruling.",
+  "item2_F2_bilingual": {
+    "docs/design.md": {
+      "sha256": "91a153031268fdaa09369dd426b033a0bc3c381d1c5ce3832b84423c0aa23fe4",
+      "change": "absolute closure sentence qualified with the counted setup(childCtx, child) residual (five lines in lib/members.js, asserted line-by-line, vendored-helper + legacy-Alpha.2 reason)"
+    },
+    "docs/design.zh-CN.md": {
+      "sha256": "ace6a393173f3afef92bf933a4ce8c3a3d5d1b7963f1da56cf35c5afba2bf692",
+      "change": "the same qualifier in 简体中文, same change"
+    },
+    "agent-references/agent-teams-deltas.md": {
+      "sha256": "2d98f7e9173e18278c078048eae1f83b38ea4de971511aa202ead58e3303c9c1",
+      "change": "OPTIONAL clause also qualified (wave paragraph; the R5 count sentence is untouched)"
+    }
+  },
+  "item3_F3_four_spots_and_flags": {
+    "spots": [
+      "docs/design.md",
+      "docs/design.zh-CN.md",
+      "packages/mpd-dsh-adapter-plugin/README.md",
+      "packages/mpd-dsh-adapter-plugin/README.zh-CN.md"
+    ],
+    "wording": "each reuse AGENTS.md's parenthetical: 'each behind a capabilities() flag (one flag may cover two methods; subagentRuntime reuses the existing subagents flag)' / 一个标志可覆盖两个方法；subagentRuntime 复用既有的 subagents 标志",
+    "flag_list": "README pair lists now carry 14 names each (was 13): both measured — toolsRegisterHost, subagents, subagentsProvider, subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection, agentScope, commandsRegister, agentTurnStart, agentTurnCancel, agentTurnSteer, agentTurnInject",
+    "readmes": {
+      "en": "420b4894cf4c632fb8e1d3ada4be188957b9169214702aaaa296e59c02e765d9",
+      "zh": "c41fa806e7586cd5622edcc696d668572a07e2895e223142b8d76073fe6273af"
+    }
+  },
+  "item4_F4_choice": "RULES ADDED (not the declared bound): `facade.get-extraction` (const g = ctx.get), `facade.get-destructure` ({ get } = ctx), `scoped-ctx.extraction` (const t = agent.ctx.tools), `scoped-ctx.destructure` ({ restrict } = agent.ctx.tools), plus the spellings the review measured: late assignment (`let a; a = ctx.agents`) and parenthesized receiver (`(ctx).agents`) are now caught by the broadened facade.alias rule.",
+  "item5_F5_ownership": {
+    "declaration": "the guarded scanner edit (LADDER_CAPTURES exemption, 16:07:10Z) was AUTHORED BY THIS LANE as the t23 follow-up, and t26 OWNS the path now (packages/mpd-agent-teams-plugin/test/**) — the reviewer's 'no open task owns it' is answered by t26.",
+    "not_reverted": "per the reviewer's own audit that the exemption suppressed nothing on the current bytes; and this pass GAVE IT A JOB: the new `seam.captured-method-call` rule covers the bare `prompt.call(runtime, …)` form, so the exemption now suppresses exactly the ladder's legitimate captures in harness-compat.js (D6/R2) while another module's same spelling reddens.",
+    "arms": [
+      "harness-compat.js prompt.call(runtime, …) -> clean (exempt)",
+      "members.js prompt.call(runtime, …) -> seam.captured-method-call (reddens)",
+      "members.js legacy.call(runtime, …) -> seam.captured-method-call (reddens)"
+    ],
+    "scanner": {
+      "path": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+      "sha256": "4d8fb3e3b0da2308f4eec468d2b09f796f17962954bd4b87fee06749fec61b2b"
+    }
+  },
+  "sweep": {
+    "bun test packages/mpd-agent-teams-plugin": "361 pass / 0 fail / 5290 expect() calls, exit 0",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 151 regions / 13 files",
+    "bun run typecheck": "exit 0",
+    "git status --porcelain -- test self-fix-tests": "only ?? entries (no ' M ')",
+    "bun run verify:docs": "PASS — pairs=38 failed=0 violations=0 (bilingual pair edited in the same change)",
+    "bun run verify:gates": "PASS — 5/5 member gates green",
+    "log": "evidence/agent-teams/adapter-wiring/bridge/round2-repair/t26-sweep.log"
+  }
+}

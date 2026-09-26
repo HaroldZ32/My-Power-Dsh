@@ -1,0 +1,37 @@
+{
+  "kind": "correction",
+  "corrects": "../RED-CLASSIFICATION.md §5 (the runner reason-label wave-2 row)",
+  "agent": "docs-gate-engineer",
+  "date": "2026-09-17T05:42Z",
+  "parentByteUntouched": {
+    "file": "../RED-CLASSIFICATION.md",
+    "restoredToSealTimeText": true,
+    "bytes": 4563,
+    "sha256_after_restore": "c185c01dc1a021539ef4b50f69200ba913b158f38e526411cabbe8b699f7486f",
+    "sha256_before_restore": "dd9bee06919eea7e9296d53f675261405782da0066688a3220287d5dc0f2629a",
+    "note": "the 4,563 B size matches the board's seal-time size, and §5's body is byte-identical to its seal-time text"
+  },
+  "statusUpdate": {
+    "row": "the runner's reason code came from a whole-log text match; the lane's expected 401 fence surfaced as reason=unauthorized while the failing step was archive",
+    "from": "wave-2 row filed by the board",
+    "to": "DONE in wave 1",
+    "by": ["t73 (the ladder landed)", "t74 (independent verification, this seat)"]
+  },
+  "ladder": {
+    "runner": { "before": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e (independent t15 record)", "after": "6bea2b38de2a4ac76ddb672b25bdc5f226e870bdd45cafb9026ae9e3c9c9ded0", "bytes": 44774 },
+    "rungs": ["1 markers (pass / prereq-marker → unavailable / FAIL → fail / SKIP+nonzero → fail)", "2 failingStepFromEvidence() — the lane's own steps{name:{ok}}", "3 detectSignaturesScoped() — tailRegion(log,200) + evidence; whole-log scan demoted to alsoDetected"],
+    "arms": ["fx-401 reason=unauthorized (401 is a REAL failure, never a prerequisite absence)", "fx-both reason=unauthorized with alsoDetected[0]=absent-credentials", "fx-expected-fence reason=step:archive, signature.code=step:archive, alsoDetected contains unauthorized, verdict still fail"]
+  },
+  "independentReplay": {
+    "fixture": "evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay (mine)",
+    "output": "FAIL case=replay-adopt reason=step:archive prereq=\"the lane's own evidence marks step `archive` as failed\" signature=…/plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1",
+    "livePassIsNotTheFix": "agent-teams-adopt is green today (77,649 ms) and cannot demonstrate a label"
+  },
+  "disclosure": {
+    "whatHappened": "after the author's diagnosis arrived I edited ../RED-CLASSIFICATION.md IN PLACE twice (new §5 body; then a corrected sentence inside it about the 'corpus lock' rationale, which was wrong)",
+    "whyItWasWrong": "the board is a closed record; the wave's rule is a nested correction with the parent byte-untouched (as the t66 count corrections were filed)",
+    "remedy": "§5 restored to its seal-time text; the pre-restore copy's sha is recorded above; everything those edits carried now lives in this correction's README §3",
+    "correctedSequencingReason": "the repair waited because t32 was reviewing lane C at that moment — NOT because anything was frozen (runner is neither under skills/** nor packed; packer mentions it 0 times)"
+  },
+  "artifacts": ["README.md (this correction's narrative)", "result.json (this file)", "verification evidence: evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/**", "author's filing: evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/result.json"]
+}

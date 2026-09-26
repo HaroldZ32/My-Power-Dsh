@@ -1,0 +1,2011 @@
+{
+  "generated_at": "2026-09-17T01:20:26.329Z",
+  "agends_md_sections_present": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "named_agents_md_citations": [
+    {
+      "file": "PLAN.md",
+      "line": 22,
+      "text": "dsh-mcp-client, dsh-agent-instructions (AGENTS.md injection), compaction, storage, Web GUI."
+    },
+    {
+      "file": "PLAN.md",
+      "line": 87,
+      "text": "├── AGENTS.md                # this repo's gates (aligned with the discipline spirit of upstream's root AGENTS.md)"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 90,
+      "text": "├── packages/                # one capability one plugin, structure aligned with upstream packages/ (src + *.test.ts + AGENTS.md)"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 135,
+      "text": "2. **Gate docs**: write this repo's AGENTS.md, codifying §5's test/QA gates into rules (aligned with the gate spirit of upstream's root AGENTS.md)."
+    },
+    {
+      "file": "PLAN.md",
+      "line": 253,
+      "text": "| T7 | Stage gates: changes must run the corresponding QA and land evidence (AGENTS.md gate) | This repo's AGENTS.md codifies the same gate; stage acceptance = all plugins of that stage have test + tsgo + QA evidence complete |"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 332,
+      "text": "1. git init + first commit for this repo (PLAN/README/LICENSE-NOTICES/VENDOR_LOCK/AGENTS.md skeleton);"
+    },
+    {
+      "file": "README.md",
+      "line": 23,
+      "text": "to `AGENTS.md`, then `CLAUDE.md`, at the start of every session."
+    },
+    {
+      "file": "README.md",
+      "line": 238,
+      "text": "| [`AGENTS.md`](./AGENTS.md) | The binding repository manual for agents and maintainers |"
+    },
+    {
+      "file": "README.zh-CN.md",
+      "line": 19,
+      "text": "- **自动加载项目规则** —— 每次会话开始时，智能体会尝试读取 `AGENT.md`，回退到 `AGENTS.md`，"
+    },
+    {
+      "file": "README.zh-CN.md",
+      "line": 221,
+      "text": "| [`AGENTS.md`](./AGENTS.md) | 面向智能体与维护者的仓库手册（英文） |"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 1,
+      "text": "# Adopted agent-teams delta registry (the body of AGENTS.md §6)"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference for the repository manual `AGENTS.md`. This file is **not"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 4,
+      "text": "auto-injected** into a session — it is deliberately not named `AGENT.md`/`AGENTS.md`/`CLAUDE.md`,"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 6,
+      "text": "section\" means `AGENTS.md` §6 (\"Plugin Authoring Guide\"), and every `§N` citation refers to"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 7,
+      "text": "`AGENTS.md` sections, whose numbering is stable."
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 9,
+      "text": "Provenance: moved verbatim from `AGENTS.md` §6 on 2026-09-17 by the T-22 instruction-budget split."
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference files for the repository manual `AGENTS.md`. They live outside"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 4,
+      "text": "the instruction-file discovery path (no `AGENT.md`/`AGENTS.md`/`CLAUDE.md` here), so they are never"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 5,
+      "text": "auto-injected: an agent opens them when `AGENTS.md`'s \"Reference Index (on-demand)\" section, or a"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 6,
+      "text": "pointer inside `AGENTS.md`, sends it here."
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 13,
+      "text": "| `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 14,
+      "text": "| `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D26 table, registry mechanics, live region count, wave-2 driver-script warning (former `AGENTS.md` §6 body) |"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 1,
+      "text": "# Troubleshooting reference (the body of AGENTS.md §12)"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference for the repository manual `AGENTS.md`. This file is **not"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 4,
+      "text": "auto-injected** into a session — it is deliberately not named `AGENT.md`/`AGENTS.md`/`CLAUDE.md`,"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 6,
+      "text": "to `AGENTS.md` sections, whose numbering is stable."
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 8,
+      "text": "Provenance: moved verbatim from `AGENTS.md` §12 (\"Troubleshooting (known)\") on 2026-09-17 by the"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 45,
+      "text": "| AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |"
+    },
+    {
+      "file": "docs/architecture.md",
+      "line": 219,
+      "text": "| **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library (`<key>/` instances + `.archive/` — deleted instances moved out of the library, restorable by a manual `mv` back) — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |"
+    },
+    {
+      "file": "docs/architecture.md",
+      "line": 229,
+      "text": "that renames or reshapes a seam is absorbed in one file (AGENTS.md §6)."
+    },
+    {
+      "file": "docs/architecture.zh-CN.md",
+      "line": 191,
+      "text": "| **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库（`<key>/` 实例 + `.archive/` —— 已删除实例被移出库、手动 `mv` 搬回即可恢复）—— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |"
+    },
+    {
+      "file": "docs/architecture.zh-CN.md",
+      "line": 200,
+      "text": "更名或改变某个接缝时，只需改一个文件（AGENTS.md §6）。"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 10,
+      "text": "├── AGENTS.md              binding manual (read FIRST)"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 61,
+      "text": "**Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 137,
+      "text": "**QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 150,
+      "text": "## 5. Gates (AGENTS.md §4)"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 159,
+      "text": "| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount). `dsh --profile <p> --dump-config` composes rows only and is NOT this gate (AGENTS.md §4) |"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 10,
+      "text": "├── AGENTS.md              约束手册（先读）"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 57,
+      "text": "**Harness 接缝（约束性规则，AGENTS.md §6）：** 插件行不得直接调用 `ctx.tools`、"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 127,
+      "text": "**QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 138,
+      "text": "## 5. 门禁（AGENTS.md §4）"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 147,
+      "text": "| 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.mjs`（`mpd` preset 的 standing 挂载）。`dsh --profile <p> --dump-config` 只组合行，**不是**该门禁（AGENTS.md §4） |"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 43,
+      "text": "as load evidence anywhere (AGENTS.md §4)."
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 188,
+      "text": "one-contact-surface rule (AGENTS.md §6) with no warning. The identical swallowed-error class has"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 214,
+      "text": "would force a second `VENDOR_LOCK.json` re-pin, while this wave keeps exactly one (AGENTS.md"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 300,
+      "text": "`treeSha` is a blocking gate (AGENTS.md §9/§11): the `skills/dsh-qa/SKILL.md` extension rows no"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 398,
+      "text": "re-pin, in the same change set as the F8/F9/F10 edits (AGENTS.md §9/§11), verified by"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 412,
+      "text": "entry is packed either. AGENTS.md §4's Extension-CLI gate therefore holds in a CHECKOUT (where both"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 21,
+      "text": "**关于证据强度的诚实说明。** 所有 live 断言都完全依赖验证任务的产物（`evidence/extensions/t7-verify/20260916T045829Z/` 及其点名的两个 lane 目录）；该任务的锚点是 HEAD `8777e43` **加上** lane 对象的 sha256，因为让最后两条红色分支转绿的修复仍停留在未提交的工作树里。本波任何地方都没有把 `--dump-config` 当作加载证据（AGENTS.md §4）。"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 89,
+      "text": "- **F1（中）—— adapter 身份回退分支是静默的。** `mpd-ext` 与 `mpd-roles` 都以 `ctx.get(\"mpdDsh\") ?? createDshAdapter(ctx)` 解析 adapter（`packages/mpd-ext-plugin/src/index.ts:207`、`packages/mpd-roles-plugin/src/index.ts:318`）。一旦挂载查找落空，该行就会在树里已挂载的 adapter 之外**再构造一个**，违反“单一接触面”规则（AGENTS.md §6），且没有任何告警。同一类被吞掉的错误曾在同一个文件里导致四个工具根本没注册（`src/index.ts:44-51`），这正是该行现在要统计注册结果的原因（`:462-475`）——回退分支是唯一仍未埋点的分支。"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 96,
+      "text": "- **F8（低，本波刻意豁免）—— lifecycle lane 仍叙述修复前的预期。** `skills/dsh-qa/scripts/extension-lifecycle.mjs:35-42` 仍写着“This wave's expectation is a RED … THE FIX IS t11's”，其打包分支仍返回 `greenOwner: \"t11\"`（`:386`）。这是刻意豁免而非遗漏：技能语料库每波只有一个写入者，第二次改动 `skills/**` 会强制第二次 `VENDOR_LOCK.json` 重新钉版，而本波只保留一次（AGENTS.md §9/§11）——且这一次已经用在 mcp-bridge schema 分支的修正上（`evidence/extensions/t13-repair/20260916T045324Z/`）。此处记录，供下一波并入其唯一一次重新钉版。"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 121,
+      "text": "- **已修复，而非推迟（t13，t14 复核 PASS）**——两项 `skills/**` 条目，任何文档任务都碰不得，因为技能语料库每波只有一个写入者，且其 `VENDOR_LOCK.json` 的 `treeSha` 是阻塞门（AGENTS.md §9/§11）：`skills/dsh-qa/SKILL.md` 的扩展行不再承诺一条“必须为红”的打包分支，桥 lane 的 `schema` 分支现在断言实际发布的 keep-or-drop 规则。同一次改动携带了本波唯一一次重新钉版（`9e643d07… → 7a48fdad…`）。"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 201,
+      "text": "同一次改动、与 F8/F9/F10 的修改在同一变更集内（AGENTS.md §9/§11），并由 `node scripts/verify-vendor.mjs`"
+    },
+    {
+      "file": "docs/extension-adaptation-report.zh-CN.md",
+      "line": 213,
+      "text": "而 `scaffold` 与 `--self-test` 仍失败，因为 `templates/` 也没有被打包。因此 AGENTS.md §4 的"
+    },
+    {
+      "file": "docs/feature-audit.md",
+      "line": 6,
+      "text": "AGENTS.md §1 references it as the engineering target. Historical port-plan records"
+    },
+    {
+      "file": "docs/feature-audit.md",
+      "line": 24,
+      "text": "| Rules / AGENTS.md | nested rule discovery & injection | ✅ | DSH agent-instructions (baseline + nested + change tracking) |"
+    },
+    {
+      "file": "docs/feature-audit.zh-CN.md",
+      "line": 5,
+      "text": "本文档是移植的**当前基线/能力对照**：AGENTS.md §1 将其引用为工程目标。历史移植规划记录"
+    },
+    {
+      "file": "docs/feature-audit.zh-CN.md",
+      "line": 23,
+      "text": "| Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 22,
+      "text": "| [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 29,
+      "text": "| [`feature-audit.md`](feature-audit.md) | engineers | The engineering baseline: pinned upstream `8c57e46` (v5.0.0-beta.20) spec vs port status (the capability target `AGENTS.md` §1 points at). |"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 65,
+      "text": "spec; `AGENTS.md`, `docs/feature-audit.md` and the docs above are current."
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 21,
+      "text": "| [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册（英文）：约定、关卡、git 模型、故障排查。 |"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 28,
+      "text": "| [`feature-audit.zh-CN.md`](feature-audit.zh-CN.md) | 工程师 | 工程基线：固定的上游 `8c57e46`（v5.0.0-beta.20）规格与移植状态对照（即 `AGENTS.md` §1 指向的能力目标）。 |"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 60,
+      "text": "记录了移植决策与证据时间线。它们是历史，而不是当前规范；当前规范是 `AGENTS.md`、"
+    },
+    {
+      "file": "docs/omo-parity-gap.md",
+      "line": 55,
+      "text": "ported into `skills/` (AGENTS.md layout): ast-grep, coding-agent-sessions, data-scientist,"
+    },
+    {
+      "file": "docs/plan-c.md",
+      "line": 55,
+      "text": "- `AGENTS.md`: naming addendum — self-written = `mpd_*`; adopted third-party plugins keep vendor ids (`agent-teams`, context7, grep_app precedent)."
+    },
+    {
+      "file": "docs/plan-c.md",
+      "line": 122,
+      "text": "- Naming: self-written `mpd_*`; adopted third-party keeps vendor names (AGENTS.md addendum)."
+    },
+    {
+      "file": "docs/plan-d.md",
+      "line": 78,
+      "text": "P6. Docs: AGENTS.md install section, README quickstart, plan-c/decisions append; deprecate"
+    },
+    {
+      "file": "docs/plan-e.md",
+      "line": 5,
+      "text": "E5 (version 0.2.3 + all AGENTS.md gates green; evidence under `evidence/plan-e/`)."
+    },
+    {
+      "file": "docs/plan-e.md",
+      "line": 114,
+      "text": "`dev`, `--no-ff` merges, commit messages per AGENTS.md."
+    },
+    {
+      "file": "docs/plan-f.md",
+      "line": 14,
+      "text": "(AGENTS.md/CLAUDE.md). The bundle therefore ships a single main preset `mpd`"
+    },
+    {
+      "file": "docs/plan-f.md",
+      "line": 16,
+      "text": "`instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` and whose"
+    },
+    {
+      "file": "docs/plan-f.md",
+      "line": 66,
+      "text": "- Docs: AGENTS.md (layout tree, §1 subagent convention, §6 bootstrap exception,"
+    },
+    {
+      "file": "docs/plan-team-watchdog-report.md",
+      "line": 10,
+      "text": "`docs/**`, `VENDOR_LOCK.json` or `AGENTS.md` was touched; the only writes are this file and"
+    },
+    {
+      "file": "docs/plan-team-watchdog-report.md",
+      "line": 147,
+      "text": "| **t54 amendment 1** (w3) | The `mpdWatchdog` hold service was published after t54 closed: the row's `provide(HOLD_SERVICE, …)` reader with `isHeld/holds/list/hydrate/hydratedRoots/gateCall` plus the front-door reads (`heldTeams/unread/acknowledge/view`). Trigger: the captain's briefing carried **AMENDMENT 2** of the frozen plan, which the first run had never read (the plan's mtime 15:49:35Z preceded the first package file at 15:57:12Z — a genuine recon miss, disclosed in the record). | t54 was already terminal; re-opening it would have pinned every dependent (`AGENTS.md` §12's failed/cancelled-dependency trap). A NEW timestamp directory was written instead, leaving the first run's evidence untouched. | `evidence/team-watchdog/plugin/20260915T162351Z/{RESULT.md,result.json}` |"
+    },
+    {
+      "file": "docs/plan-team-watchdog-report.md",
+      "line": 230,
+      "text": "AGENTS.md §12: **every `team-watchdog-*.mjs` lane drives the built modules in-process and never spawns a"
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 83,
+      "text": "| **[AMEND-1]** The adapter wraps BOTH tool families but exposes only a POST hook; `guardTool` is contractually read-only | `packages/mpd-dsh-adapter-plugin/src/index.ts:273`/`:529` (`guardTool`), `:274`/`:535` (`onPostToolExecute`), `:279`/`:564` (`executeTool` = the internal tool seam); `AGENTS.md` §6 |"
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 129,
+      "text": "captain's commit (`AGENTS.md` §9/§11)."
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 171,
+      "text": "never mounts the plugin (`AGENTS.md` §4: composition is not a load)."
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 181,
+      "text": "| **[AMEND-1]** `packages/mpd-dsh-adapter-plugin/src/index.ts` (a mutate-shaped `tools/execute` gate so a PRE-call heartbeat stamp is possible; `guardTool` stays read-only) | adapter | edit (OUR contact surface, `AGENTS.md` §6) | N/A — an adapter change absorbs harness drift; **no delta region** |"
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 216,
+      "text": "impl `:535`) — the PRE gate and the POST waterfall — and `guardTool`'s contract in `AGENTS.md` §6 is"
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 332,
+      "text": "settle window (`AGENTS.md` §7)."
+    },
+    {
+      "file": "docs/plan-team-watchdog.md",
+      "line": 395,
+      "text": "(`AGENTS.md` §12: a failed dependency pins its dependents forever — create new downstream tasks"
+    },
+    {
+      "file": "docs/plan-tui-edition.md",
+      "line": 6,
+      "text": "> are process records and are exempt from the bilingual-document rule (AGENTS.md §3). The evidence they"
+    },
+    {
+      "file": "docs/plan-tui-edition.md",
+      "line": 311,
+      "text": "is already in the bundle patch must not also live in a QA overlay (AGENTS.md §6)."
+    },
+    {
+      "file": "docs/plan-tui-edition.md",
+      "line": 338,
+      "text": "`treeSha` re-pin in `VENDOR_LOCK.json` rides in the captain's commit (AGENTS.md §9/§11)."
+    },
+    {
+      "file": "docs/plan-tui-edition.md",
+      "line": 341,
+      "text": "8. **No git writes by workers**: only the captain commits/branches (AGENTS.md §5)."
+    },
+    {
+      "file": "docs/plan-tui-team-surface.md",
+      "line": 29,
+      "text": "by the adopted plugin only), `AGENTS.md`, `VENDOR_LOCK.json`, `docs/**` (t5 owns the docs)."
+    },
+    {
+      "file": "docs/plan-tui-team-surface.md",
+      "line": 380,
+      "text": "**Frozen adapter extension (the documented job of this package — AGENTS.md §6):**"
+    },
+    {
+      "file": "docs/plan-tui-team-surface.md",
+      "line": 513,
+      "text": "and fatal in a real boot (AGENTS.md §8: a `link:` install reads the checkout's `dist/`)."
+    },
+    {
+      "file": "docs/tui-edition-report.md",
+      "line": 7,
+      "text": "> are process records and are exempt from the bilingual-document rule (AGENTS.md §3). The evidence they"
+    },
+    {
+      "file": "docs/tui-edition-report.md",
+      "line": 299,
+      "text": "> changes (AGENTS.md §9/§11). **`VENDOR_LOCK.json` and `skills/**` are outside t50's scope and were not"
+    },
+    {
+      "file": "docs/tui-parity.md",
+      "line": 86,
+      "text": "| `workmate-library/mutations` (init/rename/delete/archive) | `src/web-client.js:124-130` | absent | — | — | measured: the TUI exposes no write path to the library, which is HOME-scoped (`~/.mpd/workmate`, AGENTS.md §6 State exception); the Web tab is the only mutation door |"
+    },
+    {
+      "file": "docs/tui-parity.zh-CN.md",
+      "line": 68,
+      "text": "| `workmate-library/mutations`（初始化/改名/删除/归档） | `src/web-client.js:124-130` | absent | — | — | 实测：TUI 不暴露任何写入库的路径，而该库位于用户 HOME（`~/.mpd/workmate`，AGENTS.md §6 State 例外）；Web 标签页是唯一的变更入口 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 11,
+      "text": "> Historical records are exempt from the bilingual rule (AGENTS.md `L18–L23`). The earlier"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 40,
+      "text": "| `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.mjs`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 41,
+      "text": "| `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 42,
+      "text": "| `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 141,
+      "text": "| `L9` | `AGENTS.md` | the startup-rule section and the delta-table row describing the old behaviour |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 148,
+      "text": "No `AGENT.md` is created: the startup clause lives in `AGENTS.md` and the landing points above."
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 194,
+      "text": "a pass (AGENTS.md `§2.3`, `§4`)."
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 9,
+      "text": "> 历史记录类文档豁免双语要求（AGENTS.md `L18–L23`）。此前的 `docs/omo-parity-gap.md`"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 37,
+      "text": "| `D_SKILLS_WRITER` | 本波次 `skills/**` 的**唯一**写者是 `t5`，且仅限 `skills/dsh-qa/SKILL.md` 与 `skills/dsh-qa/scripts/session-start-team.mjs`。`t9` 本波次不写入。 | AGENTS.md `§9`：每波单写者；`skills/**` 变更会使语料 `treeSha` 失效，re-pin 必须与之同提交。基线：`afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`，328 个文件。 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 38,
+      "text": "| `D_LEDGER` | 台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 39,
+      "text": "| `D_UPSTREAM_REF` | 上游参考为 beta.62（`d1557a4b4`）；仓库基线仍为 beta.20。 | 用户裁决 1；AGENTS.md `§9`（不追上游）。 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 127,
+      "text": "| `L9` | `AGENTS.md` | 启动规则段与描述旧行为的 delta 表行 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 134,
+      "text": "**不新建 `AGENT.md`**：启动条款落在 `AGENTS.md` 及上述落点。"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 179,
+      "text": "本台账与其记录的变更**在同一提交内更新**；无证据的通过不算通过（AGENTS.md `§2.3`、`§4`）。"
+    },
+    {
+      "file": "docs/user-guide.md",
+      "line": 101,
+      "text": "(falling back to `AGENTS.md`, then `CLAUDE.md`) — the preset configures"
+    },
+    {
+      "file": "docs/user-guide.zh-CN.md",
+      "line": 94,
+      "text": "- **项目指令文件**：会话开始时，智能体必须尝试读取 `AGENT.md`（回退到 `AGENTS.md`，再回退到"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/_deps/dsh-session/lib/types/types.d.ts",
+      "line": 258,
+      "text": "* context (file-change notices, subdir AGENTS.md, skill content, cron"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "line": 75,
+      "text": "block: \"//#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\\n/** Whether a scope pattern matches EVERY path (root / `**` spellings). */\\nfunction isMatchEverythingPattern(pattern) {\\n    const raw = pattern.trim().replaceAll('\\\\\\\\', '/');\\n    return raw === '.' || raw === './' || raw === '/' || raw === '**' || raw === '**/';\\n}\\n/**\\n * A scope pair (inScope, outOfScope) that no path can satisfy, or undefined.\\n * The wave-1 defect this closes: an auto-generated repair contract listed one\\n * path in BOTH lists, so the edit its own acceptance REQUIRED was classified\\n * `out_of_scope` by the update gate (t13). Either the inScope declaration is\\n * itself forbidden by outOfScope (`pathMatchesScope(allowed, forbidden)`), or\\n * outOfScope forbids everything.\\n */\\nexport function contractContradiction(inScope = [], outOfScope = []) {\\n    const universal = outOfScope.find((pattern) => isMatchEverythingPattern(pattern));\\n    if (universal !== undefined)\\n        return { inScope: inScope[0] ?? '', outOfScope: universal };\\n    for (const allowed of inScope) {\\n        for (const forbidden of outOfScope) {\\n            // pathMatchesScope(path, pattern): `path` is the candidate changed\\n            // path. A carve-out (`packages/foo` allowed + `packages/foo/vendor`\\n            // forbidden) stays satisfiable because the forbidden pattern does\\n            // not cover the allowed DECLARATION itself.\\n            if (pathMatchesScope(allowed, forbidden))\\n                return { inScope: allowed, outOfScope: forbidden };\\n        }\\n    }\\n    return undefined;\\n}\\n/**\\n * The scope part of an auto-generated repair contract, contradiction-free.\\n *\\n * A finding's file that the source contract FORBIDS is CARVED OUT of the\\n * inherited outOfScope: the covering patterns are dropped from the result and\\n * the file is admitted to inScope, so a `needs_revision` verdict can always be\\n * acted on. The repair's own acceptance text is the authority for the paths it\\n * requires — leaving the prohibition in place would make the verdict\\n * unsatisfiable and deadlock the automatic repair loop (the wave-1 t13 defect:\\n * the generated repair listed `AGENTS.md` in BOTH lists because t10's finding\\n * required an edit that the source t7 contract's outOfScope forbade).\\n * Admissions are deduplicated against the source declaration, a path the repair\\n * is NOT required to touch keeps its prohibition, and a path the source already\\n * declared inScope does not get a second scope entry.\\n */\\nexport function repairScopeFromFindings(findings, source) {\\n    const sourceInScope = (source?.inScope ?? []).filter((pattern) => nonemptyString(pattern));\\n    const sourceOutOfScope = (source?.outOfScope ?? []).filter((pattern) => nonemptyString(pattern));\\n    const allowed = [];\\n    const allow = (path) => {\\n        if (allowed.includes(path))\\n            return;\\n        allowed.push(path);\\n    };\\n    for (const pattern of sourceInScope)\\n        allow(pattern);\\n    const required = [];\\n    for (const finding of findings) {\\n        const file = finding.file;\\n        if (!nonemptyString(file) || normalizeWorkspacePath(file) === undefined)\\n            continue;\\n        if (!required.includes(file))\\n            required.push(file);\\n        if (allowed.some((pattern) => pathMatchesScope(file, pattern)))\\n            continue;\\n        allow(file);\\n    }\\n    if (allowed.length === 0)\\n        return undefined;\\n    // A pattern the repair now requires a path through stops being a prohibition\\n    // (it is dropped); a pattern unrelated to any finding file is preserved as-is.\\n    const carved = sourceOutOfScope.filter((pattern) => !required.some((file) => pathMatchesScope(file, pattern)));\\n    return { inScope: allowed, ...(carved.length > 0 ? { outOfScope: carved } : {}) };\\n}\\n/**\\n * The B7 overlap test, as a true \\\"may two writers touch the same path\\\" relation:\\n * two declarations overlap when at least one workspace path can match BOTH, where a\\n * declaration covers exactly what `pathMatchesScope` covers — the declaration itself\\n * and everything beneath it (the dir-prefix rule), with `**` crossing separators and\\n * `*` / `?` staying inside one segment.\\n *\\n * The wave-2 body this replaces was inverted for its ONLY caller (`inScopeOverlap`,\\n * i.e. the create-task sibling validator): it called two DIFFERENT same-depth paths a\\n * collision (`docs/index.md` vs `scripts/build-mcp.mjs`) while reporting a parent and\\n * the file inside it as disjoint (`docs` vs `docs/index.md`), so it refused independent\\n * lanes and waved through the one shape that really races on a file. Measured\\n * 2026-09-14: three task creations were only unblocked by naming an unrelated task as a\\n * dependency (`evidence/mpd-naming/verifier-contract/`). The carve-out question it used\\n * to answer is asked by `contractContradiction`/`repairScopeFromFindings` through\\n * `pathMatchesScope`, never through this relation.\\n */\\nfunction scopePatternsOverlap(left, right) {\\n    if (isMatchEverythingPattern(left) || isMatchEverythingPattern(right))\\n        return true;\\n    return scopeSegmentsOverlap(left.split('/'), 0, right.split('/'), 0);\\n}\\n/**\\n * Whether two segment lists can describe the same path. A side that runs out first\\n * COVERS every path below the other (dir-prefix), which is exactly the parent/child\\n * overlap; two different literal segments can never meet.\\n */\\nfunction scopeSegmentsOverlap(left, leftAt, right, rightAt) {\\n    if (leftAt >= left.length || rightAt >= right.length)\\n        return true;\\n    const one = left[leftAt];\\n    const other = right[rightAt];\\n    if (one === '**')\\n        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt) || scopeSegmentsOverlap(left, leftAt, right, rightAt + 1);\\n    if (other === '**')\\n        return scopeSegmentsOverlap(left, leftAt, right, rightAt + 1) || scopeSegmentsOverlap(left, leftAt + 1, right, rightAt);\\n    const oneWild = scopeSegmentHasWildcard(one);\\n    const otherWild = scopeSegmentHasWildcard(other);\\n    if (oneWild || otherWild) {\\n        // The concrete side is the witness for the patterned side; when BOTH sides are\\n        // patterned the relation stays conservative (serialize rather than guess).\\n        if (!oneWild && !scopeSegmentMatches(one, other))\\n            return false;\\n        if (!otherWild && !scopeSegmentMatches(other, one))\\n            return false;\\n        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);\\n    }\\n    if (one !== other)\\n        return false;\\n    return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);\\n}\\n//#endregion mpd-delta contract-contradiction\","
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "line": 345,
+      "text": "block: \"//#region mpd-delta interjection-expiry-session-start (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\\n/**\\n * R1 dormancy fix: make \\\"captain silence = DENY\\\" resolve even for a DORMANT team.\\n *\\n * The scheduler's expiry tick rides a member IDLE EDGE (`kickMember`), so a team that\\n * never kicks again leaves a past-due request `pending` and its requester un-notified.\\n * This sweep runs at session start, so the next time anyone works in the workspace the\\n * past-due rows resolve and their requesters are told.\\n *\\n * Registered SEPARATELY from the team policy, and deliberately so: expiry is\\n * bookkeeping every session needs, not a feature of auto-routing — it must also run\\n * when `sessionTeamPolicy.mode` is `off`. Best-effort: a failure degrades to a warning\\n * and can never break or reject a session-start step.\\n *\\n * Boundary (stated, not implied): expiry is evaluated at EVENTS, never by a timer.\\n * The events are \\\"a member became idle\\\" (scheduler tick) and \\\"a session started in\\n * this workspace\\\" (this sweep). A workspace nobody ever opens again resolves nothing.\\n * @param ctx - the plugin context (needs `on` and `logger`).\\n * @param resolved - the resolved plugin config (provides `stateDir`).\\n */\\nexport function installInterjectionExpirySweep(ctx, resolved) {\\n    ctx.on('agent/pre-step', async (payload, next) => {\\n        const decision = await next();\\n        try {\\n            // ONCE PER SESSION, not per step: `agent/pre-step` fires for every step, but\\n            // this sweep is a session-start concern (see the sweep guard's declaration).\\n            const agentId = payload?.agent?.id;\\n            if (typeof agentId === 'string' && agentId !== '') {\\n                if (sweptFor.has(agentId))\\n                    return decision;\\n                sweptFor.add(agentId);\\n            }\\n            // Resolve the workspace PER CALL from the session that is starting — never a\\n            // module-level const and never the process cwd alone (one host serves many\\n            // sessions with different workspaces; AGENTS.md §6 State).\\n            const workspace = payload?.agent?.session?.header?.cwd ?? process.cwd();\\n            const swept = await expireInterjectionsEverywhere(join(workspace, resolved.stateDir));\\n            if (swept.expired.length > 0) {\\n                ctx.logger.info(`agent-teams: expired ${swept.expired.length} past-due interjection request(s) at session start: ${swept.expired.join(', ')}`);\\n            }\\n        }\\n        catch (error) {\\n            ctx.logger.warn(`agent-teams: session-start interjection sweep failed: ${String(error)}`);\\n        }\\n        return decision;\\n    }, { global: true, prepend: true });\\n}\\n//#endregion mpd-delta interjection-expiry-session-start\","
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "line": 370,
+      "text": "block: \"//#region mpd-delta message-channel-r1 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\\n/** Duplicate window for the R1 delivery-idempotency key (from+to+content). */\\nexport const MAILBOX_DEDUP_WINDOW_MS = MAILBOX_DELIVERY_LEASE_MS;\\n/** Interjection requests still unanswered after this are DENIED by default. */\\nexport const INTERJECTION_TTL_MS = 30 * 60 * 1000;\\n/** Lane that holds interjection REQUESTS awaiting the captain's decision. */\\nexport const INTERJECTION_QUEUE = 'interjections';\\n/** Message kind marking a first-class interjection request. */\\nexport const INTERJECTION_KIND = 'interjection-request';\\n/** The R1 delivery-idempotency key: sender + recipient + content. */\\nexport function messageDedupKey(message) {\\n    return `${message.from}\\\\u0000${message.to}\\\\u0000${message.content}`;\\n}\\n/**\\n * Fold one message into the mailbox for DELIVERY idempotency: when the same\\n * (from,to,content) was appended inside the window, the existing record's\\n * `dupCount` is incremented and NO second record is written, so a redelivery can\\n * never make the recipient act twice. The window is measured on `ts`, and a record\\n * that is already delivered/read is still folded — the point is to stop the ACTION,\\n * not to shrink the file; nothing is ever physically deleted.\\n * @returns the record that now holds the message (new or folded).\\n */\\nexport async function appendMailboxDeduped(stateRoot, teamId, agentKey, message, options = {}) {\\n    const windowMs = options.windowMs ?? MAILBOX_DEDUP_WINDOW_MS;\\n    const existing = await readMailbox(stateRoot, teamId, agentKey);\\n    const key = messageDedupKey(message);\\n    const hit = existing.find((candidate) => messageDedupKey(candidate) === key\\n        && Math.abs(message.ts - candidate.ts) <= windowMs);\\n    if (hit !== undefined) {\\n        // R1: the surviving record keeps its OWN delivery/read markers. Dropping them\\n        // would clear a live claim (or an acknowledgement) and let a folded duplicate be\\n        // delivered again — exactly the duplicate ACTION this primitive exists to stop.\\n        const folded = {\\n            ...hit,\\n            dupCount: (hit.dupCount ?? 1) + 1,\\n            ...hit.deliveryClaimedAt === undefined ? {} : { deliveryClaimedAt: hit.deliveryClaimedAt },\\n            ...hit.deliveredAt === undefined ? {} : { deliveredAt: hit.deliveredAt },\\n            ...hit.readAt === undefined ? {} : { readAt: hit.readAt },\\n        };\\n        await mutateMailbox(stateRoot, teamId, agentKey, [hit.id], () => folded);\\n        // `_folded` is a TRANSIENT in-memory marker for the caller (the send boundary must\\n        // not re-deliver an already-owned payload). It is never persisted: the record kept\\n        // is `folded` alone, so a later fold cannot see a stale marker from an old crash.\\n        return { message: { ...folded, _folded: true }, folded: true };\\n    }\\n    await appendMailbox(stateRoot, teamId, agentKey, { ...message, dupCount: message.dupCount ?? 1 });\\n    return { message: { ...message, dupCount: message.dupCount ?? 1 }, folded: false };\\n}\\n/**\\n * Clear a mailbox DOWN TO A WATERMARK: every record with `ts <= watermark` is\\n * replaced in place by a tombstone, its original bytes are written to an archive\\n * sidecar (`inbox/archive/<agentKey>.<watermark>.jsonl` — the recoverable copy), and\\n * ONE audit event describes the operation. There is deliberately NO hard-delete\\n * branch: the tombstone keeps the id/ts/from/to so the record stays reviewable, and\\n * the sidecar makes the cleared bytes recoverable byte-for-byte.\\n * @returns the manifest: tombstoned ids, the sidecar path, and the audit event.\\n */\\nexport async function clearMailboxToWatermark(stateRoot, teamId, agentKey, watermark, options = {}) {\\n    const messages = await readMailbox(stateRoot, teamId, agentKey);\\n    const cleared = messages.filter((message) => message.ts <= watermark && message.tombstone !== true);\\n    if (cleared.length === 0) {\\n        return { cleared: [], sidecar: undefined, audit: undefined };\\n    }\\n    const clearedIds = new Set(cleared.map((message) => message.id));\\n    // archive-first: the recoverable copy is written AND flushed before the live\\n    // file is rewritten, so an interrupted clear always leaves the bytes somewhere.\\n    const archiveDir = join(stateRoot, teamId, 'inbox', 'archive');\\n    await mkdir(archiveDir, { recursive: true });\\n    const sidecar = join(archiveDir, `${sanitizeKey(agentKey)}.${watermark}.jsonl`);\\n    await atomicWriteText(sidecar, cleared.map((message) => JSON.stringify(message)).join('\\\\n') + '\\\\n');\\n    await mutateMailbox(stateRoot, teamId, agentKey, [...clearedIds], (message) => ({\\n        id: message.id,\\n        from: message.from,\\n        to: message.to,\\n        content: '',\\n        ts: message.ts,\\n        tombstone: true,\\n        clearedAt: options.now ?? Date.now(),\\n        clearedToWatermark: watermark,\\n        archivedTo: sidecar,\\n        // R1: PRESERVE the read/delivery markers. Without them a cleared record could\\n        // re-open as \\\"unread\\\" and be delivered a second time after an acknowledgement.\\n        ...message.readAt === undefined ? {} : { readAt: message.readAt },\\n        ...message.deliveredAt === undefined ? {} : { deliveredAt: message.deliveredAt },\\n        ...message.dupCount === undefined ? {} : { dupCount: message.dupCount },\\n    }));\\n    const audit = {\\n        kind: 'mailbox-cleared',\\n        agentKey,\\n        watermark,\\n        clearedCount: cleared.length,\\n        clearedIds: [...clearedIds],\\n        sidecar,\\n        at: options.now ?? Date.now(),\\n    };\\n    return { cleared: [...clearedIds], sidecar, audit };\\n}\\n/**\\n * Read only the records that are NOT tombstones (the live view after a clear).\\n *\\n * TEST-ONLY BY DESIGN (t52, closing review finding F-6). It has no production caller and\\n * should not grow one: the scheduler's delivery path composes\\n * `deliverableUnread(readUnreadMailbox(...))`, where the tombstone filter is carried\\n * INDEPENDENTLY by both `readUnreadMailbox` and `deliverableUnread`, and the claim/ack\\n * markers are handled by `claimMailboxDelivery`/`acknowledgeMailbox`. Routing the\\n * scheduler through this function instead would drop the lease semantics.\\n *\\n * It is kept because it is the clearest single-expression statement of the F-3\\n * invariant (\\\"a cleared record is never live again\\\") and the seam tests assert it\\n * directly (`test/r1-message-channel.test.mjs`, `test/t49-send-dedup-wiring.test.mjs`).\\n * Deleting it would remove a cheap, direct guard on a defect that has already escaped\\n * once, so it stays — explicitly labelled rather than left as an accidental orphan.\\n */\\nexport async function readLiveMailbox(stateRoot, teamId, agentKey) {\\n    return (await readMailbox(stateRoot, teamId, agentKey)).filter((message) => message.tombstone !== true);\\n}\\n/**\\n * Enqueue a first-class interjection REQUEST. It is a normal mailbox record with\\n * `kind: 'interjection-request'` and `status: 'pending'`, but it lives in its own\\n * QUEUE, never in a member's ordinary inbox: the scheduler packs EVERY unread inbox\\n * record verbatim and auto-delivers at the next idle edge (lib/scheduler.js:223-228,\\n * 287-298), so a request in the normal inbox would be delivered and would BYPASS the\\n * captain's approval. The payload carries summary + reason + location only; the body\\n * follows only after approval.\\n *\\n * FIELD CONTRACT (repair V1). The mailbox shape REQUIRES a non-empty `content`\\n * string, and a record that fails the shape check is invisible to every reader —\\n * which used to let a caller create a request that returned `status:'pending'` while\\n * nobody could ever see or decide it (a silent failure). `content` is therefore\\n * NORMALIZED here rather than left optional: when the caller omits it (or passes an\\n * empty string) it is derived, in this fixed priority order, from\\n * `summary` -> `reason` -> `location`. `id`, `from` and `ts` are REQUIRED and are\\n * rejected loudly when missing, because no fallback can invent an identity or a clock.\\n * @param request - the request; `id`/`from`/`ts` required, `content` optional (normalized).\\n * @returns the queued request record (always carrying a readable `content`).\\n * @throws when a required identity field is missing, naming the field.\\n */\\nexport async function enqueueInterjection(stateRoot, teamId, request) {\\n    for (const field of ['id', 'from', 'ts']) {\\n        const value = request?.[field];\\n        if (value === undefined || (typeof value === 'string' && value.trim() === '')) {\\n            throw new Error(`interjection request is missing required field \\\"${field}\\\"`);\\n        }\\n    }\\n    // Same fixed priority as the doc above; the first non-empty candidate wins.\\n    const rawContent = typeof request.content === 'string' ? request.content.trim() : '';\\n    const content = rawContent !== ''\\n        ? request.content\\n        : (typeof request.summary === 'string' && request.summary.trim() !== ''\\n            ? request.summary\\n            : (typeof request.reason === 'string' && request.reason.trim() !== ''\\n                ? request.reason\\n                : (typeof request.location === 'string' ? request.location : '')));\\n    const record = {\\n        ...request,\\n        id: request.id,\\n        from: request.from,\\n        content,\\n        to: INTERJECTION_QUEUE,\\n        kind: INTERJECTION_KIND,\\n        status: 'pending',\\n        ts: request.ts,\\n        expiresAt: request.ts + INTERJECTION_TTL_MS,\\n    };\\n    await appendMailbox(stateRoot, teamId, INTERJECTION_QUEUE, record);\\n    return record;\\n}\\n/**\\n * Every line of the interjection queue that parses as JSON, WITHOUT the mailbox shape\\n * check. This is how a MALFORMED record (present on disk, unreadable by the normal\\n * reader) is told apart from a record that truly does not exist.\\n */\\nasync function readRawInterjectionRecords(stateRoot, teamId) {\\n    const file = join(stateRoot, teamId, 'inbox', `${sanitizeKey(INTERJECTION_QUEUE)}.jsonl`);\\n    let raw;\\n    try {\\n        raw = await readFile(file, 'utf8');\\n    }\\n    catch (error) {\\n        if (error instanceof Error && 'code' in error && error.code === 'ENOENT')\\n            return [];\\n        throw error;\\n    }\\n    const records = [];\\n    for (const rawLine of raw.split('\\\\n')) {\\n        const line = stripLeadingBom(rawLine);\\n        if (line.trim() === '')\\n            continue;\\n        try {\\n            records.push(JSON.parse(line));\\n        }\\n        catch {\\n            // a non-JSON line cannot carry an id; it is reported by the reader's hook\\n        }\\n    }\\n    return records;\\n}\\n/** Every interjection request in one state, newest last. */\\nexport async function readInterjections(stateRoot, teamId) {\\n    return readMailbox(stateRoot, teamId, INTERJECTION_QUEUE);\\n}\\n/**\\n * Read interjections that are still AWAITING DECISION. This is the function the\\n * scheduler must use instead of a blanket unread scan: pending requests are never\\n * auto-delivered.\\n */\\nexport async function readPendingInterjections(stateRoot, teamId) {\\n    return (await readInterjections(stateRoot, teamId)).filter((record) => record.status === 'pending');\\n}\\n/**\\n * Expire every pending interjection whose TTL has passed: captain silence is a\\n * DEFAULT DENY, and the requesting member is notified (status `expired`).\\n * @returns the expired ids.\\n */\\nexport async function expireInterjections(stateRoot, teamId, options = {}) {\\n    const now = options.now ?? Date.now();\\n    const pending = await readPendingInterjections(stateRoot, teamId);\\n    const expired = pending.filter((record) => typeof record.expiresAt === 'number' && record.expiresAt <= now);\\n    if (expired.length === 0)\\n        return [];\\n    await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, expired.map((record) => record.id), (record) => ({ ...record, status: 'expired', decidedAt: now }));\\n    // R1: silence is a DEFAULT DENY, and the requester must be TOLD. The notice is an\\n    // ORDINARY message (no interjection kind), so it travels the normal delivery path\\n    // and cannot be filtered out by the interjection gate.\\n    for (const record of expired) {\\n        if (typeof record.from !== 'string' || record.from === '')\\n            continue;\\n        await appendMailbox(stateRoot, teamId, record.from, {\\n            ...createExpiryNotice(record),\\n            id: `interjection-expired-${record.id}`,\\n            from: CAPTAIN_KEY,\\n            to: record.from,\\n            ts: now,\\n        });\\n    }\\n    return expired.map((record) => record.id);\\n}\\n/** The ordinary notice a requester receives when their interjection request expires. */\\nfunction createExpiryNotice(record) {\\n    const receivedAt = typeof record.ts === 'number' ? new Date(record.ts).toISOString() : '(unknown time)';\\n    return {\\n        content: `Your interjection request \\\"${String(record.id)}\\\" (sent ${receivedAt}) EXPIRED without a captain decision, so it is denied by default. It was not delivered to anyone.`,\\n    };\\n}\\n/** Record the captain's decision on one interjection request. */\\nexport async function decideInterjection(stateRoot, teamId, interjectionId, decision, options = {}) {\\n    const now = options.now ?? Date.now();\\n    const record = (await readInterjections(stateRoot, teamId)).find((candidate) => candidate.id === interjectionId);\\n    if (record === undefined) {\\n        // Repair V1: a record that IS on disk but fails the mailbox shape check is\\n        // MALFORMED, not absent. Reporting it as \\\"does not exist\\\" hid the real cause\\n        // and sent the caller hunting for a wrong id.\\n        const present = (await readRawInterjectionRecords(stateRoot, teamId)).some((candidate) => candidate?.id === interjectionId);\\n        if (present) {\\n            throw new Error(`interjection \\\"${interjectionId}\\\" exists but is MALFORMED (present in the queue but not readable: the mailbox shape requires a non-empty string content and the identity fields); re-enqueue it with content, or inspect the queue file`);\\n        }\\n        throw new Error(`interjection \\\"${interjectionId}\\\" does not exist`);\\n    }\\n    if (record.status !== 'pending')\\n        throw new Error(`interjection \\\"${interjectionId}\\\" is already ${String(record.status)}`);\\n    // R1: the decision vocabulary is CLOSED. Anything else is a caller bug and must be\\n    // named loudly instead of being persisted as an unknown status.\\n    const ALLOWED_INTERJECTION_DECISIONS = ['approved', 'rejected'];\\n    if (!ALLOWED_INTERJECTION_DECISIONS.includes(decision)) {\\n        throw new Error(`invalid interjection decision \\\"${String(decision)}\\\"; allowed values are: ${ALLOWED_INTERJECTION_DECISIONS.join(', ')}`);\\n    }\\n    const decided = { ...record, status: decision, decidedAt: now };\\n    await mutateMailbox(stateRoot, teamId, INTERJECTION_QUEUE, [interjectionId], () => decided);\\n    // R1 \\\"delivery after approval\\\": the APPROVED body is re-posted as an ORDINARY message\\n    // in the requester's inbox. It therefore rides the existing member-prompt queue seam\\n    // at the next step boundary like any other mailbox work — the plugin never calls the\\n    // harness sendMessage/steer path for team work (AGENTS.md §12), and the requester's\\n    // running attempt is not restarted (frozen S4).\\n    if (decision === 'approved' && typeof record.from === 'string' && record.from !== '') {\\n        const body = typeof options.body === 'string' && options.body !== ''\\n            ? options.body\\n            : (typeof record.body === 'string' && record.body !== '' ? record.body : record.content);\\n        await appendMailbox(stateRoot, teamId, record.from, {\\n            id: `${interjectionId}-delivery`,\\n            from: options.captainKey ?? CAPTAIN_KEY,\\n            to: record.from,\\n            content: `Approved interjection \\\"${interjectionId}\\\": ${body}`,\\n            ts: now,\\n        });\\n    }\\n    return decided;\\n}\\n//#endregion mpd-delta message-channel-r1\","
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 315,
+      "text": "* the generated repair listed `AGENTS.md` in BOTH lists because t10's finding"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 593,
+      "text": "// sessions with different workspaces; AGENTS.md §6 State)."
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 734,
+      "text": "// harness sendMessage/steer path for team work (AGENTS.md §12), and the requester's"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+      "line": 5,
+      "text": "`README.md` / `README_ZH.md` are kept verbatim as provenance (AGENTS.md"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/README.md",
+      "line": 36,
+      "text": "upstream tree and its governed delta registry, AGENTS.md §6) are untouched."
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 13,
+      "text": "// `AGENTS.md` in BOTH inScope and outOfScope, so the update gate rejected the"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 134,
+      "text": "const preFix = { inScope: [\"AGENTS.md\"], outOfScope: [\"AGENTS.md\"] }"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 135,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", preFix.inScope, preFix.outOfScope)).toBe(\"out_of_scope\")"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 136,
+      "text": "expect(contractContradiction(preFix.inScope, preFix.outOfScope)).toEqual({ inScope: \"AGENTS.md\", outOfScope: \"AGENTS.md\" })"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 138,
+      "text": "const rejected = contract([\"AGENTS.md\"], [\"AGENTS.md\"])"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 141,
+      "text": "expect(String(rejected.error)).toMatch(/AGENTS.md/)"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 146,
+      "text": "[{ file: \"AGENTS.md\" }, { file: \"packages/x/a.ts\" }],"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 147,
+      "text": "{ id: \"t13\", inScope: [\"packages/x\"], outOfScope: [\"AGENTS.md\"] },"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 149,
+      "text": "// The repair's acceptance requires AGENTS.md, so the covering prohibition is"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 151,
+      "text": "expect(scope.inScope).toEqual([\"packages/x\", \"AGENTS.md\"])"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 156,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", scope.inScope, scope.outOfScope ?? [])).toBe(\"in_scope\")"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 168,
+      "text": "// AGENTS.md in its outOfScope; t10 (the failed review) demanded an AGENTS.md"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 174,
+      "text": "outOfScope: [\"presets/**\", \"packages/mpd-bundle/cordis.patch.yml\", \"VENDOR_LOCK.json\", \"AGENTS.md\", \"README.md\", \"README.zh-CN.md\"],"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 179,
+      "text": "{ id: \"F3-agents-md-state-root-stale\", severity: \"low\", file: \"AGENTS.md\", requiredFix: \"update the state-root precedence paragraph\" },"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 188,
+      "text": "// AGENTS.md is no longer forbidden by the repair that REQUIRES editing it"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 189,
+      "text": "expect((scope.outOfScope ?? []).some((pattern) => pathMatchesScope(\"AGENTS.md\", pattern))).toBe(false)"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 190,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", scope.inScope, scope.outOfScope ?? [])).toBe(\"in_scope\")"
+    },
+    {
+      "file": "packages/mpd-bootstrap-plugin/README.md",
+      "line": 40,
+      "text": "AGENTS.md §2 requires every capability to be a plugin, and §6 forbids logic in the"
+    },
+    {
+      "file": "packages/mpd-bootstrap-plugin/README.zh-CN.md",
+      "line": 26,
+      "text": "AGENTS.md §2 要求每个能力都是插件，§6 禁止把逻辑放在用户 home 里。以引用方式供给语料库，正是让 `dsh plugin add` / `dsh plugin remove` 成为“整体安装/整体卸载（含 skills）”的关键。"
+    },
+    {
+      "file": "packages/mpd-bundle/README.md",
+      "line": 18,
+      "text": "with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project"
+    },
+    {
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "line": 8,
+      "text": "该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。"
+    },
+    {
+      "file": "packages/mpd-bundle/cordis.patch.yml",
+      "line": 92,
+      "text": "#    profile — never a `--dump-config` result, which only composes rows (AGENTS.md §4)."
+    },
+    {
+      "file": "packages/mpd-codegraph-plugin/README.md",
+      "line": 50,
+      "text": "state root** alongside `.mpd/` (see AGENTS.md §6) — the plugin never writes outside the"
+    },
+    {
+      "file": "packages/mpd-codegraph-plugin/README.zh-CN.md",
+      "line": 31,
+      "text": "项目索引与初始化锁/冷却标记位于工作区下的 `.codegraph/` 目录（`.codegraph/codegraph.db`、`init.lock`、`init.cooldown`），沿用上游纪律并已加入 `.gitignore` 不会提交。这是与 `.mpd/` 并列的**第二个被认可的工作区状态根**（参见 AGENTS.md §6）——该插件从不在工作区之外写入。"
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.md",
+      "line": 28,
+      "text": "The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,"
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "line": 23,
+      "text": "Harness 更新是常态，但“每次更新都改所有调用点”不是。本包是仓库中**唯一**允许直接触碰 Harness 服务的文件。该规则具有约束力（AGENTS.md §6）：**插件行不得自行调用 `ctx.tools`、`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。**"
+    },
+    {
+      "file": "packages/mpd-ext-plugin/src/index.ts",
+      "line": 74,
+      "text": "* rule, AGENTS.md §6): it does NOT inherit the adapter ROW's config"
+    },
+    {
+      "file": "packages/mpd-ext-plugin/src/index.ts",
+      "line": 275,
+      "text": "+ \" the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does\""
+    },
+    {
+      "file": "packages/mpd-ext-plugin/src/schema-sanitize.ts",
+      "line": 6,
+      "text": "// tree down (AGENTS.md §12). An MCP server is a third party: its `inputSchema`"
+    },
+    {
+      "file": "packages/mpd-mcp-astgrep/README.md",
+      "line": 44,
+      "text": "(AGENTS.md §1). When the caller sets it, the launcher leaves it untouched."
+    },
+    {
+      "file": "packages/mpd-mcp-astgrep/README.zh-CN.md",
+      "line": 41,
+      "text": "- Env 键 `MPD_AST_GREP_SG_PATH` 由上游 vendored 代码读取——切勿重命名（AGENTS.md §1）。"
+    },
+    {
+      "file": "packages/mpd-mcp-astgrep/launch.mjs",
+      "line": 7,
+      "text": "// (MPD_AST_GREP_SG_PATH — never renamed, AGENTS.md §1), then starts the server."
+    },
+    {
+      "file": "packages/mpd-qa-roles-probe/src/index.ts",
+      "line": 70,
+      "text": "// COMPOSES rows and never executes plugin code (AGENTS.md §4), so it cannot witness a"
+    },
+    {
+      "file": "packages/mpd-qa-roles-probe/src/index.ts",
+      "line": 142,
+      "text": "// Neither `--dump-config` (composition only, AGENTS.md §4) nor a source-level unit test"
+    },
+    {
+      "file": "packages/mpd-roles-plugin/src/index.ts",
+      "line": 360,
+      "text": "+ \" the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does\""
+    },
+    {
+      "file": "packages/mpd-team-compact-plugin/README.md",
+      "line": 67,
+      "text": "- Boot check: the row must really APPLY (a mount proof, never `--dump-config` — AGENTS.md §4)."
+    },
+    {
+      "file": "packages/mpd-team-compact-plugin/README.zh-CN.md",
+      "line": 55,
+      "text": "- 启动检查：该行必须真正 **apply**（需要挂载证明，绝不能只看 `--dump-config` —— AGENTS.md §4）。"
+    },
+    {
+      "file": "packages/mpd-team-compact-plugin/src/index.ts",
+      "line": 577,
+      "text": "// (a live-registry read; `--dump-config` is blind to it — AGENTS.md §4), and the unit"
+    },
+    {
+      "file": "packages/mpd-team-compact-plugin/test/compaction.test.mjs",
+      "line": 394,
+      "text": "// pre-step waterfall defect taught (AGENTS.md §12)."
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+      "line": 12,
+      "text": "// store; nothing here reaches a harness service directly (AGENTS.md §6). The"
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+      "line": 572,
+      "text": "// README and in AGENTS.md, never hidden here."
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/index.ts",
+      "line": 33,
+      "text": "//   * the harness contact goes through the ADAPTER only (AGENTS.md §6)."
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/machine.ts",
+      "line": 148,
+      "text": "// the whole row (and possibly the preset) down (AGENTS.md §12)."
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/paths.ts",
+      "line": 6,
+      "text": "// one host serves many sessions with different workspaces (AGENTS.md §6 State)."
+    },
+    {
+      "file": "packages/mpd-tui-plugin/src/index.ts",
+      "line": 162,
+      "text": "* through this ONE object (AGENTS.md §6)."
+    },
+    {
+      "file": "packages/mpd-tui-plugin/src/index.ts",
+      "line": 179,
+      "text": "* The live session cwd is the authoritative workspace (AGENTS.md §6). This row is"
+    },
+    {
+      "file": "packages/mpd-tui-plugin/src/scenes.ts",
+      "line": 8,
+      "text": "// The board is the TUI-native equivalent of the web-only surfaces (AGENTS.md §6"
+    },
+    {
+      "file": "packages/mpd-tui-plugin/src/state.ts",
+      "line": 6,
+      "text": "// cross-project library under `$HOME/.mpd/workmate` by design (AGENTS.md §6)."
+    },
+    {
+      "file": "packages/mpd-tui-plugin/src/types.ts",
+      "line": 3,
+      "text": "// This package carries NO runtime dependency (AGENTS.md §6: zero runtime deps"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/README.md",
+      "line": 49,
+      "text": "exception to the workspace-scoped state rule (AGENTS.md §6). QA boots with"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/README.zh-CN.md",
+      "line": 32,
+      "text": "库根目录刻意放在用户的 HOME（跨项目），这是对工作区作用域状态规则（AGENTS.md §6）的、经用户批准的例外。QA 以 `HOME=<sandbox>` 启动，因此测试绝不会触碰真实 home。"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/src/index.ts",
+      "line": 12,
+      "text": "// exception to the workspace-scoped state rule (AGENTS.md §6); QA boots with"
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 3,
+      "text": "#  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and"
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 57,
+      "text": "project workspace you MUST attempt to read AGENT.md (fall back to AGENTS.md, then"
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 168,
+      "text": "- AGENTS.md"
+    },
+    {
+      "file": "presets/mpd/preset.yml",
+      "line": 2,
+      "text": "description: \"The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the adopted dsh-agent-teams plugin (normal-named mpd roster profile).\""
+    },
+    {
+      "file": "scripts/build-mcp.mjs",
+      "line": 101,
+      "text": "// hand-scrubbed into the MPD_ prefix by commit 7d8f910 (direct dist edits, no rebuild), and AGENTS.md"
+    },
+    {
+      "file": "scripts/build-mcp.mjs",
+      "line": 325,
+      "text": "// matches the committed convention (hand-scrubbed baseline, AGENTS.md contract)."
+    },
+    {
+      "file": "scripts/install-profile.mjs",
+      "line": 225,
+      "text": "// Id-target contract (AGENTS.md §8): rows whose id ALREADY EXISTS in the target"
+    },
+    {
+      "file": "scripts/install-profile.mjs",
+      "line": 365,
+      "text": "// patch are written as id-target overrides (AGENTS.md §8 contract)."
+    },
+    {
+      "file": "scripts/pack-mpd.mjs",
+      "line": 83,
+      "text": "// the skills corpus lives at the repo root skills/ per AGENTS.md layout; the bundle"
+    },
+    {
+      "file": "scripts/pack-mpd.mjs",
+      "line": 115,
+      "text": "// Root bilingual README pair (AGENTS.md language policy: both files ship together"
+    },
+    {
+      "file": "scripts/pack-mpd.mjs",
+      "line": 124,
+      "text": "// `list`) and the AGENTS.md §4 Extension-CLI gate runs it from the packed tree."
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 2,
+      "text": "// Repo gate: the bilingual documentation policy of AGENTS.md (Language policy section)."
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 12,
+      "text": "//     with the AGENTS.md §3 process records exempted from the missing-twin rule;"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 31,
+      "text": "// and `docs/cnt8.md` are ANTICIPATORY entries — AGENTS.md §3 names them as exempt internal QA/golden"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 50,
+      "text": "// Files the AGENTS.md Language policy exempts. An exemption means ONLY that a missing zh twin is"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 54,
+      "text": "[\"docs/plan-c.md\", \"process record (AGENTS.md §3: plan-*.md)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 55,
+      "text": "[\"docs/plan-d.md\", \"process record (AGENTS.md §3: plan-*.md)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 56,
+      "text": "[\"docs/plan-e.md\", \"process record (AGENTS.md §3: plan-*.md)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 57,
+      "text": "[\"docs/plan-f.md\", \"process record (AGENTS.md §3: plan-*.md)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 58,
+      "text": "[\"docs/plan-tui-edition.md\", \"process record (AGENTS.md §3: plan-*.md)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 59,
+      "text": "[\"docs/decisions.md\", \"process record (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 60,
+      "text": "[\"docs/bline-report.md\", \"prior-phase report (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 61,
+      "text": "[\"docs/omo-parity-gap.md\", \"prior-phase report (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 62,
+      "text": "[\"docs/review-p0-p3.md\", \"prior-phase report (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 63,
+      "text": "[\"docs/track-a-report.md\", \"prior-phase report (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 64,
+      "text": "[\"docs/ulw-deepseek-optimization.md\", \"prior-phase report (AGENTS.md §3)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 65,
+      "text": "[\"docs/adder4.md\", \"internal QA/golden reference (AGENTS.md §3) — ANTICIPATORY: the file does not exist in this tree yet\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 66,
+      "text": "[\"docs/cnt8.md\", \"internal QA/golden reference (AGENTS.md §3) — ANTICIPATORY: the file does not exist in this tree yet\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 67,
+      "text": "[\"docs/tui-edition-report.md\", \"prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)\"],"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 76,
+      "text": "/^docs\\/plan-/.test(rel) && !EXEMPT_LONE_FILES.has(rel) ? \"process record (AGENTS.md §3: plan-*.md)\" : EXEMPT_LONE_FILES.get(rel);"
+    },
+    {
+      "file": "skills/ast-grep/AGENTS.md",
+      "line": 51,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md)."
+    },
+    {
+      "file": "skills/dsh-qa/SKILL.md",
+      "line": 52,
+      "text": "| mcp-call | MCP | mcp__ast_grep__*/mcp__lsp__* callable with server responses; sandboxed DSH_HOME **and HOME** (plugin state `~/.mpd` never touches the real home), `settings.yaml` copied alongside `.credentials.yaml` (AGENTS.md §7), and NO `MPD_DSH_*_CLI` / `MPD_AST_GREP_SG_PATH` / `MPD_CODEGRAPH_BIN` pin pre-set — a caller pin wins in the B8 launcher and would mask a broken operand. Both arms assert HARNESS-side evidence (`lib/session-evidence.mjs`): the tool list the request header carried, and a recorded `tool/call` + non-error `tool/result` carrying the fixture line — never the model's prose (the old prose assertions could pass on narration alone) | P3 |"
+    },
+    {
+      "file": "skills/dsh-qa/SKILL.md",
+      "line": 93,
+      "text": "| team-watchdog-notify | team watchdog (w9) | AC-12/AC-13/AC-14: BOTH front doors, from payloads and BUILT bytes only. WEB arm (reader key `web-panel`): the REAL bundle route handlers over a sandbox store + the REAL built `client.js` in the offline hook runtime with `fetch` served by the route's own payload — banner as the panel root's FIRST child, one activity record, the first poll with no user action, the acknowledge advancing ONLY its own reader key (watermark bytes before/after), the replay stopping, and a second unacknowledged incident replaying on the next start. TUI arm (reader key `mpd-tui`): the REAL `mpdWatchdog` service driven through the REAL TUI module — composed status notice, replay dialog with the acknowledge option, the acknowledge through the service advancing the `mpd-tui` watermark, replay stop, and the built-bytes wiring. Both arms state the honest fallback: without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN | v0.9.1/watchdog || team-watchdog-boot | team watchdog (r3, extended r5) | **HEAVY (a real `dsh` spawn + a live model call): its real run is deliberately NOT in the `--self-test` sweep — only `--self-test` is.** **r5 adds the GUI-activation assertion this wave lacked:** the boot runs in the USER'S OWN composition (their profile's bundles — `@linxin666/dsh-web-all`, `dshmarket`, `dsh-cost-meter`, `nowledge-mem-deepseek-harness`, `dsh-better-sidebar` — mirror-symlinked when their profile resolves them, each recorded as mirrored/unresolved, never silently dropped) and the lane asserts (a) the boot log carries NONE of the terminal-only activation-failure signatures (`did not activate`, `pending (waiting for service`, `failed to apply loader entry`, a `client-modules` error naming `@mpd-dsh/mpd`) — the signatures that reach the operator's terminal while the browser console stays empty, (b) the host SERVED our client for the `@mpd-dsh/mpd` entry (HTTP 200 from the index-discovered `/plugins/…client.js` URL), and (c) the served bytes carry BOTH tab ids (`mpd-agent-teams`, `mpd-workmate`) plus the adopted export bridge and the sidebar page module. **Ceiling, stated:** no browser exists here, so `registerTab` EXECUTION against the real sidebar is NOT witnessed — whether the strip then renders our tabs stays outside the lane. `--self-test` carries the r5 negative controls too (a `did not activate` log, a `pending (waiting for service` log, a `failed to apply loader entry` log, a 404 client route, served bytes missing a tab id or the bridge, and a boot outside the user's composition — each must redden its own check). The lane the wave needed and did not have: it boots a REAL dev-web `dsh` in a sandbox (bundles base + web-app + the bundle under test, the checkout linked into the sandbox profile), creates a session on `agentPreset: \"mpd\"`, sends one prompt, and reads the verdict from the HARNESS'S OWN session log (the concatenated-zstd store via `lib/session-evidence.mjs`, never prose). It asserts the watchdog row APPLIED (its boot line, `disposers` ≥ 1, `holdService=mpdWatchdog`), that ≥ 1 `turn/end` was recorded, and that NO `turn/end` carries the pre-step veto signature `Cannot read properties of undefined (reading 'map'\\|'findLastIndex'\\|'length')` — the `agent/pre-step` waterfall defect that killed EVERY turn of EVERY mpd session with the row mounted, ~120 ms after `turn/start`. It distinguishes THREE outcomes and asserts the distinction: `completed` (turn/end + assistant message — the full round trip), `model-error` (the turn REACHED the model call and failed there, e.g. MISSING_CREDENTIAL — passed for THIS invariant but explicitly not a completed turn), `veto`/`no-turn` (FAIL). Sandbox home receives BOTH `.credentials.yaml` and `settings.yaml` (AGENTS.md §7 — without the gateway settings the route falls back to `deepseek-official` and dies MISSING_CREDENTIAL, which the lane must not read as a product failure). `--self-test` is offline: it drives the REAL vendored cordis waterfall (`packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js`) with the retired shape (a listener returning a value without `next()`) and requires the veto to be observed, plus the fixed shape composing the fallback unchanged, and it re-classifies synthesized session logs so each verdict path is falsifiable | v0.9.1/watchdog-boot |"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 68,
+      "text": "const ag = readFileSync(join(repoRoot, \"AGENTS.md\"), \"utf8\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 69,
+      "text": "if (!ag.includes(AGENTS_EXCEPTION)) fail(\"AGENTS.md naming exception missing\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 72,
+      "text": "console.log(\"[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 92,
+      "text": "// QA isolation discipline (AGENTS.md §7): HOME must be the sandbox, not the real"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "line": 33,
+      "text": "//    VENDOR_LOCK's `skills` treeSha recomputes from the working tree (AGENTS.md §9/§11)."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "line": 334,
+      "text": "+ \" tree=\" + computed.fileCount + \"/\" + computed.treeSha.slice(0, 12) + \" (re-pin in the same commit, AGENTS.md §9)\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "line": 449,
+      "text": "loadEvidence: \"real mount+boot of the mpd preset home; --dump-config is deliberately NOT cited (AGENTS.md §4)\","
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs",
+      "line": 484,
+      "text": "// AGENTS.md §7 — live cases must ALSO stage settings.yaml when present (gateway"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "line": 78,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+      "line": 70,
+      "text": "// AGENTS.md §7 requires live cases to copy it when present — exactly the idiom the"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/extension-isolation.mjs",
+      "line": 348,
+      "text": "/** Crash signatures the boot log must never carry (AGENTS.md §12). */"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+      "line": 279,
+      "text": "// (AGENTS.md §6); a lane pinning the mount-time root so the file-derived base is witnessable is"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/lib/workspace-isolation.mjs",
+      "line": 11,
+      "text": "// in-use gate then scans (AGENTS.md §12)."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/mcp-call.mjs",
+      "line": 62,
+      "text": "// Live-LLM cases must ALSO copy settings.yaml when present (AGENTS.md §7): homes whose"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/memory-smoke.mjs",
+      "line": 35,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/plan-c-smoke.mjs",
+      "line": 43,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/preset-conformance.mjs",
+      "line": 317,
+      "text": "* logs are committed (AGENTS.md §10), and although the token belongs to an"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/preset-register.mjs",
+      "line": 86,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/preset-register.mjs",
+      "line": 105,
+      "text": "// AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/relocate-smoke.mjs",
+      "line": 68,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/relocate-smoke.mjs",
+      "line": 78,
+      "text": "// AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+      "line": 90,
+      "text": "// and fails with MISSING_CREDENTIAL (AGENTS.md §7)."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+      "line": 95,
+      "text": "// AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "line": 84,
+      "text": "checks.push([\"mpd preset AGENT.md candidates\", mpdPreset.includes(\"AGENT.md\") && mpdPreset.includes(\"AGENTS.md\") && mpdPreset.includes(\"instructionFileCandidates\")])"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "line": 127,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "line": 136,
+      "text": "// AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/tool-output-validation.mjs",
+      "line": 78,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+      "line": 886,
+      "text": "sandboxNote: \"QA scratch under the lane's standard root (AGENTS.md §7: workspace state must be sandboxed; .mpd/ is gitignored so no credential or scratch byte can be committed). The frozen contract and VENDOR_LOCK.json are hard-asserted unchanged; the workspace's own LIVE team record legitimately mutates while this lane runs and is recorded as an observation only.\","
+    },
+    {
+      "file": "skills/dsh-qa/scripts/ultrawork-smoke.mjs",
+      "line": 34,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/workmate-team-member.mjs",
+      "line": 67,
+      "text": "// AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 3,
+      "text": "description: \"(builtin) Initialize hierarchical AGENTS.md knowledge base\""
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 7,
+      "text": "Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories."
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 23,
+      "text": "- Main session: bash structure + LSP/codegraph code map + read existing AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 24,
+      "text": "2. **Score & Decide** - Determine AGENTS.md locations from merged findings"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 34,
+      "text": "{ id: \"generate\", content: \"Generate AGENTS.md files (root + subdirs)\", status: \"pending\", priority: \"high\" },"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 105,
+      "text": "# Existing AGENTS.md / CLAUDE.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 106,
+      "text": "find . -type f \\\\( -name \"AGENTS.md\" -o -name \"CLAUDE.md\" \\\\) -not -path '*/node_modules/*' 2>/dev/null"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 109,
+      "text": "#### 2. Read Existing AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 166,
+      "text": "| **>15** | Create AGENTS.md |"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 183,
+      "text": "## Phase 3: Generate AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 188,
+      "text": "**File Writing Rule**: If AGENTS.md already exists at the target path → use `Edit` tool. If it does NOT exist → use `Write` tool."
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 192,
+      "text": "### Root AGENTS.md (Full Treatment)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 241,
+      "text": "### Subdirectory AGENTS.md (Parallel)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 247,
+      "text": "subagent(description=\"Generate AGENTS.md\", run_in_background=false, persona=\"<fetch via mpd_role_persona(role=hephaestus)>\", agentOptions={model: \"deepseek-v4-flash\"}, prompt=`"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 248,
+      "text": "Generate AGENTS.md for: ${loc.path}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 282,
+      "text": "[OK] ./AGENTS.md (root, {N} lines)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 283,
+      "text": "[OK] ./src/hooks/AGENTS.md ({N} lines)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 286,
+      "text": "AGENTS.md Created: {N}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 287,
+      "text": "AGENTS.md Updated: {N}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 290,
+      "text": "./AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 291,
+      "text": "└── src/hooks/AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 301,
+      "text": "- **Over-documenting**: Not every dir needs AGENTS.md"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 49,
+      "text": "├── AGENTS.md                  # agent-readable project facts"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 294,
+      "text": "## `AGENTS.md` — agent-readable project facts"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 296,
+      "text": "Every new project gets an `AGENTS.md` at the root. The content is **machine-friendly**: short, declarative, no marketing prose. Example:"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 299,
+      "text": "# AGENTS.md"
+    },
+    {
+      "file": "skills/programming/references/logging.md",
+      "line": 11,
+      "text": "**BEFORE adding a single log line, find out how this project logs.** Grep for the logger initialization, a wrapper module, prior art in sibling files, and the project's agent docs (AGENTS.md / CLAUDE.md)."
+    },
+    {
+      "file": "skills/programming/scripts/go/new-project.py",
+      "line": 64,
+      "text": "(\"AGENTS.md.tmpl\",  \"AGENTS.md\",                       True),"
+    },
+    {
+      "file": "skills/programming/scripts/go/new-project.py",
+      "line": 117,
+      "text": "purpose: str = typer.Option(\"HTTP\", help=\"Short purpose for AGENTS.md\"),"
+    },
+    {
+      "file": "skills/programming/scripts/go/templates/AGENTS.md.tmpl",
+      "line": 1,
+      "text": "# AGENTS.md"
+    },
+    {
+      "file": "skills/programming/scripts/go/templates/README.md.tmpl",
+      "line": 12,
+      "text": "See `AGENTS.md` for architecture conventions."
+    },
+    {
+      "file": "skills/ultimate-browsing/ATTRIBUTION.md",
+      "line": 35,
+      "text": "[`engine/AGENTS.md` §UPSTREAM BASELINE AND VERSION POLICY](engine/AGENTS.md)."
+    },
+    {
+      "file": "skills/ultimate-browsing/engine/AGENTS.md",
+      "line": 179,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../../AGENTS.md)."
+    },
+    {
+      "file": "skills/visual-qa/AGENTS.md",
+      "line": 58,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md)."
+    },
+    {
+      "file": "templates/mpd-extension/README.md",
+      "line": 117,
+      "text": "`scaffold` (and `--self-test`'s template arm) still need this directory. **The AGENTS.md §4"
+    },
+    {
+      "file": "templates/mpd-extension/README.zh-CN.md",
+      "line": 107,
+      "text": "**所以 AGENTS.md §4 的 Extension-CLI 关卡是一个检出关卡：在打包树里它是红的。** 该结论由上游仓库"
+    },
+    {
+      "file": "tests/golden/out/plans/mpd-summary-plan.md",
+      "line": 125,
+      "text": "References: gate rules AGENTS.md 3-4; root scripts package.json:8-11 (test:9 / typecheck:8 / test:qa:11); tsconfig include scope tsconfig.json:13-14; evidence path convention PLAN.md §5 T6 (evidence/<domain>/<slug>/)."
+    },
+    {
+      "file": "tests/golden/out/plans/mpd-summary-plan.md",
+      "line": 143,
+      "text": "- Before committing, run `git status` to confirm the allowlist above holds exactly (AGENTS.md rules 1, 6)."
+    }
+  ],
+  "named_citation_section_numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "all_named_section_numbers_resolve": true,
+  "named_citations_with_unresolved_section": [],
+  "agents_md_anchor_links": [],
+  "bare_section_cites_in_other_files": 663,
+  "note": "Bare §N citations in other files may reference their own document; AGENTS.md numbering is unchanged (13 numbered sections, same order as pre-split), so no citation that meant an AGENTS.md section regressed. *-AGENTS.md names (e.g. EXTENSIONS-FOR-AGENTS.md) are a different file and were excluded from the named set by a boundary-aware match.",
+  "named_mentions_without_section": [
+    {
+      "file": "PLAN.md",
+      "line": 22,
+      "text": "dsh-mcp-client, dsh-agent-instructions (AGENTS.md injection), compaction, storage, Web GUI."
+    },
+    {
+      "file": "PLAN.md",
+      "line": 87,
+      "text": "├── AGENTS.md                # this repo's gates (aligned with the discipline spirit of upstream's root AGENTS.md)"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 90,
+      "text": "├── packages/                # one capability one plugin, structure aligned with upstream packages/ (src + *.test.ts + AGENTS.md)"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 253,
+      "text": "| T7 | Stage gates: changes must run the corresponding QA and land evidence (AGENTS.md gate) | This repo's AGENTS.md codifies the same gate; stage acceptance = all plugins of that stage have test + tsgo + QA evidence complete |"
+    },
+    {
+      "file": "PLAN.md",
+      "line": 332,
+      "text": "1. git init + first commit for this repo (PLAN/README/LICENSE-NOTICES/VENDOR_LOCK/AGENTS.md skeleton);"
+    },
+    {
+      "file": "README.md",
+      "line": 23,
+      "text": "to `AGENTS.md`, then `CLAUDE.md`, at the start of every session."
+    },
+    {
+      "file": "README.md",
+      "line": 238,
+      "text": "| [`AGENTS.md`](./AGENTS.md) | The binding repository manual for agents and maintainers |"
+    },
+    {
+      "file": "README.zh-CN.md",
+      "line": 19,
+      "text": "- **自动加载项目规则** —— 每次会话开始时，智能体会尝试读取 `AGENT.md`，回退到 `AGENTS.md`，"
+    },
+    {
+      "file": "README.zh-CN.md",
+      "line": 221,
+      "text": "| [`AGENTS.md`](./AGENTS.md) | 面向智能体与维护者的仓库手册（英文） |"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference for the repository manual `AGENTS.md`. This file is **not"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 4,
+      "text": "auto-injected** into a session — it is deliberately not named `AGENT.md`/`AGENTS.md`/`CLAUDE.md`,"
+    },
+    {
+      "file": "agent-references/agent-teams-deltas.md",
+      "line": 7,
+      "text": "`AGENTS.md` sections, whose numbering is stable."
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference files for the repository manual `AGENTS.md`. They live outside"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 4,
+      "text": "the instruction-file discovery path (no `AGENT.md`/`AGENTS.md`/`CLAUDE.md` here), so they are never"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 5,
+      "text": "auto-injected: an agent opens them when `AGENTS.md`'s \"Reference Index (on-demand)\" section, or a"
+    },
+    {
+      "file": "agent-references/index.md",
+      "line": 6,
+      "text": "pointer inside `AGENTS.md`, sends it here."
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 3,
+      "text": "Agent-facing, English-only reference for the repository manual `AGENTS.md`. This file is **not"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 4,
+      "text": "auto-injected** into a session — it is deliberately not named `AGENT.md`/`AGENTS.md`/`CLAUDE.md`,"
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 6,
+      "text": "to `AGENTS.md` sections, whose numbering is stable."
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "line": 45,
+      "text": "| AGENT.md / AGENTS.md not injected into a session | the session runs a non-mpd preset; the `mpd` preset configures `instructionFileCandidates` (AGENT.md → AGENTS.md → CLAUDE.md) — switch the session to the `mpd` preset |"
+    },
+    {
+      "file": "docs/development.md",
+      "line": 10,
+      "text": "├── AGENTS.md              binding manual (read FIRST)"
+    },
+    {
+      "file": "docs/development.zh-CN.md",
+      "line": 10,
+      "text": "├── AGENTS.md              约束手册（先读）"
+    },
+    {
+      "file": "docs/extension-adaptation-report.md",
+      "line": 214,
+      "text": "would force a second `VENDOR_LOCK.json` re-pin, while this wave keeps exactly one (AGENTS.md"
+    },
+    {
+      "file": "docs/feature-audit.md",
+      "line": 24,
+      "text": "| Rules / AGENTS.md | nested rule discovery & injection | ✅ | DSH agent-instructions (baseline + nested + change tracking) |"
+    },
+    {
+      "file": "docs/feature-audit.zh-CN.md",
+      "line": 23,
+      "text": "| Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 22,
+      "text": "| [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 65,
+      "text": "spec; `AGENTS.md`, `docs/feature-audit.md` and the docs above are current."
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 21,
+      "text": "| [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册（英文）：约定、关卡、git 模型、故障排查。 |"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 60,
+      "text": "记录了移植决策与证据时间线。它们是历史，而不是当前规范；当前规范是 `AGENTS.md`、"
+    },
+    {
+      "file": "docs/omo-parity-gap.md",
+      "line": 55,
+      "text": "ported into `skills/` (AGENTS.md layout): ast-grep, coding-agent-sessions, data-scientist,"
+    },
+    {
+      "file": "docs/plan-c.md",
+      "line": 55,
+      "text": "- `AGENTS.md`: naming addendum — self-written = `mpd_*`; adopted third-party plugins keep vendor ids (`agent-teams`, context7, grep_app precedent)."
+    },
+    {
+      "file": "docs/plan-c.md",
+      "line": 122,
+      "text": "- Naming: self-written `mpd_*`; adopted third-party keeps vendor names (AGENTS.md addendum)."
+    },
+    {
+      "file": "docs/plan-d.md",
+      "line": 78,
+      "text": "P6. Docs: AGENTS.md install section, README quickstart, plan-c/decisions append; deprecate"
+    },
+    {
+      "file": "docs/plan-e.md",
+      "line": 5,
+      "text": "E5 (version 0.2.3 + all AGENTS.md gates green; evidence under `evidence/plan-e/`)."
+    },
+    {
+      "file": "docs/plan-e.md",
+      "line": 114,
+      "text": "`dev`, `--no-ff` merges, commit messages per AGENTS.md."
+    },
+    {
+      "file": "docs/plan-f.md",
+      "line": 14,
+      "text": "(AGENTS.md/CLAUDE.md). The bundle therefore ships a single main preset `mpd`"
+    },
+    {
+      "file": "docs/plan-f.md",
+      "line": 16,
+      "text": "`instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` and whose"
+    },
+    {
+      "file": "docs/plan-team-watchdog-report.md",
+      "line": 10,
+      "text": "`docs/**`, `VENDOR_LOCK.json` or `AGENTS.md` was touched; the only writes are this file and"
+    },
+    {
+      "file": "docs/plan-tui-team-surface.md",
+      "line": 29,
+      "text": "by the adopted plugin only), `AGENTS.md`, `VENDOR_LOCK.json`, `docs/**` (t5 owns the docs)."
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 11,
+      "text": "> Historical records are exempt from the bilingual rule (AGENTS.md `L18–L23`). The earlier"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 141,
+      "text": "| `L9` | `AGENTS.md` | the startup-rule section and the delta-table row describing the old behaviour |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.md",
+      "line": 148,
+      "text": "No `AGENT.md` is created: the startup clause lives in `AGENTS.md` and the landing points above."
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 9,
+      "text": "> 历史记录类文档豁免双语要求（AGENTS.md `L18–L23`）。此前的 `docs/omo-parity-gap.md`"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 127,
+      "text": "| `L9` | `AGENTS.md` | 启动规则段与描述旧行为的 delta 表行 |"
+    },
+    {
+      "file": "docs/upstream-parity-ledger.zh-CN.md",
+      "line": 134,
+      "text": "**不新建 `AGENT.md`**：启动条款落在 `AGENTS.md` 及上述落点。"
+    },
+    {
+      "file": "docs/user-guide.md",
+      "line": 101,
+      "text": "(falling back to `AGENTS.md`, then `CLAUDE.md`) — the preset configures"
+    },
+    {
+      "file": "docs/user-guide.zh-CN.md",
+      "line": 94,
+      "text": "- **项目指令文件**：会话开始时，智能体必须尝试读取 `AGENT.md`（回退到 `AGENTS.md`，再回退到"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/_deps/dsh-session/lib/types/types.d.ts",
+      "line": 258,
+      "text": "* context (file-change notices, subdir AGENTS.md, skill content, cron"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+      "line": 75,
+      "text": "block: \"//#region mpd-delta contract-contradiction (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\\n/** Whether a scope pattern matches EVERY path (root / `**` spellings). */\\nfunction isMatchEverythingPattern(pattern) {\\n    const raw = pattern.trim().replaceAll('\\\\\\\\', '/');\\n    return raw === '.' || raw === './' || raw === '/' || raw === '**' || raw === '**/';\\n}\\n/**\\n * A scope pair (inScope, outOfScope) that no path can satisfy, or undefined.\\n * The wave-1 defect this closes: an auto-generated repair contract listed one\\n * path in BOTH lists, so the edit its own acceptance REQUIRED was classified\\n * `out_of_scope` by the update gate (t13). Either the inScope declaration is\\n * itself forbidden by outOfScope (`pathMatchesScope(allowed, forbidden)`), or\\n * outOfScope forbids everything.\\n */\\nexport function contractContradiction(inScope = [], outOfScope = []) {\\n    const universal = outOfScope.find((pattern) => isMatchEverythingPattern(pattern));\\n    if (universal !== undefined)\\n        return { inScope: inScope[0] ?? '', outOfScope: universal };\\n    for (const allowed of inScope) {\\n        for (const forbidden of outOfScope) {\\n            // pathMatchesScope(path, pattern): `path` is the candidate changed\\n            // path. A carve-out (`packages/foo` allowed + `packages/foo/vendor`\\n            // forbidden) stays satisfiable because the forbidden pattern does\\n            // not cover the allowed DECLARATION itself.\\n            if (pathMatchesScope(allowed, forbidden))\\n                return { inScope: allowed, outOfScope: forbidden };\\n        }\\n    }\\n    return undefined;\\n}\\n/**\\n * The scope part of an auto-generated repair contract, contradiction-free.\\n *\\n * A finding's file that the source contract FORBIDS is CARVED OUT of the\\n * inherited outOfScope: the covering patterns are dropped from the result and\\n * the file is admitted to inScope, so a `needs_revision` verdict can always be\\n * acted on. The repair's own acceptance text is the authority for the paths it\\n * requires — leaving the prohibition in place would make the verdict\\n * unsatisfiable and deadlock the automatic repair loop (the wave-1 t13 defect:\\n * the generated repair listed `AGENTS.md` in BOTH lists because t10's finding\\n * required an edit that the source t7 contract's outOfScope forbade).\\n * Admissions are deduplicated against the source declaration, a path the repair\\n * is NOT required to touch keeps its prohibition, and a path the source already\\n * declared inScope does not get a second scope entry.\\n */\\nexport function repairScopeFromFindings(findings, source) {\\n    const sourceInScope = (source?.inScope ?? []).filter((pattern) => nonemptyString(pattern));\\n    const sourceOutOfScope = (source?.outOfScope ?? []).filter((pattern) => nonemptyString(pattern));\\n    const allowed = [];\\n    const allow = (path) => {\\n        if (allowed.includes(path))\\n            return;\\n        allowed.push(path);\\n    };\\n    for (const pattern of sourceInScope)\\n        allow(pattern);\\n    const required = [];\\n    for (const finding of findings) {\\n        const file = finding.file;\\n        if (!nonemptyString(file) || normalizeWorkspacePath(file) === undefined)\\n            continue;\\n        if (!required.includes(file))\\n            required.push(file);\\n        if (allowed.some((pattern) => pathMatchesScope(file, pattern)))\\n            continue;\\n        allow(file);\\n    }\\n    if (allowed.length === 0)\\n        return undefined;\\n    // A pattern the repair now requires a path through stops being a prohibition\\n    // (it is dropped); a pattern unrelated to any finding file is preserved as-is.\\n    const carved = sourceOutOfScope.filter((pattern) => !required.some((file) => pathMatchesScope(file, pattern)));\\n    return { inScope: allowed, ...(carved.length > 0 ? { outOfScope: carved } : {}) };\\n}\\n/**\\n * The B7 overlap test, as a true \\\"may two writers touch the same path\\\" relation:\\n * two declarations overlap when at least one workspace path can match BOTH, where a\\n * declaration covers exactly what `pathMatchesScope` covers — the declaration itself\\n * and everything beneath it (the dir-prefix rule), with `**` crossing separators and\\n * `*` / `?` staying inside one segment.\\n *\\n * The wave-2 body this replaces was inverted for its ONLY caller (`inScopeOverlap`,\\n * i.e. the create-task sibling validator): it called two DIFFERENT same-depth paths a\\n * collision (`docs/index.md` vs `scripts/build-mcp.mjs`) while reporting a parent and\\n * the file inside it as disjoint (`docs` vs `docs/index.md`), so it refused independent\\n * lanes and waved through the one shape that really races on a file. Measured\\n * 2026-09-14: three task creations were only unblocked by naming an unrelated task as a\\n * dependency (`evidence/mpd-naming/verifier-contract/`). The carve-out question it used\\n * to answer is asked by `contractContradiction`/`repairScopeFromFindings` through\\n * `pathMatchesScope`, never through this relation.\\n */\\nfunction scopePatternsOverlap(left, right) {\\n    if (isMatchEverythingPattern(left) || isMatchEverythingPattern(right))\\n        return true;\\n    return scopeSegmentsOverlap(left.split('/'), 0, right.split('/'), 0);\\n}\\n/**\\n * Whether two segment lists can describe the same path. A side that runs out first\\n * COVERS every path below the other (dir-prefix), which is exactly the parent/child\\n * overlap; two different literal segments can never meet.\\n */\\nfunction scopeSegmentsOverlap(left, leftAt, right, rightAt) {\\n    if (leftAt >= left.length || rightAt >= right.length)\\n        return true;\\n    const one = left[leftAt];\\n    const other = right[rightAt];\\n    if (one === '**')\\n        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt) || scopeSegmentsOverlap(left, leftAt, right, rightAt + 1);\\n    if (other === '**')\\n        return scopeSegmentsOverlap(left, leftAt, right, rightAt + 1) || scopeSegmentsOverlap(left, leftAt + 1, right, rightAt);\\n    const oneWild = scopeSegmentHasWildcard(one);\\n    const otherWild = scopeSegmentHasWildcard(other);\\n    if (oneWild || otherWild) {\\n        // The concrete side is the witness for the patterned side; when BOTH sides are\\n        // patterned the relation stays conservative (serialize rather than guess).\\n        if (!oneWild && !scopeSegmentMatches(one, other))\\n            return false;\\n        if (!otherWild && !scopeSegmentMatches(other, one))\\n            return false;\\n        return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);\\n    }\\n    if (one !== other)\\n        return false;\\n    return scopeSegmentsOverlap(left, leftAt + 1, right, rightAt + 1);\\n}\\n//#endregion mpd-delta contract-contradiction\","
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+      "line": 315,
+      "text": "* the generated repair listed `AGENTS.md` in BOTH lists because t10's finding"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/README.md",
+      "line": 5,
+      "text": "`README.md` / `README_ZH.md` are kept verbatim as provenance (AGENTS.md"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 13,
+      "text": "// `AGENTS.md` in BOTH inScope and outOfScope, so the update gate rejected the"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 134,
+      "text": "const preFix = { inScope: [\"AGENTS.md\"], outOfScope: [\"AGENTS.md\"] }"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 135,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", preFix.inScope, preFix.outOfScope)).toBe(\"out_of_scope\")"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 136,
+      "text": "expect(contractContradiction(preFix.inScope, preFix.outOfScope)).toEqual({ inScope: \"AGENTS.md\", outOfScope: \"AGENTS.md\" })"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 138,
+      "text": "const rejected = contract([\"AGENTS.md\"], [\"AGENTS.md\"])"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 141,
+      "text": "expect(String(rejected.error)).toMatch(/AGENTS.md/)"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 146,
+      "text": "[{ file: \"AGENTS.md\" }, { file: \"packages/x/a.ts\" }],"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 147,
+      "text": "{ id: \"t13\", inScope: [\"packages/x\"], outOfScope: [\"AGENTS.md\"] },"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 149,
+      "text": "// The repair's acceptance requires AGENTS.md, so the covering prohibition is"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 151,
+      "text": "expect(scope.inScope).toEqual([\"packages/x\", \"AGENTS.md\"])"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 156,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", scope.inScope, scope.outOfScope ?? [])).toBe(\"in_scope\")"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 168,
+      "text": "// AGENTS.md in its outOfScope; t10 (the failed review) demanded an AGENTS.md"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 174,
+      "text": "outOfScope: [\"presets/**\", \"packages/mpd-bundle/cordis.patch.yml\", \"VENDOR_LOCK.json\", \"AGENTS.md\", \"README.md\", \"README.zh-CN.md\"],"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 179,
+      "text": "{ id: \"F3-agents-md-state-root-stale\", severity: \"low\", file: \"AGENTS.md\", requiredFix: \"update the state-root precedence paragraph\" },"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 188,
+      "text": "// AGENTS.md is no longer forbidden by the repair that REQUIRES editing it"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 189,
+      "text": "expect((scope.outOfScope ?? []).some((pattern) => pathMatchesScope(\"AGENTS.md\", pattern))).toBe(false)"
+    },
+    {
+      "file": "packages/mpd-agent-teams-plugin/self-fix-tests/scope-glob-and-contract.test.mjs",
+      "line": 190,
+      "text": "expect(classifyChangedPath(\"AGENTS.md\", scope.inScope, scope.outOfScope ?? [])).toBe(\"in_scope\")"
+    },
+    {
+      "file": "packages/mpd-bundle/README.md",
+      "line": 18,
+      "text": "with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project"
+    },
+    {
+      "file": "packages/mpd-bundle/README.zh-CN.md",
+      "line": 8,
+      "text": "该 bundle 只随附 ONE preset（`mpd`，主工作 agent；assets 位于 `packages/mpd-bootstrap-plugin/presets/mpd`）：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。"
+    },
+    {
+      "file": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+      "line": 572,
+      "text": "// README and in AGENTS.md, never hidden here."
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 3,
+      "text": "#  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and"
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 57,
+      "text": "project workspace you MUST attempt to read AGENT.md (fall back to AGENTS.md, then"
+    },
+    {
+      "file": "presets/mpd/agent.cordis.yml",
+      "line": 168,
+      "text": "- AGENTS.md"
+    },
+    {
+      "file": "presets/mpd/preset.yml",
+      "line": 2,
+      "text": "description: \"The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the adopted dsh-agent-teams plugin (normal-named mpd roster profile).\""
+    },
+    {
+      "file": "scripts/build-mcp.mjs",
+      "line": 101,
+      "text": "// hand-scrubbed into the MPD_ prefix by commit 7d8f910 (direct dist edits, no rebuild), and AGENTS.md"
+    },
+    {
+      "file": "scripts/build-mcp.mjs",
+      "line": 325,
+      "text": "// matches the committed convention (hand-scrubbed baseline, AGENTS.md contract)."
+    },
+    {
+      "file": "scripts/pack-mpd.mjs",
+      "line": 83,
+      "text": "// the skills corpus lives at the repo root skills/ per AGENTS.md layout; the bundle"
+    },
+    {
+      "file": "scripts/pack-mpd.mjs",
+      "line": 115,
+      "text": "// Root bilingual README pair (AGENTS.md language policy: both files ship together"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 2,
+      "text": "// Repo gate: the bilingual documentation policy of AGENTS.md (Language policy section)."
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 50,
+      "text": "// Files the AGENTS.md Language policy exempts. An exemption means ONLY that a missing zh twin is"
+    },
+    {
+      "file": "scripts/verify-docs-parity.mjs",
+      "line": 67,
+      "text": "[\"docs/tui-edition-report.md\", \"prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)\"],"
+    },
+    {
+      "file": "skills/ast-grep/AGENTS.md",
+      "line": 51,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md)."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 68,
+      "text": "const ag = readFileSync(join(repoRoot, \"AGENTS.md\"), \"utf8\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 69,
+      "text": "if (!ag.includes(AGENTS_EXCEPTION)) fail(\"AGENTS.md naming exception missing\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "line": 72,
+      "text": "console.log(\"[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified\")"
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "line": 84,
+      "text": "checks.push([\"mpd preset AGENT.md candidates\", mpdPreset.includes(\"AGENT.md\") && mpdPreset.includes(\"AGENTS.md\") && mpdPreset.includes(\"instructionFileCandidates\")])"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 3,
+      "text": "description: \"(builtin) Initialize hierarchical AGENTS.md knowledge base\""
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 7,
+      "text": "Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories."
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 23,
+      "text": "- Main session: bash structure + LSP/codegraph code map + read existing AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 24,
+      "text": "2. **Score & Decide** - Determine AGENTS.md locations from merged findings"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 34,
+      "text": "{ id: \"generate\", content: \"Generate AGENTS.md files (root + subdirs)\", status: \"pending\", priority: \"high\" },"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 105,
+      "text": "# Existing AGENTS.md / CLAUDE.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 106,
+      "text": "find . -type f \\\\( -name \"AGENTS.md\" -o -name \"CLAUDE.md\" \\\\) -not -path '*/node_modules/*' 2>/dev/null"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 109,
+      "text": "#### 2. Read Existing AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 166,
+      "text": "| **>15** | Create AGENTS.md |"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 183,
+      "text": "## Phase 3: Generate AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 188,
+      "text": "**File Writing Rule**: If AGENTS.md already exists at the target path → use `Edit` tool. If it does NOT exist → use `Write` tool."
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 192,
+      "text": "### Root AGENTS.md (Full Treatment)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 241,
+      "text": "### Subdirectory AGENTS.md (Parallel)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 247,
+      "text": "subagent(description=\"Generate AGENTS.md\", run_in_background=false, persona=\"<fetch via mpd_role_persona(role=hephaestus)>\", agentOptions={model: \"deepseek-v4-flash\"}, prompt=`"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 248,
+      "text": "Generate AGENTS.md for: ${loc.path}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 282,
+      "text": "[OK] ./AGENTS.md (root, {N} lines)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 283,
+      "text": "[OK] ./src/hooks/AGENTS.md ({N} lines)"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 286,
+      "text": "AGENTS.md Created: {N}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 287,
+      "text": "AGENTS.md Updated: {N}"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 290,
+      "text": "./AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 291,
+      "text": "└── src/hooks/AGENTS.md"
+    },
+    {
+      "file": "skills/init-deep/SKILL.md",
+      "line": 301,
+      "text": "- **Over-documenting**: Not every dir needs AGENTS.md"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 49,
+      "text": "├── AGENTS.md                  # agent-readable project facts"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 294,
+      "text": "## `AGENTS.md` — agent-readable project facts"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 296,
+      "text": "Every new project gets an `AGENTS.md` at the root. The content is **machine-friendly**: short, declarative, no marketing prose. Example:"
+    },
+    {
+      "file": "skills/programming/references/go/bootstrap.md",
+      "line": 299,
+      "text": "# AGENTS.md"
+    },
+    {
+      "file": "skills/programming/references/logging.md",
+      "line": 11,
+      "text": "**BEFORE adding a single log line, find out how this project logs.** Grep for the logger initialization, a wrapper module, prior art in sibling files, and the project's agent docs (AGENTS.md / CLAUDE.md)."
+    },
+    {
+      "file": "skills/programming/scripts/go/new-project.py",
+      "line": 64,
+      "text": "(\"AGENTS.md.tmpl\",  \"AGENTS.md\",                       True),"
+    },
+    {
+      "file": "skills/programming/scripts/go/new-project.py",
+      "line": 117,
+      "text": "purpose: str = typer.Option(\"HTTP\", help=\"Short purpose for AGENTS.md\"),"
+    },
+    {
+      "file": "skills/programming/scripts/go/templates/AGENTS.md.tmpl",
+      "line": 1,
+      "text": "# AGENTS.md"
+    },
+    {
+      "file": "skills/programming/scripts/go/templates/README.md.tmpl",
+      "line": 12,
+      "text": "See `AGENTS.md` for architecture conventions."
+    },
+    {
+      "file": "skills/ultimate-browsing/ATTRIBUTION.md",
+      "line": 35,
+      "text": "[`engine/AGENTS.md` §UPSTREAM BASELINE AND VERSION POLICY](engine/AGENTS.md)."
+    },
+    {
+      "file": "skills/ultimate-browsing/engine/AGENTS.md",
+      "line": 179,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../../AGENTS.md)."
+    },
+    {
+      "file": "skills/visual-qa/AGENTS.md",
+      "line": 58,
+      "text": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md)."
+    },
+    {
+      "file": "tests/golden/out/plans/mpd-summary-plan.md",
+      "line": 143,
+      "text": "- Before committing, run `git status` to confirm the allowlist above holds exactly (AGENTS.md rules 1, 6)."
+    }
+  ]
+}

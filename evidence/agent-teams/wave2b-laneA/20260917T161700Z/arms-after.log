@@ -1,0 +1,14 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t53-member-capacity.test.mjs:
+(pass) T-11 (1/4): the view names the READY task and shows the BLOCKED one as blocked (the chain t1 -> t2) [2.90ms]
+[T-11] scheduler ready set: ["t1"]
+[T-11] view ready set:      ["t1"]
+(pass) T-11 (2/4): DECISIVE — the view's ready set EQUALS the scheduler's ready set for the same revision [0.86ms]
+(pass) T-11 (3/4): NEG CONTROL — zero ready tasks prints `none`, and a BUSY member is not claimable [0.35ms]
+(pass) T-11 (4/4): the view is FED by the scheduler's helper (wiring assert) and never re-implements it [1.07ms]
+
+ 4 pass
+ 0 fail
+ 20 expect() calls
+Ran 4 tests across 1 file. [104.00ms]

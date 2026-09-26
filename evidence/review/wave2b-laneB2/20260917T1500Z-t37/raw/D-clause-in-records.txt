@@ -1,0 +1,3 @@
+R1-verbatim/result.json: contains 'OUT OF FAMILY' = True
+R4-t80-live/result.json: contains 'OUT OF FAMILY' = True
+C1-anchor-in-scope/result.json: contains 'OUT OF FAMILY' = True

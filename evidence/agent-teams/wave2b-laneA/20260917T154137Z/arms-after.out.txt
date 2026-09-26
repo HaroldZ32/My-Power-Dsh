@@ -1,0 +1,11 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t48-mailbox-gate.test.mjs:
+(pass) P1d: an UNCHECKED identical send is REFUSED, and the refusal NAMES the record with its age [25.02ms]
+(pass) P1d: the READ tool reports the match at ANY age with id/ts/age/dupCount, the window and the moment [7.59ms]
+(pass) P1d: checked-and-confirmed is ALLOWED and FOLDS; different content is NEVER blocked; the escape is explicit only [7.82ms]
+
+ 3 pass
+ 0 fail
+ 22 expect() calls
+Ran 3 tests across 1 file. [140.00ms]

@@ -1,0 +1,76 @@
+{
+  "lifecycle": {
+    "mountLine": 37,
+    "header": {
+      "line": 13,
+      "count": 99
+    },
+    "calls": {
+      "mpd_ext_list": {
+        "call": 18,
+        "result": 20,
+        "isError": false
+      },
+      "mpd_ext_show": {
+        "call": 24,
+        "result": 25,
+        "isError": false
+      },
+      "mpd_flow_show": {
+        "call": 34,
+        "result": 35,
+        "isError": false
+      },
+      "skill": {
+        "call": 39,
+        "result": 40,
+        "isError": false
+      },
+      "mpd_role_persona": {
+        "call": 44,
+        "result": 45,
+        "isError": false
+      },
+      "mpd_role_spawn": {
+        "call": 49,
+        "result": 51,
+        "isError": false
+      }
+    },
+    "markers": {
+      "projectId": 20,
+      "userId": 12,
+      "projectRejection": 20,
+      "flowMarker": 35,
+      "skillMarker": 40,
+      "personaMarker": 45,
+      "roleChild": 51
+    },
+    "isolation": {
+      "sessionA": 12,
+      "sessionB": 12,
+      "decoyControl": 12
+    }
+  },
+  "mcpBridge": {
+    "mountLine": 35,
+    "schemaPublishLine": 31,
+    "liveCall": {
+      "call": 39,
+      "result": 40,
+      "isError": false
+    },
+    "header": {
+      "line": 13,
+      "count": 109
+    },
+    "offered": {
+      "liveStatus": true,
+      "schemaBadOutput": true,
+      "schemaBadInput": false,
+      "deadServerTools": 0,
+      "hangServerTools": 0,
+      "dupServerTools": 0
+    }
+  }
+}

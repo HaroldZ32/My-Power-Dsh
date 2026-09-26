@@ -1,0 +1,208 @@
+{
+  "task": "t23 — Repair t4 (combined): make the TUI plugin live in a real boot, honest about refusals, and conventions-compliant",
+  "attempt": 1,
+  "attemptId": "047a828c-e335-4621-961b-976453859693",
+  "producedBy": "Senior Engineer",
+  "timestamp": "20260915T060934Z",
+  "artifact": {
+    "entry": "packages/mpd-tui-plugin/dist/index.js",
+    "bytes": 98883,
+    "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+    "builtFromCleanTree": true
+  },
+  "rootCauseFixed": {
+    "defect": "T4-INERT-1: an inject-free row reaches no service through ctx.get(id,false), so the first package registered nothing in a real boot",
+    "fix": "cordis deferred `ctx.inject([id], scoped => …)` per seam, cleanup via `scoped.effect`; the blocking `export const inject` form is NOT used",
+    "proof": "mount lane pane captures (status line, board scene, shortcuts, dialogs, /mpd, command-tree completion, /settings) + durable session-log records"
+  },
+  "honestyFixes": {
+    "T10_F1": "src/decisions.ts no longer infers registration from a disposer type: the grant facade (grants.allows) is the source of truth; a missing grant is refused, an unqueryable grant state is requested (never claimed active), and the disposer is never called as a probe",
+    "shortcuts": "src/shortcuts.ts confirms through the host read-back tuiShortcuts.list(); a refused combo now yields state=refused instead of \"registered\"",
+    "renderers": "src/renderers.ts reports requested (count) — the host returns a no-op disposer on refusal, so nothing may be called registered",
+    "aggregate": "the `mpd TUI surfaces:` line lists each role with its measured state"
+  },
+  "commands": [
+    {
+      "command": "rm -rf packages/mpd-tui-plugin/dist && bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exitCode": 0,
+      "log": "build.log",
+      "evidence": "98883 bytes, sha256 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f"
+    },
+    {
+      "command": "node evidence/tui/plugin/20260915T060934Z/row-resolve.mjs",
+      "exitCode": 0,
+      "log": "row-resolve.json",
+      "evidence": "the bundle patch specifier resolves through the profile exports map to the rebuilt artifact; shas identical"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "log": "typecheck.log",
+      "evidence": "tsgo --noEmit exit 0"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exitCode": 0,
+      "log": "test.log",
+      "evidence": "37 tests: 37 pass, 0 fail, 302 assertions (fakes now model inject semantics)"
+    },
+    {
+      "command": "real dsh-tui boots in the warm sandbox (6 runs, tmux, pipe-pane)",
+      "exitCode": 0,
+      "log": "mount/*.pane.txt",
+      "evidence": "every demonstrated surface is a pane capture; see mount/README.md"
+    },
+    {
+      "command": "session-store decode (concatenated zstd frames)",
+      "exitCode": 0,
+      "log": "session-log-evidence.json",
+      "evidence": "durable command/run records with name \"mpd\" and mpd-tui/board-opened events in 10 sessions"
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "A REAL mount boot shows EFFECT, not merely absence of errors: rendered status contribution, `/mpd` handled by the plugin, scene open/exit, settings section with the unbridged marker, command-tree entry, a renderer line, a shortcut firing, a dialog appearing.",
+      "status": "failed",
+      "evidence": "Demonstrated with pane captures: status line above the prompt (01/02), /mpd handled by the plugin with zero model-fallback text (02), picker dialog (03), board scene opened by command and by alt+m (11/13), workmate dialog (14), /settings section MPD bundle (mpd) with the marker on screen (31), completion popup \"commands · 1 items / ❯ mpd board\" (16). NOT demonstrated: a tuiRenderers transcript line — 6 boots (incl. record-before-open and a replay attempt) produced no renderer row while the session log provably carries mpd-tui/board-opened; host analysis: channel.ts:255-259 captures the renderer facade once at construction and (unlike tuiSettingsSections) has no local fallback, so the miss is host-side. See mount/README.md §NOT demonstrated."
+    },
+    {
+      "criterion": "The mechanism is the cordis DEFERRED form ctx.inject([id], scoped => …) per seam with cleanup via scoped.effect; the BLOCKING form is not used.",
+      "status": "passed",
+      "evidence": "src/host.ts onService()/effectOn(); every seam module activates through it (grep: \"ctx.inject\" appears only in host.ts; no `export const inject` anywhere in the package). Tests assert the inject channel is what activates each seam."
+    },
+    {
+      "criterion": "The unit tests MODEL the host instead of a permissive fake — they must FAIL when a service was never injected.",
+      "status": "passed",
+      "evidence": "test/plugin.test.ts hostDouble(): get() returns undefined (the measured inject-free invisibility) and inject() only runs the callback when the service is composed; a dedicated suite asserts a ctx without inject registers nothing even when get() would answer, and the full-composition suite asserts activation via inject."
+    },
+    {
+      "criterion": "src/decisions.ts never reports ACTIVE from the disposer type; the grant-missing sentinel is a NON-active outcome with a test; the disclosure is honest; the disposer is not used as a probe.",
+      "status": "passed",
+      "evidence": "src/decisions.ts queries host.grants.allows(permission, event) and reports confirmed only when granted AND a disposer came back; tests cover grant-missing with a no-op disposer → refused with reason and 0 disposer calls during apply, granted → confirmed, no facade → requested."
+    },
+    {
+      "criterion": "The same typeof-inference class is removed from src/shortcuts.ts and src/renderers.ts; the aggregate line can no longer report a refused registration as registered.",
+      "status": "passed",
+      "evidence": "shortcuts confirms via tuiShortcuts.list() (refused → state refused; aggregate shows tuiShortcuts(refused…)); renderers reports requested with a count; tests assert both, plus that the aggregate never says tuiShortcuts(confirmed) for a refused combo."
+    },
+    {
+      "criterion": "themes/mpd-tui.json is re-keyed to the current semantic keys, the name stays unreserved, and the asset satisfies the host theme rules.",
+      "status": "passed",
+      "evidence": "theme keys: accent, accentShimmer, permission, promptBorder, text, inactive, subtle, selectionBg, success, error, warning; base dark; name mpd-tui; legacy claude/claudeShimmer absent — validated against the host src/theme.ts Theme block and DeprecatedThemeKey at b246411 (evidence/tui/plugin/20260915T060342Z/theme-check.json, 6/6 PASS)."
+    },
+    {
+      "criterion": "The status contribution uses a key consistent with the t3 conventions (mpd-tui / mpd-tui:<sub>) and satisfies the key grammar and the <=200-cell scalar budget.",
+      "status": "passed",
+      "evidence": "src/status.ts STATUS_KEY = \"mpd-tui\" (asserted by a test); the rendered line is one scalar line of ~60 cells; pane captures show it above the prompt."
+    },
+    {
+      "criterion": "/mpd follows the documented grammar: bare = picker, /mpd <value> = direct, /mpd status = print; dialog labels stay empty where the host supplies localized copy.",
+      "status": "passed",
+      "evidence": "src/commands.ts handler: empty input → actions.pickAction() (host select dialog, proven by pane 03), value → direct action, \"status\" → print; the confirm facade never passes confirm/cancel labels (host defaults). Tests cover all three forms plus the unknown-action error."
+    },
+    {
+      "criterion": "The scene satisfies the full host contract AND adapts via flexGrow plus the host terminal-size hook instead of a fixed refresh/width.",
+      "status": "passed",
+      "evidence": "src/scenes.ts: own title+counts chrome, key-hint footer, layered Esc/q exit, one scene (host-enforced), no stdout, React from props, ui.useTerminalSize() for the size readout, Box flexGrow: 1; pane 11/13 show the chrome and 05/12/22 show the return to chat."
+    },
+    {
+      "criterion": "dist/index.js is rebuilt from the final src with the new size+sha256 recorded and the bundle row still resolving to it; t21 disclosure survives intact; typecheck and tests pass; the evidence corrects the t4 completion record in plain language.",
+      "status": "passed",
+      "evidence": "build.log (98883 bytes, 5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f); row-resolve.json (specifier → /root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js, shas identical); the six field hints still carry UNBRIDGED_MARKER (tests + pane 31); typecheck.log exit 0; test.log 37 pass; and this directory's mount/README.md + ../../20260915T054343Z/CORRECTION.md state that the first package was inert in a real boot and its tests passed only because the fakes did not model inject."
+    }
+  ],
+  "changedPaths": [
+    "evidence/tui/plugin/20260915T054343Z/CORRECTION.md",
+    "evidence/tui/plugin/20260915T060934Z/build.log",
+    "evidence/tui/plugin/20260915T060934Z/ledger-status-records.jsonl",
+    "evidence/tui/plugin/20260915T060934Z/mount/01-boot.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/02-mpd-status.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/03-mpd-picker.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/04-board-scene.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/05-after-scene-exit.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/10-boot.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/11-board-by-command.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/12-transcript-after-board.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/13-board-by-shortcut.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/14-workmate-dialog.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/15-settings.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/16-command-completion.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/20-scrollback-after-board.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/21-settings.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/22-after-settings-exit.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/30-fresh-transcript.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/31-settings-scrolled.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/40-resume-picker.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/41-after-resume.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/50-after-board.pane.txt",
+    "evidence/tui/plugin/20260915T060934Z/mount/README.md",
+    "evidence/tui/plugin/20260915T060934Z/result.json",
+    "evidence/tui/plugin/20260915T060934Z/row-resolve.json",
+    "evidence/tui/plugin/20260915T060934Z/row-resolve.mjs",
+    "evidence/tui/plugin/20260915T060934Z/session-log-evidence.json",
+    "evidence/tui/plugin/20260915T060934Z/test.log",
+    "evidence/tui/plugin/20260915T060934Z/timestamp.txt",
+    "evidence/tui/plugin/20260915T060934Z/typecheck.log",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/package.json",
+    "packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md",
+    "packages/mpd-tui-plugin/src/command-trees.ts",
+    "packages/mpd-tui-plugin/src/commands.ts",
+    "packages/mpd-tui-plugin/src/decisions.ts",
+    "packages/mpd-tui-plugin/src/dialogs.ts",
+    "packages/mpd-tui-plugin/src/host.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/src/log.ts",
+    "packages/mpd-tui-plugin/src/registration.ts",
+    "packages/mpd-tui-plugin/src/renderers.ts",
+    "packages/mpd-tui-plugin/src/sanitize.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/src/session-events.d.ts",
+    "packages/mpd-tui-plugin/src/settings.ts",
+    "packages/mpd-tui-plugin/src/shortcuts.ts",
+    "packages/mpd-tui-plugin/src/state.ts",
+    "packages/mpd-tui-plugin/src/status.ts",
+    "packages/mpd-tui-plugin/src/types.ts",
+    "packages/mpd-tui-plugin/test/plugin.test.ts",
+    "packages/mpd-tui-plugin/test/state.test.ts",
+    "packages/mpd-tui-plugin/themes/mpd-tui.json"
+  ],
+  "residual": [
+    "tuiRenderers transcript line not demonstrated in this build (host-side facade capture at channel construction, no local fallback); the seam is implemented, registered, and honestly reported as requested.",
+    "The effect ledger records every status set() as a `replace status` effect (measured 257 records before the fix); publishes are now deduped to the changed text.",
+    "Host-side note for t8/t12: a plugin cannot distinguish an accepted registration from a refused one for renderers/shortcuts/settings/command-trees (both return a disposer); only tuiShortcuts.list() offers a read-back, which this seam uses."
+  ],
+  "correction": {
+    "recorded": "2026-09-15 (after submission, follow-up measurement in the same warm sandbox)",
+    "changes": "the REASON recorded for the failed criterion 1, not the verdict (still failed)",
+    "wrongEarlierAttribution": "the channel captures its renderer facade once at construction (channel.ts:255-259) with no local fallback",
+    "correctedMechanism": "the host refuses renderers for event types it considers built-in; plugin event types already persisted by a previous boot land in that built-in snapshot (dsh-adapter/renderers.ts: BUILTIN_SESSION_EVENT_TYPES = new Set(KNOWN_SESSION_EVENT_TYPES) at module load, then the built-in refusal path). A plugin renderer therefore works only for a never-before-seen type, on the first boot that uses it — a stable renderer line is not attainable for any type this bundle appends.",
+    "proof": "evidence/tui/plugin/20260915T060934Z/mount/renderer-type-probe/ (probe4..probe9 + reports; probe9 is decisive: previously-used name invisible, never-used name and control visible in the SAME boot/session/payload shape)",
+    "whatIsProvenWorking": "the tuiRenderers seam itself, this package registration shape (identity arg + scoped.effect cleanup), the transcript projection, and the plugin event append — all demonstrated with fresh type names (probe4, probe5, probe7)",
+    "consequence": "no package-side change can make our own renderer line stable; the honest disposition is NOT-CLAIMED for the renderer line, with the host behaviour reported upstream (t11-style research)."
+  },
+  "sizeCorrection": {
+    "recorded": "2026-09-15 (after the captain measured a discrepancy; evidence already carried the correct value)",
+    "authoritative": {
+      "bytes": 98883,
+      "sha256": "5dce2563fd0e3b20afede061297b9bfc9856593703974fac44f8642830b85e6f",
+      "mtime": "2026-09-15T06:23:20.169Z",
+      "measuredBy": "stat + sha256sum on the working tree"
+    },
+    "whatWasStale": "the size quoted in this task's PROSE (task output): 98788 bytes — a pre-edit build value carried forward by hand after the record-before-open + status-publish-dedupe edits grew dist/index.js. It reached .mpd/team/mpd-default/team.json (task output) and, by citation, evidence/tui/live/20260915T063140Z/{T8-LIVE-VERIFY.md,result.json} and evidence/tui/review/t12/REVIEW.md.",
+    "whyEvidenceWasRight": "result.json's artifact.bytes was computed from the file at generation time (98883), so the artifact and this evidence always agreed; only the reporting chain drifted.",
+    "rule": "cite the DIGEST; a byte size is derived information and must be re-measured before it appears anywhere."
+  },
+  "causeSuperseded": {
+    "rule": "Do NOT cite the channel.ts:255-259 \"facade captured once / no local fallback\" asymmetry as the cause of the missing renderer row.",
+    "verifiedCause": "the host refuses a plugin renderer for an event type it already knows (BUILTIN_SESSION_EVENT_TYPES snapshot at module load), so a renderer fires only for a never-before-seen type on the first boot that uses it; see mount/renderer-type-probe/FINDING-CORRECTION.md and probe9.",
+    "whereTheOutdatedSentenceStillAppears": [
+      "acceptance[0].evidence (left verbatim as submitted — the annotation is this block plus the appended correction sections)",
+      "residuals[0]",
+      "mount/README.md §NOT demonstrated (now carries an inline SUPERSEDED marker above it)"
+    ],
+    "crossReference": "the task findings array on t23 is immutable and also carries the earlier wording; this block and the README marker are the correction of record."
+  }
+}

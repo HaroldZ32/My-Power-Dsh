@@ -1,0 +1,14 @@
+{
+  "descriptor": "/root/dshProj/my-power-dsh/dsh-distribution.json",
+  "steps": [
+    {
+      "name": "install",
+      "command": "pnpm install --frozen-lockfile",
+      "status": 127,
+      "stdout": "",
+      "stderr": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-distribution/pnpm-home/store/v11/links/@pnpm/exe/11.21.0/14840bab9ff4b8ee042fbed23004afe9d5ee9f7909673a32db14ec562fec1dda/bin/../node_modules/@pnpm/exe/pnpm: 1: This: not found\n"
+    }
+  ],
+  "fullyValidated": false,
+  "blocker": "/root/dshProj/my-power-dsh/.mpd/recon/qa/tui-lanes/tui-distribution/pnpm-home/store/v11/links/@pnpm/exe/11.21.0/14840bab9ff4b8ee042fbed23004afe9d5ee9f7909673a32db14ec562fec1dda/bin/../node_modules/@pnpm/exe/pnpm: 1: This: not found"
+}

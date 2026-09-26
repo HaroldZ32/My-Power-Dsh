@@ -1,0 +1,70 @@
+{
+  "task": "t13",
+  "kind": "implementation",
+  "attemptId": "965b2534-8e61-494c-a15c-b7043700707b",
+  "member": "Junior Engineer",
+  "wave": "w1",
+  "moment": {
+    "verificationRead": "2026-09-20T03:48:38Z",
+    "editsApplied": "2026-09-20T03:49Z",
+    "gateRunStart": "2026-09-20T03:50:13Z",
+    "gateRunEnd": "2026-09-20T03:50:25Z"
+  },
+  "reverification": {
+    "input": "evidence/install-deps/floater-claims/RESULT.md (t8 verdict) — used as input, re-checked on the exact lines touched here",
+    "verdict": "the floater AND the sidebar-foot toggle are GONE; no fallback surface exists, so both claims were false",
+    "symbols": {
+      "buildGate": "scripts/build-mpd-client.mjs -> const LEGACY_SURFACES names 'workmate overlay floater' (inject(\"shell.overlay\") AND 'workmate footer toggle' (inject(\"sidebar.footer.action\")), and the loop right below prints '[build-mpd-client] FAIL: the removed …' + process.exit(1) when webClientFactory.includes(legacy) || teamPageFactory.includes(legacy)",
+      "sourcesClean": "packages/mpd-bundle-plugin/src/: ZERO hits for any LEGACY_SURFACES needle (grep, exit 1); src/web-client.js carries its own prose 'no overlay floater, no footer toggle'",
+      "hostIsADeclaredDependency": "package.json dependencies = {\"dsh-better-sidebar\":\"0.19.0-alpha.1\"} + the cordis.patch.yml insert row mpd-better-sidebar, whose guard logs '[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason (decision strings measured: 4x say('DISABLED'…), 1x say('ENABLED'…))",
+      "realClientWarning": "packages/mpd-bundle-plugin/src/team-page.js: '[mpd] better-sidebar exposes no registerTab — the AgentTeams page has no host (no floating fallback by design)'; src/web-client.js: '[mpd] better-sidebar exposes no registerTab — no mpd page is registered'"
+    },
+    "incidentalFindingInsideTheRewrittenRow": "The troubleshooting row ALSO told the reader to look for '[mpd] better-sidebar not installed' — a string that no longer exists anywhere in packages/ or scripts/ (grep empty). The row now names the strings that really ship: '[mpd] better-sidebar exposes no registerTab' (browser console) and the guard's boot-log line. Same row, same claim family — disclosed rather than left wrong in a remedy the user reads exactly when the host is absent."
+  },
+  "edits": [
+    {
+      "file": "packages/mpd-tui-plugin/README.md",
+      "what": "line 61-62: 'the web-only surfaces (agent-teams sidebar, workmate tab, bundle floater)' -> '(agent-teams sidebar, workmate tab)'. Item 3 lines 184-187: 'The agent-teams sidebar, the workmate tab and the bundle floater (dsh.client.platform = web) do not render in the TUI' -> 'The agent-teams sidebar and the workmate tab (dsh.client.platform = web) do not render in the TUI' (re-wrapped, no other wording changed)."
+    },
+    {
+      "file": "packages/mpd-tui-plugin/README.zh-CN.md",
+      "what": "line 54: '（agent-teams 侧边栏、workmate 标签页、bundle 浮层）' -> '（agent-teams 侧边栏、workmate 标签页）'. Item 3 lines 158-160: removed '与 bundle 浮层' and re-wrapped the sentence; no other wording changed."
+    },
+    {
+      "file": "agent-references/troubleshooting.md",
+      "what": "The 'Workmates tab is missing from the DSH-better-sidebar tab strip' row: the false sentence 'A profile without that sidebar intentionally falls back to the bundle floater + sidebar-foot toggle, so the page is still reachable.' is replaced by the true remedy — no fallback surface (both removed surfaces named as REMOVED and build-gated), the sidebar host is a DECLARED dependency of the bundle mounted by the mpd-better-sidebar row, so repair the install (bun install / bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts, then re-add the bundle) and read the guard's own boot-log line `[mpd-better-sidebar] mount guard: <ENABLED\\|DISABLED> - <reason>`. The row's leading anchor text is byte-identical; the cell count is unchanged (3 unescaped pipes), and the alternation pipe is escaped as `\\|` per this file's own convention (it already escapes pipes that way in its other rows). Also replaced the stale console string '[mpd] better-sidebar not installed' with the shipped '[mpd] better-sidebar exposes no registerTab'. The cited test package/mpd-bundle-plugin/test/sidebar-tab.test.mjs exists."
+    }
+  ],
+  "gates": {
+    "command": "bun run verify:docs",
+    "exitCode": 0,
+    "resultLine": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS",
+    "log": "evidence/install-deps/floater-claims-b/gates.log",
+    "hashSandwich": {
+      "start": "2026-09-20T03:50:13Z",
+      "end": "2026-09-20T03:50:25Z (12 s settle)",
+      "result": "IDENTICAL for all three files",
+      "files": {
+        "packages/mpd-tui-plugin/README.md": "62869c11644ef374c96ce18fe89990a4c8be36be5fe6e7b91003cdf707a36b11",
+        "packages/mpd-tui-plugin/README.zh-CN.md": "9b8ba08bd82ab1869158257cea99722840a0dd4ac83db916661735600844dcaa",
+        "agent-references/troubleshooting.md": "0a97ae3fc445e2ddd30df086f8b397eeffed239ede63102bb317dceef926d288"
+      }
+    },
+    "diffstat": "3 files changed, 10 insertions(+), 10 deletions(-)"
+  },
+  "untouched": {
+    "exemptPriorPhaseRecords": [
+      "docs/plan-tui-edition.md (EXEMPT per AGENTS.md §3: plan-*.md)",
+      "docs/tui-edition-report.md (EXEMPT per AGENTS.md §3: prior-phase report)"
+    ],
+    "confirmation": "git diff --stat over both files is EMPTY — they still carry the old wording and were deliberately not edited",
+    "other": "no other file touched: git status for this task shows only the three in-scope paths, plus this evidence directory"
+  },
+  "evidenceFiles": [
+    "evidence/install-deps/floater-claims-b/verification.txt",
+    "evidence/install-deps/floater-claims-b/gates.log",
+    "evidence/install-deps/floater-claims-b/hashes.start.txt",
+    "evidence/install-deps/floater-claims-b/hashes.end.txt",
+    "evidence/install-deps/floater-claims-b/result.json"
+  ]
+}

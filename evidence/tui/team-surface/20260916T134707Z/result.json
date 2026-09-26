@@ -1,0 +1,93 @@
+{
+  "slug": "tui-team-surface",
+  "task": "t2",
+  "title": "TUI team-workflow + plan-approval surfaces (implementation)",
+  "producedAt": "2026-09-16T13:47:07Z",
+  "contract": ".mpd/plans/tui-team-surface.md (t1, frozen)",
+  "revision": {
+    "note": "sha256 of every artifact this task produced or changed, measured after the final rebuild",
+    "files": {
+      "packages/mpd-tui-plugin/src/team-state.ts": "sha256:463977bab62a4c283e8511c33b6379bd301e267abb11a724121896b27718ddf2",
+      "packages/mpd-tui-plugin/src/scenes.ts": "sha256:e1ac22e216bcb04f442c38c556d21e0795af1af16880d474100f75c7fdd83bde",
+      "packages/mpd-tui-plugin/src/state.ts": "sha256:48d686bfadcc544418248d936933aa3806bc9569f802fb41a5ac62c5ec3c5581",
+      "packages/mpd-tui-plugin/src/commands.ts": "sha256:c0cb983cc4cb45adc6a929fcec129fc7c71860ab08bcf371df2c1cef89ed0ef9",
+      "packages/mpd-tui-plugin/src/command-trees.ts": "sha256:beb8b530165208a6d6ee1ea9a08b8c4420b3014bd595754bfb563ac418a66fd6",
+      "packages/mpd-tui-plugin/src/shortcuts.ts": "sha256:a98e8541f2dd74d6029a75d42fd6d1281c34b2be85b961bb0b85da68e8b048b5",
+      "packages/mpd-tui-plugin/src/index.ts": "sha256:be5bdfccaf47575deca9488311e5d1917309e137db6bc650f9b4f25888410cc0",
+      "packages/mpd-tui-plugin/dist/index.js": "sha256:b49e081dc152399b492b36b7869055ca3da3cdd0818374efc37d4051fd88e8bc",
+      "packages/mpd-tui-plugin/test/team-surface.test.ts": "sha256:251528c1e8ee2009edaf516a787c9d77d3c618ed2f0f1b01f57bae5de18fbc8d",
+      "packages/mpd-tui-plugin/test/plugin.test.ts": "sha256:b3660b168cb74942d9b65d503f71a641a6bf99e9fc4b682a7431c5c79163203a",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "sha256:cfc735153c77ff1c907e75e8eff103b526afa75ffcbd2757e3060789ebddd8af",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "sha256:f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84",
+      "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts": "sha256:d0a725a2d4f35d5fa3254b6ba17c8e3e9722284d287ced319dc7efde5686b7a7"
+    }
+  },
+  "delivered": {
+    "surfaces": {
+      "T1": "scene `mpd-tui-team` (title `MPD team`): header (name/id/phase/plan/staged/captain), the watchdog HOLD row, roster with route+status+done/total+currentTask+unread, the task DAG (id/kind/subject/status/assignee/attempt/round/verdict/deps/failed-dep/depth-indent/BLOCKED), the counts line, the mail row plus the last 5 captain-inbox rows, and the bounded problem notes",
+      "T2": "scene `mpd-tui-plan` (title `MPD plan approval`): the staged plan projection (roster + DAG + links/runnable/edits counts) and the action block (verbatim `approval needs the exact team id typed below, then Ctrl+X`, the empty confirmation echo, the required phrase, the request-changes exit), with Ctrl+X approve and Ctrl+D x2 discard both going through the adapter",
+      "T3": "the board scene gains exactly two rows: `team-plan  <awaiting_review|awaiting_feedback>` (staged only) and `team-hold  held (<ids>)` (only on a real watchdog hold)"
+    },
+    "entryPoints": {
+      "command": "/mpd team, /mpd plan (COMMAND_ACTIONS 3 -> 5, COMMAND_CHILDREN + 2 bilingual rows)",
+      "picker": "the bare /mpd dialog gains Team and Plan",
+      "shortcut": "alt+t (best-effort; the command is the guarantee)",
+      "keys": "board `a` -> T1; T1 `a` -> T2 (staged only), `p` -> board; T2 Esc -> T1 (or close when it was the entry point)"
+    },
+    "seam": "approve = the adopted tool agent_teams_approve {confirmation} through packages/mpd-dsh-adapter-plugin; discard = agent_teams_delete (the same archive outcome the Web discard produces). The adapter's executeTool/toolRuntime().execute gained the OPTIONAL `agent`, forwarded verbatim as exec.agent, sourced from the adapter's own liveAgent(captainSessionId) / liveAgents()[0]. The TUI never writes .mpd/team/** and never re-implements the runtime."
+  },
+  "acceptance": [
+    {
+      "criterion": "the team-workflow surface renders from the REAL durable record (read-only): team id/name/phase, roster with per-member state, the task DAG with kind/status/assignee/attempt/dependencies, and the watchdog hold state when present",
+      "status": "passed",
+      "evidence": "evidence/tui/team-surface/20260916T134707Z/probe.result.json (rendered from the workspace's own .mpd/team/mpd-default-8d65a2b2/team.json: 11 members, 5 tasks, deps/holds/counts) + test/team-surface.test.ts (fixture records written to disk and re-read; the real record asserted when present; hold row only on a real hold id)"
+    },
+    {
+      "criterion": "the approval surface shows the STAGED plan and offers approve / request-changes / discard; approve is IMPOSSIBLE without an explicit confirmation step",
+      "status": "passed",
+      "evidence": "test/team-surface.test.ts (35 tests) + evidence/.../negative-control/result.json: all SIX §4.2/§3.2 barriers are falsifiable — each removed from scenes.ts makes the suite red (B1 2, B2 4, B3 2, B4 10, B5 2, B6 2 failing tests), and scenes.ts is restored byte-identical (sha256 verified)"
+    },
+    {
+      "criterion": "approve reaches the host through an adapter seam (dsh.executeTool agent_teams_approve); the plugin never writes .mpd/team/** and never re-implements the runtime",
+      "status": "passed",
+      "evidence": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts `executeTool forwards the optional calling agent VERBATIM as exec.agent` (identity-preserved; absent stays absent) + the grep-level invariant test in team-surface.test.ts (no write primitive in the sources) + the built-bytes test (dist carries the two scene ids and none of writeFileSync/appendFileSync/mkdirSync/rmSync/unlinkSync/cpSync/createWriteStream)"
+    },
+    {
+      "criterion": "both surfaces are reachable from the TUI's own navigation (keystroke + the /mpd tree as a secondary path); the primary deliverable is the full-screen INTERFACE",
+      "status": "passed",
+      "evidence": "test/team-surface.test.ts (board `a`, T1 `a`/`p`, Ctrl+X/Ctrl+D/Esc drive the REAL components) + the built dist registering 3 scenes and the tree children [board, team, plan, workmates, status] (probe.result.json builtBytes)"
+    },
+    {
+      "criterion": "no TUI surface can break the session: every render path is non-throwing on a malformed/absent team record",
+      "status": "passed",
+      "evidence": "readTeamWorkflow never throws (invalid JSON / absent dir / dependency cycle -> an empty state plus bounded notes) and every component returns null on a missing OR null host kit; asserted in test/team-surface.test.ts"
+    }
+  ],
+  "gates": "evidence/tui/team-surface/20260916T134707Z/gates.result.json (+ per-gate logs in this directory; includes BOTH readings of `bun test packages`)",
+  "findings": [
+    {
+      "id": "F1-contract-inconsistency-r-vs-echo",
+      "severity": "medium",
+      "problem": "The frozen contract §3.2 lists BOTH `r` = re-read and 'printable characters are appended to the confirmation echo', but the required phrase `approve <teamId>` itself contains 'r'. Honoured literally, the phrase would be UNTYPEABLE — the approval surface could never approve. The t2 test harness caught this on the first run (the echo reset mid-typing).",
+      "resolution": "Implemented the only reading that keeps every safety barrier AND a typeable phrase: `r` refreshes while the echo is still EMPTY (exactly the state §4.2 barrier 3 describes), and Ctrl+R refreshes unconditionally; once consent input starts, every printable key including `r` is echoed. No barrier is weakened (no prefill, no bare-key mutation, chords only). The row is pinned by the test `contract reconciliation: r refreshes while the echo is EMPTY, and never eats the phrase`. t4 should re-check this against §3.2 wording."
+    },
+    {
+      "id": "F2-bun-test-packages-red-pre-existing",
+      "severity": "low",
+      "problem": "`bun test packages` exits 1 with 2 failures in packages/mpd-config-plugin/test/settings-wiring.test.ts ('ZERO live roots: the mount-time root is used...' and the U15 migration case). The mount-time root is process.cwd() and this checkout's own .mpd/mpd.jsonc now exists, so the tests' 'no file there' premise is false.",
+      "evidence": "not caused by this task: the file imports nothing this task changed, it fails identically when run alone, and it is 23/23 GREEN when the same file is run from a cwd without .mpd/mpd.jsonc (gates.result.json control). The .mpd/ tree is explicitly OUT OF SCOPE for this task, so it was not touched.",
+      "resolution": "RESOLVED-BY-STANDING-WAIVER: the captain already ruled this exact gate WAIVED for this workspace (evidence/extensions/integration-ledger/20260916T071414Z/delivery-ledger.md §10) because the two assertions assume <cwd>/.mpd/mpd.jsonc does not exist while this workspace deliberately HAS that gitignored file. The sanctioned replacement was re-measured here on the FINAL tree: the WHOLE suite from a clean cwd is 791 tests / 791 pass / 0 fail / exit 0 (bun-test-packages.clean-cwd-full.log), the identical 791 tests the repo-cwd run reports (789 pass + 2 fail)."
+    },
+    {
+      "id": "F3-non-staged-surface-was-not-read-only",
+      "severity": "high",
+      "problem": "Found by self-review AFTER the first green run: the frozen §3.2 says the precondition failure ('no staged plan for team <id>') accepts ONLY Esc, but the key handler still armed Ctrl+D and called agent_teams_delete on the SECOND press — a running team could have been ARCHIVED from a screen that offers no plan at all.",
+      "resolution": "The handler now returns early for every key except Esc while the precondition is unmet (`if (!usable)`), pinned by the test `the precondition failure is READ-ONLY: no chord can mutate a non-staged team` and by mutation B6 in the falsifiability driver."
+    }
+  ],
+  "notClaimed": [
+    "No live TTY keystroke drive: tmux/dsh-tui are absent here, so tui-mount and tui-panels SKIP (exit 0, prereq recorded). The pane text proves rendering only in a real TTY; the record flip proves the action (contract §7.5).",
+    "The captain model's reaction to a TUI approval is NOT claimed (contract §6.3 / #T3).",
+    "No inline plan editing, no 'continue with a reason' call (contract §7.2/#3)."
+  ]
+}

@@ -1,0 +1,23 @@
+### t38 verification — 20260917T012901Z
+### before (from t10's evidence): bun test packages/mpd-tui-plugin packages/mpd-bundle-plugin = 167 pass / 2 fail, both exactly the count pin
+
+### verify 1/2: bun test packages/mpd-tui-plugin
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+
+ 98 pass
+ 0 fail
+ 660 expect() calls
+Ran 98 tests across 10 files. [487.00ms]
+
+### verify 2/2: bun test packages/mpd-bundle-plugin
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+
+ 71 pass
+ 0 fail
+ 595 expect() calls
+Ran 71 tests across 8 files. [11.34s]
+
+### the two pins now
+packages/mpd-tui-plugin/test/plugin.test.ts:302:    expect(calls.sections[0].fields).toHaveLength(13)
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:267:    expect(FIELDS).toHaveLength(13)
+259:  test("the card's thirteen fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {

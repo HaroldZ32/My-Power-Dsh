@@ -1,0 +1,14 @@
+=== locate the repo doc-pair/parity gate ===
+$ grep -rln 'zh-CN' scripts/ skills/dsh-qa/ packages/*/test/
+scripts/pack-mpd.mjs
+skills/dsh-qa/scripts/tui-spec-conformance.mjs
+
+=== does any of those assert a doc pair? ===
+--- scripts/pack-mpd.mjs ---
+106:  // leave the [中文](./README.zh-CN.md) switch link dangling in the package).
+107:  for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"]) {
+146:    for (const f of ["README.md", "README.zh-CN.md"]) {
+272:      "LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"
+--- skills/dsh-qa/scripts/tui-spec-conformance.mjs ---
+226:      const candidates = [join(REPO, "docs", "tui.md"), join(REPO, "docs", "tui.zh-CN.md"), MANIFEST]
+229:    trustDisclosureArtifact: [join(REPO, "docs", "tui.md"), join(REPO, "docs", "tui.zh-CN.md"), MANIFEST]

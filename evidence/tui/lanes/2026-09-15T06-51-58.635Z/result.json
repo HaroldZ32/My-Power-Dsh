@@ -1,0 +1,72 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetSessionId": "2a0dbbd8-4d62-4dbb-b5b5-98f2668c67a0",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "isolationOffenders": [],
+      "sessionKeysCreated": [
+        "--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--"
+      ],
+      "sessionKeysInherited": [],
+      "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--",
+      "sandboxSessions": 1,
+      "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/t9-clean",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-51-58.635Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": []
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetSessionId": "2a0dbbd8-4d62-4dbb-b5b5-98f2668c67a0",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "isolationOffenders": [],
+    "sessionKeysCreated": [
+      "--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--"
+    ],
+    "sessionKeysInherited": [],
+    "expectedProjectKey": "--root-dshProj-my-power-dsh-.mpd-recon-t9-clean-ws--",
+    "sandboxSessions": 1,
+    "sandboxRoot": "/root/dshProj/my-power-dsh/.mpd/recon/t9-clean",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-15T06-51-58.635Z/preset.session.json"
+  }
+}

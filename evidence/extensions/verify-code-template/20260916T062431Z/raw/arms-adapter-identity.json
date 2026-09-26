@@ -1,0 +1,152 @@
+{
+  "driver": "arms-adapter-identity.mjs",
+  "imports": {
+    "ext": "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js",
+    "roles": "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js",
+    "note": "the SHIPPED dist artifacts, not src/"
+  },
+  "checks": [
+    {
+      "id": "ext.fallback.apply-did-not-throw",
+      "ok": true,
+      "detail": "no throw"
+    },
+    {
+      "id": "ext.fallback.warns-exactly-once",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK warnings: 1"
+    },
+    {
+      "id": "ext.fallback.warning-names-identity",
+      "ok": true,
+      "detail": "[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter)."
+    },
+    {
+      "id": "ext.fallback.service-identity",
+      "ok": true,
+      "detail": "fallback:createDshAdapter"
+    },
+    {
+      "id": "ext.fallback.identity-constant-shape",
+      "ok": true,
+      "detail": "fallback:createDshAdapter / mounted:mpdDsh"
+    },
+    {
+      "id": "ext.mounted.apply-did-not-throw",
+      "ok": true,
+      "detail": "no throw"
+    },
+    {
+      "id": "ext.mounted.no-warning",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK warnings: 0"
+    },
+    {
+      "id": "ext.mounted.service-identity",
+      "ok": true,
+      "detail": "mounted:mpdDsh"
+    },
+    {
+      "id": "ext.mounted.boot-line-carries-identity",
+      "ok": true,
+      "detail": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+    },
+    {
+      "id": "ext.mounted.four-tools-through-mounted-adapter",
+      "ok": true,
+      "detail": "[\"mpd_ext_list\",\"mpd_ext_show\",\"mpd_flow_list\",\"mpd_flow_show\"]"
+    },
+    {
+      "id": "ext.mounted.no-second-adapter",
+      "ok": true,
+      "detail": "registrations that bypassed the mounted adapter: []"
+    },
+    {
+      "id": "roles.fallback.apply-did-not-throw",
+      "ok": true,
+      "detail": "no throw"
+    },
+    {
+      "id": "roles.fallback.warns-exactly-once",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK warnings: 1"
+    },
+    {
+      "id": "roles.fallback.warning-names-identity",
+      "ok": true,
+      "detail": "[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter)."
+    },
+    {
+      "id": "roles.fallback.service-identity",
+      "ok": true,
+      "detail": "fallback:createDshAdapter"
+    },
+    {
+      "id": "roles.mounted.apply-did-not-throw",
+      "ok": true,
+      "detail": "no throw"
+    },
+    {
+      "id": "roles.mounted.no-warning",
+      "ok": true,
+      "detail": "ADAPTER FALLBACK warnings: 0"
+    },
+    {
+      "id": "roles.mounted.service-identity",
+      "ok": true,
+      "detail": "mounted:mpdDsh"
+    },
+    {
+      "id": "roles.mounted.boot-line-carries-identity",
+      "ok": true,
+      "detail": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+    },
+    {
+      "id": "roles.mounted.no-second-adapter",
+      "ok": true,
+      "detail": "registrations that bypassed the mounted adapter: []"
+    }
+  ],
+  "raw": {
+    "extFallback": {
+      "warnings": [
+        "[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter)."
+      ],
+      "stdout": [
+        "[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. This boot keeps working, which is exactly why the branch is loud now — fix the ROW ORDER (mpd-ext must sit BELOW mpd-dsh-adapter); the canonical note lives in this file (resolveAdapter).",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=fallback:createDshAdapter | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+      ],
+      "service": "fallback:createDshAdapter"
+    },
+    "extMounted": {
+      "warnings": [],
+      "stdout": [
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+      ],
+      "throughMountedAdapter": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "bypassingCtx": []
+    },
+    "rolesFallback": {
+      "warnings": [
+        "[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter)."
+      ],
+      "stdout": [
+        "[mpd-roles] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): ctx.get(\"mpdDsh\") found no mounted mpdDsh service, so this row built its OWN adapter beside the tree's: the one-contact-surface rule (AGENTS.md §6) is broken and per-instance guard/waterfall state is doubled. Compose mpd-roles BELOW mpd-dsh-adapter; the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=fallback:createDshAdapter"
+      ],
+      "service": "fallback:createDshAdapter"
+    },
+    "rolesMounted": {
+      "warnings": [],
+      "stdout": [
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+      ],
+      "bypassingCtx": []
+    }
+  }
+}

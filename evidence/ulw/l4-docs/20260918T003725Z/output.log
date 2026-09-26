@@ -1,0 +1,203 @@
+=== t6 docs lane verification ===
+2026-09-18T00:37:33Z
+base revision: 5aa222a144e4238b67453731c5decd806db6db94
+
+--- changed paths (docs lane) ---
+ M AGENTS.md
+ M docs/architecture.md
+ M docs/architecture.zh-CN.md
+ M docs/feature-audit.md
+ M docs/feature-audit.zh-CN.md
+ M docs/upstream-parity-ledger.md
+ M docs/upstream-parity-ledger.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M packages/mpd-bundle/README.md
+ M packages/mpd-bundle/README.zh-CN.md
+ M presets/mpd/agent.cordis.yml
+
+--- verify:docs ---
+$ node scripts/verify-docs-parity.mjs
+ok   README.md
+ok   docs/architecture.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **120**/10 vs derived 120/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 63 id(s), live 63 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+verify-docs-exit=0
+--- verify:rows ---
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+verify-rows-exit=0
+
+--- preset-conformance --self-test ---
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+preset-conformance-exit=0
+
+--- sha256 of changed in-scope files ---
+43b38e0d1197a90e9de14228c64b0daff5263ee26ca945e005e75b0647310ad6  AGENTS.md
+ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b  presets/mpd/agent.cordis.yml
+54657c8eb55bd16f7a2a3661ec6a957440599475cb4079a91500cd43b5e65a45  packages/mpd-bundle/README.md
+a620278df83edb74dad16556c2373a5b4bd2de440e9441fbde7cc19ca296585d  packages/mpd-bundle/README.zh-CN.md
+f30cfb664381b78788d5c81208bc72b255fd0919d3a3f96cc9d02f98a244bb0f  docs/feature-audit.md
+ee05cf5f79ba2a5fe074c181a8530756fd6b8ffed9baac88451dadbc90291d3d  docs/feature-audit.zh-CN.md
+74ce3c5ce1b1276cf60bcc15339808b89a2c3ee0c3e6375a7dd2af6d7eb04a1c  docs/upstream-parity-ledger.md
+5dba3e156a3a74327dc8ae4a7c8933286e16dbad8552536eee9218b76c780322  docs/upstream-parity-ledger.zh-CN.md
+ae16ac33d99f83a0dee308d10586da18a0fb56128336a7d8c6caaa5662d3c4ab  docs/architecture.md
+9e5e9a3d6156e019f7c99d4eaa6d25fc99017a2e076d7b16d2203cee857ad85a  docs/architecture.zh-CN.md
+5b958da971cccce77fbc722a543652f98266a911f2e7147b7ca5f4719a4cab74  docs/user-guide.md
+bd2d81b4353992c1dd5dc9078aea9358bff9791cedc69e6424d826a360359150  docs/user-guide.zh-CN.md
+
+--- diffstat (in-scope) ---
+ AGENTS.md                            | 21 ++++++++++++++++++++-
+ docs/architecture.md                 |  2 +-
+ docs/architecture.zh-CN.md           |  2 +-
+ docs/feature-audit.md                |  6 +++---
+ docs/feature-audit.zh-CN.md          |  6 +++---
+ docs/upstream-parity-ledger.md       | 31 +++++++++++++++++++------------
+ docs/upstream-parity-ledger.zh-CN.md | 24 +++++++++++++++---------
+ docs/user-guide.md                   |  2 +-
+ docs/user-guide.zh-CN.md             |  2 +-
+ packages/mpd-bundle/README.md        | 21 +++++++++++++--------
+ packages/mpd-bundle/README.zh-CN.md  |  7 ++++---
+ presets/mpd/agent.cordis.yml         | 19 ++++++++++++-------
+ 12 files changed, 93 insertions(+), 50 deletions(-)
+
+=== acceptance-criterion evidence greps ===
+[C1] B3 label gone from AGENTS.md (expect no hits)
+grep-exit=1
+[C1] new AGENTS.md layout line:
+175:│   ├── mpd-ulw-plugin/           # C2 (Plan C) ultrawork v2 engine: mpd_ultrawork + mpd_ulw alias, /ulw + /ultrawork commands
+[C2] ULW commands + advisory gate in AGENTS.md:
+110:- **ULW is user-invocable**: the C2 (Plan C) ultrawork v2 engine (`mpd-ulw-plugin`) is reachable as
+111:  `/ulw <objective>` and `/ultrawork <objective>` (equivalent, objective as argument) — the command
+120:- **The session-start complexity gate ADVISES — it never pre-stages a team**: the frozen predicate
+[C3] package-directory build form under docs/** (expect no hits)
+grep-exit=1
+[C3] canonical repo-root build form present in docs/development.md:
+36:bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
+[C4] old skills-corpus claim (expect no hits)
+grep-exit=1
+[C4] new claim (EN/ZH):
+23:| Skills corpus | upstream skill corpus | ✅ | ported (2026-08-27): the corpus ships under `skills/` (18 directories, incl. `svn-master` and the repo's own `dsh-qa`) and is SERVED by reference — `mpd-bootstrap` registers `<bundle>/skills` as a `bundled` skills provider through the adapter, so it is never copied into `$DSH_HOME`; see `docs/omo-parity-gap.md` §Content gaps |
+22:| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（18 个目录，含 `svn-master` 与本仓库自有的 `dsh-qa`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
+[C4] omo-parity-gap record cross-check:
+55:- **Skills corpus — RESOLVED (2026-08-27, ported)**: all 17 upstream shared-skills are now
+[C5] agent-teams adopted README pair: any auto-provisioning/pre-staging claim? (expect no hits)
+grep-exit=1
+[C6] preset advisory branch + frozen predicate:
+90:        - gate TRIGGERED by a soft signal -> the gate only ADVISES: it stages NOTHING and
+95:        - explicit team request (`team:` prefix or `!team`) -> the plugin stages the default
+101:      The gate is frozen: trigger = explicit flag OR (matchedSignals >= 1), where the
+[C7] bundle README pair advisory wording:
+packages/mpd-bundle/README.md:26:mechanically by the adopted agent-teams plugin is an **advisory complexity gate**
+packages/mpd-bundle/README.md:39:- **Triggered by a soft signal** → the gate **stages nothing**: it injects exactly one
+packages/mpd-bundle/README.zh-CN.md:12:会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：上游 team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**咨询式复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.js`），而不是仅靠提示词约束：
+packages/mpd-bundle/README.zh-CN.md:17:- **软信号命中** → 门**不建任何团队**：只注入**恰好一条**咨询通知（标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被 staged**。captain 应在工作确实需要团队时自行调用 `agent_teams_create(approval="required", profile="mpd")` 建队；若工作不需要团队（短小或单线程任务），则继续单独执行，并用一句话说明。已有团队的会话（恢复）则直接沿用原团队。
+[C8] language switch links under titles (first 3 lines of each touched pair):
+--- docs/feature-audit.md
+**English** | [中文](./feature-audit.zh-CN.md)
+--- docs/feature-audit.zh-CN.md
+**中文** | [English](./feature-audit.md)
+--- docs/upstream-parity-ledger.md
+
+--- docs/upstream-parity-ledger.zh-CN.md
+
+--- docs/architecture.md
+**English** | [中文](architecture.zh-CN.md)
+--- docs/architecture.zh-CN.md
+**中文** | [English](architecture.md)
+--- docs/user-guide.md
+**English** | [中文](user-guide.zh-CN.md)
+--- docs/user-guide.zh-CN.md
+[English](user-guide.md) | **中文**
+--- packages/mpd-bundle/README.md
+
+--- packages/mpd-bundle/README.zh-CN.md
+
+
+--- result.json written 2026-09-18T00:38:33Z ---
+0156bf169627f65a4d1b1b30e65b4eae2e128eca0d222d7e223aa8759dc2bd90  evidence/ulw/l4-docs/20260918T003725Z/result.json
+79b5b3b4cae360d682c77019d00906ef3d1b1891d9e1801f59d520adbf264a36  evidence/ulw/l4-docs/20260918T003725Z/output.log
+
+--- FINAL verify:docs at 2026-09-18T00:38:39Z ---
+$ node scripts/verify-docs-parity.mjs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+final-verify-docs-exit=0
+
+--- FINAL verify:docs pass 2 at 2026-09-18T00:39:02Z (after ledger wording fix) ---
+$ node scripts/verify-docs-parity.mjs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+final-verify-docs-exit2=0
+
+--- final in-scope sha256 ---
+43b38e0d1197a90e9de14228c64b0daff5263ee26ca945e005e75b0647310ad6  AGENTS.md
+ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b  presets/mpd/agent.cordis.yml
+f30cfb664381b78788d5c81208bc72b255fd0919d3a3f96cc9d02f98a244bb0f  docs/feature-audit.md
+ee05cf5f79ba2a5fe074c181a8530756fd6b8ffed9baac88451dadbc90291d3d  docs/feature-audit.zh-CN.md
+77688a07061239b5ea51017812a33e527d45eaaa58564deb147cc03c808436cb  docs/upstream-parity-ledger.md
+14f004020f256eca4239fe1acbebdb646f293e30f9ee115b5eaca57a8e9c787c  docs/upstream-parity-ledger.zh-CN.md
+ae16ac33d99f83a0dee308d10586da18a0fb56128336a7d8c6caaa5662d3c4ab  docs/architecture.md
+9e5e9a3d6156e019f7c99d4eaa6d25fc99017a2e076d7b16d2203cee857ad85a  docs/architecture.zh-CN.md
+5b958da971cccce77fbc722a543652f98266a911f2e7147b7ca5f4719a4cab74  docs/user-guide.md
+bd2d81b4353992c1dd5dc9078aea9358bff9791cedc69e6424d826a360359150  docs/user-guide.zh-CN.md
+54657c8eb55bd16f7a2a3661ec6a957440599475cb4079a91500cd43b5e65a45  packages/mpd-bundle/README.md
+a620278df83edb74dad16556c2373a5b4bd2de440e9441fbde7cc19ca296585d  packages/mpd-bundle/README.zh-CN.md

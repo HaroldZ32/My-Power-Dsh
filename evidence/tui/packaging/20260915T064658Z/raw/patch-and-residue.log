@@ -1,0 +1,11 @@
+=== (5) packed patch decoupling ===
+301:      name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+absolute dev paths in packed patch: 0
+
+=== (5b) row parity ===
+[verify-rows-parity] ok: 24 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+
+=== (6) build residue is gitignored ===
+dist/mpd-package is gitignored
+(empty above = no residue)

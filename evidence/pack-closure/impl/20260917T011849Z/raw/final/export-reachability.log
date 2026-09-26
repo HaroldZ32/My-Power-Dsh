@@ -1,0 +1,31 @@
+$ node -e "<read packages/mpd-ext-plugin/dist/index.js, list its export blocks, test the five names the CLI needs>"
+export { blocks in the bundle: 1
+exported names: name, inject, apply, REQUIRED_SEAMS, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_FALLBACK
+  buildExtension             NOT-EXPORTED
+  roleNameKey                NOT-EXPORTED
+  roleNameCollisionReason    NOT-EXPORTED
+  discoverPlane              NOT-EXPORTED
+  projectExtensionsDir       NOT-EXPORTED
+  userExtensionsDir          NOT-EXPORTED
+  bundleExtensionsDir        NOT-EXPORTED
+  ROLES                      NOT-EXPORTED
+  MPD_EXT_CONTRACT           NOT-EXPORTED
+
+$ git status --short packages/mpd-ext-plugin   # proof: no src edit by this lane
+ M packages/mpd-ext-plugin/src/index.ts
+(empty above = the ext plugin is untouched)
+
+$ tail -3 dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js
+// this compiled validator, whose own export block exposes only the plugin surface. Do not
+// edit the packed copy — it is regenerated on every pack.
+export { ROLES, MPD_EXT_CONTRACT, buildExtension, roleNameKey, roleNameCollisionReason, discoverPlane, projectExtensionsDir, userExtensionsDir, bundleExtensionsDir };
+
+$ grep -c "^function buildExtension\|^function roleNameKey" packages/mpd-ext-plugin/dist/index.js   # declared (bindable) though not exported
+2
+
+CORRECTION to the line above (the tree is shared): `git status` reports
+`packages/mpd-ext-plugin/src/index.ts` as modified — that is ANOTHER lane's in-flight edit
+(t12/t23 per the captain's t11 ruling), NOT this lane's. Proof for THIS lane: the t11 payload's
+changedPaths contain no `packages/**` path (scripts/{pack-mpd.mjs,mpd-ext.mjs,verify-pack-closure.mjs}
++ docs/*.md/zh-CN only). The packer ships whatever `packages/mpd-ext-plugin/dist/index.js` the build
+produced at pack time, which is why the shim generators re-check every binding on every pack.

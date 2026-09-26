@@ -1,0 +1,4 @@
+WITHOUT hook: gate {"kind":"allow"} real result {"status":0,"stdout":"","stderr":"","ranAsAChildProcess":true} in 271 ms
+WITH    hook: gate {"kind":"allow"} real result {"status":0,"stdout":"","stderr":"","ranAsAChildProcess":true} in 268 ms
+the hook observed {"name":"bash","callId":"call-observe-1","decisionKind":"allow","at":1789525904986} BEFORE the command started: true
+same gate / same result / same post decision: {"gateIdentical":true,"resultIdentical":true,"postDecisionIdentical":true,"commandRanForReal":true,"hookActuallyRan":true,"observedBeforeTheCommandRan":true,"noHookNoObservation":true}

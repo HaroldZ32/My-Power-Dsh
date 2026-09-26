@@ -12,6 +12,7 @@ import { join } from "node:path"
 import {
   apply,
   auditDir,
+  sameAuditOutcome,
   classifyCompactionError,
   compactTeamPass,
   compactableMembers,
@@ -19,6 +20,7 @@ import {
   listTeamIds,
   readAudits,
   readTeamRecord,
+  readTeams,
   teamIsFinished,
   terminalTaskStatuses,
   writeAudit,
@@ -39,10 +41,31 @@ function fixture(options = {}) {
     { id: OTHER, name: "Junior Engineer", role: "engineer", status: "idle", joinedAt: now },
   ]
   const tasks = options.tasks ?? [{ id: "t1", status: "completed" }]
-  writeFileSync(join(workspace, ".mpd", "team", teamId, "team.json"), JSON.stringify({
-    id: teamId, name: "t48", captainSessionId: CAPTAIN, createdAt: now, updatedAt: now, taskSeq: 1, phase: "running",
-    members, tasks: tasks.map((task) => ({ assignee: "Senior Engineer", dependencies: [], attempt: 1, ...task })),
-  }, null, 2))
+  // 0.1.7: the fixture is a LIVE TEAM VIEW — the OFFICIAL readout the adapter folds — instead of
+  // the retired `.mpd/team/<id>/team.json`. The Lead pseudo-row is part of a real roster (the
+  // official `listMembers` always puts it first), so it is built here too: the projection must
+  // turn it into `captainSessionId` and keep it OUT of `members`.
+  const view = {
+    teamId,
+    leadName: "lead",
+    leadSessionId: CAPTAIN,
+    members: [
+      { id: CAPTAIN, name: "lead", role: "lead", status: "running", diagnostics: [] },
+      ...members.map((member) => ({ id: member.id, name: member.name, role: "teammate", status: member.status, diagnostics: [] })),
+    ],
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      revision: 1,
+      subject: task.id,
+      description: "",
+      status: task.status,
+      blockedBy: [],
+      writeScopes: [],
+      ownerName: "Senior Engineer",
+      ready: true,
+      writeScopeWarnings: [],
+    })),
+  }
 
   const engineCalls = []
   const engineLookups = []
@@ -50,6 +73,8 @@ function fixture(options = {}) {
   const live = new Map([[MEMBER, {}], [OTHER, {}]])
   const dsh = {
     capabilities: () => ({ compaction: true, compactionForAgent: true, agents: true, events: true }),
+    // The OFFICIAL team plane: rosters and boards, live (the watchdog/compact source of truth).
+    teamLiveTeams: () => [JSON.parse(JSON.stringify(view))],
     workspaceRoot: () => workspace,
     workspaceRootsAll: () => [workspace],
     liveAgents: () => [...live.entries()].map(([id]) => ({ id, status: options.statuses?.[id] ?? "idle" })),
@@ -100,7 +125,7 @@ const TERMINAL = ["completed", "failed", "cancelled"]
 test("t48 F6 HINGE: every drive goes to the MEMBER's own scoped engine, never a host-plane one", async () => {
   const { workspace, teamId, dsh, engineCalls, engineLookups, hostEngine, cleanup } = fixture()
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("compacted")
     // the sole accessor used is the per-agent one, and it was asked for the MEMBERS
@@ -140,7 +165,7 @@ test("t48 CAPTAIN EXCLUSION: the captain session is never driven", async () => {
     ],
   })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     expect(compactableMembers(team).map((m) => m.name)).toEqual(["Senior Engineer"])
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.members.map((m) => m.member)).toEqual(["Senior Engineer"])
@@ -155,7 +180,7 @@ test("t48 NEGATIVE CONTROL: a team with ONE non-terminal task is REFUSED, nothin
     tasks: [{ id: "t1", status: "completed" }, { id: "t2", status: "in_progress" }],
   })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     expect(teamIsFinished(team, TERMINAL)).toBe(false)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("refused")
@@ -170,7 +195,7 @@ test("t48 NEGATIVE CONTROL: a team with ONE non-terminal task is REFUSED, nothin
 test("t48 NEGATIVE CONTROL: an empty task list is NOT 'finished'", async () => {
   const { workspace, teamId, dsh, cleanup } = fixture({ tasks: [] })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     expect(teamIsFinished(team, TERMINAL)).toBe(false)
     expect((await compactTeamPass(dsh, team, { terminal: TERMINAL })).outcome).toBe("refused")
   } finally { cleanup() }
@@ -179,7 +204,7 @@ test("t48 NEGATIVE CONTROL: an empty task list is NOT 'finished'", async () => {
 test("t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout outcome)", async () => {
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, {
       terminal: TERMINAL, idleWaitMs: 5, idlePollMs: 1,
       sleep: async () => { /* no real time in a unit test */ },
@@ -198,7 +223,7 @@ test("t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout
 test("t48 BARRIER: an idle member is compacted once every member is idle", async () => {
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "idle" } })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL, idleWaitMs: 0 })
     expect(audit.outcome).toBe("compacted")
     expect(engineCalls.map((c) => c.id).sort()).toEqual([MEMBER, OTHER].sort())
@@ -208,7 +233,7 @@ test("t48 BARRIER: an idle member is compacted once every member is idle", async
 test("t48 NULL IS NOT AN ERROR: a null result is recorded as no-safe-range", async () => {
   const { workspace, teamId, dsh, cleanup } = fixture({ engine: () => ({ compactNow: async () => null }) })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("compacted")
     expect(audit.members.every((m) => m.outcome === "no-safe-range")).toBe(true)
@@ -242,7 +267,7 @@ test("t48 F5: a lifecycle error mid-pass is recorded against the member and does
     }),
   })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     const first = audit.members.find((m) => m.sessionId === MEMBER)
     const second = audit.members.find((m) => m.sessionId === OTHER)
@@ -261,7 +286,7 @@ test("t48 STAGED: a member with no session id is skipped EXPLICITLY, never silen
     ],
   })
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     expect(isStagedMember(team.members[0])).toBe(true)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     const staged = audit.members.find((m) => m.member === "Senior Engineer")
@@ -276,7 +301,7 @@ test("t48 NOT-LIVE: a dormant team is recorded, not ignored", async () => {
   const { workspace, teamId, dsh, live, cleanup } = fixture()
   try {
     live.clear() // the captain is gone, so no member Agent is in this process
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     expect(audit.outcome).toBe("not-live")
     expect(audit.members.every((m) => m.outcome === "skipped-not-live")).toBe(true)
@@ -317,39 +342,53 @@ test("t48 AUDIT: a second pass is a second FILE — an earlier destructive pass 
   } finally { cleanup() }
 })
 
-test("t48 TERMINAL SET: taken from the owning plugin, not re-declared", async () => {
-  const statuses = await terminalTaskStatuses()
-  expect([...statuses].sort()).toEqual(["cancelled", "completed", "failed"])
-  // and the source of truth really is the dependency's module
-  const owning = await import("../../mpd-agent-teams-plugin/lib/types.js")
-  expect([...statuses]).toEqual([...owning.TERMINAL_TASK_STATUSES])
+test("t48 TERMINAL SET: mirror of the OFFICIAL lifecycle, with the non-terminal half excluded", () => {
+  const statuses = terminalTaskStatuses()
+  // The official `TeamTaskStatus` union is pending | in_progress | completed | deleted, so the
+  // TERMINAL half is `completed` (+ `deleted`, which `listTasks` never even returns). `failed`
+  // and `cancelled` are tolerated for a harness that adds one.
+  expect(statuses).toContain("completed")
+  expect(statuses).toContain("deleted")
+  // NEGATIVE CONTROL: the two statuses that mean WORK IS OUTSTANDING must never be terminal, or
+  // this plugin's destructive pass could fire on a team that is still working.
+  expect(statuses).not.toContain("pending")
+  expect(statuses).not.toContain("in_progress")
 })
 
-test("t48: listTeamIds ignores the archive directory and dotfiles", () => {
-  const { workspace, cleanup } = fixture()
+test("t48: listTeamIds reports exactly the LIVE teams the adapter folds", () => {
+  const { dsh, cleanup } = fixture()
   try {
-    mkdirSync(join(workspace, ".mpd", "team", "archive"), { recursive: true })
-    mkdirSync(join(workspace, ".mpd", "team", ".hidden"), { recursive: true })
-    expect(listTeamIds(workspace)).toEqual(["t48-team"])
+    // A solo session is the Lead of its own implicit team on the official plane; with no teammate
+    // and no task it is NOT a team this plugin may consider.
+    const solo = { teamId: "solo", leadName: "lead", leadSessionId: "s", members: [{ id: "s", name: "lead", role: "lead", status: "running", diagnostics: [] }], tasks: [] }
+    const both = { ...dsh, teamLiveTeams: () => [...dsh.teamLiveTeams(), solo] }
+    expect(listTeamIds(both)).toEqual(["t48-team"])
+    // …and the sorted id list is the readout's, not a directory scan: an "archive" entry cannot
+    // appear because the official service has no such concept.
+    expect(listTeamIds(dsh)).toEqual(["t48-team"])
   } finally { cleanup() }
 })
 
-test("t48: a malformed team record reads as undefined, never a throw", () => {
-  const { workspace, teamId, cleanup } = fixture()
+test("t48: a team the readout does not carry reads as undefined, never a throw", () => {
+  const { dsh, cleanup } = fixture()
   try {
-    writeFileSync(join(workspace, ".mpd", "team", teamId, "team.json"), "{ not json")
-    expect(readTeamRecord(workspace, teamId)).toBeUndefined()
-    expect(readTeamRecord(workspace, "missing-team")).toBeUndefined()
-    // and a record with no members array is rejected rather than half-read
-    writeFileSync(join(workspace, ".mpd", "team", teamId, "team.json"), JSON.stringify({ id: teamId, name: "x", tasks: [] }))
-    expect(readTeamRecord(workspace, teamId)).toBeUndefined()
+    // The retired `.mpd/team/<id>/team.json` is no longer a source AT ALL: writing one changes
+    // nothing, and an id the live readout does not carry has no record.
+    writeFileSync(join(tmpdir(), "mpd-t48-irrelevant.json"), JSON.stringify({ id: "t48-team", members: [], tasks: [] }))
+    expect(readTeamRecord(dsh, "missing-team")).toBeUndefined()
+    // A view with no team identity is dropped rather than projected half-read.
+    const empty = { ...dsh, teamLiveTeams: () => [{ teamId: "", leadName: "lead", leadSessionId: "s", members: [], tasks: [] }] }
+    expect(readTeamRecord(empty, "")).toBeUndefined()
+    // …and a view whose readout throws degrades to "no teams", never a throw out of a tick.
+    const broken = { ...dsh, teamLiveTeams: () => { throw new Error("service gone") } }
+    expect(readTeams(broken)).toEqual([])
   } finally { cleanup() }
 })
 
 test("t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never messages a member", async () => {
   const { workspace, teamId, dsh, cleanup } = fixture()
   try {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
     // the audit carries what was compacted; nothing in it is addressed to a member
     expect(JSON.stringify(audit)).not.toContain("notification")
@@ -357,20 +396,44 @@ test("t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never
   } finally { cleanup() }
 })
 
-test("t48 plugin: apply() registers both tools and subscribes to the status edge", () => {
+test("t48 plugin: apply() registers both tools and subscribes to BOTH triggers", () => {
   const registered = []
-  let subscribed
+  const subscribed = []
   const listeners = []
   const dsh = {
     registerTool: (definition) => { registered.push(definition.name); return () => {} },
-    onEvent: (event) => { subscribed = event; return () => {} },
+    onEvent: (event) => { subscribed.push(event); return () => {} },
     workspaceRoot: () => "/tmp/none",
   }
   const ctx = { get: (key) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: (e) => { listeners.push(e) } }
   apply(ctx)
   expect(registered.sort()).toEqual(["mpd_team_compact_run", "mpd_team_compact_status"])
-  expect(subscribed).toBe("agent/status")
+  // TWO triggers, deliberately: the status edge (kept for the record; it fires too late to reach
+  // a released member) and the member's own turn boundary (the one that can still reach it).
+  expect(subscribed.sort()).toEqual(["agent/status", "agent/turn-stopping"])
   expect(listeners).toEqual([])
+})
+
+test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-throwing", () => {
+  const handlers = new Map()
+  const dsh = {
+    registerTool: () => () => {},
+    onEvent: (event, handler) => { handlers.set(event, handler); return () => {} },
+    workspaceRoot: () => "/tmp/none",
+    liveAgents: () => [{ id: "session-a" }],
+  }
+  const warnings = []
+  const ctx = { get: (key) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: (m) => warnings.push(String(m)), info: () => {} }, on: () => () => {} }
+  apply(ctx)
+  const turnStopping = handlers.get("agent/turn-stopping")
+  expect(typeof turnStopping).toBe("function")
+  // SERIAL dispatch: a returned value BAILS the chain and a returned promise is awaited, so the
+  // listener must answer `undefined` for EVERY payload — including a hostile one. Same rule the
+  // pre-step waterfall defect taught (AGENTS.md §12).
+  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: "/tmp/none" } } } })).toBeUndefined()
+  expect(turnStopping({})).toBeUndefined()
+  expect(turnStopping({ get agent() { throw new Error("hostile payload") } })).toBeUndefined()
+  expect(warnings.some((line) => line.includes("turn-boundary listener failed"))).toBe(true)
 })
 
 // REGRESSION (defect measured 2026-09-14): both tools shipped a BARE property map as
@@ -398,10 +461,31 @@ test("t48 plugin: every registered tool declares an OBJECT-ROOTED parameters sch
     // which is exactly how it reached the wire as `type: null`.
     expect({ tool: definition.name, type: parameters?.type }).toEqual({ tool: definition.name, type: "object" })
     expect(typeof parameters.properties).toBe("object")
-    expect(Object.keys(parameters.properties)).toEqual(["team_id"])
+    // `force` is declared on the RUN tool only; the status tool stays a pure read.
+    expect(Object.keys(parameters.properties).sort()).toEqual(definition.name === "mpd_team_compact_run" ? ["force", "team_id"] : ["team_id"])
     expect(parameters.properties.team_id.type).toBe("string")
+    if (definition.name === "mpd_team_compact_run") expect(parameters.properties.force.type).toBe("boolean")
     expect(parameters.additionalProperties).toBe(false)
     // team_id is optional on BOTH tools: the pass defaults to every finished team.
     expect(parameters.required ?? []).toEqual([])
   }
+})
+
+// ── write-on-change (2026-09-16) ─────────────────────────────────────────────
+//
+// MEASURED before this rule: 235 audit records across 7 teams, 2260 member entries, every one
+// `skipped-not-live` and ZERO successes, because the automatic trigger kept re-running its pass
+// on teams whose members had already been released. This predicate collapses those repeats; the
+// count of collapsed attempts rides onto the next WRITTEN record.
+test("write-on-change: sameAuditOutcome is true only for an identical outcome", () => {
+  const member = { member: "Junior Engineer", sessionId: "s1", outcome: "skipped-not-live", reason: "no live Agent for this session id" }
+  const base = { schema: "mpd/team-compact@1", teamId: "t", teamName: "T", at: 1, outcome: "not-live", refusedReason: "no live member Agents in this process", members: [member], engineResolution: "agent-scoped" }
+  expect(sameAuditOutcome(undefined, base)).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, at: 99 })).toBe(true)
+  expect(sameAuditOutcome(base, { ...base, outcome: "compacted" })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, refusedReason: "other" })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [{ ...member, outcome: "compacted" }] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [{ ...member, reason: "busy" }] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [] })).toBe(false)
+  expect(sameAuditOutcome(base, { ...base, members: [member, member] })).toBe(false)
 })

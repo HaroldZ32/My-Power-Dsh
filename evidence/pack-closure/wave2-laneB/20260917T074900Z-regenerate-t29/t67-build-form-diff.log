@@ -1,0 +1,129 @@
+{
+  "schema": "laneB/t67-build-form-diff/1",
+  "captured_at": "2026-09-17T08:21:37.408Z",
+  "package": "mpd-ext-plugin",
+  "cwd_anchor": "cd \"$(git rev-parse --show-toplevel)\"",
+  "derived_from": "packages/mpd-ext-plugin/package.json scripts.build",
+  "claim_under_test": "a package-directory build and the canonical repo-root build of the SAME source differ in the artifact's path comments (AGENTS.md §6)",
+  "entries": [
+    {
+      "entry": "packages/mpd-ext-plugin/src/index.ts",
+      "repo_root_form": {
+        "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp>",
+        "cwd": "/root/dshProj/my-power-dsh",
+        "comments": 13,
+        "distinct": 11,
+        "list": [
+          "// packages/mpd-dsh-adapter-plugin/src/index.ts",
+          "// packages/mpd-ext-plugin/src/sdk.ts",
+          "// packages/mpd-ext-plugin/src/registry.ts",
+          "// packages/mpd-ext-plugin/src/skills.ts",
+          "// packages/mpd-ext-plugin/src/flows.ts",
+          "// packages/mpd-roles-plugin/src/roles.data.ts",
+          "// packages/mpd-ext-plugin/src/registry.ts",
+          "// packages/mpd-ext-plugin/src/manifest.ts",
+          "// packages/mpd-ext-plugin/src/mcp.ts",
+          "// packages/mpd-ext-plugin/src/mcp-client.ts",
+          "// packages/mpd-ext-plugin/src/schema-sanitize.ts",
+          "// packages/mpd-ext-plugin/src/mcp.ts",
+          "// packages/mpd-ext-plugin/src/index.ts"
+        ]
+      },
+      "package_dir_form": {
+        "command": "bun build src/index.ts --target node --format esm --outfile <tmp>",
+        "cwd": "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin",
+        "comments": 13,
+        "distinct": 11,
+        "list": [
+          "// ../mpd-dsh-adapter-plugin/src/index.ts",
+          "// src/sdk.ts",
+          "// src/registry.ts",
+          "// src/skills.ts",
+          "// src/flows.ts",
+          "// ../mpd-roles-plugin/src/roles.data.ts",
+          "// src/registry.ts",
+          "// src/manifest.ts",
+          "// src/mcp.ts",
+          "// src/mcp-client.ts",
+          "// src/schema-sanitize.ts",
+          "// src/mcp.ts",
+          "// src/index.ts"
+        ]
+      },
+      "only_in_repo_root_form": [
+        "// packages/mpd-dsh-adapter-plugin/src/index.ts",
+        "// packages/mpd-ext-plugin/src/sdk.ts",
+        "// packages/mpd-ext-plugin/src/registry.ts",
+        "// packages/mpd-ext-plugin/src/skills.ts",
+        "// packages/mpd-ext-plugin/src/flows.ts",
+        "// packages/mpd-roles-plugin/src/roles.data.ts",
+        "// packages/mpd-ext-plugin/src/registry.ts",
+        "// packages/mpd-ext-plugin/src/manifest.ts",
+        "// packages/mpd-ext-plugin/src/mcp.ts",
+        "// packages/mpd-ext-plugin/src/mcp-client.ts",
+        "// packages/mpd-ext-plugin/src/schema-sanitize.ts",
+        "// packages/mpd-ext-plugin/src/mcp.ts",
+        "// packages/mpd-ext-plugin/src/index.ts"
+      ],
+      "only_in_package_dir_form": [
+        "// ../mpd-dsh-adapter-plugin/src/index.ts",
+        "// src/sdk.ts",
+        "// src/registry.ts",
+        "// src/skills.ts",
+        "// src/flows.ts",
+        "// ../mpd-roles-plugin/src/roles.data.ts",
+        "// src/registry.ts",
+        "// src/manifest.ts",
+        "// src/mcp.ts",
+        "// src/mcp-client.ts",
+        "// src/schema-sanitize.ts",
+        "// src/mcp.ts",
+        "// src/index.ts"
+      ],
+      "diff_lines": 26,
+      "committed_dist": {
+        "file": "packages/mpd-ext-plugin/dist/index.js",
+        "comments": 13,
+        "distinct": 11,
+        "equals_repo_root_form": true,
+        "equals_package_dir_form": false
+      }
+    },
+    {
+      "entry": "packages/mpd-ext-plugin/src/sdk.ts",
+      "repo_root_form": {
+        "command": "bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile <tmp>",
+        "cwd": "/root/dshProj/my-power-dsh",
+        "comments": 1,
+        "distinct": 1,
+        "list": [
+          "// packages/mpd-ext-plugin/src/sdk.ts"
+        ]
+      },
+      "package_dir_form": {
+        "command": "bun build src/sdk.ts --target node --format esm --outfile <tmp>",
+        "cwd": "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin",
+        "comments": 1,
+        "distinct": 1,
+        "list": [
+          "// src/sdk.ts"
+        ]
+      },
+      "only_in_repo_root_form": [
+        "// packages/mpd-ext-plugin/src/sdk.ts"
+      ],
+      "only_in_package_dir_form": [
+        "// src/sdk.ts"
+      ],
+      "diff_lines": 2,
+      "committed_dist": {
+        "file": "packages/mpd-ext-plugin/dist/sdk.js",
+        "comments": 1,
+        "distinct": 1,
+        "equals_repo_root_form": true,
+        "equals_package_dir_form": false
+      }
+    }
+  ],
+  "forms_identical": false
+}

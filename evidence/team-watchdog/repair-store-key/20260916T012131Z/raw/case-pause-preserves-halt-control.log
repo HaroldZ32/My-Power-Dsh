@@ -1,0 +1,4 @@
+[pause-preserves-halt-control] the SAME fixture, paused by the REAL haltTeamWork: cancelledTasks=1
+[pause-preserves-halt-control] t1: {"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"}  =>  {"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null}
+[pause-preserves-halt-control] sha256(team.json) CHANGED: true (this is what reddens AC-17)
+[pause-preserves-halt-control] AC-17 is falsifiable: the wrong mechanism leaves the task cancelled with cancelledTasks >= 1

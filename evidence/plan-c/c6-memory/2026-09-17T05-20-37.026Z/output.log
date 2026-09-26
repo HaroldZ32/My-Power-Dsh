@@ -1,0 +1,39 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c6-EV9Av1/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three steps done.
+
+**1. Write** — `mpd_memory_write` succeeded:
+- note `qa-note` written to `.mpd/memory/agents/agent-ws/repo/memory/qa-note-mu52zvyq.md`
+- vcs=git, committed, reflectionDue=false
+
+**2. Read with query `alpha`** — **1 entry matched**:
+- `[note] qa-note: alpha beta gamma`
+
+**3. Status**:
+- vcs=git
+- root=`/tmp/mpd-c6-EV9Av1/ws/.mpd/memory/agents/agent-ws`
+- entries=1
+- journal=1
+- reflection: steps=1, reflected_completed_steps=0, steps_since_last_successful_reflection=1, reservation=null, triggered=false
+
+The read matched exactly one entry (the note just written), and the store reports a single entry overall — consistent.
+dsh: reasoning:
+The user wants me to:
+1. Use mpd_memory_write to save a note titled 'qa-note' with content 'alpha beta gamma' and kind 'note'.
+2. Use mpd_memory_read with query 'alpha' and report how many entries match.
+3. Report mpd_memory_status.
+
+Let me do these. First write, then read, then status. The write and status could be done in parallel but the read depends on write. Actually status could be parallel with write. Let me do write + status in parallel, then read.
+
+Actually, let me just do write first (dependency for read), and status can go with it. Let me batch write and status together, then read.
+
+Hmm, but status should reflect post-write state. It's fine either way; let's do write first and status together — status at that point would already include the write potentially. Let's just do write + status in one batch, then read.
+
+Actually to be safe and accurate for reporting status after the write, I'll do write first, then read and status in parallel.
+dsh: reasoning:
+Now read with query 'alpha' and status.

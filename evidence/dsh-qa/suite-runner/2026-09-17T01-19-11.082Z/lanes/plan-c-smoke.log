@@ -1,0 +1,7 @@
+[plan-c-smoke] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-c/plan-c-smoke/2026-09-17T01-38-29.003Z
+  installer: {"ok":true,"exit":0}
+  rows: {"ok":true,"patch":true}
+  live: {"ok":false,"exit":1}
+  boulder: {"ok":false,"boulderWork":null}
+  hashline: {"ok":false,"note":null}
+  config: {"ok":false,"sawConfig":false}

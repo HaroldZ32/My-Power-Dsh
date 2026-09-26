@@ -1,0 +1,18 @@
+[self-test] ok   C1: a completed turn passes as `completed`
+[self-test] ok   C2: a MODEL-level error passes as `model-error` (the turn reached the model call)
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+[self-test] ok   C6: a session not created on `mpd` FAILS
+[self-test] ok   C10: the GUI-activation checks pass on a clean boot (served 200, both tab ids, bridge, mirrored composition)
+[self-test] ok   C11: a boot log carrying `did not activate` REDDENS B8 (["B8"])
+[self-test] ok   C12: a `pending (waiting for service` line REDDENS B8
+[self-test] ok   C13: a `failed to apply loader entry` line REDDENS B8
+[self-test] ok   C14: a client route that 404s REDDENS B9
+[self-test] ok   C15: served bytes missing the workmate tab id REDDEN B10
+[self-test] ok   C16: served bytes without the export bridge REDDEN B11
+[self-test] ok   C17: a boot outside the user's composition REDDENS B12
+[self-test] ok   C7: the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision ({"kind":"step","at":1})
+[self-test] ok   C8: the fixed shape (`return next()`) composes the fallback decision unchanged ({"kind":"enter","messages":["claimed-user-message"]})
+[self-test] ok   C9: the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)

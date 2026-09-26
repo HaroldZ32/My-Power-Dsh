@@ -1,0 +1,3 @@
+== skills/dsh-qa/scripts/extension-isolation.mjs --self-test (EXPECTED to break: hard-coded example flow filename, skills/** is out of scope) ==
+[extension-isolation self-test] FAIL: the example flow file is missing
+isolation self-test exit=1

@@ -1,0 +1,11 @@
+[agent-teams-adopt] ok=false -> /tmp/prewave2/evidence/plan-c/c1-team/2026-09-16T08-14-57.441Z
+  installer: {"ok":true,"exit":0}
+  bundleRow: {"ok":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-headless"]}
+  override: {"ok":true,"hasPatch":true}
+  compose: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  teamState: {"ok":true,"teamIds":["c1qa"],"inbox":[["captain.jsonl"]],"teamJson":[{"name":"c1qa","id":"c1qa","description":"C1 adoption QA","captainSessionId":"session-deb2d76d-d90a-44ad-b2ba-24f0503db10c","createdAt":1789546510946,"members":[{"id":"e7ab6c48-7606-4441-9367-8b5aaf6b8e06","name":"librarian","role
+  archive: {"ok":true,"archiveIds":["c1qa"]}
+  taskTerminal: {"ok":true,"tasks":2,"taskTerminal":true}
+  webInstaller: {"ok":true,"exit":0}
+  webRoute: {"ok":false,"status":401,"body":"{\"error\":\"unauthorized\"}","webLog":"/tmp/prewave2/evidence/plan-c/c1-team/2026-09-16T08-14-57.441Z/web.log"}

@@ -1,0 +1,26 @@
+[check-relative-links] root=/root/dshProj/my-power-dsh
+[check-relative-links] markdown files scanned: 1380; relative links seen: 1836
+[check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)
+  OK     README.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/index.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/index.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+[check-relative-links] broken relative links of ANY target in this tree: 253
+  broken: .mpd-dsh/upstream/.agents/AGENTS.md -> ../packages/omo-opencode/src/features/opencode-skill-loader/
+  broken: .mpd-dsh/upstream/.agents/skills/github-triage/SKILL.md -> permalink
+  broken: .mpd-dsh/upstream/.opencode/AGENTS.md -> ../packages/omo-opencode/src/features/opencode-skill-loader/
+  broken: .mpd-dsh/upstream/.opencode/AGENTS.md -> ../packages/omo-opencode/src/features/opencode-skill-loader/
+  broken: .mpd-dsh/upstream/.opencode/skills/github-triage/SKILL.md -> permalink
+  broken: .mpd-dsh/upstream/AGENTS.md -> packages/omo-codex/src/install/
+  broken: .mpd-dsh/upstream/AGENTS.md -> docs/guide
+  broken: .mpd-dsh/upstream/AGENTS.md -> docs/reference
+  broken: .mpd-dsh/upstream/CLAUDE.md -> packages/omo-codex/src/install/
+  broken: .mpd-dsh/upstream/CLAUDE.md -> docs/guide
+  broken: .mpd-dsh/upstream/CLAUDE.md -> docs/reference
+  broken: .mpd-dsh/upstream/README.ja.md -> ./.github/assets/sisyphuslabs.png?v=4

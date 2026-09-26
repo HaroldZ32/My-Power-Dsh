@@ -1,0 +1,46 @@
+{
+  "task": "t11",
+  "item": "1 — closure checker controls",
+  "attempt_id": "f488e6cf-997c-4899-b5bc-897ae67d869c",
+  "victim": "mpd-ext-plugin",
+  "checks": [
+    {
+      "id": "positive-control",
+      "status": "passed",
+      "detail": "real tree: exit 0; [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry"
+    },
+    {
+      "id": "fixture-built",
+      "status": "passed",
+      "detail": "removed 17 byte(s) from a temp copy of the real packer; the entry is gone and the array anchor survives"
+    },
+    {
+      "id": "negative-control-exit",
+      "status": "passed",
+      "detail": "fixture (mpd-ext-plugin omitted): exit 1"
+    },
+    {
+      "id": "negative-control-names-package",
+      "status": "passed",
+      "detail": "the failure names mpd-ext-plugin: true"
+    },
+    {
+      "id": "negative-control-class",
+      "status": "passed",
+      "detail": "the failure names the OMISSION class: true;   packer: /tmp/t11-closure-YaorZT/pack-mpd-omission.mjs |   packages dir: /root/dshProj/my-power-dsh/packages |   patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml"
+    },
+    {
+      "id": "negative-control-isolated",
+      "status": "passed",
+      "detail": "the unmodified copy of the same file is green (exit 0) — the red came from the omission, not from the fixture path"
+    },
+    {
+      "id": "checker-selftest",
+      "status": "passed",
+      "detail": "exit 0; 6/6 arms"
+    }
+  ],
+  "failed": [],
+  "passed": 7,
+  "total": 7
+}

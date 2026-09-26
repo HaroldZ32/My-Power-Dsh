@@ -1,0 +1,10 @@
+- insert:
+  - id: mpd-ext-green
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config: {"quiet":false}
+  - id: mpd-roles-green
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+    config: {}
+  - id: t40-slow-adapter-green
+    name: "/root/dshProj/my-power-dsh/evidence/platform/lazy-adapter-live/20260917T013500Z/raw/slow-adapter-row.mjs"
+    config: {}

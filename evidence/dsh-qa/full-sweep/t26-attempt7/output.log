@@ -1,0 +1,130 @@
+# t26 — VERIFY (lane C): the QA suite runs to the last entry on this host, as a MULTI-JOB board
+# attempt 9 · attempt_id 2cd3bfd1-b6e4-4d33-92d6-41a4f786381e · agent docs-gate-engineer
+# inScope: evidence/dsh-qa/full-sweep/** · 2026-09-17T05:12Z · cwd = /root/dshProj/my-power-dsh
+
+================================================================================
+## 1. BOARD SHAPE (A1) — multi-job, NOT multi-selection, never a single-run complete:true
+================================================================================
+**18 chunks, every one `complete:true` with a non-null `finishedAt`**; each wrote its own
+`result.json` into this task's inScope dir. `board.json` (stitched by `collect-board.py`) reports:
+
+  selectedEntriesCovered: **33 / 33**   lanesRun: 34 (33 selected + 1 additive)   chunks: 18
+  counts: **pass 31 · unavailable 0 · fail 3**   singleRunComplete: **false**
+
+  c1 4/4 · c2 4/4 · c3 1/1 · c4 2 (preset-conformance pass, bundle-lifecycle fail → c4b serial PASS)
+  c5 2 (`session-start-team` fail, `workmate-team-member` pass 131.5 s) · c5b `workmate-team-member` PASS 62.9 s
+  c5d `session-start-team` determinism re-run (fail, see §3) · c6 4/4 · c7 2/2 · c8 2/2 · c9 2/2 · c10 2/2
+  c11 6 (pre-pack) · c11b 6 (post-pack, ALL PASS) · c12 additive watchdog + --check-drift
+  c13 `agent-teams-adopt` · c14b `agent-teams-dispatch`
+
+Every verdict carries the manifest pin of the run that produced it — and because run 1 is VOID (§6),
+**every verdict in this board is pinned `54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e`**.
+
+### Canonical-selection proof (clause 1) — SUBSTANCE first
+The two pins' selections are the same 33 entries, proven by diffing their own `--list` outputs: exactly ONE
+ADDED, UNSELECTED lane (`watchdog-redesign`, `suites: []`), so case/suites/script surfaces agree.
+A canonical digest was also published WITH its recipe and is now third-seat reproduced:
+  `sha256(json.dumps([(e["case"], e.get("script"), e.get("args"), e.get("suites")) for e in sel], sort_keys=True))`
+  = **`58128ebd1ed1c7488f5adb99da2d0ad22a54ee504827186bcfb39f3ab89eecc7`**   (33 selected, pin above)
+Load-bearing attributes: `args` → **`null`** (never `[]`), gates' `script` → **`null`**; a JSON list of
+4-element lists in MANIFEST order (`sort_keys` sorts object keys only); UTF-8; default separators.
+Evidence: `CANONICAL-SELECTION-PROOF.md` (verbatim output + a third seat's independent reproduction).
+
+================================================================================
+## 2. LAUNCH MECHANISM (declared deviation) AND THE CONCURRENCY BOUND
+================================================================================
+**Mechanism used: the runner IS each job's own foreground** (shape (a)) — `node scripts/run-qa-lanes.mjs
+--only=… --json --evidence-dir=…` with the job backgrounded and stdio to a per-chunk file.
+**Deviation, declared:** the acceptance names the T-23 helper (`node scripts/mpd-bg.mjs run --log <path> -- …`),
+but as a job's FOREGROUND it returns immediately and `bwrap --die-with-parent` kills the child it just
+launched — `mpd-bg.mjs:83-89` spawns detached then `process.exit(0)`, and its own line 89 warns about it.
+Observed twice: watchdog-engineer's attempt-6 chunk (`sweep.log.pid`, 226 B header, **0-byte lane log**, no
+`result.json`) and their 45 s probe (0-byte log, no marker, DEAD pid). Shape (b) (`… mpd-bg run …; wait`)
+is the helper-compatible form.
+**The other bound (independent of launch shape):** run 1's single 33-entry job was killed at ~17 min with 2
+verdicts and **no `[sweep exit=…]` line**, and run 2 died inside lane 1 (0-byte lane log, job gone, zero
+verdicts). Hence duration-based sizing: 2–4 lanes per chunk, heavy lanes alone.
+**Concurrency bound (self-caught):** an early 8-way parallel launch made `bundle-lifecycle`'s boot step
+return nulls; it PASSES alone (c4b) — `PARALLEL-INTERFERENCE-FINDING.md`. The contended hour is recorded with
+two independent `find -newermt` listings (mine + watchdog-engineer's attempt-6 `output.log`).
+
+================================================================================
+## 3. REDS, CLASSIFIED (A2) — TWO STATEMENTS, KEPT SEPARATE
+================================================================================
+**(a) BOUND — the live model not performing an action the lane asserts** (three reds, one cause):
+- `agent-teams-dispatch` — **INCONCLUSIVE / NOT COVERED, zero exercise** (twice measured: run 1 934.7 s, c14b
+  930.8 s). `captainRun ok:true` but `tasks.total: 0`, `memberAssignments.count: 0`,
+  `secondBatchDispatched.ok:false`, `assignmentDelivery.ok:false`; the captain's own tail shows it weighing
+  headless approve-then-probe in one turn and declining. No plugin path ran ⇒ not a behavioural defect.
+  Fix surface: the LANE PROMPT (it must not forbid the setup step it then asserts on).
+- `agent-teams-adopt` — every plugin step green (`installer`/`bundleRow`/`override`/`compose`/`live`/
+  `teamState` with members/`taskTerminal`/`webInstaller`/`webRoute` fence) with ONLY `archive` failing
+  (`ok:false`, no archiveIds): the model's transcript defers `agent_teams_delete` to a follow-up turn the
+  headless run never provides ⇒ **harness-boundary finding**, not a plugin defect (qa-lane-engineer's naming).
+- `session-start-team` — gate constant, staging varies: run c5 `complexTeams [1,0,0]` / notices
+  `[true,true,true]`; re-run c5d `complexTeams [0,0,1]` / notices `[true,true,true]`; `simpleSide` `0/0` clean
+  in both; negative control ok in both; different contention profiles in the two windows. ⇒ **live-model
+  VARIANCE**, not deterministic, not green, not a wave failure; the residual ("exactly one of three") is a
+  READING for `t32`, not a conclusion about the lane's expectation or the product's staging rule.
+  Evidence: `DETERMINISM-VERDICT.md`.
+**(b) DEFECT — instrument labelling:** the runner reported `agent-teams-adopt` as `reason=unauthorized`,
+which is the body of the lane's **EXPECTED** fence-refusal arm (`webRoute ok:true, status:401,
+body {"error":"unauthorized"}`) — i.e. an instrument that cannot distinguish "the check fired as designed"
+from "the check failed". **Quote-ready gloss:** *`agent-teams-adopt` is red on `archive` (headless-turn
+artefact) and the board's `reason=unauthorized` names a SIGNATURE FOUND IN A PASSING STEP, not the cause.*
+The author diagnosed the chain to the line (no `[mpd-qa]` marker → `detectSignatures` over the WHOLE log →
+`SIGNATURES` mapping a 401 to `fail`) and declared the fix: let the lane's structured
+`result.json → steps{name:{ok}}` decide the reason and degrade the signature scan to `alsoDetected`.
+Wave-2 row; evidence `RED-CLASSIFICATION.md` §5.
+
+================================================================================
+## 4. CREDENTIAL PLUMBING (A3)
+================================================================================
+Three lanes with RECORDED earlier credential-class failures now boot (or are reported with their reason):
+`agent-teams-adopt` (01:55Z `reason=unauthorized` + `absent-credentials` ⇒ today a live run that created team
+state and drove two tasks), `mcp-call` (**18** evidence files with `MISSING_CREDENTIAL`/`absent-credentials`
+⇒ PASS), `preset-register` (**15** such files ⇒ PASS); plus `session-start-team` (**40** such files, wording
+`MISSING_CREDENTIAL: llm-deepseek: no API key for provider route`) which boots and runs its matrix today.
+**Secret scan over the entire run tree: 0 matches** (no value to redact).
+
+================================================================================
+## 5. LAST ENTRY, LAST LANE, A5 (A4/A5)
+================================================================================
+- **Last selected ENTRY = the `pack-closure` GATE**, named twice: `c11` (closed 04:37:35Z) read the PRE-pack
+  artifact and reported the expected ONE finding (`ROOT-FILE`: `EXTENSIONS-FOR-AGENTS.md` absent from a
+  pre-t70 artifact); `c11b` (closed 04:43:51Z) read the POST-pack artifact (`eaa0919702bf5b33…`, 1,190
+  files) and reported **6/6 gates PASS**, `pack-closure` exit 0 (`root files 1/1; declared packages 23/23`).
+  Each reading is bound to the artifact revision it saw (`ARTIFACT-REVISIONS.md`).
+- **Last selected LANE = `workmate-team-member`**: PASS twice (c5b 62.9 s; c5 131.5 s).
+- The two lane scripts that moved mid-run (`watchdog-redesign.mjs`, `team-watchdog-fault.mjs`) are BOTH
+  `suites: []` ⇒ outside the board; the moved watchdog lane was re-run ADDITIVELY (c12: `team-watchdog-fault`
+  PASS 3.5 s) with `--check-drift` → "manifest and disk agree (51 entries)", exit 0.
+- **A5: `mount-assert` PASS inside the suite (587 ms)** — it exited 2 by construction before.
+
+================================================================================
+## 6. SETTLED HASHES, VOID HISTORY, DURATIONS, TWIN NUMBERS (A6)
+================================================================================
+- **Corpus settled:** manifest `54585caba9a57132…` (mtime 11:55:59 +0800) and NO writer under `packages/**`
+  or `skills/**` since `12:36:00 +0800` ⇒ one corpus for every chunk.
+- **Run 1 (`…T034900Z-t26-attempt3`) is VOID, not stitched:** its settled-tree check (03:50:36Z/03:53Z)
+  predates its own corpus writes (03:55:59Z / 03:58:13Z / 04:12:36Z); its killed-shell signature (no
+  `[sweep exit=…]`, job gone, `complete:false`, `finishedAt:null`, 2 lanes) is kept in `board.json.historicalVoid`.
+  Run 2 (`…T042800Z-…-run2`) is the bound's second witness (header-only, 0-byte lane 1, zero verdicts).
+- **Timing numbers are RAW READINGS under a contended window (04:34–04:45Z)**, reported with that caveat and
+  used for no verdict (see §2).
+- **Twin numbers carry their instrument hash before AND after:** instrument `858cd130b6caacad018683ae6e498d72d30a3bf7d2ab59b4834deeba00f0e678`
+  (18,056 B, stable across a paired read); post-pack artifact `identical=1187 drift=0 missing=0 afterPack=0 ok=true`
+  at stamp `04:37:59.994Z` (the three zeroes); the pre-incident 04:19:56Z snapshot (`drift=5 missing=2`) is
+  labelled for `113e5654…` and for the pre-04:21:54Z tree only, with the recomposition kept as its dated
+  incident record. `t35` re-packs after `t26` ⇒ all artifact readings here are INTERIM.
+- **`--timeout` was never passed** on any chunk: no hang was masked; nothing died with a chunk in the final set.
+
+================================================================================
+## 7. ARTEFACTS (all under evidence/dsh-qa/full-sweep/t26-attempt7/)
+================================================================================
+`board.json` · `collect-board.py` · `CHUNK-PLAN.md` · `RED-CLASSIFICATION.md` · `DETERMINISM-VERDICT.md` ·
+`CANONICAL-SELECTION-PROOF.md` · `ARTIFACT-REVISIONS.md` · `PARALLEL-INTERFERENCE-FINDING.md` · the 18 chunk
+dirs (each with its `result.json`, `run.log` and `lanes/*.log`) · history: `../20260917T034900Z-t26-attempt3/`
+(void run 1) and `../20260917T042800Z-t26-attempt3-run2/` (the bound's witness).
+The board's CONCLUSIONS above are its own; any judgement about the lanes' correctness belongs to the review
+(`t32`), which starts from this board rather than from a summary.

@@ -1,0 +1,28 @@
+//
+// Why a boot and not the in-process tests: those prove what THIS plugin composes (the deny
+// list handed to the harness). Whether the harness then ADVERTISES the tool to the child is
+// harness behaviour, witnessed only by a mounted boot — `dsh --dump-config` proves
+// composition alone and never executes plugin code.
+//
+// Technique (the house pattern from `readonly-deny.mjs`): a local OpenAI-shaped STUB answers
+// every model call, so no provider credential is needed and the flow is deterministic. The
+// stub records the EXACT `tools[]` of every request the harness composes, which is the
+// measured seat surface. A `mpd-headless` boot in an isolated DSH_HOME + sandbox HOME/workspace
+// drives the captain through create → add_member (read-only Architect) → create_task → approve;
+// the spawn then happens for real and the member's own first turn asks for the contract.
+//
+// Assertions:
+//   A1 the CAPTAIN's request carries `agent_teams_approve` (seat classification works at all)
+//   A2 the READ-ONLY MEMBER's request LISTS `agent_teams_update_task` (the artifact channel);
+//      the contract tool is listed too — it is a member tool since t9 — but THIS driver never
+//      CALLS it, and its header says so rather than claiming a session-log `tool/call` it does
+//      not produce (t25's F1). The A4-shaped "the log records a tool/call for
+//      `agent_teams_task_contract` with a non-error tool/result" claim belongs to the OTHER
+//      driver, which really makes that call and is where that evidence lives:
+//      `evidence/agent-teams/tools-boundaries/20260917T012056Z/driver.mjs` + `result.json`.
+//   A3 the same member request does NOT list `agent_teams_approve`           <- discriminating
+//   A4 this driver's A4 is the DENY contrast: `bash`/`write`/`edit` are absent from the
+//      read-only member's tools[] while the captain's list keeps them (evidence: the run's
+//      `result.json` assertions A3/A4/A5, decoded from the harness's own request payloads)
+import { createServer } from "node:http"
+import { spawn } from "node:child_process"

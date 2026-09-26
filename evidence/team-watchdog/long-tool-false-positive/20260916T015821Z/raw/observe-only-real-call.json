@@ -1,0 +1,50 @@
+{
+  "commandMs": 250,
+  "without": {
+    "gate": {
+      "kind": "allow"
+    },
+    "result": {
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "ranAsAChildProcess": true
+    },
+    "elapsedMs": 271,
+    "accepted": "accept",
+    "observed": null,
+    "stampedBeforeTheCommandStarted": null,
+    "denied": false
+  },
+  "withHook": {
+    "gate": {
+      "kind": "allow"
+    },
+    "result": {
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "ranAsAChildProcess": true
+    },
+    "elapsedMs": 268,
+    "accepted": "accept",
+    "observed": {
+      "name": "bash",
+      "callId": "call-observe-1",
+      "decisionKind": "allow",
+      "at": 1789525904986
+    },
+    "stampedBeforeTheCommandStarted": true,
+    "denied": false
+  },
+  "same": {
+    "gateIdentical": true,
+    "resultIdentical": true,
+    "postDecisionIdentical": true,
+    "commandRanForReal": true,
+    "hookActuallyRan": true,
+    "observedBeforeTheCommandRan": true,
+    "noHookNoObservation": true
+  },
+  "ok": true
+}

@@ -1,0 +1,115 @@
+{
+  "note": "ANSI-stripped scans of the raw tmux pane logs. Zero crash-signature hits is the AC-3/AC-1 signal; the pluginLogLines are the per-package apply-time observations used by the ledger.",
+  "logs": {
+    "tui-pane.log": {
+      "bytes": 291914,
+      "crashSignatureHits": {
+        "unsupported JSON schema": 0,
+        "JsonSchemaError": 0,
+        "plugin tree failed to load": 0,
+        "failed to apply loader entry": 0,
+        "duplicate loader entry id": 0,
+        "Error:": 0
+      },
+      "crashSignatureTotal": 0,
+      "pluginLogLines": [
+        "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+        "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.mpd/recon/qa/t5-ws",
+        "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensi",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which i"
+      ],
+      "counters": {
+        "tools": "93",
+        "skills": "18"
+      }
+    },
+    "tui-turn-pane.log": {
+      "bytes": 207687,
+      "crashSignatureHits": {
+        "unsupported JSON schema": 0,
+        "JsonSchemaError": 0,
+        "plugin tree failed to load": 0,
+        "failed to apply loader entry": 0,
+        "duplicate loader entry id": 0,
+        "Error:": 0
+      },
+      "crashSignatureTotal": 0,
+      "pluginLogLines": [
+        "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+        "[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.mpd/recon/qa/t5-ws",
+        "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensi",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which i"
+      ],
+      "counters": {
+        "tools": "93",
+        "skills": "18"
+      }
+    },
+    "tui-controls-pane.log": {
+      "bytes": 291462,
+      "crashSignatureHits": {
+        "unsupported JSON schema": 0,
+        "JsonSchemaError": 0,
+        "plugin tree failed to load": 0,
+        "failed to apply loader entry": 0,
+        "duplicate loader entry id": 0,
+        "Error:": 0
+      },
+      "crashSignatureTotal": 0,
+      "pluginLogLines": [
+        "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+        "[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.mpd/recon/qa/t5-ws",
+        "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensi",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which i"
+      ],
+      "counters": {
+        "tools": "93",
+        "skills": "18"
+      }
+    },
+    "tui-final-pane.log": {
+      "bytes": 296802,
+      "crashSignatureHits": {
+        "unsupported JSON schema": 0,
+        "JsonSchemaError": 0,
+        "plugin tree failed to load": 0,
+        "failed to apply loader entry": 0,
+        "duplicate loader entry id": 0,
+        "Error:": 0
+      },
+      "crashSignatureTotal": 0,
+      "pluginLogLines": [
+        "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+        "[mpd-codegraph] init status=marker binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.mpd/recon/qa/t5-ws",
+        "[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensi",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which i"
+      ],
+      "counters": {
+        "tools": "93",
+        "skills": "18"
+      }
+    }
+  },
+  "presetScreen": {
+    "file": "raw/final-preset.pane.txt",
+    "command": "/preset (host built-in)",
+    "activeDefaultLine": "    ❯ MPD (Main Working Agent)（默认） ✓",
+    "allMatchingLines": [
+      "    ❯ MPD (Main Working Agent)（默认） ✓"
+    ],
+    "claim": "The host's own preset picker marks MPD (Main Working Agent) as the active DEFAULT with a check mark - the captured-screen form of the mpd-preset clause (AC-11)."
+  },
+  "hostReservationCrossCheck": {
+    "note": "What the live lane actually saw for the dsh-TUI reservation list (TUI-CONVENTIONS.md (e)). Recorded as observations; items outside this task's scope are reported, never silently fixed.",
+    "dshTuiEnvClaims": "grep over dsh-plugin.json + the whole evidence tree: no DSH_TUI_* variable is claimed by the manifest. The only reads under that namespace are the host's own (the bundle's TUI plugin reuses the host's DSH_TUI_DEBUG for its debug gate; the host source itself reads it 4x).",
+    "commandNames": "contributes.commands is empty -> no built-in command name is claimed; the live TUI registered 93 tools and 18 skill commands without any refusal attributable to this bundle.",
+    "settingsNamespace": "This manifest claims NO /settings namespace, so NAMESPACE_CONFLICT is impossible from it. Observed in the plugin source: its section namespace is `mpd` (never the host's `dsh-tui`).",
+    "themeName": "Observed: the plugin's theme asset is themes/mpd-tui.json with name `mpd-tui`, which is NOT one of the reserved names (auto/light/dark/dark-ansi/status).",
+    "statusKey": "Observed (informational, t4's surface): the plugin's status key constant is `mpd`, which satisfies the host key regex; the conventions checklist words it as `mpd-tui`. No reserved key is used.",
+    "optionalServices": "Observed: every seam is resolved through a soft probe and degrades with a debug/warn message instead of failing apply (the live boot shows zero apply-crash signatures with all seven seams present)."
+  }
+}

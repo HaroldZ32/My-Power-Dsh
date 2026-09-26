@@ -1,0 +1,577 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=state/team disposers=5
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn.json
+[mpd-team-watchdog] task t2 (member Senior Engineer) never started — a dispatch problem, not an escalation
+[mpd-team-watchdog] task t2 (member Senior Engineer) never started — a dispatch problem, not an escalation
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn-2.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90002ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-escalate.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect silence=90003ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-escalate.json
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=1234 tickIntervalMs=111 warnStreakToEscalate=7 actionOnEscalate=warn-only stateDir=state/team disposers=5
+[mpd-team-watchdog] knobs re-read (enabled=true, warnSilenceMs=4321, tickIntervalMs=222, warnStreakToEscalate=2, actionOnEscalate=pause)
+{
+  "task": "t54",
+  "plugin": "packages/mpd-team-watchdog-plugin",
+  "fixture": {
+    "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws",
+    "stateDir": "state/team",
+    "team": "team-a"
+  },
+  "apply": {
+    "applied": true,
+    "disposers": 5,
+    "intervalMs": 15000,
+    "knobs": {
+      "enabled": true,
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause"
+    },
+    "issues": []
+  },
+  "tools": [
+    "session-watchdog-hold",
+    "session-watchdog-resume",
+    "session-watchdog-status"
+  ],
+  "postHookReturn": "undefined (pass-through)",
+  "heartbeatArchitect": [
+    {
+      "kind": "turn-start",
+      "at": 1789488970847,
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    {
+      "kind": "step",
+      "at": 1789488970849,
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    {
+      "kind": "step",
+      "at": 1789488970853,
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    {
+      "kind": "step",
+      "at": 1789488970857,
+      "taskId": "t1",
+      "attemptId": "att-1"
+    },
+    {
+      "kind": "tool",
+      "at": 1789488970860,
+      "tool": "read",
+      "taskId": "t1",
+      "attemptId": "att-1"
+    }
+  ],
+  "ticks": [
+    {
+      "decisions": [
+        {
+          "type": "warn",
+          "taskId": "t1",
+          "streak": 1,
+          "silenceMs": 90001
+        }
+      ],
+      "scenes": 1,
+      "holds": []
+    },
+    {
+      "decisions": [
+        {
+          "type": "warn",
+          "taskId": "t1",
+          "streak": 2,
+          "silenceMs": 90002
+        }
+      ],
+      "scenes": 1,
+      "holds": []
+    },
+    {
+      "decisions": [
+        {
+          "type": "escalate",
+          "taskId": "t1",
+          "streak": 3,
+          "silenceMs": 90003
+        }
+      ],
+      "scenes": 1,
+      "holds": [
+        "team-a"
+      ]
+    },
+    {
+      "decisions": [],
+      "scenes": 0,
+      "holds": []
+    }
+  ],
+  "neverStartedObservations": 1,
+  "engineStats": {
+    "ticks": 4,
+    "tickErrors": 0,
+    "tickSkips": 0,
+    "heartbeatWrites": 8,
+    "heartbeatFailures": 0,
+    "rotations": 0,
+    "scenes": 3,
+    "sceneFailures": 0,
+    "holdsApplied": 1,
+    "holdsFailed": 0,
+    "incidents": 3,
+    "incidentFailures": 0,
+    "neverStarted": 1,
+    "lastError": null
+  },
+  "adoptedRecordUnchanged": {
+    "sha256Before": "3a7675fb17ee7ee914fa782973e47f338b2579402d0be6301d2d46dd8ebf26bf",
+    "sha256After": "3a7675fb17ee7ee914fa782973e47f338b2579402d0be6301d2d46dd8ebf26bf",
+    "identical": true,
+    "bytes": 615
+  },
+  "reader": {
+    "exitCode": 0,
+    "stderr": "",
+    "verdict": {
+      "checks": [
+        {
+          "name": "member heartbeat has >= 3 distinct step timestamps",
+          "ok": true,
+          "detail": [
+            1789488970849,
+            1789488970853,
+            1789488970857
+          ]
+        },
+        {
+          "name": "member heartbeat has a POST tool stamp naming the tool",
+          "ok": true,
+          "detail": [
+            "read"
+          ]
+        },
+        {
+          "name": "the tool stamp lands after the step that preceded it",
+          "ok": true
+        },
+        {
+          "name": "member stamps carry the adopted task + attempt",
+          "ok": true
+        },
+        {
+          "name": "captain heartbeat has step AND tool stamps",
+          "ok": true,
+          "detail": [
+            "turn-start",
+            "step",
+            "tool"
+          ]
+        },
+        {
+          "name": "the captain holds no task here, so its stamps carry no task id",
+          "ok": true,
+          "detail": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "one immutable scene file per incident plus latest.json",
+          "ok": true,
+          "detail": [
+            "20260915T161740Z-warn.json",
+            "20260915T161740Z-escalate.json",
+            "20260915T161740Z-warn-2.json",
+            "latest.json"
+          ]
+        },
+        {
+          "name": "the latest scene parses and is the escalation scene",
+          "ok": true
+        },
+        {
+          "name": "scene.cause is the silence cause with its ms",
+          "ok": true,
+          "detail": {
+            "kind": "silence",
+            "ms": 90003
+          }
+        },
+        {
+          "name": "scene.team carries id/name/phase/halted/haltedAt/hold",
+          "ok": true,
+          "detail": {
+            "id": "team-a",
+            "name": "Team A",
+            "phase": "running",
+            "halted": null,
+            "haltedAt": null,
+            "hold": {
+              "id": "f0e653c4-18e9-4960-b2de-c1589abd29a8",
+              "since": 1789488970873,
+              "cause": "silence",
+              "taskId": "t1",
+              "attemptId": "att-1"
+            }
+          }
+        },
+        {
+          "name": "scene.tasks carry id/status/assignee/attempt/attemptId/lastSeen/streak",
+          "ok": true,
+          "detail": [
+            {
+              "id": "t1",
+              "status": "in_progress",
+              "assignee": "Architect",
+              "attempt": 1,
+              "attemptId": "att-1",
+              "lastSeen": 1789488970860,
+              "streak": 0
+            },
+            {
+              "id": "t2",
+              "status": "claimed",
+              "assignee": "Senior Engineer",
+              "attempt": 1,
+              "attemptId": "att-2",
+              "lastSeen": null,
+              "streak": 0
+            }
+          ]
+        },
+        {
+          "name": "scene.members carry id/name/status/unread/currentTask/lastSeen",
+          "ok": true,
+          "detail": [
+            {
+              "id": "agent-architect",
+              "name": "Architect",
+              "status": "working",
+              "unread": 1,
+              "currentTask": "t1",
+              "lastSeen": 1789488970860
+            },
+            {
+              "id": "agent-senior",
+              "name": "Senior Engineer",
+              "status": "working",
+              "unread": 0,
+              "currentTask": "t2",
+              "lastSeen": null
+            }
+          ]
+        },
+        {
+          "name": "scene.mailbox is the read watermark map",
+          "ok": true,
+          "detail": {}
+        },
+        {
+          "name": "scene.parkedAttempts maps a member id to an attempt id",
+          "ok": true,
+          "detail": {
+            "agent-architect": "att-1",
+            "agent-senior": "att-2"
+          }
+        },
+        {
+          "name": "scene.incidents carry the WARN predecessors with their scene paths",
+          "ok": true,
+          "detail": [
+            "warn",
+            "warn"
+          ]
+        },
+        {
+          "name": "the hold sidecar exists beside team.json",
+          "ok": true,
+          "detail": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/hold/team-a.json"
+        },
+        {
+          "name": "the hold carries id/teamId/since/cause/taskId/attemptId/sceneAt",
+          "ok": true,
+          "detail": [
+            "id",
+            "teamId",
+            "since",
+            "cause",
+            "taskId",
+            "attemptId",
+            "sceneAt"
+          ]
+        },
+        {
+          "name": "the hold names the escalated task and attempt",
+          "ok": true,
+          "detail": {
+            "taskId": "t1",
+            "attemptId": "att-1"
+          }
+        },
+        {
+          "name": "exactly three incidents: warn, warn, escalate",
+          "ok": true,
+          "detail": [
+            "warn",
+            "warn",
+            "escalate"
+          ]
+        },
+        {
+          "name": "each WARN predecessor recorded its scene path",
+          "ok": true
+        },
+        {
+          "name": "the escalation incident says the hold was applied",
+          "ok": true
+        },
+        {
+          "name": "the read watermark exists and is a per-reader map",
+          "ok": true,
+          "detail": {
+            "web": 1789488970860
+          }
+        },
+        {
+          "name": "the adopted team.json still exists",
+          "ok": true
+        }
+      ],
+      "failures": [],
+      "data": {
+        "heartbeat": {
+          "files": [
+            "architect.jsonl",
+            "captain.jsonl"
+          ],
+          "architect": [
+            {
+              "kind": "turn-start",
+              "at": 1789488970847,
+              "taskId": "t1",
+              "attemptId": "att-1"
+            },
+            {
+              "kind": "step",
+              "at": 1789488970849,
+              "taskId": "t1",
+              "attemptId": "att-1"
+            },
+            {
+              "kind": "step",
+              "at": 1789488970853,
+              "taskId": "t1",
+              "attemptId": "att-1"
+            },
+            {
+              "kind": "step",
+              "at": 1789488970857,
+              "taskId": "t1",
+              "attemptId": "att-1"
+            },
+            {
+              "kind": "tool",
+              "at": 1789488970860,
+              "tool": "read",
+              "taskId": "t1",
+              "attemptId": "att-1"
+            }
+          ],
+          "captain": [
+            {
+              "kind": "turn-start",
+              "at": 1789488970860,
+              "taskId": null,
+              "attemptId": null
+            },
+            {
+              "kind": "step",
+              "at": 1789488970860,
+              "taskId": null,
+              "attemptId": null
+            },
+            {
+              "kind": "tool",
+              "at": 1789488970864,
+              "tool": "agent_teams_update_task",
+              "taskId": null,
+              "attemptId": null
+            }
+          ]
+        },
+        "scene": {
+          "dir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a",
+          "files": [
+            "20260915T161740Z-warn.json",
+            "20260915T161740Z-escalate.json",
+            "20260915T161740Z-warn-2.json",
+            "latest.json"
+          ],
+          "latest": {
+            "schemaVersion": 1,
+            "at": 1789489060863,
+            "reason": "escalate",
+            "cause": {
+              "kind": "silence",
+              "ms": 90003
+            },
+            "team": {
+              "id": "team-a",
+              "name": "Team A",
+              "phase": "running",
+              "halted": null,
+              "haltedAt": null,
+              "hold": {
+                "id": "f0e653c4-18e9-4960-b2de-c1589abd29a8",
+                "since": 1789488970873,
+                "cause": "silence",
+                "taskId": "t1",
+                "attemptId": "att-1"
+              }
+            },
+            "tasks": [
+              {
+                "id": "t1",
+                "status": "in_progress",
+                "assignee": "Architect",
+                "attempt": 1,
+                "attemptId": "att-1",
+                "lastSeen": 1789488970860,
+                "streak": 0
+              },
+              {
+                "id": "t2",
+                "status": "claimed",
+                "assignee": "Senior Engineer",
+                "attempt": 1,
+                "attemptId": "att-2",
+                "lastSeen": null,
+                "streak": 0
+              }
+            ],
+            "members": [
+              {
+                "id": "agent-architect",
+                "name": "Architect",
+                "status": "working",
+                "unread": 1,
+                "currentTask": "t1",
+                "lastSeen": 1789488970860
+              },
+              {
+                "id": "agent-senior",
+                "name": "Senior Engineer",
+                "status": "working",
+                "unread": 0,
+                "currentTask": "t2",
+                "lastSeen": null
+              }
+            ],
+            "mailbox": {},
+            "parkedAttempts": {
+              "agent-architect": "att-1",
+              "agent-senior": "att-2"
+            },
+            "incidents": [
+              {
+                "id": "t1@att-1#1789489060861",
+                "kind": "warn",
+                "at": 1789489060861,
+                "taskId": "t1",
+                "attemptId": "att-1",
+                "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn.json"
+              },
+              {
+                "id": "t1@att-1#1789489060862",
+                "kind": "warn",
+                "at": 1789489060862,
+                "taskId": "t1",
+                "attemptId": "att-1",
+                "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn-2.json"
+              }
+            ]
+          }
+        },
+        "hold": {
+          "id": "f0e653c4-18e9-4960-b2de-c1589abd29a8",
+          "teamId": "team-a",
+          "since": 1789488970873,
+          "cause": "silence",
+          "taskId": "t1",
+          "attemptId": "att-1",
+          "sceneAt": 1789489060863
+        },
+        "incidents": [
+          {
+            "kind": "warn",
+            "at": 1789489060861,
+            "taskId": "t1",
+            "hold": "not-requested",
+            "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn.json"
+          },
+          {
+            "kind": "warn",
+            "at": 1789489060862,
+            "taskId": "t1",
+            "hold": "not-requested",
+            "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-warn-2.json"
+          },
+          {
+            "kind": "escalate",
+            "at": 1789489060863,
+            "taskId": "t1",
+            "hold": "applied",
+            "scene": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/watchdog/scene/team-a/20260915T161740Z-escalate.json"
+          }
+        ],
+        "watermark": {
+          "web": 1789488970860
+        },
+        "team": {
+          "path": "/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T160657Z/raw/ws/state/team/team-a/team.json",
+          "mtimeMs": 1789488970843.5278,
+          "bytes": 615
+        }
+      },
+      "ok": true
+    }
+  },
+  "namespaceAuthority": {
+    "note": "the mpd namespace OVERRIDES the row config (defaults layer), and a settings/document-updated re-read takes effect with no restart",
+    "readAtApply": {
+      "warnSilenceMs": 1234,
+      "tickIntervalMs": 111,
+      "warnStreakToEscalate": 7,
+      "actionOnEscalate": "warn-only",
+      "intervalMs": 111
+    },
+    "readAfterLiveEdit": {
+      "warnSilenceMs": 4321,
+      "tickIntervalMs": 222,
+      "warnStreakToEscalate": 2,
+      "actionOnEscalate": "pause"
+    }
+  },
+  "ok": true,
+  "tickShape": {
+    "tick1": [
+      "warn"
+    ],
+    "tick2": [
+      "warn"
+    ],
+    "tick3": [
+      "escalate"
+    ],
+    "tick4": []
+  }
+}

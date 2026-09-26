@@ -1,0 +1,28 @@
+
+===== clean-copy-positive-control (expected exit 0) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed (376 asset files); agent references 3/3
+[exit=0] (expected exit 0)
+
+===== seed-missing-reference-file (expected exit 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  TREE-DRIFT - agent-references/ differs from the source tree - dropped by the pack: troubleshooting.md; not in the source: (none)
+  REFERENCES - the packed tree does not carry agent-references/troubleshooting.md - an external author loses the reference the artifact is supposed to be self-sufficient for
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed (375 asset files)
+[exit=1] (expected exit 1)
+
+===== manifest-drops-agent-references (expected exit 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  MANIFEST - <packed>/agent-references is in the artifact but no `files` pattern covers it — present but unlisted is a closure failure
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed (376 asset files)
+[exit=1] (expected exit 1)

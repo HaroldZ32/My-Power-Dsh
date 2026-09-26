@@ -1,0 +1,89 @@
+{
+  "task": "t12",
+  "kind": "verification",
+  "verifier": "Plan Reviewer",
+  "attemptId": "5cb76cca-f29e-4132-b25e-d1f03f86902b",
+  "generatedAt": "2026-09-19T12:00:40Z",
+  "verdict": "pass",
+  "revisionStatement": "The script revision this verdict verifies is the NEW hash 06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8 (the O2 comment fix). It SUPERSEDES 1cb83b1394df66e148c44d3c322bcbbf470ffdd0c959068b24af793ee5163f4e for the integration task and for any later citation; 1cb83b13… stays correct only as the pre-O2 revision that t8/t9 judged. Behaviour is identical between the two, which is what this pass proves.",
+  "hashSandwich": {
+    "closed": true,
+    "script": "06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8 — identical at 11:58:26Z (open), 11:58:55Z, 12:00:12Z, 12:00:19Z, 12:00:32Z, 12:00:36Z and 12:00:40Z (close)",
+    "otherJudgedFiles": [
+      "AGENTS.md 62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68 — stable across the pass (t10's revision)",
+      ".gitignore 9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f — stable",
+      "agent-references/troubleshooting.md af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0 — stable",
+      "docs/design.md 62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228 and docs/index.md 9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089 — stable (only their COPIES were mutated)"
+    ]
+  },
+  "acceptance": [
+    {
+      "criterion": 1,
+      "name": "change confirmed COMMENT-ONLY by execution, not by trust",
+      "status": "passed",
+      "independentDemonstration": "I could NOT use the previous revision's bytes: `git show HEAD:scripts/verify-docs-parity.mjs` predates t3 entirely (all four lanes are uncommitted; HEAD's copy hashes 2bbe584a5906537460138adb2f5997bf573ceccf50fda8488c91a7ebe428ce6e and carries no 'It ALSO resolves' text), and my attempt to reverse t11's clause from the current bytes produced 7b94d92f…, NOT t8's 1cb83b13… — so I did not claim that route. Instead the comment-only property is proved without the old bytes: in a COPY of the shipped script EVERY comment BODY was replaced with 'X' (line endings, line count and string literals preserved; `node --check` exit 0), and the mutated copy's output was compared byte-for-byte against the shipped script's own output.",
+      "structuralEvidence": {
+        "shippedSha256": "06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8",
+        "commentMutatedSha256": "321a38f518f56c55a25efd5cf1d8ef813e17434558e61995d313096b5da813c2",
+        "differsInBytes": true,
+        "sameLineCount": true,
+        "everyChangedLineIsACommentOrBlank": true
+      },
+      "behaviourEvidence": {
+        "shippedTreeRun": "both scripts: exit 0 and stdout BYTE-IDENTICAL — '[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS'",
+        "sevenProbeScenariosOnACopy": "all seven (baseline, root-relative exists, root-relative missing, dead relative link, fragment on existing, fragment on missing, restore) produced outputs BYTE-IDENTICAL between shipped and comment-mutated script, exits included",
+        "selfTest": "both exit 0 and 34/34 PASS; raw stdout differs in exactly ONE line for a reason unrelated to comments — the arm prints a RANDOM mkdtemp path (`/tmp/mpd-docs-links-selftest-<random>`). Isolated: two runs of the IDENTICAL script differ in 1 line (fcBZLs vs lm8OHl) and become BYTE-IDENTICAL (0 diff lines) after normalizing that path, so the difference is run noise, not a behaviour change.",
+        "whyThisProvesCommentOnly": "comments cannot execute; the shipped script and a copy whose comment bodies are all replaced are byte-different programs with byte-identical output on the shipped tree, on seven probe scenarios and on the summary of the self-test. Combined with 'every changed line is a comment' (structural) and t11's own claim (hedged, not relied on), the delta is comment-only."
+      },
+      "verifyGates": "node scripts/verify-gates.mjs exit 0, '[verify-gates] PASS - 5/5 member gate(s) green'"
+    },
+    {
+      "criterion": 2,
+      "name": "the new sentence is TRUE of the code it describes",
+      "status": "passed",
+      "sentenceAsShipped": "It ALSO resolves the relative link TARGETS of the band it discovers (the class that hid the dead `architecture.md` links): `[x](./y.md)`, `![x](y.png)`, `../AGENTS.md`, a DIRECTORY target — each resolved from the LINKING file's own directory, and a ROOT-relative target (a leading `/`, e.g. `/docs/index.md`) resolved against the REPO ROOT with that leading slash stripped explicitly — never the filesystem root (t5-F1) — with a `#fragment` stripped, while external (`http(s):`, `mailto:`, `tel:`, `data:`, `//host`), in-page anchors, empty targets and text inside fenced blocks / inline code spans are IGNORED.",
+      "clausesProvedByExecution": [
+        "`/`-prefixed target that EXISTS in the tree → RESOLVED: '[x](/docs/index.md)' gave exit 0, links=235 checked=218 resolved=211 dead=0 — PASS (the target moved into resolved; the pre-t8 behaviour was exit 1 'neither a file nor a directory exists at /docs/index.md')",
+        "`/`-prefixed target that does NOT exist → REDDENS against the REPO ROOT: '[x](/nowhere/absent.md)' gave exit 1, links=235 checked=218 resolved=210 dead=1 — FAIL with 'FAIL link-missing:docs/design.md:/nowhere/absent.md — … neither a file nor a directory exists at /tmp/t12/tree/nowhere/absent.md' (note the path is under the TREE root, not the filesystem root)",
+        "leading slash stripped explicitly — the resolution above lands at <root>/nowhere/absent.md rather than /nowhere/absent.md",
+        "the class order still holds: the `#fragment` split precedes resolution ('[x](./no-such-file.md#x)' reddens with the FILE half reported)",
+        "the ignored classes are unchanged: '[x]('//docs/index.md')' is counted as external (ignoredExternal 13 → 14), in-page anchors stay anchorOnly, and the code-span/fence exclusion is unchanged"
+      ],
+      "noteOnTheSentenceItself": "the sentence is a comment, so proving it true is a documentation-truth check, not a behaviour check — which criterion 1 shows cannot and does not alter behaviour."
+    },
+    {
+      "criterion": 3,
+      "name": "classes proved earlier are un-regressed on the new hash",
+      "status": "passed",
+      "deadRelativeLink": "copy probe '[x](./t12-injected-dead-link.md)': exit 1, 'FAIL link-missing:docs/design.md:./t12-injected-dead-link.md — docs/design.md:587 links \"./t12-injected-dead-link.md\" but neither a file nor a directory exists at /tmp/t12/tree/docs/t12-injected-dead-link.md' — source AND target named.",
+      "provenanceSkip": "shipped counters links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 → 210 = 217 − 7, unchanged; the self-test PROVENANCE arm still passes and still shows the FILE-scoped behaviour (non-exempt fixture reddens with 'link-missing:packages/mpd-fixture-pkg/README.md:./dead.md' while the verbatim file is reported as EXEMPT, skippedProvenance=1).",
+      "packedCopy": "self-test PACKED arm still ok — '{\"counters\":{\"files\":6,\"links\":13,\"checked\":10,\"resolved\":7,\"dead\":0,\"skippedProvenance\":0,\"absentSite\":3,\"external\":2,\"anchorOnly\":1},\"notes\":[{\"path\":\"docs/guide.md\",\"reason\":\"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved\"}]}' — a NOTE, no violation.",
+      "fragmentBound_t5F2": "copy probe '[x](./index.md#no-such-anchor)': exit 0, resolved=211 dead=0 (fragment stripped and never validated), while '[x](./no-such-file.md#x)' still reddens — the declared bound stands.",
+      "newArmStillFalsifiable": "the ROOT-RELATIVE arm still passes on the new revision with its payload '{\"resolvedBefore\":12,\"resolvedWithTwoLiveTargets\":14,\"deadBefore\":1,\"deadWithMissingTarget\":2,\"finding\":\"link-missing:docs/root-relative.md:/nowhere/absent.md\"}'; its falsifiability was established under t9 (two one-token mutants each reddening exactly that arm), and criterion 1 shows the comment fix cannot have touched it."
+    },
+    {
+      "criterion": 4,
+      "name": "verdict names the NEW sha256 with the moment, on a closed sandwich, and states the supersession",
+      "status": "passed",
+      "evidence": "See `revisionStatement` and `hashSandwich`. Stated plainly: the integration and any later citation must use 06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8; 1cb83b13… (t8/t9) is superseded as a HEAD-state hash but remains a correct historical anchor for those passes. Sandwich closed on the new hash across seven measurements from 11:58:26Z to 12:00:40Z, with the three contract commands run inside that window (12:00:32Z–12:00:36Z)."
+    },
+    {
+      "criterion": 5,
+      "name": "evidence written as a NEW pair, preserving both earlier passes",
+      "status": "passed",
+      "evidence": "New pair: evidence/process-fixes/verify-hardening-reverify2.json (this file) and evidence/process-fixes/verify-hardening-reverify2.log (6,461 B). Preservation proven by hash before AND after this pass: verify-hardening.json 300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762; verify-hardening.log a06c84e5b4105a8ba18905330af6bd24e180659f049a20f56be9e915d4515b25; verify-hardening-reverify.json 067f24d61f586da3ba19f6d6557a3086941dd32ff26e3d24b3fdfa2b101ba263; verify-hardening-reverify.log 534930243fc7ed3a9cf290a044f6ab6974dfebf262409a1630603c8f31b4586d. Nothing earlier was rewritten or appended to; the t5/t9 harnesses were left in place, and this pass adds only .t12-comment-proof.mjs plus the new pair."
+    }
+  ],
+  "commandsRun": [
+    { "command": "node scripts/verify-docs-parity.mjs", "at": "2026-09-19T12:00:32Z", "exitCode": 0, "summary": "pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS; counters links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92 — identical to the t5 and t9 baselines" },
+    { "command": "node scripts/verify-docs-parity.mjs --self-test", "at": "2026-09-19T12:00:34Z", "exitCode": 0, "summary": "34/34 checks passed — PASS (all five link arms including ROOT-RELATIVE green)" },
+    { "command": "node scripts/verify-gates.mjs", "at": "2026-09-19T12:00:34Z", "exitCode": 0, "summary": "member docs-parity exit=0 PASS - 101ms; member preset-conformance exit=0 PASS - 575ms; final '[verify-gates] PASS - 5/5 member gate(s) green'" }
+  ],
+  "findings": [],
+  "notesForIntegration": [
+    "Use 06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8 for scripts/verify-docs-parity.mjs in the integration commit; cite 1cb83b13… only as the pre-O2 revision judged by t8/t9.",
+    "Comment-only is established by equivalence, not by reconstruction: the previous revision's bytes are unreachable here (HEAD predates t3, and reversing t11's clause from the current bytes did NOT reproduce 1cb83b13…, so I did not lean on t11's reversal claim). The proof used instead — comment-bodies-mutated copy vs shipped script, byte-identical stdout on the shipped tree, on seven copy probes and on the self-test summary — does not depend on any claim by the implementing lane.",
+    "Two bounds still stand and are unchanged by this pass: t5-F2 (fragments stripped, never validated) and the fact base's understated census headline — the authoritative numbers are the gate's own counters, identical across all three passes: links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0.",
+    "Read-only lane honoured: every mutation ran on copies under /tmp (a copy inside the repo is refused by node with ERR_FS_CP_EINVAL); git status shows only the four lane files modified plus untracked evidence/process-fixes/."
+  ]
+}

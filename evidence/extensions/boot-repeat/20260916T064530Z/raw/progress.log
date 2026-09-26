@@ -1,0 +1,15 @@
+[06:49:28Z] driver start: repo=/root/dshProj/my-power-dsh runs=6 wait=150s
+[06:49:28Z] HEAD=1f38e3c1b8149cecc68f54fae1979f56e1ff2b0f
+[06:49:28Z] src sha256: dd3bdd00579d8d7aa56a70cb18af6a0bfd4ce3bae400c730d0f35bc40f662ec0  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/index.ts 9a54bf7d6620a2d437ebafd15bda5f7592e9e1cce2d997fe2c6170a71d6ab18c  /root/dshProj/my-power-dsh/packages/mpd-roles-plugin/src/index.ts 
+[06:49:28Z] dist sha256: 0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55  /root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js 22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb  /root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js 
+[06:49:28Z] credentials copied into the sandbox: .credentials.yaml settings.yaml
+[06:49:32Z] install exit=0 (dsh plugin --profile rp add <repo>)
+rp
+[06:49:32Z] pristine tree entries: 21
+[06:49:39Z] run 1: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:45Z] run 2: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:51Z] run 3: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:49:57Z] run 4: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:03Z] run 5: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:09Z] run 6: both-summary-lines=1 elapsed=6.0s adapterIdentity-lines=2 fallback-lines=0
+[06:50:09Z] driver done

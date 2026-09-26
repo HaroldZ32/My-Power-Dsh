@@ -1,0 +1,18 @@
+[w5-web] ok   route-registered: state=true ack=true paths=/plugins/mpd-team-watchdog/state,/plugins/mpd-team-watchdog/ack
+[w5-web] ok   S1-route-payload: status=200 reader=web-panel stuck=true replay=true banner=held/alpha
+[w5-web] ok   S1-banner-fields: incident=inc-1 hold=hold-alpha-1 cause=silence for 120000 ms
+[w5-web] ok   S1-one-activity-record: activity=1 id=inc-1 ackRequired=true
+[w5-web] ok   S2-first-poll-replays: watchdog fetches without user action = 1 (url=/plugins/mpd-team-watchdog/state?reader=web-panel)
+[w5-web] ok   S3-state-reached-render: store.slice.payload.banner=held (props passed to the render: ctx,scope,tab,visible,store)
+[w5-web] ok   S3-banner-is-top-child: children[0].data-watchdog-banner=incident cause=silence for 120000 ms team=alpha reader=web-panel
+[w5-web] ok   S3-activity-record-rendered: records=1 id=inc-1 kind=escalate
+[w5-web] ok   S4-ack-advances-watermark: status=200 ok=true before=0 after=1789460000000 file[reader]=1789460000000
+[w5-web] ok   S4-watermark-bytes-changed: before sha=f60d3ea9ac994e4a (21 B) after sha=1ec3539f806314d8 (51 B)
+[w5-web] ok   S4-other-reader-preserved: other reader key kept: tui-panel=5
+[w5-web] ok   S5-replay-stops-after-ack: payload.replay=false unread=[] activity=0 renderedRecords=0 bannerNow=hold (the incident replay stopped; the DURABLE hold still reports the team as paused)
+[w5-web] ok   S5-banner-is-durable-state: after the hold sidecar was removed: stuck=false banner=null renderedTopChild=header
+[w5-web] ok   S6-restart-no-replay: restart stuck=0 topChild=header (the acknowledged incident does not replay; the hold was resumed separately)
+[w5-web] ok   S7-new-incident-replays: unread=["inc-2"] banner=inc-2 top=incident records=1
+[w5-web] ok   S8-adopted-plugin-untouched: before="M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\n M packages/mpd-agent-teams-plugin/lib/tools.js" after="M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js\n M packages/mpd-agent-teams-plugin/lib/scheduler.js\n M packages/mpd-agent-teams-plugin/lib/tools.js" (identical; the pre-existing entries are w7's delta regions, not this pass)
+[w5-web] ok   negative-control-no-route: with no watchdog payload the panel renders exactly the pre-banner shape (banner absent, not empty-stringed)
+[w5-web] verdict=passed checks=17 failed=0

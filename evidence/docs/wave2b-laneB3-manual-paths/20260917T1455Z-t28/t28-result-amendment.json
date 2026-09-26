@@ -1,0 +1,72 @@
+{
+  "schema": "t28/impl-B3-2-manual-paths-amendment/1",
+  "task": "t28",
+  "attemptId": "12b3f671-886a-4b13-9608-aadbfd575aae",
+  "contractRevision": 2,
+  "supersedes": "t28-result.json (first pass, contract revision 1; its AFTER side is the intermediate manual 5dc5e600)",
+  "authoritativeRecord": "evidence/docs/wave2b-laneB3-manual-paths/20260917T1455Z-t28/record-amendment.md",
+  "objective": "resolve the unresolved AGENTS.md path spellings routed by lane B's T-66 live reading, keep both readings, re-take the instruction budget, carry an executed red arm, explain the count's movement, and align the §4 Doc pairs row with the gate",
+  "writeSetUsed": ["AGENTS.md", "evidence/docs/wave2b-laneB3-manual-paths/20260917T1455Z-t28/**"],
+  "finalRevision": { "path": "AGENTS.md", "sha256": "32a297191e12fdaba0021c35b732ab367d0828002564e426713a6a4cb8349d7a", "bytes": 53464, "mtime": "2026-09-17T14:45:10.659Z" },
+  "sevenDispositions": [
+    { "i": 1, "refusal": "docs/adder4.md :14", "class": "unresolved — DELIBERATE EXEMPTION", "reading": "anticipatory by design (AGENTS.md §3; the docs gate prints it as ANTICIPATORY — not a live path)" },
+    { "i": 2, "refusal": "docs/cnt8.md :14", "class": "unresolved — DELIBERATE EXEMPTION", "reading": "same policy class as #1" },
+    { "i": 3, "refusal": "dist/validator.js :146", "class": "under-report:placeholder", "reading": "reworded to <bundle>/packages/mpd-ext-plugin/dist/validator.js — domain = the PACKED ARTIFACT (real instance at dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js)" },
+    { "i": 4, "refusal": "dist/index.js :281", "class": "under-report:placeholder", "reading": "reworded to packages/<pkg>/dist/index.js — domain = PER PACKAGE (§6's own <pkg> convention)" },
+    { "i": 5, "refusal": "dist/index.js :438", "class": "under-report:placeholder", "reading": "same spelling as #4" },
+    { "i": 6, "refusal": "client :474", "class": "not a candidate (counted nowhere) + target STAT-RESOLVED", "reading": "an exports-map KEY; the row now states the domain and the target packages/mpd-bundle-plugin/client.js (package.json exports[\"./client\"], file exists)" },
+    { "i": 7, "refusal": "node_modules/@mpd-dsh/mpd :477", "class": "under-report:placeholder", "reading": "reworded to <profile>/node_modules/@mpd-dsh/mpd — domain = the INSTALLED LAYOUT in a consumer profile" }
+  ],
+  "channelAnalysis": {
+    "rewording": "four refusals (#3, #4, #5, #7) are settled by rewording that states the resolution domain — the amendment's first branch",
+    "sanctionedAllowlist": "the amendment's second branch (KNOWN_ROOT_FILES, scripts/verify-manual-paths.mjs :92-:111) was examined and is MEASURED INAPPLICABLE to #1/#2: it is a BARE-root-filename list consulted only in the !body.includes(\"/\") branch, and both anticipatory tokens carry the docs/ directory component, so the allowlist is never reached; seating them there would need an instrument edit or a NEW exemption mechanism — the loosening the amendment forbids",
+    "classRecord": "the two are RECORDED AS A CLASS with the checker's own reason and the policy that keeps them — never silently skipped",
+    "preWrittenFixNotTaken": "removing the two backticks at AGENTS.md:14 would move the names into the checker's not-read prose class and green the run; not taken because it deletes a true observation from the audit instead of resolving it (two-character edit at one site, available to the reviewer)"
+  },
+  "readings": {
+    "before": { "manualSha256": "b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0", "bytes": 53283, "exit": 1, "census": "audited=115 resolved=108 unresolved=7", "overUnder": "65/6 · 73/7", "capture": "raw/verify-manual-paths-before.log", "corroboration": "lane B's own capture at the same sha (evidence/gates/wave2b-laneB/20260917T141936Z-laneB/reading-verify-manual-paths-live.log)" },
+    "final": { "manualSha256": "32a297191e12fdaba0021c35b732ab367d0828002564e426713a6a4cb8349d7a", "bytes": 53464, "exit": 1, "census": "audited=111 resolved=109 unresolved=2", "overUnder": "65/6 · 79/7", "capture": "raw/verify-manual-paths-after2.log" }
+  },
+  "censusMovementExplained": {
+    "overReport": { "before": 65, "final": 65, "why": "unchanged: the ./client token became a NON-candidate and a non-candidate is counted nowhere by the candidate rule — it did not move into over-report:bare" },
+    "underReportPlaceholder": { "before": 19, "final": 23, "why": "+4 = the four re-spellings #3, #4, #5, #7" },
+    "underReportGlob": { "before": 37, "final": 39, "why": "+2 = the two templates/**/README.md mentions added by the :194 row edit" },
+    "underReportTotal": { "before": 73, "final": 79, "why": "+6 = +4 +2 exactly" },
+    "audited": { "before": "115 (108+7)", "final": "111 (109+2)", "why": "-5 left the audited class (4 to placeholder, 1 to non-candidate), +1 entered resolved (packages/mpd-bundle-plugin/client.js) = net -4" }
+  },
+  "countMovementAcrossRevisions": {
+    "readingA_routed": { "sha256": "8d0dd92980c353ada87ef0e7360ec4c185d47eb09295a8d06f40f109c3833fa8", "bytes": 48641, "mtime": "2026-09-17T09:02:41.400Z", "unresolved": 4, "names": ["dist/validator.js:144", "dist/index.js:269", "client:440", "node_modules/@mpd-dsh/mpd:443"], "overUnder": "61/6 · 61/7", "source": "evidence/gates/wave2b-laneB/20260917T141936Z-laneB/verify-manual-paths-live.log" },
+    "readingB_live": { "sha256": "b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0", "bytes": 53283, "mtime": "2026-09-17T14:25:41.132Z", "unresolved": 7, "overUnder": "65/6 · 73/7", "source": "…/reading-verify-manual-paths-live.log" },
+    "explanation": "A's four refusals are exactly the four this task resolved; B = A's four + THREE new refusals that arrived with this wave's own AGENTS.md edits (docs/adder4.md + docs/cnt8.md in the sentence the B3/T-29 edit added at :14, and one more dist/index.js at :438 from the T-88 paragraph). 4 + 3 = 7, so a count is RE-TAKEN and never quoted across a revision"
+  },
+  "redArm": {
+    "scratch": "outside the workspace (/tmp/t28-red); derivation recorded: two cp of the final manual, ONE code span appended to the second",
+    "R0_revertControl": { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t28-red/plain-AGENTS.md", "exit": 1, "unresolved": 2, "overUnder": "65/6 · 79/7", "capture": "raw/red-arm-R0-verbatim-copy.log", "reading": "a verbatim copy through --manual gives the SAME reading — the reddening is the injection, not the copy or the flag" },
+    "R1_injectedWrongPath": { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t28-red/red-AGENTS.md", "exit": 1, "unresolved": 3, "overUnder": "65/6 · 79/7", "named": "docs/this-path-does-not-exist.md (/tmp/t28-red/red-AGENTS.md:631)", "capture": "raw/red-arm-R1-injected-wrong-path.log", "reading": "a genuinely wrong, non-exempt path STILL FAILS with the same exit code and the same census shape, and it is NAMED" }
+  },
+  "secondDeliverable": {
+    "site": "AGENTS.md:194 (§4 Doc pairs row)",
+    "tiebreak": "scripts/verify-docs-parity.mjs :97-:101 (bands comment: templates/** joined the discovery set with this row) and :322 for (const band of [\"extensions\", \"templates\"]), plus its self-test case 'T-29: templates/**/README.md pairs enter the discovery set as POLICED pairs'",
+    "before": "recursive under `docs/` and `extensions/**/README.md` … | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`)",
+    "after": "recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md` … | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`)",
+    "reading": "the row names the same three bands the gate walks and agrees with the policy bullet at :12; the path checker reads both added mentions as under-report:glob (no new refusal)"
+  },
+  "budget": {
+    "instrument": "bun ./evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs (the installed harness's own renderer)",
+    "maxBytes": 65536,
+    "before": { "sourceBytes": 53283, "renderedBytes": 53587, "truncated": [], "verdict": "GREEN (full content injected)" },
+    "final": { "sourceBytes": 53464, "renderedBytes": 53768, "truncated": [], "verdict": "GREEN (full content injected)", "moment": "2026-09-17T22:45:10+08" },
+    "raw": ["raw/budget-before.json", "raw/budget-after.json", "raw/budget-after2.json"]
+  },
+  "packedSurfaces": { "pathsCompared": 11, "byteIdentical": 11, "changed": [], "missing": [], "method": "path-keyed comparison of raw/hashes-before.txt vs raw/hashes-final.txt (7 templates files + the 4 root README files); AGENTS.md is not a packed surface", "instrumentFlawRecorded": "the first before-capture carried a redundant sha256sum group with un-prefixed paths, so a raw row diff printed four phantom deletions (1,4d0) with NO hash mismatches; the corrected comparison is keyed by path and is empty" },
+  "verify": [
+    { "command": "node ./scripts/verify-manual-paths.mjs", "exit": 1, "evidence": "final revision: unresolved=2 of 111 (the two deliberate exemptions), census 65/6 · 79/7 — raw/verify-manual-paths-after2.log" },
+    { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t28-red/plain-AGENTS.md", "exit": 1, "evidence": "revert control: identical reading (2 unresolved, 65/6 · 79/7) — raw/red-arm-R0-verbatim-copy.log" },
+    { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t28-red/red-AGENTS.md", "exit": 1, "evidence": "red arm: unresolved=3, the injected wrong path NAMED, same census shape — raw/red-arm-R1-injected-wrong-path.log" },
+    { "command": "bun run ./scripts/verify-docs-parity.mjs", "exit": 0, "evidence": "pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS (raw/docs-parity-after2.log)" },
+    { "command": "bun run ./scripts/verify-docs-parity.mjs --self-test", "exit": 0, "evidence": "27/27 checks passed — PASS (raw/docs-parity-selftest-after2.log)" }
+  ],
+  "discipline": { "pathForm": "./ form with full outputs under raw/ (no tail)", "distWrites": "none", "gitCommands": "none", "scratch": "outside the workspace, derivation recorded", "instrumentEdits": "none — scripts/verify-manual-paths.mjs and scripts/verify-docs-parity.mjs untouched" },
+  "residual": "the path checker exits 1 on the two anticipatory paths, by design, with the class recorded and the one-line green alternative written down",
+  "finishedAt": "2026-09-17T14:52:00Z"
+}

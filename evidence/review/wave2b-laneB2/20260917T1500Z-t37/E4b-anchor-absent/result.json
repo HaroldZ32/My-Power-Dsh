@@ -1,0 +1,20 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T15:01:19.905Z",
+  "pattern": "00000000deadbeef",
+  "scope": "/tmp/t32-arms/e4",
+  "files_scanned": 1,
+  "matches_self_reference": [],
+  "self_reference": {
+    "excluded_output_root": "evidence/review/wave2b-laneB2/20260917T1500Z-t37/E4b-anchor-absent",
+    "excluded_files": [],
+    "rule": "a match is an ANCHOR only if it is not the scanner's own record: the scan excludes its OWN output root, and classifies any hit inside an anchor-scan record (or a capture quoting the scan's command) as SELF-REFERENCE — named, never counted. Re-takeable 0: `--out` (and any stdout capture) belongs OUTSIDE the scanned scope, or the scanned scope must be sealed (t31/B2-F5).",
+    "scanned_scope_files": 1,
+    "classified": 0
+  },
+  "policy": {
+    "out_of_family": "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: this scanner judges a repo-relative literal only, so a green scan says nothing about those shapes (t31/B2-F3).",
+    "scope_note": "a plain-substring scan reports every file under the scope that contains the literal; it is a DISCOVERY heuristic, not a class rule (T-90's calibration bound)."
+  },
+  "matches": []
+}

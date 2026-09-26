@@ -1,0 +1,12 @@
+112 |     oneCommand: "dsh plugin --profile w add <repo root>",
+113 |   }
+114 |   if (!steps.install.ok) fail("install step failed: " + add.out.slice(-1500))
+115 |   // The composed tree is part of the unit too: every bundle row lands at once.
+116 |   // T-69: the wrapper composes (banner on stderr under --json, so the tree stays parseable).
+117 |   const dumpAfterInstall = runSync(process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "w", "--json"], env)
+                                                                 ^
+ReferenceError: REPO is not defined
+      at runReal (/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/bundle-lifecycle.mjs:117:60)
+      at /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/bundle-lifecycle.mjs:228:6
+
+Bun v1.3.14 (Linux x64)

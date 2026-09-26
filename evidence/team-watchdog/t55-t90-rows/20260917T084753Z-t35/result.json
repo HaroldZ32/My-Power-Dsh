@@ -1,0 +1,42 @@
+{
+  "task": "t35 \u2014 land the two offered rows (null results \u00b7 report-bound citations) in agent-references/troubleshooting.md before the re-pack",
+  "verdict": "completed",
+  "finishedAt": "2026-09-17T08:49:19Z",
+  "file": {
+    "path": "agent-references/troubleshooting.md",
+    "before": {
+      "sha256": "c8568855302a1ee4651427908fbd43df08f735eaf7ea6a0a3c6e4c8f2b446eca",
+      "bytes": 39763,
+      "lines": 73,
+      "rows": 60
+    },
+    "after": {
+      "sha256": "5f0b4b3659bad48632254b0f2601c95dd385bd9d94aa91d7d82d9f6d0c1a4e58",
+      "bytes": 41863,
+      "lines": 75,
+      "rows": 62
+    },
+    "diff": "44a45,46 \u2014 exactly TWO rows inserted; no other row touched or reordered; 0 malformed two-column rows"
+  },
+  "rows_landed": [
+    "Row A (null results): 'A search that returns nothing is a reading of the SEARCH, not of the tree.' + operational phrasing + the measured glob instance with both full paths (15,381 B/810830adda53\u2026, 11,600 B/f6b06c5c1e13\u2026) + inline attribution",
+    "Row B (report-bound citations): 'Cite the reading AND the sentence that carries it; when the sentence is not the reader's, say whose it is.' + the ADDENDUM 11/14 three-way split + FULL PATH OR NO CITATION with the -e measurement + inline attribution"
+  ],
+  "recorded_reading": {
+    "command": "node scripts/verify-pack-closure.mjs",
+    "exit": 0,
+    "expected_lines": 25,
+    "this_file_named": true,
+    "line18": "CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:48:26.379Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: inferred ...) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation",
+    "note": "recorded as a READING, not as a gate; the re-pack absorbs it because the rows landed before it"
+  },
+  "verification": [
+    "two-column markdown shape preserved (0 malformed rows)",
+    "no other row touched (diff is exactly the two insertions)",
+    "FULL paths used, each resolving (before.txt/after.txt retained as the frozen copies)",
+    "English-only, agent-facing; no bilingual pair involved",
+    "no git command run; no file outside inScope written"
+  ],
+  "addendum": "the note's own first grep printed nothing because the pattern's negated class cannot cross the '-' in the filename; corrected in NOTE.log with the real line quoted \u2014 a PATTERN artifact, same class as the t13 ADDENDUM 1",
+  "evidence_dir": "evidence/team-watchdog/t55-t90-rows/20260917T084753Z-t35"
+}

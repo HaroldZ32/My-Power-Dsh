@@ -1,0 +1,4 @@
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=2 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=12345 tickIntervalMs=4115 warnStreakToEscalate=3 actionOnEscalate=warn-only stateDir=.mpd/team disposers=2 holdService=mpdWatchdog hydratedHolds=0
+[probe] 15/15 checks passed — passed

@@ -1,0 +1,164 @@
+{
+  "note": "Every live dsh-TUI session in the isolated sandbox store, oldest first. Sessions created BEFORE this task's composition change recorded agentPreset=standard; the sessions created after it record agentPreset=mpd.",
+  "workspaceKeySeen": [
+    "--root-dshProj-my-power-dsh--"
+  ],
+  "sessions": [
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "de5fde53-5505-45f6-aa7d-03dda2200567",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/de5fde53-5505-45f6-aa7d-03dda2200567/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T03:54:25.842Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "standard",
+      "createdAt": 1789444465671,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "1a5d7e6f-0c1f-422d-98cc-cc1f893162e3",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/1a5d7e6f-0c1f-422d-98cc-cc1f893162e3/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T03:58:37.268Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "standard",
+      "createdAt": 1789444716524,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "e11887f7-74b4-4cd7-af94-7a33669dd451",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/e11887f7-74b4-4cd7-af94-7a33669dd451/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T03:59:53.213Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "standard",
+      "createdAt": 1789444792751,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:40:20.648Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789450820156,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "c7f6db60-5246-4223-9b2c-ad38ac87eea6",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/c7f6db60-5246-4223-9b2c-ad38ac87eea6/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:43:27.022Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789451006386,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "683c0f89-d2ea-4bf1-817e-3593eb765441",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/683c0f89-d2ea-4bf1-817e-3593eb765441/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:47:35.487Z",
+      "frames": 6,
+      "records": 21,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789451181671,
+      "toolCount": 96
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "f4bf6b54-ad8c-4b21-b288-a7f00845bdc4",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/f4bf6b54-ad8c-4b21-b288-a7f00845bdc4/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:51:21.349Z",
+      "frames": 9,
+      "records": 29,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789451413874,
+      "toolCount": 97
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "fa5e9469-c61d-464d-b92e-38a43a6a2794",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/fa5e9469-c61d-464d-b92e-38a43a6a2794/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:54:16.236Z",
+      "frames": 9,
+      "records": 29,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789451597174,
+      "toolCount": 97
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "4d58a0dd-7727-49e9-8237-8e6587c5464f",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/4d58a0dd-7727-49e9-8237-8e6587c5464f/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T05:55:45.233Z",
+      "frames": 3,
+      "records": 6,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789451692394,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "2a733596-1a0a-4b19-ab87-f2bb36139e73",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/2a733596-1a0a-4b19-ab87-f2bb36139e73/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T06:00:20.118Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789452019672,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "3acab867-09a7-47fb-9beb-a25a63630331",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/3acab867-09a7-47fb-9beb-a25a63630331/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T06:02:27.419Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789452146931,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "3716e001-553a-44fc-9988-6186510460cf",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/3716e001-553a-44fc-9988-6186510460cf/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T06:05:57.674Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789452357188,
+      "toolCount": null
+    },
+    {
+      "key": "--root-dshProj-my-power-dsh--",
+      "id": "05800047-a021-4473-819c-80fb775fb338",
+      "file": ".mpd/recon/qa/dshhome/sessions/--root-dshProj-my-power-dsh--/05800047-a021-4473-819c-80fb775fb338/session.v3.jsonl.zstd",
+      "mtime": "2026-09-15T06:07:48.100Z",
+      "frames": 2,
+      "records": 4,
+      "cwd": "/root/dshProj/my-power-dsh",
+      "agentPreset": "mpd",
+      "createdAt": 1789452467670,
+      "toolCount": null
+    }
+  ]
+}

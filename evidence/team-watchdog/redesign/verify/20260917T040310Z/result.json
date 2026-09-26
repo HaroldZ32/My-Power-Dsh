@@ -1,0 +1,109 @@
+{
+  "task": "t29 (independent verification of lane A: the watchdog redesign vs the frozen contract \u00a79)",
+  "attempt_id": "372d5ee1-75aa-4f06-aece-36ebffcdecbf",
+  "verdict": "pass",
+  "instruments": {
+    "driver": {
+      "command": "bun skills/dsh-qa/scripts/watchdog-redesign.mjs --out evidence/team-watchdog/redesign/verify/20260917T040310Z/lane --settle-ms 50000",
+      "exit": 0,
+      "reading": "PASS \u2014 19 checks, 0 failed; settled=true; redPinned=true (RED pin: machine=fc10fc41 engine=f529ca2c tools=49025f4d channel=(absent)); green fingerprints {\"machine\":\"ce8bd54cba51\",\"engine\":\"47c24bd678ae\",\"channel\":\"b9d7acaf6350\",\"tools\":\"0e0908e5b002\"} identical across the 50 s settle window"
+    },
+    "rowTable": {
+      "a": {
+        "red": "counts {warn:2,escalate:1} holdFileAtEnd=true",
+        "green": "counts {} states {a1:ALIVE} source=channel holdFileAtEnd=false",
+        "required": "NO warn, NO hold \u2014 the open step is ALIVE while the answer streams"
+      },
+      "b": {
+        "red": "counts {warn:2,escalate:1} holdFileAtEnd=true",
+        "green": "counts {} depParked=4 source=channel",
+        "required": "NO warn, NO hold, PARKED (dependency projection)"
+      },
+      "c": {
+        "red": "update=rejected claim=rejected holdReadsFromTools=2 guardInSource=true",
+        "green": "update=resolved claim=resolved holdReadsFromTools=0 reInjectRejected=true guardInSource=false",
+        "required": "the terminal update_task SUCCEEDS while the hold exists (and claim_task too)"
+      },
+      "d": {
+        "red": "counts {warn:2,escalate:1} firstWarnAt=91000 firstEscalateAt=271000 holdFileAtEnd=true",
+        "green": "counts {warn:5,escalate:1} firstWarnAt=600001 firstEscalateAt=650000 holdFileAtEnd=false",
+        "required": "first WARN only at this tree's warnSilenceMs, then ESCALATE per the ladder, NO hold while warn-only"
+      },
+      "e": {
+        "red": "PIN: counts {} holdFileAtEnd=false (r6 was already green on RED)",
+        "green": "source=heartbeat counts {} no hold",
+        "required": "exactly ONE tool-expired, never a hold"
+      },
+      "f": {
+        "red": "counts {warn:2,escalate:1} firstWarnAt=1000 holdFileAtEnd=true",
+        "green": "counts {} no hold/no escalate",
+        "required": "a previous generation's stamp is never holdable"
+      }
+    },
+    "knobLayersSideBySide": {
+      "machine.ts WATCHDOG_DEFAULTS": "warnSilenceMs 600_000 \u00b7 tickIntervalMs 15_000 \u00b7 warnStreakToEscalate 6 \u00b7 actionOnEscalate \"warn-only\" \u00b7 toolInFlightMaxMs 900_000 \u00b7 holdTtlMs 900_000",
+      "mpd-config-plugin settings-schema.ts": "warnSilenceMs default 600000 \u00b7 tickIntervalMs default 15000 \u00b7 warnStreakToEscalate default 6 \u00b7 actionOnEscalate default \"warn-only\" \u00b7 toolInFlightMaxMs default 900000 \u00b7 holdTtlMs default 900000",
+      "mpd-bundle cordis.patch.yml": "warnSilenceMs 600000 \u00b7 warnStreakToEscalate 6 \u00b7 actionOnEscalate warn-only \u00b7 holdTtlMs 900000",
+      "driver KNOBS check": "the RED tree carries the OLD tuple {90000,15000,3,pause,900000} while the working tree carries \u00a73's {600000,15000,6,warn-only,900000,holdTtlMs 900000} \u2014 no mismatch inside the working tree's three layers"
+    },
+    "mountedBoots": {
+      "bundle-lifecycle": {
+        "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+        "exit": 0,
+        "reading": "PASS \u2014 composed ok, boot ok (http true), noHomeCopy skills[]/presets[], uninstall residue []; crash-signature scan over the SAME log: unsupported JSON schema 0 \u00b7 JsonSchemaError 0 \u00b7 plugin tree failed to load 0 \u00b7 failed to apply loader entry 0"
+      },
+      "team-watchdog-boot": {
+        "command": "bun skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+        "exit": 0,
+        "reading": "B1 the watchdog row APPLIED {\"enabled\":\"true\",\"disposers\":8,\"holdService\":\"mpdWatchdog\"}; B6 no pre-step veto signature; B8 no client-entry activation failure signature; the single literal 'failed to apply loader entry' in that log is B8's own signature LIST, not an occurrence"
+      },
+      "foldSubscriptions": "the boot logs carry NO fold-subscription line, so that clause rests on EXECUTION rather than on a log line: the driver's FOLD-AUTHORITY check shows the fold is the authority on the working tree (predicateSource [channel,channel,channel] for rows a,b,d) and the row's apply line registers 8 disposers + the mpdWatchdog service. Stated as the available evidence, not overstated."
+    },
+    "d2Proof": {
+      "claimUpdateUnderHold": "driver row c GREEN: update=resolved claim=resolved with holdReadsFromTools=0, and the NEGATIVE CONTROL reInjectRejected=true (the deleted guard re-injected into a scratch copy is refused again)",
+      "dispatchStaysHeld": "team-watchdog-fault F6: 'the pause PRESERVES: team.json byte-unchanged across the held kicks, ZERO deliveries while held ({\"unchanged\":true,\"deliveries\":0,\"preserved\":true})' and F7 'after the resume dispatch works again (1 deliveries)'",
+      "kickUnderHold": "NOT COVERED by any instrument I could run \u2014 see finding V1"
+    },
+    "autoRelease": {
+      "command": "bun test packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts",
+      "exit": 0,
+      "reading": "20 pass / 0 fail across 2 files; the T-17 describe block exercises BOTH paths in-process on temp boxes: TTL release writes exactly one `hold-auto-released` incident with cause {kind:'hold-auto-released', release:'ttl'} and a ttl_ms 0 hold is released only by the ACTIVITY path; the file's own header states 'NOT ONE BYTE of team.json touched', which the assertions check"
+    },
+    "replay": {
+      "file": ".mpd/team/watchdog/incidents.jsonl",
+      "sha256": "e40384338a7e34b809b2baad3bd14c3764ebda0b0428548d5b3f1e7f0d9c9556",
+      "bytes": 58320,
+      "lines": 191,
+      "kinds": {
+        "never-started": 68,
+        "warn": 92,
+        "escalate": 31
+      },
+      "reading": "replayed through BOTH machines: the legacy machine reproduces 25 escalations (faithful reconstruction) while of the 18 recorded escalations that HELD a team the fold predicate reproduces 3 under the pessimistic OUTSTANDING reconstruction and 0 under \u00a74 report-only",
+      "bound": "the records carry no channel state, so each silence row is replayed as the MOST PESSIMISTIC candidate \u2014 an UPPER BOUND, never a replay of the recorded run; and the acceptance text's '85 recorded incidents' is stale (the live log held 189 rows at t24's run and 191 at mine \u2014 the driver pins rows+sha per run, which is the right shape)"
+    },
+    "rateBound": "ONE 50 s settle window is what I ran: it proves the four fingerprints are identical across that window (no writer moved the tree mid-verification) and that the working tree behaves as the contract predicts for rows a\u2013f. It does NOT prove the ABSENCE of false positives on live traffic \u2014 the historical replay is an upper-bound reconstruction, and the live incident log keeps growing. That is the whole of the rate claim.",
+    "carries": {
+      "t59": "the fault lane's F2/F4/F9 red is a STALE LANE EXPECTATION (report-only \u00a74 fallback, because the fixture supplies no member ids / fold events), not a lane-A regression \u2014 already diagnosed and routed; lane A must not be read as verified by THAT lane while it is red, and my verification does not rely on it",
+      "moduleAge": "for any claim about the LONG-RUNNING session: lib/scheduler.js, lib/mpd-deltas.js, lib/quality-gates.js, lib/tool-names.js are RESTART-REQUIRED against this session's start (FRESH: tools.js, state.js, members.js, capabilities.js) \u2014 everything here was measured in FRESH processes, which is what those instruments are"
+    },
+    "findings": [
+      {
+        "id": "V1",
+        "severity": "medium",
+        "file": "packages/mpd-agent-teams-plugin/self-fix-tests",
+        "line": 0,
+        "problem": "The acceptance's pause clause names claim/update/KICK; claim and update are proven (driver row c), but NO instrument in either lane exercises `kick` against a HELD team. The only support is structural (D2 removed the tool-boundary hold guards; the scheduler keeps the sole hold gate, which gates DISPATCH), i.e. a static read \u2014 and the wave's own rule is that such a clause needs an execution.",
+        "requiredFix": "Add one assertion to the D2 instrument: with a live hold, `agent_teams_kick` (or the kick path the plugin exposes) succeeds/does not decline, alongside the existing claim/update arms. Until then the kick half of the pause clause is a bound, not a measurement."
+      },
+      {
+        "id": "V2",
+        "severity": "low",
+        "file": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+        "line": 0,
+        "problem": "The acceptance text and t24's bound cite 'the 85 recorded incidents' while the pinned log now holds 191 rows (189 at t24's run) \u2014 the stale-number class the wave keeps hitting. The instrument itself is correct (it pins rows+sha per run: 191 / e403843338\u2026), so this is contract text drift, not a defect of the lane.",
+        "requiredFix": "Fix the number in the contract/report text to 'the recorded incident log (rows+sha pinned per run)' rather than a literal, per the derive-don't-carry rule."
+      }
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+# t8 verification output.log — FRESH attempt 7 on the REPAIRED revision (contract lane t6)
+# seat: Deep Worker · attempt 7 · f7964b4f-8e43-4ea2-b178-8598bf8043c3 · 2026-09-19T16:10:48Z
+# VERDICT: PASSED — all nine acceptance items green; V-1 fixed and re-measured; V-2 is the captain-accepted environment note.
+
+## commands and exit codes (contract order)
+1. bun skills/dsh-qa/scripts/bundle-lifecycle.mjs                       exit 0  PASS (adapter provided ×1, MOUNTED witness ×1, fallback 0, ADAPTER_TOOL_CALL=ok, roles-probe PASS)
+2. node skills/dsh-qa/scripts/preset-conformance.mjs                    exit 0  PASS ← V-1 RE-MEASUREMENT (auth ok, session 200 preset mpd, bootLog signatures [], negative control refuses)
+3. node skills/dsh-qa/scripts/preset-conformance.mjs --self-test        exit 0  PASS (31 rows conform, parity 31/31)
+4. bun run verify:gates                                                 exit 0  5/5 members
+5. bun test (bare)                                                      exit 1  V-2 ENVIRONMENT NOTE (605 fail/1052 errors, all under UNTRACKED+GITIGNORED evidence scratch)
+5b. bun test packages (sanctioned scope)                                exit 0  1152 pass / 0 fail
+6. bun run typecheck                                                    exit 0
+7. bun run test:qa                                                      exit 0  '[test:qa] all self-tests passed' ← V-1 re-measurement #2 (RED→GREEN)
+8. node scripts/verify-dist-fresh.mjs                                   exit 0  20/20 fresh, ZERO STALE
+9. bun run verify:docs                                                  exit 0  pairs=38 failed=0 violations=0 dead=0
+10. bun run verify:rows                                                 exit 0  25 row ids
+plus: node scripts/verify-vendor.mjs exit 0 PASS ← the captain's re-pin red→green; targeted bridge/three-arm suite exit 0 (130/0); --check exit 0 (151/13)
+
+## decisive arms
+AC10 bundle-lifecycle: PASS
+AC10 21-tool instrument (verif-probe.mjs): VERIF_AGENT_TEAMS_TOOLS=21/21 in BOTH arms (shipped probe sees only 7)
+AC11 disabled-adapter boot: PASS — row off, EXACTLY ONE fallback witness, 21/21 tools, roles-probe PASS, isolation asserted
+F1: 0 member-initialization signatures in BOTH arms + boot-level hostile-ctx arm through the REAL bridge (uniform shape, identity true, no throw)
+three-arm scope test: present and green (adapter-facade.test.mjs)
+
+## AC16 settled-hash record (with the drift)
+start 2026-09-19T16:00:02Z (24 files) -> DRIFT: AGENTS.md bdd440cb… -> d813c47c… (docs lane §6/§1 precision; all others stable)
+re-anchored: start2 2026-09-19T16:09:11Z vs end 2026-09-19T16:10:01Z (50 s settle) = IDENTICAL — SETTLED
+docs gates re-run on the settled revision: verify:docs PASS exit 0, verify:gates 5/5 exit 0
+
+## V-1 before/after (this lane's secret-free instrument)
+attempt 6: inline refs: {} -> 2 top-level refs keys -> harness DUPLICATE_KEY -> plugin tree failed to load
+attempt 7: inline refs: {} -> 1 key (merged INSIDE the inline map) -> boot clean, session created, negative control falsifiable
+
+## V-2 (captain-accepted environment note, unchanged)
+411 *.test.ts under evidence/mpd-naming/wave2/raw/scratch/** are UNTRACKED and GITIGNORED by design (.gitignore:45 evidence/**/raw/scratch/): local vendored copies, not the record. Sanctioned gate = bun test packages (exit 0). No code change; nothing deleted.
+
+## NOT MEASURED (reported, not asserted)
+the session tool LIST (request/header.tools[]) — no session store survives for this lane to read; the closing technique (session-evidence.mjs) is named in result.json. No verdict depends on it.
+
+## evidence files
+ac10-11-instrumented-boots.log
+ac10-bundle-lifecycle.log
+ac12-preset-conformance.log
+ac13-bun-test-bare.raw.log
+ac13-bun-test-packages.raw.log
+ac13-docs-gates-settled.log
+ac13-static-gates.log
+ac13-suite-gates.log
+ac13-test-qa.raw.log
+ac13-verify-gates.raw.log
+ac-three-arm-and-bridge-tests.log
+adapter-disabled-boot.log
+adapter-disabled-boot.mjs
+adapter-disabled-result.json
+adapter-enabled-boot.log
+adapter-enabled-boot.mjs
+adapter-enabled-result.json
+credentials-merge-repro.mjs
+end-pre.txt
+end.txt
+install.log
+output.log
+result.json
+start2.txt
+start.txt
+v1-before-after.log
+verif-probe.mjs

@@ -1,0 +1,159 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:46:43.998Z",
+  "pattern": "ee9ec16",
+  "scope": "./evidence/gates/wave2b-laneB2/20260917T144602Z",
+  "files_scanned": 10,
+  "self_reference": {
+    "excluded_output_root": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-inside",
+    "excluded_files": [],
+    "rule": "the scan excludes its OWN output root; a sibling scan's record is still visible, so a re-takeable 0 requires `--out` (and any stdout capture) OUTSIDE the scanned scope, or a SEALED scanned scope (t31/B2-F5). The scanned scope's own files are named below, so a reader can tell a real absence from the scanner's own output.",
+    "scanned_scope_files": 10
+  },
+  "policy": {
+    "out_of_family": "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: this scanner judges a repo-relative literal only, so a green scan says nothing about those shapes (t31/B2-F3).",
+    "scope_note": "a plain-substring scan reports every file under the scope that contains the literal; it is a DISCOVERY heuristic, not a class rule (T-90's calibration bound)."
+  },
+  "matches": [
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/output.log",
+      "line": 4,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/output.log:2 — parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/output.log",
+      "line": 5,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/result.json:4 — \"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/result.json",
+      "line": 20,
+      "phrase": "\"phrase\": \"parameters: literal string \\\"ee9ec16\\\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-l"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re/result.json",
+      "line": 25,
+      "phrase": "\"phrase\": \"\\\"pattern\\\": \\\"ee9ec16\\\",\""
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/output.log",
+      "line": 4,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log:2 — parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/output.log",
+      "line": 5,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json:4 — \"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/output.log",
+      "line": 6,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/output.log",
+      "line": 7,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --ou"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/result.json",
+      "line": 21,
+      "phrase": "\"phrase\": \"parameters: literal string \\\"ee9ec16\\\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-l"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/result.json",
+      "line": 26,
+      "phrase": "\"phrase\": \"\\\"pattern\\\": \\\"ee9ec16\\\",\""
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/result.json",
+      "line": 31,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …\\\", \\\"exit\\\": 0, \\\"matches\\\": 0, \\\"files_scanned\\\""
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1/result.json",
+      "line": 36,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …\\\", \\\"exit\\\": 0, \\\"evidence\\\": \\\"0 matches in 11 fil"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/output.log",
+      "line": 4,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log:2 — parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/output.log",
+      "line": 5,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json:4 — \"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/output.log",
+      "line": 6,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/output.log",
+      "line": 7,
+      "phrase": "MATCH evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — { \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --ou"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/result.json",
+      "line": 21,
+      "phrase": "\"phrase\": \"parameters: literal string \\\"ee9ec16\\\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-l"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/result.json",
+      "line": 26,
+      "phrase": "\"phrase\": \"\\\"pattern\\\": \\\"ee9ec16\\\",\""
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/result.json",
+      "line": 31,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …\\\", \\\"exit\\\": 0, \\\"matches\\\": 0, \\\"files_scanned\\\""
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-2/result.json",
+      "line": 36,
+      "phrase": "\"phrase\": \"{ \\\"command\\\": \\\"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …\\\", \\\"exit\\\": 0, \\\"evidence\\\": \\\"0 matches in 11 fil"
+    }
+  ]
+}

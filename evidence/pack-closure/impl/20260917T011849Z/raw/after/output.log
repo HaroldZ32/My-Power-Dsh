@@ -1,0 +1,160 @@
+
+===== cli-validate-example =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example
+[mpd-ext] validate /root/dshProj/my-power-dsh/dist/mpd-package/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[exit=0]
+
+===== cli-validate-template =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/templates/mpd-extension
+[mpd-ext] validate /root/dshProj/my-power-dsh/dist/mpd-package/templates/mpd-extension (plane=user)
+  extension "mpd-extension-template": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "mpd-extension-template" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[exit=0]
+
+===== cli-self-test =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs --self-test
+  ok the shared validator exposes the four surfaces the CLI uses (compiled mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.mjs
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: compiled]
+[exit=0]
+
+===== cli-scaffold =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs scaffold probe-ext --dir evidence/pack-closure/impl/20260917T011849Z/raw/after/scaffold
+[mpd-ext] scaffolded "probe-ext" at /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/after/scaffold/probe-ext
+  copied 7 file(s) from templates/mpd-extension (the mcp contribution and server.mjs were dropped)
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+  next: bun scripts/mpd-ext.mjs validate /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/after/scaffold/probe-ext
+[exit=0]
+
+===== cli-validate-scaffold =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs validate evidence/pack-closure/impl/20260917T011849Z/raw/after/scaffold/probe-ext
+[mpd-ext] validate /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/after/scaffold/probe-ext (plane=user)
+  extension "probe-ext": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
+[mpd-ext] ok
+[exit=0]
+
+===== cli-node-self-test =====
+$ node dist/mpd-package/scripts/mpd-ext.mjs --self-test
+  ok the shared validator exposes the four surfaces the CLI uses (compiled mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.mjs
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: compiled]
+[exit=0]
+
+===== cli-list =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs list
+[mpd-ext] project plane: /root/dshProj/my-power-dsh/.mpd/extensions
+  (none)
+[mpd-ext] user plane: /root/.mpd/extensions
+  (none)
+[mpd-ext] bundle plane: /root/dshProj/my-power-dsh/dist/mpd-package/extensions
+  mpd-ext-example: disabled — 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+[exit=0]

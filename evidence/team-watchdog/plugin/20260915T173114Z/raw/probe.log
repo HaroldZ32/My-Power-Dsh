@@ -1,0 +1,434 @@
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=5 holdService=mpdWatchdog hydratedHolds=0
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-a/19700101T000131Z-warn.json
+[mpd-team-watchdog] WARN team-b task=t1 member=Reviewer silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000131Z-warn.json
+[mpd-team-watchdog] NEVER-STARTED team-a task=t1 member=Architect attempt=att-2 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog] WARN team-b task=t1 member=Reviewer silence=360001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000601Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=450001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-a/19700101T000731Z-warn.json
+[mpd-team-watchdog] ESCALATE team-b task=t1 member=Reviewer silence=450001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000731Z-escalate.json
+{
+  "task": "t73",
+  "findings": {
+    "W11-1": "the streak key omitted the team id, so two teams sharing a task id and an empty attempt id shared one streak (spurious HOLD + a silently unobserved team)",
+    "W11-2": "the stamp filter was by task id only, so a stamp from an EARLIER attempt satisfied the precondition"
+  },
+  "fix": {
+    "key": "streakKey(teamId, taskId, attemptId) === teamId + \"\\u0000\" + taskId + \"\\u0000\" + attemptId",
+    "threadedThrough": [
+      "observe()",
+      "clear()",
+      "hasEscalated()",
+      "snapshot()",
+      "engine.ts scene streaks",
+      "scene.ts task.streak lookup",
+      "test/machine.test.ts"
+    ],
+    "stampFilter": "a stamp that CARRIES a non-empty attempt id must equal the task's; a stamp with no attempt information cannot contradict and is kept"
+  },
+  "partA_realMachine": [
+    {
+      "tick": 1,
+      "observed": [
+        "team-a",
+        "team-b"
+      ],
+      "decisions": [
+        {
+          "type": "warn",
+          "team": "team-a",
+          "streak": 1
+        },
+        {
+          "type": "warn",
+          "team": "team-b",
+          "streak": 1
+        }
+      ]
+    },
+    {
+      "tick": 2,
+      "observed": [
+        "team-a",
+        "team-b"
+      ],
+      "decisions": [
+        {
+          "type": "warn",
+          "team": "team-a",
+          "streak": 2
+        },
+        {
+          "type": "warn",
+          "team": "team-b",
+          "streak": 2
+        }
+      ]
+    },
+    {
+      "tick": 3,
+      "observed": [
+        "team-a"
+      ],
+      "decisions": [
+        {
+          "type": "escalate",
+          "team": "team-a",
+          "streak": 3
+        }
+      ]
+    },
+    {
+      "tick": 4,
+      "observed": [
+        "team-b"
+      ],
+      "decisions": [
+        {
+          "type": "escalate",
+          "team": "team-b",
+          "streak": 3
+        }
+      ]
+    }
+  ],
+  "partB_modelOfRemovedKeying": {
+    "note": "a MODEL of the old key, not the old code — same observations, same 3-strike rule, old `taskId\\0attemptId` key",
+    "sequence": [
+      {
+        "tick": 1,
+        "observed": [
+          "team-a",
+          "team-b"
+        ],
+        "decisions": [
+          {
+            "type": "warn",
+            "team": "team-a",
+            "streak": 1
+          },
+          {
+            "type": "warn",
+            "team": "team-b",
+            "streak": 2
+          }
+        ]
+      },
+      {
+        "tick": 2,
+        "observed": [
+          "team-a",
+          "team-b"
+        ],
+        "decisions": [
+          {
+            "type": "escalate",
+            "team": "team-a",
+            "streak": 3
+          }
+        ]
+      },
+      {
+        "tick": 3,
+        "observed": [
+          "team-a"
+        ],
+        "decisions": []
+      },
+      {
+        "tick": 4,
+        "observed": [
+          "team-b"
+        ],
+        "decisions": []
+      }
+    ]
+  },
+  "partC_shippedDist": {
+    "decisions": [
+      {
+        "type": "warn",
+        "team": "team-a",
+        "task": "t1",
+        "streak": 1
+      },
+      {
+        "type": "warn",
+        "team": "team-b",
+        "task": "t1",
+        "streak": 1
+      }
+    ],
+    "holds": {
+      "team-a": false,
+      "team-b": false
+    },
+    "warnings": [
+      "[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-a/19700101T000131Z-warn.json",
+      "[mpd-team-watchdog] WARN team-b task=t1 member=Reviewer silence=90001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000131Z-warn.json",
+      "[mpd-team-watchdog] WARN team-b task=t1 member=Reviewer silence=360001ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000601Z-warn.json",
+      "[mpd-team-watchdog] WARN team-a task=t1 member=Architect silence=450001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-a/19700101T000731Z-warn.json",
+      "[mpd-team-watchdog] ESCALATE team-b task=t1 member=Reviewer silence=450001ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/plugin/20260915T173114Z/raw/ws/.mpd/team/watchdog/scene/team-b/19700101T000731Z-escalate.json"
+    ]
+  },
+  "partD_attemptFilter": {
+    "staleAttemptWarnDecisions": [],
+    "staleAttemptIncidents": [
+      {
+        "id": "t1@att-2#never-started#361001",
+        "teamId": "team-a",
+        "kind": "never-started",
+        "at": 361001,
+        "cause": {
+          "kind": "never-started",
+          "ms": 0
+        },
+        "taskId": "t1",
+        "attemptId": "att-2",
+        "scene": null,
+        "hold": "not-requested",
+        "acknowledgedBy": []
+      }
+    ],
+    "currentAttemptObservations": [
+      {
+        "type": "warn",
+        "teamId": "team-a",
+        "taskId": "t1",
+        "attemptId": "att-2",
+        "assignee": "Architect",
+        "memberKey": "Architect",
+        "silenceMs": 450001,
+        "lastSeen": 1000,
+        "streak": 1
+      }
+    ]
+  },
+  "neverStartedIsNotInTickDecisions": "measured: the tick records a never-started observation durably and counts it, then `continue`s before the WARN/ESCALATE push, so TickResult.decisions stays the WARN/ESCALATE list",
+  "observation": "The heartbeat store keys its files by MEMBER NAME per workspace, so two teams whose member shares a name would share one heartbeat file. This probe gives the teams distinct member names to keep the attribution clean; the shared-file case is a layout consequence NOT addressed by this repair (the streak keying is).",
+  "escalatedTeams": [
+    "team-a",
+    "team-b"
+  ],
+  "checks": [
+    {
+      "id": "A1 each team carries its OWN streak; no cross-team summation",
+      "ok": true,
+      "detail": [
+        {
+          "tick": 1,
+          "observed": [
+            "team-a",
+            "team-b"
+          ],
+          "decisions": [
+            {
+              "type": "warn",
+              "team": "team-a",
+              "streak": 1
+            },
+            {
+              "type": "warn",
+              "team": "team-b",
+              "streak": 1
+            }
+          ]
+        },
+        {
+          "tick": 2,
+          "observed": [
+            "team-a",
+            "team-b"
+          ],
+          "decisions": [
+            {
+              "type": "warn",
+              "team": "team-a",
+              "streak": 2
+            },
+            {
+              "type": "warn",
+              "team": "team-b",
+              "streak": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "A2 a team escalates only at its OWN third consecutive warn (team-a at tick 3, never team-b before its own third)",
+      "ok": true,
+      "detail": {
+        "tick3": [
+          {
+            "type": "escalate",
+            "team": "team-a",
+            "streak": 3
+          }
+        ],
+        "tick4": [
+          {
+            "type": "escalate",
+            "team": "team-b",
+            "streak": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "A3 the escalated set is keyed per TEAM (two distinct keys for the same task id)",
+      "ok": true,
+      "detail": [
+        "team-a\u0000t1\u0000",
+        "team-b\u0000t1\u0000"
+      ]
+    },
+    {
+      "id": "A4 the KEY ITSELF is team-scoped",
+      "ok": true,
+      "detail": {
+        "a": "team-a\u0000t1\u0000",
+        "b": "team-b\u0000t1\u0000"
+      }
+    },
+    {
+      "id": "B1 the REMOVED keying collapses the two teams into ONE streak and escalates on the 3rd cross-team warn",
+      "ok": true,
+      "detail": {
+        "oldSequence": [
+          {
+            "tick": 1,
+            "observed": [
+              "team-a",
+              "team-b"
+            ],
+            "decisions": [
+              {
+                "type": "warn",
+                "team": "team-a",
+                "streak": 1
+              },
+              {
+                "type": "warn",
+                "team": "team-b",
+                "streak": 2
+              }
+            ]
+          },
+          {
+            "tick": 2,
+            "observed": [
+              "team-a",
+              "team-b"
+            ],
+            "decisions": [
+              {
+                "type": "escalate",
+                "team": "team-a",
+                "streak": 3
+              }
+            ]
+          },
+          {
+            "tick": 3,
+            "observed": [
+              "team-a"
+            ],
+            "decisions": []
+          },
+          {
+            "tick": 4,
+            "observed": [
+              "team-b"
+            ],
+            "decisions": []
+          }
+        ],
+        "escalations": [
+          {
+            "type": "escalate",
+            "team": "team-a",
+            "streak": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "B2 under the removed keying the SECOND team is never observed again (one escalation, one team)",
+      "ok": true,
+      "detail": [
+        {
+          "type": "escalate",
+          "team": "team-a",
+          "streak": 3
+        }
+      ]
+    },
+    {
+      "id": "C1 the SHIPPED dist gives each team its own warn on one tick, and takes NO hold",
+      "ok": true,
+      "detail": {
+        "decisions": [
+          {
+            "type": "warn",
+            "team": "team-a",
+            "task": "t1",
+            "streak": 1
+          },
+          {
+            "type": "warn",
+            "team": "team-b",
+            "task": "t1",
+            "streak": 1
+          }
+        ],
+        "holds": {
+          "team-a": false,
+          "team-b": false
+        }
+      }
+    },
+    {
+      "id": "D1 a stamp from an EARLIER attempt does NOT satisfy the precondition: never-started, not a warn",
+      "ok": true,
+      "detail": {
+        "warnDecisionsForTeamA": [],
+        "neverStarted": 1,
+        "incidents": [
+          {
+            "id": "t1@att-2#never-started#361001",
+            "teamId": "team-a",
+            "kind": "never-started",
+            "at": 361001,
+            "cause": {
+              "kind": "never-started",
+              "ms": 0
+            },
+            "taskId": "t1",
+            "attemptId": "att-2",
+            "scene": null,
+            "hold": "not-requested",
+            "acknowledgedBy": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "D2 the SAME task with a stamp on the CURRENT attempt warns again (direction two)",
+      "ok": true,
+      "detail": [
+        {
+          "type": "warn",
+          "teamId": "team-a",
+          "taskId": "t1",
+          "attemptId": "att-2",
+          "assignee": "Architect",
+          "memberKey": "Architect",
+          "silenceMs": 450001,
+          "lastSeen": 1000,
+          "streak": 1
+        }
+      ]
+    }
+  ],
+  "ok": true
+}

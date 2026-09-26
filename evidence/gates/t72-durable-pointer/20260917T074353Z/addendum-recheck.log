@@ -1,0 +1,37 @@
+=== t25 addendum re-check (post-completion) — 2026-09-17T07:47:13Z ===
+-- 1/4: node scripts/check-citations.mjs --self-test --
+exit=0
+  ok   negative-control:correct-fixture — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<correct fixt…
+  ok   negative-control:mis-anchored-fixture — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<mis-anc…
+  ok   negative-control:symbol-first-present — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-…
+  ok   negative-control:symbol-first-absent — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-f…
+  ok   negative-control:rot-line-number-only — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-nu…
+  ok   negative-control:rot-line-number-only-shadowed — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO…
+  ok   negative-control:rot-line-number-only-drifted — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=…
+  ok   negative-control:symbol-first-survives-a-source-shift — check-citations.mjs --citations-only (DOCS_CLAI…
+  ok   split-headings — no heading text is shared between the human guide and the agent contract
+  ok   split-prose — no prose line (>= 60 chars, outside code fences) is reused
+  ok   skeleton-validates — the extracted manifest + the template's four assets: validate exit 0;   contribute…
+
+[docs-claims] 21/21 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2/4: node scripts/check-citations.mjs --
+exit=0
+  ok   content:anchors — 49 citation(s) verified against their claim: 19 symbol-first (line-free, whole file), 30 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3/4: bun run verify:docs (must stay pairs=37 failed=0) --
+exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS
+
+-- 4/4: hashes: frozen copy untouched, durable untouched, shipped file as edited --
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5  EXTENSIONS-FOR-AGENTS.md
+-- edit size --
+1	1	EXTENSIONS-FOR-AGENTS.md
+-- worktree skills/** (lane D's; none of mine) --
+10
+=== end 2026-09-17T07:47:14Z ===

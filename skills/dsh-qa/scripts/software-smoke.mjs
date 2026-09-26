@@ -31,6 +31,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 // LANDED FORM: import { sandboxWorkspace, assertSessionsSandboxed } from "./lib/workspace-isolation.mjs"
 import { sandboxWorkspace, assertSessionsSandboxed } from "./lib/workspace-isolation.mjs"
+import { credentialEnv } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const SLUG = "software-smoke"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -266,7 +268,9 @@ function makeStub(gameSource) {
 
 function runAsync(cmd, args, opts) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, opts.env ?? process.env) : { command: cmd, args }
+    if (spec === null) { resolve({ status: -1, out: DSH_MISSING }); return }
+    const child = spawn(spec.command, spec.args, { ...opts, stdio: ["ignore", "pipe", "pipe"] })
     let out = ""
     child.stdout.on("data", (d) => { out += d })
     child.stderr.on("data", (d) => { out += d })
@@ -286,7 +290,7 @@ function runReal() {
     mkdirSync(dshHome, { recursive: true })
     mkdirSync(runHome, { recursive: true })
     const ws = sandboxWorkspace(sandbox)
-    const env = { ...process.env, DSH_HOME: dshHome, HOME: runHome, DEEPSEEK_API_KEY: "sk-software-smoke-local-stub" }
+    const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: runHome, DEEPSEEK_API_KEY: "sk-software-smoke-local-stub"  })
     if (dshHome.startsWith(homedir() + "/.dsh")) { console.error("[" + SLUG + "] FAIL: isolation assertion"); process.exit(1) }
 
     const inst = await runAsync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { env, cwd: ws, timeout: 900000 })

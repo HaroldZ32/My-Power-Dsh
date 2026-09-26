@@ -1,0 +1,215 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+(pass) AC4: the witness strings are the frozen contract §4 literals [0.10ms]
+(pass) AC4: the facade exposes EXACTLY the frozen property set [0.55ms]
+118 |     expect(facade.systemPrompt.section({ name: "s" })).toBe("systemPrompt:1")
+119 |     facade.llm.listModels("p")
+120 |     facade.llm.resolveCallConfig({ provider: "p" })
+121 |     expect(facade.on("agent/pre-step", () => undefined)()).toBeUndefined()
+122 |     // The turn seams forward EXACTLY today's expression: same receiver, same return value.
+123 |     expect(facade.startAgentTurn(agent, { m: 1 })).toEqual({ delivered: { m: 1 } })
+                                                         ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "delivered": {
+-     "m": 1,
+-   },
+- }
++ undefined
+
+- Expected  - 5
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:123:52)
+(fail) AC4: with NO mpdDsh every seam runs today's raw expression and the ABSENT witness fires once [5.56ms]
+150 |     // An unavailable seam object: the TypeError is the runtime's own, byte-for-byte.
+151 |     const bare = { logger: {} }
+152 |     const attempt = (call) => { try { call(); return undefined } catch (error) { return String(error) } }
+153 |     const rawThrow = attempt(() => bare.tools.register({ name: "t" }))
+154 |     const facadeThrow = attempt(() => createAgentTeamsCtx(bare, { witness: () => undefined }).tools.register({ name: "t" }))
+155 |     expect(facadeThrow).toBe(rawThrow)
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: "TypeError: undefined is not an object (evaluating 'bare.tools.register')"
+Received: "TypeError: undefined is not an object (evaluating 'targetCtx.tools.register')"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:155:25)
+(fail) AC4: the raw fallback throws EXACTLY where today's expression throws [0.85ms]
+(pass) AC4: with mpdDsh mounted the facade routes every seam and prints the MOUNTED witness once [1.11ms]
+(pass) AC4: the adapter wins even where the raw seam object is present, so no fallback line is printed [0.39ms]
+(pass) AC4: a PENDING probe is not ABSENT, and the next access re-probes (T-50) [0.24ms]
+(pass) AC4: the absent witness reaches the console by default (greppable in a boot log) [0.21ms]
+[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter
+(pass) AC4: inject hands the callback an already-wrapped scoped ctx (no call-site edit) [0.34ms]
+(pass) AC4: an adapter that cannot serve one seam degrades to the raw expression for that seam only [0.15ms]
+(pass) AC4: agentScopeOf serves the adapter scope, and today's raw agent.ctx with no facade [0.27ms]
+(pass) AC4: subagentRuntimeOf resolves the runtime, never the facade's projection [0.11ms]
+(pass) AC4: liveAgentOf routes the sender lookup and keeps the plain-ctx lookup expression working [0.20ms]
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs:
+
+ 11 pass
+ 2 fail
+ 66 expect() calls
+Ran 13 tests across 81 files. [7.59s]

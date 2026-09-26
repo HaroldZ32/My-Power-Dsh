@@ -1,0 +1,988 @@
+# == @deepseek-ai/dsh-base
+- id: timer
+  name: '@deepseek-ai/cordis-plugin-timer'
+- id: hmr
+  name: '@deepseek-ai/cordis-plugin-hmr'
+  disabled: true
+  config:
+    root:
+      - .
+- id: llm
+  name: '@deepseek-ai/dsh-llm'
+- id: deepseek-llm-api-extensions
+  name: '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+- id: session
+  name: '@deepseek-ai/dsh-session'
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+- id: typert
+  name: '@deepseek-ai/dsh-typert-registry'
+- id: typert-loader
+  name: '@deepseek-ai/dsh-typert-loader'
+- id: typert-gateway
+  name: '@deepseek-ai/dsh-api-gateway'
+- id: session-title
+  name: '@deepseek-ai/dsh-session-title'
+  config:
+    fallbackMaxWords: 5
+    fallbackMaxBytes: 40
+    maxTitleBytes: 80
+- id: session-title-llm
+  name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+  config:
+    targetWords: 5
+    targetCjkCharacters: 10
+    maxInputBytes: 4096
+    maxOutputTokens: 64
+    timeoutMs: 60000
+- id: user-questions
+  name: '@deepseek-ai/dsh-user-questions'
+- id: agent
+  name: '@deepseek-ai/dsh-agent'
+- id: plugin-package-inventory-deepseek
+  name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+- id: jobs
+  name: '@deepseek-ai/dsh-jobs-local'
+- id: llm-retry
+  name: '@deepseek-ai/dsh-llm-retry'
+- id: settings
+  name: '@deepseek-ai/dsh-settings-file'
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+- id: attachment-local
+  name: '@deepseek-ai/dsh-attachment-local'
+- id: session-query-sqlite
+  name: '@deepseek-ai/dsh-session-query-sqlite'
+  config:
+    path: ':memory:'
+    openAt: never
+- id: session-projection
+  name: '@deepseek-ai/dsh-session-projection'
+- id: storage
+  name: '@deepseek-ai/dsh-storage'
+- id: storage-json
+  name: '@deepseek-ai/dsh-storage-json'
+  config:
+    root: !!js dshHomePath('storages')
+- id: storage-domain
+  name: '@deepseek-ai/dsh-storage-domain'
+  config:
+    backend: json
+- id: session-projection-cache
+  name: '@deepseek-ai/dsh-session-projection-cache'
+  config:
+    writeEveryEvents: 200
+    writeIntervalMs: 5000
+- id: session-telemetry-otel
+  name: '@deepseek-ai/dsh-session-telemetry-otel'
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FEEDBACK_ONLY'
+    shutdownTimeoutMillis: 3000
+    exporter:
+      url: !!js >-
+        process.env.DSH_TELEMETRY_OTLP_URL ??
+        'https://harness-telemetry.deepseeksvc.com/v1/logs'
+      compression: gzip
+      timeoutMillis: 1000
+    processor:
+      scheduledDelayMillis: 10000
+      maxQueueSize: 2048
+      maxExportBatchSize: 2048
+      exportTimeoutMillis: 1500
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.cwd()
+- id: bash-sandbox
+  name: '@deepseek-ai/dsh-bash-sandbox'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 60000
+- id: pwsh-sandbox
+  name: '@deepseek-ai/dsh-pwsh-sandbox'
+  disabled: !!js process.platform !== 'win32'
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: !!js >-
+      (process.env.DSH_PERMISSION_MODE ?? 'workspace-write') ===
+      'danger-full-access' ? 'never' : 'ask'
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: fs-observation-policy
+  name: '@deepseek-ai/dsh-fs-observation-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  disabled: true
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+  disabled: true
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill
+  name: '@deepseek-ai/dsh-skill'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: skill-badge
+  name: '@deepseek-ai/dsh-skill-badge'
+  disabled: true
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: commands
+  name: '@deepseek-ai/dsh-commands'
+- id: command-feedback
+  name: '@deepseek-ai/dsh-command-feedback'
+- id: goal
+  name: '@deepseek-ai/dsh-goal'
+- id: goal-round-driver
+  name: '@deepseek-ai/dsh-goal-round-driver'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+  disabled: true
+- id: plan-mode
+  name: '@deepseek-ai/dsh-plan-mode'
+  config:
+    section: >
+      You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or
+      the user switches the session mode. Imperative language to implement
+      changes means plan the implementation, not execute it. A user's
+      conversational agreement — including an answer confirming something you
+      asked — approves nothing and does not end plan mode; fold the confirmed
+      decision into the plan and submit it through exit_plan_mode.
+
+
+      Explore first. Use non-mutating reads, searches, static analysis, and
+      checks to ground the plan in the actual repository. Do not edit or write
+      files, change configuration, run formatters or code generation that
+      rewrites tracked files, commit, or otherwise carry out the plan. Prefer
+      existing functions and patterns over new machinery.
+
+
+      The tool catalog stays the same across modes for request-cache stability.
+      These plan-mode rules override any later tool description or guidance that
+      suggests using mutation tools; those tools remain listed only to keep the
+      request shape stable. Do not use todo_write to track this planning phase:
+      it tracks implementation after an approved plan, while the plan itself
+      belongs in exit_plan_mode.
+
+
+      Resolve discoverable facts by inspection. Use ask_user_question only for
+      user-owned choices or material ambiguity that inspection cannot answer. Do
+      not ask the user where code lives or how current behavior works when you
+      can find out.
+
+
+      Make the plan decision-complete: state the goal and success criteria;
+      group implementation changes by subsystem; identify public API, schema,
+      and data-flow changes; cover edge cases, failure modes, tests, acceptance
+      criteria, and explicit assumptions. Keep it concise enough to review but
+      detailed enough that another engineer can implement it without making
+      design decisions.
+
+
+      When ready, call exit_plan_mode with the complete plan markdown, starting
+      with a # title. Make exit_plan_mode the only and final tool call in that
+      assistant response: it presents the plan for approval, and implementation
+      begins only in a later step after approval. Do not paste the final plan as
+      a plain reply or ask "should I proceed?" through prose or
+      ask_user_question. If review rejects it, incorporate the feedback and
+      present again. If the review channel is unavailable or aborted, stay in
+      plan mode and ask the user to switch modes manually; do not proceed with
+      implementation.
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: token-meter
+  name: '@deepseek-ai/dsh-token-meter'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  disabled: true
+- id: command-compact
+  name: '@deepseek-ai/dsh-command-compact'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: subagent
+  name: '@deepseek-ai/dsh-subagent'
+- id: subagent-spawn-in-process
+  name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- id: subagent-fork-in-process
+  name: '@deepseek-ai/dsh-subagent-fork-in-process'
+  config:
+    providerName: fork
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-subagent-control
+  name: '@deepseek-ai/dsh-tool-subagent-control'
+  disabled: true
+- id: tool-subagent-list-agents
+  name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+  disabled: true
+- id: tool-subagent
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: spawn
+    toolName: subagent
+    backgroundMode: continuable
+  disabled: true
+- id: tool-subagent-fork
+  name: '@deepseek-ai/dsh-tool-subagent'
+  config:
+    provider: fork
+    toolName: subagent_fork
+    backgroundMode: one-shot
+  disabled: true
+- id: workflow-worker-thread
+  name: '@deepseek-ai/dsh-workflow-worker-thread'
+  config:
+    provider: spawn
+  disabled: true
+- id: tool-workflow
+  name: '@deepseek-ai/dsh-tool-workflow'
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+- id: spill-local
+  name: '@deepseek-ai/dsh-spill-local'
+- id: spill-policy
+  name: '@deepseek-ai/dsh-spill-policy'
+  config:
+    maxInlineBytes: 50000
+- id: session-checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+  disabled: true
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+  disabled: true
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+  disabled: true
+- id: tool-ralph
+  name: '@deepseek-ai/dsh-tool-ralph'
+  config:
+    subagentProvider: spawn
+    maxRounds: 64
+  disabled: true
+# == @deepseek-ai/dsh-base
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds:
+      - 3
+      - 5
+      - 8
+    argumentsPreviewChars: 500
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: http
+- id: web-search-deepseek
+  name: '@deepseek-ai/dsh-web-search-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+- id: web-fetch-http
+  name: '@deepseek-ai/dsh-web-fetch-http'
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    searchTimeoutMs: 60000
+  disabled: true
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: You are a coding agent powered by the {{model}} model.
+# == @deepseek-ai/dsh-base
+- id: agent-loop
+  name: '@deepseek-ai/dsh-agent-loop'
+  config:
+    agents: []
+- id: fs-sandbox
+  name: '@deepseek-ai/dsh-fs-sandbox'
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+# == @deepseek-ai/dsh-web-app
+- id: subagent-model-selection-settings
+  name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
+- id: code-runtime
+  name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+- id: message-feedback
+  name: '@deepseek-ai/dsh-message-feedback'
+  config:
+    maxNoteBytes: 8192
+- id: session-log-download
+  name: '@deepseek-ai/dsh-session-log-export'
+- id: open-in-app
+  name: '@deepseek-ai/dsh-host-open-in-app'
+  config:
+    probeTimeoutMs: 10000
+    iconTimeoutMs: 10000
+    launchWatchMs: 1000
+- id: ui-open-in-app
+  name: '@deepseek-ai/dsh-client-ui-open-in-app'
+- id: workspace
+  name: '@deepseek-ai/dsh-workspace'
+- id: session-reference
+  name: '@deepseek-ai/dsh-session-reference'
+- id: file-reference-local
+  name: '@deepseek-ai/dsh-file-reference-local'
+- id: session-stats
+  name: '@deepseek-ai/dsh-session-stats'
+- id: session-turn-outline
+  name: '@deepseek-ai/dsh-session-turn-outline'
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+- id: plugin-inventory
+  name: '@deepseek-ai/dsh-host-plugin-inventory'
+- id: session-controller
+  name: '@deepseek-ai/dsh-api-session-controller'
+- id: workspace-files
+  name: '@deepseek-ai/dsh-api-workspace-files'
+- id: settings-controller
+  name: '@deepseek-ai/dsh-api-settings-controller'
+- id: workspace-controller
+  name: '@deepseek-ai/dsh-api-workspace-controller'
+- id: cordis-host-runner
+  name: '@deepseek-ai/dsh-cordis-host-runner'
+- id: web-startup
+  name: '@deepseek-ai/dsh-web-app/startup'
+- id: webserver
+  name: '@deepseek-ai/dsh-host-webserver'
+  inject:
+    - webStartup
+  config:
+    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    port: !!js ctx.webStartup.port ?? 3080
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- id: web-runtime
+  name: '@deepseek-ai/dsh-web-app'
+  inject:
+    - webStartup
+  config:
+    openBrowser: !!js ctx.webStartup.openBrowser
+    printUrl: true
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+- id: client-hmr
+  name: '@deepseek-ai/dsh-client-hmr'
+- id: modules
+  name: '@deepseek-ai/dsh-client-modules'
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject:
+    - webRuntime
+  config:
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+- id: file-upload
+  name: '@deepseek-ai/dsh-client-file-upload'
+- id: api-remotes
+  name: '@deepseek-ai/dsh-api-remotes'
+- id: cordis-client-runner
+  name: '@deepseek-ai/dsh-cordis-client-runner'
+- id: ui-theme
+  name: '@deepseek-ai/dsh-client-ui-theme'
+- id: locale
+  name: '@deepseek-ai/dsh-client-locale'
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+- id: ui-renderer
+  name: '@deepseek-ai/dsh-client-ui-renderer'
+- id: ui-session
+  name: '@deepseek-ai/dsh-client-ui-session'
+- id: resources
+  name: '@deepseek-ai/dsh-client-resources'
+- id: ui-sidebar
+  name: '@deepseek-ai/dsh-client-ui-sidebar'
+- id: ui-sidebar-right
+  name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+- id: ui-sidebar-documentpreview
+  name: '@deepseek-ai/dsh-client-ui-sidebar-documentpreview'
+- id: ui-sidebar-files
+  name: '@deepseek-ai/dsh-client-ui-sidebar-files'
+- id: ui-settings
+  name: '@deepseek-ai/dsh-client-ui-settings'
+- id: ui-settings-general
+  name: '@deepseek-ai/dsh-client-ui-settings-general'
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+- id: ui-settings-plugin-inventory
+  name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+- id: ui-conversation
+  name: '@deepseek-ai/dsh-client-ui-conversation'
+- id: ui-approval
+  name: '@deepseek-ai/dsh-client-ui-approval'
+- id: ui-chat
+  name: '@deepseek-ai/dsh-client-ui-chat'
+- id: ui-brand-official
+  name: '@deepseek-ai/dsh-client-ui-brand-official'
+- id: ui-attachment
+  name: '@deepseek-ai/dsh-client-ui-attachment'
+- id: ui-tool
+  name: '@deepseek-ai/dsh-client-ui-tool'
+- id: ui-cordis
+  name: '@deepseek-ai/dsh-client-ui-cordis'
+- id: ui-workflow-run
+  name: '@deepseek-ai/dsh-client-ui-workflow-run'
+- id: ui-deliverables
+  name: '@deepseek-ai/dsh-client-ui-deliverables'
+- id: ui-workspace
+  name: '@deepseek-ai/dsh-client-ui-workspace'
+- id: ui-input-trigger
+  name: '@deepseek-ai/dsh-client-ui-input-trigger'
+- id: ui-commands
+  name: '@deepseek-ai/dsh-client-ui-commands'
+- id: ui-skill
+  name: '@deepseek-ai/dsh-client-ui-skill'
+- id: ui-subagent
+  name: '@deepseek-ai/dsh-client-ui-subagent'
+- id: ui-reference
+  name: '@deepseek-ai/dsh-client-ui-reference'
+- id: ui-schedule
+  name: '@deepseek-ai/dsh-client-ui-schedule'
+  disabled: true
+- id: ui-jobs
+  name: '@deepseek-ai/dsh-client-ui-jobs'
+- id: ui-goal
+  name: '@deepseek-ai/dsh-client-ui-goal'
+- id: ui-message-feedback
+  name: '@deepseek-ai/dsh-client-ui-message-feedback'
+- id: ui-model-selection
+  name: '@deepseek-ai/dsh-client-ui-model-selection'
+- id: ui-permission
+  name: '@deepseek-ai/dsh-client-ui-permission-presets'
+- id: ui-agent-preset
+  name: '@deepseek-ai/dsh-client-ui-agent-preset'
+- id: ui-settings-plugins
+  name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+- id: ui-plan
+  name: '@deepseek-ai/dsh-client-ui-plan'
+- id: ui-user-questions
+  name: '@deepseek-ai/dsh-client-ui-user-questions'
+- id: ui-trajectory
+  name: '@deepseek-ai/dsh-client-ui-trajectory'
+# == @deepseek-ai/dsh-web-app, patched by @mpd-dsh/mpd
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: mpd
+    roots:
+      - path: !!js >-
+          (typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//,
+          "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"
+        trust: system
+# == @linxin666/dsh-web-all
+- id: web-ui-compat
+  name: '@linxin666/dsh-web-all'
+- id: web-ui-settings
+  name: '@linxin666/dsh-web-all/settings'
+  config:
+    plugin: '@linxin666/dsh-client-ui-web-ui-settings'
+- id: web-ui-plugin-manager
+  name: '@linxin666/dsh-web-all/plugin-manager'
+  config:
+    plugin: '@linxin666/dsh-client-ui-plugin-manager'
+- id: web-ui-community-plugins
+  name: '@linxin666/dsh-web-all/community-plugins'
+  config:
+    plugin: '@linxin666/dsh-client-ui-community-plugins'
+- id: web-ui-market
+  name: '@linxin666/dsh-web-all/market'
+  config:
+    plugin: '@linxin666/dsh-client-ui-market'
+- id: web-ui-task-board
+  name: '@linxin666/dsh-web-all/task-board'
+  config:
+    plugin: '@linxin666/dsh-client-ui-task-board'
+- id: web-ui-git-graph
+  name: '@linxin666/dsh-web-all/git-graph'
+  config:
+    plugin: '@linxin666/dsh-client-ui-git-graph'
+- id: web-ui-remote-web-ui
+  name: '@linxin666/dsh-web-all/remote-web-ui'
+  config:
+    plugin: '@linxin666/dsh-remote-web-ui'
+- id: web-ui-pet
+  name: '@linxin666/dsh-web-all/pet'
+  config:
+    plugin: '@linxin666/dsh-pet'
+- id: web-ui-ssh
+  name: '@linxin666/dsh-web-all/ssh'
+  config:
+    plugin: '@linxin666/dsh-ssh'
+  disabled: true
+- id: web-ui-describe-image
+  name: '@linxin666/dsh-web-all/describe-image'
+  config:
+    plugin: '@linxin666/dsh-tool-describe-image'
+  disabled: true
+- id: web-ui-liangshen
+  name: '@linxin666/dsh-web-all/liangshen'
+  config:
+    plugin: '@linxin666/dsh-liangshen'
+  disabled: true
+- id: web-ui-skill-explorer
+  name: '@linxin666/dsh-web-all/skill-explorer'
+  config:
+    plugin: '@linxin666/dsh-client-ui-skill-explorer'
+  disabled: true
+- id: web-ui-doctor
+  name: '@linxin666/dsh-web-all/doctor'
+  config:
+    plugin: '@linxin666/dsh-doctor'
+  disabled: true
+- id: web-ui-usage
+  name: '@linxin666/dsh-web-all/usage'
+  config:
+    plugin: '@linxin666/dsh-usage'
+- id: web-ui-session-archive
+  name: '@linxin666/dsh-web-all/session-archive'
+  config:
+    plugin: '@linxin666/dsh-session-archive'
+- id: web-ui-model-capabilities
+  name: '@linxin666/dsh-web-all/model-capabilities'
+  config:
+    plugin: '@linxin666/dsh-client-ui-model-capabilities'
+- id: web-ui-preset-center
+  name: '@linxin666/dsh-web-all/preset-center'
+  config:
+    plugin: '@linxin666/dsh-client-ui-preset-center'
+- id: web-ui-skin-center
+  name: '@linxin666/dsh-web-all/skin-center'
+  config:
+    plugin: '@linxin666/dsh-client-ui-skin-center'
+- id: web-ui-i18n
+  name: '@linxin666/dsh-i18n'
+- id: web-ui-better-sidebar
+  name: dsh-better-sidebar
+# == @mpd-dsh/mpd
+- id: mpd-better-sidebar
+  name: dsh-better-sidebar
+  disabled: !!js >-
+    (() => { const say = (decision, reason) => { try { const seen =
+    globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {});
+    const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1;
+    console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' +
+    reason) } } catch (e) {} }; try { const fs =
+    process.getBuiltinModule('node:fs'); const path =
+    process.getBuiltinModule('node:path'); const profileDir =
+    path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const
+    readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) }
+    catch (e) { return null } }; const readText = (p) => { try { return
+    fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const ownModules =
+    path.join(profileDir, 'node_modules'); if
+    (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) {
+    say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile
+    node_modules'); return true } const manifest =
+    readJson(path.join(profileDir, 'package.json')); const bundles = manifest &&
+    manifest.dsh && manifest.dsh.profile &&
+    Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles :
+    []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED',
+    'dsh-better-sidebar is itself a declared bundle layer'); return true } for
+    (const bundle of bundles) { const name = String(bundle); for (const dir of
+    [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules',
+    name)]) { const other = readJson(path.join(dir, 'package.json')); const rel
+    = other && other.dsh && other.dsh.bundle ? other.dsh.bundle.patch :
+    undefined; if (typeof rel !== 'string') continue; const text =
+    readText(path.join(dir, rel)); if (text &&
+    text.indexOf('dsh-better-sidebar') >= 0 &&
+    text.indexOf('mpd-better-sidebar') < 0) { say('DISABLED', 'bundle layer ' +
+    name + ' already mounts it in its own patch'); return true } } } const
+    entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) =>
+    e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' &&
+    e.options.disabled !== true); const hasWebLayer =
+    bundles.indexOf('@deepseek-ai/dsh-web-app') >= 0; if (!hasWebEntry &&
+    !hasWebLayer) { say('DISABLED', 'no web plane in this composition'); return
+    true } say('ENABLED', 'web plane present and no other layer mounts
+    dsh-better-sidebar'); return false } catch (e) { try {
+    console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' +
+    String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()
+- id: mcp-astgrep
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: ast_grep
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")
+    toolCallTimeoutMs: 60000
+- id: mcp-gitbash
+  name: '@deepseek-ai/dsh-mcp-client'
+  disabled: true
+  config:
+    serverName: git_bash
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")
+    toolCallTimeoutMs: 60000
+- id: mcp-lsp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: lsp
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")
+      - mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-codegraph
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: codegraph
+    transport: stdio
+    command: node
+    args:
+      - !!js >-
+        process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ?
+        baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") +
+        "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")
+    toolCallTimeoutMs: 60000
+- id: mpd-web-compat
+  name: '@mpd-dsh/mpd'
+- id: mpd-dsh-adapter
+  name: '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+- id: mpd-config
+  name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+- id: mpd-team-watchdog
+  name: '@mpd-dsh/mpd/packages/mpd-team-watchdog-plugin/dist/index.js'
+  config:
+    stateDir: .mpd/team
+    warnSilenceMs: 600000
+    tickIntervalMs: 15000
+    warnStreakToEscalate: 6
+    actionOnEscalate: warn-only
+    toolInFlightMaxMs: 900000
+    holdTtlMs: 900000
+- id: mpd-tools
+  name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
+  config:
+    writeGuard: true
+    truncateMaxBytes: 8192
+- id: mpd-modelchain
+  name: '@mpd-dsh/mpd/packages/mpd-modelchain-plugin/dist/index.js'
+- id: mpd-ext
+  name: '@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/index.js'
+  config:
+    quiet: false
+- id: mpd-roles
+  name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+- id: mpd-ulw
+  name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+  config:
+    maxRounds: 3
+- id: mpd-hashline
+  name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
+  config:
+    guardEditTools: true
+- id: mpd-boulder
+  name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
+- id: mpd-comment-checker
+  name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
+  config:
+    autoCheck: false
+- id: mpd-codegraph
+  name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
+  config:
+    autoInit: true
+    initTimeoutMs: 60000
+- id: mpd-memory
+  name: '@mpd-dsh/mpd/packages/mpd-memory-plugin/dist/index.js'
+  config:
+    vcs: git
+- id: mpd-workmate
+  name: '@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js'
+- id: mpd-team-compact
+  name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+- id: mpd-bootstrap
+  name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+- id: agent-teams
+  name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+  config:
+    stateDir: .mpd/team
+    memberProvider: spawn
+    memberMaxDepth: 1
+    maxMembers: 16
+    maxParallelMembers: 8
+    maxMessagesPerRun: 10000
+    maxWallClockMinutes: 120
+    maxMemberTurns: 500
+    messagePayloadMaxBytes: 32768
+    recipientUnreadMaxBytes: 262144
+    mailboxPollIntervalMs: 3000
+    enforcement: enforce
+    reclaimStaleAfterMs: 3600000
+    sessionTeamPolicy:
+      mode: 'off'
+      autoRoute: true
+      profile: mpd
+      presets:
+        - mpd
+      name: MPD Default
+      approval: required
+    profiles:
+      mpd:
+        description: >-
+          The specialist roster surfaced as normal-named teammate templates —
+          captain-planned (roster only; the captain designs the DAG during the
+          staged plan).
+        protocol: >-
+          Read-only members (Architect, Researcher, Planner, Explorer, Plan
+          Reviewer, Vision Analyst) take requirements/review/analysis tasks only
+          and never edit files. Workers (Senior Engineer, Junior Engineer, Deep
+          Worker, Lead, Reviewer) take implementation/verification/integration.
+          The captain leads, designs the DAG, and integrates results. Workmate
+          reuse: before delegating a role task, consult mpd_workmate_list /
+          mpd_workmate_match(task); if a workmate note matches well, delegate to
+          that workmate (member name = workmate name, so its persona/memory are
+          injected), otherwise initialize a fresh workmate with
+          mpd_workmate_init — never force a weak note match.
+        taskPlanning: captain
+        members:
+          - name: Architect
+            tier: 1
+            role: architecture review / deep debugging / self-review
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only architecture advisor. You advise, others execute — never
+              edit files. Favor simplicity and existing patterns; give one clear
+              recommendation with concise rationale and evidence.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Researcher
+            tier: 2
+            role: code / open-source evidence search
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only researcher. Gather evidence from the codebase, AST/LSP
+              and web sources; cite file:line and URLs; never edit files or
+              invent findings.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Planner
+            tier: 1
+            role: planning / task decomposition
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only planner. Produce decision-complete, step-ordered plans
+              with a checklist; never implement.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Explorer
+            tier: 2
+            role: read-only codebase exploration
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only explorer. Answer with evidence and absolute file paths;
+              never edit files.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Reviewer
+            tier: 1
+            role: correctness / risk review
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Deep reviewer. Produce correctness/risk findings with evidence;
+              recommend fixes but do not apply them.
+          - name: Plan Reviewer
+            tier: 2
+            role: work-plan QA review / UI-UX critique
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only plan reviewer. Verify plans are executable and
+              references valid; reject only true blockers; UI/UX critique only
+              when explicitly asked; never edit files.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Vision Analyst
+            tier: 4
+            role: image / diagram analysis
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Read-only vision analyst. Describe screenshots/diagrams precisely;
+              never edit files or load anything by path.
+            toolDeny:
+              - write
+              - edit
+              - mpd_hashline_edit
+              - bash
+              - mcp__ast_grep__rewrite
+              - mcp__ast_grep__scan
+              - mcp__lsp__rename
+          - name: Lead
+            tier: 1
+            role: orchestration / integration
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Orchestrator. Plan the macro structure, delegate independent units
+              in parallel, integrate and verify results.
+          - name: Deep Worker
+            tier: 3
+            role: autonomous goal-driven implementation
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Autonomous deep worker. Receive goals, execute them end-to-end
+              with tools, verify every change, report evidence-first.
+          - name: Senior Engineer
+            tier: 1
+            role: primary implementation
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Primary engineer. Plan small, execute with tools, keep diffs
+              minimal, verify every change, report honestly.
+          - name: Junior Engineer
+            tier: 3
+            role: small mechanical changes
+            fallback:
+              provider: deepseek-official
+              model: deepseek-v4-flash
+            executionPrompt: >-
+              Fast executor. Small, well-scoped mechanical changes with quick
+              verification; keep diffs tiny.
+- id: mcp-context7
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: context7
+    transport: streamable-http
+    url: https://mcp.context7.com/mcp
+    toolCallTimeoutMs: 60000
+- id: mcp-grepapp
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: grep_app
+    transport: streamable-http
+    url: https://mcp.grep.app
+    toolCallTimeoutMs: 60000

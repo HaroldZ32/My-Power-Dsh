@@ -1,0 +1,222 @@
+{
+  "ok": true,
+  "slug": "l6-mount-boot",
+  "task": "t2",
+  "at": "2026-09-18T01:32:38.163Z",
+  "baseRevision": "5aa222a144e4238b67453731c5decd806db6db94",
+  "sourceHashes": {
+    "packages/mpd-ulw-plugin/src/index.ts": "bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+  },
+  "acceptance": "t2 acceptance 4 — a mount-instrumented boot (registration instrumentation, not --dump-config) shows the mpd-ulw row loaded and both command names registered",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "shippedArtifacts": {
+      "measured": [
+        {
+          "rowId": "mpd-ulw",
+          "path": "packages/mpd-ulw-plugin/dist/index.js",
+          "sha256": "24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce",
+          "missingMarkers": [
+            "registerCommand",
+            "ULW_ACTIVATION_DIRECTIVE",
+            "usage: /ulw"
+          ],
+          "presentMarkers": []
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "sha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206",
+          "missingMarkers": [
+            "registerCommand",
+            "submitUserTurn"
+          ],
+          "presentMarkers": []
+        }
+      ],
+      "note": "a missing marker proves the shipped dist predates the wave's src; a boot mixing it with a fresh row aborts the plugin tree, so the gated boot B is built from src"
+    },
+    "sandboxBuilds": {
+      "ok": true,
+      "builds": [
+        {
+          "rowId": "mpd-ulw",
+          "entry": "packages/mpd-ulw-plugin/src/index.ts",
+          "build": "<sandbox>/builds/mpd-ulw.js",
+          "exit": 0,
+          "sha256": "cb42c50a6960e5a5f4e3635cd9d22688e93d335811aacae06d27ce37095061eb"
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "entry": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+          "build": "<sandbox>/builds/mpd-dsh-adapter.js",
+          "exit": 0,
+          "sha256": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8"
+        }
+      ],
+      "canonicalCommand": "bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js"
+    },
+    "bootShippedConsistent": {
+      "ok": true,
+      "problems": [],
+      "exit": 0,
+      "crashes": [],
+      "applyAbort": false,
+      "tools": {
+        "serviceMounted": true,
+        "hasLookup": true,
+        "mpd_ultrawork": true,
+        "mpd_ulw": true
+      },
+      "commands": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan"
+      ],
+      "staleConsistent": true,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-l6-mount-boot-pppQJR-ws-shipped--"
+        ]
+      },
+      "note": "the shipped mpd-ulw DIST carries no registerCommand, so the row loads its PRE-WAVE code: both tools exist (the row loaded) and the command registry lists neither new name — the EXPECTED shipped-stale observation, not a feature gap"
+    },
+    "retargetedRows": {
+      "ok": true,
+      "rows": [
+        {
+          "rowId": "mpd-ulw",
+          "from": "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js",
+          "to": "<sandbox>/builds/mpd-ulw.js"
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "from": "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "to": "<sandbox>/builds/mpd-dsh-adapter.js"
+        }
+      ]
+    },
+    "bootSandboxBuilt": {
+      "ok": true,
+      "problems": [],
+      "exit": 0,
+      "crashes": [],
+      "applyAbort": false,
+      "tools": {
+        "serviceMounted": true,
+        "hasLookup": true,
+        "mpd_ultrawork": true,
+        "mpd_ulw": true
+      },
+      "commands": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "descriptors": [
+        {
+          "name": "agent-teams",
+          "description": "run a goal with a multi-agent team (you become the captain)",
+          "hint": "[--profile <name>] <goal>"
+        },
+        {
+          "name": "agent-teams-mpd",
+          "description": "run a goal with the AgentTeams mpd profile",
+          "hint": "<goal>"
+        },
+        {
+          "name": "compact",
+          "description": "Compact older conversation history",
+          "hint": null
+        },
+        {
+          "name": "feedback",
+          "description": "record feedback about this session",
+          "hint": "<text>"
+        },
+        {
+          "name": "goal",
+          "description": "set or view the goal for a long-running task",
+          "hint": "[<objective>|clear|edit <objective>|pause|resume]"
+        },
+        {
+          "name": "mpd",
+          "description": "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+          "hint": null
+        },
+        {
+          "name": "permission",
+          "description": "Switch the permission preset (sandbox mode + approval policy)",
+          "hint": "<preset>"
+        },
+        {
+          "name": "plan",
+          "description": "Enter or leave plan mode",
+          "hint": "[off|message]"
+        },
+        {
+          "name": "ultrawork",
+          "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)",
+          "hint": "objective"
+        },
+        {
+          "name": "ulw",
+          "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)",
+          "hint": "objective"
+        }
+      ],
+      "registryShape": {
+        "hasRootRegistry": true,
+        "registryKeys": [
+          "ctx",
+          "_counter",
+          "_internal"
+        ]
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 2,
+        "keys": [
+          "--tmp-mpd-l6-mount-boot-pppQJR-ws-sandbox-built--",
+          "--tmp-mpd-l6-mount-boot-pppQJR-ws-shipped--"
+        ]
+      },
+      "gating": true
+    },
+    "compositionOnly": {
+      "ok": true,
+      "exit": 0,
+      "hasUlwRow": true,
+      "hasProbeRow": true,
+      "note": "COMPOSITION ONLY (AGENTS.md §4): proves the composed row list carries id mpd-ulw and the probe row; it can never witness a registration or an apply abort — the load evidence is BOOT B's live registries"
+    },
+    "isolationSessions": {
+      "ok": true,
+      "checked": 2,
+      "keys": [
+        "--tmp-mpd-l6-mount-boot-pppQJR-ws-sandbox-built--",
+        "--tmp-mpd-l6-mount-boot-pppQJR-ws-shipped--"
+      ]
+    }
+  },
+  "stubRequests": 4
+}

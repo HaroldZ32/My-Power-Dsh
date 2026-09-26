@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c6-N4uEMB",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "memory": {
+      "ok": false,
+      "entries": 0,
+      "repoOk": false,
+      "dueSeen": false
+    }
+  }
+}

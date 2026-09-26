@@ -1,0 +1,8 @@
+[verify-manual-paths] self-test fixtures /tmp/verify-manual-paths-opWj0z (temp only; nothing in the repo is written)
+[verify-manual-paths] arm 1/6 all-exist-green: exit=0/0 resolved=3 unresolved=0 over-report=0 under-report=0 — PASS
+[verify-manual-paths] arm 2/6 missing-path-red: exit=1/1 resolved=1 unresolved=1 over-report=0 under-report=0 — PASS
+[verify-manual-paths] arm 3/6 over-report-separate: exit=0/0 resolved=2 unresolved=0 over-report=5 under-report=0 — PASS
+[verify-manual-paths] arm 4/6 under-report-separate: exit=0/0 resolved=1 unresolved=0 over-report=0 under-report=3 — PASS
+[verify-manual-paths] arm 5/6 zero-subjects-degraded: exit=1/1 resolved=0 unresolved=0 over-report=0 under-report=0 — PASS
+[verify-manual-paths] arm 6/6 missing-manual-cannot-run: exit=2/2 resolved=- unresolved=- over-report=- under-report=- — PASS
+[verify-manual-paths] self-test PASS: 6/6 arms
