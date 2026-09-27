@@ -96,6 +96,9 @@ const PLUGIN_PKGS = [
   // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
   // and mounted by an overlay, never by the shipped patch.
   "mpd-team-compact-plugin",
+  // mpd-team-tools-plugin is MOUNTED by the bundle patch (row `mpd-team-tools`): the
+  // staged-plan / task-contract / halt workflow around the official team runtime.
+  "mpd-team-tools-plugin",
   // mpd-ext-plugin is MOUNTED by the bundle patch (row `mpd-ext`) and was missing
   // from this list: the packed tree would omit `packages/mpd-ext-plugin/dist/` while
   // `npm run pack` still exited 0, and the packed boot would die ERR_MODULE_NOT_FOUND

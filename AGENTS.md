@@ -185,6 +185,8 @@ mpd-dsh/
 │   │                             #   (OUTSTANDING/IN-FLIGHT/ALIVE/PARKED), the heartbeat store, the
 │   │                             #   WARN->ESCALATE ladder and the preserving hold (NEW DISPATCH only)
 │   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
+│   ├── mpd-team-tools-plugin/   # the team WORKFLOW the official plugin lacks: staged plan +
+│   │                             #   approval, task contracts with an attempt counter, halt, archive
 │   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
 │   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (`ctx.tui*` seams, warn-once)
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client

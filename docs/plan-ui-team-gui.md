@@ -95,7 +95,17 @@ driver learns to clear them so the review below them is possible.
      the app rendered "Failed to load plugins". The services are reached through
      `ctx.inject(["sidebarRightTabs","sidebarRight"], …)`, so an mpd bundle in a composition with
      no right sidebar still activates.
-- W1, W3, W4: not started in code.
+- W1 first slice: `packages/mpd-team-tools-plugin` — the team WORKFLOW the official plugin does not
+  ship, as a sidecar under `<workspace>/.mpd/team/`: **staged plan + approval** (`agent_teams_create`
+  / `_add_member` / `_create_task` / `_edit_plan` / `_approve` / `_delete`), **task contracts with a
+  monotonic attempt counter** (`agent_teams_claim_task` / `_task_contract`), **halt/resume**, and a
+  read-only `agent_teams_status` that prints the sidecar BESIDE the official roster and board. Plus
+  the `/agent-teams` command. 13 arms drive the state machine without a ctx; row `mpd-team-tools`
+  mounted, dist built, packer + installer + row parity green.
+  NOT yet done in W1: the dispatch/scheduler loop, mailbox unread (the official inbox exposes no
+  read state, so inventing one would misreport it), and per-member model routing (blocked on the
+  user's decision).
+- W3, W4: not started in code.
 
 ### How the UI became reachable (solved, keep it)
 

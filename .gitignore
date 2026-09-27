@@ -93,7 +93,6 @@ evidence/**/raw/final/
 # The UI-VIEW stack's working state (docker/ui/): the container rebinds its own port, and its
 # scratch (sandbox homes, tmux sockets, npm prefix) is machine state a reviewer regenerates with
 # one command. The SCREENSHOTS and report are the evidence and stay: only the scratch is ignored.
-docker/ui/data/
 docker/ui/pw/
 # The stack's RAW runtime logs carry the Web app's launch token. The screenshots and the
 # capture report are the evidence; a live token is not, and AGENTS.md §10 keeps secret-shaped

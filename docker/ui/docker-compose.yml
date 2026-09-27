@@ -34,9 +34,17 @@ services:
     volumes:
       # Evidence + captured panes land here so a UI review leaves artifacts on the host.
       - ./out:/data-out
-      - ./data:/data
+      # The stack's own scratch (sandbox homes, tmux socket, npm prefix, the launch log) is a
+      # NAMED VOLUME, deliberately NOT a bind under the repo: measured 2026-09-27, a bind here
+      # left `docker/ui/data/**` in the working tree and a repo-wide scanner
+      # (`scripts/check-citations.mjs`, driven by the wave2b-lane-d QA case) then died on a path
+      # inside it — an unrelated gate reddening because a UI stack keeps its state under the
+      # source root. Only the EVIDENCE is a bind, and only the evidence is committed.
+      - ui-data:/data
     working_dir: /work
-    # The TUI needs a PTY-capable tmux server, which is a normal process inside the
-    # container; allocation happens at `docker exec` time, so nothing is required here.
     tty: false
     stdin_open: false
+
+# Top-level volume declarations (a nested `volumes:` inside the service list is invalid YAML).
+volumes:
+  ui-data:
