@@ -26,6 +26,8 @@ through `mpd-dsh-adapter`. This plugin keeps only what the official service has 
 | `agent_teams_task_contract` | `task_id?` | one frozen contract, or every contract newest-claim-first |
 | `agent_teams_halt` | `reason` | records a hold: new dispatch stops, the team and its members stay alive |
 | `agent_teams_resume` | — | clears the hold |
+| `agent_teams_dispatch` | `dry_run?`, `limit?` | **pairs ready tasks with idle members** and tells each member to work its task; one pass, recorded |
+| `agent_teams_dispatch_release` | `task_id` | frees a dispatched task so it can be dispatched again |
 | `agent_teams_status` | — | the staged plan and the halt **beside** the official roster and board |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
@@ -53,8 +55,13 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
 
 ## Known limits
 
-- The hold is a **record**, not a scheduler: this plugin owns no dispatch loop, so `agent_teams_halt`
-  stops what a captain or a scheduled lane reads as "do not dispatch", and nothing else can be implied.
+- The hold **stops dispatch** (`agent_teams_dispatch` refuses the whole pass and names the reason) and
+  does nothing else: no member is interrupted and no task is rewritten.
+- `agent_teams_dispatch` pairs ONE task with ONE member per pass and records the pairing in
+  `.mpd/team/dispatch.json`, so a second pass cannot hand the same task to a second teammate — a
+  message is not a ledger. Entries for tasks that were deleted or completed out of band are pruned
+  first, so a member is never left "busy" forever. It runs when a captain or a lane calls it; it is
+  not a background timer.
 - `agent_teams_approve` cannot be rolled back.
 - The mailbox has no unread count: the official inbox exposes no read state, and inventing one would
   misreport it.

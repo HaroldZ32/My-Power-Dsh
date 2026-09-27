@@ -1,5 +1,5 @@
 // packages/mpd-team-tools-plugin/src/index.ts
-import { existsSync as existsSync2, readdirSync as readdirSync2 } from "node:fs";
+import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
@@ -971,6 +971,83 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
+// packages/mpd-team-tools-plugin/src/dispatch.ts
+function dispatchMessage(task, description) {
+  return [
+    `You have been assigned shared task ${task.id}: ${task.subject}`,
+    "",
+    description,
+    "",
+    "Work it on your own; do not wait for another member to start it.",
+    `When it is done, report the result to the Lead and mark task ${task.id} completed with team_task_update.`
+  ].join(`
+`);
+}
+function planDispatch(input) {
+  if (input.hold !== undefined && input.hold !== "") {
+    return { pairs: [], skipped: [], halted: input.hold };
+  }
+  const busy = new Set(Object.values(input.ledger).filter((entry) => entry.taskId !== "" && entry.memberId !== "").map((entry) => entry.memberId));
+  const claimed = new Set(Object.keys(input.ledger));
+  const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id));
+  const plan = { pairs: [], skipped: [] };
+  let available = [...candidates];
+  const cap = input.limit === undefined || input.limit <= 0 ? Number.POSITIVE_INFINITY : input.limit;
+  for (const task of input.tasks) {
+    if (plan.pairs.length >= cap) {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "the pass reached its limit" });
+      continue;
+    }
+    if (task.status === "completed") {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "already completed" });
+      continue;
+    }
+    if (claimed.has(task.id)) {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `already dispatched to ${input.ledger[task.id]?.memberName ?? "a member"}` });
+      continue;
+    }
+    if (task.ready !== true) {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `not ready${Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " (blocked by " + task.blockedBy.join(", ") + ")" : ""}` });
+      continue;
+    }
+    if (available.length === 0) {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" });
+      continue;
+    }
+    const member = available[0];
+    available = available.slice(1);
+    plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: member.id, memberName: member.name });
+  }
+  return plan;
+}
+function assign(ledger, pair, now) {
+  return {
+    ...ledger,
+    [pair.taskId]: { taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName, assignedAt: now.toISOString() }
+  };
+}
+function release(ledger, taskId) {
+  if (ledger[taskId] === undefined)
+    return { ledger, released: false };
+  const next = { ...ledger };
+  delete next[taskId];
+  return { ledger: next, released: true };
+}
+function reconcile(ledger, tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const next = {};
+  const forgotten = [];
+  for (const [taskId, entry] of Object.entries(ledger)) {
+    const task = byId.get(taskId);
+    if (task === undefined || task.status === "completed") {
+      forgotten.push(taskId);
+      continue;
+    }
+    next[taskId] = entry;
+  }
+  return { ledger: next, forgotten };
+}
+
 // packages/mpd-team-tools-plugin/src/plan-store.ts
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1114,6 +1191,20 @@ function moveIntoArchive(workspace, from, planId) {
 var name = "mpd-team-tools";
 var inject = ["tools", "commands"];
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
+var dispatchPath = (workspace) => join2(workspace, ".mpd", "team", "dispatch.json");
+function readLedger(workspace) {
+  try {
+    const raw = JSON.parse(readFileSync2(dispatchPath(workspace), "utf8"));
+    return raw !== null && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+function writeLedger(workspace, ledger) {
+  mkdirSync2(join2(workspace, ".mpd", "team"), { recursive: true });
+  writeFileSync2(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + `
+`);
+}
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
@@ -1421,6 +1512,81 @@ function apply(ctx) {
     execute: async (_args, exec) => ({ resumed: clearHold(where(exec).workspace) })
   }));
   disposers.push(dsh.registerTool({
+    name: "agent_teams_dispatch",
+    description: "Pair READY shared tasks with IDLE members and tell each member to work its task. One pass pairs each task with one member and RECORDS the pairing, so a second pass can never hand the same task to a second teammate. Respects agent_teams_halt (a held team dispatches nothing) and skips a task that is blocked, completed, already dispatched, or has no free member — reporting which, per task. dry_run reports the pairing without sending anything.",
+    parameters: {
+      type: "object",
+      properties: {
+        dry_run: { type: "boolean", description: "Report the pairing and send nothing." },
+        limit: { type: "number", description: "Cap the pairs in this pass (0 or omitted = no cap)." }
+      },
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } } } },
+      render: (_args, value) => text(value?.halted !== undefined ? `halted: ${value.halted}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}`).join(`
+`))
+    },
+    execute: async (args, exec) => {
+      const { workspace } = where(exec);
+      const hold = readHold(workspace);
+      const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
+        id: task.id,
+        subject: task.subject,
+        status: task.status,
+        ready: task.ready,
+        blockedBy: task.blockedBy,
+        ...task.ownerName === undefined ? {} : { ownerName: task.ownerName }
+      }));
+      const members = dsh.teamListMembers(exec.agent).map((member) => ({ id: member.id, name: member.name, status: member.status }));
+      const pruned = reconcile(readLedger(workspace), tasks);
+      const plan = planDispatch({
+        tasks,
+        members,
+        ledger: pruned.ledger,
+        ...hold === undefined ? {} : { hold: hold.reason },
+        ...typeof args?.limit === "number" ? { limit: args.limit } : {}
+      });
+      if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
+        if (pruned.forgotten.length > 0)
+          writeLedger(workspace, pruned.ledger);
+        return { ...plan, forgotten: pruned.forgotten };
+      }
+      let ledger = pruned.ledger;
+      const sent = [];
+      const skipped = [...plan.skipped];
+      for (const pair of plan.pairs) {
+        const task = tasks.find((candidate) => candidate.id === pair.taskId);
+        try {
+          await dsh.teamSendMessage(exec.agent, {
+            target: pair.memberId,
+            content: dsh.text(dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? ""))),
+            ...exec.signal === undefined ? {} : { signal: exec.signal }
+          });
+          ledger = assign(ledger, pair, now());
+          sent.push(pair);
+        } catch (error) {
+          skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
+        }
+      }
+      writeLedger(workspace, ledger);
+      return { pairs: sent, skipped, forgotten: pruned.forgotten };
+    }
+  }));
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_dispatch_release",
+    description: "Free one dispatched task so it can be dispatched again (a member finished, went away, or the work was reassigned). Reports whether a pairing was there.",
+    parameters: { type: "object", properties: { task_id: { type: "string", description: "The task to free." } }, required: ["task_id"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { released: { type: "boolean" } } }, render: (_args, value) => text(value?.released === true ? "released" : "that task was not dispatched") },
+    execute: async (args, exec) => {
+      const { workspace } = where(exec);
+      const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""));
+      if (released)
+        writeLedger(workspace, ledger);
+      return { released };
+    }
+  }));
+  disposers.push(dsh.registerTool({
     name: "agent_teams_status",
     description: "The team in one read: the STAGED plan and the halt from this bundle's sidecar, beside the OFFICIAL roster and shared board. Read-only.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
@@ -1473,7 +1639,7 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
     try {
       const staging = join2(root, ".mpd", "team", "staging");
       const pending = existsSync2(staging) ? readdirSync2(staging).filter((file) => file.endsWith(".json")).length : 0;
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} tools=10 command=/agent-teams`);
+      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (13 tools + the /agent-teams command)`);
     } catch {}
   }
   if (typeof ctx?.on === "function")

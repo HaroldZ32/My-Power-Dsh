@@ -23,6 +23,8 @@
 | `agent_teams_task_contract` | `task_id?` | 一份冻结契约，或全部契约（按认领时间倒序） |
 | `agent_teams_halt` | `reason` | 记下一次暂停：新派工停止，团队与成员都还活着 |
 | `agent_teams_resume` | — | 解除暂停 |
+| `agent_teams_dispatch` | `dry_run?`、`limit?` | **把就绪任务与空闲成员配对**，并通知每个成员去做自己的任务；一趟一班，且记录在案 |
+| `agent_teams_dispatch_release` | `task_id` | 释放一个已派发任务，使其可再次派发 |
 | `agent_teams_status` | — | 把暂存计划与暂停**并排**放在官方名册和看板旁边 |
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
@@ -47,7 +49,9 @@
 
 ## 已知边界
 
-- 暂停是一条**记录**，不是调度器：本插件没有派工循环，所以 `agent_teams_halt` 停住的是"队长或调度 lane 读到它
-  之后不去派工"这件事，不能推断出别的。
+- 暂停会**停住派工**（`agent_teams_dispatch` 整趟拒绝并说明原因），别的什么都不做：不打断成员，也不改任务。
+- `agent_teams_dispatch` 每趟只把一个任务配给一个成员，并把配对记进 `.mpd/team/dispatch.json`，所以第二趟不可能把同一个
+  任务再交给另一个队友——**消息不是台账**。被删除或已在外部完成的任务，其台账条目会先被清理，成员因此永远不会被"永久占用"。
+  它由队长或调度 lane 调用时运行，**不是一个后台定时器**。
 - `agent_teams_approve` 无法回滚。
 - 信箱没有未读数：官方收件箱不暴露已读状态，硬造一个只会报错数。

@@ -402,3 +402,34 @@ WHAT REMAINS (W4c-d): the retired namespace BRIDGE in `mpd-config` is now dead w
 attempts `settings.register` and logs `settings bridge: could not register the "mpd" namespace …` on
 every boot, and `mpd-tui-plugin` still carries the guarded fallback that waits on the same retired
 service. Both can go, and the boot log gets quieter with them.
+
+
+## 8. W1b — DISPATCH, the pairing nothing else performed
+
+The retired vendored body carried a scheduler that assigned ready work to idle members by itself. The
+official plugin has no such thing: its board records tasks and its roster records members, and NOTHING
+connects the two — so a captain pairs them by hand or the team sits still while tasks go ready.
+
+`mpd-team-tools-plugin` now owns that pairing, as a pass the captain or a lane calls:
+
+- `agent_teams_dispatch` pairs each READY task with an IDLE member, sends each member its task (the
+  subject, the acceptance text, and how to report back), and **records the pairing** in
+  `<workspace>/.mpd/team/dispatch.json`. `dry_run` reports without sending.
+- `agent_teams_dispatch_release` frees one pairing.
+
+Two rules, both from the retired scheduler's post-mortems, and both pinned by arms:
+
+1. **A message is not a ledger.** The same task can never be dispatched twice (the measured failure of
+   the retired auto-claim path: two members started the same task because the assignment lived only in
+   the message). The ledger is pruned FIRST, so a task deleted or completed out of band cannot leave
+   its member "busy" forever and drain the team to a standstill.
+2. **A halt stops dispatch and nothing else** — the whole pass is refused with the hold's own reason,
+   no member is interrupted, and no task is rewritten.
+
+Verified on a real boot: `[mpd-team-tools] … registrations=14 (13 tools + the /agent-teams command)`.
+The 12 dispatch arms drive the pairing rule without a team, and the LIVE pairing cannot be exercised
+here because a teammate turn needs a model call the container stages no credentials for — so the RULE
+is proven and the live dispatch is NOT claimed.
+
+Also fixed on the way: the boot line counted `disposers.length` as "tools", which read 14 for 13 tools
+and would have kept reading whatever the plane grew to.

@@ -11,6 +11,7 @@
 //   <workspace>/.mpd/team/staging/<sessionId>.json   the staged plan
 //   <workspace>/.mpd/team/contracts/<taskId>.json    the frozen contract + attempt
 //   <workspace>/.mpd/team/hold.json                  the halt
+//   <workspace>/.mpd/team/dispatch.json              the dispatch ledger (who is working what)
 //   <workspace>/.mpd/team/archive/<planId>/          what was staged, kept
 //
 // The sidecar is NEVER a second source of team truth: the roster and the board stay the official
@@ -24,6 +25,14 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createDshAdapter, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import {
+  assign,
+  dispatchMessage,
+  planDispatch,
+  reconcile,
+  release,
+  type DispatchLedger,
+} from "./dispatch"
 import {
   addMember,
   addTask,
@@ -51,6 +60,25 @@ export const inject = ["tools", "commands"]
 
 /** A tool result narrow enough for the adapter's renderer. */
 const text = (value: unknown): { type: "text"; text: string }[] => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }]
+
+/** The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`. */
+const dispatchPath = (workspace: string): string => join(workspace, ".mpd", "team", "dispatch.json")
+
+/** Read the ledger; a missing or unreadable file is an empty ledger, never a crash. */
+function readLedger(workspace: string): DispatchLedger {
+  try {
+    const raw = JSON.parse(readFileSync(dispatchPath(workspace), "utf8")) as DispatchLedger
+    return raw !== null && typeof raw === "object" ? raw : {}
+  } catch {
+    return {}
+  }
+}
+
+/** Persist the ledger. */
+function writeLedger(workspace: string, ledger: DispatchLedger): void {
+  mkdirSync(join(workspace, ".mpd", "team"), { recursive: true })
+  writeFileSync(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + "\n")
+}
 
 /** The rendered one-line summary of a staged plan. */
 function describePlan(plan: StagedPlan | undefined): string {
@@ -389,6 +417,88 @@ export function apply(ctx: any): void {
     execute: async (_args: any, exec: DshToolExec) => ({ resumed: clearHold(where(exec).workspace) }),
   }))
 
+  // ── dispatch: the pairing nothing else performs ─────────────────────────────
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_dispatch",
+    description:
+      "Pair READY shared tasks with IDLE members and tell each member to work its task. One pass pairs each task with one member and RECORDS the pairing, so a second pass can never hand the same task to a second teammate. Respects agent_teams_halt (a held team dispatches nothing) and skips a task that is blocked, completed, already dispatched, or has no free member — reporting which, per task. dry_run reports the pairing without sending anything.",
+    parameters: {
+      type: "object",
+      properties: {
+        dry_run: { type: "boolean", description: "Report the pairing and send nothing." },
+        limit: { type: "number", description: "Cap the pairs in this pass (0 or omitted = no cap)." },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } } } },
+      render: (_args: any, value: any) =>
+        text(
+          value?.halted !== undefined ? `halted: ${value.halted}`
+            : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
+            : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}`).join("\n"),
+        ),
+    },
+    execute: async (args: any, exec: DshToolExec) => {
+      const { workspace } = where(exec)
+      const hold = readHold(workspace)
+      const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
+        id: task.id,
+        subject: task.subject,
+        status: task.status,
+        ready: task.ready,
+        blockedBy: task.blockedBy,
+        ...(task.ownerName === undefined ? {} : { ownerName: task.ownerName }),
+      }))
+      const members = dsh.teamListMembers(exec.agent).map((member) => ({ id: member.id, name: member.name, status: member.status }))
+      // PRUNE FIRST: a task deleted or completed out of band must not keep its member busy forever.
+      const pruned = reconcile(readLedger(workspace), tasks)
+      const plan = planDispatch({
+        tasks,
+        members,
+        ledger: pruned.ledger,
+        ...(hold === undefined ? {} : { hold: hold.reason }),
+        ...(typeof args?.limit === "number" ? { limit: args.limit } : {}),
+      })
+      if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
+        if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
+        return { ...plan, forgotten: pruned.forgotten }
+      }
+      let ledger = pruned.ledger
+      const sent: typeof plan.pairs = []
+      const skipped = [...plan.skipped]
+      for (const pair of plan.pairs) {
+        const task = tasks.find((candidate) => candidate.id === pair.taskId)
+        try {
+          await dsh.teamSendMessage(exec.agent, {
+            target: pair.memberId,
+            content: dsh.text(dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? ""))),
+            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+          })
+          ledger = assign(ledger, pair, now())
+          sent.push(pair)
+        } catch (error) {
+          skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
+        }
+      }
+      writeLedger(workspace, ledger)
+      return { pairs: sent, skipped, forgotten: pruned.forgotten }
+    },
+  }))
+
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_dispatch_release",
+    description: "Free one dispatched task so it can be dispatched again (a member finished, went away, or the work was reassigned). Reports whether a pairing was there.",
+    parameters: { type: "object", properties: { task_id: { type: "string", description: "The task to free." } }, required: ["task_id"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { released: { type: "boolean" } } }, render: (_args: any, value: any) => text(value?.released === true ? "released" : "that task was not dispatched") },
+    execute: async (args: any, exec: DshToolExec) => {
+      const { workspace } = where(exec)
+      const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
+      if (released) writeLedger(workspace, ledger)
+      return { released }
+    },
+  }))
+
   // ── status: both halves side by side ────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "agent_teams_status",
@@ -435,7 +545,12 @@ export function apply(ctx: any): void {
     try {
       const staging = join(root, ".mpd", "team", "staging")
       const pending = existsSync(staging) ? readdirSync(staging).filter((file) => file.endsWith(".json")).length : 0
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} tools=10 command=/agent-teams`)
+      // The count is DERIVED from the registrations this apply() made: a literal here said "10" while
+      // the plane had grown to 12, which is exactly the kind of boot line a reader trusts and should
+      // not.
+      // COUNT WHAT IT SAYS: `disposers` holds the tool registrations AND the command, so calling the
+      // total "tools" read 14 for 13 tools. The label is the honest one now.
+      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (13 tools + the /agent-teams command)`)
     } catch { /* a read-only workspace must not break the boot */ }
   }
 
