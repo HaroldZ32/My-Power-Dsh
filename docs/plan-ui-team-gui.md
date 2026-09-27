@@ -487,3 +487,64 @@ there is no `entry did not activate`, and the boot log carries no warning or err
   it is a contained refactor that would move ~89 arms; it is a declared follow-up, not an oversight.
 - The end-to-end Docker client test covers install, boot, the Web GUI and the TUI; it does not cover a
   live team, for the same credential reason.
+
+
+## 11. The three follow-up orders (2026-09-27)
+
+### 11.1 The mailbox is OURS
+
+The official mailbox keeps `messages` and `delivered` and NOTHING else — "read" is not observable
+anywhere in its public surface, so a captain's real question ("did they SEE it?") has no answer there.
+`agent_teams_mail` now owns `sent → delivered → read`: an append-only JSONL log at
+`<workspace>/.mpd/team/mailbox.jsonl` (a crash costs the last line, never the file), delivery still on
+the official transport so a member really receives the message, and `read` as an explicit
+acknowledgement by the recipient. Absorbed from the official implementation, each earned there: a
+message is TARGETED at a live member resolved by name, a member cannot message itself, a member's
+UNDELIVERED backlog is bounded, and the queue keeps insertion order. 18 arms, including the two that
+would make it lie: delivered is not read, and a half-written last line costs that line alone.
+
+Superseded and DELETED on the way: the round-16 inbox-event counter, its module, and the adapter's
+`subscribeAgentEvents` seam it needed — an unused seam is speculative code.
+
+### 11.2 Every harness service goes through the adapter, with a gate
+
+The audit (comments and string literals stripped) found three real sites: `mpd-bundle-plugin` and
+`mpd-workmate-plugin` read `ctx.get("webServer"/"httpServer")` directly, and
+`mpd-roster-provider-plugin` read `ctx.get("subagents")`. All three now use adapter seams —
+`webServerOf()`, `onServiceBound(names, cb)`, and the `subagentProvider(name)` seam that already
+existed.
+
+`FORBIDDEN_SERVICE_NAMES` extends the D6 gate from the team plane to THIRTEEN harness services, matched
+as `ctx.<name>` or `ctx.get("<name>")`, with a finding reported once per LINE (two rules can match one
+line, and a line counted twice makes every count meaningless). Its self-test gained the fixture that
+makes the new rule falsifiable — `ctx.get("webServer")` must redden — and 12/12 arms pass.
+
+Live: 25 packages, 103 `.ts` files, **0 findings**. The only remaining direct seam reads are the
+CLIENT sources, which stay the DECLARED out-of-band set the gate prints as NOT COVERED: a browser
+bundle has no `ctx.get("mpdDsh")` to reach.
+
+### 11.3 Five tools instead of fourteen
+
+Measured BEFORE: 14 tools + 1 command = **7,643 characters (~1,900 tokens) on every turn**, before a
+word of the actual task. The actions were never independent decisions — they are steps of one workflow
+— so they are `action` values now:
+
+| Tool | actions |
+|---|---|
+| `agent_teams_plan` | create, add_member, create_task, edit, approve, delete, status |
+| `agent_teams_task` | claim, contract, release |
+| `agent_teams_dispatch` | run, release |
+| `agent_teams_mail` | send, unread, read, summary |
+| `agent_teams_control` | halt, resume |
+
+Measured AFTER: 5 tools + 1 command = **4,717 characters (~1,180 tokens)**, a 38% cut with every action
+of the retired surface still reachable. `test/tool-surface.test.ts` pins the five names, the absence of
+the fourteen retired ones, an `action` enum per tool, every old action still present, a 700-character
+ceiling per description and a 5,000-character ceiling for the whole surface — a new tool has to justify
+itself against a number the model pays every turn.
+
+### 11.4 Verified on a real boot
+
+`node scripts/docker-e2e.mjs` on the final tree: `[driver] ok=true passed=42 failed=0 null=1`,
+`DRIVER_EXIT=0`, TUI lane green (`tui.laneExit=true`), with `boot.presetMount`, `boot.agentTeamTools`
+(every official team tool answering from an EXACT AGENT SCOPE) and `boot.sessionGateListener` all true.
