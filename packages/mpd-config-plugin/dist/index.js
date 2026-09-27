@@ -2988,6 +2988,19 @@ function withoutMarker(section) {
     rest.bridge = bridge;
   return rest;
 }
+var ROUTING_KEYS = ["projectFile", "userFile", "writeBack", "settingsBridge"];
+function rowKnobLayer(config) {
+  const source = config;
+  const layer = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (ROUTING_KEYS.includes(key))
+      continue;
+    if (value === undefined)
+      continue;
+    layer[key] = value;
+  }
+  return layer;
+}
 function loadConfig(config, root, settingsSection) {
   const dshHome = process.env.DSH_HOME ?? join2(homedir(), ".dsh");
   const userFile = config.userFile ? resolve2(config.userFile) : join2(dshHome, "mpd.jsonc");
@@ -3008,6 +3021,9 @@ function loadConfig(config, root, settingsSection) {
   const settingsApplied = isPlainObject2(section) && Object.keys(section).length > 0;
   if (settingsApplied)
     merged = deepMerge(merged, section);
+  const rowKnobs = rowKnobLayer(config);
+  if (Object.keys(rowKnobs).length > 0)
+    merged = deepMerge(merged, rowKnobs);
   return { config: merged, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
 }
 function withTeamModelsDefaults(config) {
@@ -3386,6 +3402,7 @@ export {
   apply,
   deepMerge,
   inject,
+  loadConfig,
   name,
   parseJsonc,
   stripJsonc,

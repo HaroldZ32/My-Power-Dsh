@@ -389,6 +389,15 @@ one-line cause — a namespace name where the machinery expects an entry id — 
 inputs AND the unset TUI rows; it took a live probe of `entry.id` / `entry.options.id` / `describe().ns`
 to see it, because all three strings look plausible.
 
+**AND THE EDIT ACTUALLY REACHES THE PLUGINS.** Rendering a value is not the same as honouring an edit,
+and the gap between them is the worst outcome of the three: a form that shows a value, accepts a
+change, and does nothing looks like it worked. The harness writes a plugin's ROW CONFIG, so the knobs
+arrive in `apply(ctx, config)` — and `loadConfig` was reading only `projectFile` / `userFile` /
+`writeBack` from it. It now merges the row config's knob subtree as the layer above the files (L4,
+the same precedence the retired settings document had), stripping the four routing keys so they can
+never leak into the effective config. Two arms pin it: the row layer wins over a file for the knob it
+carries and leaves the file's other knobs alone; no routing key reaches `config`.
+
 WHAT REMAINS (W4c-d): the retired namespace BRIDGE in `mpd-config` is now dead weight — it still
 attempts `settings.register` and logs `settings bridge: could not register the "mpd" namespace …` on
 every boot, and `mpd-tui-plugin` still carries the guarded fallback that waits on the same retired

@@ -37,3 +37,50 @@ describe("the row Config", () => {
     expect((Config as any).dict?.hashline?.meta?.volatile).toBe(true)
   })
 })
+
+describe("the row config is an EFFECTIVE layer", () => {
+  test("a knob edited in Settings reaches the plugins, and outranks the files", async () => {
+    // The form writes the ROW CONFIG. Without this layer an edit would render, accept, and change
+    // NOTHING — the worst of the three outcomes, because it looks like it worked.
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const box = mkdtempSync(join(tmpdir(), "mpd-row-layer-"))
+    mkdirSync(join(box, ".mpd"), { recursive: true })
+    writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ ulw: { maxRounds: 4 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } }))
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = join(box, "home")
+    try {
+      const { loadConfig } = await import("../src/index")
+      const out = loadConfig({ ulw: { maxRounds: 7 } } as never, box)
+      // the row layer WINS over the file for the knob it carries...
+      expect(out.config.ulw.maxRounds).toBe(7)
+      // ...and touches nothing it does not carry
+      expect(out.config.watchdog.enabled).toBe(false)
+      expect(out.config.watchdog.warnStreakToEscalate).toBe(9)
+      expect(out.files.some((file: string) => file.endsWith("mpd.jsonc"))).toBe(true)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
+  test("the ROUTING keys never leak into the effective config", async () => {
+    const { mkdtempSync, mkdirSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const box = mkdtempSync(join(tmpdir(), "mpd-row-routing-"))
+    mkdirSync(join(box, ".mpd"), { recursive: true })
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = join(box, "home")
+    try {
+      const { loadConfig } = await import("../src/index")
+      const out = loadConfig({ projectFile: join(box, ".mpd", "mpd.jsonc"), userFile: join(box, "u.jsonc"), writeBack: false, settingsBridge: { writeBack: false } } as never, box)
+      for (const key of ["projectFile", "userFile", "writeBack", "settingsBridge"]) expect(out.config[key]).toBeUndefined()
+      expect(out.config.ulw).toBeUndefined()
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+})

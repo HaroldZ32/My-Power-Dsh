@@ -128,6 +128,29 @@ function withoutMarker(section: any): any {
 // Layer precedence (design §1.1/D-1): L0 schema defaults < L1 user file < L2 project file
 // < L3 settings user section. `settingsSection` is L3 as the RAW user section (not the
 // resolved value, whose base/defaults would be re-applied as if they were explicit).
+/**
+ * The knobs carried by the ROW CONFIG — what the harness's settings form edits.
+ *
+ * Harness 0.1.7-rc.2's settings editor writes a plugin's own row config (the Cordis patch), so a knob
+ * the user edits in Settings arrives here in `config`, beside the file-path keys. Without this layer
+ * the form would RENDER a value, accept an edit, and change nothing — the worst of the three
+ * outcomes, because it looks like it worked.
+ *
+ * The routing keys are stripped: `projectFile` / `userFile` / `writeBack` / `settingsBridge` are this
+ * plugin's own wiring, not knobs, and merging them into the effective config would be nonsense.
+ */
+const ROUTING_KEYS = ["projectFile", "userFile", "writeBack", "settingsBridge"]
+function rowKnobLayer(config: Config): Record<string, unknown> {
+  const source = config as unknown as Record<string, unknown>
+  const layer: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (ROUTING_KEYS.includes(key)) continue
+    if (value === undefined) continue
+    layer[key] = value
+  }
+  return layer
+}
+
 function loadConfig(config: Config, root: string, settingsSection?: unknown): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
   const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
   const userFile = config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc")
@@ -143,10 +166,15 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown): { 
   const section = withoutMarker(settingsSection)
   const settingsApplied = isPlainObject(section) && Object.keys(section).length > 0
   if (settingsApplied) merged = deepMerge(merged, section)
+  // L4: the ROW CONFIG, i.e. what the settings form edits. It sits ON TOP of the file layers for the
+  // same reason the retired settings document did — an explicit edit in a front door outranks a file
+  // the user may not remember writing.
+  const rowKnobs = rowKnobLayer(config)
+  if (Object.keys(rowKnobs).length > 0) merged = deepMerge(merged, rowKnobs)
   return { config: merged, files: files.filter((f) => existsSync(f)), errors, settingsApplied }
 }
 
-export { stripJsonc, parseJsonc, deepMerge }
+export { stripJsonc, parseJsonc, deepMerge, loadConfig }
 
 /**
  * The RESOLVED view for readers (A2): the raw merged file config with all four `teamModels` slots
