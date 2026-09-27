@@ -20,6 +20,18 @@ export function apply(ctx) {
         const schema = runtime?.Config
         console.log("[settings-probe] runtime.Config: " + (schema === undefined ? "ABSENT" : "present, meta.volatile=" + String(schema.meta?.volatile) + " toJSON=" + String(typeof schema.toJSON)))
         console.log("[settings-probe] fiber state: " + String(mine.entry?.fiber?.state))
+        console.log("[settings-probe] entry.id=" + String(mine.entry?.id) + " options.id=" + String(mine.entry?.options?.id))
+        const descriptor = (settings.describe() ?? []).find((row) => String(row?.ns ?? "").includes("mpd-config"))
+        console.log("[settings-probe] descriptor keys=" + (descriptor === undefined ? "none" : Object.keys(descriptor).join(",")))
+        if (descriptor !== undefined) {
+          console.log("[settings-probe] descriptor value=" + JSON.stringify(descriptor.value ?? descriptor.inherited ?? null).slice(0, 220))
+          console.log("[settings-probe] descriptor fields=" + JSON.stringify(Object.keys(descriptor.fields ?? {})).slice(0, 220))
+        }
+        console.log("[settings-probe] options.config=" + JSON.stringify(mine.entry?.options?.config ?? null).slice(0, 160))
+        try {
+          const direct = settings.describe?.() ?? []
+          console.log("[settings-probe] describe ns values=" + direct.filter((r) => String(r?.ns ?? "").includes("mpd")).map((r) => r.ns).join(","))
+        } catch (error) { console.log("[settings-probe] describe filter failed: " + String(error?.message ?? error).slice(0, 120)) }
       }
       try {
         const mod = await import("file:///src/packages/mpd-config-plugin/dist/index.js")

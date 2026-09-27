@@ -351,7 +351,25 @@ Three traps, each found by a probe rather than by reasoning, all now pinned by
    are `include:<entryId>` — a probe that looks for the bare id reports ABSENT for a row that is
    present.
 
-WHAT REMAINS (W4c-b): the two front doors still address the NAMESPACE. `configForms.get(ns)` is keyed
-by entry id and throws `No configurable plugin entry` for `"mpd"`, so the Web card and the TUI section
-must be repointed at the entry (and their labels/row sets kept in step). The retired namespace bridge
-in `mpd-config` can then go, since the harness now owns the form.
+**W4c-b DONE for the Web front door, verified on screen** (`05b-mpd-section.png`): the card asks for the
+ENTRY — `configForms.get("mpd-config")` — and the rows render REAL values: `20000`, `true`, `6`, `git`,
+`.mpd/team`, `.mpd`. Measured ids: the loader gives the row `entry.options.id = "mpd-config"` while
+`entry.id` is the address `include:mpd-config`, and `settings.describe()` reports it under
+`ns = "mpd-config"`; `configForms.get(ns)` resolves with `entries().find(row => row.options.id === ns)`.
+
+A diagnostic worth keeping, because it is what distinguishes the three failure modes that look
+IDENTICAL on screen: the card logs the form's `status`/`value` at mount and on every update —
+
+```
+[mpd] settings section: form status=loading value=absent writable=false mode=host
+[mpd] settings section: form updated status=ready value=present
+```
+
+**A stale-evidence trap this cost me:** the inputs looked empty for two captures because I was reading
+an OLD screenshot — `<input>` values never appear in `innerText`, so the text dump could not show them
+either, and the image I checked was from a run that predated the fix. Check the artifact's TIMESTAMP
+against the run you just did.
+
+WHAT REMAINS (W4c-c): the TUI section still shows `（未设置）` for its rows — it declares fields through
+`tuiSettingsSections` and binds no values — and the retired namespace bridge in `mpd-config` can go
+once both front doors read the entry.

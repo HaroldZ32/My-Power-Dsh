@@ -28,7 +28,14 @@ const report = { base: BASE, workspace: WORKSPACE, viewport: [WIDTH, HEIGHT], st
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] })
 const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT } })
 const page = await context.newPage()
-page.on("console", (m) => { if (m.type() === "error") report.consoleErrors.push(String(m.text()).slice(0, 250)) })
+// Keep EVERY mpd line (not just errors): the settings card reports a degrade as a WARNING, and a
+// warning-only failure is exactly the class that hid the empty inputs for two waves.
+report.mpdConsole = []
+page.on("console", (m) => {
+  const text = String(m.text())
+  if (m.type() === "error") report.consoleErrors.push(text.slice(0, 250))
+  if (text.includes("[mpd")) report.mpdConsole.push(m.type() + ": " + text.slice(0, 240))
+})
 page.on("pageerror", (e) => report.pageErrors.push(String(e?.message ?? e).slice(0, 250)))
 page.on("requestfailed", (r) => report.failedRequests.push(r.url().slice(0, 160) + " — " + String(r.failure()?.errorText)))
 

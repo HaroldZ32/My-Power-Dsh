@@ -45,6 +45,8 @@ function fakeScope(snapshot, calls = []) {
   const listeners = new Set()
   return {
     bind: (spec) => {
+      // The card binds through the ENTRY id (`mpd-config`), and the form it gets back carries the
+      // namespace. Both are asserted so a repoint cannot silently change either.
       expect(spec.namespace).toBe("mpd")
       return {
         getSnapshot: () => snapshot,
@@ -73,7 +75,7 @@ const READY = {
 }
 
 function mountedCard(scope) {
-  const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) } } })
+  const client = loadMpdClient({ services: { configForms: { get: (entryId) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } } } })
   client.exports.apply(client.ctx)
   const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
   return { client, registration }
@@ -191,7 +193,7 @@ describe("the registration only happens when the namespace form is available", (
     const client = loadMpdClient()
     client.exports.apply(client.ctx)
     expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.section")).toBe(false)
-    client.provideService("configForms", { get: (ns) => fakeScope(READY).bind({ namespace: ns }) })
+    client.provideService("configForms", { get: (entryId) => { expect(entryId).toBe("mpd-config"); return fakeScope(READY).bind({ namespace: "mpd" }) } })
     const late = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     expect(sectionDescriptorProblems(late)).toEqual([])
   })
@@ -501,7 +503,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   }
 
   function renderedTree(scope, services) {
-    const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) }, ...services } })
+    const client = loadMpdClient({ services: { configForms: { get: (entryId) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } }, ...services } })
     client.exports.apply(client.ctx)
     const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     return client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }).then((tree) => ({ tree, client, registration }))
@@ -732,7 +734,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
    * asserted undefined in T-A, so the case cannot silently degrade into the old behaviour.
    */
   function injectedTree(scope, hiddenServices) {
-    const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) } }, hiddenServices })
+    const client = loadMpdClient({ services: { configForms: { get: (entryId) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } } }, hiddenServices })
     client.exports.apply(client.ctx)
     const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     const props = { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }

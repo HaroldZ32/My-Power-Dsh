@@ -48,9 +48,26 @@
     "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
     "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
   ],
+  "mpdConsole": [
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models"
+  ],
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790512308024\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-93354792-bfb2-47db-90f7-df3fd679e7cd\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790515107697\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-50a7de92-4fea-4274-a2c9-de00ee81c08f\",\"agentPreset\":\"mpd\"}}}"
   },
   "controls": [
     "New session",

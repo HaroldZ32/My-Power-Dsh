@@ -39,6 +39,16 @@
 // the two front doors cannot drift.
 (require) => {
   const NS = "mpd"
+  /**
+   * THE ENTRY the harness's settings machinery serves, which is NOT the namespace.
+   *
+   * MEASURED on a live boot (docker/ui, 2026-09-27): the loader gives the row
+   * `entry.options.id = "mpd-config"` (its `entry.id` is the address `include:mpd-config`, and
+   * `settings.describe()` reports it under `ns = "mpd-config"`). `configForms.get(ns)` resolves with
+   * `entries().find(row => row.options.id === ns)` and THROWS `No configurable plugin entry "mpd"` for
+   * a namespace no entry has — which is why every input on this card rendered empty.
+   */
+  const CONFIG_ENTRY = "mpd-config"
   /** The locale namespace the section's own labels live in. */
   const LOCALE_NS = "mpdSettings"
   /** The LIST slot the settings shell renders as top-level sections. */
@@ -1090,7 +1100,22 @@
               console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
-            const scope = forms.get(NS)
+            const scope = forms.get(CONFIG_ENTRY)
+            // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
+            // empty" has three possible causes that look identical on screen — the form lookup threw
+            // (warned above), the store never fills, or it fills with a shape this card does not read.
+            // Printing the snapshot's status and whether a value arrived tells them apart from a
+            // capture, without a debugger.
+            try {
+              const first = scope?.getSnapshot?.()
+              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
+              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+                const now = scope.getSnapshot?.()
+                console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
+              })
+            } catch (error) {
+              console.warn("[mpd] settings section: snapshot probe failed: " + String(error?.message ?? error))
+            }
             // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
             // card's own store on every change. Started BEFORE the registration so the first
             // render already carries the real list when the providers are up.
