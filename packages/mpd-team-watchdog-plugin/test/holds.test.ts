@@ -20,7 +20,7 @@ import { readHold } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
 import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
-function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
+function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
 

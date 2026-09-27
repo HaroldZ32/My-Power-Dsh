@@ -61,11 +61,22 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     读取返回 `0/9` 是**设计如此**——本 lane 第一次 Docker 运行就测到了这一点：根层读数看起来像失败，而插件树
     其实是健康的。探针因此把根层读数记为 observation，并为它看到的每个 agent 打印一行；第 10 步创建的会话
     提供了那个 agent，`boot.agentTeamTools` 就以该 Agent 作用域的行为准。
-12. 断言隔离：沙箱 `HOME`/`DSH_HOME` 确实生效；真实 `/root` 下不存在任何 harness 或工具链标记
+12. **断言会话门是"活的"而不只是"挂着的"。** 会话创建之后，启动日志必须包含
+    `[mpd-roles] session gate listener registered for agent "…" agentPreset=mpd`
+    （`boot.sessionGateListener`）。在 v0.10.0 中，会话启动复杂度门虽然挂载却从未触发——"行已组合"从来不是该契约的
+    证据——因此这一行（在本轮运行创建的会话的 `agent/created` 上打印）才是它的存活证明。
+13. 断言隔离：沙箱 `HOME`/`DSH_HOME` 确实生效；真实 `/root` 下不存在任何 harness 或工具链标记
     （`.dsh`、`.mpd`、`.npm`、`.bun`）；没有任何凭据文件携带形似密钥的**值**（harness 在沙箱 home 中生成的
     空 `.credentials.yaml` 是预期行为，并连同其大小一起登记）。随后 reporter 会重新读取自己写出的产物，拒绝
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
-13. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
+14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
+15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.11.1`
+    （第一个 peer 范围包含 `0.1.7-rc.2` 的 dsh-tui 版本），把本 bundle 作为第三层 patch 装进 `dsh-tui`
+    profile，并记下十一条断言：宿主安装、两次 `plugin add`、组合、**TUI 自带作用域注册表行携带
+    `default: mpd`**、`preset-mpd` / `mpd-tui` / 官方团队行、真实 tmux PTY 启动并到达聊天界面、无致命签名，
+    以及所创建会话**实际**运行的预设——从 harness 自己的会话存储读出（`agentPreset: "mpd"`），绝不从界面文本
+    推断。若默认仍是 `standard`，TUI 就会去启动一个该组合并未声明的预设，因此这是一次真正的验收，不是冒烟。
 
 ## 它证明了什么——以及没有证明什么
 
@@ -77,7 +88,8 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 - 已安装的 profile **组合**出了 mpd 行与官方 agent-team 行（**仅组合**——`result.json` 把这一主张单独放在
   `provesCompositionOnly` 字段里，绝不与加载证明混在一起）；
 - 已安装的 profile **确实挂载**：插件代码执行了，适配器提供了服务，mpd 工具已注册，官方 TeamService 已挂载，
-  官方团队工具在 Agent 作用域内应答，`mpd` preset 能为真实会话激活，Web 应用在提供服务。
+  官方团队工具在 Agent 作用域内应答，mpd 会话门监听器为真实会话完成注册，`mpd` preset 能为真实会话激活，
+  Web 应用在提供服务。
 
 没有证明：
 

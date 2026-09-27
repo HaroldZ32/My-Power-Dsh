@@ -22,6 +22,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-bootstrap"
 // The skills registry is a host-plane service shipped by dsh-base; declaring it
@@ -294,7 +295,7 @@ async function listCorpus(root: string): Promise<Array<{ entry: string; locator:
 }
 
 /** The bundled-corpus provider: read-only, lazily loaded, ranked below user roots. */
-function createProvider(root: string, ctx: Ctx, invalidate: () => void) {
+function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () => void) {
   const provider = {
     name: PROVIDER_NAME,
     async list() {
@@ -337,13 +338,23 @@ function createProvider(root: string, ctx: Ctx, invalidate: () => void) {
   }
   // Invalidate on a model-facing write inside the corpus so an edited skill is
   // re-read without a restart (same trigger the filesystem provider uses).
-  if (typeof ctx.on === "function") {
-    ctx.on("fs/observed", (target: any, _observation: any, actor: any) => {
-      const toolName = actor?.name
-      if (toolName !== "edit" && toolName !== "write") return
-      const displayPath = typeof target?.displayPath === "string" ? target.displayPath : undefined
-      if (displayPath === undefined || !displayPath.startsWith(root)) return
-      invalidate()
+  //
+  // The EVENT NAME is part of the harness's surface, so it is spelled inside
+  // `mpd-dsh-adapter` (AGENTS.md §6) and reached through `dsh.onEvent`: a release that
+  // renames `fs/observed` is then absorbed in ONE file instead of here. The handler keeps
+  // its own containment — the adapter's `onEvent` is a passthrough, so a throw would
+  // reach the bus.
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("fs/observed", (target: any, _observation: any, actor: any) => {
+      try {
+        const toolName = actor?.name
+        if (toolName !== "edit" && toolName !== "write") return
+        const displayPath = typeof target?.displayPath === "string" ? target.displayPath : undefined
+        if (displayPath === undefined || !displayPath.startsWith(root)) return
+        invalidate()
+      } catch (error) {
+        console.warn("[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String((error as Error)?.message ?? error))
+      }
     })
   }
   return provider
@@ -430,7 +441,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     console.log("[mpd-bootstrap] skill corpus provider skipped (config)")
   } else {
     dsh.registerSkillProvider((control: any) =>
-      createProvider(corpus, ctx, () => control?.invalidate?.()),
+      createProvider(corpus, ctx, dsh, () => control?.invalidate?.()),
     )
     console.log("[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")")
   }

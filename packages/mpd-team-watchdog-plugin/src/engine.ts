@@ -207,9 +207,23 @@ function report(text: string): void {
   }
 }
 
-/** Subscribe one event handler, returning a disposer that never throws. */
+/**
+ * Subscribe one harness EVENT, returning a disposer that never throws.
+ *
+ * The seam is the ADAPTER's `onEvent`, not the raw ctx: an event NAME is part of the
+ * harness's surface, so a release that renames `agent/pre-step` must be absorbed in
+ * `mpd-dsh-adapter` rather than in every listener here (AGENTS.md §6). The adapter
+ * forwards the handler verbatim — cordis appends `next` for a waterfall, which is what
+ * the pre-step delegate below depends on — and answers `undefined` when the composition
+ * has no event bus.
+ *
+ * Containment stays HERE on purpose: the adapter's `onEvent` is a passthrough, so a
+ * throwing handler would reach the bus. The wrapper keeps the plugin's own contract (a
+ * heartbeat failure may never cost a step its decision) and is why the pre-step handler
+ * ALSO delegates unconditionally in its own body.
+ */
 export function subscribe(
-  ctx: EngineContext,
+  dsh: Pick<DshAdapter, "onEvent">,
   event: string,
   handler: (...args: any[]) => unknown,
 ): () => void {
@@ -222,7 +236,7 @@ export function subscribe(
         return undefined
       }
     }
-    const disposer = ctx.on?.(event, wrapped)
+    const disposer = dsh.onEvent(event, wrapped)
     if (typeof disposer === "function") return disposer as () => void
     if (disposer !== undefined && typeof (disposer as { dispose?: unknown }).dispose === "function") {
       const target = disposer as { dispose: () => void }
@@ -591,7 +605,7 @@ export class WatchdogEngine {
   install(): (() => void)[] {
     const disposers: (() => void)[] = []
     const agentOf = (payload: unknown): unknown => (payload as { agent?: unknown } | undefined)?.agent
-    if (typeof this.ctx.on === "function") {
+    if (typeof this.dsh.onEvent === "function") {
       // `agent/pre-step` IS A CORDIS WATERFALL, and a waterfall listener's return value
       // REPLACES the value being composed: cordis dispatches it as
       // `(cbs.shift() ?? inner)(...args)` with `next` appended, so a listener that returns
@@ -613,7 +627,7 @@ export class WatchdogEngine {
       // decision (and every downstream listener) is untouched. The stamp happens first so
       // the heartbeat still records the step when a downstream listener throws.
       disposers.push(
-        subscribe(this.ctx, "agent/pre-step", (payload: unknown, next: unknown) => {
+        subscribe(this.dsh, "agent/pre-step", (payload: unknown, next: unknown) => {
           // The stamp is contained HERE, not only by `subscribe`'s wrapper: that wrapper
           // answers a thrown handler with `undefined` — which is itself a waterfall VETO
           // (the chain never reaches `next()`), so a heartbeat failure would cost the step
@@ -633,19 +647,19 @@ export class WatchdogEngine {
       // to any dispatch, and a stamp returned from a `serial` listener would BAIL the rest
       // of the chain (`isBailed`), so the vestigial `return stamp` is removed here too.
       disposers.push(
-        subscribe(this.ctx, "agent/session-start", (payload: unknown) => {
+        subscribe(this.dsh, "agent/session-start", (payload: unknown) => {
           this.stamp("turn-start", agentOf(payload) ?? payload)
         }),
       )
       disposers.push(
-        subscribe(this.ctx, "agent/turn-stopping", (payload: unknown) => {
+        subscribe(this.dsh, "agent/turn-stopping", (payload: unknown) => {
           const stamp = this.stamp("turn-end", agentOf(payload) ?? payload)
           const rotated = rotateHeartbeats(stamp.workspace, this.config.stateDir, stamp.memberKey, this.config.keepGenerations)
           if (rotated.rotated) this.stats.rotations += 1
         }),
       )
     } else {
-      this.warn("this context exposes no event seam — heartbeat writers not installed")
+      this.warn("the adapter exposes no event seam — heartbeat writers not installed")
     }
 
     // ── THE PRIMARY SIGNAL (contract §2): the `session/event` firehose ───────────────

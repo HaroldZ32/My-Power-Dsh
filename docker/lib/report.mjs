@@ -57,6 +57,7 @@ const EXPECTED = [
   "boot.adapterToolCall",
   "boot.mpdTools",
   "boot.agentTeamTools",
+  "boot.sessionGateListener",
   "boot.agentTeamService",
   "boot.servesHttp",
   "boot.presetMount",
@@ -64,6 +65,21 @@ const EXPECTED = [
   "isolation.home",
   "isolation.realHome",
   "isolation.noCredentials",
+  // ── the DSH-TUI edition (docker/tui-lane.sh) ─────────────────────────────────
+  // A developer host cannot install a global npm prefix, so the container is the ONLY
+  // place the TUI profile is exercised end to end. Every one of these is a real
+  // assertion; a failed boot lands as `false`, never as a silent skip.
+  "tui.hostInstall",
+  "tui.pluginAddHost",
+  "tui.pluginAddBundle",
+  "tui.compose",
+  "tui.registryDefaultMpd",
+  "tui.presetRow",
+  "tui.mpdTuiRow",
+  "tui.agentTeamRows",
+  "tui.boot",
+  "tui.noFatalSignatures",
+  "tui.sessionPreset",
   "boot.llmTurn",
 ]
 
@@ -222,6 +238,7 @@ const result = {
     "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
     "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
     "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
     "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
   ],
   // COMPOSITION ONLY = row lists. Kept in its own field so nothing here can be read as a load proof

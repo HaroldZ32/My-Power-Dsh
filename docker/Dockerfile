@@ -32,7 +32,9 @@ COPY . /src/
 COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
 COPY docker/probe.mjs /opt/mpd-e2e/probe.mjs
 COPY docker/lib/ /opt/mpd-e2e/lib/
-RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh && mkdir -p /work /out
+# The TUI lane is apparatus too: it records its own verdicts from OUTSIDE the tree under test.
+COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh && mkdir -p /work /out
 
 WORKDIR /work
 ENTRYPOINT ["/opt/mpd-e2e/entrypoint.sh"]

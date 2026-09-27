@@ -32,4 +32,8 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 同一个 patch 也组合 TUI 版本：`mpd-tui` 行挂载
 `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`（该包自身不带 patch，因此这一行是唯一挂载点，任何组合都无法重复该 loader 条目 id）。
 
-预设选择的 id-target 是 `agent-preset-registry`（`@deepseek-ai/dsh-agent-preset-registry`，`config.default: mpd`）。Harness 0.1.7-rc.2 移除了本文件过去针对的那两个「按平面分设的预设根」行（`agent-presets` / `dsh-tui-agent-presets`，二者都挂在已删除的 `@deepseek-ai/dsh-agent-presets` 包上），所以现在只有一个目标，就是该注册表。不携带该行的组合——headless profile，或 `dsh-tui` 平面上另铸了不同名字的注册表行——只会记录 `patch: entry agent-preset-registry not found` 并保留自己的默认值；`mpd` 预设本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。
+预设选择有**两个** id-target，按平面各一，都指向同一个包并把 `config.default` 设为 `mpd`：
+- `agent-preset-registry` —— `dsh-web-app` 为 web/base 组合插入的那一行；
+- `dsh-tui-agent-preset-registry` —— `dsh-tui` 为自己组合铸造的**带作用域**的行。
+
+第二个并非冗余：`dsh-tui` profile 不组合 `dsh-web-app` 层，所以第一个目标在那里会被跳过（`patch: entry agent-preset-registry not found`），而 TUI 自己的行会保留 `default: standard` —— 可该组合里没有任何东西声明 `standard` 预设（`@deepseek-harness-tui/dsh-tui@0.11.1` 不附带预设行），于是每个新的 TUI 会话都会去要一个并不存在的预设。两个 id 各自只存在于一个组合中，因此另一个 profile 只会记录一条 not-found 警告、什么都不改；id-target 只赋值本文件携带的键并跳过 `id`，所以 TUI 那一行自带的「编译期 DISABLED 表达式」原样保留。Harness 0.1.7-rc.2 移除了本文件过去针对的「预设根」行（`agent-presets` / `dsh-tui-agent-presets`，二者都挂在已删除的 `@deepseek-ai/dsh-agent-presets` 包上）。不携带该行的组合——headless profile，或 `dsh-tui` 平面上另铸了不同名字的注册表行——只会记录 `patch: entry agent-preset-registry not found` 并保留自己的默认值；`mpd` 预设本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。

@@ -119,6 +119,19 @@ function buildPlan(o) {
       id: "agent-preset-registry", name: "@deepseek-ai/dsh-agent-preset-registry",
       config: { default: "mpd" }, alwaysIdTarget: true
     },
+    // dsh-tui plane: the TUI mints its OWN registry row under the SCOPED id
+    // `dsh-tui-agent-preset-registry` (name `@deepseek-ai/dsh-agent-preset-registry`,
+    // stock config `{ default: 'standard' }`), and a `dsh-tui` profile composes no
+    // dsh-web-app layer — so the row above is skipped there and the TUI's own default
+    // would win. NOTHING in that composition declares a `standard` preset
+    // (`@deepseek-harness-tui/dsh-tui@0.11.1` ships no preset rows), so without this
+    // target every new TUI session asks for a preset that does not exist. Column-0
+    // id-target for the same reason as the row above: the subject is minted by
+    // dsh-tui's own patch, and emitting it as an insert would collide on the entry id.
+    {
+      id: "dsh-tui-agent-preset-registry", name: "@deepseek-ai/dsh-agent-preset-registry",
+      config: { default: "mpd" }, alwaysIdTarget: true
+    },
     // The `mpd` preset itself: a `@deepseek-ai/dsh-agent-preset` ROW whose whole
     // composition is inline under `config.plugins`. Extracted VERBATIM from
     // `presets/mpd.patch.yml` (the bundle's single declaration of the mpd
@@ -395,6 +408,9 @@ function selfTest() {
   // extracted VERBATIM from the bundle's own preset patch.
   const registry = plan.rows.find((r) => r.id === "agent-preset-registry")
   if (!registry || registry.alwaysIdTarget !== true || registry.config?.default !== "mpd") { console.error("[install-profile self-test] FAIL: agent-preset-registry row (want an always-id-target with default: mpd)"); process.exit(1) }
+  const tuiRegistry = plan.rows.find((r) => r.id === "dsh-tui-agent-preset-registry")
+  if (!tuiRegistry || tuiRegistry.alwaysIdTarget !== true || tuiRegistry.config?.default !== "mpd") { console.error("[install-profile self-test] FAIL: dsh-tui-agent-preset-registry row (want an always-id-target with default: mpd — a dsh-tui profile composes no dsh-web-app layer, so the web-plane target is skipped there and that composition declares no `standard` preset)"); process.exit(1) }
+  if (tuiRegistry.name !== registry.name) { console.error("[install-profile self-test] FAIL: both registry targets must name the SAME package"); process.exit(1) }
   const presetRow = plan.rows.find((r) => r.id === "preset-mpd")
   if (!presetRow || !presetRow.rawRow) { console.error("[install-profile self-test] FAIL: preset-mpd row must carry the verbatim block from the bundle patch"); process.exit(1) }
   const presetText = presetRow.rawRow.lines.join("\n")

@@ -76,10 +76,20 @@ The same patch also composes the TUI edition: the `mpd-tui` row mounts
 `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` (that package ships no patch of its own, so
 this row is the only mount and no composition can duplicate the loader entry id).
 
-The preset-selection id-target is `agent-preset-registry` (`@deepseek-ai/dsh-agent-preset-registry`,
-`config.default: mpd`). Harness 0.1.7-rc.2 removed the per-plane preset-root rows this file used to
-target (`agent-presets` / `dsh-tui-agent-presets`, both on the retired
-`@deepseek-ai/dsh-agent-presets` package), so there is now exactly ONE target and it is the registry.
+Preset selection has **TWO** id-targets, one per plane, both naming the same package with
+`config.default: mpd`:
+- `agent-preset-registry` — the row `dsh-web-app` inserts for the web/base composition;
+- `dsh-tui-agent-preset-registry` — the SCOPED row `dsh-tui` mints for its own composition.
+
+The second is not redundant: a `dsh-tui` profile composes no `dsh-web-app` layer, so the first
+target is skipped there (`patch: entry agent-preset-registry not found`) and the TUI's own row would
+keep `default: standard` — while nothing in that composition declares a `standard` preset
+(`@deepseek-harness-tui/dsh-tui@0.11.1` ships no preset rows), so every new TUI session would ask
+for a preset that does not exist. Each id exists in exactly ONE composition, so the other profile
+only logs a not-found warning and applies nothing; an id-target assigns only the keys this file
+carries and skips `id`, so the TUI row's own compiled-DISABLED expression survives untouched.
+Harness 0.1.7-rc.2 removed the preset-ROOT rows this file used to target (`agent-presets` /
+`dsh-tui-agent-presets`, both naming the deleted `@deepseek-ai/dsh-agent-presets` package).
 A composition that carries no such row — the headless profile, or a `dsh-tui` plane that mints a
 differently-named registry row — logs `patch: entry agent-preset-registry not found` and keeps its
 own default; the `mpd` preset itself is declared by the second patch file

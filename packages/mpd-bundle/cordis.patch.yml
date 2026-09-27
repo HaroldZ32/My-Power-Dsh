@@ -53,6 +53,36 @@
   config:
     default: mpd
 
+# ── preset selection, dsh-tui plane: the SAME default, for the TUI composition ──
+# MEASURED against `@deepseek-harness-tui/dsh-tui@0.11.1` (the first dsh-tui release whose
+# peer ranges include `0.1.7-rc.2`; 0.10.1 and 0.10.2 stop at `0.1.5-rc.1`): the TUI mints
+# its OWN registry row under the scoped id `dsh-tui-agent-preset-registry`
+# (`name: '@deepseek-ai/dsh-agent-preset-registry'`, config `{ default: standard }`,
+# disabled when an enabled `agent-preset-registry` entry already exists). A `dsh-tui`
+# profile does NOT compose the dsh-web-app layer, so the id-target above is skipped there
+# (`patch: entry agent-preset-registry not found`) and the TUI's row keeps
+# `default: standard` — while NOTHING in that composition declares a `standard` preset
+# (dsh-tui 0.11.1 ships no preset rows and no `presets/standard/`). Left alone, an mpd
+# bundle installed into a TUI profile would therefore default every new session to a
+# preset that does not exist. This id-target restores user decision D10 ("TUI sessions
+# must default to the mpd preset") on the 0.1.7-rc.2 row model.
+#
+# SAFETY OF THE PAIR is the same argument the retired `agent-presets` /
+# `dsh-tui-agent-presets` pair used: each id exists in exactly ONE composition (the web
+# row comes from dsh-web-app's patch, the TUI row from dsh-tui's own), so the other
+# profile only logs `patch: entry <id> not found` and applies nothing — no duplicate
+# loader entry id is possible in either. Loader semantics that make the id-target safe
+# and COMPLETE: an id-target is a per-key shallow override that skips `id` and assigns
+# only the keys this file carries, so the TUI row's own compiled-DISABLED
+# expression survives untouched (the row still disables itself when the web-plane
+# `agent-preset-registry` is present, which is exactly why this override is harmless in
+# that case); a missing id-target is a WARN, never an error; a duplicate entry id is
+# fatal (cordis-plugin-loader src/config/group.ts).
+- id: dsh-tui-agent-preset-registry
+  name: '@deepseek-ai/dsh-agent-preset-registry'
+  config:
+    default: mpd
+
 # ── runtime plugin dependency: the sidebar HOST the bundle's GUI needs ──────
 # MEASURED DEFECT (evidence/install-deps/red-baseline/20260920T030832Z/result.json):
 # a clean install of this bundle alone composed ZERO `dsh-better-sidebar` rows, so

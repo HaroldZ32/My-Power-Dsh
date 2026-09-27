@@ -161,3 +161,64 @@ readings with different owners.
 **Both lessons are binding for the next harness adaptation:** a payload-shape assumption is verified by
 a BOOT, never by a unit test that builds the payload; and a live case's verdict is only as strong as
 its most granular assertion.
+
+## 8. Agent-team capability delta (retired vendored body → official plugin + mpd layer)
+
+Measured 2026-09-27 by reading both surfaces: the retired tool list is
+`packages/mpd-agent-teams-plugin/lib/tool-names.js` (20 stable operations), the current one is
+`@deepseek-ai/dsh-experimental-tool-agent-team` (9 model-facing tools) plus the mpd layer
+(`mpd-roles-plugin`'s guard, roster section and advisory gate).
+
+**YES, the surface is smaller, and the reductions are real.** What is gone, and what replaced it:
+
+| Retired capability | Retired semantics | Now |
+|---|---|---|
+| `agent_teams_create` + `_approve` + `_edit_plan` | stage a plan, the user edits and approves it in the Web panel, then the scheduler runs | **GONE as a mechanism.** The captain spawns teammates and posts tasks on the shared board directly; `team_task_update`'s revision-checked lifecycle replaces the staged-plan gate |
+| `_add_member` / `_remove_member` | extend/prune the roster beyond a profile | `spawn_teammate` per member; **no removal** — `interrupt_agent` stops a turn, nothing deletes a member |
+| `_create_task` / `_reassign_task` / `_claim_task` / `_update_task` | task DAG with `attempt_id` and auto-claim | `team_task_create` + `team_task_update` (`claim`/`release`/`edit`/`set_dependencies`/`complete`/`reopen`/`reassign`/`delete`) with `expectedRevision`; **no `attempt_id`** |
+| `_status` | roster + board + delivery snapshot | `list_agents` + `team_task_list` |
+| `_send_message` / `_mailbox_check` | messaging + a read-only unread pre-check | `send_message`; **no unread count exists on the official mailbox** |
+| `_task_contract` | a frozen per-task contract object | **GONE** — the task record (`subject`, `description`, `blocked_by`, `write_scopes`) is the contract |
+| `_path_owner` / `_move_path` | path ownership and hand-off | **GONE** |
+| `_rollover` | generation rollover | **GONE** — the board's `revision` is the generation bound |
+| `_resume` / the Stop-team halt | one operator pause mechanism | **GONE** — the official plugin exposes no halt; the watchdog's preserving hold is the only pause this bundle implements |
+| `_delete` | archive a staged/finished team | **GONE** — a team is the implicit root of its Lead session |
+| the dependency-DAG **scheduler** with auto-claim | members were dispatched automatically | **GONE** — the captain dispatches with `send_message` and `wait_agent` |
+| per-member **model routing** (`teamModels.slot*` → member) | each teammate started on its tier's route | **GONE for teammates** (plan §3: `spawnTeammate` forwards only `{prompt,parent}`). The slots still route the ONE-SHOT paths (`mpd_role_spawn`, `mpd_workmate_spawn`) |
+| per-member `toolDeny` | mechanical read-only discipline | **RESTORED** as a tool guard keyed on the calling agent's team membership (`mpd-roles-plugin/src/team-guard.ts`) |
+| `<workspace>/.mpd/team/team.json` | durable cross-process team record | **GONE** — state is the Lead's session log (`team/member`, `team/task`) |
+| the adopted Web activity panel / sidebar tab | roster, plan editor, activity | replaced by the OFFICIAL roster + task board client; the bundle's own sidebar tab is now the watchdog view |
+| the `/agent-teams` command | stage a team from a slash command | **GONE** |
+| the session-start gate's **provisioning** modes | `mode: auto` staged a team unconditionally | **ADVISORY only** — restored on the official seams, and it stages nothing |
+
+**What is NOT reduced:** the 11-member roster (names, personas, read-only discipline), the
+session-start complexity gate (advisory), one-shot consult (`mpd_role_spawn`), the workmate
+library, the team watchdog and the team-compaction lanes — all still shipped, rebased where their
+data source moved.
+
+## 9. Adapter coverage audit (2026-09-27)
+
+Question asked: is EVERY harness interface of the agent-team plane on `mpd-dsh-adapter`?
+
+- **The mpd team plane: yes.** `mpd-roles-plugin` (guard, roster section, gate) reaches the team
+  service only through `mpdDsh`; the D6 gate proves it statically over 22 packages / 96 `.ts` files.
+- **The official plugin itself: no, and it cannot be.** `@deepseek-ai/dsh-experimental-agent-team`
+  and friends ARE harness code — they talk to the harness because they are part of it. Routing them
+  through this bundle's adapter would mean forking them, which is the opposite of adopting the
+  official surface. What this bundle controls is which ROWS it mounts and how its OWN code reaches
+  them.
+- **Two real gaps were found and closed by this audit** (neither was visible to the D6 gate, which
+  only looked for two identifiers):
+  1. `mpd-team-watchdog-plugin` subscribed to `agent/pre-step`, `agent/session-start` and
+     `agent/turn-stopping` on a RAW ctx while its `session/event` and `agent/assistant-stream`
+     subscriptions already went through `dsh.onEvent` — a split nobody had seen, because an event
+     NAME is invisible to an identifier scan. All three now go through `dsh.onEvent` (which is what
+     the adapter is for: a renamed harness event is absorbed in ONE file).
+  2. `mpd-bootstrap-plugin` subscribed to `fs/observed` the same way; it now takes the adapter and
+     contains its own handler (the adapter's `onEvent` is a passthrough).
+  The D6 gate gained a second rule family (`FORBIDDEN_EVENT_NAMES`) so this class cannot come back.
+- **Deliberately NOT routed, and named:** `ctx.on("internal/service", …)` in `mpd-bundle-plugin` and
+  `mpd-workmate-plugin` is the CORDIS FRAMEWORK's own service-registry signal, not a harness seam —
+  the rule lists harness EVENTS, not "no `ctx.on` anywhere".
+- **The retired vendored body** stays adapter-mediated with its counted 5-line residual
+  (`lib/members.js`), and it is unmounted, so it is not on any live path.

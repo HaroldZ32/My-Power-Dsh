@@ -13,7 +13,7 @@ import { apply } from "../src/index"
 import { readHeartbeats } from "../src/store"
 import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
-function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
+function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
 
@@ -51,7 +51,7 @@ describe("AC-15 fail-safe", () => {
     console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(" "))
     try {
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.knownRoots = () => {
         throw new Error("boom")
       }
@@ -116,7 +116,7 @@ describe("AC-15 fail-safe", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.stamp("step", agent("a1", box.workspace))
       const before = watchdogFileCount(box.workspace, box.stateDir)
       const { readHeartbeats } = await import("../src/store")
@@ -149,7 +149,7 @@ describe("AC-15 fail-safe", () => {
       // Occupy the heartbeat directory's place with a FILE.
       writeFileSync(join(watchdog, "heartbeat"), "not a directory\n")
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       const stamp = engine.stamp("step", agent("a1", box.workspace))
       expect(stamp.member).toBe("Architect")
       expect(engine.getStats().heartbeatFailures).toBe(1)
@@ -170,7 +170,7 @@ describe("AC-15 fail-safe", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       // A WARN awaits, so the first tick is genuinely in flight when the second starts.
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
@@ -199,7 +199,7 @@ describe("AC-15 fail-safe", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.stamp("step", agent("a1", box.workspace))
       const { readHeartbeats } = await import("../src/store")
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at

@@ -3,8 +3,11 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` 0.10.1 及其内置的准入
-（admission）配置文件。
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.11.1** 及其内置的准入
+（admission）配置文件。0.11.1 是第一个 peer 范围包含 `0.1.7-rc.2` 的 dsh-tui 版本（0.10.1 与
+0.10.2 只到 `0.1.5-rc.1`），因此只有它能与本 bundle 所针对的 harness 一起启动；下文的兼容性
+测量是在 0.10.1 上做的，并已在 Docker 端到端测试（`docker/tui-lane.sh`）中重新验证 —— 那也是
+唯一能端到端跑通 TUI profile 的地方。
 
 > **请先读这一段。** 本仓库**没有**发布任何一致性声明（conformance claim）。该生态的声明产物
 > （`schemas/conformance-claim.schema.json`，`claimVersion` 为 `"0.15"`，`specVersion` 为

@@ -370,7 +370,7 @@ const FIXTURES = {
   tui: {
     reason: "absent-harness-closure",
     probe: "<real dsh-tui profile>/node_modules/@deepseek-harness-tui/dsh-tui/package.json + tmux + dsh-tui",
-    remedy: "dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.10.1",
+    remedy: "dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.11.1",
     present: () => existsSync(join(REAL_TUI_NODE_MODULES, TUI_BUNDLE, "package.json"))
       && spawnSync("tmux", ["-V"], { encoding: "utf8" }).status === 0
       && spawnSync("dsh-tui", ["--version"], { encoding: "utf8" }).status === 0,

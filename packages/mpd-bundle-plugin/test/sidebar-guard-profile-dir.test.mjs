@@ -33,12 +33,28 @@ const ROOT = join(import.meta.dirname, "..", "..", "..");
 const PATCH_PATH = join(ROOT, "packages", "mpd-bundle", "cordis.patch.yml");
 const PATCH = readFileSync(PATCH_PATH, "utf8");
 
-/** The SHIPPED `disabled: !!js` scalar of the sidebar row, decoded to JavaScript. */
+/**
+ * The SHIPPED `disabled: !!js` scalar of the sidebar row, decoded to JavaScript.
+ *
+ * MEASURED 2026-09-27: this used to take the FIRST line containing the marker, and a
+ * COMMENT elsewhere in the patch that merely NAMED the scalar (`… the row's own
+ * `disabled: !!js …` expression …`) became the subject — the run died in `JSON.parse`
+ * with `Unexpected identifier "this"`, which reads like a broken guard rather than a
+ * broken finder. A candidate is now accepted only if its suffix really parses as the
+ * JSON-quoted scalar, so prose about the guard can never displace the guard itself.
+ */
 function shippedGuard() {
-  const line = PATCH.split(/\r?\n/).find((candidate) => candidate.includes("disabled: !!js"));
-  if (line === undefined) throw new Error(`no \`disabled: !!js\` scalar found in ${PATCH_PATH}`);
-  // The scalar is YAML double-quoted, so its escapes are JSON's.
-  return JSON.parse(line.trim().slice("disabled: !!js ".length));
+  const marker = "disabled: !!js ";
+  const candidates = PATCH.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith(marker))
+  for (const line of candidates) {
+    try {
+      // The scalar is YAML double-quoted, so its escapes are JSON's.
+      return JSON.parse(line.slice(marker.length))
+    } catch { /* a comment or a differently-quoted scalar: not the one we want */ }
+  }
+  throw new Error(`no JSON-quoted \`disabled: !!js\` scalar found in ${PATCH_PATH} (candidates: ${candidates.length})`);
 }
 const GUARD = shippedGuard();
 

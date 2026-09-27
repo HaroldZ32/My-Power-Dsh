@@ -263,6 +263,14 @@ export interface StubAdapter {
    * Returns how many listeners were called.
    */
   emit: (event: string, ...args: unknown[]) => number
+  /**
+   * The LAST handler registered for one event through this stub's `onEvent`.
+   *
+   * The engine subscribes through the ADAPTER (AGENTS.md §6), so the listener lives on
+   * the adapter's map, not on a separate ctx stub — a test that wants to invoke it reads
+   * it from here.
+   */
+  listener: (event: string) => ((...args: unknown[]) => unknown) | undefined
 }
 
 /**
@@ -342,6 +350,13 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     post,
     settingsListeners,
     toolExecutes,
+    // The LAST handler registered for one event through the adapter's `onEvent`. The engine
+    // subscribes through the ADAPTER (AGENTS.md §6), so a test that wants to invoke the
+    // listener it installed reads it here rather than off a separate ctx stub.
+    listener: (event: string) => {
+      const list = eventListeners.get(event) ?? []
+      return list[list.length - 1]
+    },
     setSettings: (value: unknown) => {
       settings = value
     },
@@ -430,9 +445,18 @@ export function pluginCtx(workspace: string, settings?: unknown): PluginCtx {
       services.set(id, value)
     },
     services,
+    // The ctx stub's event bus IS the stub adapter's: the ENGINE (like the real
+    // plugins) subscribes through `dsh.onEvent`, and the adapter forwards to `ctx.on`.
+    // Modelling both halves on ONE map keeps `ctx.handlers` (which several tests read)
+    // and `stub.emit(event, …)` (which drives the adapter side) describing the same
+    // listener, exactly as they do in a real composition.
     on: (event, handler) => {
+      const disposer = stub.adapter.onEvent(event, handler)
       handlers.set(event, handler)
-      return () => handlers.delete(event)
+      return () => {
+        handlers.delete(event)
+        if (typeof disposer === "function") disposer()
+      }
     },
     effect: (callback: () => unknown) => {
       cleanups.push(callback)

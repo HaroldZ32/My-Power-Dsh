@@ -67,13 +67,28 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     the root read looked like a failure while the tree was healthy. The probe therefore reports the root
     read as an observation and prints one line per agent it sees; the step-10 session supplies the agent,
     and `boot.agentTeamTools` is graded from that agent-scoped line.
-12. Asserts isolation: the sandbox `HOME`/`DSH_HOME` were in force, no harness or toolchain marker
+12. **Asserts the session gate is LIVE, not merely mounted.** Once the session exists, the boot log
+    must carry `[mpd-roles] session gate listener registered for agent "…" agentPreset=mpd`
+    (`boot.sessionGateListener`). In v0.10.0 the session-start complexity gate was mounted but never
+    fired — a composed row was never evidence for that contract — so this line, emitted on
+    `agent/created` for the session this run creates, is its liveness proof.
+13. Asserts isolation: the sandbox `HOME`/`DSH_HOME` were in force, no harness or toolchain marker
     (`.dsh`, `.mpd`, `.npm`, `.bun`) exists under the real `/root`, and no credential file carries a
     secret-shaped **value** (the empty `.credentials.yaml` the harness materializes in the sandbox home
     is expected and inventoried with its size). The reporter then re-reads the artifacts it wrote and
     refuses to let a token shape survive into them (`evidenceScrubbed`; a leak reddens the verdict and
     rewrites both files with targeted scrubbing).
-13. Records `boot.llmTurn` as **`null` with a reason** — see below.
+14. Records `boot.llmTurn` as **`null` with a reason** — see below.
+15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
+    exercise, because the TUI host must be installed from npm into a writable global prefix and booted
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.11.1` (the first dsh-tui release whose
+    peer ranges include `0.1.7-rc.2`), installs THIS bundle into the `dsh-tui` profile as the third
+    patch layer, and records eleven assertions: host install, both `plugin add` calls, composition,
+    **the TUI's own scoped registry row carrying `default: mpd`**, the `preset-mpd` / `mpd-tui` /
+    official-team rows, a real tmux PTY boot reaching the chat screen, no fatal signature, and the
+    preset the created session ACTUALLY ran — read from the harness's own session store
+    (`agentPreset: "mpd"`), never from the pane. A `standard`-preset default would leave the TUI
+    booting a preset that composition does not declare, so this is a real acceptance, not a smoke.
 
 ## What it proves — and what it does NOT
 
@@ -86,7 +101,8 @@ Proves:
   `result.json` keeps that claim in its own `provesCompositionOnly` field, never mixed with a load proof);
 - the installed profile **MOUNTS**: plugin code executes, the adapter provides its service, the mpd
   tools are registered, the official TeamService is mounted, the official team tools answer inside an
-  agent scope, the `mpd` preset activates for a real session, and the Web app serves.
+  agent scope, the mpd session gate listener registers for a real session, the `mpd` preset activates
+  for a real session, and the Web app serves.
 
 Does NOT prove:
 
