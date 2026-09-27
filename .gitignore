@@ -89,3 +89,9 @@ evidence/**/raw/final/
 # CONVENTION is lane D's (plan §4.2); the shape here is DERIVED by measuring the drivers it must cover, and
 # it can only ever ignore root paths that already begin `.qa-`.
 /.qa-*
+
+# The UI-VIEW stack's working state (docker/ui/): the container rebinds its own port, and its
+# scratch (sandbox homes, tmux sockets, npm prefix) is machine state a reviewer regenerates with
+# one command. The SCREENSHOTS and report are the evidence and stay: only the scratch is ignored.
+docker/ui/data/
+docker/ui/pw/

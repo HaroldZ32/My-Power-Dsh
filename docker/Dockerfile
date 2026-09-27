@@ -34,7 +34,11 @@ COPY docker/probe.mjs /opt/mpd-e2e/probe.mjs
 COPY docker/lib/ /opt/mpd-e2e/lib/
 # The TUI lane is apparatus too: it records its own verdicts from OUTSIDE the tree under test.
 COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
-RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh && mkdir -p /work /out
+# The UI-VIEW stack (docker/ui/) reuses this image but holds the Web GUI and the TUI
+# open instead of driving a verdict, so it swaps only the entrypoint.
+COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh \
+ && mkdir -p /work /out /data /src
 
 WORKDIR /work
 ENTRYPOINT ["/opt/mpd-e2e/entrypoint.sh"]

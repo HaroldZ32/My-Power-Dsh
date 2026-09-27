@@ -1,0 +1,3 @@
+web=0.0.0.0:3080
+tui_socket=/data/tui.sock
+tui_pane_log=/data/tui-pane.log

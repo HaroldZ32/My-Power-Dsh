@@ -4,12 +4,7 @@ Human-readable release notes. Format: one section per released version, newest f
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
 
-## v0.10.2 — the TUI plane, and two adapter event gaps
-
-A review round asked three questions: is the agent-team surface smaller than before, are ALL of its
-harness interfaces on the adapter, and does the TUI edition actually work. The first two are answered
-in `docs/plan-0.1.7-adaptation.md` §8 (the capability delta, honestly listed) and §9 (the coverage
-audit); the third found a real regression, and the audit found two real gaps.
+## v0.10.2 — TUI preset default, adapter event seams, TUI end-to-end lane
 
 **Fixed.**
 
@@ -36,11 +31,7 @@ audit); the third found a real regression, and the audit found two real gaps.
   session ACTUALLY ran from the harness's own session store — `agentPreset: "mpd"`. 11 assertions,
   reported as `passed=42 failed=0 null=1` by the driver.
 
-## v0.10.1 — the session-start gate really fires
-
-Two functional defects were measured AFTER v0.10.0 was tagged, by lanes whose verification went deeper
-than the release sweep did. Both are fixed here; the full account is in
-`docs/plan-0.1.7-adaptation.md` §7.
+## v0.10.1 — session-start gate delivery, producer-owned message source
 
 **Fixed.**
 
@@ -70,9 +61,7 @@ than the release sweep did. Both are fixed here; the full account is in
 - A regression test drives the gate through the REAL adapter with the REAL payload shape — no `agent`
   field — which is the test whose absence let this ship.
 
-## v0.10.0 — full adaptation to DeepSeek Harness 0.1.7-rc.2
-
-The harness replaced two things this bundle was built on, and this release follows both.
+## v0.10.0 — DeepSeek Harness 0.1.7-rc.2 adaptation, official Agent Teams, Docker client test
 
 **Breaking changes (harness 0.1.7-rc.2).**
 
@@ -98,7 +87,7 @@ The harness replaced two things this bundle was built on, and this release follo
   (`packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs`) fails on a direct
   `ctx.agentTeams` / `subagents.startContinuable` reference anywhere outside the adapter.
 
-**Capability bound, stated plainly.** `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to
+**Capability bound.** `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to
 `ctx.subagents.startContinuable`, so a teammate created by `spawn_teammate` inherits the Lead's model
 route: per-teammate model routing is impossible on the official plugin. The `teamModels.slot*` settings
 keep applying to the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an

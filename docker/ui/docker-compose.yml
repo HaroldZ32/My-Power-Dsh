@@ -1,0 +1,42 @@
+# docker/ui/docker-compose.yml — the UI-VIEW stack.
+#
+# Brings up ONE long-lived container that holds the Web GUI and the TUI open so they can be
+# inspected from the host:
+#
+#   docker compose -f docker/ui/docker-compose.yml up -d --build
+#   docker compose -f docker/ui/docker-compose.yml logs -f          # the boot log + the URL token line
+#   docker compose -f docker/ui/docker-compose.yml down
+#
+# The Web port is published to 127.0.0.1 ONLY: this is a working surface, not a service.
+# Nothing about ~/.dsh, ~/.mpd or the host HOME is mounted — the container keeps its own
+# sandboxes under /data, and the only bind is the evidence directory.
+services:
+  ui:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    image: mpd-ui-view:latest
+    # The E2E image's own entrypoint drives a verdict; this stack wants the surfaces HELD
+    # OPEN instead, so the command is replaced while the image (and its build context) is
+    # shared. `docker/Dockerfile` bakes /src as the repository copy.
+    entrypoint: ["/opt/mpd-e2e/ui-entrypoint.sh"]
+    environment:
+      MPD_UI_PORT: "3080"
+      # The port the relay listens on INSIDE the container, which the mapping below publishes.
+      MPD_UI_HOST_PORT: "3081"
+      MPD_UI_DSH_VERSION: "0.1.7-rc.2"
+      MPD_UI_TUI_VERSION: "0.11.1"
+    ports:
+      # The HOST port is deliberately NOT 3080: that is the operator's own running DSH Web
+      # GUI, and this stack must never contend with it (measured: binding 3080 failed with
+      # "address already in use"). Override with MPD_UI_HOST_PORT if 3081 is taken too.
+      - "127.0.0.1:3081:3081"
+    volumes:
+      # Evidence + captured panes land here so a UI review leaves artifacts on the host.
+      - ./out:/data-out
+      - ./data:/data
+    working_dir: /work
+    # The TUI needs a PTY-capable tmux server, which is a normal process inside the
+    # container; allocation happens at `docker exec` time, so nothing is required here.
+    tty: false
+    stdin_open: false

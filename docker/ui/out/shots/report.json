@@ -1,0 +1,67 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "workspace": "/data/ws",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "name": "01-launch",
+      "ok": true,
+      "file": "/data-out/shots/01-launch.png"
+    },
+    {
+      "name": "02-notice-dismissed",
+      "ok": true,
+      "file": "/data-out/shots/02-after-notice.png"
+    },
+    {
+      "name": "03-session-created",
+      "ok": true,
+      "file": "/data-out/shots/03-home-with-session.png"
+    },
+    {
+      "name": "04-sidebar-open",
+      "ok": true,
+      "file": "/data-out/shots/04-sidebar.png"
+    },
+    {
+      "name": "05-settings",
+      "ok": true,
+      "file": "/data-out/shots/05-settings.png"
+    },
+    {
+      "name": "06-plugins",
+      "ok": true,
+      "file": "/data-out/shots/06-plugins.png"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
+  ],
+  "sessionCreate": {
+    "status": 200,
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790507917030\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-7a2dc4be-1a98-486a-b34c-93d4684a088e\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "controls": [
+    "New session",
+    "Collapse sidebar",
+    "New Session",
+    "Plugins",
+    "Search sessions",
+    "View options",
+    "Add workspace",
+    "Settings",
+    "Choose workspace",
+    "MPD (Main Working Agent)",
+    "Add files or run commands",
+    "Send message",
+    "Configure later",
+    "Save and continue"
+  ],
+  "visibleText": "New Session\nPlugins\nWorkspaces\nNo sessions yet\nSettings\nInto the Unknown\nPreview\nChoose workspace\nMPD (Main Working Agent)\nChoose a workspace to start\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue"
+}
