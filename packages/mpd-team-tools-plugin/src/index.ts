@@ -130,431 +130,292 @@ export function apply(ctx: any): void {
     return { workspace, sessionId, plan }
   }
 
-  // ── the staged plan ─────────────────────────────────────────────────────────
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_create",
-    description:
-      "Stage a team as a PLAN: name it, then add members and shared tasks, then approve it. Nothing is created and nobody is spawned until agent_teams_approve. Staging replaces any unapproved plan in this session (the previous one is archived).",
-    parameters: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "The team's name, for the plan header." },
-        description: { type: "string", description: "What this team is for. One or two sentences." },
-        approval: { type: "string", enum: ["required", "automatic"], description: "`required` (default) waits for agent_teams_approve; `automatic` records that the captain may approve without asking." },
-        replace: { type: "boolean", description: "Required to be true when a plan is already staged and approved — replacing an approved plan is a deliberate act." },
-      },
-      required: ["name"],
-      additionalProperties: false,
-    },
-    output: { schema: { type: "object", properties: { plan: { type: "object" } } }, render: (_args: any, value: any) => text(describePlan(value?.plan)) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace, sessionId } = where(exec)
-      const existing = readPlan(workspace, sessionId)
-      if (existing?.approvedAt !== undefined && args?.replace !== true) {
-        throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
-      }
-      const plan = stagePlan(workspace, sessionId, {
-        name: String(args?.name ?? "team"),
-        description: String(args?.description ?? ""),
-        approval: args?.approval === "automatic" ? "automatic" : "required",
-      }, now())
-      return { plan }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_add_member",
-    description: "Add one teammate to the STAGED plan. `prompt` is what spawn_teammate will receive on approval; take a roster member's persona text from mpd_role_persona first when the member maps to one.",
-    parameters: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "The teammate's name (unique within the plan)." },
-        description: { type: "string", description: "One line on what this member is for." },
-        prompt: { type: "string", description: "The full prompt the member receives. Required — a member with no prompt is a member with no job." },
-        role: { type: "string", description: "Free-form role label for the plan header (e.g. the roster member's functional name)." },
-      },
-      required: ["name", "prompt"],
-      additionalProperties: false,
-    },
-    output: { schema: { type: "object", properties: { plan: { type: "object" } } }, render: (_args: any, value: any) => text(describePlan(value?.plan)) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace, plan } = requirePlan(exec)
-      const member: StagedMember = {
-        name: String(args?.name ?? ""),
-        description: String(args?.description ?? ""),
-        prompt: String(args?.prompt ?? ""),
-        ...(args?.role === undefined ? {} : { role: String(args.role) }),
-      }
-      const next = addMember(plan, member)
-      writePlan(workspace, next)
-      return { plan: next }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_create_task",
-    description: "Add one shared task to the STAGED plan. It is posted to the official board on approval, with its blockedBy/writeScopes intact.",
-    parameters: {
-      type: "object",
-      properties: {
-        subject: { type: "string", description: "The task title." },
-        description: { type: "string", description: "The acceptance contract: what 'done' means." },
-        blocked_by: { type: "array", items: { type: "string" }, description: "Subjects or ids of planned tasks this one waits for." },
-        write_scopes: { type: "array", items: { type: "string" }, description: "Workspace-relative paths this task may write (advisory)." },
-        owner: { type: "string", description: "The staged member name that should own it." },
-      },
-      required: ["subject", "description"],
-      additionalProperties: false,
-    },
-    output: { schema: { type: "object", properties: { plan: { type: "object" } } }, render: (_args: any, value: any) => text(describePlan(value?.plan)) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace, plan } = requirePlan(exec)
-      const task: StagedTask = {
-        subject: String(args?.subject ?? ""),
-        description: String(args?.description ?? ""),
-        ...(Array.isArray(args?.blocked_by) ? { blockedBy: args.blocked_by.map(String) } : {}),
-        ...(Array.isArray(args?.write_scopes) ? { writeScopes: args.write_scopes.map(String) } : {}),
-        ...(args?.owner === undefined ? {} : { owner: String(args.owner) }),
-      }
-      const next = addTask(plan, task)
-      writePlan(workspace, next)
-      return { plan: next }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_edit_plan",
-    description: "Read or replace the STAGED plan's member and task lists atomically. Call with no `members`/`tasks` to read it back.",
-    parameters: {
-      type: "object",
-      properties: {
-        members: { type: "array", items: { type: "object" }, description: "Replacement member list (same shape as agent_teams_add_member)." },
-        tasks: { type: "array", items: { type: "object" }, description: "Replacement task list (same shape as agent_teams_create_task)." },
-        description: { type: "string", description: "Replacement plan description." },
-      },
-      additionalProperties: false,
-    },
-    output: { schema: { type: "object", properties: { plan: { type: "object" } } }, render: (_args: any, value: any) => text(describePlan(value?.plan)) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace, sessionId } = where(exec)
-      const plan = readPlan(workspace, sessionId)
-      if (plan === undefined) throw new Error("no team is staged in this session — call agent_teams_create first")
-      if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) return { plan }
-      if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
-      const next: StagedPlan = {
-        ...plan,
-        ...(args?.description === undefined ? {} : { description: String(args.description) }),
-        ...(Array.isArray(args?.members)
-          ? { members: args.members.map((raw: any): StagedMember => {
-              if (typeof raw?.name !== "string" || raw.name.trim() === "") throw new Error("every staged member needs a name")
-              if (typeof raw?.prompt !== "string" || raw.prompt.trim() === "") throw new Error(`staged member "${raw.name}" needs a prompt`)
-              return { name: raw.name, description: String(raw?.description ?? ""), prompt: raw.prompt, ...(raw?.role === undefined ? {} : { role: String(raw.role) }) }
-            }) }
-          : {}),
-        ...(Array.isArray(args?.tasks)
-          ? { tasks: args.tasks.map((raw: any): StagedTask => {
-              if (typeof raw?.subject !== "string" || raw.subject.trim() === "") throw new Error("every staged task needs a subject")
-              return {
-                subject: raw.subject,
-                description: String(raw?.description ?? ""),
-                ...(Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {}),
-                ...(Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {}),
-                ...(raw?.owner === undefined ? {} : { owner: String(raw.owner) }),
-              }
-            }) }
-          : {}),
-      }
-      writePlan(workspace, next)
-      return { plan: next }
-    },
-  }))
-
-  // ── approval: the plan becomes a live team ──────────────────────────────────
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_approve",
-    description:
-      "Approve the staged plan and EXECUTE it: spawn every staged member through the official spawn_teammate and post every staged task to the official board (resolving `owner` to the spawned member and `blocked_by` to posted task ids). Reports what it created; a failure names the member or task it stopped at.",
-    parameters: { type: "object", properties: { dry_run: { type: "boolean", description: "Report exactly what approval would create, and create nothing." } }, additionalProperties: false },
-    output: {
-      schema: { type: "object", properties: { plan: { type: "object" }, created: { type: "object" }, stoppedAt: { type: "string" } } },
-      render: (_args: any, value: any) => text(
-        value?.plan === undefined ? "nothing to approve" :
-        `approved ${value.plan.planId}: ${value.created?.members?.length ?? 0} member(s), ${value.created?.tasks?.length ?? 0} task(s)` +
-        (value?.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`),
-      ),
-    },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace, sessionId } = where(exec)
-      const plan = readPlan(workspace, sessionId)
-      if (plan === undefined) throw new Error("no team is staged in this session — call agent_teams_create first")
-      if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved`)
-      const preview = { members: plan.members.map((member) => ({ name: member.name, id: "" })), tasks: plan.tasks.map((task) => ({ subject: task.subject, id: "" })) }
-      if (args?.dry_run === true) {
-        return { plan, created: preview, wouldSpawn: plan.members.length, wouldPost: plan.tasks.length }
-      }
-
-      const created: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> } = { members: [], tasks: [] }
-      const bySubject = new Map<string, string>()
-      const idByName = new Map<string, string>()
-      let stoppedAt: string | undefined
-
-      for (const member of plan.members) {
-        try {
-          const spawned = await dsh.teamSpawnTeammate(exec.agent, {
-            name: member.name,
-            description: member.description === "" ? member.name : member.description,
-            prompt: member.prompt,
-            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
-          })
-          const id = String((spawned as any)?.id ?? (spawned as any)?.sessionId ?? (spawned as any)?.member?.id ?? "")
-          created.members.push({ name: member.name, id })
-          if (id !== "") idByName.set(member.name, id)
-        } catch (error) {
-          stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
-          break
-        }
-      }
-
-      if (stoppedAt === undefined) {
-        for (const task of plan.tasks) {
-          try {
-            const resolved = (task.blockedBy ?? []).map((reference) => bySubject.get(reference) ?? reference)
-            const view = await dsh.teamCreateTask(exec.agent, {
-              subject: task.subject,
-              description: task.description,
-              ...(resolved.length === 0 ? {} : { blockedBy: resolved }),
-              ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
-            })
-            bySubject.set(task.subject, view.id)
-            created.tasks.push({ subject: task.subject, id: view.id })
-            // Ownership is a second call: the official service assigns an owner through
-            // `updateTask`, never at creation, so an unowned task stays visibly unowned rather
-            // than silently assigned to whoever happened to spawn first.
-            const ownerId = task.owner === undefined ? undefined : idByName.get(task.owner)
-            if (ownerId !== undefined) {
-              await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerId })
-            }
-          } catch (error) {
-            stoppedAt = `task ${task.subject}: ${String((error as Error)?.message ?? error)}`
-            break
-          }
-        }
-      }
-
-      const approved: StagedPlan = { ...plan, approvedAt: now().toISOString(), created }
-      writePlan(workspace, approved)
-      return { plan: approved, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_delete",
-    description: "Archive the staged plan under .mpd/team/archive/<planId>/ and clear the staging slot. Archive-first: nothing is hard-deleted, so a reviewer can still read what was staged.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
-    output: { schema: { type: "object", properties: { archivedTo: { type: "string" } } }, render: (_args: any, value: any) => text(value?.archivedTo === undefined ? "nothing to archive" : `archived to ${value.archivedTo}`) },
-    execute: async (_args: any, exec: DshToolExec) => {
-      const { workspace, sessionId } = where(exec)
-      const plan = readPlan(workspace, sessionId)
-      if (plan === undefined) return { archivedTo: undefined }
-      const archivedTo = archivePlan(workspace, plan)
-      return { archivedTo }
-    },
-  }))
-
-  // ── contracts, claims and the halt ──────────────────────────────────────────
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_claim_task",
-    description: "Claim an OFFICIAL shared task for a teammate and freeze its contract: the task's subject, acceptance text, blockers and write scopes as they stand now, with a monotonic attempt counter (the Nth claim of this task). Returns the contract.",
-    parameters: {
-      type: "object",
-      properties: {
-        task_id: { type: "string", description: "The official task id." },
-        claimant: { type: "string", description: "Who claims it — a teammate name or session id. Defaults to the calling agent." },
-      },
-      required: ["task_id"],
-      additionalProperties: false,
-    },
-    output: { schema: { type: "object", properties: { contract: { type: "object" }, task: { type: "object" } } }, render: (_args: any, value: any) => text(value?.contract === undefined ? "no contract" : `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace } = where(exec)
-      const view = dsh.teamGetTask(exec.agent, String(args?.task_id ?? ""))
-      const claimant = String(args?.claimant ?? sessionIdOf(exec))
-      const contract = claimContract(workspace, {
-        id: view.id,
-        subject: view.subject,
-        description: view.description,
-        blockedBy: view.blockedBy,
-        writeScopes: view.writeScopes,
-        revision: view.revision,
-      }, claimant, now())
-      // The official board records the CLAIM too, so the two halves agree: the board's revision
-      // moves, and the sidecar freezes what that revision MEANT.
-      const task = await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "claim" }).catch(() => view)
-      return { contract, task }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_task_contract",
-    description: "Read a frozen task contract (or every contract in this workspace when task_id is omitted), including its attempt counter.",
-    parameters: { type: "object", properties: { task_id: { type: "string", description: "The official task id; omit for every contract, newest claim first." } }, additionalProperties: false },
-    output: { schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } } } }, render: (_args: any, value: any) => text(value?.contract ?? value?.contracts ?? "no contract") },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace } = where(exec)
-      if (args?.task_id === undefined) return { contracts: listContracts(workspace) }
-      const contract = readContract(workspace, String(args.task_id))
-      if (contract === undefined) throw new Error(`no contract for task "${String(args.task_id)}" — it has never been claimed through agent_teams_claim_task`)
-      return { contract }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_halt",
-    description: "HALT the team: record a hold that stops NEW dispatch while leaving the team and every teammate alive. Distinct from ending a team — nothing is archived and no member is interrupted.",
-    parameters: { type: "object", properties: { reason: { type: "string", description: "Why the team is halted. Shown to anyone who asks for status." } }, required: ["reason"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { hold: { type: "object" } } }, render: (_args: any, value: any) => text(value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`) },
-    execute: async (args: any, exec: DshToolExec) => {
-      const { workspace } = where(exec)
-      return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
-    },
-  }))
-
-  disposers.push(dsh.registerTool({
-    name: "agent_teams_resume",
-    description: "Clear a halt recorded by agent_teams_halt. Reports whether one was there.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
-    output: { schema: { type: "object", properties: { resumed: { type: "boolean" } } }, render: (_args: any, value: any) => text(value?.resumed === true ? "resumed" : "was not halted") },
-    execute: async (_args: any, exec: DshToolExec) => ({ resumed: clearHold(where(exec).workspace) }),
-  }))
-
-  // ── the mailbox: OURS, with a read state the harness cannot provide ─────────
+  // ── the tool surface: FIVE tools, not fourteen ──────────────────────────────
   //
-  // The official mailbox keeps `messages` and `delivered` and nothing else — "read" is not observable
-  // anywhere in it. So the captain's real question ("did they SEE it?") has no answer there, and this
-  // sidecar owns the whole `sent → delivered → read` lifecycle. Delivery still rides the official
-  // transport (`teamSendMessage`), so a member really receives the message; the LEDGER is ours.
-  // `mailbox-store.ts` holds the rules and their reasoning.
+  // WHY CONSOLIDATED. Every tool's name, description and parameter schema sits in the model's context
+  // on every turn, and the hand-written surface had grown to 14 tools costing ~7,600 characters
+  // (~1,900 tokens) before a single word of the actual task. The actions below were never independent
+  // decisions — they are steps of ONE workflow — so they are `action` values on five tools, with the
+  // descriptions trimmed to what a caller must know to pick the right action.
+  //
+  // What is preserved: every action the old surface exposed, unchanged in meaning. What changed: how
+  // many places the model must read to find it.
+
   disposers.push(dsh.registerTool({
-    name: "agent_teams_mail",
+    name: "agent_teams_plan",
     description:
-      "The team mailbox. action:\"send\" sends a durable message to one member (through the official transport) and records it; action:\"unread\" lists what a member has NOT acknowledged; action:\"read\" acknowledges message ids; action:\"summary\" counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still UNREAD until the recipient acknowledges it.",
+      "The team PLAN. `create` stages a plan (nothing is spawned); `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it (spawns members through spawn_teammate, posts tasks to the official board, resolves blocked_by and owner); `delete` archives it; `status` shows the plan, the halt, and the official roster and board side by side.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["send", "unread", "read", "summary"], description: "What to do." },
-        to: { type: "string", description: "send: the member name or id to message." },
-        subject: { type: "string", description: "send: one line the recipient sees first." },
-        body: { type: "string", description: "send: the message." },
-        member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+        action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status"], description: "What to do." },
+        name: { type: "string", description: "create: the team's name." },
+        description: { type: "string", description: "create/edit: what the team is for." },
+        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
+        replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}. `prompt` is what spawn_teammate receives." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}." },
+        members: { type: "array", items: { type: "object" }, description: "edit: replacement member list." },
+        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement task list." },
+        dry_run: { type: "boolean", description: "approve: report exactly what would be created, and create nothing." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { plan: { type: "object" }, created: { type: "object" }, stoppedAt: { type: "string" }, archivedTo: { type: "string" }, members: { type: "array", items: { type: "object" } }, tasks: { type: "array", items: { type: "object" } }, hold: { type: "object" }, contracts: { type: "array", items: { type: "object" } } } },
       render: (_args: any, value: any) =>
         text(
-          value?.refused !== undefined ? `refused: ${value.refused}`
-            : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
-            : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
-            : value?.summary !== undefined ? (value.summary.length === 0 ? "no mail" : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n"))
-            : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
-            : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
+          value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
+            : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
+            : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}`
+            : describePlan(value?.plan),
+        ),
+    },
+    execute: async (args: any, exec: DshToolExec) => {
+      const action = String(args?.action ?? "")
+      const { workspace, sessionId } = where(exec)
+
+      if (action === "status") {
+        const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
+        return {
+          plan: readPlan(workspace, sessionId) ?? null,
+          hold: readHold(workspace) ?? null,
+          members: read(() => dsh.teamListMembers(exec.agent), []),
+          tasks: read(() => dsh.teamListTasks(exec.agent), []),
+          contracts: read(() => listContracts(workspace), []),
+        }
+      }
+
+      if (action === "create") {
+        const existing = readPlan(workspace, sessionId)
+        if (existing?.approvedAt !== undefined && args?.replace !== true) {
+          throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
+        }
+        return { plan: stagePlan(workspace, sessionId, {
+          name: String(args?.name ?? "team"),
+          description: String(args?.description ?? ""),
+          approval: args?.approval === "automatic" ? "automatic" : "required",
+        }, now()) }
+      }
+
+      if (action === "add_member") {
+        const { plan } = requirePlan(exec)
+        const raw = (args?.member ?? {}) as Record<string, unknown>
+        const next = addMember(plan, {
+          name: String(raw.name ?? ""),
+          description: String(raw.description ?? ""),
+          prompt: String(raw.prompt ?? ""),
+          ...(raw.role === undefined ? {} : { role: String(raw.role) }),
+        })
+        writePlan(workspace, next)
+        return { plan: next }
+      }
+
+      if (action === "create_task") {
+        const { plan } = requirePlan(exec)
+        const raw = (args?.task ?? {}) as Record<string, unknown>
+        const next = addTask(plan, {
+          subject: String(raw.subject ?? ""),
+          description: String(raw.description ?? ""),
+          ...(Array.isArray(raw.blocked_by) ? { blockedBy: raw.blocked_by.map(String) } : {}),
+          ...(Array.isArray(raw.write_scopes) ? { writeScopes: raw.write_scopes.map(String) } : {}),
+          ...(raw.owner === undefined ? {} : { owner: String(raw.owner) }),
+        })
+        writePlan(workspace, next)
+        return { plan: next }
+      }
+
+      if (action === "edit") {
+        const plan = readPlan(workspace, sessionId)
+        if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
+        if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) return { plan }
+        if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
+        const next: StagedPlan = {
+          ...plan,
+          ...(args?.description === undefined ? {} : { description: String(args.description) }),
+          ...(Array.isArray(args?.members)
+            ? { members: args.members.map((raw: any): StagedMember => {
+                if (typeof raw?.name !== "string" || raw.name.trim() === "") throw new Error("every staged member needs a name")
+                if (typeof raw?.prompt !== "string" || raw.prompt.trim() === "") throw new Error(`staged member "${raw.name}" needs a prompt`)
+                return { name: raw.name, description: String(raw?.description ?? ""), prompt: raw.prompt, ...(raw?.role === undefined ? {} : { role: String(raw.role) }) }
+              }) }
+            : {}),
+          ...(Array.isArray(args?.tasks)
+            ? { tasks: args.tasks.map((raw: any): StagedTask => {
+                if (typeof raw?.subject !== "string" || raw.subject.trim() === "") throw new Error("every staged task needs a subject")
+                return {
+                  subject: raw.subject,
+                  description: String(raw?.description ?? ""),
+                  ...(Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {}),
+                  ...(Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {}),
+                  ...(raw?.owner === undefined ? {} : { owner: String(raw.owner) }),
+                }
+              }) }
+            : {}),
+        }
+        writePlan(workspace, next)
+        return { plan: next }
+      }
+
+      if (action === "delete") {
+        const plan = readPlan(workspace, sessionId)
+        if (plan === undefined) return {}
+        return { archivedTo: archivePlan(workspace, plan) }
+      }
+
+      if (action === "approve") {
+        const plan = readPlan(workspace, sessionId)
+        if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
+        if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved`)
+        if (args?.dry_run === true) {
+          return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
+        }
+        const created: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> } = { members: [], tasks: [] }
+        const bySubject = new Map<string, string>()
+        const idByName = new Map<string, string>()
+        let stoppedAt: string | undefined
+        for (const member of plan.members) {
+          try {
+            const spawned = await dsh.teamSpawnTeammate(exec.agent, {
+              name: member.name,
+              description: member.description === "" ? member.name : member.description,
+              prompt: member.prompt,
+              ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+            })
+            const id = String((spawned as any)?.id ?? (spawned as any)?.sessionId ?? (spawned as any)?.member?.id ?? "")
+            created.members.push({ name: member.name, id })
+            if (id !== "") idByName.set(member.name, id)
+          } catch (error) {
+            stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
+            break
+          }
+        }
+        if (stoppedAt === undefined) {
+          for (const task of plan.tasks) {
+            try {
+              const resolved = (task.blockedBy ?? []).map((reference) => bySubject.get(reference) ?? reference)
+              const view = await dsh.teamCreateTask(exec.agent, {
+                subject: task.subject,
+                description: task.description,
+                ...(resolved.length === 0 ? {} : { blockedBy: resolved }),
+                ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
+              })
+              bySubject.set(task.subject, view.id)
+              created.tasks.push({ subject: task.subject, id: view.id })
+              const ownerId = task.owner === undefined ? undefined : idByName.get(task.owner)
+              if (ownerId !== undefined) {
+                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerId })
+              }
+            } catch (error) {
+              stoppedAt = `task ${task.subject}: ${String((error as Error)?.message ?? error)}`
+              break
+            }
+          }
+        }
+        const approved: StagedPlan = { ...plan, approvedAt: now().toISOString(), created }
+        writePlan(workspace, approved)
+        return { plan: approved, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
+      }
+
+      throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`)
+    },
+  }))
+
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_task",
+    description:
+      "Shared board tasks. `claim` claims one for a member AND freezes its contract — the acceptance text, blockers and write scopes as they stand now, with a monotonic attempt counter; `contract` reads a frozen contract back (or every one in this workspace); `release` frees one dispatched task so it can be dispatched again.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["claim", "contract", "release"], description: "What to do." },
+        task_id: { type: "string", description: "claim/contract: the official task id. release: the task to free." },
+        claimant: { type: "string", description: "claim: who claims it. Defaults to the calling agent." },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" } } },
+      render: (_args: any, value: any) =>
+        text(
+          value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
+            : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
+            : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
+            : "no contract",
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
       const { workspace } = where(exec)
-      const caller = sessionIdOf(exec)
-      const self = exec.agent as any
-      const roster = (() => { try { return dsh.teamListMembers(exec.agent) } catch { return [] } })()
-      const resolve = (name: string) => roster.find((member) => member.id === name || member.name === name)
-      const nameOf = (id: string) => roster.find((member) => member.id === id)?.name ?? id
+      const action = String(args?.action ?? "")
 
-      if (args?.action === "send") {
-        const target = resolve(String(args?.to ?? ""))
-        if (target === undefined) {
-          return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` }
-        }
-        const result = sendMail(workspace, {
-          fromId: self?.session?.id ?? caller,
-          fromName: self?.session?.header?.title ?? caller,
-          toId: target.id,
-          toName: target.name,
-          subject: String(args?.subject ?? ""),
-          body: String(args?.body ?? ""),
-          memberIds: roster.map((member) => member.id),
-        }, now())
-        if (!result.ok) return { refused: result.detail }
-        // The transport carries it; a failure to deliver does NOT lose the record — the message stays
-        // undelivered in the ledger, which is exactly what `summary` reports.
-        try {
-          await dsh.teamSendMessage(exec.agent, {
-            target: target.id,
-            content: dsh.text(`[${result.message.subject}]\n\n${result.message.body}`),
-            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
-          })
-          markDelivered(workspace, [result.message.id], now())
-        } catch (error) {
-          console.warn(`[mpd-team-tools] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
-        }
-        return { message: result.message }
+      if (action === "release") {
+        const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
+        if (released) writeLedger(workspace, ledger)
+        return { released }
       }
 
-      if (args?.action === "read") {
-        const ids = Array.isArray(args?.ids) ? args.ids.map(String) : []
-        return { moved: markRead(workspace, ids, now()) }
+      if (action === "contract") {
+        if (args?.task_id === undefined) return { contracts: listContracts(workspace) }
+        const contract = readContract(workspace, String(args.task_id))
+        if (contract === undefined) throw new Error(`no contract for task "${String(args.task_id)}" — it has never been claimed through this tool`)
+        return { contract }
       }
 
-      if (args?.action === "summary") {
-        return { summary: summarise(readMailbox(workspace)) }
+      if (action === "claim") {
+        const view = dsh.teamGetTask(exec.agent, String(args?.task_id ?? ""))
+        const contract = claimContract(workspace, {
+          id: view.id,
+          subject: view.subject,
+          description: view.description,
+          blockedBy: view.blockedBy,
+          writeScopes: view.writeScopes,
+          revision: view.revision,
+        }, String(args?.claimant ?? sessionIdOf(exec)), now())
+        const task = await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "claim" }).catch(() => view)
+        return { contract, task }
       }
 
-      // unread (the default action for anything else, since reading is the safe direction)
-      const state = readMailbox(workspace)
-      const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
-      const memberId = wanted?.id ?? self?.session?.id ?? caller
-      const pending = unreadMessages(state, memberId)
-      return {
-        messages: pending.map((message) => ({
-          id: message.id,
-          fromName: message.fromName,
-          subject: message.subject,
-          body: message.body,
-          sentAt: message.sentAt,
-          delivered: message.deliveredAt !== undefined,
-        })),
-        undelivered: undeliveredOf(state, memberId).length,
-        total: inboxOf(state, memberId).length,
-        memberName: wanted?.name ?? nameOf(memberId),
-      }
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release)`)
     },
   }))
 
-  // ── dispatch: the pairing nothing else performs ─────────────────────────────
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description:
-      "Pair READY shared tasks with IDLE members and tell each member to work its task. One pass pairs each task with one member and RECORDS the pairing, so a second pass can never hand the same task to a second teammate. Respects agent_teams_halt (a held team dispatches nothing) and skips a task that is blocked, completed, already dispatched, or has no free member — reporting which, per task. dry_run reports the pairing without sending anything.",
+      "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member, tells that member to work it, and RECORDS the pairing — so a second pass can never hand the same task to two members. Tasks it does not pair are reported with the reason (blocked, completed, already dispatched, no free member). `release` frees a pairing.",
     parameters: {
       type: "object",
       properties: {
-        dry_run: { type: "boolean", description: "Report the pairing and send nothing." },
-        limit: { type: "number", description: "Cap the pairs in this pass (0 or omitted = no cap)." },
+        action: { type: "string", enum: ["run", "release"], description: "What to do." },
+        task_id: { type: "string", description: "release: the task to free." },
+        dry_run: { type: "boolean", description: "run: report the pairing and send nothing." },
+        limit: { type: "number", description: "run: cap the pairs in this pass (0 or omitted = no cap)." },
       },
+      required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } } } },
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
       render: (_args: any, value: any) =>
         text(
-          value?.halted !== undefined ? `halted: ${value.halted}`
+          value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
+            : value?.halted !== undefined ? `halted: ${value.halted}`
             : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
             : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}`).join("\n"),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
       const { workspace } = where(exec)
+      const action = String(args?.action ?? "")
+
+      if (action === "release") {
+        const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
+        if (released) writeLedger(workspace, ledger)
+        return { released }
+      }
+
       const hold = readHold(workspace)
       const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
         id: task.id,
@@ -600,35 +461,128 @@ export function apply(ctx: any): void {
     },
   }))
 
+  // ── the mailbox: OURS, with a read state the harness cannot provide ─────────
+  //
+  // The official mailbox keeps `messages` and `delivered` and nothing else — "read" is not observable
+  // anywhere in it, so a captain's real question ("did they SEE it?") has no answer there. This
+  // sidecar owns the whole `sent → delivered → read` lifecycle; delivery still rides the official
+  // transport so a member really receives the message. `mailbox-store.ts` holds the rules.
   disposers.push(dsh.registerTool({
-    name: "agent_teams_dispatch_release",
-    description: "Free one dispatched task so it can be dispatched again (a member finished, went away, or the work was reassigned). Reports whether a pairing was there.",
-    parameters: { type: "object", properties: { task_id: { type: "string", description: "The task to free." } }, required: ["task_id"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { released: { type: "boolean" } } }, render: (_args: any, value: any) => text(value?.released === true ? "released" : "that task was not dispatched") },
+    name: "agent_teams_mail",
+    description:
+      "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["send", "unread", "read", "summary"], description: "What to do." },
+        to: { type: "string", description: "send: the member name or id to message." },
+        subject: { type: "string", description: "send: one line the recipient sees first." },
+        body: { type: "string", description: "send: the message." },
+        member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
+        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      render: (_args: any, value: any) =>
+        text(
+          value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
+            : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
+            : value?.summary !== undefined ? (value.summary.length === 0 ? "no mail" : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n"))
+            : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
+            : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
+        ),
+    },
     execute: async (args: any, exec: DshToolExec) => {
       const { workspace } = where(exec)
-      const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
-      if (released) writeLedger(workspace, ledger)
-      return { released }
+      const caller = sessionIdOf(exec)
+      const self = exec.agent as any
+      const roster = (() => { try { return dsh.teamListMembers(exec.agent) } catch { return [] } })()
+      const resolve = (name: string) => roster.find((member) => member.id === name || member.name === name)
+
+      if (args?.action === "send") {
+        const target = resolve(String(args?.to ?? ""))
+        if (target === undefined) {
+          return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` }
+        }
+        const result = sendMail(workspace, {
+          fromId: self?.session?.id ?? caller,
+          fromName: self?.session?.header?.title ?? caller,
+          toId: target.id,
+          toName: target.name,
+          subject: String(args?.subject ?? ""),
+          body: String(args?.body ?? ""),
+          memberIds: roster.map((member) => member.id),
+        }, now())
+        if (!result.ok) return { refused: result.detail }
+        // The transport carries it; a delivery failure does NOT lose the record — the message stays
+        // undelivered in the ledger, which is exactly what `summary` reports.
+        try {
+          await dsh.teamSendMessage(exec.agent, {
+            target: target.id,
+            content: dsh.text(`[${result.message.subject}]\n\n${result.message.body}`),
+            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+          })
+          markDelivered(workspace, [result.message.id], now())
+        } catch (error) {
+          console.warn(`[mpd-team-tools] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+        }
+        return { message: result.message }
+      }
+
+      if (args?.action === "read") {
+        return { moved: markRead(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], now()) }
+      }
+
+      if (args?.action === "summary") {
+        return { summary: summarise(readMailbox(workspace)) }
+      }
+
+      const state = readMailbox(workspace)
+      const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
+      const memberId = wanted?.id ?? self?.session?.id ?? caller
+      return {
+        messages: unreadMessages(state, memberId).map((message) => ({
+          id: message.id,
+          fromName: message.fromName,
+          subject: message.subject,
+          body: message.body,
+          sentAt: message.sentAt,
+          delivered: message.deliveredAt !== undefined,
+        })),
+        undelivered: undeliveredOf(state, memberId).length,
+        total: inboxOf(state, memberId).length,
+        memberName: wanted?.name ?? memberId,
+      }
     },
   }))
 
-  // ── status: both halves side by side ────────────────────────────────────────
   disposers.push(dsh.registerTool({
-    name: "agent_teams_status",
-    description: "The team in one read: the STAGED plan and the halt from this bundle's sidecar, beside the OFFICIAL roster and shared board. Read-only.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
-    output: { schema: { type: "object", properties: { plan: { type: "object" }, hold: { type: "object" }, members: { type: "array", items: { type: "object" } }, tasks: { type: "array", items: { type: "object" } }, contracts: { type: "array", items: { type: "object" } } } }, render: (_args: any, value: any) => text(value) },
-    execute: async (_args: any, exec: DshToolExec) => {
-      const { workspace, sessionId } = where(exec)
-      const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
-      return {
-        plan: readPlan(workspace, sessionId) ?? null,
-        hold: readHold(workspace) ?? null,
-        members: read(() => dsh.teamListMembers(exec.agent), []),
-        tasks: read(() => dsh.teamListTasks(exec.agent), []),
-        contracts: read(() => listContracts(workspace), []),
-      }
+    name: "agent_teams_control",
+    description:
+      "Halt or resume the team. `halt` records a hold that stops NEW DISPATCH while leaving the team and every teammate alive — it is not an ending (use agent_teams_plan action:\"delete\" to end and archive a team). `resume` clears the hold.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["halt", "resume"], description: "What to do." },
+        reason: { type: "string", description: "halt: why the team is halted; shown to anyone who asks for status." },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" } } },
+      render: (_args: any, value: any) =>
+        text(value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
+    },
+    execute: async (args: any, exec: DshToolExec) => {
+      const { workspace } = where(exec)
+      if (String(args?.action ?? "") === "resume") return { resumed: clearHold(workspace) }
+      if (String(args?.action ?? "") !== "halt") throw new Error(`agent_teams_control: unknown action "${String(args?.action ?? "")}" (halt | resume)`)
+      return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
     },
   }))
 

@@ -14,22 +14,21 @@ through `mpd-dsh-adapter`. This plugin keeps only what the official service has 
 
 ## Tools
 
-| Tool | Inputs | Result |
+| Tool | `action` values | What it does |
 |---|---|---|
-| `agent_teams_create` | `name`, `description?`, `approval?`, `replace?` | stages a plan for this session; **nothing is created** |
-| `agent_teams_add_member` | `name`, `prompt`, `description?`, `role?` | appends one teammate to the staged plan |
-| `agent_teams_create_task` | `subject`, `description`, `blocked_by?`, `write_scopes?`, `owner?` | appends one shared task to the staged plan |
-| `agent_teams_edit_plan` | `members?`, `tasks?`, `description?` | reads the plan back, or replaces its lists atomically |
-| `agent_teams_approve` | `dry_run?` | **executes** it: spawns every member through `spawn_teammate`, posts every task to the official board, assigns owners |
-| `agent_teams_delete` | — | archive-first: moves the plan to `.mpd/team/archive/<planId>/` |
-| `agent_teams_claim_task` | `task_id`, `claimant?` | claims on the official board **and** freezes the contract with a monotonic `attempt` |
-| `agent_teams_task_contract` | `task_id?` | one frozen contract, or every contract newest-claim-first |
-| `agent_teams_halt` | `reason` | records a hold: new dispatch stops, the team and its members stay alive |
-| `agent_teams_resume` | — | clears the hold |
-| `agent_teams_dispatch` | `dry_run?`, `limit?` | **pairs ready tasks with idle members** and tells each member to work its task; one pass, recorded |
-| `agent_teams_dispatch_release` | `task_id` | frees a dispatched task so it can be dispatched again |
-| `agent_teams_mail` | `action`, `to?`, `subject?`, `body?`, `member?`, `ids?` | the team mailbox: `send` / `unread` / `read` / `summary` |
-| `agent_teams_status` | — | the staged plan and the halt **beside** the official roster and board |
+| `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it (spawn + post + resolve `blocked_by`/`owner`); `delete` archives; `status` shows the sidecar beside the official roster and board |
+| `agent_teams_task` | `claim`, `contract`, `release` | claim on the official board AND freeze the task's contract with a monotonic `attempt`; read it back; free a dispatched task |
+| `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing |
+| `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |
+| `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
+
+`/agent-teams <what the team is for>` stages a plan from the current goal.
+
+**Why actions, not tools.** Every tool's name, description and parameter schema sits in the model's
+context on EVERY turn. The hand-written surface had grown to 14 tools costing 7,643 characters
+(~1,900 tokens) before a word of the actual task; the actions are steps of one workflow, so they are
+`action` values now — 5 tools, 4,717 characters (~1,180 tokens). `test/tool-surface.test.ts` pins both
+the budget and the action sets, so a new tool has to justify itself against that number.
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 

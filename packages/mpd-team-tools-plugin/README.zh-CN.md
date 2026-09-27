@@ -11,22 +11,20 @@
 
 ## 工具
 
-| 工具 | 输入 | 结果 |
+| 工具 | `action` 取值 | 作用 |
 |---|---|---|
-| `agent_teams_create` | `name`、`description?`、`approval?`、`replace?` | 为本会话暂存一份计划；**不创建任何东西** |
-| `agent_teams_add_member` | `name`、`prompt`、`description?`、`role?` | 往暂存计划里追加一名队友 |
-| `agent_teams_create_task` | `subject`、`description`、`blocked_by?`、`write_scopes?`、`owner?` | 往暂存计划里追加一个共享任务 |
-| `agent_teams_edit_plan` | `members?`、`tasks?`、`description?` | 读回计划，或原子地替换它的两个列表 |
-| `agent_teams_approve` | `dry_run?` | **执行**它：用 `spawn_teammate` 逐个起成员、把每个任务投到官方看板、指派负责人 |
-| `agent_teams_delete` | — | 归档优先：把计划移到 `.mpd/team/archive/<planId>/` |
-| `agent_teams_claim_task` | `task_id`、`claimant?` | 在官方看板上认领，**并**冻结契约，带单调递增的 `attempt` |
-| `agent_teams_task_contract` | `task_id?` | 一份冻结契约，或全部契约（按认领时间倒序） |
-| `agent_teams_halt` | `reason` | 记下一次暂停：新派工停止，团队与成员都还活着 |
-| `agent_teams_resume` | — | 解除暂停 |
-| `agent_teams_dispatch` | `dry_run?`、`limit?` | **把就绪任务与空闲成员配对**，并通知每个成员去做自己的任务；一趟一班，且记录在案 |
-| `agent_teams_dispatch_release` | `task_id` | 释放一个已派发任务，使其可再次派发 |
-| `agent_teams_mail` | `action`、`to?`、`subject?`、`body?`、`member?`、`ids?` | 团队信箱：`send` / `unread` / `read` / `summary` |
-| `agent_teams_status` | — | 把暂存计划与暂停**并排**放在官方名册和看板旁边 |
+| `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` **执行**它（spawn + 投任务 + 解析 `blocked_by`/`owner`）；`delete` 归档；`status` 把 sidecar 与官方名册/看板并排给出 |
+| `agent_teams_task` | `claim`、`contract`、`release` | 在官方看板认领**并**冻结契约（单调 `attempt`）；读回契约；释放已派发任务 |
+| `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并**记录配对** |
+| `agent_teams_mail` | `send`、`unread`、`read`、`summary` | 团队信箱：durable，且带官方**给不了**的已读状态 |
+| `agent_teams_control` | `halt`、`resume` | 只停派工、别的什么都不做的暂停 |
+
+`/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
+
+**为什么用 action 而不是更多工具。** 每个工具的名字、描述和参数 schema **每一轮**都在模型上下文里。手写的界面一度长到
+**14 个工具、7,643 字符（约 1,900 token）**——还一个字都没提任务；而这些动作本就是**同一条工作流的步骤**，所以现在是
+`action` 取值：**5 个工具、4,717 字符（约 1,180 token）**。`test/tool-surface.test.ts` 同时钉住预算和 action 集合，
+所以将来新增工具必须对这个数字交代。
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
 
