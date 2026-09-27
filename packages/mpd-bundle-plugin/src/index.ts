@@ -85,11 +85,11 @@ function webServerOf(dsh: any, ctx: any): any {
   return undefined
 }
 
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 function apply(ctx: any): void {
   // The adapter, resolved the way every other mpd row resolves it (AGENTS.md §6).
-  const dsh: any = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   let registered = false
   /**
    * Bind the watchdog routes to the web server; retried until one answers.

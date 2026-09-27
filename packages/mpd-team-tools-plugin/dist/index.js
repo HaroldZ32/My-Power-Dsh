@@ -5,6 +5,12 @@ import { join as join3 } from "node:path";
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -20,9 +26,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -289,7 +292,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -482,7 +485,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -592,7 +595,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -952,11 +955,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -964,24 +967,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -1021,14 +1024,14 @@ function fold(records) {
     }
     if (record.t === "delivered" || record.t === "read") {
       const id = String(record.id ?? "");
-      const message2 = byId.get(id);
-      if (message2 === undefined)
+      const message = byId.get(id);
+      if (message === undefined)
         continue;
       const at = String(record.at ?? "");
       if (record.t === "delivered")
-        message2.deliveredAt = at;
+        message.deliveredAt = at;
       else
-        message2.readAt = at;
+        message.readAt = at;
     }
   }
   return { messages: [...byId.values()] };
@@ -1063,31 +1066,31 @@ function appendRecord(workspace, record) {
 `);
 }
 function inboxOf(state, memberId) {
-  return state.messages.filter((message2) => message2.toId === memberId);
+  return state.messages.filter((message) => message.toId === memberId);
 }
 function unreadOf(state, memberId) {
-  return inboxOf(state, memberId).filter((message2) => message2.readAt === undefined);
+  return inboxOf(state, memberId).filter((message) => message.readAt === undefined);
 }
 function undeliveredOf(state, memberId) {
-  return inboxOf(state, memberId).filter((message2) => message2.deliveredAt === undefined);
+  return inboxOf(state, memberId).filter((message) => message.deliveredAt === undefined);
 }
 function summarise(state) {
   const order = [];
   const seen = new Map;
-  for (const message2 of state.messages) {
-    let entry = seen.get(message2.toId);
+  for (const message of state.messages) {
+    let entry = seen.get(message.toId);
     if (entry === undefined) {
-      entry = { memberId: message2.toId, memberName: message2.toName, total: 0, unread: 0, undelivered: 0 };
-      seen.set(message2.toId, entry);
-      order.push(message2.toId);
+      entry = { memberId: message.toId, memberName: message.toName, total: 0, unread: 0, undelivered: 0 };
+      seen.set(message.toId, entry);
+      order.push(message.toId);
     }
     entry.total += 1;
-    if (message2.readAt === undefined) {
+    if (message.readAt === undefined) {
       entry.unread += 1;
       if (entry.oldestUnread === undefined)
-        entry.oldestUnread = message2.subject;
+        entry.oldestUnread = message.subject;
     }
-    if (message2.deliveredAt === undefined)
+    if (message.deliveredAt === undefined)
       entry.undelivered += 1;
   }
   return order.map((id) => seen.get(id));
@@ -1106,7 +1109,7 @@ function send(workspace, input, now) {
     return { ok: false, reason: "backlog-full", detail: `"${input.toName || input.toId}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
   }
   const at = now.toISOString();
-  const message2 = {
+  const message = {
     id: `mail-${at.replace(/[-:.TZ]/g, "").slice(0, 14)}-${(state.messages.length + 1).toString().padStart(3, "0")}`,
     fromId: input.fromId,
     fromName: input.fromName,
@@ -1116,16 +1119,16 @@ function send(workspace, input, now) {
     body: input.body,
     sentAt: at
   };
-  appendRecord(workspace, { t: "send", ...message2, at });
-  return { ok: true, message: message2 };
+  appendRecord(workspace, { t: "send", ...message, at });
+  return { ok: true, message };
 }
 function markDelivered(workspace, ids, now) {
   const state = readMailbox(workspace);
-  const byId = new Map(state.messages.map((message2) => [message2.id, message2]));
+  const byId = new Map(state.messages.map((message) => [message.id, message]));
   const moved = [];
   for (const id of ids) {
-    const message2 = byId.get(id);
-    if (message2 === undefined || message2.deliveredAt !== undefined)
+    const message = byId.get(id);
+    if (message === undefined || message.deliveredAt !== undefined)
       continue;
     appendRecord(workspace, { t: "delivered", id, at: now.toISOString() });
     moved.push(id);
@@ -1134,11 +1137,11 @@ function markDelivered(workspace, ids, now) {
 }
 function markRead(workspace, ids, now) {
   const state = readMailbox(workspace);
-  const byId = new Map(state.messages.map((message2) => [message2.id, message2]));
+  const byId = new Map(state.messages.map((message) => [message.id, message]));
   const moved = [];
   for (const id of ids) {
-    const message2 = byId.get(id);
-    if (message2 === undefined || message2.readAt !== undefined)
+    const message = byId.get(id);
+    if (message === undefined || message.readAt !== undefined)
       continue;
     appendRecord(workspace, { t: "read", id, at: now.toISOString() });
     moved.push(id);
@@ -1782,13 +1785,13 @@ ${result.message.body}`),
       const wanted = args?.member === undefined ? undefined : resolve2(String(args.member));
       const memberId = wanted?.id ?? self?.session?.id ?? caller;
       return {
-        messages: unreadOf(state, memberId).map((message2) => ({
-          id: message2.id,
-          fromName: message2.fromName,
-          subject: message2.subject,
-          body: message2.body,
-          sentAt: message2.sentAt,
-          delivered: message2.deliveredAt !== undefined
+        messages: unreadOf(state, memberId).map((message) => ({
+          id: message.id,
+          fromName: message.fromName,
+          subject: message.subject,
+          body: message.body,
+          sentAt: message.sentAt,
+          delivered: message.deliveredAt !== undefined
         })),
         undelivered: undeliveredOf(state, memberId).length,
         total: inboxOf(state, memberId).length,

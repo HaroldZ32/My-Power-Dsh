@@ -36,10 +36,11 @@
 // aggregate transcript stays greppable without ambiguity. The self-test's trailing census line is
 // `self-test PASS|FAIL: <passed>/<total> arms`, preceded by one `self-test arm <name>:` line per arm.
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const TAG = "[verify-gates]"
 const SELF = fileURLToPath(import.meta.url)
@@ -141,7 +142,7 @@ function parseMemberSpec(spec) {
 function readMembersFile(file) {
   let parsed
   try {
-    parsed = JSON.parse(readFileSync(resolve(file), "utf8"))
+    parsed = readJson(resolve(file))
   } catch (err) {
     throw new Error(`--members-file ${file}: ${err.message}`)
   }

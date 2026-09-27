@@ -1,0 +1,112 @@
+{
+  "ok": false,
+  "slug": "extension-mcp-bridge",
+  "sandbox": "/tmp/mpd-extension-mcp-bridge-WMfdI0",
+  "arms": "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
+  "note": "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "offered": true,
+      "called": false,
+      "succeeded": false,
+      "reason": "the harness recorded no tool/call for mcp__qa_mcp_live__status (answer-only narration is not tool evidence)",
+      "resultHead": ""
+    },
+    "dead": {
+      "vacuous": true,
+      "ok": false,
+      "offeredNoTool": true,
+      "headerSawNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "hang": {
+      "vacuous": true,
+      "ok": false,
+      "connectTimeoutMs": 1500,
+      "durationMs": 12622,
+      "offeredNoTool": true,
+      "reported": false,
+      "stateText": ""
+    },
+    "schema": {
+      "vacuous": true,
+      "ok": false,
+      "goodToolOffered": true,
+      "badInputSkipped": true,
+      "badOutputOffered": true,
+      "badOutputSchemaDropped": false,
+      "reportedReason": false,
+      "stateText": ""
+    },
+    "dup": {
+      "vacuous": true,
+      "ok": false,
+      "zeroTools": true,
+      "headerZeroTools": true,
+      "stateText": "",
+      "collisionPremise": "the SAME raw name (dup_tool) advertised twice makes the tool list invalid (\"listed tool ... more than once\"), which rolls the whole generation back to ZERO tools; two DIFFERENT raw names can never collide because any lossy transformation gains a hash suffix"
+    },
+    "stderr": {
+      "vacuous": true,
+      "ok": false,
+      "cap": 2000,
+      "floodLength": 3053,
+      "reportedTailLength": 0,
+      "headDropped": true,
+      "tailKept": false,
+      "reported": false,
+      "tailHead": "",
+      "stateHead": ""
+    },
+    "containment": {
+      "ok": false,
+      "exit": 1,
+      "control": {
+        "liveToolOffered": true,
+        "liveCallSucceeded": false
+      },
+      "showCallOrder": [],
+      "crashSignatures": [],
+      "offeredMcp": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__context7__query-docs",
+        "mcp__context7__resolve-library-id",
+        "mcp__grep_app__searchGitHub",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols",
+        "mcp__qa_mcp_live__diagnostics",
+        "mcp__qa_mcp_live__find_references",
+        "mcp__qa_mcp_live__goto_definition",
+        "mcp__qa_mcp_live__install_decision",
+        "mcp__qa_mcp_live__prepare_rename",
+        "mcp__qa_mcp_live__rename",
+        "mcp__qa_mcp_live__status",
+        "mcp__qa_mcp_live__symbols",
+        "mcp__qa_mcp_schema__bad_output",
+        "mcp__qa_mcp_schema__good_tool"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-mcp-bridge-WMfdI0-ws--"
+        ]
+      }
+    }
+  }
+}

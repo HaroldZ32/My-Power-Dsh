@@ -1,0 +1,5 @@
+[software-smoke] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/dsh-qa/software-smoke/2026-09-27T22-03-23.852Z
+  install: {"ok":true,"exit":0,"tail":"ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-
+  session: {"ok":false,"exit":1,"stubCalls":2,"writeToolOffered":true,"bashToolOffered":true,"writeResultOk":false,"missingCredential":false,"authFailed":false}
+  artifact: {"ok":false,"exists":false,"contentMatches":false,"deterministic":false,"optimal":false,"oracle":{"winner":null,"plies":0,"problems":["no transcript in the bash tool result"],"probes":{"3,4,5":{"output":"","problems":["declared no move in a non-terminal position 3,4,5"]},"1,2,3":{"output":"","proble
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-software-smoke-7usyyg-ws--"]}

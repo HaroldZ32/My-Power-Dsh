@@ -1,6 +1,20 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function bundleRootOf(moduleUrl) {
+  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -16,9 +30,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -285,7 +296,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -478,7 +489,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -588,7 +599,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -948,11 +959,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -960,24 +971,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -1096,7 +1107,8 @@ import { isAbsolute, join as join2, resolve as resolve2 } from "node:path";
 
 // packages/mpd-ext-plugin/src/skills.ts
 import { readFileSync } from "node:fs";
-var SKILL_NAME = new RegExp(MPD_EXT_SKILL_NAME_PATTERN);
+
+// packages/mpd-ext-plugin/src/skill-frontmatter.ts
 function isAbsent(error) {
   const code = error?.code;
   return code === "ENOENT" || code === "ENOTDIR";
@@ -1269,6 +1281,9 @@ function parseInvocation(data) {
     userInvocable: frontmatterBoolean(data, "user-invocable") !== false
   };
 }
+
+// packages/mpd-ext-plugin/src/skills.ts
+var SKILL_NAME = new RegExp(MPD_EXT_SKILL_NAME_PATTERN);
 function readSkillDocument(filePath) {
   let raw;
   try {
@@ -1276,13 +1291,13 @@ function readSkillDocument(filePath) {
   } catch (error) {
     if (isAbsent(error))
       return { error: "cannot read " + filePath };
-    return { error: "cannot read " + filePath + ": " + message2(error) };
+    return { error: "cannot read " + filePath + ": " + errorMessage(error) };
   }
   let parsed;
   try {
     parsed = parseFrontmatter(raw);
   } catch (error) {
-    return { error: "invalid frontmatter in " + filePath + ": " + message2(error) };
+    return { error: "invalid frontmatter in " + filePath + ": " + errorMessage(error) };
   }
   if (parsed === undefined)
     return { error: "missing YAML frontmatter in " + filePath };
@@ -1298,7 +1313,7 @@ function readSkillDocument(filePath) {
   try {
     invocation = parseInvocation(parsed.data);
   } catch (error) {
-    return { error: message2(error) + " in " + filePath };
+    return { error: errorMessage(error) + " in " + filePath };
   }
   const metadata = parsed.data.metadata;
   return {
@@ -1385,7 +1400,7 @@ function createSkillProvider(options) {
     try {
       entries = options.entries(listOptions);
     } catch (error) {
-      const failure = `skill enumeration failed: ${message2(error)}`;
+      const failure = `skill enumeration failed: ${errorMessage(error)}`;
       options.warn(failure);
       options.onSkip?.(failure);
       return { candidates: [], complete: false };
@@ -1397,7 +1412,7 @@ function createSkillProvider(options) {
       try {
         candidate = candidateFor(entry, options.name);
       } catch (error) {
-        options.warn(`skill candidate dropped: ${message2(error)}`);
+        options.warn(`skill candidate dropped: ${errorMessage(error)}`);
         continue;
       }
       const violation = candidateViolation(candidate, options.name);
@@ -1423,7 +1438,7 @@ function createSkillProvider(options) {
       try {
         return emit(listOptions);
       } catch (error) {
-        const failure = `skill provider "${options.name}" list() failed: ${message2(error)}`;
+        const failure = `skill provider "${options.name}" list() failed: ${errorMessage(error)}`;
         options.warn(failure);
         options.onSkip?.(failure);
         return { candidates: [], complete: false };
@@ -1459,7 +1474,7 @@ function createSkillProvider(options) {
         }
         return;
       } catch (error) {
-        options.warn(`skill provider "${options.name}" get() failed: ${message2(error)}`);
+        options.warn(`skill provider "${options.name}" get() failed: ${errorMessage(error)}`);
         return;
       }
     }
@@ -1481,21 +1496,12 @@ function allocateProviderName(taken, base) {
   taken.add(fallback);
   return fallback;
 }
-function message2(error) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 // packages/mpd-ext-plugin/src/flows.ts
 import { readFileSync as readFileSync2, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 var FLOW_KEYS = ["id", "title", "description", "whenToUse", "steps"];
 var FLOW_STEP_KEYS = ["title", "detail", "tool", "output"];
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function message3(error) {
-  return error instanceof Error ? error.message : String(error);
-}
 function unknownKeys(value, allowed) {
   return Object.keys(value).filter((key) => !allowed.includes(key));
 }
@@ -1608,7 +1614,7 @@ function loadFlows(directory, options) {
   try {
     files = readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".json")).map((entry) => entry.name).sort();
   } catch (error) {
-    errors.push({ item: options.itemLabel, reason: `cannot read flows directory ${directory}: ${message3(error)}` });
+    errors.push({ item: options.itemLabel, reason: `cannot read flows directory ${directory}: ${errorMessage(error)}` });
     return { flows, entries, errors };
   }
   for (const file of files) {
@@ -1618,7 +1624,7 @@ function loadFlows(directory, options) {
     try {
       raw = JSON.parse(readFileSync2(path, "utf8"));
     } catch (error) {
-      errors.push({ item: label, reason: `invalid JSON: ${message3(error)}` });
+      errors.push({ item: label, reason: `invalid JSON: ${errorMessage(error)}` });
       continue;
     }
     const parsed = parseFlowDocument(raw, label);
@@ -1795,12 +1801,6 @@ var DEFAULT_EXTENSION_CONFIG = {
     toolCallTimeoutMs: MPD_EXT_CONTRACT.defaultToolCallTimeoutMs
   }
 };
-function isRecord2(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function message4(error) {
-  return error instanceof Error ? error.message : String(error);
-}
 function isRelativeAssetPath(value) {
   if (typeof value !== "string" || value.trim() === "")
     return false;
@@ -1931,7 +1931,7 @@ function annotateSkillSurfaces(entries, isEnabled) {
 }
 function validateSkillsItem(raw, item) {
   const errors = [];
-  if (!isRecord2(raw))
+  if (!isRecord(raw))
     return { errors: [{ item, reason: "skills item must be an object { root, rank? }" }] };
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.skillsItemKeys, item));
   if (!isRelativeAssetPath(raw.root)) {
@@ -1949,7 +1949,7 @@ function validateSkillsItem(raw, item) {
 }
 function validateFlowsItem(raw, item) {
   const errors = [];
-  if (!isRecord2(raw))
+  if (!isRecord(raw))
     return { errors: [{ item, reason: "flows item must be an object { dir, rank? }" }] };
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.flowsItemKeys, item));
   if (!isRelativeAssetPath(raw.dir)) {
@@ -1967,7 +1967,7 @@ function validateFlowsItem(raw, item) {
 }
 function validateMcpItem(raw, item) {
   const errors = [];
-  if (!isRecord2(raw))
+  if (!isRecord(raw))
     return { errors: [{ item, reason: "mcp item must be an object" }] };
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.mcpItemKeys, item));
   if (typeof raw.serverName !== "string" || !new RegExp(MPD_EXT_CONTRACT.serverNamePattern).test(raw.serverName)) {
@@ -1980,7 +1980,7 @@ function validateMcpItem(raw, item) {
   if (raw.args !== undefined && (!Array.isArray(raw.args) || raw.args.some((entry) => typeof entry !== "string"))) {
     errors.push({ item: `${item}.args`, reason: "args must be an array of strings when present" });
   }
-  if (raw.env !== undefined && (!isRecord2(raw.env) || Object.values(raw.env).some((entry) => typeof entry !== "string"))) {
+  if (raw.env !== undefined && (!isRecord(raw.env) || Object.values(raw.env).some((entry) => typeof entry !== "string"))) {
     errors.push({ item: `${item}.env`, reason: "env must be an object of string values when present" });
   }
   if (raw.cwd !== undefined && !isRelativeAssetPath(raw.cwd)) {
@@ -1998,7 +1998,7 @@ function validateMcpItem(raw, item) {
       transport: "stdio",
       command: raw.command,
       args: Array.isArray(raw.args) ? raw.args : [],
-      env: isRecord2(raw.env) ? raw.env : {},
+      env: isRecord(raw.env) ? raw.env : {},
       cwd: raw.cwd === undefined ? "." : raw.cwd,
       toolCallTimeoutMs: raw.toolCallTimeoutMs === undefined ? MPD_EXT_CONTRACT.defaultToolCallTimeoutMs : raw.toolCallTimeoutMs,
       connectTimeoutMs: raw.connectTimeoutMs === undefined ? MPD_EXT_CONTRACT.defaultConnectTimeoutMs : raw.connectTimeoutMs
@@ -2008,7 +2008,7 @@ function validateMcpItem(raw, item) {
 }
 function validateRolesItem(raw, item) {
   const errors = [];
-  if (!isRecord2(raw))
+  if (!isRecord(raw))
     return { errors: [{ item, reason: "roles item must be an object" }] };
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.rolesItemKeys, item));
   if (typeof raw.name !== "string" || raw.name.trim() === "")
@@ -2042,7 +2042,7 @@ function validateRolesItem(raw, item) {
   };
 }
 function validateDescriptor(input) {
-  if (!isRecord2(input))
+  if (!isRecord(input))
     return { errors: [{ item: "descriptor", reason: "descriptor must be a JSON object" }], rejected: true };
   const errors = [];
   errors.push(...unknownKeyErrors(input, MPD_EXT_CONTRACT.descriptorKeys, "descriptor"));
@@ -2066,7 +2066,7 @@ function validateDescriptor(input) {
   }
   const contributes = { skills: [], flows: [], mcp: [], roles: [] };
   if (input.contributes !== undefined) {
-    if (!isRecord2(input.contributes)) {
+    if (!isRecord(input.contributes)) {
       errors.push({ item: "contributes", reason: "contributes must be an object when present" });
     } else {
       errors.push(...unknownKeyErrors(input.contributes, MPD_EXT_CONTRACT.contributesKeys, "contributes"));
@@ -2112,7 +2112,7 @@ function enumerateSkillEntries(directory, options) {
   try {
     dirs = readdirSync2(directory, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch (error) {
-    errors.push({ item: options.itemLabel, reason: `cannot read skills root ${directory}: ${message4(error)}` });
+    errors.push({ item: options.itemLabel, reason: `cannot read skills root ${directory}: ${errorMessage(error)}` });
     return { entries, errors };
   }
   for (const name of dirs) {
@@ -2353,10 +2353,9 @@ class MpdExtensionRegistry {
 // packages/mpd-ext-plugin/src/manifest.ts
 import { existsSync as existsSync2, readFileSync as readFileSync4, readdirSync as readdirSync3 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join as join3 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join as join3 } from "node:path";
 function bundleRoot() {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+  return bundleRootOf(import.meta.url);
 }
 function projectExtensionsDir(workspaceRoot) {
   return join3(workspaceRoot, ".mpd", "extensions");
@@ -2367,9 +2366,6 @@ function userExtensionsDir() {
 }
 function bundleExtensionsDir() {
   return join3(bundleRoot(), "extensions");
-}
-function message5(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function discoverPlane(options) {
   const result = { plane: options.plane, dir: options.dir, entries: [], rejected: [], done: false };
@@ -2385,7 +2381,7 @@ function discoverPlane(options) {
   try {
     names = readdirSync3(options.dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch (error) {
-    options.warn(`extension plane ${options.dir} unreadable: ${message5(error)}`);
+    options.warn(`extension plane ${options.dir} unreadable: ${errorMessage(error)}`);
     result.done = true;
     return result;
   }
@@ -2404,7 +2400,7 @@ function discoverPlane(options) {
         origin: "directory",
         root: directory,
         source: manifestPath,
-        errors: [{ item: MPD_EXT_CONTRACT.manifestFile, reason: `cannot read: ${message5(error)}` }]
+        errors: [{ item: MPD_EXT_CONTRACT.manifestFile, reason: `cannot read: ${errorMessage(error)}` }]
       });
       continue;
     }
@@ -2418,7 +2414,7 @@ function discoverPlane(options) {
         origin: "directory",
         root: directory,
         source: manifestPath,
-        errors: [{ item: MPD_EXT_CONTRACT.manifestFile, reason: `invalid JSON: ${message5(error)}` }]
+        errors: [{ item: MPD_EXT_CONTRACT.manifestFile, reason: `invalid JSON: ${errorMessage(error)}` }]
       });
       continue;
     }
@@ -2557,8 +2553,8 @@ function publicToolName(serverName, rawName) {
 }
 
 class McpProtocolError extends Error {
-  constructor(message6) {
-    super(message6);
+  constructor(message) {
+    super(message);
     this.name = "McpProtocolError";
   }
 }
@@ -2732,12 +2728,12 @@ class McpStdioClient {
       pending.reject(error);
     }
   }
-  write(message6) {
+  write(message) {
     const stdin = this.child?.stdin;
     if (stdin === undefined || stdin === null || stdin.destroyed) {
       throw new Error(`mcp-client(${this.serverName}): the server process is not writable`);
     }
-    stdin.write(JSON.stringify(message6) + `
+    stdin.write(JSON.stringify(message) + `
 `);
   }
   request(method, params, timeoutMs, signal) {
@@ -2805,18 +2801,18 @@ class McpStdioClient {
     }
   }
   handleLine(line) {
-    let message6;
+    let message;
     try {
-      message6 = JSON.parse(line);
+      message = JSON.parse(line);
     } catch {
       this.protocolErrors.push(`non-JSON line on stdout: ${line.slice(0, 200)}`);
       return;
     }
-    if (typeof message6 !== "object" || message6 === null) {
+    if (typeof message !== "object" || message === null) {
       this.protocolErrors.push(`non-object JSON-RPC message: ${line.slice(0, 200)}`);
       return;
     }
-    const record = message6;
+    const record = message;
     const id = record.id;
     if (typeof id === "number" || typeof id === "string") {
       const pending = this.pending.get(id);
@@ -3055,11 +3051,11 @@ function schemaEqual(left, right) {
   return leftKeys.every((key) => Object.hasOwn(right, key) && schemaEqual(left[key], right[key]));
 }
 var MAX_PROJECTION_DEPTH = 32;
-function note(projector, path, message6) {
-  projector.notes.push(`${path}: ${message6}`);
+function note(projector, path, message) {
+  projector.notes.push(`${path}: ${message}`);
 }
-function fail(projector, path, message6) {
-  projector.unprojectable.push(`${path}: ${message6}`);
+function fail(projector, path, message) {
+  projector.unprojectable.push(`${path}: ${message}`);
   return;
 }
 function projectNode(projector, node, path) {
@@ -3312,10 +3308,6 @@ function projectSchema(value) {
 }
 
 // packages/mpd-ext-plugin/src/mcp.ts
-function message6(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 class ToolGenerationConflict extends Error {
   constructor(text) {
     super(text);
@@ -3417,7 +3409,7 @@ class ServerRuntime {
   }
   fail(state, error) {
     this.state = state;
-    this.reason = message6(error);
+    this.reason = errorMessage(error);
     const tail = this.client?.stderrTail() ?? "";
     addError(this.entry, pendingItem(this.index), `server "${this.serverName}" ${state}: ${this.reason}${tail.length > 0 ? `; child stderr tail: ${tail}` : ""}`);
     this.warn(`extension "${this.extension}" mcp server "${this.serverName}" ${state}: ${this.reason}`);
@@ -3489,7 +3481,7 @@ class ServerRuntime {
       for (const dispose of this.disposers.values())
         dispose();
       this.disposers = new Map;
-      throw new ToolGenerationConflict(`tool registration failed, no tools registered from "${this.serverName}": ${message6(error)}`);
+      throw new ToolGenerationConflict(`tool registration failed, no tools registered from "${this.serverName}": ${errorMessage(error)}`);
     }
     for (const line of skipped)
       addError(this.entry, pendingItem(this.index), line);
@@ -3598,8 +3590,8 @@ class ServerRuntime {
           this.fail("failed", error);
           return;
         }
-        addError(this.entry, pendingItem(this.index), `server "${this.serverName}" tool re-sync failed: ${message6(error)}`);
-        this.warn(`extension "${this.extension}" mcp server "${this.serverName}" tool re-sync failed: ${message6(error)}`);
+        addError(this.entry, pendingItem(this.index), `server "${this.serverName}" tool re-sync failed: ${errorMessage(error)}`);
+        this.warn(`extension "${this.extension}" mcp server "${this.serverName}" tool re-sync failed: ${errorMessage(error)}`);
       }
     });
     return this.chain;
@@ -3687,9 +3679,6 @@ var SHADOW_RECORD_SCHEMA = {
   required: ["id", "kept", "shadowed"]
 };
 var STRING_ARRAY_SCHEMA = { type: "array", items: { type: "string" } };
-function message7(error) {
-  return error instanceof Error ? error.message : String(error);
-}
 function text(content) {
   return [{ type: "text", text: content }];
 }
@@ -3735,7 +3724,7 @@ async function apply(ctx, config = {}) {
   try {
     await mount(ctx, config);
   } catch (error) {
-    const line = "[mpd-ext] apply failed: " + message7(error);
+    const line = "[mpd-ext] apply failed: " + errorMessage(error);
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(line);
@@ -3757,7 +3746,7 @@ async function mount(ctx, config = {}) {
   try {
     dsh = createLazyDshAdapter(ctx, { label: "mpd-ext", warn });
   } catch (error) {
-    warn("adapter unavailable, extension interface not mounted: " + message7(error));
+    warn("adapter unavailable, extension interface not mounted: " + errorMessage(error));
     return;
   }
   const seams = (() => {
@@ -3799,8 +3788,8 @@ async function mount(ctx, config = {}) {
       registeredProviderNames.push(entry.providerName);
       return true;
     } catch (error) {
-      entry.errors.push({ item: "contributes.skills", reason: "skill provider registration failed: " + message7(error) });
-      warn(`skill provider for "${entry.id}" not registered: ` + message7(error));
+      entry.errors.push({ item: "contributes.skills", reason: "skill provider registration failed: " + errorMessage(error) });
+      warn(`skill provider for "${entry.id}" not registered: ` + errorMessage(error));
       return false;
     }
   };
@@ -3822,7 +3811,7 @@ async function mount(ctx, config = {}) {
       for (const rejected of discovery.rejected)
         registry.addRejected(rejected);
     } catch (error) {
-      warn(`plane "${plane}" discovery failed: ` + message7(error));
+      warn(`plane "${plane}" discovery failed: ` + errorMessage(error));
     }
   }
   let projectClaimDir;
@@ -3866,7 +3855,7 @@ async function mount(ctx, config = {}) {
     dsh.registerSkillProvider(() => projectProvider);
     registeredProviderNames.push(projectProviderName);
   } catch (error) {
-    warn("project-plane skill provider not registered: " + message7(error));
+    warn("project-plane skill provider not registered: " + errorMessage(error));
   }
   const snapshot = (exec) => {
     const root = dsh.workspaceRoot(exec);
@@ -3880,7 +3869,7 @@ async function mount(ctx, config = {}) {
         warn
       });
     } catch (error) {
-      warn("project-plane discovery failed: " + message7(error));
+      warn("project-plane discovery failed: " + errorMessage(error));
     }
     const current = extensionConfig(ctx);
     for (const entry of discovery.entries) {
@@ -3936,7 +3925,7 @@ async function mount(ctx, config = {}) {
       }
       return { ok: added.ok, id: entry.id, errors: entry.errors, ...added.shadowed === undefined ? {} : { shadowed: added.shadowed } };
     } catch (error) {
-      const errors = [{ item: "descriptor", reason: "registration failed: " + message7(error) }];
+      const errors = [{ item: "descriptor", reason: "registration failed: " + errorMessage(error) }];
       registry.addRejected({ id, plane, origin: "plugin", root, source: "register()", errors });
       return { ok: false, id, errors };
     }
@@ -3961,7 +3950,7 @@ async function mount(ctx, config = {}) {
   try {
     ctx.provide("mpdExtensions", service);
   } catch (error) {
-    warn("ctx.provide(mpdExtensions) failed: " + message7(error));
+    warn("ctx.provide(mpdExtensions) failed: " + errorMessage(error));
   }
   const registeredToolNames = [];
   const safeRegisterTool = (definition, onError) => {
@@ -3970,7 +3959,7 @@ async function mount(ctx, config = {}) {
       registeredToolNames.push(definition.name);
       return true;
     } catch (error) {
-      onError(`tool "${definition?.name}" not registered: ` + message7(error));
+      onError(`tool "${definition?.name}" not registered: ` + errorMessage(error));
       return false;
     }
   };
@@ -3992,7 +3981,7 @@ async function mount(ctx, config = {}) {
       }
       return { checked: true, reason: "", holders };
     } catch (error) {
-      return { checked: false, reason: message7(error), holders: new Map };
+      return { checked: false, reason: errorMessage(error), holders: new Map };
     }
   };
   const skillServingFor = (entry, catalog) => {
@@ -4437,7 +4426,7 @@ async function mount(ctx, config = {}) {
       }, "mpd-ext.mcp-bridge");
     }
   } catch (error) {
-    warn("MCP bridge activation failed: " + message7(error));
+    warn("MCP bridge activation failed: " + errorMessage(error));
   }
   const missingTools = EXPECTED_TOOLS.filter((name2) => !registeredToolNames.includes(name2));
   if (missingTools.length > 0) {

@@ -162,6 +162,7 @@ mpd-dsh/
 ├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
 │                                 #   inline plugin list). The retired directory form is gone.
 ├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
+│                                 #   + lib/repo.mjs: the shared primitives every script imports
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
 │                                 #   mpd-skills-plugin was removed (its row is gone from the patch)
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
@@ -314,9 +315,14 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - **Harness seams go through `mpd-dsh-adapter` — binding.** No plugin row may touch a harness service
   directly (`ctx.tools`, `ctx.subagents`, `ctx.skills`, `ctx.agentPresets`); `packages/mpd-dsh-adapter-plugin`
   is the ONE file allowed to, so a harness release that renames or reshapes a seam is absorbed there
-  instead of across every plugin. Resolve it with
-  `const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)`
-  (`ctx.get("mpdDsh")` is the mounted instance; the fallback keeps a plugin standalone in unit tests).
+  instead of across every plugin. Resolve it with the adapter's own helper,
+  `const dsh = resolveDshAdapter(ctx)` (the mounted `mpdDsh` instance, or a row-private
+  `createDshAdapter` so the plugin stays standalone in unit tests) — or `createLazyDshAdapter(ctx,
+  { label })` when the row must also survive a transient "provider not ACTIVE yet" miss. The
+  package also carries the bundle's pure, harness-free helpers (`src/shared.ts`, re-exported from the
+  entry: `isRecord`, `errorMessage`, `bundleRootOf`); the SEAM surface stays
+  `src/index.ts`. The skill-frontmatter subset has ONE implementation for both the extension skill
+  plane and the bundle corpus (`packages/mpd-ext-plugin/src/skill-frontmatter.ts`).
   QA proves the surface: `bundle-lifecycle` asserts the row, the boot log line and the probe's
   `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
 - **The adopted-plugin exception is CLOSED (2026-09-19), and the closure is not overstated.**

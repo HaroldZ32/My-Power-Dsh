@@ -32,6 +32,7 @@ import { appendFileSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync
 import { tmpdir } from "node:os"
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_ROOT = resolve(HERE, "..")
@@ -424,7 +425,7 @@ function failingStepFromEvidence(log, root) {
     if (!file.endsWith(".json") || !existsSync(file)) return null
     let data
     try {
-      data = JSON.parse(readFileSync(file, "utf8"))
+      data = readJson(file)
     } catch {
       return null
     }
@@ -894,7 +895,7 @@ function selfTest() {
   const resultPath = join(fixtureRoot, "ev-mixed", "result.json")
   if (!existsSync(resultPath)) failures.push("mixed run wrote no result.json")
   else {
-    const result = JSON.parse(readFileSync(resultPath, "utf8"))
+    const result = readJson(resultPath)
     const byCase = Object.fromEntries(result.lanes.map((lane) => [lane.case, lane]))
     const expected = { "fx-fail": "fail", "fx-pass": "pass", "fx-skip": "unavailable", "fx-unavailable": "unavailable", "fx-short": "unavailable", "fx-credential": "unavailable", "fx-401": "fail", "fx-both": "fail", "fx-expected-fence": "fail", "fx-usage": "fail", "fx-hang": "fail", "fx-missing": "fail", "fx-gate-fail": "fail" }
     for (const [name, verdict] of Object.entries(expected)) {

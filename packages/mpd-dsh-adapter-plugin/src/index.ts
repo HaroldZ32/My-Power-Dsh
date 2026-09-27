@@ -26,6 +26,12 @@
 // at call time, or as a `capabilities()` flag a caller can degrade on.
 import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
+import { errorMessage } from "./shared"
+
+// The pure, harness-free helpers every row uses are re-exported from the ONE module
+// consumers already import, so a row needs a single specifier for both the seam
+// surface and the shared utilities. See ./shared.ts for why they live there.
+export { bundleRootOf, errorMessage, isRecord } from "./shared"
 
 export const name = "mpd-dsh-adapter"
 // No hard service dependency: every seam is resolved lazily through ctx.get()
@@ -1322,10 +1328,6 @@ export const decision = {
   block: (feedback: unknown): DshPostDecision => ({ kind: "block", feedback }),
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 // ── workspace root: the ONE resolution every mpd plugin (and only it) uses ────
 // The harness never defines DSH_WORKSPACE_ROOT; a session's header cwd is the
 // authoritative workspace (dsh-tool-bash resolves its workdir the same way:
@@ -1708,7 +1710,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       // remote variant that answers a promise (dsh-llm/lib/typert.remote-client).
       providers = await llm.listProviders()
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error))
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error))
       return { providers: [], degraded: true }
     }
     if (!Array.isArray(providers)) {
@@ -2112,7 +2114,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         }
         return { ok: true, isError: false, value: (raw as DshPostResult)?.value, raw }
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) }
+        return { ok: false, isError: true, error: errorMessage(error) }
       }
     },
 
@@ -2636,6 +2638,25 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 
 /** Service name other rows resolve with `ctx.get("mpdDsh")`. */
 export const SERVICE_NAME = "mpdDsh"
+
+/**
+ * The mounted adapter when this composition provides one, else a row-private fallback.
+ *
+ * THE ONE RESOLUTION EVERY ROW USES. It replaces the expression each row used to carry
+ * inline (`(typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ??
+ * createDshAdapter(ctx)`, copy-pasted into sixteen rows) so the row-order contract and
+ * the standalone-unit-test fallback are stated once.
+ *
+ * This is the EAGER read: the answer is sampled when the row's `apply` runs. A row that
+ * needs the T-50 behaviour — re-probe on every use, so a transient "provider not ACTIVE
+ * yet" miss is not locked in for the session — calls {@link createLazyDshAdapter}
+ * instead.
+ */
+export function resolveDshAdapter(ctx: any): DshAdapter {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME)
+  return (mounted as DshAdapter | undefined) ?? createDshAdapter(ctx)
+}
 
 /** The row is using the REAL mounted adapter (an ACTIVE strict read). */
 export const ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh"

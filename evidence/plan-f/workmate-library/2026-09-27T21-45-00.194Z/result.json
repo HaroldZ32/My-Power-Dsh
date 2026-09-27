@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-7YAjct",
+  "wmHome": "/tmp/mpd-wm-home-qa3crm",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 2,
+      "retryNotes": [
+        "attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"
+      ]
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 95,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "ce as separate messages. But I can also call both in one block — they'd be executed in listed order. The results reported order preserved. Yet the ordering semantics are cleaner sequential. I'll do sequential to be safe... though that costs a turn. Fine. |  | Let me combine 4 and 5 in one block to save time, since both are probes whose outcomes are independent. But \"exact order\" — the tool calls will still be 4 then 5. I'll do it. |  | Hmm, but a careful agent might argue running step 4 (reflect on nonexistent workmate) then step 5. Both in one block ordered. I'll do that. | dsh: reasoning: | "
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-qa3crm/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/home/haroldzhao/.mpd/workmate",
+      "before": null,
+      "after": null,
+      "sandboxHome": "/tmp/mpd-wm-home-qa3crm",
+      "sandboxRoot": "/tmp/mpd-wm-home-qa3crm/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

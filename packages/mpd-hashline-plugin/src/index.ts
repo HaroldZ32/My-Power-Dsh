@@ -20,7 +20,7 @@ import {
   normalizeHashlineEdits,
   type HashlineEdit,
 } from "./vendor/index.ts"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-hashline"
 export const inject = ["tools"]
@@ -42,7 +42,6 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
   }
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // Explicit override (config.registryFile / mpd.jsonc hashline.registryFile) wins; otherwise
 // the CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd.
@@ -91,7 +90,7 @@ function editFile(fp: string, edits: HashlineEdit[], maxDiffChars: number): any 
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const maxDiffChars = cfg.maxDiffChars ?? 4000
 

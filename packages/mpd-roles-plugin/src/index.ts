@@ -16,13 +16,12 @@
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-roles"
 export const inject = ["tools", "subagents"]
@@ -62,12 +61,10 @@ const REPORT_SCHEMA = {
   additionalProperties: false
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
-
-export function pkgRoot(): string {
-  // this file lives at <pkg-root>/packages/mpd-roles-plugin/dist/index.js
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+// The bundle root, resolved by the shared helper (bundleRootOf): this file lives at
+// <bundle>/packages/mpd-roles-plugin/{src,dist}/index.ts|js. Location-derived, never a
+// hard-coded repo path, so the checkout and the packed install both resolve.
+export function pkgRoot(): string { return bundleRootOf(import.meta.url) }
 
 /** Collapsed form of a team-style roster name: case-, space-, hyphen- and
  *  underscore-insensitive ("Deep Worker" === "deep-worker" === "deepworker"). */

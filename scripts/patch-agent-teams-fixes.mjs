@@ -32,9 +32,10 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "no
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import process from "node:process"
+import { repoRootFrom } from "./lib/repo.mjs"
 import { MPD_DELTA_MARKERS, MPD_DELTAS } from "../packages/mpd-agent-teams-plugin/lib/mpd-deltas.js"
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
+const repoRoot = repoRootFrom(import.meta.url)
 
 /** Region begin line for one delta id. */
 const beginLine = (id) => MPD_DELTA_MARKERS.begin(id)

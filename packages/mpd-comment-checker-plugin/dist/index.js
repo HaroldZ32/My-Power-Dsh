@@ -2,12 +2,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { dirname, join, resolve as resolve2 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname as dirname2, join, resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function bundleRootOf(moduleUrl) {
+  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -23,9 +33,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -292,7 +299,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -485,7 +492,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -595,7 +602,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -955,11 +962,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -967,24 +974,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -992,6 +999,12 @@ function createDshAdapter(ctx, config = {}) {
     }
   };
   return adapter;
+}
+var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
 }
 
 // packages/mpd-comment-checker-plugin/src/index.ts
@@ -1010,12 +1023,7 @@ function mergedConfig(ctx, config) {
     maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? v("commentChecker.maxMessageChars") : config.maxMessageChars
   };
 }
-function textBlock2(text) {
-  return [{ type: "text", text }];
-}
-function repoRoot() {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-}
+var repoRoot = () => bundleRootOf(import.meta.url);
 function platformKey() {
   const arch = process.arch === "x64" ? "x64" : process.arch;
   return process.platform + "-" + arch;
@@ -1024,7 +1032,7 @@ function dependencyBinary() {
   try {
     const req = createRequire(import.meta.url);
     const p = req.resolve("@code-yeongyu/comment-checker/package.json");
-    return join(dirname(p), "vendor", platformKey(), "comment-checker");
+    return join(dirname2(p), "vendor", platformKey(), "comment-checker");
   } catch {
     return null;
   }
@@ -1070,7 +1078,7 @@ function runCheck(binary, hookInput, timeoutMs) {
   return { hasComments: false, message: "unexpected exit " + r.status + ": " + stderr.slice(0, 200) };
 }
 function apply(ctx, config = {}) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const dsh = resolveDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
   const timeoutMs = cfg.timeoutMs ?? 30000;
   const maxMessageChars = cfg.maxMessageChars ?? 12000;
@@ -1078,7 +1086,7 @@ function apply(ctx, config = {}) {
     name: "mpd_comment_check",
     description: "Run the comment/docstring detector on one or more files (content in memory or read from disk). Returns per-file detection results; exit 2 means comments/docstrings found and the binary message spells the required action. The binary (@code-yeongyu/comment-checker, MIT) must be installed in .toolchain (installer flag --with-comment-checker) or set via MPD_DSH_COMMENT_CHECKER_BIN.",
     parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
-    output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a, v) => textBlock2("comment-check binary=" + v.binary + `
+    output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a, v) => textBlock("comment-check binary=" + v.binary + `
 ` + v.results.map((x) => x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path).join(`
 `)) },
     execute: async (args, exec) => {

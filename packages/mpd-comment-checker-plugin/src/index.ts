@@ -12,8 +12,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createDshAdapter, workspaceRootOf } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-comment-checker"
 export const inject = ["tools"]
@@ -35,12 +34,10 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
   }
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
-function repoRoot(): string {
-  // this plugin's dist is <root>/packages/mpd-comment-checker-plugin/dist/index.js
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+// The bundle root, resolved by the shared helper (bundleRootOf): this plugin's entry is
+// <root>/packages/mpd-comment-checker-plugin/{src,dist}/index.ts|js in both install layouts.
+const repoRoot = (): string => bundleRootOf(import.meta.url)
 
 function platformKey(): string {
   const arch = process.arch === "x64" ? "x64" : process.arch
@@ -98,7 +95,7 @@ export { hookInputFor, runCheck }
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const timeoutMs = cfg.timeoutMs ?? 30000
   const maxMessageChars = cfg.maxMessageChars ?? 12000

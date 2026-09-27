@@ -18,7 +18,7 @@ import {
   endTaskTimer,
 } from "./vendor/index.ts"
 import { join } from "node:path"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-boulder"
 export const inject = ["tools"]
@@ -34,7 +34,6 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
   return typeof v === "string" ? { ...config, boulderDir: v } : config
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // Explicit override (config.boulderDir / mpd.jsonc boulder.dir) wins; otherwise the
 // CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd.
@@ -44,7 +43,7 @@ function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const merged = mergedConfig(ctx, config)
   const root = (exec?: any) => boulderRoot(merged, dsh, exec)
 

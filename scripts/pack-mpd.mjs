@@ -10,8 +10,9 @@ import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { readJson, repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 const dev = repoRoot.replace(/\\/g, "/")
 // The default target is the SAME expression this file always used, so an invocation with no flags
 // stages exactly what it staged before. `--out <dir>` exists for the scratch-pack consumers (T-63's
@@ -66,7 +67,7 @@ const BP = "(typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\\//, \"\
  */
 const MAIN_PATCH_REL = "packages/mpd-bundle/cordis.patch.yml"
 function declaredPatches() {
-  const raw = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))?.dsh?.bundle?.patch
+  const raw = readJson(join(repoRoot, "package.json"))?.dsh?.bundle?.patch
   const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : []
   return {
     array: Array.isArray(raw),
@@ -412,7 +413,7 @@ function decouplePatch(srcPatch) {
 }
 
 function writeManifest() {
-  const root = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+  const root = readJson(join(repoRoot, "package.json"))
   // The packed patch layer mirrors the ROOT declaration, in order, at the paths the
   // packer actually stages. The SHAPE mirrors the source too (array stays an array),
   // so a single-patch bundle keeps the historical string form.

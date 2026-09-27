@@ -21,6 +21,7 @@ import { loadFlows, type MpdFlow } from "./flows"
 // whose behaviour is pinned against the roster's exported functions by
 // test/core.test.ts (never by a comment).
 import { ROLES, ROLE_BY_ID } from "../../mpd-roles-plugin/src/roles.data"
+import { errorMessage as message, isRecord } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** Runtime config consumed lazily from mpdConfig (`extensions.*`). */
 export interface ExtensionConfig {
@@ -168,13 +169,7 @@ export interface DiscoveryResult {
 
 // ── path rules ──────────────────────────────────────────────────────────────
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /**
  * An asset reference must stay inside the extension root: no absolute path, no

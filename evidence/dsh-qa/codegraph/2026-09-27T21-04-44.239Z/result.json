@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "exit": 0,
+  "assertion": "harness-recorded tool/call + non-error tool/result whose returned text carries the indexed source",
+  "initOk": true,
+  "tool": {
+    "name": "mcp__codegraph__codegraph_explore",
+    "called": true,
+    "succeeded": true,
+    "calls": [
+      {
+        "callId": "call_00_DlottuxntzDJTAgE78dZ6645",
+        "arguments": "{\"query\": \"norm src/util.ts\", \"projectPath\": \"/home/haroldzhao/dshProj/my-power-dsh/.cg-qa\"}"
+      }
+    ],
+    "resultChars": 0,
+    "reason": null
+  },
+  "resultHasNorm": false,
+  "sessionFile": "/tmp/mpd-dsh-qa-TAGZTW/sessions/--tmp-mpd-dsh-qa-TAGZTW-ws--/session-c328659e-b48d-4e7c-8e38-b265c633247c/session.v4.jsonl.zstd",
+  "sessionError": null,
+  "outHasToolName": false
+}

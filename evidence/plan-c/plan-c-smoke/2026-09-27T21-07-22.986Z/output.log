@@ -1,0 +1,73 @@
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-Qpq6mq/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[mpd-roles] roster section registered for agent "session-4089a738-b83a-4fdf-a243-908e052e90cf" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-4089a738-b83a-4fdf-a243-908e052e90cf" agentPreset=none
+All three parts pass.
+
+## 1) Config — `.mpd/mpd.jsonc` + `mpd_config_get`
+
+Wrote `.mpd/mpd.jsonc` with `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }`, reloaded config, then queried:
+
+```
+mpd config memory.vcs: "git"
+```
+
+**Value: `"git"`** (tool returns it JSON-quoted, so the string is `git`).
+
+## 2) Boulder — plan + timer + complete
+
+Created `.mpd/plans/qa.md` with `# QA` / `## TODOs` and the two checkbox items, then:
+
+| Step | Result |
+|---|---|
+| `mpd_boulder_start` | **workId `qa-5a15c100`**, status `active` |
+| `mpd_boulder_task_timer` start task `1` | `1 (running)` |
+| `mpd_boulder_task_timer` end task `1` | `1 (completed)` |
+| `mpd_boulder_complete` | status=`completed`, elapsedMs=4526 |
+
+`mpd_boulder_status` afterwards shows `active works: []`, i.e. no lingering active work.
+
+**workId: `qa-5a15c100` — final status: `completed`**
+
+## 3) Hashline — `note.txt`
+
+Created 3 lines, read anchors:
+```
+1#KM|first
+2#BB|second
+3#SS|third
+```
+Replaced `2#BB` with `second2` (1 line changed, noop=0, deduped=0). Final `note.txt` content:
+
+```
+first
+second2
+third
+```
+
+All three self-test lanes executed end-to-end with no errors; each result was confirmed by a follow-up read (`mpd_boulder_status`, `read note.txt`) rather than by the write call's own output. One note: I overwrote `.mpd/mpd.jsonc` as instructed — that is a real workspace config file, so any pre-existing settings in it (beyond `ulw` and `memory`) are now gone.
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+I'm starting a straightforward self-test with three independent parts. First, I need to write a config file with specific settings, then retrieve the memory.vcs value. After that, I'll create a plan document, initialize a boulder, and set up task timing before marking it complete.
+
+Next, I'll create a note file with three lines, read its hashline representation, edit line 2, and then read it back. I'll batch the independent operations—writing the config, creating the plan, and writing the note file can happen in parallel since they don't depend on each other.
+dsh: reasoning:
+I need to reload the config to pick up the new file, then proceed with the boulder start and hashline read operations. I'll handle the config reload and hashline read in parallel since they're independent, then continue with the rest of the workflow.
+dsh: reasoning:
+I'm doing several things in parallel: fetching the memory.vcs config, using hashline edit to replace line 2, and starting a timer for task 1. After that, I'll end the timer, complete the boulder, and read the note file. I'm also checking what to do about the config_get call.
+dsh: reasoning:
+I'm wrapping up: ending the timer for task 1, marking the boulder as complete, and then reading the note.txt file.
+dsh: reasoning:
+Now I need to report the three requested items and run a quick status check to confirm the boulder state. I'm also noticing a potential issue with the write policy—I created the `.mpd/mpd.jsonc` file while the `mpd_config_get` showed a value, and there's a concern that this workspace-level config might have overwritten previous settings, so I should check if anything else was affected before finalizing.
+dsh: reasoning:
+The three requested items are all complete and verified from the ledger. Now I'll put together the final report.

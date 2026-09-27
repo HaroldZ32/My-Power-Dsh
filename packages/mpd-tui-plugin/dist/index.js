@@ -1134,6 +1134,15 @@ import { homedir as homedir3 } from "node:os";
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1149,9 +1158,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -1418,7 +1424,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -1611,7 +1617,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -1721,7 +1727,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -2081,11 +2087,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop2;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -2093,24 +2099,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -2122,8 +2128,8 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-tui-plugin/src/log.ts
 function createLog(logger, prefix, env = process.env) {
-  const emit = (level, message2) => {
-    const text = `[${prefix}] ${message2}`;
+  const emit = (level, message) => {
+    const text = `[${prefix}] ${message}`;
     try {
       const sink = logger?.[level];
       if (typeof sink === "function") {
@@ -2139,9 +2145,9 @@ function createLog(logger, prefix, env = process.env) {
     } catch {}
   };
   return {
-    info: (message2) => emit("info", message2),
-    warn: (message2) => emit("warn", message2),
-    debug: (message2) => emit("debug", message2)
+    info: (message) => emit("info", message),
+    warn: (message) => emit("warn", message),
+    debug: (message) => emit("debug", message)
   };
 }
 
@@ -2260,9 +2266,6 @@ var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
-}
-function isRecord(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -3363,8 +3366,8 @@ function teamWorkflowLines(workflow) {
   const tasks = workflow.counts;
   lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
   lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
-  for (const message2 of workflow.mail.captainInbox)
-    lines.push(`  ${message2.from}: ${message2.content}`);
+  for (const message of workflow.mail.captainInbox)
+    lines.push(`  ${message.from}: ${message.content}`);
   if (workflow.problems.length > 0) {
     lines.push("");
     for (const problem of workflow.problems)
@@ -3654,7 +3657,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function planActionLines(workflow, echo, armed, message2) {
+function planActionLines(workflow, echo, armed, message) {
   const team = workflow?.team;
   const phrase = team === undefined ? "" : approvalPhrase(team.id);
   const rows = [];
@@ -3665,8 +3668,8 @@ function planActionLines(workflow, echo, armed, message2) {
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`);
   if (armed)
     rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan");
-  if (message2 !== "")
-    rows.push(message2);
+  if (message !== "")
+    rows.push(message);
   rows.push("");
   rows.push("to change this plan: press Esc and tell the captain what to change in the chat");
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
@@ -3691,7 +3694,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     const busy = busyState[0];
     const setBusy = busyState[1];
     const messageState = React.useState("");
-    const message2 = messageState[0];
+    const message = messageState[0];
     const setMessage = messageState[1];
     const armedState = React.useState(0);
     const armedAt = armedState[0];
@@ -3870,18 +3873,18 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`);
     }
     if (usable)
-      for (const row of planActionLines(view, echo, armedAt !== 0, message2))
+      for (const row of planActionLines(view, echo, armedAt !== 0, message))
         body.push(row);
     const measured = measureTerminal(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
-    const settled = message2 !== "";
+    const settled = message !== "";
     const verdict = !usable && settled;
     const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`;
     const children = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))];
     if (!usable) {
       if (verdict) {
-        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message2)));
+        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message)));
         children.push(React.createElement(ui.Text, { key: "context", dimColor: true }, safeLine(team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`)));
       } else {
         const detail = team === undefined ? "no staged plan for team (none)" : `no staged plan for team ${team.id} (phase ${team.phase})`;
@@ -4079,11 +4082,11 @@ function createDialogs(ctx, log, defaultTimeoutMs = 30000) {
       return;
     }
   };
-  const confirm = async (title, message2, timeoutMs = defaultTimeoutMs) => {
+  const confirm = async (title, message, timeoutMs = defaultTimeoutMs) => {
     if (dialogs === undefined)
       return;
     try {
-      return await dialogs.confirm({ title, message: message2, timeoutMs });
+      return await dialogs.confirm({ title, message, timeoutMs });
     } catch (error) {
       log.debug(`dialog confirm failed: ${String(error?.message ?? error)}`);
       return;
@@ -4273,8 +4276,8 @@ function attemptDecisionEvents(ctx, log) {
   return { outcome: () => outcome, attempts: () => attempts };
 }
 function shortReason(error) {
-  const message2 = error instanceof Error ? error.message : String(error);
-  return message2.replace(/\s+/gu, " ").trim().slice(0, 160);
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/\s+/gu, " ").trim().slice(0, 160);
 }
 
 // packages/mpd-tui-plugin/src/commands.ts

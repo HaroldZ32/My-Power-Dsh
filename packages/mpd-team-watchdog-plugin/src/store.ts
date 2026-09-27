@@ -14,6 +14,10 @@
 //     written before the kill.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
+import { errorMessage as message } from "../../mpd-dsh-adapter-plugin/src/index"
+
+/** `Error#message` for anything thrown (the shared implementation). */
+export { message }
 import { DEFAULT_KEEP_GENERATIONS, heartbeatDir, heartbeatPath } from "./paths.js"
 
 /**
@@ -257,7 +261,3 @@ export function writeFileAtomic(path: string, text: string): { changed: boolean;
   }
 }
 
-/** `Error#message` for anything thrown. */
-export function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}

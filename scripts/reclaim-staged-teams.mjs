@@ -16,8 +16,9 @@
 // Usage:
 //   node scripts/reclaim-staged-teams.mjs [--apply] [--workspace <dir>]
 // Default is a DRY RUN: it prints the manifest and changes nothing.
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { readJson } from "./lib/repo.mjs"
 import { archiveTeamDir } from "../packages/mpd-agent-teams-plugin/lib/state.js"
 
 const args = process.argv.slice(2)
@@ -29,7 +30,7 @@ const stateRoot = join(workspace, stateDir)
 
 /** Read one team.json; undefined when unreadable. */
 function readTeamFile(path) {
-  try { return JSON.parse(readFileSync(path, "utf8")) } catch { return undefined }
+  try { return readJson(path) } catch { return undefined }
 }
 
 /** Every live (non-archived) team directory with a team.json. */

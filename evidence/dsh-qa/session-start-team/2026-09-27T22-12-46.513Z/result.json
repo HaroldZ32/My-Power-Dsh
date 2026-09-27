@@ -1,0 +1,181 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-bipZDx",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "3e4a8d3dc5e0f9cca2465fcaa9ee99c754ee5795",
+      "gateHash": "d449d949b7402a70064a2c37f956783e2636a881bfcbd5533171fd8bd18acc55"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "mountsRoles": true,
+      "retiredAgentTeamsRow": false
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 22,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 28,
+        "sessionFrames": 12,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 52,
+        "sessionFrames": 27,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advise",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 1,
+        "officialTools": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "C"
+        ],
+        "teams": 0,
+        "sessionRecords": 161,
+        "sessionFrames": 96,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "advise",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 1,
+        "officialTools": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "C"
+        ],
+        "teams": 0,
+        "sessionRecords": 291,
+        "sessionFrames": 180,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "explicit",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 1,
+        "officialTools": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "A"
+        ],
+        "teams": 0,
+        "markerConsumed": true,
+        "sessionRecords": 99,
+        "sessionFrames": 56,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "threeWay": {
+      "ok": true,
+      "simpleNotices": [
+        0,
+        0,
+        0
+      ],
+      "softNotices": [
+        1,
+        1
+      ],
+      "softSignals": [
+        [
+          "C"
+        ],
+        [
+          "C"
+        ]
+      ],
+      "softStaged": [
+        0,
+        0
+      ],
+      "explicitNotices": [
+        1
+      ],
+      "explicitStaged": [
+        0
+      ],
+      "explicitMarkerConsumed": [
+        true
+      ]
+    }
+  },
+  "totalSteps": 7
+}

@@ -1,0 +1,17 @@
+[negative control/card-shape] pre-move card shape re-injected into the built client -> CONTROL VOID (did not redden) mutationLanded=true
+[card] W2a=ok W2b=ok W2c=FAIL W2d=ok W2e=ok W2f=ok | W3 NOT-CLAIMED (no browser)
+[static] S1=ok S2=ok S3=ok
+[boot] main: /tmp/mpd-settings-bridge-root-bQ9YK8 (port 45731)
+[boot] cookie=present log=evidence/mpd-bridge/web-settings-bridge/20260927T214422Z/raw/boot-main.log
+[session] one: status=200 transport=none
+[mutate] one root: status=200 {"ok":false,"error":{"code":"settings/rejected","message":"No configurable plugin entry \"mpd\"","details":{"ns":"mpd"}}}
+[read-back] settings/describe: status=200 envelope=ok,value ns=MISSING resolved=undefined base=undefined
+[write] W1=ok W2=FAIL W3=FAIL W4=ok W5=ok W6=FAIL W7=FAIL W8=FAIL W9=ok W10=FAIL W11=FAIL W12=FAIL W15=FAIL W14=FAIL W13=FAIL
+[session] two: status=200 transport=none
+[mutate] two roots: status=200 "ok"
+[ambiguous] A1=ok A2=ok A3=FAIL A4=FAIL A5=FAIL
+[boot] disabled control: /tmp/mpd-settings-bridge-disabled-0OYVzS (port 45019)
+[session] disabled control: status=200 transport=none
+[mutate] disabled control: status=200 "ok"
+[disabled] D1=ok D2=ok D3=FAIL D4=ok
+[negative control] injected fan-out fault -> verdict red as required

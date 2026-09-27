@@ -14,6 +14,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { basename, join } from "node:path"
 import { MPD_EXT_SKILL_NAME_PATTERN, type MpdExtLoadError } from "./sdk"
 import { candidateViolation, definitionViolation, type SkillDocumentEntry } from "./skills"
+import { errorMessage as message, isRecord } from "../../mpd-dsh-adapter-plugin/src/index"
 
 const FLOW_KEYS = ["id", "title", "description", "whenToUse", "steps"]
 const FLOW_STEP_KEYS = ["title", "detail", "tool", "output"]
@@ -39,13 +40,7 @@ export interface FlowLoadResult {
   errors: MpdExtLoadError[]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 function unknownKeys(value: Record<string, unknown>, allowed: string[]): string[] {
   return Object.keys(value).filter((key) => !allowed.includes(key))

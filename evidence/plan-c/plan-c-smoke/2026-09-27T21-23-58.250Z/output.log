@@ -1,0 +1,120 @@
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-8uctxW/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[mpd-roles] roster section registered for agent "session-73d102af-a2f1-4284-99a5-ee26235fba17" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-73d102af-a2f1-4284-99a5-ee26235fba17" agentPreset=none
+All three Wave A self-test cases pass. Here's the report.
+
+## 1) Config value
+
+`mpd_config_get` with key `memory.vcs` → **`"git"`**
+
+- Wrote `.mpd/mpd.jsonc` with `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }`
+- Called `mpd_config_reload` first (it confirmed it resolved the new file `/tmp/mpd-wa-8uctxW/ws/.mpd/mpd.jsonc`), then queried — so the read reflects the freshly-written layer, not a stale cache.
+
+## 2) Boulder work
+
+| Field | Value |
+|---|---|
+| **workId** | `qa-9be207e6` |
+| **Status (after start)** | `active` |
+| **Status (after complete)** | `completed`, `elapsedMs=11459` |
+| Task timer `'1'` | `running` → `completed`, `elapsed_ms=1618` |
+
+The ledger (`/.mpd/boulder.json`, schema_version 2) confirms `work_id: "qa-9be207e6"`, `active_plan: ".mpd/plans/qa.md"`, `agent: "lead"`, and `task_sessions."1".status: "completed"` with `started_at`/`ended_at`/`elapsed_ms` recorded. `mpd_boulder_plan_progress` reported `{total: 2, completed: 1, isComplete: false}`.
+
+⚠️ **Finding:** `mpd_boulder_status` is broken in this build — it errors consistently with `tool "mpd_boulder_status" returned invalid output: value is not lossless JSON`, both with `planPath` and with no arguments. That's a genuine defect (the ledger content itself is fine — I read `.mpd/boulder.json` directly and it's valid JSON). Worth a follow-up, since this is the tool the boulder resume flow depends on.
+
+## 3) Hashline edit
+
+`mpd_hashline_read` returned anchors `1#KM`, `2#BB`, `3#SS`. The edit (`replace` at `2#BB` with `second2`) applied cleanly: `3 lines, noop=0, deduped=0`.
+
+**Final `note.txt` content:**
+```
+first
+second2
+third
+```
+Byte-verified with `od -c`: `first\nsecond2\nthird\n` — exactly three lines, trailing newline preserved.
+
+## Summary
+
+| # | Case | Result |
+|---|---|---|
+| 1 | `memory.vcs` | ✅ `"git"` |
+| 2 | workId / status | ✅ `qa-9be207e6` → `completed` |
+| 3 | `note.txt` | ✅ `first\nsecond2\nthird\n` |
+
+One defect found: `mpd_boulder_status` serialization failure (workaround: read `.mpd/boulder.json` or use `mpd_boulder_plan_progress`).
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+I need to walk through a three-part verification: first i'll set up a config file and check a value, then create a plan and work through the timer lifecycle, and finally test the note editing with hashlines. Let me start by creating the required files and running through each step methodically.
+dsh: reasoning:
+I need to reload the config file since mpd_config_get might be caching the old values after the write. Let me start by reloading and checking the mpd.jsonc content, then read through all the files before proceeding.
+dsh: reasoning:
+Now step 1: reload config then get key 'memory.vcs'.
+dsh: reasoning:
+Step 1 done: memory.vcs = "git".
+
+Step 2: boulder start on .mpd/plans/qa.md, task timer start/end for task '1', then complete.
+
+Let me start.
+dsh: reasoning:
+workId = qa-9be207e6, status active.
+
+Now task timer start for task '1'.
+dsh: reasoning:
+Now check boulder status before completing (useful evidence), then complete.
+
+Task says: call mpd_boulder_start on it, mpd_boulder_task_timer start/end for task '1', then mpd_boulder_complete. Let me get status for evidence then complete.
+dsh: reasoning:
+The status tool returned invalid output — a harness bug in this self-test. Let me try without planPath.
+
+Actually it's noted. Let me try just mpd_boulder_status without args. Might be the same. Let's try to see if it's a persistent issue. This is a self-test, so reporting tool behavior is valuable. Let me try.
+
+Also could use mpd_boulder_plan_progress. But the task doesn't require status. Let's try status once without arg; if it fails, note it. Then complete.
+dsh: reasoning:
+mpd_boulder_status consistently errors with "invalid output: value is not lossless JSON". I'll note that as a finding. Let me read .mpd/boulder.json directly to confirm workId/status.
+dsh: reasoning:
+Boulder completed: qa-9be207e6 status=completed elapsedMs=11459.
+
+Let me confirm the ledger status after completion for evidence. Read boulder.json again.
+
+Then step 3.
+
+Step 3: note.txt has three lines. mpd_hashline_read, then mpd_hashline_edit to replace line 2 with 'second2', then read note.txt.
+
+I already read note.txt with read tool. Need hashline_read to get anchors.
+dsh: reasoning:
+Persisted status completed. Hashline view:
+1#KM|first
+2#BB|second
+3#SS|third
+
+Now edit line 2 replacing with 'second2'. Anchor 2#BB, op replace pos "2#BB", lines "second2".
+dsh: reasoning:
+All three steps done. Let me also verify with a byte-level check (od/cat -A) to confirm exact content/trailing newline. Use bash.
+
+Also step 3 asked "then mpd_hashline_edit to replace line 2 with 'second2', then read note.txt" — done.
+
+Let me do a final byte check for rigor.
+dsh: reasoning:
+All verified. Now write the report.
+
+Report:
+1) config value: "git" (string), via mpd_config_get key 'memory.vcs' after mpd_config_reload observed new file.
+2) workId: qa-9be207e6; status: active at start → completed after mpd_boulder_complete (elapsedMs=11459). Timer for task '1': running → completed, elapsed_ms=1618.
+3) final note.txt: first\nsecond2\nthird\n
+
+Also note finding: mpd_boulder_status fails with invalid output error (lossless JSON), both with and without planPath. Workaround: read .mpd/boulder.json / mpd_boulder_plan_progress.
+
+Keep it concise.

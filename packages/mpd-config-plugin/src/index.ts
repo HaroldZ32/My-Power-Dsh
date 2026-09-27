@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
@@ -46,7 +46,6 @@ export { SETTINGS_NS }
 /** The in-namespace idempotence marker (design §6.3): never a config knob, never a side file. */
 const MARKER_PATH: readonly string[] = ["bridge", "migratedRevision"]
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // --- minimal JSONC parser (comments + trailing commas; string-aware) ---
 function stripJsonc(src: string): string {
@@ -240,7 +239,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // during evaluation), and the settings editor reads `runtime.Config` long after this point.
   markVolatile(Config)
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
 
   // A bridge diagnostic MUST be visible in a HEADLESS/web boot: `ctx.logger.warn` has no
   // stdout sink there (MEASURED by the tui-settings-bridge lane's first real run, whose log

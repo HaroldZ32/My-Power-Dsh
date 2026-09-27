@@ -10,7 +10,7 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { createDshAdapter, type DshAdapter, type DshCommandInvocation } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, type DshCommandInvocation, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-ulw"
 export const inject = ["tools", "subagents"]
@@ -102,7 +102,6 @@ export function activationDirective(objective: string): string {
   return ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim()
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // Explicit config (ulw.planDir / ulw.stateDir) wins; otherwise both roots live under the
 // CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd. They are
@@ -164,7 +163,7 @@ function rewriteMessageText(message: any, text: string): any {
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const maxRounds = cfg.maxRounds ?? 6
   const provider = cfg.provider ?? "deepseek-official"

@@ -18,7 +18,7 @@
 //   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show
 // There is deliberately NO mpd_ext_reload in v1 — the honest reload is a
 // restart (a plugin-module change is not hot-reloaded anyway).
-import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { MPD_EXT_API_VERSION, type MpdExtLoadError, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
@@ -132,9 +132,6 @@ const SHADOW_RECORD_SCHEMA = {
 
 const STRING_ARRAY_SCHEMA = { type: "array", items: { type: "string" } } as const
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 function text(content: string): { type: "text"; text: string }[] {
   return [{ type: "text", text: content }]

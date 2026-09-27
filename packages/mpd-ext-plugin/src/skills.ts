@@ -15,6 +15,15 @@
 // format; it keeps the plugin dependency-free.
 import { readFileSync } from "node:fs"
 import { MPD_EXT_SKILL_NAME_PATTERN } from "./sdk"
+import { errorMessage as message } from "../../mpd-dsh-adapter-plugin/src/index"
+
+import {
+  isAbsent,
+  parseFrontmatter,
+  parseInvocation,
+  stringField,
+  type Frontmatter,
+} from "./skill-frontmatter"
 
 /** Harness skill-name grammar, compiled from the shared contract constant. */
 export const SKILL_NAME = new RegExp(MPD_EXT_SKILL_NAME_PATTERN)
@@ -56,149 +65,8 @@ export interface SkillCandidate {
   resourceBase?: { kind: string; path: string }
 }
 
-// ── frontmatter ─────────────────────────────────────────────────────────────
 
-type Frontmatter = { data: Record<string, unknown>; body: string }
-
-function isAbsent(error: unknown): boolean {
-  const code = (error as { code?: string } | undefined)?.code
-  return code === "ENOENT" || code === "ENOTDIR"
-}
-
-function parseScalar(value: string): unknown {
-  const text = value.trim()
-  if (text === "") return ""
-  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
-    try { return JSON.parse(text) as unknown } catch { return text.slice(1, -1) }
-  }
-  if (text.startsWith("'") && text.endsWith("'") && text.length >= 2) return text.slice(1, -1).replace(/''/g, "'")
-  const lower = text.toLowerCase()
-  if (lower === "true" || lower === "yes" || lower === "on") return true
-  if (lower === "false" || lower === "no" || lower === "off") return false
-  if (lower === "null" || text === "~") return null
-  if (/^-?\d+$/.test(text)) return Number(text)
-  if (/^-?\d*\.\d+$/.test(text)) return Number(text)
-  return text
-}
-
-function foldLines(lines: string[]): string {
-  let out = ""
-  for (const line of lines) {
-    if (line === "") out += "\n"
-    else out += (out === "" || out.endsWith("\n") ? "" : " ") + line
-  }
-  return out
-}
-
-/** Parse the small YAML subset the skill corpus uses (scalars, one nested map, block scalars). */
-export function parseYamlBlock(text: string): Record<string, unknown> {
-  const lines = text.split("\n")
-  const root: Record<string, unknown> = {}
-  const stack: Array<{ indent: number; map: Record<string, unknown> }> = [{ indent: -1, map: root }]
-  let index = 0
-  while (index < lines.length) {
-    const raw = lines[index]
-    index += 1
-    if (raw.trim() === "" || raw.trimStart().startsWith("#")) continue
-    const indent = raw.length - raw.trimStart().length
-    const line = raw.slice(indent)
-    const match = /^([A-Za-z0-9_][A-Za-z0-9_.-]*)\s*:(?:[ \t]+(.*))?$/.exec(line)
-    if (match === null) throw new Error("unsupported frontmatter line: " + line)
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop()
-    const parent = stack[stack.length - 1].map
-    const key = match[1]
-    const rest = match[2] ?? ""
-    if (rest.trim() === "") {
-      let next: { indent: number; text: string } | undefined
-      for (let probe = index; probe < lines.length; probe += 1) {
-        const candidate = lines[probe]
-        if (candidate.trim() === "" || candidate.trimStart().startsWith("#")) continue
-        next = { indent: candidate.length - candidate.trimStart().length, text: candidate.trimStart() }
-        break
-      }
-      if (next !== undefined && next.indent > indent && /^[A-Za-z0-9_][A-Za-z0-9_.-]*\s*:/.test(next.text)) {
-        const child: Record<string, unknown> = {}
-        parent[key] = child
-        stack.push({ indent, map: child })
-      } else parent[key] = null
-      continue
-    }
-    const block = /^([|>])([+-]?)(\d*)$/.exec(rest.trim())
-    if (block !== null) {
-      const collected: string[] = []
-      let blockIndent = -1
-      while (index < lines.length) {
-        const candidate = lines[index]
-        if (candidate.trim() === "") { collected.push(""); index += 1; continue }
-        const candidateIndent = candidate.length - candidate.trimStart().length
-        if (candidateIndent <= indent) break
-        if (blockIndent < 0) blockIndent = candidateIndent
-        collected.push(candidate.slice(Math.min(blockIndent, candidateIndent)))
-        index += 1
-      }
-      while (collected.length > 0 && collected[collected.length - 1] === "") collected.pop()
-      const joined = block[1] === "|" ? collected.join("\n") : foldLines(collected)
-      parent[key] = block[2] === "-" ? joined.replace(/\n+$/, "") : joined
-      continue
-    }
-    parent[key] = parseScalar(rest)
-  }
-  return root
-}
-
-export function parseFrontmatter(raw: string): Frontmatter | undefined {
-  const firstLineEnd = raw.indexOf("\n")
-  if (firstLineEnd < 0) return undefined
-  if (raw.slice(0, firstLineEnd).replace(/\r$/, "") !== "---") return undefined
-  let lineStart = firstLineEnd + 1
-  let closingStart = -1
-  let bodyStart = -1
-  while (lineStart <= raw.length) {
-    const nextNewline = raw.indexOf("\n", lineStart)
-    const lineEnd = nextNewline < 0 ? raw.length : nextNewline
-    if (raw.slice(lineStart, lineEnd).replace(/\r$/, "") === "---") {
-      closingStart = lineStart
-      bodyStart = nextNewline < 0 ? raw.length : nextNewline + 1
-      break
-    }
-    if (nextNewline < 0) return undefined
-    lineStart = nextNewline + 1
-  }
-  if (closingStart < 0) return undefined
-  return { data: parseYamlBlock(raw.slice(firstLineEnd + 1, closingStart)), body: raw.slice(bodyStart) }
-}
-
-function stringField(data: Record<string, unknown>, key: string): string | undefined {
-  const value = data[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-function frontmatterBoolean(data: Record<string, unknown>, key: string): boolean | undefined {
-  if (!Object.hasOwn(data, key)) return undefined
-  const value = data[key]
-  if (typeof value === "boolean") return value
-  if (value === 1 || value === "1") return true
-  if (value === 0 || value === "0") return false
-  if (typeof value === "string") {
-    const lower = value.toLowerCase()
-    if (lower === "true" || lower === "yes" || lower === "on") return true
-    if (lower === "false" || lower === "no" || lower === "off") return false
-  }
-  throw new TypeError(`frontmatter field "${key}" must be a boolean`)
-}
-
-function parseInvocation(data: Record<string, unknown>): SkillInvocation {
-  for (const legacy of ["disableModelInvocation", "modelInvocable", "userInvocable"]) {
-    if (Object.hasOwn(data, legacy)) {
-      const replacement = legacy === "userInvocable" ? "user-invocable" : "disable-model-invocation"
-      throw new Error(`frontmatter field "${legacy}" is unsupported; use "${replacement}"`)
-    }
-  }
-  return {
-    modelInvocable: frontmatterBoolean(data, "disable-model-invocation") !== true,
-    userInvocable: frontmatterBoolean(data, "user-invocable") !== false,
-  }
-}
+// ── the corpus reader ───────────────────────────────────────────────────────
 
 /** Read one SKILL.md into a document, or return a one-line reason why it was skipped. */
 export function readSkillDocument(filePath: string): { document?: SkillDocument; error?: string } {
@@ -453,8 +321,4 @@ export function allocateProviderName(taken: Set<string>, base: string): string {
   const fallback = `${base}-${Date.now().toString(36)}`
   taken.add(fallback)
   return fallback
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }

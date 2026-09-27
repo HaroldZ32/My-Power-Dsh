@@ -1,0 +1,38 @@
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=299654977d65 lanes=32 evidence=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes
+[mpd-qa:all] discovery=44 lane script(s) (.mjs entries 44, underscore-excluded 0, unlisted 0, outside-suite 18)
+[mpd-qa:all] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34
+[mpd-qa:all] PASS case=agent-teams-adopt log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/agent-teams-adopt.log ms=15
+[mpd-qa:all] FAIL case=bundle-lifecycle reason=exit-1 exit=1 log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/bundle-lifecycle.log ms=4019
+[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/codegraph/2026-09-27T21-21-14.742Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/codegraph-smoke.log ms=17014
+[mpd-qa:all] FAIL case=dual-track-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-27T21-21-42.526Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/dual-track-smoke.log ms=27782
+[mpd-qa:all] FAIL case=extension-lifecycle reason=exit-1 exit=1 evidence=evidence/extensions/extension-lifecycle/2026-09-27T21-21-42.635Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/extension-lifecycle.log ms=58762
+[mpd-qa:all] FAIL case=extension-mcp-bridge reason=exit-1 exit=1 evidence=evidence/extensions/extension-mcp-bridge/2026-09-27T21-22-41.386Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/extension-mcp-bridge.log ms=11770
+[mpd-qa:all] FAIL case=extension-template reason=exit-1 exit=1 evidence=evidence/extensions/extension-template/2026-09-27T21-22-53.152Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/extension-template.log ms=11994
+[mpd-qa:all] UNAVAILABLE case=install-dependencies reason=absent-fixture exit=1 log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/install-dependencies.log ms=18
+[mpd-qa:all] FAIL case=mcp-call reason=exit-1 exit=1 evidence=evidence/dsh-qa/mcp-call/2026-09-27T21-23-41.007Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/mcp-call.log ms=35935
+[mpd-qa:all] PASS case=memory-smoke evidence=evidence/plan-c/c6-memory/2026-09-27T21-23-41.036Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/memory-smoke.log ms=17110
+[mpd-qa:all] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-27T21-23-58.232Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/mount-assert.log ms=101
+[mpd-qa:all] PASS case=plan-c-smoke evidence=evidence/plan-c/plan-c-smoke/2026-09-27T21-23-58.250Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/plan-c-smoke.log ms=44223
+[mpd-qa:all] FAIL case=preset-conformance reason=exit-1 exit=1 log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/preset-conformance.log ms=2003
+[mpd-qa:all] FAIL case=preset-register reason=exit-1 exit=1 evidence=evidence/dsh-qa/preset-register/2026-09-27T21-25-03.591Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/preset-register.log ms=19128
+[mpd-qa:all] FAIL case=relocate-smoke reason=exit-1 exit=1 evidence=evidence/plan-d/relocate/2026-09-27T21-25-03.609Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/relocate-smoke.log ms=18489
+[mpd-qa:all] FAIL case=session-start-team reason=exit-1 exit=1 evidence=evidence/dsh-qa/session-start-team/2026-09-27T21-25-22.106Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/session-start-team.log ms=1021492
+[mpd-qa:all] FAIL case=skill-catalog-probe reason=exit-1 exit=1 evidence=evidence/plan-d/skill-catalog/2026-09-27T21-42-23.593Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/skill-catalog-probe.log ms=15302
+[mpd-qa:all] FAIL case=software-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/software-smoke/2026-09-27T21-42-38.911Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/software-smoke.log ms=11639
+[mpd-qa:all] PASS case=tool-output-validation evidence=evidence/fix/boulder-status-planprogress/2026-09-27T21-43-05.883Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/tool-output-validation.log ms=29922
+[mpd-qa:all] FAIL case=ulw-command reason=exit-1 exit=1 evidence=evidence/dsh-qa/ulw-command/2026-09-27T21-43-20.545Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/ulw-command.log ms=23329
+[mpd-qa:all] PASS case=ultrawork-smoke evidence=evidence/plan-c/c2-ultrawork/2026-09-27T21-43-43.789Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/ultrawork-smoke.log ms=27123
+[mpd-qa:all] PASS case=vision-smoke evidence=evidence/plan-c/c8-vision/2026-09-27T21-44-10.917Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/vision-smoke.log ms=1960
+[mpd-qa:all] FAIL case=web-client-adapt reason=exit-1 exit=1 evidence=evidence/plan-f/web-client-adapt/2026-09-27T21-44-12.875Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/web-client-adapt.log ms=9352
+[mpd-qa:all] FAIL case=web-settings-bridge reason=exit-1 exit=1 evidence=evidence/mpd-bridge/web-settings-bridge/20260927T214422Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/web-settings-bridge.log ms=37958
+[mpd-qa:all] FAIL case=workmate-library reason=exit-1 exit=1 evidence=evidence/plan-f/workmate-library/2026-09-27T21-45-00.194Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/workmate-library.log ms=58446
+[mpd-qa:all] FAIL case=workmate-team-member reason=exit-1 exit=1 evidence=evidence/plan-f/workmate-team-member/2026-09-27T21-45-58.634Z log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/workmate-team-member.log ms=87570
+[mpd-qa:all] PASS case=qa-lane-drift log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/qa-lane-drift.log ms=33
+[mpd-qa:all] PASS case=qa-runner-self-test log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/qa-runner-self-test.log ms=935
+[mpd-qa:all] PASS case=mpd-ext-self-test log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/mpd-ext-self-test.log ms=415
+[mpd-qa:all] PASS case=mpd-ext-validate-example log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/mpd-ext-validate-example.log ms=25
+[mpd-qa:all] PASS case=mpd-ext-validate-template log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/mpd-ext-validate-template.log ms=23
+[mpd-qa:all] PASS case=pack-closure log=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes/lanes/pack-closure.log ms=98
+[mpd-qa:all] summary selected=32 pass=13 unavailable=1 fail=18
+[mpd-qa:all] evidence -> evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes
+[mpd-qa:all] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

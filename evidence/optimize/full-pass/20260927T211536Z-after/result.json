@@ -1,0 +1,59 @@
+{
+  "task": "optimize the whole project: consolidate code, run a user-facing test round, update the docs",
+  "constraint": "no functional change — refactor and documentation only",
+  "baseline_tree": "HEAD 3e4a8d3d, materialized as a pristine `git archive` snapshot (evidence/optimize/pristine-baseline/)",
+  "code_freeze": {
+    "note": "all plugin src + scripts edits landed before the after-sweep started; later edits are docs, AGENTS.md, agent-references, CHANGELOG and test staging helpers only",
+    "packages_src": "27 files changed, +101 / -395 (net -294 lines)",
+    "new_modules": [
+      "packages/mpd-dsh-adapter-plugin/src/shared.ts (isRecord, errorMessage, bundleRootOf)",
+      "packages/mpd-ext-plugin/src/skill-frontmatter.ts (the ONE corpus frontmatter parser)",
+      "scripts/lib/repo.mjs (repoRootFrom, readJson)",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.mjs (stageScript)"
+    ],
+    "per_file": {
+      "packages/mpd-bootstrap-plugin/src/index.ts": "458 -> 318 lines (frontmatter parser + bundle root now shared)",
+      "packages/mpd-ext-plugin/src/skills.ts": "460 -> 324 lines (frontmatter parser extracted)",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "2776 -> 2797 (+21: resolveDshAdapter + shared re-export + docs)"
+    }
+  },
+  "pre_change_baseline": {
+    "typecheck": "PASS",
+    "bun_test": "1244 pass / 3 skip / 1 fail — the failure is `REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails` (environmental; it flips between runs and is unrelated to this refactor)",
+    "verify_gates": "PASS 5/5",
+    "qa_selftests": "PASS",
+    "bundle_lifecycle_live": "FAIL on pristine HEAD too — probePass=false with identical probe lines"
+  },
+  "after_change": {
+    "typecheck": "PASS",
+    "bun_test": "1244 pass / 3 skip / 1 fail — the SAME single environmental failure as the baseline",
+    "verify_gates": "PASS 5/5",
+    "qa_selftests": "PASS",
+    "verify_dist_fresh": "PASS — 23/23 targets, each rebuilt twice and byte-identical",
+    "verify_pack_closure": "PASS (after the post-refactor re-pack)",
+    "check_citations": "PASS 25/25 (21/25 at HEAD: 4 pre-existing dead anchors + 6 anchors rotted by the moved lines are repaired)",
+    "verify_docs_parity": "PASS — 41 pairs, 0 dead links",
+    "verify_manual_paths": "PASS"
+  },
+  "user_facing_round": {
+    "command": "node scripts/run-qa-lanes.mjs (the `all` suite: 26 real-boot lanes + 6 gates)",
+    "isolation": "each lane boots a real dsh in a temp DSH_HOME + sandbox HOME + sandbox workspace",
+    "environment_fact": "BUN_TMPDIR must point inside the workspace: BUN_INSTALL (~/.bun) is read-only under the file sandbox, so a bun-spawning lane dies with EROFS before testing anything",
+    "comparison": {
+      "identical": 28,
+      "artifact_confounded_then_closed": 2,
+      "re_run_and_matched": 2,
+      "detail": {
+        "relocate-smoke": "UNAVAILABLE on a pristine tree (gitignored dist/mpd-package absent) vs FAIL after; packing the PRISTINE tree reproduces the after result (FAIL) — the difference is the artifact's presence, not the code",
+        "skill-catalog-probe": "same shape as relocate-smoke; pristine + pack also FAILs",
+        "session-start-team": "FAIL under a 420 s cap; re-run without the cap PASSes on the after tree (557 s) and PASSes on pristine",
+        "workmate-library": "FAIL once (its own retry note records an incomplete first attempt); re-run PASSes on BOTH trees"
+      }
+    },
+    "standing_reds_present_before_and_after": [
+      "bundle-lifecycle (its live probe expects pre-`five-tools` tool names and a raw `skills`/`tools` view this harness does not expose)",
+      "codegraph-smoke, dual-track-smoke, extension-lifecycle, extension-mcp-bridge, extension-template, mcp-call, preset-conformance, preset-register, software-smoke, ulw-command, web-client-adapt, web-settings-bridge, workmate-team-member",
+      "install-dependencies (UNAVAILABLE: absent fixture)"
+    ]
+  }
+}

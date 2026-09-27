@@ -20,6 +20,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { MPD_DELTAS } from "../lib/mpd-deltas.js"
 import { applyAgentTeamsFixes, assertRegistryFormat, canonicalIndent, findRegion } from "../../../scripts/patch-agent-teams-fixes.mjs"
+import { stageScript } from "./scratch-scripts.mjs"
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = join(pluginRoot, "..", "..")
@@ -42,7 +43,7 @@ function scratchRoot() {
     mkdirSync(join(root, "scripts"), { recursive: true })
     for (const file of LIB_FILES)
         cpSync(join(pluginRoot, "lib", file), join(root, "packages/mpd-agent-teams-plugin/lib", file))
-    cpSync(join(repoRoot, "scripts", "patch-agent-teams-fixes.mjs"), join(root, "scripts", "patch-agent-teams-fixes.mjs"))
+    stageScript(root, "patch-agent-teams-fixes.mjs")
     return root
 }
 

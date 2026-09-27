@@ -1,0 +1,400 @@
+{
+  "slug": "web-settings-bridge",
+  "arm": "web (the HOST's own authenticated API: launch-token cookie + settings/mutate)",
+  "startedAt": "2026-09-27T22:05:11.316Z",
+  "repo": "/home/haroldzhao/dshProj/my-power-dsh",
+  "outDir": "/home/haroldzhao/dshProj/my-power-dsh/evidence/mpd-bridge/web-settings-bridge/20260927T220511Z",
+  "isolation": {
+    "dshHome": "/tmp/mpd-settings-bridge-root-2mUtwY/home",
+    "home": "/tmp/mpd-settings-bridge-root-2mUtwY/userhome",
+    "sandbox": "/tmp/mpd-settings-bridge-root-2mUtwY",
+    "sessionsSandboxed": true
+  },
+  "boots": {
+    "write": {
+      "file": "/tmp/mpd-settings-bridge-root-2mUtwY/ws-one/.mpd/mpd.jsonc",
+      "value": 31415,
+      "initialValue": 35000,
+      "fileBefore": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+      "fileAfter": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+      "mutate": {
+        "ok": false,
+        "error": {
+          "code": "settings/rejected",
+          "message": "No configurable plugin entry \"mpd\"",
+          "details": {
+            "ns": "mpd"
+          }
+        }
+      },
+      "describeStatus": 200,
+      "describeEnvelope": "ok,value"
+    },
+    "ambiguous": {
+      "roots": [
+        "/tmp/mpd-settings-bridge-root-2mUtwY/ws-one",
+        "/tmp/mpd-settings-bridge-root-2mUtwY/ws-two"
+      ],
+      "files": [
+        {
+          "before": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+          "after": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n"
+        },
+        {
+          "before": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+          "after": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n"
+        }
+      ],
+      "mutate": {
+        "ok": false,
+        "error": {
+          "code": "settings/rejected",
+          "message": "No configurable plugin entry \"mpd\"",
+          "details": {
+            "ns": "mpd"
+          }
+        }
+      }
+    },
+    "disabled": {
+      "file": "/tmp/mpd-settings-bridge-disabled-rVPILz/ws-one/.mpd/mpd.jsonc",
+      "fileBefore": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+      "fileAfter": "{\n  // human comment: must survive the write-back\n  \"hashline\": {\n    \"maxDiffChars\": 35000,\n  },\n  \"ulw\": { \"maxRounds\": 6 },\n}\n",
+      "mutate": {
+        "ok": false,
+        "error": {
+          "code": "settings/rejected",
+          "message": "No configurable plugin entry \"mpd\"",
+          "details": {
+            "ns": "mpd"
+          }
+        }
+      }
+    }
+  },
+  "verdicts": {
+    "static": {
+      "ok": true,
+      "checks": [
+        {
+          "id": "S1",
+          "ok": true,
+          "detail": "the built TUI bytes carry the bridge disclosure"
+        },
+        {
+          "id": "S2",
+          "ok": true,
+          "detail": "the built TUI bytes carry the restart half of the disclosure"
+        },
+        {
+          "id": "S3",
+          "ok": true,
+          "detail": "the old 'not bridged' claim is DELETED from the built TUI bytes"
+        }
+      ]
+    },
+    "write": {
+      "ok": false,
+      "checks": [
+        {
+          "id": "W1",
+          "ok": true,
+          "detail": "the front door accepted the settings write (status 200 revision null resolved undefined)"
+        },
+        {
+          "id": "W2",
+          "ok": false,
+          "detail": "the live workspace's .mpd/mpd.jsonc changed after the accepted write"
+        },
+        {
+          "id": "W3",
+          "ok": false,
+          "detail": "the written value is 31415 (read back 35000)"
+        },
+        {
+          "id": "W4",
+          "ok": true,
+          "detail": "the human comment survived (F2)"
+        },
+        {
+          "id": "W5",
+          "ok": true,
+          "detail": "key order was not rewritten (F2)"
+        },
+        {
+          "id": "W6",
+          "ok": false,
+          "detail": "the previous value is gone from the edited span"
+        },
+        {
+          "id": "W7",
+          "ok": false,
+          "detail": "the boot log carries a bridge report naming the file it wrote (F1: silence would hide a dead bridge)"
+        },
+        {
+          "id": "W8",
+          "ok": false,
+          "detail": "the write-back was triggered by an `update`, not a provider echo (design §2.1)"
+        },
+        {
+          "id": "W9",
+          "ok": true,
+          "detail": "every report carries applies:'restart' (design §D.1 honesty)"
+        },
+        {
+          "id": "W10",
+          "ok": false,
+          "detail": "the report names a .mpd/mpd.jsonc path"
+        },
+        {
+          "id": "W11",
+          "ok": false,
+          "detail": "the RESOLVED namespace value the mpd config layer merges changed to 31415 (descriptor value = undefined)"
+        },
+        {
+          "id": "W12",
+          "ok": false,
+          "detail": "the settings USER section (the L3 layer) carries the written value (undefined)"
+        },
+        {
+          "id": "W15",
+          "ok": false,
+          "detail": "the AUTHORITATIVE read surface (settings/describe) agrees: its resolved value is 31415 (read undefined)"
+        },
+        {
+          "id": "W14",
+          "ok": false,
+          "detail": "the TWO SURFACES AGREE: the settings namespace's resolved value (undefined) equals the value the file on disk carries (35000)"
+        },
+        {
+          "id": "W13",
+          "ok": false,
+          "detail": "the namespace's BASE is the FILE value 35000 (undefined), not the schema default 20000 — §10.1's reason for mpd-config owning the registration, and the falsifier t39 asks for"
+        }
+      ]
+    },
+    "ambiguous": {
+      "ok": false,
+      "checks": [
+        {
+          "id": "A1",
+          "ok": true,
+          "detail": "the settings write succeeded with two live roots (status 200 revision null resolved undefined)"
+        },
+        {
+          "id": "A2",
+          "ok": true,
+          "detail": "NO file changed with two live roots (F5 must-fail-on-fanout)"
+        },
+        {
+          "id": "A3",
+          "ok": false,
+          "detail": "the bridge reported skipped:'ambiguous-multi-root'"
+        },
+        {
+          "id": "A4",
+          "ok": false,
+          "detail": "the structured refusal names EVERY candidate root, not a guess ([])"
+        },
+        {
+          "id": "A5",
+          "ok": false,
+          "detail": "the human-readable diagnostic names every candidate too"
+        }
+      ]
+    },
+    "disabled": {
+      "ok": false,
+      "checks": [
+        {
+          "id": "D1",
+          "ok": true,
+          "detail": "the settings write still succeeded with the write-back disabled (status 200 revision null resolved undefined)"
+        },
+        {
+          "id": "D2",
+          "ok": true,
+          "detail": "the file is BYTE-IDENTICAL with `writeBack: false` composed from a patch layer (A6 negative control)"
+        },
+        {
+          "id": "D3",
+          "ok": false,
+          "detail": "the bridge reported skipped:'disabled'"
+        },
+        {
+          "id": "D4",
+          "ok": true,
+          "detail": "no surface claims the section is unbridged any more"
+        }
+      ]
+    }
+  },
+  "controls": {
+    "sectionShape": {
+      "control": "the PRE-MOVE `settings.plugin.item` card registration re-injected into the REAL built client bytes (the defect this lane was red on)",
+      "mutationLanded": true,
+      "flippedChecks": [
+        "W2a",
+        "W2b"
+      ],
+      "verdictGoesRed": false,
+      "greenChecks": [
+        {
+          "id": "W2a",
+          "ok": true,
+          "detail": "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)"
+        },
+        {
+          "id": "W2b",
+          "ok": true,
+          "detail": "the built client names the slot \"settings.section\" with id \"mpd\", order 20, locale \"mpdSettings\" (want \"settings.section\" / \"mpd\" / 20 / \"mpdSettings\")"
+        },
+        {
+          "id": "W2c",
+          "ok": false,
+          "detail": "the section's mount is DEFERRED through ctx.inject (never a declared dependency)"
+        },
+        {
+          "id": "W2d",
+          "ok": true,
+          "detail": "the client still declares only the stable seams"
+        },
+        {
+          "id": "W2e",
+          "ok": true,
+          "detail": "the section's copy is the same disclosure the TUI states"
+        },
+        {
+          "id": "W2f",
+          "ok": true,
+          "detail": "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)"
+        }
+      ],
+      "redChecks": [
+        {
+          "id": "W2a",
+          "ok": true,
+          "detail": "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)"
+        },
+        {
+          "id": "W2b",
+          "ok": false,
+          "detail": "the built client names the slot \"settings.plugin.item\" with id \"mpd\", order 20, locale \"mpdSettings\" (want \"settings.section\" / \"mpd\" / 20 / \"mpdSettings\")"
+        },
+        {
+          "id": "W2c",
+          "ok": false,
+          "detail": "the section's mount is DEFERRED through ctx.inject (never a declared dependency)"
+        },
+        {
+          "id": "W2d",
+          "ok": true,
+          "detail": "the client still declares only the stable seams"
+        },
+        {
+          "id": "W2e",
+          "ok": true,
+          "detail": "the section's copy is the same disclosure the TUI states"
+        },
+        {
+          "id": "W2f",
+          "ok": false,
+          "detail": "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)"
+        }
+      ]
+    },
+    "injectedFault": "the second live root's file changed (a fan-out)",
+    "verdictGoesRed": true,
+    "checks": [
+      {
+        "id": "A1",
+        "ok": true,
+        "detail": "the settings write succeeded with two live roots (status 200 revision null resolved undefined)"
+      },
+      {
+        "id": "A2",
+        "ok": false,
+        "detail": "NO file changed with two live roots (F5 must-fail-on-fanout)"
+      },
+      {
+        "id": "A3",
+        "ok": false,
+        "detail": "the bridge reported skipped:'ambiguous-multi-root'"
+      },
+      {
+        "id": "A4",
+        "ok": false,
+        "detail": "the structured refusal names EVERY candidate root, not a guess ([])"
+      },
+      {
+        "id": "A5",
+        "ok": false,
+        "detail": "the human-readable diagnostic names every candidate too"
+      }
+    ]
+  },
+  "notes": [
+    "A green run proves: the front door accepted the write, the ONE live workspace file changed with comments/order intact, the log reported writtenTo + applies:'restart', two live roots refused with both candidates and wrote nothing, and the writeBack:false composition left the file byte-identical.",
+    "It does NOT prove: the TUI keystroke path (not driven here — no TTY) or the RENDERED web surface (no browser; W3 NOT-CLAIMED). It DOES prove W2: the built/served client mounts its own top-level `settings.section` LIST slot (id \"mpd\", order 20, locale \"mpdSettings\") for namespace `mpd`, with the mount deferred behind ctx.inject, and the pre-move `settings.plugin.item` card slot is GONE.",
+    "The W2 checks carry their own measured negative control: the PRE-MOVE card registration is re-injected into the REAL built bytes and W2a/W2b must redden (controls.sectionShape.redChecks); a mutation that does not land is recorded as void and fails the run."
+  ],
+  "surface": {
+    "drives": "the host's own settings/mutate RPC (the same wire call the card and the TUI section emit)",
+    "tuiKeystrokes": "not-run: a keystroke drive needs a real TTY; tui-panels owns that surface",
+    "webCardRendered": "NOT-CLAIMED: no browser binary exists in this environment — the user's own GUI is the render check",
+    "tuiDistScanned": "packages/mpd-tui-plugin/dist/index.js"
+  },
+  "sectionClaim": {
+    "W2": {
+      "witnessed": false,
+      "shape": "the client's own top-level `settings.section` LIST slot (id \"mpd\", order 20, locale \"mpdSettings\")",
+      "checks": [
+        {
+          "id": "W2a",
+          "ok": true,
+          "detail": "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)"
+        },
+        {
+          "id": "W2b",
+          "ok": true,
+          "detail": "the built client names the slot \"settings.section\" with id \"mpd\", order 20, locale \"mpdSettings\" (want \"settings.section\" / \"mpd\" / 20 / \"mpdSettings\")"
+        },
+        {
+          "id": "W2c",
+          "ok": false,
+          "detail": "the section's mount is DEFERRED through ctx.inject (never a declared dependency)"
+        },
+        {
+          "id": "W2d",
+          "ok": true,
+          "detail": "the client still declares only the stable seams"
+        },
+        {
+          "id": "W2e",
+          "ok": true,
+          "detail": "the section's copy is the same disclosure the TUI states"
+        },
+        {
+          "id": "W2f",
+          "ok": true,
+          "detail": "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)"
+        }
+      ],
+      "artifact": {
+        "path": "packages/mpd-bundle-plugin/client.js",
+        "bytes": 392610,
+        "sha256": "a841dff576046e0b8c430e08f0149fa0456f9f6387d9c64401e49a1181654f40"
+      }
+    },
+    "W3": {
+      "witnessed": false,
+      "claim": "NOT-CLAIMED: no browser binary exists in this environment, so the rendered settings SECTION and a click that produces the mutate are the user's own GUI check"
+    }
+  },
+  "ports": {
+    "main": 34099,
+    "control": 37785
+  },
+  "ok": false,
+  "elapsedMs": 37853
+}

@@ -38,8 +38,9 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, 
 import { homedir, tmpdir } from "node:os"
 import { dirname, join, relative, isAbsolute, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { repoRootFrom } from "./lib/repo.mjs"
 
-const REPO = dirname(dirname(fileURLToPath(import.meta.url)))
+const REPO = repoRootFrom(import.meta.url)
 
 const USAGE = [
   "usage:",

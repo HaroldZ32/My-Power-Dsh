@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "track": "official",
+  "provider": "deepseek-official",
+  "durationMs": 17472,
+  "exit": 0,
+  "hasToolEvidence": true
+}

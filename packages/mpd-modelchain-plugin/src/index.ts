@@ -1,7 +1,7 @@
 // B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-modelchain"
 export const inject = ["tools"]
@@ -85,7 +85,7 @@ function loadMemory(p: string): Record<string, string> {
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const mpdConfig = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
   let chains = config?.chains ?? DEFAULT_CHAINS
   if (mpdConfig?.get) {

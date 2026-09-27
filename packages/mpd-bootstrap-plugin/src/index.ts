@@ -20,9 +20,9 @@ import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { isAbsent, parseFrontmatter, parseInvocation, stringField, type Frontmatter } from "../../mpd-ext-plugin/src/skill-frontmatter"
 
 export const name = "mpd-bootstrap"
 // The skills registry is a host-plane service shipped by dsh-base; declaring it
@@ -49,13 +49,10 @@ const BUNDLED_SKILL_RANK = 600
 /** Public skill-name grammar (mirrors @deepseek-ai/dsh-skill). */
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-function bundleRoot(): string {
-  // Location-derived, no package-name resolution: this file lives at
-  // <pkg-root>/packages/mpd-bootstrap-plugin/dist/index.js, so the package root
-  // is four directories up. The skill corpus is <pkg-root>/skills and the
-  // presets are <pkg-root>/presets in BOTH layouts (repo root and packed root).
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+// The bundle root is resolved by the shared helper (bundleRootOf): this file lives
+// at <pkg-root>/packages/mpd-bootstrap-plugin/{src,dist}/index.ts|js, so the skill
+// corpus is <pkg-root>/skills and the presets are <pkg-root>/presets in BOTH layouts.
+const bundleRoot = (): string => bundleRootOf(import.meta.url)
 
 function harnessHome(): string {
   return process.env.DSH_HOME || join(homedir(), ".dsh")
@@ -75,150 +72,13 @@ function warn(ctx: Ctx, message: string): void {
   } catch { /* logging must never fail provisioning */ }
 }
 
-// ── frontmatter parsing ─────────────────────────────────────────────────────
-// The corpus is ours and its frontmatter is a deliberately small YAML subset
-// (top-level scalars, one nested `metadata` mapping, optional block scalars).
-// Parsing it here keeps the plugin dependency-free; packages/mpd-bootstrap-plugin/
-// test/frontmatter.test.ts pins the subset against every shipped skill file.
+// ── frontmatter ─────────────────────────────────────────────────────────────
+// The corpus frontmatter parser is SHARED with the extension skill plane
+// (packages/mpd-ext-plugin/src/skill-frontmatter.ts): one implementation for
+// the YAML subset, the name/description readers and the legacy-key refusal,
+// so the bundle corpus and the extension corpus cannot drift apart. The subset
+// stays pinned against every shipped SKILL.md by test/bootstrap.test.ts.
 
-type Frontmatter = { data: Record<string, unknown>; body: string }
-
-function isAbsent(error: unknown): boolean {
-  const code = (error as { code?: string } | undefined)?.code
-  return code === "ENOENT" || code === "ENOTDIR"
-}
-
-function parseFrontmatter(raw: string): Frontmatter | undefined {
-  const firstLineEnd = raw.indexOf("\n")
-  if (firstLineEnd < 0) return undefined
-  if (raw.slice(0, firstLineEnd).replace(/\r$/, "") !== "---") return undefined
-  let lineStart = firstLineEnd + 1
-  let closingStart = -1
-  let bodyStart = -1
-  while (lineStart <= raw.length) {
-    const nextNewline = raw.indexOf("\n", lineStart)
-    const lineEnd = nextNewline < 0 ? raw.length : nextNewline
-    if (raw.slice(lineStart, lineEnd).replace(/\r$/, "") === "---") {
-      closingStart = lineStart
-      bodyStart = nextNewline < 0 ? raw.length : nextNewline + 1
-      break
-    }
-    if (nextNewline < 0) return undefined
-    lineStart = nextNewline + 1
-  }
-  if (closingStart < 0) return undefined
-  return { data: parseYamlBlock(raw.slice(firstLineEnd + 1, closingStart)), body: raw.slice(bodyStart) }
-}
-
-function parseScalar(value: string): unknown {
-  const text = value.trim()
-  if (text === "") return ""
-  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
-    try { return JSON.parse(text) as unknown } catch { return text.slice(1, -1) }
-  }
-  if (text.startsWith("'") && text.endsWith("'") && text.length >= 2) return text.slice(1, -1).replace(/''/g, "'")
-  const lower = text.toLowerCase()
-  if (lower === "true" || lower === "yes" || lower === "on") return true
-  if (lower === "false" || lower === "no" || lower === "off") return false
-  if (lower === "null" || text === "~") return null
-  if (/^-?\d+$/.test(text)) return Number(text)
-  if (/^-?\d*\.\d+$/.test(text)) return Number(text)
-  return text
-}
-
-function foldLines(lines: string[]): string {
-  let out = ""
-  for (const line of lines) {
-    if (line === "") out += "\n"
-    else out += (out === "" || out.endsWith("\n") ? "" : " ") + line
-  }
-  return out
-}
-
-function parseYamlBlock(text: string): Record<string, unknown> {
-  const lines = text.split("\n")
-  const root: Record<string, unknown> = {}
-  const stack: Array<{ indent: number; map: Record<string, unknown> }> = [{ indent: -1, map: root }]
-  let index = 0
-  while (index < lines.length) {
-    const raw = lines[index]
-    index += 1
-    if (raw.trim() === "" || raw.trimStart().startsWith("#")) continue
-    const indent = raw.length - raw.trimStart().length
-    const line = raw.slice(indent)
-    const match = /^([A-Za-z0-9_][A-Za-z0-9_.-]*)\s*:(?:[ \t]+(.*))?$/.exec(line)
-    if (match === null) throw new Error("unsupported frontmatter line: " + line)
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop()
-    const parent = stack[stack.length - 1].map
-    const key = match[1]
-    const rest = match[2] ?? ""
-    if (rest.trim() === "") {
-      let next: { indent: number; text: string } | undefined
-      for (let probe = index; probe < lines.length; probe += 1) {
-        const candidate = lines[probe]
-        if (candidate.trim() === "" || candidate.trimStart().startsWith("#")) continue
-        next = { indent: candidate.length - candidate.trimStart().length, text: candidate.trimStart() }
-        break
-      }
-      if (next !== undefined && next.indent > indent && /^[A-Za-z0-9_][A-Za-z0-9_.-]*\s*:/.test(next.text)) {
-        const child: Record<string, unknown> = {}
-        parent[key] = child
-        stack.push({ indent, map: child })
-      } else parent[key] = null
-      continue
-    }
-    const block = /^([|>])([+-]?)(\d*)$/.exec(rest.trim())
-    if (block !== null) {
-      const collected: string[] = []
-      let blockIndent = -1
-      while (index < lines.length) {
-        const candidate = lines[index]
-        if (candidate.trim() === "") { collected.push(""); index += 1; continue }
-        const candidateIndent = candidate.length - candidate.trimStart().length
-        if (candidateIndent <= indent) break
-        if (blockIndent < 0) blockIndent = candidateIndent
-        collected.push(candidate.slice(Math.min(blockIndent, candidateIndent)))
-        index += 1
-      }
-      while (collected.length > 0 && collected[collected.length - 1] === "") collected.pop()
-      const joined = block[1] === "|" ? collected.join("\n") : foldLines(collected)
-      parent[key] = block[2] === "-" ? joined.replace(/\n+$/, "") : joined
-      continue
-    }
-    parent[key] = parseScalar(rest)
-  }
-  return root
-}
-
-function stringField(data: Record<string, unknown>, key: string): string | undefined {
-  const value = data[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-function frontmatterBoolean(data: Record<string, unknown>, key: string): boolean | undefined {
-  if (!Object.hasOwn(data, key)) return undefined
-  const value = data[key]
-  if (typeof value === "boolean") return value
-  if (value === 1 || value === "1") return true
-  if (value === 0 || value === "0") return false
-  if (typeof value === "string") {
-    switch (value.toLowerCase()) {
-      case "true": case "yes": case "on": return true
-      case "false": case "no": case "off": return false
-    }
-  }
-  throw new TypeError(`frontmatter field "${key}" must be a boolean`)
-}
-
-function parseInvocation(data: Record<string, unknown>): { modelInvocable: boolean; userInvocable: boolean } {
-  for (const legacy of ["disableModelInvocation", "modelInvocable", "userInvocable"]) {
-    if (Object.hasOwn(data, legacy)) throw new Error(`frontmatter field "${legacy}" is unsupported; use "${legacy === "userInvocable" ? "user-invocable" : "disable-model-invocation"}"`)
-  }
-  return {
-    modelInvocable: frontmatterBoolean(data, "disable-model-invocation") !== true,
-    userInvocable: frontmatterBoolean(data, "user-invocable") !== false,
-  }
-}
 
 type ParsedSkill = {
   name: string
@@ -430,7 +290,7 @@ function listCorpusSync(root: string): string[] {
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const root = bundleRoot()
   const corpus = config.skillsDir ? config.skillsDir : join(root, "skills")
   const presets = presetsSource(root)

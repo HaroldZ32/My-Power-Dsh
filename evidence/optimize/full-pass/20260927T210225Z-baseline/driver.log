@@ -1,0 +1,10 @@
+started 2026-09-27T21:02:51Z PATH=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin:/usr/bin:/home/haroldzhao/.local/share/pnpm/bin:/home/haroldzhao/.local/bin:/home/haroldzhao/.bun/bin:/home/haroldzhao/.opencode/bin:/home/haroldzhao/.nvm/versions/node/v24.19.0/bin:/home/haroldzhao/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+=== typecheck ===
+typecheck exit=0
+=== bun-test ===
+bun-test exit=1
+=== verify-gates ===
+verify-gates exit=0
+=== qa-selftests ===
+qa-selftests exit=0
+finished 2026-09-27T21:03:09Z

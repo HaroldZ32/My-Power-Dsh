@@ -68,6 +68,7 @@ import {
 import { tmpdir } from "node:os"
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_ROOT = join(HERE, "..")
@@ -123,7 +124,7 @@ function declaredOutputs(pkgDir) {
   if (!existsSync(manifest)) return []
   let build
   try {
-    build = JSON.parse(readFileSync(manifest, "utf8"))?.scripts?.build
+    build = readJson(manifest)?.scripts?.build
   } catch {
     return []
   }
@@ -178,7 +179,7 @@ function buildToolchain(root) {
   const current = probe.status === 0 ? String(probe.stdout ?? "").trim().split(/\s+/).pop() : null
   let pinned = null
   try {
-    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+    const manifest = readJson(join(root, "package.json"))
     const declared = typeof manifest.buildToolchain === "string" ? manifest.buildToolchain : ""
     if (declared.startsWith("bun@")) pinned = declared.slice(4)
   } catch { /* no root manifest: reported as an absent pin, never as a pass */ }
@@ -443,7 +444,7 @@ export function buildFormFindings(root) {
     if (!existsSync(manifestPath)) continue
     let build
     try {
-      build = JSON.parse(readFileSync(manifestPath, "utf8"))?.scripts?.build
+      build = readJson(manifestPath)?.scripts?.build
     } catch {
       continue
     }

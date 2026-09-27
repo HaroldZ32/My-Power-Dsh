@@ -1,0 +1,1 @@
+[mpd-qa] FAIL case=install-dependencies lane=real reason=absent-fixture prereq=node_modules/dsh-better-sidebar/package.json remedy="bun install (the sandbox recipe needs the declared dependency materialized in the checkout)"
