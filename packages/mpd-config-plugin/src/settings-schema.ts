@@ -129,18 +129,31 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
 export const BRIDGE_AMBIGUOUS_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)"
 
 /**
- * One knob hint, HUMAN SENTENCE FIRST: `semantics` (what the knob is and what configuring it does)
- * leads, then the real mpd.jsonc key, the bridge disclosure and the not-lost clause. Without
- * `semantics` the hint is the disclosure half alone, byte-identical to what every front door
- * emitted before the human half existed. The TUI section builds the same string with its local
- * `knobHint` (`packages/mpd-tui-plugin/src/settings.ts`) for every knob it renders, so a hint
- * declared HERE is byte-compatible with what a front door shows for the same path, and a slot
- * knob's human sentence (which member group the slot feeds) has exactly one declaration.
+ * One knob's ROW hint: its own human sentence plus the dotted mpd.jsonc key it writes. The long
+ * bridge disclosure is NOT repeated here — see {@link BRIDGE_SECTION_NOTICE}.
+ *
+ * MEASURED (docker/ui, 2026-09-27, `05b-mpd-section.png`): with the disclosure inlined, all 25 rows
+ * of the Web section read as four near-identical lines — `mpd.jsonc <key> — a save writes … and
+ * takes effect … it applies at the next dsh boot … the value is never lost …` — which pushed each
+ * knob's OWN sentence off screen and made the section unreadable, while the card already stated the
+ * same text once at the bottom. One statement per surface, one sentence per row.
+ *
+ * The TUI section builds the same string with its local `knobHint`
+ * (`packages/mpd-tui-plugin/src/settings.ts`) for every knob it renders, so a hint declared HERE is
+ * byte-compatible with what a front door shows for the same path, and a slot knob's human sentence
+ * (which member group the slot feeds) has exactly one declaration.
  */
 export function knobHint(key: string, semantics?: string): string {
-  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
-  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`
+  const pointer = `mpd.jsonc ${key}`
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
 }
+
+/**
+ * The bridge disclosure, stated ONCE per settings surface: what a save writes, when it takes
+ * effect, and what the host document holds meanwhile. Both front doors render this at the top of
+ * their section instead of once per row.
+ */
+export const BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
 
 /** One team-model slot's human identity: its group name in both languages and its members, in the group's own order. */
 export interface TeamModelSlotGroup {

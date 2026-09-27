@@ -78,8 +78,11 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
  * (every knob but the twelve team-model slot leaves) keeps the disclosure-only hint byte-for-byte.
  */
 function knobHint(key: string, semantics?: string): string {
-  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
-  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`
+  // The ROW hint is the knob's own sentence plus its dotted key. The bridge disclosure is stated
+  // ONCE, in the section's own description (see SETTINGS_SECTION below) — inlining it per row is
+  // what made 25 rows read as the same four lines (measured in docker/ui, `05b-mpd-section.png`).
+  const pointer = `mpd.jsonc ${key}`
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
 }
 
 // ── the twelve team-model slot knobs: a SELECT with a live option list (A4) ─────
@@ -270,10 +273,16 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  * This is the DECLARED shape (cloned per registration, with the slot options replaced by
  * the catalog projection). It is exported so the declared baseline stays inspectable.
  */
+/** The one-sentence disclosure BOTH front doors state once, above their rows. */
+export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   ns: SETTINGS_NS,
   title: "MPD bundle",
-  descriptions: { zh: "MPD 插件包" },
+  // The section's own description carries the disclosure ONCE; the 25 rows carry their own
+  // sentences and their keys. `title` is the section header the host draws, so the sentence a
+  // reader needs before touching any knob belongs here and nowhere else.
+  descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
   fields: SETTINGS_FIELDS,
 }
 

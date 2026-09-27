@@ -2149,9 +2149,10 @@ var SettingsSchema = import_schemastery.default.object({
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function knobHint(key, semantics) {
-  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`;
+  const pointer = `mpd.jsonc ${key}`;
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
+var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
 var TEAM_MODEL_SLOT_GROUPS = {
   slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
   slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },

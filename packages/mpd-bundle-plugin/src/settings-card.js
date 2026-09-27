@@ -194,11 +194,18 @@
   // disclosure and the not-lost clause — byte-identical to the hint the TUI section builds for the
   // same knob, so the two front doors state the same thing in the same order. A knob with no
   // human sentence keeps the disclosure-only hint it always had.
-  const disclosureOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE} ${NOT_LOST}`
+  /**
+   * One row's hint: its own sentence plus the dotted mpd.jsonc key. The bridge disclosure is stated
+   * ONCE at the top of the card, not once per row — measured in a real browser (docker/ui,
+   * 2026-09-27, `05b-mpd-section.png`): with it inlined, all 25 rows read as the same four lines and
+   * each knob's own sentence was pushed off screen, while the card already repeated the same text
+   * again at the bottom.
+   */
+  const keyOf = (field) => `mpd.jsonc ${field.path.join(".")}`
   const hintOf = (field, lang = "en") => {
     const sentence = lang === "zh" ? field.semanticsZh : field.semantics
-    const disclosure = disclosureOf(field)
-    return sentence === undefined || sentence.length === 0 ? disclosure : `${sentence} ${disclosure}`
+    const pointer = keyOf(field)
+    return sentence === undefined || sentence.length === 0 ? pointer : `${sentence} (${pointer})`
   }
   const fieldKey = (field) => field.path.join(".")
   const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
@@ -874,19 +881,21 @@
         const label = t(key)
         // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
         const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
-        // HUMAN SENTENCE FIRST, at full readability; the mandatory key+disclosure line sits BENEATH
-        // it, dimmer. A knob with no human sentence renders the single dim disclosure line it always
-        // had, so the thirteen scalar rows are byte-unchanged.
-        const disclosureAt = hint.indexOf("mpd.jsonc " + key)
-        const human = disclosureAt > 0 ? hint.slice(0, disclosureAt).trim() : ""
-        const disclosure = disclosureAt < 0 ? hint : hint.slice(disclosureAt)
+        // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
+        // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
+        // card. Repeating it per row is what buried every row's own sentence (measured in a real
+        // browser: 2026-09-27, `05b-mpd-section.png`).
+        const keyAt = hint.indexOf("mpd.jsonc " + key)
+        // The key sits inside parentheses now, so drop the opening one the slice leaves behind.
+        const human = keyAt > 0 ? hint.slice(0, keyAt).replace(/\(\s*$/, "").trim() : ""
+        const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
         const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 } }, disclosure)
+          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
           : createElement(
               "span",
               { style: { display: "block", marginBottom: 2 } },
               createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-disclosure": key }, disclosure),
+              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
             )
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
         const input = field.kind === "select" && options.length > 0
@@ -967,6 +976,16 @@
           },
           catalogNotice(catalog),
         ),
+        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
+        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
+          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
+          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
+          NOT_LOST),
+        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
+          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ...scalarRows,
         slotLine,
         ...slotChildren,
@@ -977,9 +996,6 @@
           createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
           createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
-        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "8px 0 0" } }, state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         state.mode === "memory"
           ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
           : null,

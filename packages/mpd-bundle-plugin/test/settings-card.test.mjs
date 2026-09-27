@@ -337,7 +337,7 @@ describe("isolation and front-door parity", () => {
     expect(compare(drift(last, { options: ["high"] }))[last][2]).toBe(false)
   })
 
-  test("every slot row LEADS with its group's human sentence, in BOTH locales, before the key + disclosure", () => {
+  test("every slot row LEADS with its group's human sentence, in BOTH locales, before its key", () => {
     expect(SLOT_ROW_FIELDS).toHaveLength(12)
     for (const field of SLOT_ROW_FIELDS) {
       const slot = field.path[1]
@@ -366,9 +366,10 @@ describe("isolation and front-door parity", () => {
       for (const [dictionary, sentence] of [[EN, field.semantics], [ZH, field.semanticsZh]]) {
         const hint = dictionary[key + ".hint"]
         expect(hint.startsWith(sentence)).toBe(true)
-        expect(hint.indexOf("mpd.jsonc " + key)).toBe(sentence.length + 1)
-        expect(hint).toContain(BRIDGE_DISCLOSURE)
-        expect(hint).toContain(BRIDGE_NOT_LOST)
+        // the sentence, then the dotted key in parentheses — and NOT the surface's disclosure
+        expect(hint).toBe(`${sentence} (mpd.jsonc ${key})`)
+        expect(hint).not.toContain(BRIDGE_DISCLOSURE)
+        expect(hint).not.toContain(BRIDGE_NOT_LOST)
       }
     }
     // a slot's sentence is GROUP-SPECIFIC: slot 2 speaks about its own members, never slot 1's.
@@ -384,8 +385,9 @@ describe("isolation and front-door parity", () => {
       if (field.semantics === undefined) expect(hint.startsWith("mpd.jsonc " + key)).toBe(true)
       else expect(hint.startsWith(field.semantics)).toBe(true)
       expect(hint).toContain("mpd.jsonc " + key)
-      expect(hint).toContain(BRIDGE_DISCLOSURE)
-      expect(hint).toContain(BRIDGE_NOT_LOST)
+      // The disclosure lives ONCE on the surface, not in any row.
+      expect(hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(hint).not.toContain(BRIDGE_NOT_LOST)
     }
   })
 
@@ -598,11 +600,15 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   test("the disclosure sentences are unchanged and still rendered with the new rows", async () => {
     const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
     const text = textOf(tree)
+    // The disclosure still REACHES the reader — once, at the top of the card, where the 25 rows no
+    // longer repeat it (measured in a real browser: it buried every row's own sentence).
     expect(text).toContain(BRIDGE_DISCLOSURE)
     expect(text).toContain("this knob is read at plugin mount")
     expect(text).toContain("the file half is host-limited")
     expect(text).toContain(BRIDGE_NOT_LOST)
     expect(text).toContain("if no session is live, the save stays in settings")
+    // ...and the ROWS do not.
+    for (const field of SLOT_ROW_FIELDS) expect(hintOfRow(tree, field.path.join("."))).not.toContain(BRIDGE_DISCLOSURE)
     client.restore()
   })
 
@@ -640,16 +646,18 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(row).toBeDefined()
     const field = SLOT_ROW_FIELDS.find((candidate) => candidate.path.join(".") === "teamModels.slot2.provider")
     const hintBlock = row.props.children[1]
-    const [human, disclosure] = hintBlock.props.children
+    const [human, pointer] = hintBlock.props.children
     expect(human.props["data-mpd-row-human"]).toBe("teamModels.slot2.provider")
-    expect(disclosure.props["data-mpd-row-disclosure"]).toBe("teamModels.slot2.provider")
+    expect(pointer.props["data-mpd-row-key"]).toBe("teamModels.slot2.provider")
     expect(textOf(human)).toBe(field.semantics)
     expect(textOf(human)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
-    expect(textOf(disclosure)).toContain("mpd.jsonc teamModels.slot2.provider")
-    expect(textOf(disclosure)).toContain(BRIDGE_DISCLOSURE)
+    expect(textOf(pointer)).toBe("mpd.jsonc teamModels.slot2.provider")
+    // the ROW no longer carries the disclosure; the CARD does, once
+    expect(textOf(pointer)).not.toContain(BRIDGE_DISCLOSURE)
+    expect(textOf(tree)).toContain(BRIDGE_DISCLOSURE)
     // readable above, dimmer below — asserted on the styles, not on a screenshot
-    expect(human.props.style.fontSize).toBeGreaterThan(disclosure.props.style.fontSize)
-    expect(human.props.style.opacity).toBeGreaterThan(disclosure.props.style.opacity)
+    expect(human.props.style.fontSize).toBeGreaterThan(pointer.props.style.fontSize)
+    expect(human.props.style.opacity).toBeGreaterThan(pointer.props.style.opacity)
     // BOTH still reach the row's text, so the pre-existing hint assertions keep their subject
     expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain(field.semantics)
     expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain("mpd.jsonc teamModels.slot2.provider")

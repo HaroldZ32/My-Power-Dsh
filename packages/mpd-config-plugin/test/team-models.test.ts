@@ -10,6 +10,7 @@ import { apply, withTeamModelsDefaults } from "../src/index"
 import {
   BRIDGE_DISCLOSURE,
   BRIDGE_NOT_LOST,
+  BRIDGE_SECTION_NOTICE,
   SETTINGS_KNOBS,
   SettingsSchema,
   TEAM_MODEL_FALLBACK_OPTIONS,
@@ -182,19 +183,22 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
     expect(String(slotKnobs[3].semanticsZh)).toContain("分析型成员（Researcher、Explorer、Plan Reviewer）")
   })
 
-  test("every hint names its dotted mpd.jsonc key, the disclosure, the not-lost clause and its member class", () => {
-    // The helper is the ONE builder the hints come from; without semantics it emits exactly the
-    // prefix the TUI's local `knobHint` emits for the same path.
-    expect(knobHint("a.b")).toBe(`mpd.jsonc a.b — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`)
+  test("every hint names its dotted mpd.jsonc key and its member class, and the disclosure is stated ONCE", () => {
+    // MEASURED (docker/ui, 2026-09-27): with the disclosure inlined, all 25 rows read as the same
+    // four lines and each knob's own sentence was pushed off screen. The contract is now: the ROW
+    // carries its sentence and its key; the SURFACE states the disclosure once.
+    expect(knobHint("a.b")).toBe("mpd.jsonc a.b")
     for (const knob of slotKnobs) {
       const hint = String(knob.hint ?? "")
       expect(hint).toContain(`mpd.jsonc teamModels.${knob.path[1]}.${knob.path[2]}`)
-      expect(hint).toContain(BRIDGE_DISCLOSURE)
-      expect(hint).toContain(BRIDGE_NOT_LOST)
-      // One sentence of semantics on top of the two shared clauses, naming the member class.
-      expect(hint.length).toBeGreaterThan(BRIDGE_DISCLOSURE.length + BRIDGE_NOT_LOST.length)
+      // The row must NOT repeat the surface's disclosure.
+      expect(hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(hint).not.toContain(BRIDGE_NOT_LOST)
       for (const member of KNOWN_CLASSES[String(knob.path[1])]) expect(hint).toContain(member)
     }
+    // ...and the one place that DOES state it.
+    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_DISCLOSURE)
+    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
     // Vision Analyst is slot 4's member and the slots 1-3 sentences say which slot drives it.
     expect(String(slotKnobs[3].hint)).toContain("Vision Analyst")
     expect(String(slotKnobs[3].hint)).toContain("slot 4 drives it")
@@ -224,9 +228,9 @@ describe("A3b — the vision slot carries its own copy, verbatim, in both langua
     expect(slot4.map((knob) => knob.semanticsZh)).toEqual(VISION_SENTENCES_ZH)
   })
 
-  test("the hint is the human sentence FIRST, then the shared disclosure (knobHint)", () => {
+  test("the hint is the human sentence, then the dotted key — and nothing else", () => {
     for (const knob of slot4) {
-      expect(String(knob.hint)).toBe(`${String(knob.semantics)} mpd.jsonc teamModels.slot4.${String(knob.path[2])} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`)
+      expect(String(knob.hint)).toBe(`${String(knob.semantics)} (mpd.jsonc teamModels.slot4.${String(knob.path[2])})`)
     }
     // The image-input constraint is stated in ALL THREE rows, in both languages.
     for (const knob of slot4) {

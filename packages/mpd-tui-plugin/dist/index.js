@@ -2729,9 +2729,10 @@ var SettingsSchema = import_schemastery.default.object({
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function knobHint(key, semantics) {
-  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`;
+  const pointer = `mpd.jsonc ${key}`;
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
+var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
 var TEAM_MODEL_SLOT_GROUPS = {
   slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
   slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
@@ -2815,8 +2816,8 @@ var SETTINGS_KNOBS = [
 
 // packages/mpd-tui-plugin/src/settings.ts
 function knobHint2(key, semantics) {
-  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`;
+  const pointer = `mpd.jsonc ${key}`;
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
 function dedupeOptions(pairs) {
@@ -2918,10 +2919,11 @@ function settingsFields(lists) {
     return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
 }
+var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
 var SETTINGS_SECTION = {
   ns: SETTINGS_NS,
   title: "MPD bundle",
-  descriptions: { zh: "MPD 插件包" },
+  descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
   fields: SETTINGS_FIELDS
 };
 function resolveCatalogReader(ctx) {

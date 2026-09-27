@@ -14,7 +14,7 @@ import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
-import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SETTINGS_FIELDS, teamModelOptionLists } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
@@ -318,9 +318,13 @@ describe("full composition (every service injected)", () => {
     expect(calls.sections[0].fields).toHaveLength(25)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
-      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
-      expect(field.hint).toContain(BRIDGE_NOT_LOST)
+      // The disclosure is stated ONCE on the surface (the section's own description), never per row.
+      expect(field.hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
     }
+    // ...and the surface states BOTH halves once, where a reader meets them before any row.
+    expect(String(calls.sections[0].descriptions?.en)).toContain(BRIDGE_DISCLOSURE)
+    expect(String(calls.sections[0].descriptions?.en)).toContain(BRIDGE_NOT_LOST)
     // This double composes no `llm`, so every slot knob is on the DECLARED fallback branch —
     // and none of them may ever carry an empty option list (a slot must never need typing).
     const slotFields = calls.sections[0].fields.filter((field: any) => field.path[0] === "teamModels")
@@ -733,16 +737,23 @@ describe("/mpd command grammar (bare = picker, value = direct, status = print)",
 })
 
 describe("settings section disclosure (t21)", () => {
-  test("every mpd.jsonc-referencing hint states that a save is NOT bridged", () => {
+  test("every row names its mpd.jsonc key, and the SURFACE states the disclosure once", () => {
+    // MEASURED (docker/ui, 2026-09-27): inlining the disclosure per row made 25 rows read as the
+    // same four lines. The row keeps its key; the section states the rest, once.
     expect(SETTINGS_FIELDS.length).toBeGreaterThan(0)
     for (const field of SETTINGS_FIELDS) {
       expect(field.hint).toBeString()
       expect(field.hint).toContain("mpd.jsonc")
-      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
     }
+    expect(SECTION_NOTICE).toContain(BRIDGE_DISCLOSURE)
+    expect(SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
+    expect(String(SETTINGS_SECTION.descriptions?.zh)).toContain(BRIDGE_DISCLOSURE)
+    expect(String(SETTINGS_SECTION.descriptions?.en)).toContain(BRIDGE_DISCLOSURE)
   })
 
-  test("every slot hint LEADS with the knob's human sentence, then the key + disclosure", () => {
+  test("every slot hint LEADS with the knob's human sentence, then its key", () => {
     // The twelve team-model rows are the flat list's only rows with a human sentence: the label
     // carries the group (`槽位 2 提供商（分析型成员）`), the hint carries what the slot IS and what
     // configuring it DOES, and only then the mandatory key + disclosure + not-lost clause.
@@ -757,10 +768,10 @@ describe("settings section disclosure (t21)", () => {
       expect(field.descriptions?.zh).toContain(String(TEAM_MODEL_SLOT_GROUPS[field.path[1] as "slot1"].zh))
       // human sentence FIRST
       expect(field.hint.startsWith(String(knob?.semantics))).toBe(true)
-      // ...then the dotted key, the disclosure and the not-lost clause
+      // ...then the dotted key — and NOT the surface's disclosure (stated once, above the rows)
       expect(field.hint).toContain(`mpd.jsonc ${field.path.join(".")}`)
-      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
-      expect(field.hint).toContain(BRIDGE_NOT_LOST)
+      expect(field.hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
       expect(field.hint.indexOf(`mpd.jsonc ${field.path.join(".")}`)).toBeGreaterThan(String(knob?.semantics).length - 1)
       // the sentence names THIS slot's members, in the group's own order
       expect(field.hint).toContain(teamModelMembers(field.path[1] as "slot1", "en"))
@@ -768,9 +779,9 @@ describe("settings section disclosure (t21)", () => {
     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
     expect(String(slotFields[3].hint)).not.toContain("Architect")
     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
-    // the thirteen scalar hints keep the disclosure-only shape they always had (no invented copy)
+    // the thirteen scalar rows carry their key alone (they have no invented copy)
     for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
-      expect(field.hint.startsWith(`mpd.jsonc ${field.path.join(".")}`)).toBe(true)
+      expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
     }
   })
 
@@ -785,8 +796,9 @@ describe("settings section disclosure (t21)", () => {
       expect(field.descriptions?.zh).toBe(knob.zh)
       expect(String(field.hint).startsWith(knob.semantics ?? `mpd.jsonc ${knob.path.join(".")}`)).toBe(true)
       expect(field.hint).toContain(`mpd.jsonc ${knob.path.join(".")}`)
-      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
-      expect(field.hint).toContain(BRIDGE_NOT_LOST)
+      // the disclosure is the SURFACE's, once — never the row's
+      expect(field.hint).not.toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
     }
   })
 
