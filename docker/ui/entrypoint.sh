@@ -88,6 +88,22 @@ else
   RELAY_PID=$!
 fi
 
+# ── 3b. the CAPTURE tooling, inside the container ─────────────────────────────
+# The reviewer's browser lives HERE, not on the host: the harness refuses an external bind, and a
+# headless Chromium in the same container needs no published port at all. Installed into /data
+# (the named volume) so a restart keeps it — measured 2026-09-27: after `down -v` the volume was
+# empty, the capture died with ERR_MODULE_NOT_FOUND on `playwright`, and the screenshots the
+# reviewer was reading were the PREVIOUS run's.
+export PLAYWRIGHT_BROWSERS_PATH=/data/pw-browsers
+if [ ! -d "$LOG_DIR/node_modules/playwright" ]; then
+  log "installing the capture tooling (playwright + chromium)"
+  ( cd "$LOG_DIR" && npm init -y >/dev/null 2>&1 \
+    && npm i playwright@1.49.1 >>"$LOG_DIR/pw-install.log" 2>&1 \
+    && npx playwright install --with-deps chromium >>"$LOG_DIR/pw-install.log" 2>&1 )
+fi
+cp -f /opt/mpd-e2e/capture.mjs "$LOG_DIR/capture.mjs" 2>/dev/null || true
+cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
+
 # ── 4. the TUI surface, held open in tmux ─────────────────────────────────────
 # A second sandbox HOME so a TUI boot can never disturb the Web profile, and its own DSH_HOME.
 log "starting the TUI inside tmux (socket /data/tui.sock)"

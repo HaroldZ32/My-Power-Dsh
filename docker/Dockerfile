@@ -37,7 +37,10 @@ COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
 # The UI-VIEW stack (docker/ui/) reuses this image but holds the Web GUI and the TUI
 # open instead of driving a verdict, so it swaps only the entrypoint.
 COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+COPY docker/ui/capture.mjs /opt/mpd-e2e/capture.mjs
+COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
 RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh \
+ && chmod 0755 /opt/mpd-e2e/capture.mjs /opt/mpd-e2e/run-capture.sh \
  && mkdir -p /work /out /data /src
 
 WORKDIR /work

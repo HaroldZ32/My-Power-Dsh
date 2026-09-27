@@ -105,7 +105,47 @@ driver learns to clear them so the review below them is possible.
   NOT yet done in W1: the dispatch/scheduler loop, mailbox unread (the official inbox exposes no
   read state, so inventing one would misreport it), and per-member model routing (blocked on the
   user's decision).
-- W3, W4: not started in code.
+### F4 — the mpd SETTINGS section never appears, and now the cause is exact
+
+Rendered evidence: the Settings dialog shows `General / Models / Built-in plugins / Agent presets`
+and no `MPD` entry (screenshot `05-settings.png`, re-taken after the fix below).
+
+Two distinct causes, one fixed and one not:
+
+- **Fixed:** the card mounted through `require("@mpd-dsh/settings-card")`, a SIBLING
+  `__ModuleLoader__.load` block the real loader's require map cannot serve — the same class as F1.
+  `scripts/build-mpd-client.mjs` now splices the card's own factory body into `@mpd-dsh/mpd` (the
+  module the registry APPLIES) behind an IIFE, and `loadSettingsCard()` prefers it while keeping the
+  `require` path as the offline harness's fallback. The boot log no longer carries
+  `settings card module failed to load`.
+- **NOT fixed, and the reason the section is still absent:** the card registers its CONTENT inside
+  `ctx.inject(["settingsScope"], …)`, and **`settingsScope` exists nowhere in the installed harness
+  0.1.7-rc.2** (a repo-wide grep over every `@deepseek-ai/*` client bundle returns nothing). The
+  inject callback therefore never fires: no section, and — because that path logs nothing — no
+  warning either. The slot name is right (`settings.section` is what the harness's own sections
+  use); the SERVICE is gone.
+
+  The real contract, read from `dsh-client-ui-settings-general`: a section declares
+  `inject = ["slots","locale","connection","remote","remote.settings","configForms","shortcuts"]`,
+  registers into `settings.section` with `{ close }`, and reads/writes values through
+  **`configForms` + `remote.settings`**. Re-basing our 1128-line card onto that is the W4 task.
+
+### W4 progress (verified on screen)
+
+- The Team tab now states what a captain acts on: `1 of 1 running · 0 ready · 0 blocked` beside the
+  completion bar, read from the same projection (`ready` / `blockedBy` were already on the board).
+- Both empty states name the tool that fills them instead of saying "none yet".
+- `src/team-sidebar.js` was DELETED: its body had been hand-spliced into `web-client.js` and the two
+  copies could drift. One source now, in the module that is actually applied.
+
+### The UI stack is self-sufficient
+
+`down -v` empties the named volume, and the capture then died on `ERR_MODULE_NOT_FOUND` while the
+reviewer read the PREVIOUS run's screenshots — a stale-evidence trap, not a UI bug. The entrypoint now
+installs the capture tooling into the volume itself and copies `capture.mjs` / `run-capture.sh` in from
+the image, so a rebuilt stack can always look at itself.
+
+- W3: not started in code.
 
 ### How the UI became reachable (solved, keep it)
 

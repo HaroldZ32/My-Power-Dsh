@@ -4,7 +4,8 @@
 export PATH=/opt/toolchain/node/bin:/root/.bun/bin:$PATH
 export HOME=/data/home DSH_HOME=/data/dsh-web
 # Playwright installed its browsers while HOME was /root; look THERE, not under the sandbox HOME.
-export PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+# The browsers live in the named volume beside the app, so a restart keeps them.
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/data/pw-browsers}"
 pkill -f "dsh --profile web" 2>/dev/null
 sleep 2
 mkdir -p /data/ws

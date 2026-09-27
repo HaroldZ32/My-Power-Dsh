@@ -714,6 +714,15 @@
   * client entry fails the whole page as `entry: pending`).
   */
   function loadSettingsCard() {
+    // THE SPLICED CARD FIRST. `require("@mpd-dsh/settings-card")` asks the module loader for a
+    // SIBLING `__ModuleLoader__.load` block, and the loader's require map only serves the
+    // modules it owns — measured on a real checkout install 2026-09-27: the Settings dialog
+    // rendered General / Models / Built-in plugins / Agent presets and NO mpd section, because
+    // the mount had degraded to its warn-and-return-false branch. The build now splices the
+    // card's own factory body into THIS module (the one the registry actually APPLIES), so the
+    // real app never needs the sibling lookup; the `require` path stays as the fallback the
+    // offline harness uses.
+    if (typeof MPD_SETTINGS_CARD === "object" && MPD_SETTINGS_CARD !== null) return MPD_SETTINGS_CARD;
     try {
       const card = require("@mpd-dsh/settings-card");
       if (card !== undefined && card !== null && typeof card.mountSettingsCard === "function") return card;
@@ -777,12 +786,20 @@
     const tasks = Array.isArray(team.tasks) ? team.tasks : [];
     const done = tasks.filter((task) => task.status === "completed").length;
     const percent = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
+    // A completion bar alone cannot say whether anything is MOVING. The board already carries
+    // `ready` and `blockedBy`, so the view states what a captain acts on: how many tasks a
+    // teammate could pick up right now, and how many are waiting on something else.
+    const ready = tasks.filter((task) => task.status !== "completed" && task.ready === true).length;
+    const blocked = tasks.filter((task) => task.status !== "completed" && task.ready === false).length;
+    const running = members.filter((member) => member.phase === "active" || member.phase === "running").length;
 
     return h("div", { style: { padding: "10px 12px 14px", overflowY: "auto" } },
       h("div", { style: { display: "flex", alignItems: "baseline", gap: "8px" } },
         h("strong", { style: { fontSize: "12px" } }, "Team progress"),
         h("span", { style: dim }, done + "/" + tasks.length + " done"),
       ),
+      h("div", { style: { ...dim, marginTop: "2px" } },
+        running + " of " + members.length + " running · " + ready + " ready · " + blocked + " blocked"),
       h("div", { style: { height: "6px", borderRadius: "3px", background: "var(--dsh-color-fill-secondary, #e6e8eb)", marginTop: "6px", overflow: "hidden" } },
         h("div", { style: { height: "100%", width: percent + "%", background: "#22a06b" } }),
       ),
@@ -791,7 +808,7 @@
 
       h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Members (" + members.length + ")"),
       members.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No member yet.")
+        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No member yet — the captain spawns them with spawn_teammate.")
         : members.map((member) => h("div", { key: String(member.id), style: rowStyle },
             h("span", { style: dot(STATUS_COLOR[member.phase] || "#8a8f98") }),
             h("span", { style: { ...ellipsis, fontSize: "12px" } }, String(member.name)),
@@ -801,7 +818,7 @@
 
       h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Tasks (" + tasks.length + ")"),
       tasks.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No shared task yet.")
+        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No shared task yet — the captain posts them with team_task_create.")
         : tasks.map((task) => h("div", { key: String(task.id), style: { ...rowStyle, alignItems: "flex-start" } },
             h("span", { style: chip(STATUS_COLOR[task.status] || "#8a8f98") }, String(task.status)),
             h("div", { style: { flex: "1 1 auto", minWidth: 0 } },
