@@ -592,6 +592,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (decision.candidates !== undefined) bridge.baseCandidates = decision.candidates
     registerNamespace(decision.base)
   }
+  // The diagnostic that cracked F5 lives in the ADAPTER, where the failure is actually observed:
+  // `settingsRegister` now separates "no service" from "a service that cannot register", and that
+  // second sentence is what identified the dsh-tui shape. This call site needs NO extra line — the
+  // arm below counts a boot's logs, and a warning on the normal path is noise.
   if (typeof dsh.whenSettingsAvailable === "function") dsh.whenSettingsAvailable(registerWithFileBase)
   else registerWithFileBase()
 

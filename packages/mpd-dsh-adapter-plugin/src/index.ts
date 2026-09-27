@@ -1559,6 +1559,20 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   // uninjected service as a property THROWS in Cordis ("cannot get property
   // without inject"), which is why this row stays inject-free and every probe
   // is contained here.
+  /**
+   * THE SCOPED `settings` SERVICE the deferred inject proved, or `undefined`.
+   *
+   * MEASURED (docker/ui, 2026-09-27): the TUI's MPD settings section rendered
+   * `[命名空间未注册]` with every one of its 25 knobs reading `（未设置）`, and BOTH surfaces logged
+   * `[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is
+   * unavailable)`. The inject had fired — so a `settings` service EXISTS — but `service("settings")`
+   * reads the adapter's ROOT ctx, and Cordis resolves a service through the FIBER that provides it,
+   * so a service living below the root is invisible there. The inject hands us the scoped ctx that
+   * CAN see it; remembering it is what makes the two halves agree.
+   */
+  let scopedSettings: any
+  /** The settings service, preferring the one an inject proved over a root read. */
+  const settingsService = (): any => scopedSettings ?? service("settings")
   const service = (serviceName: string): any => {
     if (typeof ctx?.get === "function") {
       try {
@@ -2317,7 +2331,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 
     // ── settings plane (t34 §5 invariant 2: the ONE harness contact surface) ──
     settingsReader(namespace: string): DshSettingsReader | undefined {
-      const settings = service("settings")
+      const settings = settingsService()
       if (settings === undefined || settings === null) return undefined
       return {
         get(): unknown {
@@ -2405,7 +2419,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 
     whenSettingsAvailable(callback: () => void): void {
       if (typeof ctx?.inject !== "function") {
-        // No deferred-inject seam: try once immediately rather than never.
+        // No deferred-inject seam: try once immediately rather than never. SAY SO: this path and
+        // the deferred one fail with the SAME sentence downstream ("settings service is
+        // unavailable"), and a reader cannot tell a race from a missing seam without this line.
+        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)")
         try {
           callback()
         } catch {
@@ -2414,8 +2431,25 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         return
       }
       try {
-        ctx.inject(["settings"], () => {
+        ctx.inject(["settings"], (scoped: any) => {
           try {
+            // The property read THROWS on a Cordis ctx that did not declare the service, so it is
+            // probed in its own guard: a throw here must not cost the callback its run.
+            try {
+              if (scopedSettings === undefined || scopedSettings === null) scopedSettings = scoped?.settings
+            } catch {
+              /* fall through to the ctx.get form */
+            }
+            if (scopedSettings === undefined || scopedSettings === null) {
+              try {
+                scopedSettings = typeof scoped?.get === "function" ? scoped.get("settings") : undefined
+              } catch {
+                /* the scoped ctx answers neither form */
+              }
+            }
+            if (scopedSettings === undefined || scopedSettings === null) {
+              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27")
+            }
             callback()
           } catch {
             /* the caller reports its own failure */
@@ -2431,9 +2465,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       schema: unknown,
       options?: { base?: unknown; applies?: string },
     ): { ok: true } | { ok: false; error: string } {
-      const settings = service("settings")
-      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+      const settings = settingsService()
+      // NAME THE SHAPE. These were ONE sentence — "settings service is unavailable" — for a service
+      // that is ABSENT and for one that is PRESENT but cannot register, and that ambiguity cost a
+      // full investigation (docker/ui, 2026-09-27: the TUI profile's settings section rendered
+      // `[命名空间未注册]` with all 25 knobs unset, and the log could not say which of the two it
+      // was). Measured in the dsh-tui profile: the deferred inject fires IMMEDIATELY, so a
+      // `settings` service IS present, and the failure is the second shape.
+      if (settings === undefined || settings === null) {
         return { ok: false, error: "settings service is unavailable" }
+      }
+      if (typeof settings.register !== "function") {
+        return { ok: false, error: "the settings service is present but exposes no register() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")" }
       }
       try {
         settings.register(namespace, schema, { ...(options?.base === undefined ? {} : { base: options.base }), ...(options?.applies === undefined ? {} : { applies: options.applies }) })
@@ -2448,7 +2491,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       ops: readonly { op: "set" | "unset"; path: readonly string[]; value?: unknown }[],
       expectedRevision?: number,
     ): Promise<DshSettingsMutateResult> {
-      const settings = service("settings")
+      const settings = settingsService()
       if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
         return { ok: false, error: "settings service is unavailable" }
       }

@@ -178,6 +178,8 @@ function agentSystemPromptOf(agent) {
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+  let scopedSettings;
+  const settingsService = () => scopedSettings ?? service("settings");
   const service = (serviceName) => {
     if (typeof ctx?.get === "function") {
       try {
@@ -779,7 +781,7 @@ function createDshAdapter(ctx, config = {}) {
       };
     },
     settingsReader(namespace) {
-      const settings = service("settings");
+      const settings = settingsService();
       if (settings === undefined || settings === null)
         return;
       return {
@@ -859,23 +861,39 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
+        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
         return;
       }
       try {
-        ctx.inject(["settings"], () => {
+        ctx.inject(["settings"], (scoped) => {
           try {
+            try {
+              if (scopedSettings === undefined || scopedSettings === null)
+                scopedSettings = scoped?.settings;
+            } catch {}
+            if (scopedSettings === undefined || scopedSettings === null) {
+              try {
+                scopedSettings = typeof scoped?.get === "function" ? scoped.get("settings") : undefined;
+              } catch {}
+            }
+            if (scopedSettings === undefined || scopedSettings === null) {
+              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+            }
             callback();
           } catch {}
         });
       } catch {}
     },
     settingsRegister(namespace, schema, options) {
-      const settings = service("settings");
-      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+      const settings = settingsService();
+      if (settings === undefined || settings === null) {
         return { ok: false, error: "settings service is unavailable" };
+      }
+      if (typeof settings.register !== "function") {
+        return { ok: false, error: "the settings service is present but exposes no register() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")" };
       }
       try {
         settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
@@ -885,7 +903,7 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     async settingsMutate(namespace, ops, expectedRevision) {
-      const settings = service("settings");
+      const settings = settingsService();
       if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
         return { ok: false, error: "settings service is unavailable" };
       }

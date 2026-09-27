@@ -32,6 +32,11 @@
       "file": "/data-out/shots/05-settings.png"
     },
     {
+      "name": "05b-mpd-section",
+      "ok": true,
+      "file": "/data-out/shots/05b-mpd-section.png"
+    },
+    {
       "name": "06-plugins",
       "ok": true,
       "file": "/data-out/shots/06-plugins.png"
@@ -45,7 +50,7 @@
   ],
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790510552694\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-598faa41-9cff-4a5e-8819-c2293e9a6fc8\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790510653706\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-316d3b76-462e-4f03-9ed9-a8f9ab84c51c\",\"agentPreset\":\"mpd\"}}}"
   },
   "controls": [
     "New session",
@@ -71,5 +76,6 @@
     "Collapse right sidebar"
   ],
   "sidebarText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nMPD (Main Working Agent)\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nTeam progress\n0/0 done\n1 of 1 running · 0 ready · 0 blocked\nMEMBERS (1)\nlead\nlead\nTASKS (0)\nNo shared task yet — the captain posts them with team_task_create.",
+  "mpdSectionText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nMPD (Main Working Agent)\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nTeam progress\n0/0 done\n1 of 1 running · 0 ready · 0 blocked\nMEMBERS (1)\nlead\nlead\nTASKS (0)\nNo shared task yet — the captain posts them with team_task_create.\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nMPD bundle\n\nThe mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot\n\nlive catalog — 1 provider · 2 models\n\nInline diff limit\nmpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nReset to the file value\nComment checker\nmpd.jsonc commentChecker.autoCheck — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nReset to the file value\nUltrawork rounds\nmpd.jsonc ulw.maxRounds — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nReset to the file value\nMemory backend\nmpd.jsonc memory.vcs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\n—\ngit\nsvn\nReset to the file value\nTeam state directory\nmpd.jsonc team.stateDir — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because ",
   "visibleText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nMPD (Main Working Agent)\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nTeam progress\n0/0 done\n1 of 1 running · 0 ready · 0 blocked\nMEMBERS (1)\nlead\nlead\nTASKS (0)\nNo shared task yet — the captain posts them with team_task_create.\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue"
 }

@@ -150,7 +150,43 @@ reviewer read the PREVIOUS run's screenshots — a stale-evidence trap, not a UI
 installs the capture tooling into the volume itself and copies `capture.mjs` / `run-capture.sh` in from
 the image, so a rebuilt stack can always look at itself.
 
-- W3: not started in code.
+### F5 — the TUI's MPD settings section shows every knob as `（未设置）`
+
+Rendered evidence (`tmux capture-pane` on the container's real TUI, 2026-09-27):
+
+```
+╭─ MPD 插件包 (mpd) ───────────────────────────── [命名空间未注册] ╮
+│ ❯ 行内 diff 上限                                    （未设置） │
+│   注释检查                                          （未设置） │
+…all 25 rows…
+```
+
+The section RENDERS (so `mpd-tui-plugin`'s seam works) but its namespace is not registered, so every
+value reads unset and nothing is writable. Both surfaces log
+`[mpd-config] settings bridge: could not register the "mpd" namespace (…)`.
+
+**The cause, measured rather than inferred.** Two sentences had been ONE — "settings service is
+unavailable" — for a service that is ABSENT and for one that is PRESENT but cannot register. Split
+them and the dsh-tui profile answers immediately:
+
+```
+the settings service is present but exposes no register()
+(keys: ctx,name,ownerContext,revisions,closed,scheduled,presentations)
+```
+
+So in the TUI profile the deferred inject fires at once, a `settings` SERVICE exists, and it is not a
+registration-capable provider. `mpd-tui-plugin`'s guarded fallback then SKIPS with
+`configPluginPresent(ctx)` true — its premise being "mpd-config owns the registration" — and nobody
+registers anything. The fallback's premise is false exactly when the owner cannot register.
+
+NEXT STEP, named: find what registers a settings namespace in a `dsh-tui` composition (the service
+above answers `describe()`/`get()` — a read surface; `mpd-tui-plugin` already types a
+`SettingsProviderLike` with `describe`/`get`/`register`, so the registration path exists somewhere),
+then either point the bridge at it or let the fallback take over when the owner's attempt FAILS
+rather than when the owner is merely present.
+
+Also recorded while chasing it: an adapter-side diagnostic now says WHICH path ran
+(`deferred inject available/ABSENT`), because the two paths fail with the same downstream sentence.
 - W4 next: the MPD section's own page is captured by `05b-mpd-section` now (the nav entry proves the
   REGISTRATION, the page proves the card renders its rows — different claims); the TUI panels still
   need the same treatment.
