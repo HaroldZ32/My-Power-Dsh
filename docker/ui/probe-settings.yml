@@ -1,0 +1,3 @@
+- insert:
+    - id: mpd-settings-runtime-probe
+      name: "/data/settings-probe.mjs"

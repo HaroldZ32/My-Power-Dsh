@@ -326,7 +326,32 @@ on a `link:` install (measured 2026-09-27: `dsh plugin add .` answered "Already 
 profile's `node_modules` gained nothing; the official Agent Teams packages resolve because the HARNESS
 ships them, not because the heal fired). The dependency was reverted rather than left as decoration.
 
-The open path is therefore small and entirely ours: mark the leaves of our VENDORED schemastery's
-schema tree with `meta.volatile = true`, export that tree as the `mpd-config` row's `Config`, and
-repoint both front doors at the ENTRY (`mpd-config`) instead of the namespace. Then the rows read and
-write real values through the harness's own machinery, and the retired namespace bridge can go.
+**DONE, and verified on a real boot: the entry is now served.** `mpd-config` exports a `Config`
+schema — the file-path keys plus the whole knob tree — with every node flagged
+`meta.volatile = true` by `markVolatile` in `settings-schema.ts`. Measured before/after on the live
+settings service:
+
+```
+before: configuration=214  mpd-config in configuration: YES  runtime.Config meta.volatile=undefined
+        describe=18  has=false
+after:  configuration=214  mpd-config in configuration: YES  runtime.Config meta.volatile=true
+        describe=19  has=true
+```
+
+Three traps, each found by a probe rather than by reasoning, all now pinned by
+`test/settings-row-config.test.ts`:
+
+1. **A schemastery node is a FUNCTION** (`Schema.prototype = Object.create(Function.prototype)`), so a
+   `typeof node !== "object"` guard returned early for EVERY node and marked nothing — while a
+   hand-written assignment on the same object persisted, which is exactly what made it look like a
+   timing problem.
+2. **`z.object({...})` RE-CREATES its children**, so a flag set on a child before the parent is built
+   is gone; the finished tree must be marked.
+3. **The schema lives on the plugin RUNTIME** (`entry.fiber.runtime.Config`), and the editor's row ids
+   are `include:<entryId>` — a probe that looks for the bare id reports ABSENT for a row that is
+   present.
+
+WHAT REMAINS (W4c-b): the two front doors still address the NAMESPACE. `configForms.get(ns)` is keyed
+by entry id and throws `No configurable plugin entry` for `"mpd"`, so the Web card and the TUI section
+must be repointed at the entry (and their labels/row sets kept in step). The retired namespace bridge
+in `mpd-config` can then go, since the harness now owns the form.

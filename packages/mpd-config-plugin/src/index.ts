@@ -10,6 +10,8 @@ import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
+import { markVolatile } from "./settings-schema"
+import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 import {
   DEFAULT_BRIDGE_OPTIONS,
   changedLeaves,
@@ -171,7 +173,44 @@ export function withTeamModelsDefaults(config: any): any {
   return { ...raw, teamModels }
 }
 
+/**
+ * THE ROW CONFIG SCHEMA, which is what makes these knobs visible and editable in BOTH settings front
+ * doors.
+ *
+ * Harness 0.1.7-rc.2's settings editor lists a plugin entry only when its Config schema carries a
+ * VOLATILE field, and it addresses the form by ENTRY ID — `configForms.get(ns)` looks up
+ * `entries().find(row => row.options.id === ns)` and throws `No configurable plugin entry` otherwise.
+ * The knobs are declared here, at the TOP level of this row's config beside the file paths, so the
+ * entry `mpd-config` serves them.
+ *
+ * The flags come from {@link markVolatile}: see its doc comment for why the vendored schemastery can
+ * carry them without the harness's own fork.
+ */
+const knobDict = (SettingsSchema as unknown as { dict?: Record<string, unknown> }).dict ?? {}
+// MARK THE FINISHED TREE, not the children: `z.object({...})` RE-CREATES each child, so a flag set on
+// a child before the parent is built is gone by the time the loader reads the schema. Measured: the
+// built Config's own `hashline` node carried `meta: {"default":{}}` with no `volatile`, and the entry
+// never appeared in `settings.describe()`.
+export const Config = markVolatile(z.object({
+  projectFile: z.string(),
+  userFile: z.string(),
+  writeBack: z.boolean().default(true),
+  settingsBridge: z.object({ writeBack: z.boolean().default(true) }),
+  ...knobDict,
+}))
+
+// CORDIS READS THE SCHEMA OFF THE PLUGIN RUNTIME, NOT OFF THE MODULE. `resolveConfig(runtime, config)`
+// does `if (!runtime.Config) return config` — so a bare `export const Config` beside a functional
+// plugin is invisible to the loader and the entry never becomes configurable (measured: with the
+// export alone, `settings.describe()` listed 18 harness entries and `mpd-config` was ABSENT).
+;(apply as unknown as { Config?: unknown }).Config = Config
+
 export function apply(ctx: Ctx, config: Config = {}): void {
+  // FLAG THE SCHEMA AT APPLY TIME, not at module init. A schemastery node's `meta` is not yet the
+  // object the loader will later read while the module is still evaluating (measured: the same
+  // assignment persists when it is made after the module has loaded, and is gone when it is made
+  // during evaluation), and the settings editor reads `runtime.Config` long after this point.
+  markVolatile(Config)
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
 

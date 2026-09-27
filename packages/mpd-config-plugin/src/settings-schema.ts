@@ -125,6 +125,46 @@ export const BRIDGE_NOT_LOST =
 /** The runtime notice for a save that had no live session workspace to write (§D.2 row 2). */
 export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
 
+/**
+ * Mark one schema node (and everything under it) as VOLATILE, the flag the harness's settings editor
+ * reads.
+ *
+ * MEASURED out of the installed `dsh-settings@0.1.7-rc.2`: its `volatileForm(schema)` walks
+ * `schema.meta.volatile`, `schema.dict`, `type`, `list` and `inner` — PLAIN DATA on a schema object —
+ * and an entry whose schema carries no volatile node is not listed in the dialog at all. That is what
+ * replaced the retired `settings.register(namespace, …)`.
+ *
+ * The harness's own `@deepseek-ai/schemastery` (3.18.4) is therefore NOT needed: it exists only
+ * inside the harness install, it does not materialize into a profile on a `link:` install (measured:
+ * declaring it in the bundle's dependencies changed nothing), and all the editor reads is this flag.
+ * The vendored schemastery this file already imports carries `meta`/`dict`, so the flag can simply be
+ * set.
+ *
+ * @param schema - a schemastery node.
+ * @returns the same node, flagged.
+ */
+export function markVolatile<T>(schema: T): T {
+  const node = schema as unknown as { meta?: Record<string, unknown>; dict?: Record<string, unknown>; inner?: unknown; list?: unknown }
+  // A SCHEMASTERy NODE IS A FUNCTION, not an object: `Schema.prototype = Object.create(Function.prototype)`.
+  // Guarding on `typeof !== "object"` returned early for every node and marked NOTHING — which is why
+  // the entry stayed out of `settings.describe()` while a hand-written assignment on the same object
+  // (typed as an object by the test that made it) persisted.
+  const kind = typeof node
+  if (node === null || (kind !== "object" && kind !== "function")) return schema
+  // UNCONDITIONAL: a schemastery node builds its `meta` lazily, so at the moment this walk runs the
+  // property can still be absent and a guarded write would skip exactly the nodes that need the flag
+  // (measured: the built Config's own `hashline` node carried `{"default":{}}` with no `volatile`).
+  try {
+    node.meta = { ...(node.meta ?? {}), volatile: true }
+  } catch {
+    /* a frozen node cannot carry the flag; the entry simply stays unlisted */
+  }
+  if (node.dict !== undefined && typeof node.dict === "object") for (const child of Object.values(node.dict)) markVolatile(child)
+  if (node.inner !== undefined) markVolatile(node.inner)
+  if (Array.isArray(node.list)) for (const child of node.list) markVolatile(child)
+  return schema
+}
+
 /** The runtime notice for a save with several live roots: settings-only, per the refusal rule. */
 export const BRIDGE_AMBIGUOUS_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)"
 

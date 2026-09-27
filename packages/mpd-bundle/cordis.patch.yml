@@ -290,6 +290,12 @@
     # read (apply-time config merges for tools/waterfalls).
     - id: mpd-config
       name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      # An EMPTY config block is kept so the row's config is explicit. What actually makes the mpd
+      # knobs editable is the plugin's exported `Config` schema with its knobs flagged volatile: the
+      # settings editor lists an entry only when `volatileForm(entry.fiber.runtime.Config)` is
+      # defined (verified on a real boot: describe() went 18 -> 19 entries, `include:mpd-config`
+      # among them).
+      config: {}
     # Team watchdog (w3 core): per-step/per-tool heartbeat store for members AND the
     # captain, the configurable WARN→ESCALATE machine over the `mpd` namespace's
     # watchdog.* knobs, the atomic restorable scene snapshot, and the durable

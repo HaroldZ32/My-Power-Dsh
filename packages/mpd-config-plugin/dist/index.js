@@ -2148,6 +2148,24 @@ var SettingsSchema = import_schemastery.default.object({
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function markVolatile(schema) {
+  const node = schema;
+  const kind = typeof node;
+  if (node === null || kind !== "object" && kind !== "function")
+    return schema;
+  try {
+    node.meta = { ...node.meta ?? {}, volatile: true };
+  } catch {}
+  if (node.dict !== undefined && typeof node.dict === "object")
+    for (const child of Object.values(node.dict))
+      markVolatile(child);
+  if (node.inner !== undefined)
+    markVolatile(node.inner);
+  if (Array.isArray(node.list))
+    for (const child of node.list)
+      markVolatile(child);
+  return schema;
+}
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
@@ -2233,6 +2251,9 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS
 ];
+
+// packages/mpd-config-plugin/src/index.ts
+var import_schemastery2 = __toESM(require_lib(), 1);
 
 // packages/mpd-config-plugin/src/bridge.ts
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
@@ -2998,7 +3019,17 @@ function withTeamModelsDefaults(config) {
   }
   return { ...raw, teamModels };
 }
+var knobDict = SettingsSchema.dict ?? {};
+var Config = markVolatile(import_schemastery2.default.object({
+  projectFile: import_schemastery2.default.string(),
+  userFile: import_schemastery2.default.string(),
+  writeBack: import_schemastery2.default.boolean().default(true),
+  settingsBridge: import_schemastery2.default.object({ writeBack: import_schemastery2.default.boolean().default(true) }),
+  ...knobDict
+}));
+apply.Config = Config;
 function apply(ctx, config = {}) {
+  markVolatile(Config);
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const warn = (message2) => {
     try {
@@ -3350,6 +3381,7 @@ function apply(ctx, config = {}) {
   });
 }
 export {
+  Config,
   SETTINGS_NS,
   apply,
   deepMerge,
