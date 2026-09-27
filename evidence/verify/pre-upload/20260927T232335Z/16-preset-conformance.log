@@ -1,0 +1,8 @@
+[preset-conformance] ok=true -> /home/haroldzhao/dshProj/my-power-dsh/evidence/dsh-qa/preset-conformance/2026-09-27T23-23-55.862Z
+  conformance: {"ok":true,"checked":33,"schemaFree":7,"patchFiles":["packages/mpd-bundle/cordis.patch.yml","presets/mpd.patch.yml"],"preset":{"rowId":"preset-mpd","id":"mpd","children":28,"file":"presets/mpd.patch.yml"},"parity":{"reference":"/home/haroldzhao/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-f6f269bb-086f-4929-8c54-5fa6bb531f96","agentPreset":"mpd","raw":"{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1790551445117\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-f6f269bb-086f-4929-8c54-5fa6bb531f96\",\"agentPreset\"
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-z8ojc3/home/sessions/--tmp-mpd-preset-main-z8ojc3-ws--/session-f6f269bb-086f-4929-8c54-5fa6bb531f96/session.v4.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)","mutations":["preset-mpd row: persona prefix: -> text:"],"override":"id-target on preset-mpd via --patch"}
+[preset-conformance] PASS

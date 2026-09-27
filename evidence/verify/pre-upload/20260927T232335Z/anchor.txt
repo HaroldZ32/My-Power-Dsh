@@ -1,0 +1,11 @@
+{
+  "run": "pre-upload gate sweep on the frozen tree",
+  "startedUtc": "2026-09-27T23:23:35Z",
+  "head": "f32a0fbc50f86e7e3b810e3a2d32ce3758f875d8",
+  "branch": "feature/consolidation-and-docs",
+  "treeCleanBeforeSweep": true,
+  "finishedUtc": "2026-09-27T23:25:27Z",
+  "headAfter": "f32a0fbc50f86e7e3b810e3a2d32ce3758f875d8",
+  "sourceTreeChangedByGateRuns": false,
+  "worktreeChangesAreEvidenceOnly": true
+}

@@ -1,0 +1,18 @@
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-27T23-22-02.341Z/output.log
+dsh: NO_ADAPTER: no adapter registered for provider "deepseek"
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T04-39-36.187Z/output.log
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T02-12-55.473Z/output.log
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T01-52-44.413Z/output.log
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T01-37-15.981Z/output.log
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-16T07-44-30.523Z/output.log
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T09-19-15.293Z/output.log
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T08-19-52.585Z/output.log
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T05-56-59.321Z/output.log
+      [errors]: [
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-11T05-48-46.492Z/output.log
+      [errors]: [
+--- /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-08-26T03-50-42.462Z/output.log
