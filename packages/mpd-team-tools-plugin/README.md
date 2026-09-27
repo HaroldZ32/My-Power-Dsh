@@ -28,7 +28,7 @@ through `mpd-dsh-adapter`. This plugin keeps only what the official service has 
 | `agent_teams_resume` | — | clears the hold |
 | `agent_teams_dispatch` | `dry_run?`, `limit?` | **pairs ready tasks with idle members** and tells each member to work its task; one pass, recorded |
 | `agent_teams_dispatch_release` | `task_id` | frees a dispatched task so it can be dispatched again |
-| `agent_teams_mailbox` | `watch?` | how many messages are WAITING for this agent, from the harness's own inbox events |
+| `agent_teams_mail` | `action`, `to?`, `subject?`, `body?`, `member?`, `ids?` | the team mailbox: `send` / `unread` / `read` / `summary` |
 | `agent_teams_status` | — | the staged plan and the halt **beside** the official roster and board |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
@@ -48,13 +48,15 @@ through `mpd-dsh-adapter`. This plugin keeps only what the official service has 
   only place "the Nth attempt at t4" is answerable: the official board's `revision` moves for every
   mutation, so it cannot stand in for an attempt.
 - **A halt is not an ending.** It records a hold; no member is interrupted and nothing is archived.
-- **The mailbox count is the harness's own arithmetic, not an estimate.** The agent inbox emits
-  `agent/inbox/inserted` when a message enters, `agent/inbox/claimed` when the loop takes it and
-  `agent/inbox/discarded` when it is dropped — all three dispatched through the AGENT's scope carrier
-  (their `dsh-scope` subject resolver is `args[0]["agent"]`). `inserted − claimed − discarded` is
-  therefore "waiting, not yet taken", subscribed through the adapter's per-agent seam. `watch: true`
-  attaches the counter to the calling agent (idempotent); the count clamps at zero, because a session
-  that was already running when the counter attached may have taken messages this observer never saw.
+- **THE MAILBOX IS OURS**, because the official one cannot answer the question a captain asks. Its
+  durable state is `messages` + `delivered`, and "read" is not observable anywhere in it, so "did they
+  SEE it?" has no answer there. `agent_teams_mail` owns `sent → delivered → read`: the record lives in
+  `<workspace>/.mpd/team/mailbox.jsonl` (append-only, so a crash costs the last line and never the
+  file), delivery still rides the official transport so a member really receives the message, and
+  `read` is an explicit acknowledgement by the recipient.
+- Absorbed from the official implementation, each earned there: a message is TARGETED at a live member
+  resolved by name, a member cannot message itself, a member's UNDELIVERED backlog is BOUNDED (the
+  official `TEAM_MAILBOX_FULL`), and the queue keeps insertion order.
 - **Everything is workspace-scoped** through `dsh.workspaceRoot(exec)`, never the process cwd.
 
 ## Configuration

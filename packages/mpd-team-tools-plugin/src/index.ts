@@ -25,7 +25,16 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createDshAdapter, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import { applyInboxEvent, emptyCounts, INBOX_EVENTS, unreadOf, type InboxCounts } from "./mailbox"
+import {
+  inboxOf,
+  markDelivered,
+  markRead,
+  readMailbox,
+  send as sendMail,
+  summarise,
+  undeliveredOf,
+  unreadOf as unreadMessages,
+} from "./mailbox-store"
 import {
   assign,
   dispatchMessage,
@@ -418,51 +427,107 @@ export function apply(ctx: any): void {
     execute: async (_args: any, exec: DshToolExec) => ({ resumed: clearHold(where(exec).workspace) }),
   }))
 
-  // ── the mailbox: the harness's OWN inbox arithmetic ─────────────────────────
+  // ── the mailbox: OURS, with a read state the harness cannot provide ─────────
   //
-  // "Unread" here is not an approximation. The harness's agent inbox emits three scoped events —
-  // `agent/inbox/inserted` when a message ENTERS the inbox, `agent/inbox/claimed` when the loop
-  // takes it, and `agent/inbox/discarded` when it is dropped — so `inserted − claimed − discarded`
-  // is the harness's own "waiting, not yet taken". They are dispatched through the AGENT's scope
-  // carrier, which is why the subscription goes through the adapter's per-agent seam and not this
-  // row's ctx.
-  const unread = new Map<unknown, InboxCounts>()
-  /** Agents whose counter is already attached, so `watch` is idempotent. */
-  const counted = new Set<unknown>()
-  const counterFor = (agent: unknown): InboxCounts => {
-    let entry = unread.get(agent)
-    if (entry === undefined) {
-      entry = emptyCounts()
-      unread.set(agent, entry)
-    }
-    return entry
-  }
-  /** Start counting for one agent; returns a disposer. Idempotent per agent. */
-  const countInbox = (agent: unknown): (() => void) => {
-    try {
-      return dsh.subscribeAgentEvents(agent, [...INBOX_EVENTS], (event) => {
-        unread.set(agent, applyInboxEvent(counterFor(agent), event))
-      })
-    } catch (error) {
-      console.warn("[mpd-team-tools] the mailbox counter could not attach to this agent: " + String((error as Error)?.message ?? error))
-      return () => {}
-    }
-  }
-
+  // The official mailbox keeps `messages` and `delivered` and nothing else — "read" is not observable
+  // anywhere in it. So the captain's real question ("did they SEE it?") has no answer there, and this
+  // sidecar owns the whole `sent → delivered → read` lifecycle. Delivery still rides the official
+  // transport (`teamSendMessage`), so a member really receives the message; the LEDGER is ours.
+  // `mailbox-store.ts` holds the rules and their reasoning.
   disposers.push(dsh.registerTool({
-    name: "agent_teams_mailbox",
+    name: "agent_teams_mail",
     description:
-      "How many messages are WAITING for this session's agent and have not been taken yet — the harness's own arithmetic over its inbox events (entered − claimed − discarded), not an estimate. `watch` attaches the counter to the calling agent; without it the tool reports what it has seen since attach.",
-    parameters: { type: "object", properties: { watch: { type: "boolean", description: "Attach the counter to the calling agent (idempotent)." } }, additionalProperties: false },
-    output: { schema: { type: "object", properties: { unread: { type: "number" }, inserted: { type: "number" }, claimed: { type: "number" }, discarded: { type: "number" } } }, render: (_args: any, value: any) => text(`${value?.unread ?? 0} message(s) waiting (entered ${value?.inserted ?? 0}, taken ${value?.claimed ?? 0}, discarded ${value?.discarded ?? 0})`) },
+      "The team mailbox. action:\"send\" sends a durable message to one member (through the official transport) and records it; action:\"unread\" lists what a member has NOT acknowledged; action:\"read\" acknowledges message ids; action:\"summary\" counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still UNREAD until the recipient acknowledges it.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["send", "unread", "read", "summary"], description: "What to do." },
+        to: { type: "string", description: "send: the member name or id to message." },
+        subject: { type: "string", description: "send: one line the recipient sees first." },
+        body: { type: "string", description: "send: the message." },
+        member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
+        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      render: (_args: any, value: any) =>
+        text(
+          value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
+            : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
+            : value?.summary !== undefined ? (value.summary.length === 0 ? "no mail" : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n"))
+            : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
+            : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
+        ),
+    },
     execute: async (args: any, exec: DshToolExec) => {
-      const agent = exec.agent
-      if (args?.watch === true && agent !== undefined && !counted.has(agent)) {
-        counted.add(agent)
-        disposers.push(countInbox(agent))
+      const { workspace } = where(exec)
+      const caller = sessionIdOf(exec)
+      const self = exec.agent as any
+      const roster = (() => { try { return dsh.teamListMembers(exec.agent) } catch { return [] } })()
+      const resolve = (name: string) => roster.find((member) => member.id === name || member.name === name)
+      const nameOf = (id: string) => roster.find((member) => member.id === id)?.name ?? id
+
+      if (args?.action === "send") {
+        const target = resolve(String(args?.to ?? ""))
+        if (target === undefined) {
+          return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` }
+        }
+        const result = sendMail(workspace, {
+          fromId: self?.session?.id ?? caller,
+          fromName: self?.session?.header?.title ?? caller,
+          toId: target.id,
+          toName: target.name,
+          subject: String(args?.subject ?? ""),
+          body: String(args?.body ?? ""),
+          memberIds: roster.map((member) => member.id),
+        }, now())
+        if (!result.ok) return { refused: result.detail }
+        // The transport carries it; a failure to deliver does NOT lose the record — the message stays
+        // undelivered in the ledger, which is exactly what `summary` reports.
+        try {
+          await dsh.teamSendMessage(exec.agent, {
+            target: target.id,
+            content: dsh.text(`[${result.message.subject}]\n\n${result.message.body}`),
+            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+          })
+          markDelivered(workspace, [result.message.id], now())
+        } catch (error) {
+          console.warn(`[mpd-team-tools] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+        }
+        return { message: result.message }
       }
-      const entry = unread.get(agent) ?? emptyCounts()
-      return { unread: unreadOf(entry), ...entry }
+
+      if (args?.action === "read") {
+        const ids = Array.isArray(args?.ids) ? args.ids.map(String) : []
+        return { moved: markRead(workspace, ids, now()) }
+      }
+
+      if (args?.action === "summary") {
+        return { summary: summarise(readMailbox(workspace)) }
+      }
+
+      // unread (the default action for anything else, since reading is the safe direction)
+      const state = readMailbox(workspace)
+      const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
+      const memberId = wanted?.id ?? self?.session?.id ?? caller
+      const pending = unreadMessages(state, memberId)
+      return {
+        messages: pending.map((message) => ({
+          id: message.id,
+          fromName: message.fromName,
+          subject: message.subject,
+          body: message.body,
+          sentAt: message.sentAt,
+          delivered: message.deliveredAt !== undefined,
+        })),
+        undelivered: undeliveredOf(state, memberId).length,
+        total: inboxOf(state, memberId).length,
+        memberName: wanted?.name ?? nameOf(memberId),
+      }
     },
   }))
 

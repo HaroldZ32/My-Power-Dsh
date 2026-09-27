@@ -937,12 +937,6 @@ export interface DshAdapter {
    *   the caller identity).
    * @returns the scope's disposer.
    */
-  /**
-   * Subscribe to harness events at ONE AGENT's own scope. See the implementation for why the
-   * registration site is the agent's scope and not a row's, and why the inbox triple makes a real
-   * unread count possible.
-   */
-  subscribeAgentEvents(agent: unknown, events: readonly string[], handler: (event: string, payload: unknown) => void): () => void
   /** The harness web server, probed tolerantly; see the implementation for the two names it tries. */
   webServerOf(): unknown
   /** Run `callback` when one of `names` binds (or rebinds) as a service; returns a disposer. */
@@ -2076,52 +2070,6 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         }
       })
       return typeof off === "function" ? off : () => {}
-    },
-
-    /**
-     * Subscribe to HARNESS events at ONE AGENT's own scope, for the events that are dispatched
-     * through the agent's scope carrier.
-     *
-     * `agent/inbox/inserted`, `agent/inbox/claimed` and `agent/inbox/discarded` carry
-     * `(args) => args[0]["agent"]` as their subject in `dsh-scope`'s `scopedSubjectResolvers`, i.e.
-     * they are delivered exactly like `agent/pre-step` — through the agent's carrier, where a
-     * listener on a ROW's ctx is filtered out. So the registration site is the agent's own scope
-     * context, and this seam is the generic form of {@link DshAdapter.registerAgentPreStep}.
-     *
-     * The harness's inbox IS the observable mailbox: a message enters it with `inserted`, leaves it
-     * when the loop `claimed` it (or when it is `discarded`), so `inserted − claimed − discarded` is
-     * the harness's own "waiting, not yet taken" — a real count, not an approximation.
-     *
-     * @param agent - the live agent whose scope owns the events.
-     * @param events - event names to observe, e.g. `["agent/inbox/inserted", "agent/inbox/claimed"]`.
-     * @param handler - called with the event name and its payload.
-     * @returns a disposer removing every subscription.
-     */
-    subscribeAgentEvents(agent: unknown, events: readonly string[], handler: (event: string, payload: unknown) => void): () => void {
-      const context = scopeContextOf(agent)
-      if (typeof context?.on !== "function") {
-        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot subscribe to its events")
-      }
-      const offs: Array<() => void> = []
-      for (const event of events) {
-        const off = context.on(event, (payload: unknown) => {
-          try {
-            handler(event, payload)
-          } catch {
-            /* a throwing observer must not break the agent's own dispatch */
-          }
-        })
-        if (typeof off === "function") offs.push(off)
-      }
-      return () => {
-        for (const off of offs) {
-          try {
-            off()
-          } catch {
-            /* already gone */
-          }
-        }
-      }
     },
 
     hasTool(toolName: string): boolean {
