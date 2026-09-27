@@ -223,3 +223,69 @@ Also recorded while chasing it: an adapter-side diagnostic now says WHICH path r
    overlay swallows clicks; the driver clears them immediately before each click that matters.
 3. Open the panel by the EXACT control name `Open right sidebar`: a loose `/sidebar/i` matches
    "Collapse sidebar" first and collapses the LEFT rail instead (measured, screenshot 04).
+
+
+## 6. Per-member model routing — the user chose a custom SUBAGENT PROVIDER, and it is feasible
+
+`docs/plan-0.1.7-adaptation.md` §8 recorded the mpd `teamModels` slots as ABSENT for teammates, on
+the reading that `TeamService.spawnTeammate` forwards only `{prompt, parent}`. That reading is correct
+about the TEAM SERVICE and wrong about the harness — the seam is one level down, and it is open.
+Measured on the installed 0.1.7-rc.2 packages:
+
+1. **The provider is the CALLER's choice.** `@deepseek-ai/dsh-experimental-agent-team` starts a
+   teammate with
+
+   ```js
+   started = await this.ctx.subagents.startContinuable({
+     childId, provider: request.provider, label: description,
+     request: { prompt: request.prompt, parent: root }, signal,
+   })
+   ```
+
+   `request.provider` is the `spawn_teammate` TOOL ARGUMENT — and this bundle's adapter already types
+   it (`DshTeamSpawnTeammateRequest.provider?: string`). So a captain can name a provider of this
+   bundle's own.
+
+2. **A provider is a small class a plugin registers itself.**
+
+   ```js
+   var SpawnInProcessProvider = class {
+     name;
+     capabilities = { agentOptions: true, outputSchema: true, depthLimit: true, toolFilter: true, persona: true };
+     inheritsParentContext = false;
+     start(request) { return startInProcessRun(request, {}) }
+     prepareContinuable() { return Promise.resolve({}) }
+   };
+   ```
+
+   registered with `ctx.subagents.registerProvider(provider)` — effect-scoped, HMR-safe, and it throws
+   `DUPLICATE_PROVIDER` on a name collision, so this bundle cannot silently replace a built-in one.
+
+3. **The manager honours `agentOptions`.** `SubagentContinuationManager.startContinuable` resolves
+
+   ```js
+   const agentOptions = resolveChildAgentOptions(parent, request.agentOptions, childDepth);
+   const agentProvider = agentOptions.provider, agentModel = agentOptions.model, agentReasoningEffort = agentOptions.reasoningEffort;
+   ```
+
+   and passes them into `activations.materialize({ …, agentOptions, composition: { persona, toolFilter } })`.
+   The provider is what constructs the run, so it is the place a route can be applied for a member
+   whose `request.agentOptions` is absent — exactly the teammate case.
+
+### The design this implies (W6)
+
+1. A new mpd package registers a provider named `mpd-roster` through the ADAPTER (a new
+   `subagentRegisterProvider` seam — no plugin touches `ctx.subagents` directly, §6).
+2. Its `start(request)` resolves the ROSTER MEMBER (by persona/name), reads that member's
+   `teamModels.slotN` route from the config layer, and runs the in-process start with those options.
+   A member with no slot mapping keeps the inherited route, so nothing changes for the other ten.
+3. The captain spawns roster members with `spawn_teammate({ provider: "mpd-roster", … })`. The
+   teammate stays a real, continuable, official teammate — no fork of the official plugin, no change
+   to its contract, and the shared board/roster/mailbox are untouched.
+4. The read-only discipline keeps working: `capabilities.toolFilter` is true, so a read-only member
+   can still be spawned with `toolFilter.deny` if the team service ever forwards it; until then the
+   existing tool GUARD remains the enforcement (it already denies the seven names by member name).
+
+**BOUND to state in the docs, not to discover later:** a slot that cannot be resolved must fail the
+spawn LOUDLY naming the member and the slot, write no state, and never clamp an effort — the rule the
+one-shot paths already follow (AGENTS.md §13).
