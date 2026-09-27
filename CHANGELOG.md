@@ -4,6 +4,68 @@ Human-readable release notes. Format: one section per released version, newest f
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
 
+## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads
+
+The official Agent Teams plugin owns the team RUNTIME and nothing else. This release adds the WORKFLOW
+around it, the routing it cannot express, and the GUI/settings work that a Docker view of both shipped
+surfaces drove.
+
+**Added — the team workflow (`mpd-team-tools-plugin`).**
+
+- **Staged plan + approval.** `agent_teams_create` / `_add_member` / `_create_task` / `_edit_plan`
+  stage a plan; `agent_teams_approve` EXECUTES it — spawns every member through `spawn_teammate`, posts
+  every task to the official board, resolves `blocked_by` from planned subjects to posted ids and
+  `owner` from staged names to spawned ids, and names where it stopped if it did. `dry_run` reports
+  without creating. Nothing is spawned before approval.
+- **Task contracts.** `agent_teams_claim_task` claims on the board AND freezes the task's meaning with
+  a monotonic `attempt` counter; `agent_teams_task_contract` reads it back. The counter is why the
+  sidecar exists: the board's `revision` moves for every mutation, so it cannot stand in for an attempt.
+- **Halt / resume.** A hold that stops new dispatch and leaves the team and its members alive —
+  deliberately not an ending. `agent_teams_delete` is the ending, and it ARCHIVES.
+- **Dispatch.** `agent_teams_dispatch` pairs each READY task with an IDLE member, sends the task, and
+  RECORDS the pairing, so a second pass cannot hand the same task to a second teammate (a message is
+  not a ledger). Ledger entries for tasks deleted or completed out of band are pruned first, so a
+  member is never left busy forever. `agent_teams_dispatch_release` frees one pairing.
+- `agent_teams_status` prints the sidecar beside the official roster and board, and `/agent-teams
+  <what the team is for>` stages a plan from the current goal.
+
+**Added — per-member model routing (`mpd-roster-provider-plugin`).**
+
+`spawn_teammate` used to inherit the Lead's route: the official TeamService forwards only
+`{ prompt, parent }`. The harness itself is not the limitation — `SubagentContinuationManager`
+resolves `request.agentOptions` and hands them to the PROVIDER, which constructs the run, and the
+provider NAME is row config (`config.freshProvider`). This bundle therefore registers `mpd-roster`, a
+provider that delegates to the composition's own and applies the member's `teamModels` slot route, and
+points its `mpd-tool-agent-team` row at it. The teammate stays a real, continuable official teammate:
+no fork, no contract change. A teammate `description` that NAMES a roster member routes that member;
+one that does not inherits the Lead's route — the descriptor label is the only identity channel the
+team service forwards. An incomplete slot fails the spawn loudly, naming the member and the slot.
+
+**Added — the team GUI in the harness's own right sidebar (`mpd-bundle-plugin`).**
+
+A Team tab registered through `ctx.sidebarRightTabs`, rendering the Lead session's `agentTeam`
+projection: completion, `N of M running · ready · blocked`, members with role and phase, and tasks with
+owner and blockers. It lands in the sidebar the harness already ships, so it appears wherever the
+harness does.
+
+**Fixed — the settings surface, on BOTH front doors.**
+
+- The MPD section now RENDERS and READS. Harness 0.1.7-rc.2 replaced the namespace registry with the
+  Cordis patch editor, so the knobs are declared as the `mpd-config` row's own `Config` with volatile
+  flags, and both front doors address the ENTRY (`mpd-config`) rather than a namespace name. Measured:
+  20000 / true / 6 / git / .mpd/team in the Web dialog and in the TUI.
+- An edit actually REACHES the plugins: the row config is merged as the layer above the files, with
+  the routing keys stripped.
+- The repeated per-row disclosure is stated ONCE per surface, so eight rows fit where five did.
+- The sidebar host mounts on a checkout install. `dsh-better-sidebar` was not resolvable from a
+  `link:` profile, so the bundle contributed no sidebar GUI at all; the bundle now reaches its own copy
+  through `mpd-better-sidebar-host`.
+- The watchdog's three `agent/*` subscriptions and the bootstrap's `fs/observed` go through the
+  adapter, and the D6 gate covers event NAMES.
+
+**Fixed — the TUI edition.** A `dsh-tui` profile is now part of the Docker client test, which boots
+the real TUI on a tmux PTY and reads the created session's preset from the harness's own store.
+
 ## v0.10.2 — TUI preset default, adapter event seams, TUI end-to-end lane
 
 **Fixed.**
