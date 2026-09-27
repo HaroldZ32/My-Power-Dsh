@@ -458,3 +458,32 @@ shipped host's own whenever that package is resolvable, logging when it is not.
 Verified on a real boot: the guard logs
 `[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar`,
 there is no `entry did not activate`, and the boot log carries no warning or error at all.
+
+
+## 10. Status — the objective, item by item
+
+| Requirement | State | Evidence |
+|---|---|---|
+| Staged plan + approval | DONE | `agent_teams_create`/`_add_member`/`_create_task`/`_edit_plan`/`_approve`/`_delete`; approve EXECUTES (spawn + post + resolve `blocked_by`/`owner`) |
+| Dispatch | DONE | `agent_teams_dispatch` pairs ready tasks with idle members and RECORDS the pairing; 12 arms |
+| Task contracts + `attempt` | DONE | `agent_teams_claim_task` freezes the contract on claim; the counter survives a board revision moving both ways |
+| Halt / resume | DONE | a hold that stops dispatch and nothing else; `agent_teams_resume` clears it |
+| Archive | DONE | `agent_teams_delete` moves the plan to `.mpd/team/archive/<planId>/` |
+| Mailbox unread | DONE | the harness's OWN inbox arithmetic (`inserted − claimed − discarded`) over scoped events; 8 arms |
+| Per-member model routing | DONE | the `mpd-roster` provider + `freshProvider` row config; registration proven on a real boot, the ROUTE APPLICATION by arms |
+| `/agent-teams` command | DONE | stages a plan from the current goal |
+| GUI in the harness's right sidebar | DONE | Team tab via `ctx.sidebarRightTabs`, verified on screen: progress, `N of M running · ready · blocked`, members, tasks |
+| Settings: read + write | DONE | both front doors render real values (Web screenshot, TUI pane) and an edit reaches the plugins through the row-config layer |
+| Task progress UI | DONE | ready/blocked counts beside the completion bar; empty states name the tool that fills them |
+| ONE release | v0.11.0, then v0.11.1 | v0.11.0's notes describe the changes; v0.11.1 exists only because mailbox unread turned out to be implementable AFTER v0.11.0 shipped, and shipping a release that lists a capability as a bound while it is buildable would have been the wrong trade |
+
+### What is NOT proven, stated rather than implied
+
+- **A live routed teammate and a live dispatch** need a teammate turn, hence a model call, and the
+  container stages no credentials. The RULES are proven by arms and the REGISTRATION by a real boot;
+  the live runs are not claimed.
+- **`W4c-d`** — the retired namespace bridge in `mpd-config` is DORMANT and says so honestly once per
+  boot, but its code is still there (the file-edit override clearing and the migration marker). Deleting
+  it is a contained refactor that would move ~89 arms; it is a declared follow-up, not an oversight.
+- The end-to-end Docker client test covers install, boot, the Web GUI and the TUI; it does not cover a
+  live team, for the same credential reason.
