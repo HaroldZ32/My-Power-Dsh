@@ -1,0 +1,52 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=no-binary binary=- cwd=/tmp/mpd-dsh-qa-k3nvvE/ws
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[mpd-roles] roster section registered for agent "session-3f7c70d7-8f8e-4324-a6ac-8255572fc0c8" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-3f7c70d7-8f8e-4324-a6ac-8255572fc0c8" agentPreset=none
+dsh: reasoning:
+The user wants me to list all available tool names starting with mcp__ prefix, one per line, and explicitly says do not call any tools.
+
+From my tool list, the mcp__ tools are:
+
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__diagnostics
+mcp__lsp__find_references
+mcp__lsp__goto_definition
+mcp__lsp__install_decision
+mcp__lsp__prepare_rename
+mcp__lsp__rename
+mcp__lsp__status
+mcp__lsp__symbols
+
+That's 15 tools. Just list them.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__diagnostics
+mcp__lsp__find_references
+mcp__lsp__goto_definition
+mcp__lsp__install_decision
+mcp__lsp__prepare_rename
+mcp__lsp__rename
+mcp__lsp__status
+mcp__lsp__symbols

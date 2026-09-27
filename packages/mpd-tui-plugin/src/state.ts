@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 
@@ -67,9 +68,6 @@ function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8"))
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-}
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []

@@ -1133,6 +1133,12 @@ var import_schemastery = __toESM(require_lib(), 1);
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1148,9 +1154,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -1417,7 +1420,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -1610,7 +1613,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -1720,7 +1723,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -2080,11 +2083,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop2;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -2092,24 +2095,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -2185,7 +2188,7 @@ function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
 `, "utf8");
     return { ok: true, path };
   } catch (error) {
-    return { ok: false, path, error: message2(error) };
+    return { ok: false, path, error: errorMessage(error) };
   }
 }
 function readHeartbeats(workspace, stateDir, memberKey) {
@@ -2303,11 +2306,8 @@ function writeFileAtomic(path, text) {
     renameSync(temp, path);
     return { changed: true, path };
   } catch (error) {
-    return { changed: false, path, error: message2(error) };
+    return { changed: false, path, error: errorMessage(error) };
   }
-}
-function message2(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 // packages/mpd-team-watchdog-plugin/src/sidecars.ts
@@ -2354,7 +2354,7 @@ function appendIncident(workspace, stateDir, incident) {
 `, "utf8");
     return { ok: true, path };
   } catch (error) {
-    return { ok: false, path, error: message2(error) };
+    return { ok: false, path, error: errorMessage(error) };
   }
 }
 function readIncidents(workspace, stateDir) {
@@ -2747,10 +2747,10 @@ function eventTimeOf(event) {
 }
 function callIdOf(event) {
   const data = dataOf(event);
-  const message3 = asRecord(data.message);
-  const content = Array.isArray(message3?.content) ? message3?.content : [];
+  const message = asRecord(data.message);
+  const content = Array.isArray(message?.content) ? message?.content : [];
   const first = asRecord(content[0]);
-  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message3?.toolCallId) ?? asString(message3?.callId);
+  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message?.toolCallId) ?? asString(message?.callId);
 }
 function toolNameOf(event) {
   const data = dataOf(event);
@@ -3676,7 +3676,7 @@ function readNamespaceValue(dsh) {
     const reader = dsh.settingsReader("mpd");
     return { value: reader?.get(), error: null };
   } catch (error) {
-    return { value: undefined, error: message2(error) };
+    return { value: undefined, error: errorMessage(error) };
   }
 }
 function namespaceReadIssue(error) {
@@ -3723,7 +3723,7 @@ function subscribe(dsh, event, handler) {
       try {
         return handler(...args);
       } catch (error) {
-        report("[" + event + "] handler threw: " + message2(error));
+        report("[" + event + "] handler threw: " + errorMessage(error));
         return;
       }
     };
@@ -3736,7 +3736,7 @@ function subscribe(dsh, event, handler) {
     }
     return () => {};
   } catch (error) {
-    report("could not subscribe to " + event + ": " + message2(error));
+    report("could not subscribe to " + event + ": " + errorMessage(error));
     return () => {};
   }
 }
@@ -3975,7 +3975,7 @@ class WatchdogEngine {
         try {
           this.stamp("step", agentOf(payload));
         } catch (error) {
-          this.warn("pre-step heartbeat failed (the step decision is unaffected): " + message2(error));
+          this.warn("pre-step heartbeat failed (the step decision is unaffected): " + errorMessage(error));
         }
         return typeof next === "function" ? next() : undefined;
       }));
@@ -4002,7 +4002,7 @@ class WatchdogEngine {
             return;
           this.stats.channelEvents += 1;
         } catch (error) {
-          this.warn("the session/event fold threw (the tick keeps its last state): " + message2(error));
+          this.warn("the session/event fold threw (the tick keeps its last state): " + errorMessage(error));
         }
       });
       if (typeof offSession === "function") {
@@ -4025,7 +4025,7 @@ class WatchdogEngine {
           if (this.fold.noteStreamFrame(sessionId, record.frame ?? payload))
             this.stats.streamFrames += 1;
         } catch (error) {
-          this.warn("the assistant-stream enrichment threw: " + message2(error));
+          this.warn("the assistant-stream enrichment threw: " + errorMessage(error));
         }
       });
       if (typeof offStream === "function") {
@@ -4070,7 +4070,7 @@ class WatchdogEngine {
           this.info("knobs re-read (enabled=" + next.enabled + ", warnSilenceMs=" + next.warnSilenceMs + ", tickIntervalMs=" + next.tickIntervalMs + ", warnStreakToEscalate=" + next.warnStreakToEscalate + ", actionOnEscalate=" + next.actionOnEscalate + ")");
           this.onKnobsChanged?.(next);
         } catch (error) {
-          this.warn("knob re-read failed: " + message2(error));
+          this.warn("knob re-read failed: " + errorMessage(error));
         }
       }));
     } else {
@@ -4093,20 +4093,20 @@ class WatchdogEngine {
         const next = this.refreshKnobs();
         this.onKnobsChanged?.(next);
       } catch (error) {
-        this.warn("knob re-read failed: " + message2(error));
+        this.warn("knob re-read failed: " + errorMessage(error));
       }
       if (!this.knobs.enabled)
         return { decisions, scenes, holds, skipped: "disabled" };
       try {
         this.noteKnobDivergence();
       } catch (error) {
-        this.warn("knob divergence check failed: " + message2(error));
+        this.warn("knob divergence check failed: " + errorMessage(error));
       }
       for (const workspace of this.knownRoots()) {
         try {
           await this.autoReleaseHolds(workspace, now);
         } catch (error) {
-          this.warn("auto-release pass failed for " + workspace + ": " + message2(error));
+          this.warn("auto-release pass failed for " + workspace + ": " + errorMessage(error));
         }
         for (const team of this.teams(workspace, now)) {
           const liveness = this.liveness(team, now);
@@ -4136,9 +4136,9 @@ class WatchdogEngine {
       return { decisions, scenes, holds };
     } catch (error) {
       this.stats.tickErrors += 1;
-      this.stats.lastError = message2(error);
-      this.warn("tick threw " + this.stats.tickErrors + " time(s): " + message2(error));
-      return { decisions, scenes, holds, skipped: "tick error: " + message2(error) };
+      this.stats.lastError = errorMessage(error);
+      this.warn("tick threw " + this.stats.tickErrors + " time(s): " + errorMessage(error));
+      return { decisions, scenes, holds, skipped: "tick error: " + errorMessage(error) };
     } finally {
       this.ticking = false;
     }
@@ -4469,7 +4469,7 @@ class WatchdogEngine {
         }
       }
     } catch (error) {
-      this.warn("the hold action was unreachable through the tool seam (" + message2(error) + ") — falling back to a direct write");
+      this.warn("the hold action was unreachable through the tool seam (" + errorMessage(error) + ") — falling back to a direct write");
     }
     const direct = applyHold(workspace, this.config.stateDir, args, this.registry);
     if (direct.applied)
@@ -4548,8 +4548,8 @@ function apply(ctx, config = {}) {
   try {
     dsh = context.get?.("mpdDsh", false) ?? createDshAdapter(context);
   } catch (error) {
-    warn(resolved.logPrefix, "no adapter available — the row is inert: " + message2(error));
-    return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds: 0, error: message2(error) };
+    warn(resolved.logPrefix, "no adapter available — the row is inert: " + errorMessage(error));
+    return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds: 0, error: errorMessage(error) };
   }
   const registry = new HoldRegistry(resolved.stateDir);
   let hydratedHolds = 0;
@@ -4564,14 +4564,14 @@ function apply(ctx, config = {}) {
     } catch {}
     hydratedHolds = registry.hydrate([...roots]);
   } catch (error) {
-    warn(resolved.logPrefix, "hold hydration at apply failed (the file fallback still answers): " + message2(error));
+    warn(resolved.logPrefix, "hold hydration at apply failed (the file fallback still answers): " + errorMessage(error));
   }
   let engine;
   try {
     engine = new WatchdogEngine(dsh, context, resolved, registry);
   } catch (error) {
-    warn(resolved.logPrefix, "engine construction failed — the row is inert: " + message2(error));
-    return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds, error: message2(error) };
+    warn(resolved.logPrefix, "engine construction failed — the row is inert: " + errorMessage(error));
+    return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds, error: errorMessage(error) };
   }
   let holdService = null;
   try {
@@ -4594,7 +4594,7 @@ function apply(ctx, config = {}) {
       warn(resolved.logPrefix, "ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open");
     }
   } catch (error) {
-    warn(resolved.logPrefix, "publishing the " + HOLD_SERVICE + " service failed: " + message2(error));
+    warn(resolved.logPrefix, "publishing the " + HOLD_SERVICE + " service failed: " + errorMessage(error));
   }
   let disposers = [];
   try {
@@ -4605,7 +4605,7 @@ function apply(ctx, config = {}) {
     });
     disposers = engine.install();
   } catch (error) {
-    warn(resolved.logPrefix, "registration degraded: " + message2(error));
+    warn(resolved.logPrefix, "registration degraded: " + errorMessage(error));
   }
   let timer;
   let intervalMs = engine.getKnobs().tickIntervalMs;
@@ -4622,12 +4622,12 @@ function apply(ctx, config = {}) {
     intervalMs = next;
     try {
       timer = setInterval(() => {
-        engine.tickOnce().catch((error) => warn(resolved.logPrefix, "tick rejected: " + message2(error)));
+        engine.tickOnce().catch((error) => warn(resolved.logPrefix, "tick rejected: " + errorMessage(error)));
       }, next);
       timer.unref?.();
     } catch (error) {
       timer = undefined;
-      warn(resolved.logPrefix, "could not start the tick timer: " + message2(error));
+      warn(resolved.logPrefix, "could not start the tick timer: " + errorMessage(error));
     }
   };
   engine.onKnobsChanged = (knobs) => {
@@ -4651,7 +4651,7 @@ function apply(ctx, config = {}) {
     if (typeof context.effect === "function")
       context.effect(() => cleanup);
   } catch (error) {
-    warn(resolved.logPrefix, "ctx.effect unavailable (" + message2(error) + ") — the tick will not be cleaned up on dispose");
+    warn(resolved.logPrefix, "ctx.effect unavailable (" + errorMessage(error) + ") — the tick will not be cleaned up on dispose");
   }
   const issues = engine.getKnobs().issues;
   for (const issue of issues)

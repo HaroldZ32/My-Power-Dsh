@@ -24,11 +24,10 @@ import {
   type ExtensionConfig,
   type RejectedExtension,
 } from "./registry"
+import { bundleRootOf, errorMessage as message } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The bundle package root: this file sits at <root>/packages/mpd-ext-plugin/{src,dist}/. */
-export function bundleRoot(): string {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+export function bundleRoot(): string { return bundleRootOf(import.meta.url) }
 
 /** Per-session project plane: <workspace>/.mpd/extensions. */
 export function projectExtensionsDir(workspaceRoot: string): string {
@@ -62,9 +61,6 @@ export interface DiscoverPlaneOptions {
   warn: (message: string) => void
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /**
  * Discover every `<dir>/<extension>/mpd-ext.json`. A broken manifest — invalid

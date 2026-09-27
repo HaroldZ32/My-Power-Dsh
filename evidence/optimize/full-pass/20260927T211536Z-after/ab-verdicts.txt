@@ -1,0 +1,13 @@
+TREE=after LANE=workmate-library exit=0 s=66
+  isolation: {"ok":true,"realWm":"/home/haroldzhao/.mpd/workmate","before":null,"after":null,"sandboxHome":"/tmp/mpd-wm-home-mqGYZF","sandboxRoot":"/tmp/mpd-wm-home-mqGYZF/.mpd/workmate","homeSandboxe
+[workmate-library] PASS
+TREE=after LANE=session-start-team exit=0 s=557
+  threeWay: {"ok":true,"simpleNotices":[0,0,0],"softNotices":[1,1],"softSignals":[["C"],["C"]],"softStaged":[0,0],"explicitNotices":[1],"explicitStaged":[0],"explicitMarkerConsumed":[true]}
+[session-start-team] PASS
+TREE=pristine LANE=workmate-library exit=0 s=63
+  isolation: {"ok":true,"realWm":"/home/haroldzhao/.mpd/workmate","before":null,"after":null,"sandboxHome":"/tmp/mpd-wm-home-pAN7yN","sandboxRoot":"/tmp/mpd-wm-home-pAN7yN/.mpd/workmate","homeSandboxe
+[workmate-library] PASS
+TREE=pristine LANE=session-start-team exit=0 s=651
+  threeWay: {"ok":true,"simpleNotices":[0,0,0],"softNotices":[1,1],"softSignals":[["C"],["C"]],"softStaged":[0,0],"explicitNotices":[1],"explicitStaged":[0],"explicitMarkerConsumed":[true]}
+[session-start-team] PASS
+ABDONE

@@ -39,6 +39,7 @@ import { tmpdir } from "node:os"
 import { dirname, extname, join, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
+import { readJson } from "./lib/repo.mjs"
 
 const scriptPath = fileURLToPath(import.meta.url)
 const repoRoot = dirname(dirname(scriptPath))
@@ -278,7 +279,7 @@ function serverNameFor(name) {
 
 /** The placeholder token, read FROM the template (never hard-coded here). */
 function templateToken() {
-  return JSON.parse(readFileSync(join(TEMPLATE_DIR, MANIFEST_FILE), "utf8")).id
+  return readJson(join(TEMPLATE_DIR, MANIFEST_FILE)).id
 }
 
 /** The derived names the copy will carry, read from the template's OWN paths and manifest. */
@@ -296,7 +297,7 @@ function templateDerivedNames(token, name) {
         .filter((entry) => entry.endsWith(".json"))
         .map((entry) => rename(entry.slice(0, -".json".length)))
     : []
-  const templateManifest = JSON.parse(readFileSync(join(TEMPLATE_DIR, MANIFEST_FILE), "utf8"))
+  const templateManifest = readJson(join(TEMPLATE_DIR, MANIFEST_FILE))
   const roleNames = (templateManifest.contributes?.roles ?? []).map((item) => rename(String(item.name)))
   return { skillDirs, flowIds, roleNames }
 }
@@ -350,7 +351,7 @@ function copyTemplateTree(sourceRoot, targetRoot, token, name) {
  */
 function finishManifest(target, name, withMcp) {
   const manifestPath = join(target, MANIFEST_FILE)
-  const parsed = JSON.parse(readFileSync(manifestPath, "utf8"))
+  const parsed = readJson(manifestPath)
   const contributes = parsed.contributes ?? {}
   if (!withMcp) delete contributes.mcp
   if (Array.isArray(contributes.mcp)) {
@@ -558,7 +559,7 @@ function selfTest() {
     expect(plain.status === 0, `scaffold (no flag) exits 0 (got ${plain.status}): ${plain.stderr.trim()}`)
     const plainRoot = join(sandbox, "demo-ext-plain")
     expect(!existsSync(join(plainRoot, "server.mjs")), "the default copy drops server.mjs")
-    expect(JSON.parse(readFileSync(join(plainRoot, MANIFEST_FILE), "utf8")).contributes.mcp === undefined, "the default copy drops the manifest mcp entry")
+    expect(readJson(join(plainRoot, MANIFEST_FILE)).contributes.mcp === undefined, "the default copy drops the manifest mcp entry")
     for (const asset of ["skills/demo-ext-plain-skill/SKILL.md", "flows/demo-ext-plain-flow.json", "personas/demo-ext-plain-reviewer.md"]) {
       expect(existsSync(join(plainRoot, asset)), `the default copy wrote ${asset}`)
     }
@@ -574,7 +575,7 @@ function selfTest() {
     const bound = serverNameMaxLength()
     const longRun = runChild(["scaffold", longId, "--dir", sandbox, "--with-mcp"])
     expect(longRun.status === 0, `scaffold accepts an id longer than the serverName bound (got ${longRun.status}): ${longRun.stderr.trim()}`)
-    const longManifest = JSON.parse(readFileSync(join(sandbox, longId, MANIFEST_FILE), "utf8"))
+    const longManifest = readJson(join(sandbox, longId, MANIFEST_FILE))
     expect(longId.length > bound, `the long-id fixture (${longId.length} chars) really is longer than the contract bound (${bound})`)
     expect(longManifest.contributes.mcp[0].serverName === longId.slice(0, bound), `the copied serverName is capped at the contract bound (${bound}), not at a literal`)
     expect(longRun.stderr.includes("caps serverName at"), "the cap is WARNED on stderr, never silent")

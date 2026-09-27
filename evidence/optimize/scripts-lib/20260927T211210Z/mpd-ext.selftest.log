@@ -1,0 +1,6 @@
+mpd-ext: cannot load the shared validator — this CLI deliberately has no rule set of its own, so it refuses to run without one.
+  tried ../packages/mpd-ext-plugin/src/registry.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/sdk' imported from /home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/registry.ts
+  tried ../packages/mpd-ext-plugin/src/manifest.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/sdk' imported from /home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/src/manifest.ts
+  tried ../packages/mpd-ext-plugin/dist/validator.js: ERR_MODULE_NOT_FOUND: Cannot find module '/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/validator.js' imported from /home/haroldzhao/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  from a checkout: run it under bun (`bun scripts/mpd-ext.mjs …`) so the TypeScript sources load
+  from a packed artifact: re-run `npm run pack` — the packer emits packages/mpd-ext-plugin/dist/validator.js for exactly this case

@@ -1,0 +1,90 @@
+{
+  "task": "organize the uncommitted work into the AGENTS.md §5 git model, verify the whole tree, and publish to GitHub",
+  "verdict": "PASS with 4 CLASSIFIED NON-BLOCKING REDS — no red is caused by this wave",
+  "branch": "feature/consolidation-and-docs (from dev; dev fast-forwarded to master first)",
+  "base": { "master": "3e4a8d3dc5e0f9cca2465fcaa9ee99c754ee5795", "dev": "7d06e2169586d1793a86bb6b952131b8903c6e9f (ancestor of master)" },
+  "anchor": {
+    "how": "every gate in evidence/verify/pre-upload/20260927T232335Z/ ran with `git status --porcelain` EMPTY outside evidence/ and dist/",
+    "sweepStartUtc": "2026-09-27T23:23:35Z",
+    "sweepEndUtc": "2026-09-27T23:25:27Z",
+    "headBefore": "f32a0fbc50f86e7e3b810e3a2d32ce3758f875d8",
+    "headAfter": "f32a0fbc50f86e7e3b810e3a2d32ce3758f875d8",
+    "sourceTreeChangedByGateRuns": false,
+    "note": "the only worktree changes the sweep itself produced are evidence under evidence/** and the gitignored dist/mpd-package — asserted by the sweep's own anchor.txt, not by inspection"
+  },
+  "gatesGreen": [
+    { "gate": "vendor", "command": "node scripts/verify-vendor.mjs", "reading": "commit/version/stats + 6 assets OK, PASS" },
+    { "gate": "dist freshness", "command": "node scripts/verify-dist-fresh.mjs", "reading": "23/23 targets fresh, each rebuilt twice byte-identical, 7 NOT COVERED listed" },
+    { "gate": "row parity", "command": "node scripts/verify-rows-parity.mjs", "reading": "33 row ids match the 2-file bundle patch layer" },
+    { "gate": "doc pairs", "command": "node scripts/verify-docs-parity.mjs", "reading": "pairs=41 failed=0 violations=0 links=419 dead=0" },
+    { "gate": "doc-pairs self-test", "command": "node scripts/verify-docs-parity.mjs --self-test", "reading": "34/34 checks passed" },
+    { "gate": "manual paths", "command": "node scripts/verify-manual-paths.mjs", "reading": "PASS resolved=112 over-report=90 under-report=78 declared=2" },
+    { "gate": "citations", "command": "node scripts/check-citations.mjs", "reading": "13/13 checks, 245 citations resolved, 0 rot-flagged" },
+    { "gate": "preset conformance self-test", "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test", "reading": "33 harness rows conform; negative controls 4/4 reddened" },
+    { "gate": "extension CLI", "command": "bun scripts/mpd-ext.mjs --self-test + validate extensions/mpd-ext-example", "reading": "53 checks; validate exit 0, loadable, 1 skill / 1 flow / 1 role / 1 mcp server" },
+    { "gate": "tests", "command": "bun test packages", "reading": "1245 pass / 3 skip / 0 fail (3 of 4 full runs; see flakyTests)" },
+    { "gate": "typecheck", "command": "bun run typecheck", "reading": "tsgo --noEmit, exit 0 (tsgo is resolved from .toolchain/node_modules/.bin, which is NOT on the default PATH)" },
+    { "gate": "QA self-tests", "command": "bun run test:qa", "reading": "all self-tests passed" },
+    { "gate": "gate aggregate", "command": "bun run verify:gates", "reading": "5/5 member gates green" },
+    { "gate": "installer", "command": "node scripts/install-profile.mjs --dry-run", "reading": "dry-run done, nothing written" },
+    { "gate": "MOUNT — the preset's standing mount", "command": "node skills/dsh-qa/scripts/preset-conformance.mjs", "reading": "PASS: 33 rows conform, a real session was created with agentPreset=mpd (200), boot log has no abort signature, and the negative control reddened with agent-preset/invalid" },
+    { "gate": "pack", "command": "node scripts/pack-mpd.mjs", "reading": "1215 files staged; the packed tree carries CHANGELOG/CONTRIBUTING/SECURITY and their zh-CN twins" },
+    { "gate": "pack closure", "command": "node scripts/verify-pack-closure.mjs", "reading": "1201/1201 content bytes identical, 0 drift; completeness 418/419 present + 1 declared exemption, 0 absent" }
+  ],
+  "classifiedReds": [
+    {
+      "case": "bundle-lifecycle (a §4 MOUNT boot)",
+      "measuredHere": "exit 1 in 4 s with `error: EROFS accessing temporary directory. Please set $BUN_TMPDIR or $BUN_INSTALL` — the lane's own first line, before any assertion",
+      "pristineHead": "IDENTICAL — evidence/verify/pre-upload/ab-pristine/pristine-bundle-lifecycle.log, same one-line error on a `git archive HEAD` snapshot",
+      "cause": "environment: `bun` cannot create a scratch directory under this file sandbox ($BUN_INSTALL is read-only); BUN_TMPDIR was exported inside the workspace and the lane still re-exec'd bun with an env that loses it",
+      "owner": "environment",
+      "notBlockingBecause": "the MOUNT requirement is satisfied by preset-conformance above (a real session on the real preset, with a negative control); this lane additionally carries a pre-existing live-probe red documented by the wave on pristine HEAD"
+    },
+    {
+      "case": "dual-track-smoke — the `deepseek` leg",
+      "measuredHere": "official leg ok=true; deepseek leg exit 1, `dsh: NO_ADAPTER: no adapter registered for provider \"deepseek\"`",
+      "pristineHead": "IDENTICAL verdict AND identical reason line on the pristine snapshot (evidence/verify/pre-upload/ab-pristine/pristine-dual-track-reason.txt)",
+      "cause": "environment: this host composes no `deepseek` provider route in the sandboxed profile",
+      "owner": "environment"
+    },
+    {
+      "case": "mcp-call (a §11 real smoke case)",
+      "measuredHere": "official tool list has 95 tools incl. the ast_grep family; the ast_grep call was RECORDED and succeeded, but the result carried 0 chars and no fixture line (ok=false)",
+      "pristineHead": "IDENTICAL shape on the pristine snapshot once the snapshot is packed first (94 tools, ast_grep call recorded, ok=false)",
+      "cause": "live-lane: the model's ast-grep call returns an empty result in this environment",
+      "owner": "environment"
+    },
+    {
+      "case": "dump-config --profile mpd",
+      "measuredHere": "exit 1 — `profile \"mpd\" does not exist`",
+      "pristineHead": "same (the host has no `mpd` profile installed)",
+      "cause": "host state; the flag is explicitly NOT a gate (AGENTS.md §4) and proves composition only",
+      "owner": "environment"
+    }
+  ],
+  "flakyTests": {
+    "test": "REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails (packages/mpd-mcp-shared/bin-resolve.test.mjs)",
+    "measured": "1 failure in 1 of 4 full-suite runs (the sweep run: 1244 pass / 1 fail); 0 failures in the other 3 runs (1245 pass); the file passes 3/3 when run alone, and a direct probe of `.toolchain/node_modules/.bin/sg --version` deterministically exits 1",
+    "pristineHead": "the wave's own before/after sweep recorded this same single red on BOTH the pristine baseline and the after tree, and recorded that it flips between runs",
+    "cause": "environment/ordering-dependent probe of the real `.toolchain` binaries; the file and its package are UNTOUCHED by this wave (`git diff master..HEAD -- packages/mpd-mcp-shared` is empty)",
+    "owner": "pre-existing"
+  },
+  "fixesAppliedDuringVerification": [
+    "The first manual-paths run reddened on `.mpd/team` — caused by the verification scratch dir `.mpd/` that this session itself created at the repo root, which makes the first segment of that documented path an EXISTING root entry and therefore auditable. Removing the scratch dir made the gate PASS; the scratch was relocated into the package's own evidence paths.",
+    "`bun run typecheck` exited 127 (`tsgo: command not found`) only because `.toolchain/node_modules/.bin` is not on the default PATH; with it prepended, `tsgo --noEmit` exits 0. The sweep script now encodes that."
+  ],
+  "controlChangesApprovedByTheCaptain": [
+    {
+      "file": ".gitignore",
+      "change": "`evidence/**/scratch-pack*/` joins `scratch-artifact*/` and `scratch-control*/`",
+      "why": "three extension-lifecycle runs added 3 full packed trees at 14 MB / ~1,220 files each; the lane's record (result.json, output.log, raw/) is still committed",
+      "measuredEffect": "the staged addition drops from ~49 MB to 9.10 MB across 477 untracked files"
+    },
+    {
+      "file": "CHANGELOG.md",
+      "change": "the `Unreleased` heading becomes an umbrella with the wave's own section verbatim, plus sections for the docs overhaul, the UI captures and the scratch-pack rule",
+      "why": "the section described only the code consolidation while the same unreleased band also carries a full documentation overhaul and a screenshot capture lane",
+      "sourcedFrom": "the two result.json files on disk (evidence/docs/github-doc-overhaul, evidence/docker/ui-capture); no claim was invented"
+    }
+  ]
+}

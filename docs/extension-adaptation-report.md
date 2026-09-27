@@ -66,7 +66,7 @@ The important asymmetry: the *same* `mpd-ext.json` is legal in different planes 
 of permitted kinds — the project plane may contribute **skills + flows only**, while the user and
 bundle planes may contribute all four. That restriction is deliberate and has a truthful reason
 (`packages/mpd-ext-plugin/src/sdk.ts:144-145`, refusal implemented per item at
-`packages/mpd-ext-plugin/src/registry.ts:678-685`): tool and provider registration in this harness is
+`packages/mpd-ext-plugin/src/registry.ts:673-680`): tool and provider registration in this harness is
 process-global, so a per-session MCP server or roster role cannot be represented honestly.
 
 ## 3. Capability inventory of the extension interface
@@ -247,7 +247,7 @@ wave — this wave audits and documents.
   `docs/extensions.md` §5/§10 + zh-CN twin. Rationale: an implemented strength is invisible, and the
   residuals (`~/.dsh` readable from disk by the child, author-declared `env` secrets, filesystem
   trust) need an explicit accept/deny decision. Effort: small-medium.
-- **P2 — juxtapose the two liveness modes in one sentence.** Paths: `docs/extensions.md:524` + zh-CN
+- **P2 — juxtapose the two liveness modes in one sentence.** Paths: `docs/extensions.md:525` + zh-CN
   twin. Rationale: removes the surprise in F4. Effort: small.
 - **P2 — cross-reference the adapter-mount hazard** between the bundle-patch comment and the row
   comment. Paths: `packages/mpd-bundle/cordis.patch.yml:244-260`,
@@ -373,7 +373,7 @@ follow-up mapping on top of it.
 
 | Item | Status | Where the fix lives | Evidence |
 |---|---|---|---|
-| F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:59-100`) plus (`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:497`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:59-100`) plus (`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:494`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 — one hazard, two half-comments | **fixed** | the single canonical note (`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`), which `packages/mpd-roles-plugin/src/index.ts` points at instead of restating | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F7 — an evidence checker over-claims | **fixed** | the corrected prober `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs` (a NEW directory; `evidence/mpd-ext-debranding/20260915T074904Z/` is left byte-untouched as the record of the narrow probe) | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 — the R11 class assertion has no test-suite home | **fixed** | `scripts/verify-pack-closure.mjs` — it runs alone, parses the packer's real lists, and replays red on a temp fixture — wired into `package.json` `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
@@ -401,9 +401,9 @@ re-pin, in the same change set as the F8/F9/F10 edits (AGENTS.md §9/§11), veri
 
 ### One measured deviation: the developer CLI is RED inside a packed artifact
 
-**Not fixed in this wave** (tracked as `.mpd/TODO.md` T-51). The packer copies only
+**Not fixed in this wave** (tracked as T-51 in the wave ledger, since removed from the tree). The packer copies only
 `packages/<pkg>/dist` (`cpDist`, `scripts/pack-mpd.mjs`) and never `src`, while the developer CLI
-imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:49`; the source table spans
+imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:50`; the source table spans
 `SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56` and the compiled fallback sits at `:60`).
 Inside a packed tree every CLI entry point therefore exits 1 with
 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`. Measured on a probe tree built
@@ -414,7 +414,7 @@ entry is packed either. AGENTS.md §4's Extension-CLI gate therefore holds in a 
 `src` and `templates/` exist) and is RED in a packed artifact until the packer ships them. The agent
 contract's own copy of this limit is in `EXTENSIONS-FOR-AGENTS.md` §9.
 
-**FIXED 2026-09-17 (friction wave, lane E — `.mpd/TODO.md` T-35/T-36/T-45/T-51).** The packer now
+**FIXED 2026-09-17 (friction wave, lane E — T-35/T-36/T-45/T-51).** The packer now
 ships `templates/` and the `docs/` set (user decision: a packed install is author-facing), and it <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 emits a compiled validator entry `packages/mpd-ext-plugin/dist/validator.js` — the shipped bundle
 plus ONE `export { … }` line, so the plugin module itself is untouched — which `scripts/mpd-ext.mjs`

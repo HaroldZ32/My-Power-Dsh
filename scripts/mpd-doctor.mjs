@@ -43,11 +43,12 @@
 // temp fixture this way). It roots the bundle's node_modules lookups too, so a
 // fixture cannot see the real tree.
 import { execFileSync, spawnSync } from "node:child_process"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { delimiter, dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 import { resolveAstGrepBinary, resolveCodegraphBinary } from "../packages/mpd-mcp-shared/bin-resolve.mjs"
 
 const PREFIX = "[mpd-doctor]"
@@ -182,7 +183,7 @@ function packageVersionNear(file) {
     const manifest = join(dir, "package.json")
     if (existsSync(manifest)) {
       try {
-        const version = JSON.parse(readFileSync(manifest, "utf8")).version
+        const version = readJson(manifest).version
         if (typeof version === "string" && version.length > 0) return { version, source: manifest }
       } catch { /* a broken manifest is not a version: keep walking up */ }
     }

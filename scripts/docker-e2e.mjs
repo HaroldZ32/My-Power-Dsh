@@ -36,6 +36,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const SELF = fileURLToPath(import.meta.url)
 const REPO = dirname(dirname(SELF))
@@ -242,7 +243,7 @@ function selfTest() {
   const body = { ok: true, summary: { passed: 1, failed: 0, null: 0 }, assertions: [{ name: "x", ok: true }] }
   writeFileSync(join(fixture, "result.json"), JSON.stringify(body, null, 2) + "\n")
   writeFileSync(join(fixture, "output.log"), redact("dsh web: http://127.0.0.1:3197/?token=SECRET123\n") + "\n")
-  const readBack = JSON.parse(readFileSync(join(fixture, "result.json"), "utf8"))
+  const readBack = readJson(join(fixture, "result.json"))
   check("result.json round-trips byte-identically", JSON.stringify(readBack) === JSON.stringify(body))
   check("output.log is written redacted", !readFileSync(join(fixture, "output.log"), "utf8").includes("SECRET123"))
 
@@ -264,7 +265,7 @@ function selfTest() {
     encoding: "utf8",
     env: { ...process.env, MPD_E2E_FORCE_LEAK: "1" },
   })
-  const leakResult = existsSync(join(leakOut, "result.json")) ? JSON.parse(readFileSync(join(leakOut, "result.json"), "utf8")) : null
+  const leakResult = existsSync(join(leakOut, "result.json")) ? readJson(join(leakOut, "result.json")) : null
   check("the scrub guard fails a planted leak (exit 1)", leaked.status === 1, `status=${leaked.status}`)
   check("the scrub guard marks the verdict red", leakResult !== null && leakResult.ok === false && leakResult.evidenceScrubbed === false, JSON.stringify(leakResult?.summary ?? null))
   check("the guard names itself in failedNames", (leakResult?.summary?.failedNames ?? []).includes("isolation.evidenceScrubbed"))
@@ -277,7 +278,7 @@ function selfTest() {
   const cleanOut = join(SELFTEST_DIR, "clean", "out")
   mkdirSync(cleanOut, { recursive: true })
   const cleanRun = spawnSync(process.execPath, [join(DOCKER_DIR, "lib", "report.mjs"), "--work", leakWork, "--out", cleanOut], { encoding: "utf8", env: { ...process.env, MPD_E2E_FORCE_LEAK: "" } })
-  const cleanResult = existsSync(join(cleanOut, "result.json")) ? JSON.parse(readFileSync(join(cleanOut, "result.json"), "utf8")) : null
+  const cleanResult = existsSync(join(cleanOut, "result.json")) ? readJson(join(cleanOut, "result.json")) : null
   check("a clean report carries evidenceScrubbed: true", cleanResult?.evidenceScrubbed === true, JSON.stringify(cleanResult?.evidenceScrubbed))
   check("a clean report exits 0", cleanRun.status === 0, `status=${cleanRun.status}`)
 
@@ -367,7 +368,7 @@ async function main() {
   const resultPath = join(evidence, "result.json")
   let result = null
   if (existsSync(resultPath)) {
-    try { result = JSON.parse(readFileSync(resultPath, "utf8")) } catch (error) {
+    try { result = readJson(resultPath) } catch (error) {
       console.error(`[driver] result.json is not valid JSON: ${String(error.message)}`)
     }
   }

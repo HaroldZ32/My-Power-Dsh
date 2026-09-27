@@ -20,7 +20,8 @@
 │   ├── install-profile.mjs    旧式安装器（默认 dry-run；--dsh-home 供 QA）
 │   ├── mpd-ext.mjs        扩展开发者 CLI：validate / scaffold / list / --self-test
 │   ├── bootstrap.mjs      preflight + vendor 检查（P0 时代保留为检查项）
-│   └── verify-vendor.mjs  阻塞性 vendor 门禁
+│   ├── verify-vendor.mjs  阻塞性 vendor 门禁
+│   └── lib/repo.mjs       共享原语（repoRootFrom、readJson），所有脚本都引用
 ├── packages/              一个包一个插件（src/ + dist/ + README.md）
 ├── extensions/            bundle 自带的扩展发现根目录 + 默认禁用的参考扩展
 ├── skills/                移植的 skill 语料 + dsh-qa（QA skill）
@@ -69,7 +70,8 @@ MCP 服务器由 `node scripts/build-mcp.mjs` 构建（从仓库内源码离线�
 
 **Harness 接缝（约束性规则，AGENTS.md §6）：** 插件行不得直接调用 `ctx.tools`、
 `ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。所有行都经由
-`packages/mpd-dsh-adapter-plugin`（`const dsh = ctx.get("mpdDsh") ?? createDshAdapter(ctx)`），
+`packages/mpd-dsh-adapter-plugin`（`const dsh = resolveDshAdapter(ctx)`；该包同时在 `src/shared.ts`
+中承载 bundle 的纯共享工具），
 因此 Harness 改变某个接缝时只需改这一个包：编辑
 `packages/mpd-dsh-adapter-plugin/src/index.ts`、重新构建、重新 pack——消费方无需改动即可
 拿到新的已挂载实例。它的单元测试（`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`）
@@ -122,6 +124,14 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 两个 npm 脚本，两条通道（t8）：`bun run test:qa` 运行**每个** case 的离线 `--self-test`；
 `bun run test:qa:all` 运行“重量/联机子集”的**真实通道**，其成员在 `package.json` 中按名字逐一列举
 （判据：该 case 需要真实的 headless dsh 启动和/或真实 provider）。显式白名单保证新 case 不会被静默当作重量用例。
+
+**在沙箱内运行实时 lane。** 两个环境事实决定了 lane 到底有没有真的测到东西。(1) `BUN_TMPDIR` 必须指向工作区
+内部（`BUN_TMPDIR="$PWD/.bun-tmp"`）：当 `$BUN_INSTALL`（`~/.bun`）不在沙箱可写集合内时，任何会 spawn `bun`
+的 lane 都会立刻以 `EROFS accessing temporary directory` 死掉，case 在几毫秒内报 FAIL —— 这正是"根本没跑到断言"
+的样子。(2) 把某个脚本或插件 `src/` **复制**进临时树的 case，必须同时把该副本会 import 的共享模块（`scripts/lib/`，
+或同级的 `packages/mpd-dsh-adapter-plugin/src/`）一起 stage，否则该分支会以 `ERR_MODULE_NOT_FOUND` 变红，而原因
+与它要测的东西无关；脚本形态的 helper 是
+`packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.mjs` 里的 `stageScript()`。
 
 **TUI lane 与 TUI 打包路径。** 上面六个 DSH-TUI case 照例带离线 `--self-test`，但它们的**实时**分支需要
 真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动，所以它们在 tmux 中驱动界面并抓取 pane —— 这也是它们不在

@@ -1,0 +1,10 @@
+[verify-gates] self-test arm default-path-resolves-declared-table: PASS - 5 declared member(s), ./ command forms, 0 spawned
+[verify-gates] self-test arm all-green-fixture-reports-every-member: PASS - 5/5 green, 5 verdict lines, transcript echoed
+[verify-gates] self-test arm first-member-red-still-reports-the-rest: PASS - m0 red: 5/5 reported, exit 1, summary names m0 (exit=1)
+[verify-gates] self-test arm middle-member-red-still-reports-later-members: PASS - m2 red: 5/5 reported, m3+m4 still PASS, exit 1
+[verify-gates] self-test arm two-members-red-are-both-named: PASS - m0+m3 red: 5/5 reported, both named, exit 1
+[verify-gates] self-test arm empty-member-table-is-refused: PASS - empty table refused, exit 2, 0 members reported
+[verify-gates] self-test arm malformed-members-file-is-refused: PASS - malformed JSON refused, exit 2, file named
+[verify-gates] self-test arm duplicate-member-id-is-refused: PASS - duplicate id refused, exit 2, id named
+[verify-gates] self-test arm invalid-member-id-is-refused: PASS - invalid id refused, exit 2, grammar named
+[verify-gates] self-test PASS: 9/9 arms

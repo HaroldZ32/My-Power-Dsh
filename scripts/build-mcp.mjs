@@ -8,8 +8,9 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 // The default is the legacy layout repoRoot = <upstream checkout>/.mpd/port/mpd-dsh. Override with
 // MPD_UPSTREAM_ROOT when the checkout lives elsewhere; the actual upstream checkout layout used here is
 // <repo>/.mpd-dsh/upstream (gitignored), whose packages/ hold ast-grep-mcp / git-bash-mcp /

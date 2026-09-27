@@ -1,0 +1,6 @@
+[skill-catalog-probe] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/plan-d/skill-catalog/2026-09-27T22-03-03.509Z
+  install: {"ok":true,"exit":0}
+  noHomeCopy: {"ok":true,"count":0,"path":"/tmp/mpd-skill-t1HKMC/skills"}
+  noPresetCopy: {"ok":true,"path":"/tmp/mpd-skill-t1HKMC/.agent-presets"}
+  servedFromBundle: {"ok":true,"path":"/home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package/skills"}
+  catalog: {"ok":false,"total":null,"bundled":null,"expected":18,"fixture":null,"exit":0}

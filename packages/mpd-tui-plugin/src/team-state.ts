@@ -24,6 +24,7 @@
 //
 // Nothing here throws: an absent/unreadable readout degrades to an empty workflow plus a bounded
 // problem note. A scene must never be able to take the session down (contract §10, last criterion).
+import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 
@@ -107,9 +108,6 @@ export interface TeamWorkflow {
   problems: string[]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-}
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []

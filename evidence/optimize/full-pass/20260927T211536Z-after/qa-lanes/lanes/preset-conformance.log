@@ -1,0 +1,1 @@
+error: EROFS accessing temporary directory. Please set $BUN_TMPDIR or $BUN_INSTALL

@@ -4,8 +4,9 @@ import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 const step = (msg) => console.log("[bootstrap] " + msg)
 let failed = false
 

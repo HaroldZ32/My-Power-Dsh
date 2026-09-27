@@ -1,0 +1,38 @@
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=299654977d65 lanes=32 evidence=evidence/optimize/pristine-lanes
+[mpd-qa:all] discovery=44 lane script(s) (.mjs entries 44, underscore-excluded 0, unlisted 0, outside-suite 18)
+[mpd-qa:all] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34
+[mpd-qa:all] PASS case=agent-teams-adopt log=evidence/optimize/pristine-lanes/lanes/agent-teams-adopt.log ms=12
+[mpd-qa:all] FAIL case=bundle-lifecycle reason=exit-1 exit=1 log=evidence/optimize/pristine-lanes/lanes/bundle-lifecycle.log ms=4255
+[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 log=evidence/optimize/pristine-lanes/lanes/codegraph-smoke.log ms=17
+[mpd-qa:all] FAIL case=dual-track-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-27T21-24-21.788Z log=evidence/optimize/pristine-lanes/lanes/dual-track-smoke.log ms=24086
+[mpd-qa:all] FAIL case=extension-lifecycle reason=exit-1 exit=1 evidence=evidence/extensions/extension-lifecycle/2026-09-27T21-24-21.895Z log=evidence/optimize/pristine-lanes/lanes/extension-lifecycle.log ms=49935
+[mpd-qa:all] FAIL case=extension-mcp-bridge reason=exit-1 exit=1 evidence=evidence/extensions/extension-mcp-bridge/2026-09-27T21-25-11.835Z log=evidence/optimize/pristine-lanes/lanes/extension-mcp-bridge.log ms=10140
+[mpd-qa:all] FAIL case=extension-template reason=exit-1 exit=1 evidence=evidence/extensions/extension-template/2026-09-27T21-25-21.972Z log=evidence/optimize/pristine-lanes/lanes/extension-template.log ms=10341
+[mpd-qa:all] UNAVAILABLE case=install-dependencies reason=absent-fixture exit=1 log=evidence/optimize/pristine-lanes/lanes/install-dependencies.log ms=21
+[mpd-qa:all] FAIL case=mcp-call reason=exit-1 exit=1 log=evidence/optimize/pristine-lanes/lanes/mcp-call.log ms=23
+[mpd-qa:all] PASS case=memory-smoke evidence=evidence/plan-c/c6-memory/2026-09-27T21-25-32.275Z log=evidence/optimize/pristine-lanes/lanes/memory-smoke.log ms=16451
+[mpd-qa:all] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-27T21-25-48.834Z log=evidence/optimize/pristine-lanes/lanes/mount-assert.log ms=124
+[mpd-qa:all] PASS case=plan-c-smoke evidence=evidence/plan-c/plan-c-smoke/2026-09-27T21-25-48.850Z log=evidence/optimize/pristine-lanes/lanes/plan-c-smoke.log ms=28601
+[mpd-qa:all] FAIL case=preset-conformance reason=exit-1 exit=1 log=evidence/optimize/pristine-lanes/lanes/preset-conformance.log ms=1907
+[mpd-qa:all] FAIL case=preset-register reason=exit-1 exit=1 evidence=evidence/dsh-qa/preset-register/2026-09-27T21-26-34.606Z log=evidence/optimize/pristine-lanes/lanes/preset-register.log ms=15265
+[mpd-qa:all] UNAVAILABLE case=relocate-smoke reason=absent-staged-pack exit=1 log=evidence/optimize/pristine-lanes/lanes/relocate-smoke.log ms=16
+[mpd-qa:all] PASS case=session-start-team evidence=evidence/dsh-qa/session-start-team/2026-09-27T21-26-34.645Z log=evidence/optimize/pristine-lanes/lanes/session-start-team.log ms=743619
+[mpd-qa:all] UNAVAILABLE case=skill-catalog-probe reason=absent-staged-pack exit=1 log=evidence/optimize/pristine-lanes/lanes/skill-catalog-probe.log ms=15
+[mpd-qa:all] FAIL case=software-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/software-smoke/2026-09-27T21-38-58.291Z log=evidence/optimize/pristine-lanes/lanes/software-smoke.log ms=10314
+[mpd-qa:all] PASS case=tool-output-validation evidence=evidence/fix/boulder-status-planprogress/2026-09-27T21-39-24.330Z log=evidence/optimize/pristine-lanes/lanes/tool-output-validation.log ms=30367
+[mpd-qa:all] FAIL case=ulw-command reason=exit-1 exit=1 evidence=evidence/dsh-qa/ulw-command/2026-09-27T21-39-39.044Z log=evidence/optimize/pristine-lanes/lanes/ulw-command.log ms=19953
+[mpd-qa:all] PASS case=ultrawork-smoke evidence=evidence/plan-c/c2-ultrawork/2026-09-27T21-39-58.913Z log=evidence/optimize/pristine-lanes/lanes/ultrawork-smoke.log ms=33645
+[mpd-qa:all] PASS case=vision-smoke evidence=evidence/plan-c/c8-vision/2026-09-27T21-40-32.564Z log=evidence/optimize/pristine-lanes/lanes/vision-smoke.log ms=1546
+[mpd-qa:all] FAIL case=web-client-adapt reason=exit-1 exit=1 log=evidence/optimize/pristine-lanes/lanes/web-client-adapt.log ms=19
+[mpd-qa:all] FAIL case=web-settings-bridge reason=exit-1 exit=1 evidence=evidence/mpd-bridge/web-settings-bridge/20260927T214034Z log=evidence/optimize/pristine-lanes/lanes/web-settings-bridge.log ms=35542
+[mpd-qa:all] PASS case=workmate-library evidence=evidence/plan-f/workmate-library/2026-09-27T21-41-09.671Z log=evidence/optimize/pristine-lanes/lanes/workmate-library.log ms=52635
+[mpd-qa:all] FAIL case=workmate-team-member reason=exit-1 exit=1 evidence=evidence/plan-f/workmate-team-member/2026-09-27T21-42-02.303Z log=evidence/optimize/pristine-lanes/lanes/workmate-team-member.log ms=91176
+[mpd-qa:all] PASS case=qa-lane-drift log=evidence/optimize/pristine-lanes/lanes/qa-lane-drift.log ms=26
+[mpd-qa:all] PASS case=qa-runner-self-test log=evidence/optimize/pristine-lanes/lanes/qa-runner-self-test.log ms=866
+[mpd-qa:all] PASS case=mpd-ext-self-test log=evidence/optimize/pristine-lanes/lanes/mpd-ext-self-test.log ms=377
+[mpd-qa:all] PASS case=mpd-ext-validate-example log=evidence/optimize/pristine-lanes/lanes/mpd-ext-validate-example.log ms=22
+[mpd-qa:all] PASS case=mpd-ext-validate-template log=evidence/optimize/pristine-lanes/lanes/mpd-ext-validate-template.log ms=24
+[mpd-qa:all] PASS case=pack-closure log=evidence/optimize/pristine-lanes/lanes/pack-closure.log ms=34
+[mpd-qa:all] summary selected=32 pass=15 unavailable=3 fail=14
+[mpd-qa:all] evidence -> evidence/optimize/pristine-lanes
+[mpd-qa:all] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

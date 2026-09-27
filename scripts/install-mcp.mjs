@@ -21,8 +21,9 @@ import { createWriteStream } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { delimiter, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 const TOOLCHAIN = join(repoRoot, ".toolchain")
 const ENV_OUT = join(homedir(), ".mpd", "mcp.env")
 const WAVE_PATCH = join(homedir(), ".mpd", "mcp-wave.patch.yml")

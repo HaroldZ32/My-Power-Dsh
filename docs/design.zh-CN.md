@@ -9,6 +9,10 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 [`README.zh-CN.md`](../README.zh-CN.md) 与面向任务的[用户指南](user-guide.zh-CN.md)里——当某个
 功能背后的机制值得深究时，那两份文档会指向本文档。
 
+![分层架构图：DeepSeek Harness 宿主、bundle 的两层 patch、唯一的适配器接缝、用户接触到的界面，以及各个状态根目录。](./assets/images/architecture.svg)
+
+*一张图看清 bundle 的全貌。下面 §3–§7 会把这张图逐层拆开：包结构、patch 层与启动链路、插件清单、交互流程与状态布局。同一张图的简版在 [README](../README.zh-CN.md#架构) 里。*
+
 阅读顺序：设计范围 → 设计原则 → bundle 与包结构 → patch 层与启动链路 → 插件清单 → 交互流程 →
 状态布局 → web client 接线 → TUI 接线 → 已知限制。
 
@@ -119,6 +123,19 @@ Manifest 不变式（为什么存在）：
   的包只降级为"没有侧边栏"，绝不会让启动失败。
 
 `scripts/build-mpd-client.mjs` 组合出合并 client（见 §7）。
+
+**共享模块：同一个决策只实现一次。** 过去有三种形态按包复制，现在各自只有一处实现。它们都以相对
+路径被引入，因此会被打包进消费方的 `dist/`，对外发布面没有任何新增。
+
+| 模块 | 负责什么 | 消费者 |
+|---|---|---|
+| `packages/mpd-dsh-adapter-plugin/src/shared.ts` | 每行都需要的纯工具（不触碰任何接缝）——`isRecord`、`errorMessage`、`bundleRootOf`，并从适配器入口再导出，因此一行只需一个 import | 所有 mpd 行 |
+| `packages/mpd-ext-plugin/src/skill-frontmatter.ts` | skill frontmatter 的 YAML 子集：`parseFrontmatter`、`parseYamlBlock`、`stringField`、`frontmatterBoolean`、`parseInvocation`、`isAbsent` | 扩展的 skill 面与 `mpd-bootstrap` 的语料 provider |
+| `scripts/lib/repo.mjs` | `repoRootFrom` 与 `readJson`——`scripts/` 下每个脚本过去都要手写一遍的两个原语 | 仓库自身的门禁与辅助脚本 |
+
+反例是刻意的、不是疏漏：`scripts/repin-vendor.mjs` 镜像了 `scripts/verify-vendor.mjs` 的指纹
+算法，并拿权威文件自身的字节复核这份镜像（`assertAuthorityShape()`），因此这两份 helper 的实现
+体是有意保留的重复——把它们上提会破坏那条防止二者漂移的检查。
 
 ## 3. patch 层、启动链路与 web-compat 自引用行
 
@@ -314,8 +331,14 @@ key**。
 而不是直接使用 `ctx.tools` / `ctx.subagents` / `ctx.skills` / `ctx.agentPresets`；因此 Harness
 更名或改变某个接缝时，只需改一个文件（AGENTS.md §6）。
 
-- 该行插在所有 mpd 行之前，提供 `mpdDsh` 服务；消费方写
-  `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`，因此插件在单元测试中也能独立工作。
+- 该行插在所有 mpd 行之前，提供 `mpdDsh` 服务；消费方统一通过适配器自带的
+  `resolveDshAdapter(ctx)` 解析——先取已挂载的服务，单元测试中则回退到本行私有的
+  `createDshAdapter(ctx)`——因此所有行共用同一条解析规则。若某行还必须扛住"provider 尚未
+  ACTIVE"的瞬时未命中，则改用 `createLazyDshAdapter(ctx, { label })`。
+- 除接缝面之外，该包还承载 bundle 的纯工具（`src/shared.ts`，并从入口再导出）：
+  `isRecord`、`errorMessage`、`bundleRootOf(import.meta.url)`。
+  它们不触碰任何 Harness 接缝；它们的存在是为了让过去每行各带一份的九处 `message()`、四处
+  `isRecord()` 与五处根目录解析只剩一处实现。
 - 适配器不声明 `inject`，所有接缝都在调用时惰性解析：loader 会并发应用同级行（在 `apply`
   时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。`capabilities()`
   为每个接缝返回布尔值，供调用方优雅降级。

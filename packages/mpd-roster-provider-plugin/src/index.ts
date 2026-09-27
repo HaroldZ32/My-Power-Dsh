@@ -25,7 +25,7 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
@@ -80,7 +80,7 @@ export interface RosterProviderConfig {
 }
 
 export function apply(ctx: any, config: RosterProviderConfig = {}): void {
-  const dsh: DshAdapter = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: DshAdapter = resolveDshAdapter(ctx)
   const disposers: Array<() => void> = []
 
   /** The slot that routes a member, from the shared membership declaration (never a second copy). */

@@ -1,0 +1,70 @@
+name: Bug report
+description: Something does not work as documented.
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please include the exact command, what happened, and what you expected.
+        Reports may be written in English or 简体中文.
+        For a security problem, do **not** open a public issue — use the Security tab instead.
+  - type: input
+    id: version
+    attributes:
+      label: Bundle version
+      description: The `version` field in `package.json`, or the release tag you installed.
+      placeholder: "0.11.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: DSH profile
+      options:
+        - web
+        - dsh-tui
+        - headless
+        - other (describe below)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How was the bundle installed?
+      options:
+        - From the checkout (`dsh plugin --profile web add .`)
+        - From a packed artifact (`dsh plugin --profile web add dist/mpd-package`)
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command or tool call
+      description: Paste the command, slash command or tool call that triggers the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+      description: The observed result, including the full error text if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What the documentation led you to expect, with a link to the page if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Relevant settings (`mpd.jsonc` keys, not values), logs, or a minimal reproduction.
+    validations:
+      required: false

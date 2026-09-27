@@ -34,7 +34,7 @@
 //     `not-live` rather than silently ignored.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { createDshAdapter, type DshAdapter, type DshLiveAgent, type DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshAdapter, type DshLiveAgent, type DshTeamView, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-team-compact"
 // INJECT: the TOOLS seam — and deliberately NOT `compaction`.
@@ -515,7 +515,7 @@ export async function compactTeamPass(
 // ── plugin ───────────────────────────────────────────────────────────────────
 
 export function apply(ctx: Ctx): void {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const log = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
   // The vocabulary is a local mirror of the OFFICIAL union (see `TERMINAL_TASK_STATUSES`), so it
   // is available synchronously and can never park the row on a module load.

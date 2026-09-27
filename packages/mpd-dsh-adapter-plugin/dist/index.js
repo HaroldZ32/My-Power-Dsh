@@ -1,6 +1,21 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function bundleRootOf(moduleUrl) {
+  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var name = "mpd-dsh-adapter";
 var inject = [];
 var OBJECT_SCHEMA = { type: "object", properties: {} };
@@ -23,9 +38,6 @@ var decision = {
   accept: (content) => content === undefined ? { kind: "accept" } : { kind: "accept", content },
   block: (feedback) => ({ kind: "block", feedback })
 };
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
-}
 function sessionCwdOf(agent) {
   try {
     const cwd = agent?.session?.header?.cwd;
@@ -291,7 +303,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -484,7 +496,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -594,7 +606,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -954,11 +966,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -966,24 +978,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject2 = agent?.inject;
       if (typeof inject2 !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject2.call(agent, message2);
+      inject2.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -993,6 +1005,11 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
+}
 var ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh";
 var ADAPTER_IDENTITY_PENDING = "pending:provider-not-active";
 var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
@@ -1070,12 +1087,16 @@ export {
   ADAPTER_IDENTITY_PENDING,
   SERVICE_NAME,
   apply,
+  bundleRootOf,
   createDshAdapter,
   createLazyDshAdapter,
   decision,
   dshAdapterIdentity,
+  errorMessage,
   inject,
+  isRecord,
   name,
+  resolveDshAdapter,
   textBlock,
   userMessage,
   workspaceRootOf,

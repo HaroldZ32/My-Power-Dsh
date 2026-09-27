@@ -1,0 +1,57 @@
+seeded workspace ws-mpd-ui -> /data/ws
+token-len=43
+{
+ "ok": true,
+ "checks": {
+  "homeShowsMpdPreset": true,
+  "pluginsShowsInstalledBundle": true,
+  "presetsShowMpdDefault": true,
+  "mpdSectionRendered": true,
+  "sessionCreatedOnMpdPreset": true,
+  "teamPanelShowsRoster": true
+ },
+ "steps": [
+  {
+   "name": "01-first-run",
+   "ok": true,
+   "file": "/data-out/shots/01-first-run.png"
+  },
+  {
+   "name": "02-home",
+   "ok": true,
+   "file": "/data-out/shots/02-home.png"
+  },
+  {
+   "name": "03-plugins",
+   "ok": true,
+   "file": "/data-out/shots/03-plugins.png"
+  },
+  {
+   "name": "04-settings-mpd",
+   "ok": true,
+   "file": "/data-out/shots/04-settings-mpd.png"
+  },
+  {
+   "name": "05-settings-agent-presets",
+   "ok": true,
+   "file": "/data-out/shots/05-settings-agent-presets.png"
+  },
+  {
+   "name": "06-team-panel",
+   "ok": true,
+   "file": "/data-out/shots/06-team-panel.png"
+  }
+ ],
+ "sessionCreate": {
+  "status": 200,
+  "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790543898199\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-59998b62-6b81-42ef-8ef3-0a7b97ca7abd\",\"agentPreset\":\"mpd\"}}}"
+ },
+ "settingsNav": [
+  "General",
+  "Models",
+  "Built-in plugins",
+  "Agent presets",
+  "MPD"
+ ],
+ "consoleErrors": []
+}

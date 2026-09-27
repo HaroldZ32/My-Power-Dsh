@@ -11,8 +11,9 @@ import { homedir } from "node:os"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
+import { readJson, repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 
 function parseArgs(argv) {
   const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, commentChecker: false }
@@ -96,7 +97,7 @@ function buildPlan(o) {
   // the manifest's `dsh.bundle.patch` array names that file as the second patch
   // layer, so it is the single source of truth for the preset row.
   const presetRowBlock = (() => {
-    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+    const manifest = readJson(join(repoRoot, "package.json"))
     const declared = manifest?.dsh?.bundle?.patch
     const list = Array.isArray(declared) ? declared : typeof declared === "string" ? [declared] : []
     for (const entry of list) {
@@ -499,7 +500,7 @@ function main() {
   // mirrors the packed bundle's own package.json (dsh.client web + exports["./client"]).
   const shimDir = join(plan.profileDir, "node_modules", "@mpd-dsh", "mpd")
   mkdirSync(shimDir, { recursive: true })
-  const rootPkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+  const rootPkg = readJson(join(repoRoot, "package.json"))
   cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "dist", "index.js"), join(shimDir, "index.js"))
   cpSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), join(shimDir, "client.js"))
   writeFileSync(join(shimDir, "package.json"), JSON.stringify({

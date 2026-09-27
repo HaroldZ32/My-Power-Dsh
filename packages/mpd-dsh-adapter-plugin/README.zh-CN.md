@@ -134,10 +134,11 @@ Harness 更新是常态，但“每次更新都改所有调用点”不是。本
 ## 用法
 
 ```js
-import { createDshAdapter } from '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+import { resolveDshAdapter } from '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
 
 export function apply(ctx) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  // 本组合提供了已挂载的 `mpdDsh` 就用它，否则回退到本行私有适配器
+  const dsh = resolveDshAdapter(ctx)
   dsh.registerTool({ name: "mpd_x", description: "…", execute: async (args, exec) => ({ ok: true }) })
   dsh.guardTool((exec) => (exec.name === "write" ? "denied" : undefined))
   // 只观察：无论这个 listener 做什么，闸门决策都会原样返回
@@ -148,7 +149,19 @@ export function apply(ctx) {
 }
 ```
 
-`ctx.get("mpdDsh")` 返回已挂载实例（由 bundle patch 在所有 mpd 行之前插入的 `mpd-dsh-adapter` 行提供）；`createDshAdapter(ctx)` 构造等价实例，因此插件在单元测试与部分安装场景下也能独立工作。
+`resolveDshAdapter(ctx)` 在 `mpd-dsh-adapter` 行（由 bundle patch 插在所有 mpd 行之前）已提供实例时返回该实例，否则用 `createDshAdapter(ctx)` 构造等价实例——因此插件在单元测试与部分安装场景下都能独立工作，而且这条规则每个行只写一次。若某行还必须扛住**瞬时**未命中（服务已注册但其 fiber 尚未 ACTIVE），则调用 `createLazyDshAdapter(ctx, { label })`：它每次使用都重新探测。
+
+### 共享工具
+
+该包同时承载 bundle 的纯工具（不触碰任何接缝）——`src/shared.ts`，并从同一个入口再导出——因此一行只需一个 import 即可同时拿到接缝面与这些工具：
+
+| 工具 | 说明 |
+|---|---|
+| `isRecord(value)` | 普通对象守卫（`typeof === "object"`、非 null、非数组） |
+| `errorMessage(error)` | 任意抛出物的 `Error#message`，遇到非 Error 也不会抛错 |
+| `bundleRootOf(import.meta.url)` | `<bundle>/packages/<pkg>/{src,dist}/<file>` 形态模块的 bundle 根 |
+
+它们不触碰任何 Harness 接缝，因此放在接缝面**旁边**而非其中：`src/index.ts` 仍是 AGENTS.md §6 要求的唯一接触面。
 
 ## 配置
 

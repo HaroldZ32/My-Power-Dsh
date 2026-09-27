@@ -17,6 +17,7 @@ import { MPD_DELTAS } from "../lib/mpd-deltas.js"
 import { codeOf } from "./lib-absence.mjs"
 import { applyAgentTeamsFixes } from "../../../scripts/patch-agent-teams-fixes.mjs"
 import * as scheduler from "../lib/scheduler.js"
+import { stageScript } from "./scratch-scripts.mjs"
 
 // Namespace import on purpose: the fix may be ABSENT (pre-fix tree, or a re-materialize
 // that dropped the region), and each test below must then fail on its own behaviour
@@ -119,7 +120,7 @@ test("the guard is region-registered and its replacement is REFUSED after a re-m
     mkdirSync(join(root, "scripts"), { recursive: true })
     for (const name of [...new Set(MPD_DELTAS.map((delta) => delta.file.split("/").pop()))])
       cpSync(join(pluginRoot, "lib", name), join(libDir, name))
-    cpSync(join(repoRoot, "scripts", "patch-agent-teams-fixes.mjs"), join(root, "scripts", "patch-agent-teams-fixes.mjs"))
+    stageScript(root, "patch-agent-teams-fixes.mjs")
     const target = join(libDir, "scheduler.js")
     // Simulate the re-materialize: the upstream selection comes back, our region is gone.
     const materialized = readFileSync(target, "utf8").replace(

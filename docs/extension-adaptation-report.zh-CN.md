@@ -35,7 +35,7 @@
 
 **选安装面**：贡献必须新增 profile 行、需要安装期或依赖工作、或以版本化包形式分发给许多用户时。**选扩展接口**：一组声明目录就够用时——某个项目的 skill/flow 集合，或在不动发行包的前提下提供宿主级的 skills、flows、MCP 服务器与 roles。
 
-关键的不对称在于：*同一份* `mpd-ext.json` 落在不同面时，允许的贡献种类不同——项目面**只能贡献 skills + flows**，而 user 与 bundle 面可以贡献全部四种。该限制是刻意的，理由也真实（`packages/mpd-ext-plugin/src/sdk.ts:144-145`，逐项拒绝实现在 `packages/mpd-ext-plugin/src/registry.ts:678-685`）：本 harness 的工具与 provider 注册是进程级的，因此“仅本会话”的 MCP 服务器或名册角色无法被诚实表达。
+关键的不对称在于：*同一份* `mpd-ext.json` 落在不同面时，允许的贡献种类不同——项目面**只能贡献 skills + flows**，而 user 与 bundle 面可以贡献全部四种。该限制是刻意的，理由也真实（`packages/mpd-ext-plugin/src/sdk.ts:144-145`，逐项拒绝实现在 `packages/mpd-ext-plugin/src/registry.ts:673-680`）：本 harness 的工具与 provider 注册是进程级的，因此“仅本会话”的 MCP 服务器或名册角色无法被诚实表达。
 
 ## 3. 扩展接口能力清单
 
@@ -105,7 +105,7 @@
 - **P0 —— 给 adapter 回退分支埋点**（走到空值分支时用解析到的 adapter 身份告警一次）。路径：`packages/mpd-ext-plugin/src/index.ts:207`、`packages/mpd-roles-plugin/src/index.ts:318`。理由：保护绑定性的“单一接触面”规则，把静默降级变成可见事件；静默丢能力的先例就在同一个文件里。工作量：小。
 - **P1 —— 在指南里补一条选面判据**。路径：`docs/extensions.md` §4 与其 zh-CN 孪生文件。理由：这是贡献者最常犯的错误（F2）；材料都已存在，只差归到一处。工作量：小。
 - **P1 —— 把子进程环境隔离姿态及其已接受的残留写进文档。** 路径：`docs/extensions.md` §5/§10 与 zh-CN 孪生文件。理由：一项已实现的长处目前不可见，而残留（子进程能从磁盘读 `~/.dsh`、作者声明的 `env` 机密、文件系统信任）需要一个明确的接受/拒绝决定。工作量：小到中。
-- **P2 —— 用一句话把两种存活性并列。** 路径：`docs/extensions.md:524` 与 zh-CN 孪生文件。理由：消除 F4 带来的意外感。工作量：小。
+- **P2 —— 用一句话把两种存活性并列。** 路径：`docs/extensions.md:525` 与 zh-CN 孪生文件。理由：消除 F4 带来的意外感。工作量：小。
 - **P2 —— 让 adapter 挂载风险的两半注释互相引用。** 路径：`packages/mpd-bundle/cordis.patch.yml:244-260`、`packages/mpd-ext-plugin/src/index.ts:44-54`。理由：同一个事实目前被拆在两条注释里。工作量：极小（注释改动，因此属于代码任务）。
 - **P2 —— 淘汰或重跑过期证据目录**（F6），使证据索引不再包含 `c239407` 之前的断言。路径：`evidence/extensions/**`。理由：读者无法分辨哪些是现状断言、哪些已被取代。工作量：中。
 - **P2 —— 给 R11 一个测试套件归宿**（F11）。路径：`skills/dsh-qa/`（新增一个 case，或在既有 lane 中加一个分支）+ `.mpd/plans/dsh-tui-edition.md`（撤下那段命令式散文）。理由：只活在计划文档里的类级守卫离失传只差一次编辑，而该类已经复发四次（打包器的闭包检查会在每次打包时拦住“被挂载行”那一半，但没有任何 CI 在跑 `PLUGIN_PKGS` 相等性检查）。工作量：小——**但并非零成本：测试套件归宿意味着改动 `skills/dsh-qa/**`，因此必须在同一次改动中对 `VENDOR_LOCK.json` 重新钉版**（与 F8/F9 引用的是同一条“每波只钉一次”的纪律），所以它必须搭上某一波的唯一一次重新钉版。
@@ -177,7 +177,7 @@ node scripts/verify-docs-parity.mjs
 
 | 条目 | 状态 | 修复所在位置 | 证据 |
 |---|---|---|---|
-| F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:59-100`）与（`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:497`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:59-100`）与（`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:494`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 —— 同一个隐患被写成两处半截注释 | **已修复** | （`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`）的唯一规范注释，`packages/mpd-roles-plugin/src/index.ts` 改为指向它而不是复述 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F7 —— 一个证据检查器宣称过宽 | **已修复** | 修正后的探测器 `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs`（新目录；`evidence/mpd-ext-debranding/20260915T074904Z/` 按字节保持原样，作为那次窄探测的记录） | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 —— R11 这类断言没有测试套件归属 | **已修复** | `scripts/verify-pack-closure.mjs`——单独运行、解析打包器真实的列表、并在临时夹具上重放红色——已接入 `package.json` 的 `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
@@ -203,9 +203,9 @@ node scripts/verify-docs-parity.mjs
 
 ### 一处已测量的偏差：开发者在打包产物内是红的
 
-**本 wave 未修复**（记录为 `.mpd/TODO.md` T-51）。打包器只复制 `packages/<pkg>/dist`
+**本 wave 未修复**（记录为 wave 台账 T-51，该台账已从仓库移除）。打包器只复制 `packages/<pkg>/dist`
 （`cpDist`, `scripts/pack-mpd.mjs`），从不复制 `src`；而开发者 CLI 从 `src` 导入其校验器
-（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:49`；源码表为
+（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:50`；源码表为
 `SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56`，已编译回退在 `:60`）。因此在打包树内，每一个 CLI
 入口都以 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'` 退出 1。该结论在一棵由
 打包器自身产物构建的探针树上测得
@@ -215,7 +215,7 @@ node scripts/verify-docs-parity.mjs
 Extension-CLI gate 在 CHECKOUT 中成立（那里 `src` 与 `templates/` 都在），而在打包产物中是红的，
 直到打包器把它们一起交付。该限制在 agent 契约中的副本见 `EXTENSIONS-FOR-AGENTS.md` §9。
 
-**已修复 2026-09-17（friction wave，lane E —— `.mpd/TODO.md` T-35/T-36/T-45/T-51）。** 打包器现在交付
+**已修复 2026-09-17（friction wave，lane E —— T-35/T-36/T-45/T-51）。** 打包器现在交付
 `templates/` 与 `docs/` 文档集（用户决定：打包安装是面向作者的），并生成一个已编译校验器入口 <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 `packages/mpd-ext-plugin/dist/validator.js`——即已交付的 bundle 加上一行 `export { … }`，插件模块本身
 不被改动——当 `src` 不存在时 `scripts/mpd-ext.mjs` 会回退到它。在刚打包出的 `dist/mpd-package/` 上实测：

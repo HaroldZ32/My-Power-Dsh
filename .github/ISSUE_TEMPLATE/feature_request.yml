@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a capability, an extension kind or a documentation improvement.
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Requests may be written in English or 简体中文.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Main agent and the mpd preset
+        - Specialist roster or workmates
+        - Team mode (official Agent Teams tools)
+        - Tools (hashline, boulder, memory, ULW, config)
+        - MCP servers and code intelligence
+        - Extension interface
+        - Web GUI or DSH-TUI edition
+        - Documentation
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you are in, not the implementation you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen, and which existing command or tool it should belong to if you know.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What you tried or worked around today.
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I checked the README and the documentation hub, and this is not already documented.
+          required: true
+        - label: This request does not depend on a capability that does not exist yet being described as if it did.
+          required: false

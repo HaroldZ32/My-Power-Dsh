@@ -1,0 +1,8 @@
+pristine pack exit=0
+TREE=pristine+pack LANE=relocate-smoke exit=1 s=24
+  servedFromRelocated: {"ok":true,"staged":"/tmp/tmp.GJqVJUAp4Z/.qa-reloc/mpd-pkg-relocated"}
+  bootstrap: {"ok":true}
+TREE=pristine+pack LANE=skill-catalog-probe exit=1 s=17
+  servedFromBundle: {"ok":true,"path":"/tmp/tmp.GJqVJUAp4Z/dist/mpd-package/skills"}
+  catalog: {"ok":false,"total":null,"bundled":null,"expected":18,"fixture":null,"exit":0}
+PACKABDONE

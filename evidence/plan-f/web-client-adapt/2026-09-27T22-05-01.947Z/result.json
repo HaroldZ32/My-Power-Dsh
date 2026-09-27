@@ -1,0 +1,48 @@
+{
+  "ok": false,
+  "dshHome": "/home/haroldzhao/dshProj/my-power-dsh/.qa-web-client",
+  "wmHome": "/tmp/mpd-wm-web-272JvX",
+  "steps": {
+    "listUp": {
+      "ok": true
+    },
+    "rootStatus": {
+      "ok": true,
+      "http": 200,
+      "tokenSeen": true,
+      "cookieSession": true
+    },
+    "bootEntry": {
+      "ok": true,
+      "id": "@mpd-dsh/mpd",
+      "elapsedMs": 8021,
+      "deadlineMs": 150000,
+      "timedOut": false
+    },
+    "clientJs": {
+      "ok": false,
+      "status": 0,
+      "servedSurface": {
+        "teamPageModule": false,
+        "teamPanelParity": false,
+        "workmateTab": false,
+        "noWorkmateFloater": true
+      }
+    },
+    "noUnregisteredService": {
+      "ok": true,
+      "unregistered": []
+    },
+    "initRoute": {
+      "ok": false,
+      "note": "{\"error\":\"mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, ",
+      "filesOk": false
+    },
+    "isolation": {
+      "ok": false,
+      "realHome": "/home/haroldzhao/.mpd/workmate",
+      "realLibraryPreExisting": 0,
+      "createdInSandbox": false
+    }
+  }
+}

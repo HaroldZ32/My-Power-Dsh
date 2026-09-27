@@ -1,0 +1,282 @@
+{
+  "ok": false,
+  "slug": "extension-lifecycle",
+  "sandbox": "/tmp/mpd-extension-lifecycle-QMPzZN",
+  "arms": "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (a SCRATCH pack — the canonical dist/mpd-package is never written by this lane, its stamp is asserted unmoved)",
+  "rankLadder": "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "main": {
+      "ok": false,
+      "exit": 1,
+      "durationMs": 11613,
+      "offeredExtTools": [],
+      "recordedTools": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show",
+        "skill",
+        "mpd_role_persona",
+        "mpd_role_spawn"
+      ],
+      "calls": {
+        "mpd_ext_list": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_ext_list (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "mpd_ext_show": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_ext_show (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "mpd_flow_list": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_flow_list (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "mpd_flow_show": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_flow_show (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "skill": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for skill (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "mpd_role_persona": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_role_persona (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        },
+        "mpd_role_spawn": {
+          "succeeded": false,
+          "reason": "the harness recorded no tool/call for mpd_role_spawn (answer-only narration is not tool evidence)",
+          "resultHead": ""
+        }
+      },
+      "sawProjectId": false,
+      "sawUserId": false,
+      "sawProjectRejection": false,
+      "sawFlow": false,
+      "sawSkill": false,
+      "sawPersona": false,
+      "sawRoleChild": false,
+      "crashSignatures": [],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+        ]
+      }
+    },
+    "failure": {
+      "ok": false,
+      "exit": 1,
+      "sessionCompleted": false,
+      "listedHealthy": false,
+      "flowToolStillWorks": false,
+      "reportedProjectRejection": false,
+      "reportedRejections": [],
+      "cliChecks": {
+        "qa-bad-json": {
+          "exit": 1,
+          "tail": "  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a JSON object"
+        },
+        "qa-bad-version": {
+          "exit": 1,
+          "tail": "  extension \"qa-bad-version\": REJECTED |   error apiVersion: apiVersion must equal 1 (got 9)"
+        },
+        "qa-bad-skill": {
+          "exit": 1,
+          "tail": "  error contributes.skills[0]/QA-BAD-NAME: frontmatter name \"QA-BAD-NAME\" violates the skill-name grammar in /tmp/mpd-extension-lifecycle-QMPzZN/ws/.mpd/extensions/qa-bad-skill/skills/QA-BAD-NAME/SKIL"
+        },
+        "qa-bad-asset": {
+          "exit": 1,
+          "tail": "  contributes: 0 skill(s), 0 flow(s), 0 role(s), 0 mcp server(s) |   error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are r"
+        },
+        "qa-ext-healthy": {
+          "exit": 0,
+          "tail": "  contributes: 1 skill(s), 1 flow(s), 0 role(s), 0 mcp server(s) | [mpd-ext] ok"
+        }
+      },
+      "crashSignatures": [],
+      "resultHead": "",
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+        ]
+      }
+    },
+    "isolation": {
+      "ok": false,
+      "sessions": {
+        "session-a": {
+          "ok": false,
+          "exit": 1,
+          "cwd": "/tmp/mpd-extension-lifecycle-QMPzZN/ws-a",
+          "recorded": false,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 2,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws-a--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+            ]
+          }
+        },
+        "session-b": {
+          "ok": false,
+          "exit": 1,
+          "cwd": "/tmp/mpd-extension-lifecycle-QMPzZN/ws-b",
+          "recorded": false,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 3,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws-b--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws-a--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+            ]
+          }
+        },
+        "decoy-cwd-control": {
+          "ok": false,
+          "exit": 1,
+          "cwd": "/tmp/mpd-extension-lifecycle-QMPzZN/decoy",
+          "recorded": false,
+          "succeeded": false,
+          "sawExpected": false,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 4,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-QMPzZN-decoy--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws-b--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws-a--",
+              "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+            ]
+          }
+        },
+        "ok": false
+      }
+    },
+    "packed": {
+      "ok": true,
+      "route": "sanctioned `--out <dir>` flag on scripts/pack-mpd.mjs (the packer's own documented route for this lane change): no copy, no rewritten constant",
+      "packerSupportsOut": true,
+      "packExit": 0,
+      "packedRoot": "/home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-16-27.128Z/scratch-pack/mpd-package",
+      "scratch": {
+        "root": "/home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-16-27.128Z/scratch-pack",
+        "packer": null,
+        "packerSha256": "6e185aa43cdadd55",
+        "patchedSha256": null,
+        "refused": false,
+        "reason": null
+      },
+      "canonical": {
+        "before": {
+          "present": true,
+          "root": "/home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package",
+          "files": 1212,
+          "manifestSha256": "a2fdf63376c1426668ffa1d60464e45825919809e10dd843b8686d243057dca5",
+          "patchSha256": "b32c0e76cc7e108cc2ba3e17930cb4b2433d509834446f2e39049a879e6a5b21"
+        },
+        "after": {
+          "present": true,
+          "root": "/home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package",
+          "files": 1212,
+          "manifestSha256": "a2fdf63376c1426668ffa1d60464e45825919809e10dd843b8686d243057dca5",
+          "patchSha256": "b32c0e76cc7e108cc2ba3e17930cb4b2433d509834446f2e39049a879e6a5b21"
+        },
+        "unmoved": true,
+        "rule": "the artifact has exactly ONE writer at a time (T-85): this lane is not a writer for dist/mpd-package, and a movement across the arm would be visible here"
+      },
+      "rows": {
+        "mpdExtRowInPackedPatch": true
+      },
+      "assets": {
+        "pluginDist": true,
+        "extensionsAsset": true
+      },
+      "negativeControl": {
+        "falsifiable": true,
+        "packerExitGated": true,
+        "trees": {
+          "closed": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": true
+          },
+          "no-plugin-package": {
+            "hasRow": true,
+            "hasPlugin": false,
+            "hasExtensions": true,
+            "ok": false
+          },
+          "no-extensions-root": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": false,
+            "ok": false
+          },
+          "no-mpd-ext-row": {
+            "hasRow": false,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": false
+          }
+        }
+      },
+      "status": "GREEN (the SCRATCH packed tree carries the mpd-ext row, the plugin and the extensions/ discovery root)",
+      "note": "the packed arms read and write a SCRATCH tree under this run's evidence dir; the canonical dist/mpd-package is only stamped (read), never written, by this case",
+      "packTail": "[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml | [pack-mpd] modes normalized: 1212 files (644: 1200, 755: 12) | [pack-mpd] staged package -> /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-16-27.128Z/scratch-pack/mpd-package  (o"
+    },
+    "isolationFinal": {
+      "ok": true,
+      "checked": 4,
+      "keys": [
+        "--tmp-mpd-extension-lifecycle-QMPzZN-decoy--",
+        "--tmp-mpd-extension-lifecycle-QMPzZN-ws-b--",
+        "--tmp-mpd-extension-lifecycle-QMPzZN-ws-a--",
+        "--tmp-mpd-extension-lifecycle-QMPzZN-ws--"
+      ]
+    }
+  }
+}

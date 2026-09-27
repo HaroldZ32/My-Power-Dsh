@@ -35,8 +35,9 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import process from "node:process"
+import { repoRootFrom } from "./lib/repo.mjs"
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
+const repoRoot = repoRootFrom(import.meta.url)
 
 /** The adopted prebuilt client bundle the bridge is applied to. */
 export const CLIENT_FILE = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "client.js")

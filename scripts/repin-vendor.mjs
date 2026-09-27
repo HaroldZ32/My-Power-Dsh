@@ -31,6 +31,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdir
 import { tmpdir } from "node:os"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const SELF = fileURLToPath(import.meta.url)
 const REPO_ROOT = dirname(dirname(SELF))
@@ -451,6 +452,10 @@ function selfTest() {
     mkdirSync(join(fixture, "scripts"))
     copyFileSync(SELF, join(fixture, "scripts", "repin-vendor.mjs"))
     copyFileSync(AUTHORITY_PATH, join(fixture, "scripts", "verify-vendor.mjs"))
+    // The scripts' shared primitives live in scripts/lib/ — the scratch tree must carry them,
+    // or every CLI arm dies with ERR_MODULE_NOT_FOUND for a reason the arm is not about.
+    mkdirSync(join(fixture, "scripts", "lib"))
+    copyFileSync(join(dirname(SELF), "lib", "repo.mjs"), join(fixture, "scripts", "lib", "repo.mjs"))
     const fixtureScript = join(fixture, "scripts", "repin-vendor.mjs")
     const fixtureAuthority = join(fixture, "scripts", "verify-vendor.mjs")
     mkdirSync(join(fixture, "corpus", "sub"), { recursive: true })
@@ -525,7 +530,7 @@ function selfTest() {
       writeFileSync(elsewhere, lockText("0".repeat(64)))
       const r2 = run(fixtureScript, ["--write", "--lock", elsewhere])
       expect(r2.code === 0, `guard is name-scoped: a copy at a different path was refused (exit ${r2.code})`)
-      expect(JSON.parse(readFileSync(elsewhere, "utf8")).assets.corpus.treeSha === expected.treeSha, "the elsewhere copy was not actually re-pinned")
+      expect(readJson(elsewhere).assets.corpus.treeSha === expected.treeSha, "the elsewhere copy was not actually re-pinned")
       return `exit 1, override flag named, real sha256 ${before} unchanged; guard is path-scoped (a different path named VENDOR_LOCK.json is writable, exit 0)`
     })
 

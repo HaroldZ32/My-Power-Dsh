@@ -1,0 +1,16 @@
+{
+  "ok": false,
+  "exit": 0,
+  "dshHomeSandbox": true,
+  "bundlePatches": [
+    "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml",
+    "/home/haroldzhao/dshProj/my-power-dsh/presets/mpd.patch.yml"
+  ],
+  "presetLine": "",
+  "presetPath": null,
+  "trust": null,
+  "homePresetCopies": [],
+  "homeSkillCopies": [],
+  "retiredPresetRootAbsent": true,
+  "roster": 11
+}

@@ -1,8 +1,92 @@
 # Changelog
 
-Human-readable release notes. Format: one section per released version, newest first. This file is
+Human-readable release notes for **my-power-dsh** (`@mpd-dsh/mpd`). Newest first, one section per
+released version, the changes grouped by kind (`Added`, `Changed`, `Fixed`, `Removed`). This file is
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
+
+Further reading:
+
+- [`README.md`](./README.md) — what the bundle is, and how to install it;
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development setup, gates and the git model;
+- [`docs/index.md`](./docs/index.md) — the documentation hub;
+- [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases) — the annotated tags, newest first;
+- [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
+  against.
+
+## Unreleased
+
+### One implementation per repeated decision
+
+A consolidation pass with no intended behaviour change. What proves that is not the diff but the
+sweep around it: the same unit suite, the same static gates and the same user-facing QA lanes, run
+before and after, with the one pre-existing red (`bundle-lifecycle`'s live probe) reproduced
+identically on a pristine `HEAD` snapshot.
+
+**Changed.**
+
+- **Pure helpers have one home.** `packages/mpd-dsh-adapter-plugin/src/shared.ts` holds `isRecord`,
+  `errorMessage` and `bundleRootOf`, re-exported from the adapter entry. Nine
+  identical `message()` bodies, four `isRecord()` bodies and five bundle-root resolutions were
+  deleted from the rows that carried them.
+- **One adapter resolution.** `resolveDshAdapter(ctx)` replaces the eager
+  `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` expression that sixteen rows spelled inline;
+  `createLazyDshAdapter(ctx, { label })` stays the choice for a row that must also survive a
+  transient "provider not ACTIVE yet" miss.
+- **One skill-frontmatter parser.** `packages/mpd-ext-plugin/src/skill-frontmatter.ts` is the single
+  implementation of the corpus YAML subset, consumed by the extension skill plane AND by
+  `mpd-bootstrap`'s bundle-corpus provider, which loses its ~140-line copy of it.
+- **Shared script primitives.** `scripts/lib/repo.mjs` (`repoRootFrom`, `readJson`) replaces ten
+  hand-written root walks and twenty-eight hand-written JSON reads across the gate/helper scripts.
+  The vendored-corpus fingerprint helpers stay duplicated on purpose: `scripts/repin-vendor.mjs`
+  re-checks its mirror against `scripts/verify-vendor.mjs`'s own bytes.
+
+**Fixed.**
+
+- The documentation citations that the moved lines rotted are repaired, and
+  `node scripts/check-citations.mjs` is green (25/25) where it was 21/25 — including four anchors
+  that were already dead before this pass.
+
+### An open-source front door, and captures of the shipped surfaces
+
+**Added.**
+
+- **The repository now reads as a project.** `CONTRIBUTING.md` (setup, build and test commands, the
+  gates, the git model) and `SECURITY.md` (how to report privately) join the root set, each with its
+  `*.zh-CN.md` twin, and `.github/` carries the docs-parity workflow, a pull-request template, and
+  bug-report and feature-request issue templates.
+- **Three diagrams and a real documentation hub.** `docs/assets/images/` holds the authored
+  `architecture.svg`, `ulw-loop.svg` and `team-lifecycle.svg`; `docs/index.md` is rebuilt as a hub
+  with separate reading paths for users, extension authors, contributors and agents.
+- **Six captures of the running app** (`docker/ui/`): first run, home, installed plugins, the MPD
+  settings section, agent presets and the team panel — taken inside the container, against the bundle
+  installed by the real client flow. Five of them are referenced from the README, its zh-CN twin and
+  the hub, and the checks behind them are recorded with the run: the `mpd` preset selected, the MPD
+  section rendered, a session created with `agentPreset: "mpd"`, the team panel showing its roster,
+  and no console or page error.
+
+**Changed.**
+
+- **`README.md` is a product page** — badges, a table of contents, a features table, install and
+  quick start, configuration and an FAQ — with `README.zh-CN.md` updated in the same change, as the
+  language policy requires. `CHANGELOG.md` gains the same further-reading set.
+- **The packer ships the five new root documents** (`ROOT_FILES` in `scripts/pack-mpd.mjs`), so the
+  README's relative links resolve inside the packed artifact as well as in the checkout.
+
+**Fixed.**
+
+- **The UI capture lane's chromium guard keyed on the wrong thing.** It tested for the playwright
+  package directory, so a rebuilt image with a recycled volume skipped the install and the capture
+  died with `headless_shell: error while loading shared libraries: libglib-2.0.so.0`; it now keys on
+  the shared library itself.
+
+### Evidence files a lane regenerates stay out of the repository
+
+`evidence/**/scratch-pack*/` joins the two sibling `scratch-*` rules: the dsh-qa extension lane
+stages a full packed tree under its own evidence directory, and three runs of it added ~40 MB across
+~3,700 files that one `node scripts/pack-mpd.mjs --out <dir>` reproduces. The lane's own record —
+`result.json`, `output.log` and `raw/` — is committed as before, and the earlier waves' already
+tracked `scratch-pack` paths stay, forward-only.
 
 ## v0.11.1 — mailbox unread
 

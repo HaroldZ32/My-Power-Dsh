@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-dsh-qa-roles-probe"
 // `tools` is a REQUIRED dependency of the registration instrumentation below: an
@@ -93,7 +93,7 @@ export async function resolveLivePreset(
 }
 
 export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => any; [k: string]: unknown }): Promise<void> {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   let presetOk = false
   try {
     // BOUNDED POLL, not a single read: the row registers concurrently with this probe (see

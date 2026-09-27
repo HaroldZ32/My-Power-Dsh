@@ -7,7 +7,7 @@ import { homedir } from "node:os"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-codegraph"
 export const inject = []
@@ -30,9 +30,7 @@ type CommandInvocation = { agent?: unknown }
 // The bundle root: this plugin's dist is <bundle>/packages/mpd-codegraph-plugin/dist/index.js,
 // which resolves to the checkout in a `link:` install and to the installed
 // package root in a packed install. Bundle-relative, never a hard-coded repo path.
-function bundleRoot(): string {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+function bundleRoot(): string { return bundleRootOf(import.meta.url) }
 
 function packageCodegraphPath(): string | null {
   try {
@@ -124,7 +122,7 @@ function writeCooldown(dir: string, file: string): void {
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin):
   // the mounted instance when present, the standalone fallback otherwise.
-  const dsh = ((typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) as AdapterSeams | undefined) ?? createDshAdapter(ctx)
+  const dsh = resolveDshAdapter(ctx) as AdapterSeams
   const autoInit = config.autoInit ?? true
   const timeoutMs = config.initTimeoutMs ?? 60_000
   const cooldownMs = config.cooldownMs ?? 15 * 60_000

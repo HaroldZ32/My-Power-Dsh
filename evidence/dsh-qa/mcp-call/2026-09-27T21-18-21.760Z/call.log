@@ -1,0 +1,34 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-dsh-qa-O9zhpP/ws
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[mpd-roles] roster section registered for agent "session-bf0f5417-76bb-42fe-95bd-bca84bd28e80" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-bf0f5417-76bb-42fe-95bd-bca84bd28e80" agentPreset=none
+dsh: reasoning:
+The user wants me to call mcp__ast_grep__search on tests/mcp-fixtures/sample.c with pattern "return 0", and report the tool's returned content verbatim. No bash tool.
+
+Let me make the call. Parameters: pattern "return 0", language "c", paths ["tests/mcp-fixtures/sample.c"]. Paths required minItems 1.
+
+Wait — "return 0" as an ast-grep pattern in C language — it's a return statement, should parse fine.
+
+Let me call it.
+dsh: reasoning:
+Report the tool's returned content verbatim.
+Tool: `mcp__ast_grep__search`, with `pattern: "return 0"`, `language: "c"`, `paths: ["tests/mcp-fixtures/sample.c"]`.
+
+Returned content, verbatim:
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/mpd-dsh-qa-O9zhpP/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":6}
+```
+
+One match in `tests/mcp-fixtures/sample.c`: text `return 0;` at line 1, columns 17–26; no truncation, no warnings.

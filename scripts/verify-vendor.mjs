@@ -5,17 +5,17 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const repoRoot = repoRootFrom(import.meta.url)
 // Legacy layout assumed repoRoot = <the upstream checkout>/.mpd/port/mpd-dsh. Auto-detect the
 // pinned checkout at .mpd-dsh/upstream; point MPD_UPSTREAM_ROOT at the checkout explicitly
 // when it lives elsewhere (or keep the old relative default).
 const upstreamRoot = process.env.MPD_UPSTREAM_ROOT || (existsSync(join(repoRoot, ".mpd-dsh", "upstream", ".git")) ? join(repoRoot, ".mpd-dsh", "upstream") : join(repoRoot, "..", "..", ".."))
 if (!existsSync(join(upstreamRoot, ".git"))) {
   console.error("[verify-vendor] FAIL - upstream checkout not found at " + upstreamRoot)
-  console.error("[verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to " + JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8")).upstreamCommitSha)
+  console.error("[verify-vendor] set MPD_UPSTREAM_ROOT to the oh-my-openagent checkout pinned to " + readJson(join(repoRoot, "VENDOR_LOCK.json")).upstreamCommitSha)
   process.exit(1)
 }
-const lock = JSON.parse(readFileSync(join(repoRoot, "VENDOR_LOCK.json"), "utf8"))
+const lock = readJson(join(repoRoot, "VENDOR_LOCK.json"))
 
 function git(args) {
   return execFileSync("git", args, { cwd: upstreamRoot, encoding: "utf8" }).trim()
@@ -34,7 +34,7 @@ if (head !== lock.upstreamCommitSha) {
 }
 
 // 2) version lock
-const upstreamPkg = JSON.parse(readFileSync(join(upstreamRoot, "package.json"), "utf8"))
+const upstreamPkg = readJson(join(upstreamRoot, "package.json"))
 if (upstreamPkg.version !== lock.upstreamVersion) {
   fail("upstream version mismatch: " + upstreamPkg.version + " vs " + lock.upstreamVersion)
 } else {
@@ -55,6 +55,7 @@ if (tracked !== lock.upstreamStats.trackedFiles || loc !== lock.upstreamStats.tr
 // 4) vendored assets: count + sha256, both blockers
 import { createHash } from "node:crypto"
 import { readdirSync, statSync } from "node:fs"
+import { readJson, repoRootFrom } from "./lib/repo.mjs"
 
 // Read a vendored file as bytes, normalizing text (no NUL) to LF. The repo's
 // .gitattributes declares eol=lf for text files, so tree hashes must be

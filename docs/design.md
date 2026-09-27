@@ -11,6 +11,10 @@ to type, the settings knobs and the recipes live in [`README.md`](../README.md) 
 task-oriented [user guide](user-guide.md) — this is the document those two link to when the
 mechanism behind a feature matters.
 
+![Layered architecture diagram: the DeepSeek Harness host, the bundle's two patch layers, the single adapter seam, the user surfaces and the state roots.](./assets/images/architecture.svg)
+
+*The bundle at a glance. §3–§7 below take the same picture apart layer by layer: the package structure, the patch layers and boot chain, the plugin inventory, the interaction flows and the state layout. A shorter version of this diagram is in the [README](../README.md#architecture).*
+
 Reading order: what is designed → design principles → bundle and package structure → patch layer
 and boot chain → plugin inventory → interaction flows → state layout → web client wiring → TUI
 wiring → known limits.
@@ -141,6 +145,21 @@ Manifest invariants (why they exist):
   working and an unresolvable package degrades to "no sidebar", never a dead boot.
 
 `scripts/build-mpd-client.mjs` composes the combined client (see §7).
+
+**Shared modules: one implementation per repeated decision.** Three shapes used to be copy-pasted
+per package and now have exactly one home. Each is imported by relative path, so it is bundled into
+the consumer's `dist/` and nothing is added to the published surface.
+
+| Module | What it owns | Who consumes it |
+|---|---|---|
+| `packages/mpd-dsh-adapter-plugin/src/shared.ts` | the pure, harness-free helpers every row needs — `isRecord`, `errorMessage`, `bundleRootOf` — re-exported from the adapter entry so a row needs one specifier | every mpd row |
+| `packages/mpd-ext-plugin/src/skill-frontmatter.ts` | the skill-frontmatter YAML subset: `parseFrontmatter`, `parseYamlBlock`, `stringField`, `frontmatterBoolean`, `parseInvocation`, `isAbsent` | the extension skill plane and `mpd-bootstrap`'s corpus provider |
+| `scripts/lib/repo.mjs` | `repoRootFrom` and `readJson` — the two primitives every script under `scripts/` used to spell by hand | the repository's own gate and helper scripts |
+
+The counter-example is deliberate rather than an oversight: `scripts/repin-vendor.mjs` MIRRORS the
+fingerprint algorithm of `scripts/verify-vendor.mjs` and re-checks that mirror against the
+authority's own bytes (`assertAuthorityShape()`), so those two helper bodies stay duplicated on
+purpose — hoisting them would break the check that keeps them from drifting.
 
 ## 3. Patch layer, boot chain & the web-compat self-row
 
@@ -364,8 +383,15 @@ Harness services. Every mpd row calls `dsh.registerTool` / `dsh.guardTool` /
 that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 
 - The row is inserted before every other mpd row and provides the `mpdDsh` service;
-  consumers use `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`, so a plugin still works
-  standalone in unit tests.
+  consumers resolve it through the adapter's own `resolveDshAdapter(ctx)` — the mounted
+  service first, a row-private `createDshAdapter(ctx)` in unit tests — so one resolution
+  rule serves every row. A row that must also survive a transient "provider not ACTIVE
+  yet" miss uses `createLazyDshAdapter(ctx, { label })` instead.
+- Alongside the seam surface the package carries the bundle's pure helpers
+  (`src/shared.ts`, re-exported from the entry): `isRecord`, `errorMessage`,
+  `bundleRootOf(import.meta.url)`. They touch no
+  harness seam, and they exist so the nine `message()`, four `isRecord()` and five
+  root-resolution copies that used to travel per row have one implementation.
 - The adapter is `inject`-free and resolves every seam lazily: the loader applies
   sibling rows concurrently (a snapshot at `apply` would under-report) and reading an
   uninjected service as a property throws in Cordis. `capabilities()` reports one

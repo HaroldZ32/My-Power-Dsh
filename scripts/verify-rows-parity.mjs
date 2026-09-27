@@ -46,6 +46,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const SELF = fileURLToPath(import.meta.url)
 const repoRoot = dirname(dirname(SELF))
@@ -55,7 +56,7 @@ const PREFIX = "[verify-rows-parity]"
 
 /** The bundle's patch files, from the ONE declaration the loader itself reads (string OR array). */
 function declaredPatchPaths(manifestPath = MANIFEST_PATH) {
-  const raw = JSON.parse(readFileSync(manifestPath, "utf8"))?.dsh?.bundle?.patch
+  const raw = readJson(manifestPath)?.dsh?.bundle?.patch
   const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : []
   return list.filter((value) => typeof value === "string" && value.trim() !== "").map((value) => resolve(repoRoot, value))
 }

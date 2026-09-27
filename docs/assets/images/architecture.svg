@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="830" viewBox="0 0 1180 830" role="img" aria-labelledby="title desc">
+  <title id="title">my-power-dsh bundle architecture</title>
+  <desc id="desc">Four stacked layers: the DeepSeek Harness host, the bundle patch layer, the mpd preset layer, the adapter seam, the user surfaces and the workspace state roots.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .h1 { font: 700 24px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 400 13.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .layer { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .layer-h { font: 700 14.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .layer-n { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .chip { fill: #f1f5f9; stroke: #e2e8f0; stroke-width: 1; }
+      .chip-h { font: 600 12.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .chip-s { font: 400 10.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .accent { fill: #eef2ff; stroke: #818cf8; stroke-width: 1.5; }
+      .accent-h { font: 700 14px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #3730a3; }
+      .accent-s { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #4f46e5; }
+      .mono { font: 600 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #334155; }
+      .note { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .tag { font: 600 10px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="830" fill="#ffffff"/>
+  <text class="h1" x="40" y="44">my-power-dsh — bundle architecture</text>
+  <text class="sub" x="40" y="68">@mpd-dsh/mpd is one DSH bundle: two patch layers, one adapter seam, four state roots.</text>
+
+  <!-- Layer A: DSH host -->
+  <rect class="layer" x="40" y="88" width="1100" height="98" rx="12"/>
+  <text class="layer-h" x="60" y="116">DeepSeek Harness (DSH) host</text>
+  <text class="layer-n" x="292" y="116">@deepseek-ai/* packages — the plugin system this bundle plugs into (not rows of this bundle)</text>
+  <rect class="chip" x="60" y="130" width="196" height="42" rx="8"/>
+  <text class="chip-h" x="72" y="149">plugin loader</text>
+  <text class="chip-s" x="72" y="164">patch layers, applied in order</text>
+  <rect class="chip" x="276" y="130" width="196" height="42" rx="8"/>
+  <text class="chip-h" x="288" y="149">harness seams</text>
+  <text class="chip-s" x="288" y="164">tools · agents · skills · presets</text>
+  <rect class="chip" x="492" y="130" width="196" height="42" rx="8"/>
+  <text class="chip-h" x="504" y="149">model providers</text>
+  <text class="chip-s" x="504" y="164">deepseek-official, gateway routes</text>
+  <rect class="chip" x="708" y="130" width="196" height="42" rx="8"/>
+  <text class="chip-h" x="720" y="149">Web shell</text>
+  <text class="chip-s" x="720" y="164">the browser app the client loads in</text>
+  <rect class="chip" x="924" y="130" width="196" height="42" rx="8"/>
+  <text class="chip-h" x="936" y="149">official Agent Teams</text>
+  <text class="chip-s" x="936" y="164">team runtime, mounted by 3 rows</text>
+
+  <path d="M590 186 L590 210" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer B: bundle patch -->
+  <rect class="layer" x="40" y="214" width="1100" height="152" rx="12"/>
+  <text class="layer-h" x="60" y="242">Patch layer 1 — bundle plugins and MCP servers</text>
+  <text class="mono" x="470" y="242">dsh.bundle.patch[0] · packages/mpd-bundle/cordis.patch.yml</text>
+  <rect class="chip" x="60" y="256" width="196" height="46" rx="8"/>
+  <text class="chip-h" x="72" y="275">18 host plugin rows</text>
+  <text class="chip-s" x="72" y="291">adapter · roles · ulw · boulder</text>
+  <rect class="chip" x="276" y="256" width="196" height="46" rx="8"/>
+  <text class="chip-h" x="288" y="275">4 in-repo MCP servers</text>
+  <text class="chip-s" x="288" y="291">ast_grep · lsp · codegraph</text>
+  <rect class="chip" x="492" y="256" width="196" height="46" rx="8"/>
+  <text class="chip-h" x="504" y="275">3 Agent Teams rows</text>
+  <text class="chip-s" x="504" y="291">official @deepseek-ai/* set</text>
+  <rect class="chip" x="708" y="256" width="196" height="46" rx="8"/>
+  <text class="chip-h" x="720" y="275">1 sidebar host row</text>
+  <text class="chip-s" x="720" y="291">dsh-better-sidebar</text>
+  <rect class="chip" x="924" y="256" width="196" height="46" rx="8"/>
+  <text class="chip-h" x="936" y="275">2 remote MCP rows</text>
+  <text class="chip-s" x="936" y="291">context7 · grep_app</text>
+  <text class="note" x="60" y="330">+ 1 id-TARGETED host row (replace, not insert):</text>
+  <text class="mono" x="362" y="330">agent-preset-registry</text>
+  <text class="note" x="524" y="330">→</text>
+  <text class="mono" x="546" y="330">default: mpd</text>
+  <text class="note" x="60" y="352">The mcp-gitbash row is disabled: true by default (Windows only) — no mcp__git_bash__* tool exists until it is enabled.</text>
+
+  <path d="M590 366 L590 390" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer C: preset -->
+  <rect class="layer" x="40" y="394" width="1100" height="86" rx="12"/>
+  <text class="layer-h" x="60" y="422">Patch layer 2 — the agent preset</text>
+  <text class="mono" x="290" y="422">dsh.bundle.patch[1] · presets/mpd.patch.yml</text>
+  <text class="note" x="60" y="446">One row: preset-mpd. The bundle ships exactly one preset, MPD (Main Working Agent): the persona that explains the roster, the</text>
+  <text class="note" x="60" y="464">project-instruction convention (AGENT.md → AGENTS.md → CLAUDE.md) and the preset's own tool rows. Served by reference; no DSH-home copy.</text>
+
+  <path d="M590 480 L590 504" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer D: adapter -->
+  <rect class="accent" x="40" y="508" width="1100" height="74" rx="12"/>
+  <text class="accent-h" x="60" y="538">The single contact surface — mpd-dsh-adapter-plugin</text>
+  <text class="accent-s" x="60" y="560">Every mpd row resolves the harness through this one adapter (ctx.get("mpdDsh") with a standalone fallback). A harness release that reshapes a seam is absorbed here, not across every plugin.</text>
+
+  <path d="M590 582 L590 606" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer E: surfaces -->
+  <rect class="layer" x="40" y="610" width="1100" height="104" rx="12"/>
+  <text class="layer-h" x="60" y="638">Surfaces the user touches</text>
+  <rect class="chip" x="60" y="648" width="340" height="50" rx="8"/>
+  <text class="chip-h" x="72" y="669">Web GUI (web profile)</text>
+  <text class="chip-s" x="72" y="686">Agent Teams roster + task board · Workmates sidebar tab</text>
+  <rect class="chip" x="420" y="648" width="340" height="50" rx="8"/>
+  <text class="chip-h" x="432" y="669">DSH-TUI edition (dsh-tui profile)</text>
+  <text class="chip-s" x="432" y="686">status line · board · /mpd tree · /settings</text>
+  <rect class="chip" x="780" y="648" width="340" height="50" rx="8"/>
+  <text class="chip-h" x="792" y="669">Skill corpus, served by reference</text>
+  <text class="chip-s" x="792" y="686">&lt;bundle&gt;/skills — no $DSH_HOME copy</text>
+
+  <path d="M590 714 L590 738" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer F: state -->
+  <rect class="layer" x="40" y="742" width="1100" height="72" rx="12"/>
+  <text class="layer-h" x="60" y="768">State roots</text>
+  <text class="mono" x="150" y="768">&lt;workspace&gt;/.mpd/**</text>
+  <text class="note" x="300" y="768">settings · memory · boulder · ulw · plans</text>
+  <text class="mono" x="590" y="768">&lt;workspace&gt;/.codegraph/</text>
+  <text class="note" x="760" y="768">project graph (gitignored)</text>
+  <text class="mono" x="60" y="798">~/.mpd/workmate/</text>
+  <text class="note" x="176" y="798">durable workmate library</text>
+  <text class="mono" x="340" y="798">$DSH_HOME/mpd.jsonc</text>
+  <text class="note" x="482" y="798">user-level settings, merged under each project file</text>
+</svg>

@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c6-y2vyQ5",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "memory": {
+      "ok": true,
+      "entries": 1,
+      "repoOk": true,
+      "dueSeen": true
+    }
+  }
+}

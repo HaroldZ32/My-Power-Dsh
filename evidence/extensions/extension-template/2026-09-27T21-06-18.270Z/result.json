@@ -1,0 +1,99 @@
+{
+  "ok": false,
+  "slug": "extension-template",
+  "sandbox": "/tmp/mpd-extension-template-Brs2W4",
+  "subject": "templates/mpd-extension copied by `bun scripts/mpd-ext.mjs scaffold qa-template --with-mcp` into the sandbox host plane",
+  "arms": "scaffold (the copy, its file tree and the recorded enabled flip) | skill (the `skill` tool answers with the copy's SKILL.md) | flow (mpd_flow_show answers with the copy's flow, cross-referencing the copy's skill) | role (mpd_role_persona answers AND mpd_role_spawn really starts a child) | mcp (the copy's own stdio server publishes mcp__qa-template__describe_extension and answers a real call) | containment (no apply-crash signature, session + workspace isolation)",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "scaffold": {
+      "ok": true,
+      "exit": 0,
+      "root": "/tmp/mpd-extension-template-Brs2W4/run-home/.mpd/extensions/qa-template",
+      "templateId": "mpd-extension-template",
+      "templateEnabledFlagInRepo": false,
+      "sandboxEnabledFlag": true,
+      "copyFiles": [
+        "README.md",
+        "README.zh-CN.md",
+        "flows/qa-template-flow.json",
+        "mpd-ext.json",
+        "personas/qa-template-reviewer.md",
+        "server.mjs",
+        "skills/qa-template-skill/SKILL.md"
+      ],
+      "cliStdout": "[mpd-ext] scaffolded \"qa-template\" at /tmp/mpd-extension-template-Brs2W4/run-home/.mpd/extensions/qa-template\n  copied 7 file(s) from templates/mpd-extension\n  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)\n  next: bun scripts/mpd-ext.mjs validate /tmp/mpd-extension-template-Brs2W4/run-home/.mpd/extensions/qa-template",
+      "note": "the repo template is never modified: the copy is written into the sandbox HOME plane and only its `enabled` flag is flipped (the template ships enabled:false so it can never be discovered from the repo)"
+    },
+    "skill": {
+      "ok": false,
+      "called": false,
+      "succeeded": false,
+      "sawHeading": false,
+      "resultHead": ""
+    },
+    "flow": {
+      "ok": false,
+      "called": false,
+      "succeeded": false,
+      "sawFlowId": false,
+      "sawSkillCrossReference": false,
+      "resultHead": ""
+    },
+    "role": {
+      "ok": false,
+      "personaCalled": false,
+      "personaSucceeded": false,
+      "spawnCalled": false,
+      "spawnSucceeded": false,
+      "sawRoleName": false,
+      "childAnswered": false,
+      "personaHead": ""
+    },
+    "mcp": {
+      "ok": false,
+      "tool": "mcp__qa-template__describe_extension",
+      "offeredInRequest": true,
+      "offeredInHeader": true,
+      "called": false,
+      "succeeded": false,
+      "servedManifest": false,
+      "servedOwnRoot": false,
+      "servedFourKinds": false,
+      "resultHead": "",
+      "manifestHead": "{\n  \"apiVersion\": 1,\n  \"id\": \"qa-template\",\n  \"description\": \"The qa-template extension. Replace this sentence with what the extension contributes and when an agent should reach for it.\",\n  \"enabled\":"
+    },
+    "listed": {
+      "ok": false,
+      "sawCopy": false,
+      "resultHead": ""
+    },
+    "containment": {
+      "ok": false,
+      "exit": 1,
+      "durationMs": 11652,
+      "crashSignatures": [],
+      "offeredTemplateTools": [
+        "mcp__qa-template__describe_extension"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-template-Brs2W4-ws--"
+        ]
+      }
+    },
+    "isolationFinal": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-extension-template-Brs2W4-ws--"
+      ]
+    }
+  }
+}

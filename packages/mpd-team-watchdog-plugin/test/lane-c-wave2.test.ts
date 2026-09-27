@@ -45,6 +45,7 @@ const REPO = resolve(HERE, "../../..")
 const ADOPTED_LIB = join(REPO, "packages", "mpd-agent-teams-plugin", "lib")
 const ADOPTED_DEPS = join(REPO, "packages", "mpd-agent-teams-plugin", "_deps")
 const WATCHDOG_SRC = join(REPO, "packages", "mpd-team-watchdog-plugin", "src")
+const ADAPTER_SRC = join(REPO, "packages", "mpd-dsh-adapter-plugin", "src")
 const STATE_DIR = join(".mpd", "team")
 const TEAM_ID = "probe-team"
 const CAPTAIN_ID = "session-captain-lane-c"
@@ -61,12 +62,22 @@ function scratchTree(): { libDir: string; root: string; cleanup: () => void } {
   return { libDir: join(root, "lib"), root, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
-/** One scratch copy of the watchdog's own `src/` (for a seeded revert of a src-side rule). */
+/**
+ * One scratch copy of the watchdog's own `src/` (for a seeded revert of a src-side rule).
+ *
+ * The sibling adapter package is mirrored at the SAME depth, because the row resolves its shared
+ * helpers through `../../mpd-dsh-adapter-plugin/src/index` (AGENTS.md §6: one contact surface):
+ * a scratch tree that copied only this package would fail to import for a reason the control is
+ * not about, and the failure would look like a real red.
+ */
 function scratchWatchdogSrc(): { srcDir: string; cleanup: () => void } {
   const root = mkdtempSync(join(tmpdir(), "lane-c-src-"))
   const dir = join(root, "packages", "mpd-team-watchdog-plugin", "src")
   mkdirSync(dir, { recursive: true })
   cpSync(WATCHDOG_SRC, dir, { recursive: true })
+  const adapterDir = join(root, "packages", "mpd-dsh-adapter-plugin", "src")
+  mkdirSync(adapterDir, { recursive: true })
+  cpSync(ADAPTER_SRC, adapterDir, { recursive: true })
   return { srcDir: dir, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 

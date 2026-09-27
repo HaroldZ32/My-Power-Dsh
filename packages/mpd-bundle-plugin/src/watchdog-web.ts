@@ -17,6 +17,7 @@
 // Nothing else in the store is written, and team.json is never opened for writing.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
+import { errorMessage as message } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The exact-path routes this module owns. */
 export const WATCHDOG_STATE_PATH = "/plugins/mpd-team-watchdog/state"
@@ -109,9 +110,6 @@ export interface WorkspaceResolver {
   workspaceRoot: () => string
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 function readJson<T>(path: string): T | undefined {
   try {

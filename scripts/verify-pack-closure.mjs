@@ -64,6 +64,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readJson } from "./lib/repo.mjs"
 
 const SELF = fileURLToPath(import.meta.url)
 const repoRoot = dirname(dirname(SELF))
@@ -502,7 +503,7 @@ function checkPackedHalf(opts, findings, asked) {
     findings.push({ kind: "MANIFEST", packages: [], detail: "the packed tree has no package.json — the artifact is not an installable package" })
   } else {
     try {
-      manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+      manifest = readJson(manifestPath)
     } catch (error) {
       findings.push({ kind: "MANIFEST", packages: [], detail: "the packed package.json is not parseable: " + String(error?.message ?? error) })
     }

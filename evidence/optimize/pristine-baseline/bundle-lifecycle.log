@@ -1,0 +1,7 @@
+[bundle-lifecycle] ok=false -> /tmp/tmp.6OIjiQZt1n/evidence/dsh-qa/bundle-lifecycle/2026-09-27T21-19-26.652Z
+  install: {"ok":true,"exit":0,"dependency":"link:/tmp/tmp.6OIjiQZt1n","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":false,"checks":{"http":true,"adapterProvided":true,"adapterSeams":true,"adapterToolCall":true,"corpusFromBundle":true,"noPresetRefusal":true,"probePass":false,"presetProbeOk":true},"failed":["probePass"],"probeVerdict":"FAIL","presetProbeLine":"ok","http
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}

@@ -39,7 +39,7 @@
 
 这条限制不是装饰。在本 harness 中，注册工具或技能提供者是**进程级全局**的，所以"每会话"的 MCP
 服务器或名册角色无法被诚实地表达。项目平面清单如果声明 `mcp` 或 `roles`，会被**逐项**拒绝并给出
-明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:678-685`）——拒绝是响亮的、会指出具体条目，
+明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:673-680`）——拒绝是响亮的、会指出具体条目，
 而同一个清单里的技能与流程照常加载。
 
 请在写清单**之前**读这条规则，而不是在第一次被拒之后：这是最常见的选错平面错误，而拒绝只在发现
@@ -63,7 +63,7 @@
    它就能读你的用户能读的任何文件，包括凭证文件。白名单阻止的是**环境变量**层面的意外泄漏，它不是
    沙箱。
 2. **作者声明的密钥就是真实密钥。** 你写进清单 `env` 的任何内容，在磁盘上的清单里都是可读的。
-   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:643`），所以
+   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:640`），所以
    会话日志里的工具结果不会泄漏它们——但文件本身没有加密，你写下来的值就是你要负责的值。
 3. **文件系统信任。** 安装一个扩展就意味着执行一个你或别人提供的 stdio 服务器。这里没有签名、没有
    沙箱命名空间、没有 seccomp 配置、没有能力裁剪。
@@ -79,7 +79,7 @@
 
 ## 4. 生命周期与重启矩阵
 
-v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `docs/extensions.md:524`）。下面这张表是最容易出错的
+v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `docs/extensions.md:525`）。下面这张表是最容易出错的
 部分，因为同一个目录会因为类型与平面不同而表现不同。
 
 | 类型 | 平面 | 何时读取 | 修改后需要重启吗 |
@@ -87,7 +87,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 | `skills` | 项目 | **每次调用**，从调用会话的工作区解析 | 不需要 |
 | `flows` | 项目 | **每次调用** | 不需要 |
 | `skills`、`flows` | user、bundle | 在 **apply** 时发现 | 需要 |
-| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1046`） | 需要 |
+| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1043`） | 需要 |
 | `roles` | user、bundle | 声明在 apply 时被发现；角色本身由名册平面**每次调用**解析，并重新读取 persona 文本（`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`） | 新增或改名需要；只改 persona 正文不需要 |
 
 三个值得记住的推论：
@@ -95,7 +95,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 - 项目平面里的"每次调用"类型，是唯一表现得像活文件的组合：改完技能或流程，下一次调用就能用，无需
   重启。
 - MCP 服务器失败不会拖垮启动。它进入 `unavailable` 或 `failed` 状态，并带一段有界的子进程 stderr
-  尾部（`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:42`），其他扩展照常激活；下一次启动会重试它。
+  尾部（`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:43`），其他扩展照常激活；下一次启动会重试它。
 - `.mpd/mpd.jsonc` 中的 `extensions.enable` / `extensions.disable` 是**进程级**的，不是按会话的
   开关；而且它们只过滤"被提供"的内容，从不为注册把关，所以被禁用的扩展不会破坏别的东西。
 

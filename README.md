@@ -2,6 +2,14 @@
 
 **English** | [中文](./README.zh-CN.md)
 
+[![Version](https://img.shields.io/badge/version-0.11.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![License: SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.1.7--rc.2-4B32C3.svg)](#acknowledgements)
+[![Platforms](https://img.shields.io/badge/platforms-web%20%7C%20dsh--tui-informational.svg)](./docs/tui.md)
+[![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
+[![Docs parity](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml)
+[![Docs](https://img.shields.io/badge/docs-EN%20%2B%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success.svg)](./docs/index.md)
+
 **my-power-dsh** is a plugin bundle for the **DeepSeek Harness (DSH)**. One install turns a plain
 DSH setup into a working environment for real coding work: a main agent that reads your project
 rules, eleven specialists you can consult or delegate to, a library of durable "workmate" agents
@@ -11,17 +19,44 @@ other packages contribute skills, flows, MCP servers and specialists without tou
 
 This file is the **user manual**: how to install it, what to type, what each command and tool does,
 how to configure it, and where your data lives. The internal assembly — boot chain, package layout,
-plugin mechanics — is written down in exactly one place, and this file points at it (see the last
-section, *Architecture, in one pointer*).
+plugin mechanics — is written down in exactly one place, and this file points at it (see
+*Architecture*).
 
 The bundle is the package `@mpd-dsh/mpd`; this repository root **is** that package. It installs with
 one command and uninstalls with one command that leaves no residue.
 
-## What you get
+![A my-power-dsh session in the DSH Web UI: the MPD (Main Working Agent) preset selected, the Agent Teams panel showing its roster and shared task board, and the model selector reading DeepSeek-V41-Flash.](./docs/assets/images/web-ui-session.png)
+
+*The **MPD (Main Working Agent)** preset in the DSH Web UI, with the Agent Teams roster and shared task board open beside the conversation. Every screenshot in this manual is a real capture of the shipped bundle, taken from the running app by the Docker UI lane (`docker/ui/`).*
+
+## Table of contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Project rules and the main agent](#project-rules-and-the-main-agent)
+- [Commands](#commands)
+- [Usage](#usage)
+- [Specialists: the roster](#specialists-the-roster)
+- [Team mode](#team-mode)
+- [Web GUI](#web-gui)
+- [The DSH-TUI edition](#the-dsh-tui-edition)
+- [Configuration](#configuration)
+- [Where your state lives](#where-your-state-lives)
+- [Architecture](#architecture)
+- [FAQ](#faq)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+
+## Features
 
 | You want to… | Use | Where the how-to is |
 |---|---|---|
-| Work with an agent that knows your project rules | the **`mpd` preset** (the only preset the bundle ships) | *The main agent and your project rules* |
+| Work with an agent that knows your project rules | the **`mpd` preset** (the only preset the bundle ships) | *Project rules and the main agent* |
 | Get a second opinion, or a scoped executor | the **specialist roster** — `mpd_role_spawn` | *Specialists: the roster* |
 | Keep a specialist that accumulates knowledge | the **workmate library** — `mpd_workmate_*` | *Keep an evolving agent* |
 | Run a real multi-agent workflow | **team mode** — the official Agent Teams tools (`spawn_teammate`, `team_task_*`) + the Web roster/task-board panel | *Team mode* |
@@ -30,54 +65,90 @@ one command and uninstalls with one command that leaves no residue.
 | Remember facts across sessions | the **memory engine** — `mpd_memory_*` | *Keep durable memory* |
 | Edit files without line-drift mistakes | **hash-anchored editing** — `mpd_hashline_*` | *Edit files safely* |
 | Understand an unfamiliar codebase | the **MCP servers** — ast-grep, LSP, CodeGraph | *Understand a codebase* |
-| Teach the bundle a new trick | the **extension interface** — `mpd_ext_*` | *The extension interface* |
+| Teach the bundle a new trick | the **extension interface** — `mpd_ext_*` | *Configure and extend* |
 | Drive it all from a terminal | the **DSH-TUI edition** | *The DSH-TUI edition* |
 
-## Install
+## Requirements
 
-### Requirements
-
-- DeepSeek Harness (DSH) with a `web` or `headless` profile, and model credentials configured in
-  DSH. The bundle never configures keys for you.
-- Node.js and `bun` on `PATH` for the repository scripts (`bun` runs the tests and the extension
-  CLI).
+- **DeepSeek Harness (DSH)** with a `web` or `headless` profile, and model credentials configured in
+  DSH. The bundle never configures keys for you. The bundle is built and verified against harness
+  **0.1.7-rc.2**.
+- **Node.js** and **Bun** (`1.4.0`, the version recorded by the `buildToolchain` field in
+  `package.json`) on `PATH` for the repository scripts (`bun` runs the tests and the extension CLI).
+- **git**, for a source install: the primary flow clones this repository and installs from the
+  checkout.
 - Optional, for the code-intelligence servers: the toolchain the bundle can install
   (`node scripts/install-mcp.mjs`) or your own binaries, pointed at with the documented environment
   variables (`MPD_DSH_AST_GREP_SG_PATH`, `MPD_CODEGRAPH_BIN`, …).
 
-### Install from the checkout (web profile)
+## Installation
+
+### Clone the repository
 
 ```bash
-cd <repo> && dsh plugin --profile web add .
+git clone https://github.com/HaroldZ32/My-Power-Dsh.git
+cd My-Power-Dsh
+```
+
+### Install dependencies
+
+```bash
+bun install
+```
+
+The bundle declares four runtime dependencies — `dsh-better-sidebar` (the community sidebar bundle
+that hosts the Workmates tab) and the three official Agent Teams packages that provide team mode (see
+*What the install mounts*) — so a checkout install materializes the repository's dependencies first.
+
+If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it), install the
+sidebar without build scripts — only the sidebar's terminal panel degrades:
+
+```bash
+bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+```
+
+A packed install takes care of this itself (pnpm installs the declared dependencies), see *Install
+from a packed artifact* below.
+
+### Build from source
+
+The committed `dist/` files are build products and ship with the repository, so a plain install needs
+no build step. Rebuild only the package you changed, and rebuild from the **repository root** with
+path-qualified arguments:
+
+```bash
+bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
+```
+
+A multi-entry package repeats that command per entry. `node scripts/verify-dist-fresh.mjs` rebuilds
+every `packages/*/src` entry and compares it byte-for-byte with the committed `dist/`, so a source
+change and its rebuild belong in the same commit. `bun run typecheck` (root) and `bun test packages`
+are the other two commands you will use most; the full gate list is in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+A checkout install reads the checkout directly: after a code change, rebuild the touched package's
+`dist/` and restart `dsh`.
+
+### Install the bundle into DSH (web profile)
+
+```bash
+dsh plugin --profile web add .
 ```
 
 The repository root is the bundle package, so this single command installs every plugin row, the
 `mpd` preset, the 18-skill corpus and the extension root — no pack step, no copy step. Then restart
-`dsh` and pick the **MPD (Main Working Agent)** preset in a session.
-
-The bundle declares four runtime dependencies — `dsh-better-sidebar` (the community sidebar bundle
-that hosts the Workmates tab) and the three official Agent Teams packages that provide team mode (see
-*What the install mounts*) — so a checkout install materializes the repository's dependencies first:
+`dsh` and pick the **MPD (Main Working Agent)** preset in a session:
 
 ```bash
-cd <repo> && bun install                     # materializes the declared runtime dependencies
-cd <repo> && dsh plugin --profile web add .
+dsh web            # boot (or restart) the web profile — same as: dsh --profile web
 ```
-
-If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it), install the sidebar
-without build scripts: `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` —
-only the sidebar's terminal panel degrades. A packed install takes care of this itself (pnpm
-installs the declared dependencies), see *Install from a packed artifact* below.
-
-A checkout install reads the checkout directly: after a code change, rebuild the touched package's
-`dist/` and restart `dsh`.
 
 ### Install for the terminal UI (`dsh-tui` profile)
 
 The same bundle installs into the terminal-UI profile:
 
 ```bash
-cd <repo> && dsh plugin --profile dsh-tui add .
+dsh plugin --profile dsh-tui add .
 ```
 
 It joins that profile as the **third patch layer**, on top of the TUI package:
@@ -240,6 +311,10 @@ binaries):
 | `@colbymchenry/codegraph` | `1.5.0` | `mcp-codegraph` and the `mpd-codegraph` row |
 | `@code-yeongyu/comment-checker` | `0.8.0` | `mpd_comment_check` |
 
+![The Plugins page of the DSH Web UI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on, above the harness's own official plugins.](./docs/assets/images/web-ui-plugins.png)
+
+*What the one install command produced, as a user sees it: the Plugins page lists `@mpd-dsh/mpd` under **Installed** with its toggle on — the whole bundle arrives as that single package.*
+
 ## Quick start
 
 1. **Install** (above), restart `dsh`, and start a session on the **MPD** preset.
@@ -256,7 +331,11 @@ binaries):
 6. **Teach it your own capability.** Put an extension directory into `<workspace>/.mpd/extensions/`
    and check it with `mpd_ext_list`.
 
-## The main agent and your project rules
+![The DSH Web UI landing screen for a workspace: the composer with the MPD (Main Working Agent) preset selected and the DeepSeek-V41-Flash model route shown.](./docs/assets/images/web-ui-home.png)
+
+*Step 1 in the Web GUI: a new session's composer, already on the **MPD (Main Working Agent)** preset, with the model route and permission mode beside it.*
+
+## Project rules and the main agent
 
 The bundle ships one preset: **MPD (Main Working Agent)**. Selecting it in a session gives you:
 
@@ -268,6 +347,10 @@ The bundle ships one preset: **MPD (Main Working Agent)**. Selecting it in a ses
   `team_task_*` team tools, the MCP servers) appears next to them.
 - **Routing built in** — the preset's persona explains the roster, the workmate library and team
   mode, so the agent reaches for the right instrument without extra setup.
+
+![The Agent presets settings page: the MPD (Main Working Agent) preset listed under CUSTOM and badged as the default for a new task.](./docs/assets/images/web-ui-agent-presets.png)
+
+*The **Agent presets** page: the bundle's `mpd` preset is the custom entry badged **New task default**, so a new session starts on it without anyone picking it.*
 
 You do not have to choose a preset per task: the same session keeps its preset, and every capability
 below is available inside it.
@@ -283,9 +366,9 @@ Slash commands are typed into the session prompt.
 | `team:` / `!team` in a message | An explicit team request. The session-start complexity gate only ever **advises** — it stages nothing; the agent stages the team itself with `spawn_teammate` + `team_task_create` |
 | `/mpd` (TUI) | The terminal command tree: a bare `/mpd` opens the picker; the actions are `board`, `team`, `plan`, `workmates` and `status` (`/mpd status` prints the summary, the others open their TUI scene) |
 | `/goal <objective>` | Creates a persisted session goal (the host's goal row, enabled by the `mpd` preset): one long-running objective that continues across turns |
-| `/settings` (TUI) | Edits the `mpd.jsonc` knobs listed under *Settings* below |
+| `/settings` (TUI) | Edits the `mpd.jsonc` knobs listed under *Configuration* below |
 
-## Tools, by job
+## Usage
 
 This is the index; each subsection below shows the concrete call.
 
@@ -353,6 +436,10 @@ plain `edit`/`write` changes it.
 `@code-yeongyu/comment-checker` binary or `MPD_DSH_COMMENT_CHECKER_BIN`.
 
 ### Drive long work: the ULW loop
+
+![Flowchart of an ultrawork run: entry, triage, optional plan, round-by-round execution through the pin → red → green → surface → clean cycle, the verification gate and the quality gate, with a feedback path from a red gate back into the round.](./docs/assets/images/ulw-loop.svg)
+
+*One ultrawork run, from `/ulw` to "done" — the objective is triaged first, and the run only reports done after both gates pass. Run state and the per-lane ledger live under `<workspace>/.mpd/ulw/<id>/`.*
 
 ```jsonc
 mpd_ulw { "objective": "make the docs gate cover every extension README", "maxRounds": 6 }
@@ -478,8 +565,8 @@ Two bounds to know before you promise a result:
 
 - **A teammate inherits the Lead's model route.** The official `TeamService` forwards only the prompt
   and the parent to the subagent registry, so no per-teammate provider, persona or tool filter can be
-  injected. The `teamModels` slots (see *Settings*) therefore apply to the **one-shot consult** path
-  (`mpd_role_spawn`, `mpd_workmate_spawn`); if a teammate needs a different model, say so in its
+  injected. The `teamModels` slots (see *Configuration*) therefore apply to the **one-shot consult**
+  path (`mpd_role_spawn`, `mpd_workmate_spawn`); if a teammate needs a different model, say so in its
   prompt.
 - **The roster's read-only discipline still holds.** A teammate whose name normalises to a read-only
   roster member (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) is denied
@@ -540,6 +627,10 @@ How to use them well:
   *Keep an evolving agent*).
 
 ## Team mode
+
+![Team-mode lifecycle: the session-start gate advises only, the Lead decides the roster and task graph, teammates are spawned and tasks posted, members claim and complete work, the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.](./docs/assets/images/team-lifecycle.svg)
+
+*One team wave, end to end. The session-start complexity gate only advises; the Lead stages the team itself, and the wave is compacted and ended when it lands.*
 
 The session agent is the **Lead** (the captain). It decides a roster and a task DAG, spawns each
 member as a named teammate, opens every task on the shared board, and integrates the results itself.
@@ -655,12 +746,16 @@ parity ledger against the Web edition (including the still-open deviations) is
 [`docs/tui-parity.md`](./docs/tui-parity.md), and the deep detail (admission, distribution
 artifacts, per-package compatibility) is [`docs/tui.md`](./docs/tui.md).
 
-## Settings (`.mpd/mpd.jsonc`)
+## Configuration
 
 Configuration is JSONC and layered: the project file `<workspace>/.mpd/mpd.jsonc` is merged over the
 user file `$DSH_HOME/mpd.jsonc`, **per key**, project wins. Read what is in effect with
 `mpd_config_get` (one key: `mpd_config_get { "key": "memory.vcs" }`) and re-read the files with
 `mpd_config_reload`.
+
+![The MPD section of the DSH settings panel, showing the bundle's knobs: inline diff limit, comment checker, ultrawork rounds, memory backend, team state directory, boulder directory and watchdog enabled, each with a Reset to the file value button.](./docs/assets/images/web-ui-settings.png)
+
+*The **MPD** settings card in the Web GUI — the same knobs as `.mpd/mpd.jsonc`, with each value showing whether it comes from the file. Captured from the shipped bundle.*
 
 ```jsonc
 // <workspace>/.mpd/mpd.jsonc
@@ -744,7 +839,45 @@ library and your DSH home settings. Uninstalling the bundle removes the code, ne
 | `~/.mpd/extensions/` | Host-wide extensions (may contribute MCP servers and roles) |
 | `$DSH_HOME/mpd.jsonc` | Your user-level settings, merged under each project's file |
 
-## Troubleshooting
+## Architecture
+
+![Layered architecture diagram: the DeepSeek Harness host at the top; patch layer 1 with the bundle's plugin and MCP rows; patch layer 2 with the mpd preset; the single mpd-dsh-adapter seam; the user surfaces (Web GUI, DSH-TUI edition, served skill corpus); and the state roots at the bottom.](./docs/assets/images/architecture.svg)
+
+*How the bundle is assembled: the DSH host, the two patch layers, the one adapter seam, the surfaces the user touches and the state roots. The full assembly is [`docs/design.md`](./docs/design.md).*
+
+This README deliberately stops at *how to use*. How the bundle is put together — the boot chain, the
+patch layers and their order, the plugin inventory and what each row registers, the adapter seam,
+the state layout, and the invariants behind them — is the subject of
+[`docs/design.md`](./docs/design.md) (Chinese twin:
+[`docs/design.zh-CN.md`](./docs/design.zh-CN.md)). Read it before changing anything under
+`packages/`.
+
+## FAQ
+
+### Common questions
+
+**Do I have to clone the repository?** No. Cloning is the primary source install, and it is what you
+need if you intend to change the bundle. A published tarball installs with
+`dsh plugin --profile web add dist/mpd-package` (see *Install from a packed artifact*).
+
+**Does the bundle configure my model credentials?** No. DSH owns credentials and providers; the
+bundle only declares the model routes its roster uses (`Configuration` → the team-model slots).
+
+**Which preset should I pick?** **MPD (Main Working Agent)** — the only preset the bundle ships. It
+is already the default where the host's `agent-preset-registry` row is present.
+
+**Where does my data live?** Under each workspace's `.mpd/` directory, plus the user-level workmate
+library at `~/.mpd/workmate/`. The complete list is *Where your state lives*; uninstalling the
+bundle never removes it.
+
+**Is this a fork of oh-my-openagent?** No. The roster, the model-chain vocabulary and the pinned
+capability baseline come from that project, and the provenance is recorded in *Acknowledgements*,
+[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md) and `VENDOR_LOCK.json`.
+
+**Why is a change not visible after I saved a setting?** The plugins capture their configuration when
+they mount, so a saved knob takes effect after a restart.
+
+### Symptom → fix index
 
 | Symptom | What to do |
 |---|---|
@@ -763,10 +896,11 @@ More: [`docs/user-guide.md`](./docs/user-guide.md) §11 is the quick map, and
 [`agent-references/troubleshooting.md`](./agent-references/troubleshooting.md) (English,
 agent-facing) is the full symptom → cause → fix table.
 
-## Documentation map
+## Documentation
 
 | Doc | For |
 |---|---|
+| [`docs/index.md`](./docs/index.md) | The documentation hub and reading order |
 | [`docs/user-guide.md`](./docs/user-guide.md) | The long-form user guide: install/uninstall, the preset, tools, specialists, workmates, teams, the GUI, configuration, extensions, troubleshooting |
 | [`docs/design.md`](./docs/design.md) | The detailed design document: how the bundle is assembled and mounts — boot chain, plugin inventory, state layout |
 | [`docs/tui.md`](./docs/tui.md) | The DSH-TUI edition: install, TUI-native surfaces, admission and distribution artifacts, compatibility ledger, NOT-CLAIMED list |
@@ -774,17 +908,46 @@ agent-facing) is the full symptom → cause → fix table.
 | [`docs/extensions.md`](./docs/extensions.md) | The extension developer guide: the contract, the four kinds, the CLI |
 | [`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) | The machine contract for an agent that writes an extension (English) |
 | [`docs/development.md`](./docs/development.md) | Building, testing, QA gates, packing and releasing this repository |
-| [`docs/index.md`](./docs/index.md) | The documentation hub and reading order |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute: development setup, gates, git model, review expectations |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Release notes, one section per released version |
 | [`AGENTS.md`](./AGENTS.md) | The binding repository manual for agents and maintainers (English) |
 
-## Architecture, in one pointer
+Every human-facing document ships in English and Simplified Chinese; the Chinese twin sits next to
+the English file with a `.zh-CN.md` suffix and each file links to the other under its title.
 
-This README deliberately stops at *how to use*. How the bundle is put together — the boot chain, the
-patch layers and their order, the plugin inventory and what each row registers, the adapter seam,
-the state layout, and the invariants behind them — is the subject of
-[`docs/design.md`](./docs/design.md) (Chinese twin:
-[`docs/design.zh-CN.md`](./docs/design.zh-CN.md)). Read it before changing anything under
-`packages/`.
+## Contributing
+
+Contributions are welcome — bug reports, documentation fixes, extensions and code alike.
+
+1. **Read [`CONTRIBUTING.md`](./CONTRIBUTING.md)** (Chinese twin:
+   [`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md)). It covers the development setup, the build
+   and test commands, the gate list, the git model (`dev` is the integration line;
+   `feature/<slug>` and `fix/<slug>` branches; `<type>(<scope>): <summary>` commits) and the
+   evidence rule.
+2. **Keep the documentation bilingual.** Every human-facing doc ships an English file and a
+   `*.zh-CN.md` twin with a language switch link under the title; a change to one updates both in the
+   same commit. `bun run verify:docs` enforces the pair, the heading tree, the real CJK content and
+   every relative link target.
+3. **Leave the tree green.** `bun run verify:gates` runs the fast static gates (vendor, dist
+   freshness, row parity, doc pairs, preset conformance); `bun run typecheck` and `bun test` cover the
+   packages. A change without evidence on disk is not done.
+4. **Open small, focused pull requests.** One capability or one defect per branch, merged with
+   `--no-ff` and a descriptive message; never rebase a published branch. Bug reports are most useful
+   with the exact command, the observed result and the expected one — [open an
+   issue](https://github.com/HaroldZ32/My-Power-Dsh/issues) or send a pull request.
+
+Security problems follow a separate, private path: see [`SECURITY.md`](./SECURITY.md) and never open a
+public issue for one.
+
+This repository is licensed under SUL-1.0 ([`LICENSE.md`](./LICENSE.md)); by contributing you agree
+that your contribution is distributed under the same terms. Please do not include credentials, tokens
+or private data in issues, pull requests or evidence.
+
+## Changelog
+
+Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released version
+(the current release is **v0.11.1**). Annotated tags are listed under
+[Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements
 

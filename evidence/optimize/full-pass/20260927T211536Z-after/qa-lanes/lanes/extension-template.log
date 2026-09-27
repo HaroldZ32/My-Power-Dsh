@@ -1,0 +1,10 @@
+[extension-template] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-template/2026-09-27T21-22-53.152Z
+  install: {"ok":true,"exit":0,"tail":"ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-
+  scaffold: {"ok":true,"exit":0,"root":"/tmp/mpd-extension-template-fszpq7/run-home/.mpd/extensions/qa-template","templateId":"mpd-extension-template","templateEnabledFlagInRepo":false,"sandboxEnabledFlag":true,"copyFiles":["README.md","README.zh-CN.md","flows/qa-template-flow.json","mpd-ext.json","personas/qa-
+  skill: {"ok":false,"called":false,"succeeded":false,"sawHeading":false,"resultHead":""}
+  flow: {"ok":false,"called":false,"succeeded":false,"sawFlowId":false,"sawSkillCrossReference":false,"resultHead":""}
+  role: {"ok":false,"personaCalled":false,"personaSucceeded":false,"spawnCalled":false,"spawnSucceeded":false,"sawRoleName":false,"childAnswered":false,"personaHead":""}
+  mcp: {"ok":false,"tool":"mcp__qa-template__describe_extension","offeredInRequest":true,"offeredInHeader":true,"called":false,"succeeded":false,"servedManifest":false,"servedOwnRoot":false,"servedFourKinds":false,"resultHead":"","manifestHead":"{\n  \"apiVersion\": 1,\n  \"id\": \"qa-template\",\n  \"desc
+  listed: {"ok":false,"sawCopy":false,"resultHead":""}
+  containment: {"ok":false,"exit":1,"durationMs":11856,"crashSignatures":[],"offeredTemplateTools":["mcp__qa-template__describe_extension"],"isolation":{"ok":true,"checked":1,"keys":["--tmp-mpd-extension-template-fszpq7-ws--"]}}
+  isolationFinal: {"ok":true,"checked":1,"keys":["--tmp-mpd-extension-template-fszpq7-ws--"]}

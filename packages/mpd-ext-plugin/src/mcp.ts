@@ -17,6 +17,7 @@
 //
 // Every failure is recorded on the owning extension (`mpd_ext_show` reads the
 // records live) and nothing here throws out of activation.
+import { errorMessage as message } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshAdapter, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { resolve } from "node:path"
 import {
@@ -68,9 +69,6 @@ export interface McpBridge {
   dispose(): Promise<void>
 }
 
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /** Raised when a generation was rolled back after a partial registration. */
 class ToolGenerationConflict extends Error {

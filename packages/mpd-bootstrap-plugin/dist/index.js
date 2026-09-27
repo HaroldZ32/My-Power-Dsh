@@ -2,12 +2,22 @@
 import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname as dirname2, join } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function bundleRootOf(moduleUrl) {
+  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -23,9 +33,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -292,7 +299,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -485,7 +492,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -595,7 +602,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -955,11 +962,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -967,24 +974,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -993,61 +1000,17 @@ function createDshAdapter(ctx, config = {}) {
   };
   return adapter;
 }
+var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
+}
 
-// packages/mpd-bootstrap-plugin/src/index.ts
-var name = "mpd-bootstrap";
-var inject = ["skills"];
-var PROVIDER_NAME = "mpd-bundle";
-var BUNDLED_SKILL_RANK = 600;
-var SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-function bundleRoot() {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-}
-function harnessHome() {
-  return process.env.DSH_HOME || join(homedir(), ".dsh");
-}
-function presetsSource(root) {
-  const packed = join(root, "presets");
-  return existsSync(packed) ? packed : join(root, "packages", "mpd-bootstrap-plugin", "presets");
-}
-function warn(ctx, message2) {
-  try {
-    if (ctx.logger && typeof ctx.logger.warn === "function")
-      ctx.logger.warn(message2);
-    else
-      console.log("[mpd-bootstrap] " + message2);
-  } catch {}
-}
+// packages/mpd-ext-plugin/src/skill-frontmatter.ts
 function isAbsent(error) {
   const code = error?.code;
   return code === "ENOENT" || code === "ENOTDIR";
-}
-function parseFrontmatter(raw) {
-  const firstLineEnd = raw.indexOf(`
-`);
-  if (firstLineEnd < 0)
-    return;
-  if (raw.slice(0, firstLineEnd).replace(/\r$/, "") !== "---")
-    return;
-  let lineStart = firstLineEnd + 1;
-  let closingStart = -1;
-  let bodyStart = -1;
-  while (lineStart <= raw.length) {
-    const nextNewline = raw.indexOf(`
-`, lineStart);
-    const lineEnd = nextNewline < 0 ? raw.length : nextNewline;
-    if (raw.slice(lineStart, lineEnd).replace(/\r$/, "") === "---") {
-      closingStart = lineStart;
-      bodyStart = nextNewline < 0 ? raw.length : nextNewline + 1;
-      break;
-    }
-    if (nextNewline < 0)
-      return;
-    lineStart = nextNewline + 1;
-  }
-  if (closingStart < 0)
-    return;
-  return { data: parseYamlBlock(raw.slice(firstLineEnd + 1, closingStart)), body: raw.slice(bodyStart) };
 }
 function parseScalar(value) {
   const text = value.trim();
@@ -1155,6 +1118,33 @@ function parseYamlBlock(text) {
   }
   return root;
 }
+function parseFrontmatter(raw) {
+  const firstLineEnd = raw.indexOf(`
+`);
+  if (firstLineEnd < 0)
+    return;
+  if (raw.slice(0, firstLineEnd).replace(/\r$/, "") !== "---")
+    return;
+  let lineStart = firstLineEnd + 1;
+  let closingStart = -1;
+  let bodyStart = -1;
+  while (lineStart <= raw.length) {
+    const nextNewline = raw.indexOf(`
+`, lineStart);
+    const lineEnd = nextNewline < 0 ? raw.length : nextNewline;
+    if (raw.slice(lineStart, lineEnd).replace(/\r$/, "") === "---") {
+      closingStart = lineStart;
+      bodyStart = nextNewline < 0 ? raw.length : nextNewline + 1;
+      break;
+    }
+    if (nextNewline < 0)
+      return;
+    lineStart = nextNewline + 1;
+  }
+  if (closingStart < 0)
+    return;
+  return { data: parseYamlBlock(raw.slice(firstLineEnd + 1, closingStart)), body: raw.slice(bodyStart) };
+}
 function stringField(data, key) {
   const value = data[key];
   return typeof value === "string" && value.length > 0 ? value : undefined;
@@ -1170,28 +1160,48 @@ function frontmatterBoolean(data, key) {
   if (value === 0 || value === "0")
     return false;
   if (typeof value === "string") {
-    switch (value.toLowerCase()) {
-      case "true":
-      case "yes":
-      case "on":
-        return true;
-      case "false":
-      case "no":
-      case "off":
-        return false;
-    }
+    const lower = value.toLowerCase();
+    if (lower === "true" || lower === "yes" || lower === "on")
+      return true;
+    if (lower === "false" || lower === "no" || lower === "off")
+      return false;
   }
   throw new TypeError(`frontmatter field "${key}" must be a boolean`);
 }
 function parseInvocation(data) {
   for (const legacy of ["disableModelInvocation", "modelInvocable", "userInvocable"]) {
-    if (Object.hasOwn(data, legacy))
-      throw new Error(`frontmatter field "${legacy}" is unsupported; use "${legacy === "userInvocable" ? "user-invocable" : "disable-model-invocation"}"`);
+    if (Object.hasOwn(data, legacy)) {
+      const replacement = legacy === "userInvocable" ? "user-invocable" : "disable-model-invocation";
+      throw new Error(`frontmatter field "${legacy}" is unsupported; use "${replacement}"`);
+    }
   }
   return {
     modelInvocable: frontmatterBoolean(data, "disable-model-invocation") !== true,
     userInvocable: frontmatterBoolean(data, "user-invocable") !== false
   };
+}
+
+// packages/mpd-bootstrap-plugin/src/index.ts
+var name = "mpd-bootstrap";
+var inject = ["skills"];
+var PROVIDER_NAME = "mpd-bundle";
+var BUNDLED_SKILL_RANK = 600;
+var SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+var bundleRoot = () => bundleRootOf(import.meta.url);
+function harnessHome() {
+  return process.env.DSH_HOME || join(homedir(), ".dsh");
+}
+function presetsSource(root) {
+  const packed = join(root, "presets");
+  return existsSync(packed) ? packed : join(root, "packages", "mpd-bootstrap-plugin", "presets");
+}
+function warn(ctx, message) {
+  try {
+    if (ctx.logger && typeof ctx.logger.warn === "function")
+      ctx.logger.warn(message);
+    else
+      console.log("[mpd-bootstrap] " + message);
+  } catch {}
 }
 async function readSkillFile(filePath, ctx) {
   let raw;
@@ -1296,7 +1306,7 @@ function createProvider(root, ctx, dsh, invalidate) {
         invocation: parsed.invocation,
         provider: PROVIDER_NAME,
         source: "bundled",
-        resourceBase: candidate.resourceBase ?? { kind: "directory", path: dirname(candidate?.locator?.path ?? "") },
+        resourceBase: candidate.resourceBase ?? { kind: "directory", path: dirname2(candidate?.locator?.path ?? "") },
         path: candidate?.locator?.path,
         ...parsed.metadata !== undefined ? { metadata: parsed.metadata } : {},
         content: parsed.content
@@ -1368,7 +1378,7 @@ function listCorpusSync(root) {
   }
 }
 function apply(ctx, config = {}) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const dsh = resolveDshAdapter(ctx);
   const root = bundleRoot();
   const corpus = config.skillsDir ? config.skillsDir : join(root, "skills");
   const presets = presetsSource(root);

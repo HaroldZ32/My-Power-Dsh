@@ -3,7 +3,7 @@
 // 2) tool-output truncation (post-execute, token budget protection)
 // 3) edit-error recovery guidance (post-execute)
 import { existsSync, readFileSync } from "node:fs"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-tools"
 export const inject = ["tools"]
@@ -13,7 +13,7 @@ type Config = { writeGuard?: boolean; truncateMaxBytes?: number; recoveryHint?: 
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const writeGuard = config.writeGuard ?? true
   const maxBytes = config.truncateMaxBytes ?? 16384
   const recoveryHint = config.recoveryHint ??

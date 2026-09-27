@@ -1,0 +1,108 @@
+$ node scripts/install-profile.mjs --yes --dsh-home /tmp/mpd-ulw-command-ZhnFvZ/dsh-home --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[install-profile] dshHome=/tmp/mpd-ulw-command-ZhnFvZ/dsh-home profile=mpd-headless write=true
+[install-profile] profileDir=/tmp/mpd-ulw-command-ZhnFvZ/dsh-home/profiles/mpd-headless
+[install-profile] homePatch=/tmp/mpd-ulw-command-ZhnFvZ/dsh-home/cordis.patch.yml
+[install-profile] preset row <- /home/haroldzhao/dshProj/my-power-dsh/presets/mpd.patch.yml (verbatim preset-mpd block; NO $DSH_HOME/.agent-presets copy — the row model has no preset root)
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 33 (id-target=2, insert=31)
+- id: agent-preset-registry
+  name: "@deepseek-ai/dsh-agent-preset-registry"
+  config:
+    default: "mpd"
+- id: dsh-tui-agent-preset-registry
+  name: "@deepseek-ai/dsh-agent-preset-registry"
+  config:
+    default: "mpd"
+
+- insert:
+  - id: preset-mpd
+    name: '@deepseek-ai/dsh-agent-preset'
+    config:
+      id: mpd
+      order: 1
+      name: "MPD (Main Working Agent)"
+      description: "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin."
+      plugins:
+        # The `mpd` agent preset: the bundle's main working agent (derived from the
+        # shipped `standard` preset). Conventions carried by this preset:
+        #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
+        #     injected for every project session (see the agent-instructions row below);
+        #  2) tool presentation is native (every row tool exposed directly to the model);
+        #  3) the specialist roster's 11 specialists are NOT presets: they are specialist
+        #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
+        #     templates for the OFFICIAL Agent Teams plugin (`spawn_teammate`; the captain
+        #     takes a member's persona text from mpd_role_persona, and the roster is also
+        #     served as an agent-scoped prompt section by mpd-roles-plugin);
+        #  4) ROW SET = the shipped `standard` preset's. The harness moves capabilities
+        #     between the host plane and the preset plane between releases (the Web
+        #     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
+        #     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
+        #     step with `standard` — a missing row is a missing capability for every mpd
+        #     session. `skills/dsh-qa/scripts/preset-conformance.mjs` checks both the
+        #     row set and every row config against the INSTALLED harness at gate time.
+        #
+        # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+        # standing scope; every session naming it joins by scope parentage, so the
+        # tools and prompt sections registered here cover each joined agent while a
+        # session's own state stays keyed per Session/Agent inside the plugins. The
+        # host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
+        # preset must not own: the registries themselves, the sandbox and approval
+        # stack, persistence, and the model route.
+        #
+        # A service row here MUST sit inside a group carrying an `isolate` realm.
+        # Without one it publishes into the root realm, where it is process-global —
+        # another preset publishing the same name collides, and a host reader would
+        # resolve one preset's instance for every session; `dsh-agent-presets` rejects
+        # that at mount. `true` means an entry-local realm: this standing mount's own
+        # private instance, apart from every other preset's. (A shared label does NOT
+        # pool instances — `provide()` throws on the second 
+
+---
+
+[shipped] $ dsh --profile mpd-headless --patch <overlay> "Reply with exactly: ulw-command-shipped-ok" (cwd /tmp/mpd-ulw-command-ZhnFvZ/ws-shipped)
+[[exit=1]]
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-ulw-command-ZhnFvZ/ws-shipped
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-18538e59-5670-4b1d-aa34-69b2eeb7c3a4" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-18538e59-5670-4b1d-aa34-69b2eeb7c3a4" agentPreset=none
+[ulw-command-probe] LISTED=agent-teams,compact,feedback,goal,mpd,permission,plan,ultrawork,ulw
+[ulw-command-probe] EMPTY={"commandId":"cmd-ed60e5f0-1","kind":"error","text":"usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective"}
+[ulw-command-probe] FILLED={"commandId":"cmd-ed60e5f0-2","kind":"success","text":"ULW activated: qa-ulw-objective-command"}
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+---
+
+[gesture] $ dsh --profile mpd-headless "/ulw qa-ulw-objective-gesture" (cwd /tmp/mpd-ulw-command-ZhnFvZ/ws-gesture)
+[[exit=1]]
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-ulw-command-ZhnFvZ/ws-gesture
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-54a1dc4b-a7f7-4b58-8fd9-690fa93486d1" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-54a1dc4b-a7f7-4b58-8fd9-690fa93486d1" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+

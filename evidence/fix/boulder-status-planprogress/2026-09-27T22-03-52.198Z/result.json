@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-tov-HdOepd",
+  "steps": {
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "expect": {
+      "ok": true,
+      "hits": [
+        ".mpd/boulder.json"
+      ]
+    },
+    "forbid": {
+      "ok": true,
+      "hits": []
+    }
+  }
+}

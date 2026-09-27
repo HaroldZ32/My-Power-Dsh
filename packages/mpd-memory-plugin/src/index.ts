@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { basename, dirname, join, resolve, sep } from "node:path"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-memory"
 export const inject = ["tools"]
@@ -31,7 +31,6 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
   }
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 // Explicit config (memory.dir / memory.agentSlug) wins; otherwise the memory store lives
 // under the CALLING SESSION's workspace (adapter workspaceRoot), never the dsh process cwd.
@@ -141,7 +140,7 @@ function safeMemoryPath(memoryDir: string, name: string): string {
 
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   const cfg = mergedConfig(ctx, config)
   const reflectionEvery = cfg.reflectionEvery ?? 10
 

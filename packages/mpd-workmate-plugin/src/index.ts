@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-workmate"
 export const inject = ["tools", "subagents"]
@@ -83,7 +83,6 @@ const REPORT_SCHEMA = {
   additionalProperties: false
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
 
 function now(): string { return new Date().toISOString() }
 
@@ -570,7 +569,7 @@ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: 
 
 export function apply(ctx: Ctx): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
   // The roster BASE templates come from mpdRoles (mpd-roles-plugin). Resolve the
   // service LAZILY inside tool execution (not at apply time): by the time a tool runs,
   // every bundle plugin has applied, so the sibling-provided mpdRoles service is
