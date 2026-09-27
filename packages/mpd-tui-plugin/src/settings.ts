@@ -46,6 +46,13 @@ import { onService, serviceOf } from "./host.js"
 
 export { SETTINGS_NS }
 
+/**
+ * The ROW ID the harness's settings machinery serves the mpd knobs under: the loader gives the row
+ * `options.id = "mpd-config"` (its `entry.id` is the address `include:mpd-config`). Section values
+ * are resolved against this, not against the retired namespace name.
+ */
+export const SETTINGS_ENTRY = "mpd-config"
+
 /** Re-exported so this package's tests and consumers keep one name for the schema. */
 export { SettingsSchema }
 
@@ -277,7 +284,14 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
 export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
 
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {
-  ns: SETTINGS_NS,
+  // THE SECTION IS KEYED BY THE ENTRY, not by the namespace.
+  //
+  // MEASURED on a live boot (docker/ui, 2026-09-27): the settings machinery is keyed by the loader
+  // entry — `entry.options.id = "mpd-config"`, and `settings.describe()` reports it under
+  // `ns = "mpd-config"` — while this section declared `ns = "mpd"`, a namespace no entry has. The
+  // screen bound no value for any of its 25 rows and rendered `（未设置）` for all of them. The Web
+  // front door had the same defect and the same fix (`configForms.get("mpd-config")`).
+  ns: SETTINGS_ENTRY,
   title: "MPD bundle",
   // The section's own description carries the disclosure ONCE; the 25 rows carry their own
   // sentences and their keys. `title` is the section header the host draws, so the sentence a

@@ -310,7 +310,9 @@ describe("full composition (every service injected)", () => {
     // options at register time (it renders `select` by cycling that frozen list).
     await settle()
     expect(calls.sections).toHaveLength(1)
-    expect(calls.sections[0].ns).toBe("mpd")
+    // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
+    // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
+    expect(calls.sections[0].ns).toBe("mpd-config")
     // 25 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
     // thirteen original mpd knobs plus the twelve team-model slot leaves (4 slots x provider /
     // model / reasoningEffort). The per-field assertions below are the other half of the

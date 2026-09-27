@@ -2815,6 +2815,7 @@ var SETTINGS_KNOBS = [
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
+var SETTINGS_ENTRY = "mpd-config";
 function knobHint2(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
@@ -2921,7 +2922,7 @@ function settingsFields(lists) {
 }
 var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
 var SETTINGS_SECTION = {
-  ns: SETTINGS_NS,
+  ns: SETTINGS_ENTRY,
   title: "MPD bundle",
   descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
   fields: SETTINGS_FIELDS

@@ -370,6 +370,26 @@ an OLD screenshot — `<input>` values never appear in `innerText`, so the text 
 either, and the image I checked was from a run that predated the fix. Check the artifact's TIMESTAMP
 against the run you just did.
 
-WHAT REMAINS (W4c-c): the TUI section still shows `（未设置）` for its rows — it declares fields through
-`tuiSettingsSections` and binds no values — and the retired namespace bridge in `mpd-config` can go
-once both front doors read the entry.
+**W4c-c DONE, verified on the TUI** (`tmux capture-pane`, the same live boot): the section was keyed by
+the retired NAMESPACE (`ns: "mpd"`) while values resolve by ENTRY, so all 25 rows read `（未设置）`. With
+`ns: "mpd-config"` the rows render their real values:
+
+```
+❯ 行内 diff 上限        20000
+  注释检查              [✓ ]
+  Ultrawork 轮数        6
+  记忆后端              ‹ git ›
+  团队状态目录          .mpd/team
+  Boulder 目录          .mpd
+  看门狗启用            [✓ ]
+```
+
+**W4c is complete: BOTH front doors read real values through the harness's own machinery.** The same
+one-line cause — a namespace name where the machinery expects an entry id — was behind the empty Web
+inputs AND the unset TUI rows; it took a live probe of `entry.id` / `entry.options.id` / `describe().ns`
+to see it, because all three strings look plausible.
+
+WHAT REMAINS (W4c-d): the retired namespace BRIDGE in `mpd-config` is now dead weight — it still
+attempts `settings.register` and logs `settings bridge: could not register the "mpd" namespace …` on
+every boot, and `mpd-tui-plugin` still carries the guarded fallback that waits on the same retired
+service. Both can go, and the boot log gets quieter with them.
