@@ -450,10 +450,19 @@
         maxMessageBytes: 32768
         disposalTimeoutMs: 5000
 
+    # THE ROSTER PROVIDER: registers `mpd-roster`, the subagent provider that applies an mpd
+    # teamModels slot route to a teammate. It must be mounted for the redirect below to resolve.
+    - id: mpd-roster-provider
+      name: '@mpd-dsh/mpd/packages/mpd-roster-provider-plugin/dist/index.js'
+      config:
+        baseProvider: spawn
     - id: mpd-tool-agent-team
       name: '@deepseek-ai/dsh-experimental-tool-agent-team'
       config:
-        freshProvider: spawn
+        # POINT THE OFFICIAL TEAM TOOL AT THE ROSTER PROVIDER: this is the whole redirect. The
+        # tool's own `provider` argument is ignored by its implementation, so ROW CONFIG is
+        # the only place a per-member route can be introduced without forking the plugin.
+        freshProvider: mpd-roster
         forkProvider: fork
 
     - id: mpd-ui-agent-team

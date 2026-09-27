@@ -187,6 +187,8 @@ mpd-dsh/
 │   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
 │   ├── mpd-team-tools-plugin/   # the team WORKFLOW the official plugin lacks: staged plan +
 │   │                             #   approval, task contracts with an attempt counter, halt, archive
+│   ├── mpd-roster-provider-plugin/ # per-member model routing for OFFICIAL teammates: registers
+│   │                             #   the `mpd-roster` subagent provider the team tool row points at
 │   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
 │   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (`ctx.tui*` seams, warn-once)
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
@@ -673,12 +675,19 @@ All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus t
   input). A slot that cannot be resolved — a
   missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails the
   corresponding spawn LOUDLY naming the member and the slot, writes no state, and NEVER clamps an
-  effort. **BOUND (measured, 0.1.7-rc.2):** the slot applies to the mpd ONE-SHOT consult paths
-  (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an explicit `agentOptions`. It does NOT apply
-  to a teammate created by the official `spawn_teammate`: `TeamService` forwards only
-  `{ prompt, parent }` to `ctx.subagents.startContinuable`, so a continuable teammate inherits the
-  LEAD's route and no provider, persona or tool filter can be injected for it. State that in a
-  teammate's prompt instead of promising a route (see `docs/plan-0.1.7-adaptation.md` §3).
+  effort. **Team teammates ARE routed, through a provider of this bundle's own (2026-09-27).** The slot
+  applies to the mpd ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
+  explicit `agentOptions`, AND to an official `spawn_teammate` teammate: the harness — unlike its own
+  TeamService — is not the limitation. `TeamService` forwards only `{ prompt, parent }`, but
+  `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into
+  provider/model/reasoningEffort and hands them to the PROVIDER, which is what constructs the run;
+  the provider name is ROW CONFIG (`config.freshProvider`), not a tool argument. So
+  `mpd-roster-provider-plugin` registers the `mpd-roster` provider — it delegates to the
+  composition's own provider and applies the member's slot route — and the bundle points its
+  `mpd-tool-agent-team` row's `freshProvider` at it. IDENTITY is the one thing the team service does
+  not forward, so the routing rule is: **a teammate `description` that NAMES a roster member routes
+  that member; one that does not inherits the Lead's route.** An incomplete slot fails the spawn
+  loudly, naming the member and the slot. See `packages/mpd-roster-provider-plugin/README.md`.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via

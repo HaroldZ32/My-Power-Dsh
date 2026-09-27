@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/roster-provider-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Per-member model routing for OFFICIAL Agent Teams teammates: registers the `mpd-roster` subagent provider, which delegates to the composition's own provider and applies the member's mpd teamModels slot route. No fork of the official plugin.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

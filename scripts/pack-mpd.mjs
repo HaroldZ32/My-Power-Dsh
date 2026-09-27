@@ -99,6 +99,9 @@ const PLUGIN_PKGS = [
   // mpd-team-tools-plugin is MOUNTED by the bundle patch (row `mpd-team-tools`): the
   // staged-plan / task-contract / halt workflow around the official team runtime.
   "mpd-team-tools-plugin",
+  // mpd-roster-provider-plugin is MOUNTED by the bundle patch (row `mpd-roster-provider`):
+  // the per-member subagent provider the official team tool is pointed at.
+  "mpd-roster-provider-plugin",
   // mpd-ext-plugin is MOUNTED by the bundle patch (row `mpd-ext`) and was missing
   // from this list: the packed tree would omit `packages/mpd-ext-plugin/dist/` while
   // `npm run pack` still exited 0, and the packed boot would die ERR_MODULE_NOT_FOUND
