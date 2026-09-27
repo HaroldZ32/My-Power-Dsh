@@ -943,6 +943,10 @@ export interface DshAdapter {
    * unread count possible.
    */
   subscribeAgentEvents(agent: unknown, events: readonly string[], handler: (event: string, payload: unknown) => void): () => void
+  /** The harness web server, probed tolerantly; see the implementation for the two names it tries. */
+  webServerOf(): unknown
+  /** Run `callback` when one of `names` binds (or rebinds) as a service; returns a disposer. */
+  onServiceBound(names: readonly string[], callback: (name: string) => void): () => void
   registerAgentPreStep(
     agent: unknown,
     listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
@@ -2033,6 +2037,45 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot register its agent/pre-step listener")
       }
       return context.on("agent/pre-step", preStepWrapper(listener))
+    },
+
+    /**
+     * The harness WEB SERVER, probed tolerantly, or `undefined` when this composition has none.
+     *
+     * `webServer` is the current service name and `httpServer` the older one; both are tried, and a
+     * probing failure means "not bound yet", never a reason to take a row down. Callers register their
+     * routes on the returned object and should re-register through
+     * {@link DshAdapter.onServiceBound}, because the service can be provided AFTER the row applies.
+     */
+    webServerOf(): unknown {
+      try {
+        if (typeof ctx?.get !== "function") return undefined
+        return ctx.get("webServer", false) ?? ctx.get("httpServer", false)
+      } catch {
+        return undefined
+      }
+    },
+
+    /**
+     * Run `callback` when the harness binds (or REBINDS) one of `names` as a service.
+     *
+     * `internal/service` is cordis's own binding event, so this re-enters on every later bind and a
+     * route registered here can never be silently lost to a provider that started after the row.
+     *
+     * @param names - service names to watch, e.g. `["webServer", "httpServer"]`.
+     * @param callback - invoked with the name that bound.
+     * @returns a disposer removing the subscription.
+     */
+    onServiceBound(names: readonly string[], callback: (name: string) => void): () => void {
+      if (typeof ctx?.on !== "function") return () => {}
+      const off = ctx.on("internal/service", (name: unknown) => {
+        try {
+          if (typeof name === "string" && names.includes(name)) callback(name)
+        } catch {
+          /* a throwing listener must not break the runtime's own binding dispatch */
+        }
+      })
+      return typeof off === "function" ? off : () => {}
     },
 
     /**

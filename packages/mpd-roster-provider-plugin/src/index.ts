@@ -102,12 +102,17 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
 
   const configBaseName = typeof config.baseProvider === "string" && config.baseProvider !== "" ? config.baseProvider : "spawn"
 
-  /** The composition's own provider: what a delegation actually delegates TO. */
+  /**
+   * The composition's own provider: what a delegation actually delegates TO.
+   *
+   * Through the ADAPTER (`subagentProvider`), never `ctx.get("subagents")`: the provider registry is
+   * a harness seam, and this plugin would otherwise be a second place that has to change when the
+   * harness reshapes it.
+   */
   const baseProvider = (): ProviderLike | undefined => {
     try {
-      const subagents = typeof ctx?.get === "function" ? ctx.get("subagents") : undefined
       const configured = typeof configBaseName === "string" && configBaseName !== "" ? configBaseName : "spawn"
-      const found = subagents?.getProvider?.(configured)
+      const found = dsh.subagentProvider(configured)
       return found === undefined || found === null ? undefined : (found as ProviderLike)
     } catch {
       return undefined

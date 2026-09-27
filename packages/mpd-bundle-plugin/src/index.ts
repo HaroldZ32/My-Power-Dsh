@@ -71,17 +71,25 @@ function stateDirResolver(ctx: any): () => string {
  * re-entered on every later bind and the routes can never be silently lost.
  * `httpServer` stays a fallback name (older hosts bind the same surface there).
  */
-function webServerOf(ctx: any): any {
-  try {
-    if (typeof ctx?.get !== "function") return undefined
-    return ctx.get("webServer", false) ?? ctx.get("httpServer", false)
-  } catch {
-    // A probing failure is "not bound yet", never a reason to take the row down.
-    return undefined
+function webServerOf(dsh: any, ctx: any): any {
+  // THROUGH THE ADAPTER. The web-server service is a harness seam like any other, and this row was
+  // the last place in the bundle reading it directly; the adapter owns the two names it may bind
+  // under and the tolerant probe.
+  if (dsh !== undefined && typeof dsh.webServerOf === "function") {
+    try {
+      return dsh.webServerOf()
+    } catch {
+      return undefined
+    }
   }
+  return undefined
 }
 
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+
 function apply(ctx: any): void {
+  // The adapter, resolved the way every other mpd row resolves it (AGENTS.md §6).
+  const dsh: any = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   let registered = false
   /**
    * Bind the watchdog routes to the web server; retried until one answers.
@@ -91,7 +99,7 @@ function apply(ctx: any): void {
     if (registered) return true
     // No web server (headless, CLI) and no effect seam both keep this a marker plugin.
     if (typeof ctx?.effect !== "function") return false
-    const webServer = webServerOf(ctx)
+    const webServer = webServerOf(dsh, ctx)
     if (webServer === undefined || typeof webServer.register !== "function") return false
     const workspace = workspaceResolver(ctx)
     const result = registerWatchdogRoutes(webServer, {
@@ -108,10 +116,10 @@ function apply(ctx: any): void {
     return true
   }
   registerRoutes()
-  if (typeof ctx?.on === "function") {
-    ctx.on("internal/service", (serviceName: string) => {
-      if (serviceName === "webServer" || serviceName === "httpServer") registerRoutes()
-    })
+  // The REBIND subscription goes through the adapter too: `internal/service` is the runtime's own
+  // binding event, and the adapter owns which service names count as "the web server".
+  if (dsh !== undefined && typeof dsh.onServiceBound === "function") {
+    dsh.onServiceBound(["webServer", "httpServer"], () => { registerRoutes() })
   }
 }
 

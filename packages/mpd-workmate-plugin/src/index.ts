@@ -804,7 +804,9 @@ export function apply(ctx: Ctx): void {
   let webRegistered = false
   const registerWebSurface = () => {
     if (webRegistered) return
-    const webServer = (ctx.get ? ctx.get("webServer") : undefined) ?? (ctx.get ? ctx.get("httpServer") : undefined)
+    // THROUGH THE ADAPTER (AGENTS.md §6): the web server is a harness seam, and the adapter owns the
+    // two names it may bind under plus the tolerant probe.
+    const webServer = typeof dsh.webServerOf === "function" ? dsh.webServerOf() : undefined
     if (webServer === undefined || typeof ctx.effect !== "function") return
     webRegistered = true
     // Every workmate response carries the shared wire headers (§D).
@@ -923,8 +925,8 @@ export function apply(ctx: Ctx): void {
   }
   registerWebSurface()
   if (typeof ctx.on === "function") {
-    ctx.on("internal/service", (n: string) => {
-      if (n === "webServer" || n === "httpServer") registerWebSurface()
-    })
+    // The REBIND subscription goes through the adapter as well: `internal/service` is the runtime's
+    // own binding event and the adapter owns which names count as "the web server".
+    dsh.onServiceBound(["webServer", "httpServer"], () => { registerWebSurface() })
   }
 }

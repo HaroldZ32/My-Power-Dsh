@@ -536,6 +536,26 @@ function createDshAdapter(ctx, config = {}) {
       }
       return context.on("agent/pre-step", preStepWrapper(listener));
     },
+    webServerOf() {
+      try {
+        if (typeof ctx?.get !== "function")
+          return;
+        return ctx.get("webServer", false) ?? ctx.get("httpServer", false);
+      } catch {
+        return;
+      }
+    },
+    onServiceBound(names, callback) {
+      if (typeof ctx?.on !== "function")
+        return () => {};
+      const off = ctx.on("internal/service", (name) => {
+        try {
+          if (typeof name === "string" && names.includes(name))
+            callback(name);
+        } catch {}
+      });
+      return typeof off === "function" ? off : () => {};
+    },
     subscribeAgentEvents(agent, events, handler) {
       const context = scopeContextOf(agent);
       if (typeof context?.on !== "function") {

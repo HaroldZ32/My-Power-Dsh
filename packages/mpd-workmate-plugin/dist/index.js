@@ -534,6 +534,26 @@ function createDshAdapter(ctx, config = {}) {
       }
       return context.on("agent/pre-step", preStepWrapper(listener));
     },
+    webServerOf() {
+      try {
+        if (typeof ctx?.get !== "function")
+          return;
+        return ctx.get("webServer", false) ?? ctx.get("httpServer", false);
+      } catch {
+        return;
+      }
+    },
+    onServiceBound(names, callback) {
+      if (typeof ctx?.on !== "function")
+        return () => {};
+      const off = ctx.on("internal/service", (name) => {
+        try {
+          if (typeof name === "string" && names.includes(name))
+            callback(name);
+        } catch {}
+      });
+      return typeof off === "function" ? off : () => {};
+    },
     subscribeAgentEvents(agent, events, handler) {
       const context = scopeContextOf(agent);
       if (typeof context?.on !== "function") {
@@ -1679,7 +1699,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
   const registerWebSurface = () => {
     if (webRegistered)
       return;
-    const webServer = (ctx.get ? ctx.get("webServer") : undefined) ?? (ctx.get ? ctx.get("httpServer") : undefined);
+    const webServer = typeof dsh.webServerOf === "function" ? dsh.webServerOf() : undefined;
     if (webServer === undefined || typeof ctx.effect !== "function")
       return;
     webRegistered = true;
@@ -1816,9 +1836,8 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
   };
   registerWebSurface();
   if (typeof ctx.on === "function") {
-    ctx.on("internal/service", (n) => {
-      if (n === "webServer" || n === "httpServer")
-        registerWebSurface();
+    dsh.onServiceBound(["webServer", "httpServer"], () => {
+      registerWebSurface();
     });
   }
 }

@@ -49,6 +49,41 @@ export const FORBIDDEN_IDENTIFIERS = ["agentTeams", "startContinuable"]
  * (`internal/service`, `internal/ready`) are the plugin framework's own registry signals,
  * not a harness seam, and are deliberately NOT listed.
  */
+/**
+ * EVERY harness SERVICE seam, not just the team plane.
+ *
+ * AGENTS.md §6 makes `mpd-dsh-adapter` "the ONE file allowed to touch a harness service directly, so
+ * a harness release that renames or reshapes a seam is absorbed there instead of across every plugin".
+ * The team-only rule this file started as caught the team plane and MISSED the rest: a scan of the
+ * whole tree (comments and string literals stripped) found `ctx.get("webServer")` in two plugins, so
+ * the rule is stated for the class rather than for the one service it was written about.
+ *
+ * A name in this list is a violation in a SERVER source (a `.ts` file in a package's `src` tree), either as
+ * `ctx.<name>` or as `ctx.get("<name>")`. This bundle's OWN services (`mpdDsh`, `mpdRoles`,
+ * `mpdConfig`, `mpdWatchdog`, `mpdExtensions`) are deliberately NOT listed: they are the bundle's own
+ * contract and reading them from a row is how the rows cooperate.
+ *
+ * The CLIENT plane is out of scope and stays the DECLARED out-of-band set this file already reports:
+ * a browser bundle has no `ctx.get("mpdDsh")` to reach, so `ctx.slots` / `ctx.locale` /
+ * `ctx.sidebarRight` / `ctx.configForms` in a package's client `.js` sources are printed in the NOT COVERED
+ * section, never silently passed.
+ */
+export const FORBIDDEN_SERVICE_NAMES = [
+  "tools",
+  "subagents",
+  "skills",
+  "agentPresets",
+  "agents",
+  "commands",
+  "settings",
+  "webServer",
+  "httpServer",
+  "sessions",
+  "compaction",
+  "agentTeams",
+  "loader",
+]
+
 export const FORBIDDEN_EVENT_NAMES = [
   "agent/pre-step",
   "agent/session-start",
@@ -218,6 +253,30 @@ export function scanDirectTeamAccess(repoRoot = REPO_ROOT) {
           }
         }
       }
+      // The SERVICE rule: a harness service read on a raw ctx, outside the adapter — as
+      // `ctx.<name>` or as the string form `ctx.get("<name>")`, which is the same violation
+      // spelled differently.
+      for (let index = 0; index < stripped.length; index += 1) {
+        for (const seam of FORBIDDEN_SERVICE_NAMES) {
+          // ONE REPORT PER VIOLATION. A line can satisfy two rules at once
+          // (`ctx.subagents.startContinuable` is an identifier hit AND a service read), and a line
+          // counted twice makes every count in this file meaningless. The FIRST rule to match owns
+          // the line; the rest skip it.
+          if (findings.some((finding) => finding.file === relPath && finding.line === index + 1)) continue
+          const direct = new RegExp(`\\bctx\\s*\\.\\s*${seam}\\b`)
+          // \x60 is the backtick: a template literal cannot carry one unescaped.
+          const viaGet = new RegExp(`\\bctx\\s*\\.\\s*get\\s*\\(\\s*["'\x60]${seam}["'\x60]`)
+          if (direct.test(stripped[index]) || viaGet.test(stripped[index])) {
+            findings.push({
+              file: relPath,
+              line: index + 1,
+              identifier: `ctx.${seam} — read it through dsh (mpd-dsh-adapter)`,
+              text: (original[index] ?? "").trim(),
+            })
+          }
+        }
+      }
+
       // The event rule: a SUBSCRIPTION to a harness event, on a raw ctx, outside the
       // adapter. `ctx.on("…")` / `ctx.on?.("…")` / `this.ctx.on(…)` all match; a mention
       // inside a string or a comment was already stripped or is not a call.
@@ -284,6 +343,15 @@ export function selfTest() {
     write("packages/mpd-fixture/src/nested/deep.ts", [
       "export async function spawn(ctx, spec) {",
       "  return ctx.subagents.startContinuable(spec)",
+      "}",
+      "",
+    ].join("\n"))
+    // 1b. A SERVICE read the identifier rule cannot see at all: `webServer` is a harness seam and
+    // reaching it outside the adapter is the class this rule was added for (measured: two plugins
+    // did exactly this). It must redden, or the rule is decoration.
+    write("packages/mpd-fixture/src/service-seam.ts", [
+      "export function apply(ctx) {",
+      '  return ctx.get("webServer")',
       "}",
       "",
     ].join("\n"))
@@ -367,8 +435,11 @@ export function selfTest() {
         detail: "only packages/mpd-* is scanned",
       },
       {
-        name: "exactly the four seeded findings are reported",
-        ok: result.findings.length === 4,
+        // FIVE seeded violations, one report each: two identifier hits (agentTeams, and
+        // subagents.startContinuable nested), the STRING form of a forbidden identifier, a raw event
+        // subscription, and a raw SERVICE read the identifier rule cannot see at all.
+        name: "exactly the five seeded findings are reported, one per violation",
+        ok: result.findings.length === 5,
         detail: `got ${result.findings.length}: ${result.findings.map((finding) => `${finding.file}:${finding.line}`).join(", ")}`,
       },
       {
@@ -391,7 +462,7 @@ export function selfTest() {
         // by name and `not-mpd` is outside the `mpd-*` band. SIX .ts files (the two event
         // fixtures joined the original four); `legacy.js` is out of band and is counted
         // under NOT COVERED instead.
-        ok: result.packages === 1 && result.files === 6,
+        ok: result.packages === 1 && result.files === 7,
         detail: `packages=${result.packages} files=${result.files}`,
       },
     ]
