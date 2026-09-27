@@ -79,6 +79,16 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     refuses to let a token shape survive into them (`evidenceScrubbed`; a leak reddens the verdict and
     rewrites both files with targeted scrubbing).
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
+15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
+    exercise, because the TUI host must be installed from npm into a writable global prefix and booted
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.11.1` (the first dsh-tui release whose
+    peer ranges include `0.1.7-rc.2`), installs THIS bundle into the `dsh-tui` profile as the third
+    patch layer, and records eleven assertions: host install, both `plugin add` calls, composition,
+    **the TUI's own scoped registry row carrying `default: mpd`**, the `preset-mpd` / `mpd-tui` /
+    official-team rows, a real tmux PTY boot reaching the chat screen, no fatal signature, and the
+    preset the created session ACTUALLY ran — read from the harness's own session store
+    (`agentPreset: "mpd"`), never from the pane. A `standard`-preset default would leave the TUI
+    booting a preset that composition does not declare, so this is a real acceptance, not a smoke.
 
 ## What it proves — and what it does NOT
 

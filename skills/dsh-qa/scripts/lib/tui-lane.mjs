@@ -7,7 +7,7 @@
 //     plus a `pipe-pane` raw ANSI log;
 //   • a tmux server does not survive across shell invocations, so ONE process owns
 //     the whole lifecycle (spawn, drive, capture, kill);
-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.10.1` needs
+//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.11.1` needs
 //     network on first run, so the lanes take an EXPLICIT sandbox/cache root
 //     (`--sandbox-root`, recorded in every result) and reuse a warm profile instead
 //     of reinstalling: a verification run that is handed a different root proves it
@@ -515,7 +515,7 @@ export function emitMarker(kind, slug, reason, probe, remedy) {
 /** Declared prerequisites, in check order. */
 export function tuiPrereqs({ sandboxPresent }) {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.10.1", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
     { code: "absent-fixture", probe: "tui profile in the sandbox root", remedy: "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install", present: sandboxPresent },
   ]

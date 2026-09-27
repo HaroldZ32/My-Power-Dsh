@@ -3676,7 +3676,7 @@ function report(text) {
     console.warn("[mpd-team-watchdog] " + text);
   } catch {}
 }
-function subscribe(ctx, event, handler) {
+function subscribe(dsh, event, handler) {
   try {
     const wrapped = (...args) => {
       try {
@@ -3686,7 +3686,7 @@ function subscribe(ctx, event, handler) {
         return;
       }
     };
-    const disposer = ctx.on?.(event, wrapped);
+    const disposer = dsh.onEvent(event, wrapped);
     if (typeof disposer === "function")
       return disposer;
     if (disposer !== undefined && typeof disposer.dispose === "function") {
@@ -3929,8 +3929,8 @@ class WatchdogEngine {
   install() {
     const disposers = [];
     const agentOf = (payload) => payload?.agent;
-    if (typeof this.ctx.on === "function") {
-      disposers.push(subscribe(this.ctx, "agent/pre-step", (payload, next) => {
+    if (typeof this.dsh.onEvent === "function") {
+      disposers.push(subscribe(this.dsh, "agent/pre-step", (payload, next) => {
         try {
           this.stamp("step", agentOf(payload));
         } catch (error) {
@@ -3938,17 +3938,17 @@ class WatchdogEngine {
         }
         return typeof next === "function" ? next() : undefined;
       }));
-      disposers.push(subscribe(this.ctx, "agent/session-start", (payload) => {
+      disposers.push(subscribe(this.dsh, "agent/session-start", (payload) => {
         this.stamp("turn-start", agentOf(payload) ?? payload);
       }));
-      disposers.push(subscribe(this.ctx, "agent/turn-stopping", (payload) => {
+      disposers.push(subscribe(this.dsh, "agent/turn-stopping", (payload) => {
         const stamp = this.stamp("turn-end", agentOf(payload) ?? payload);
         const rotated = rotateHeartbeats(stamp.workspace, this.config.stateDir, stamp.memberKey, this.config.keepGenerations);
         if (rotated.rotated)
           this.stats.rotations += 1;
       }));
     } else {
-      this.warn("this context exposes no event seam — heartbeat writers not installed");
+      this.warn("the adapter exposes no event seam — heartbeat writers not installed");
     }
     if (typeof this.dsh.onEvent === "function") {
       const offSession = this.dsh.onEvent("session/event", (session, event) => {

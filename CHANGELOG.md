@@ -4,6 +4,38 @@ Human-readable release notes. Format: one section per released version, newest f
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
 
+## v0.10.2 — the TUI plane, and two adapter event gaps
+
+A review round asked three questions: is the agent-team surface smaller than before, are ALL of its
+harness interfaces on the adapter, and does the TUI edition actually work. The first two are answered
+in `docs/plan-0.1.7-adaptation.md` §8 (the capability delta, honestly listed) and §9 (the coverage
+audit); the third found a real regression, and the audit found two real gaps.
+
+**Fixed.**
+
+- **A `dsh-tui` profile defaulted every session to a preset its composition does not declare.** The
+  harness moved preset selection to a registry row and this bundle targeted the web plane's
+  `agent-preset-registry` — but `dsh-tui` mints its OWN scoped row (`dsh-tui-agent-preset-registry`,
+  stock `default: standard`), and a TUI profile composes no `dsh-web-app` layer, so the web target is
+  skipped there while nothing declares `standard`. A second id-target on the scoped TUI row restores
+  user decision D10. The QA pin moves to `@deepseek-harness-tui/dsh-tui@0.11.1`, the first release
+  whose peer ranges include `0.1.7-rc.2`.
+- **Two harness-event subscriptions bypassed the adapter** — `mpd-team-watchdog-plugin`'s
+  `agent/pre-step` / `agent/session-start` / `agent/turn-stopping` and `mpd-bootstrap-plugin`'s
+  `fs/observed`, all on a raw ctx while neighbouring subscriptions already used `dsh.onEvent`. Both
+  are rebased, and the D6 gate gained an event-name rule family so the class cannot return.
+- A patch COMMENT that named `disabled: !!js` could displace the real scalar in
+  `sidebar-guard-profile-dir.test.mjs` and kill the run in `JSON.parse`; the finder now accepts only
+  a candidate that really parses.
+
+**Added.**
+
+- The DSH-TUI edition is now exercised END TO END in the Docker client test
+  (`docker/tui-lane.sh`): it installs the TUI host, installs this bundle into the `dsh-tui` profile as
+  the third patch layer, boots the REAL TUI on a real tmux PTY, and reads the preset the created
+  session ACTUALLY ran from the harness's own session store — `agentPreset: "mpd"`. 11 assertions,
+  reported as `passed=42 failed=0 null=1` by the driver.
+
 ## v0.10.1 — the session-start gate really fires
 
 Two functional defects were measured AFTER v0.10.0 was tagged, by lanes whose verification went deeper

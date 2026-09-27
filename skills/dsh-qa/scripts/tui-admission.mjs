@@ -15,7 +15,7 @@
 // no grant row — `negotiate()` → PERMISSION_NOT_GRANTED). The
 // invalid-json / schema-failed / semantic-invalid / spec-unavailable family FAILS.
 //
-// PREREQ: absent-runtime dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.10.1"
+// PREREQ: absent-runtime dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install"
 //
 // Usage:

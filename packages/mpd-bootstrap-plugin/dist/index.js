@@ -1219,7 +1219,7 @@ async function listCorpus(root) {
   }
   return found;
 }
-function createProvider(root, ctx, invalidate) {
+function createProvider(root, ctx, dsh, invalidate) {
   const provider = {
     name: PROVIDER_NAME,
     async list() {
@@ -1262,15 +1262,19 @@ function createProvider(root, ctx, invalidate) {
       };
     }
   };
-  if (typeof ctx.on === "function") {
-    ctx.on("fs/observed", (target, _observation, actor) => {
-      const toolName = actor?.name;
-      if (toolName !== "edit" && toolName !== "write")
-        return;
-      const displayPath = typeof target?.displayPath === "string" ? target.displayPath : undefined;
-      if (displayPath === undefined || !displayPath.startsWith(root))
-        return;
-      invalidate();
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("fs/observed", (target, _observation, actor) => {
+      try {
+        const toolName = actor?.name;
+        if (toolName !== "edit" && toolName !== "write")
+          return;
+        const displayPath = typeof target?.displayPath === "string" ? target.displayPath : undefined;
+        if (displayPath === undefined || !displayPath.startsWith(root))
+          return;
+        invalidate();
+      } catch (error) {
+        console.warn("[mpd-bootstrap] fs/observed invalidation failed (the observation is unaffected): " + String(error?.message ?? error));
+      }
     });
   }
   return provider;
@@ -1334,7 +1338,7 @@ function apply(ctx, config = {}) {
   if (config.skipSkills === true) {
     console.log("[mpd-bootstrap] skill corpus provider skipped (config)");
   } else {
-    dsh.registerSkillProvider((control) => createProvider(corpus, ctx, () => control?.invalidate?.()));
+    dsh.registerSkillProvider((control) => createProvider(corpus, ctx, dsh, () => control?.invalidate?.()));
     console.log("[mpd-bootstrap] skill corpus served from " + corpus + " (provider " + PROVIDER_NAME + ", bundle " + version + ")");
   }
   if (config.skipLegacyCleanup === true) {

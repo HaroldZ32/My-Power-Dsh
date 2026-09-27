@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.10.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install"
 //
@@ -132,7 +132,7 @@ function real() {
   let installAttempt
   if (wantsInstall) {
     say("installing the host into the sandbox profile (network required): " + root)
-    const host = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", "@deepseek-harness-tui/dsh-tui@0.10.1"], { timeoutMs: 900_000 })
+    const host = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", "@deepseek-harness-tui/dsh-tui@0.11.1"], { timeoutMs: 900_000 })
     say("host install exit=" + host.status)
     const bundle = runInSandbox(root, "dsh", ["plugin", "--profile", "dsh-tui", "add", REPO], { timeoutMs: 900_000 })
     say("bundle install exit=" + bundle.status)

@@ -35,6 +35,11 @@ IMAGE="${MPD_E2E_IMAGE:-mpd-docker-e2e:local}"
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
 DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.1.7-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
+# The DSH-TUI host. 0.11.1 is the FIRST dsh-tui release whose peer ranges include
+# 0.1.7-rc.2 (0.10.1 and 0.10.2 stop at 0.1.5-rc.1), so it is the only pin that can
+# boot the TUI against the harness this bundle targets.
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.11.1}"
+export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
 
@@ -230,11 +235,11 @@ log "----- apt: curl git ca-certificates unzip xz-utils -----"
 run_step 01-apt-update apt-get update
 APT_UPDATE=$STEP_CODE
 run_step 01-apt-install env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  curl git ca-certificates unzip xz-utils
+  curl git ca-certificates unzip xz-utils tmux
 APT_INSTALL=$STEP_CODE
 fact aptSeconds "$(awk -F'\t' '$1 ~ /^01-apt/ {s+=$3} END {print s+0}' "$STEPS_INDEX" 2>/dev/null || echo "?")"
 if [ "$APT_UPDATE" -eq 0 ] && [ "$APT_INSTALL" -eq 0 ]; then
-  record toolchain.apt true "apt-get update + install curl git ca-certificates unzip xz-utils" "exit=$APT_UPDATE/$APT_INSTALL"
+  record toolchain.apt true "apt-get update + install curl git ca-certificates unzip xz-utils tmux" "exit=$APT_UPDATE/$APT_INSTALL"
 else
   record toolchain.apt false "apt-get failed (update=$APT_UPDATE install=$APT_INSTALL)" \
     "$(witness "$STEPS_DIR/01-apt-update.log" '^(E:|Err:|W: Failed)' 3) $(witness "$STEPS_DIR/01-apt-install.log" '^(E:|Err:)' 3)"
@@ -767,12 +772,33 @@ else
   record isolation.noCredentials false "a credential file carries a secret-shaped value (AGENTS.md §10)" "$CRED_MATERIAL"
 fi
 
-# ── 12. the assertion that cannot be made here, stated instead of faked ───────
+# ── 12. the DSH-TUI edition: the profile a developer host cannot exercise ─────
+# The TUI host must be installed from npm and booted on a REAL PTY, and this machine's
+# sandbox cannot write a global npm prefix — so the container is the only place the TUI
+# profile can be exercised end to end. docker/tui-lane.sh records its own verdicts; a
+# missing tmux or a failed boot lands as `false`, never as a silent skip.
+log "===== STEP 12-tui ====="
+# `|| TUI_STEP=$?` rather than `set +e`: the ERR trap fires on a bare non-zero command even
+# with errexit off, so a plain `set +e` around a step that is EXPECTED to be allowed to
+# fail would abort the whole run (measured 2026-09-27: the TUI step returned non-zero and
+# the trap turned it into "unexpected shell failure", hiding the step's own log).
+TUI_STEP=0
+# The lane is a SEPARATE process: every path it needs is passed explicitly, because a
+# shell variable is not inherited by a child unless it is exported (measured 2026-09-27:
+# "STATE_FILE: parameter null or not set" at the lane's first line).
+STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$WORK_DIR" \
+  TUI_VERSION="$TUI_VERSION" DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" \
+  npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
+  bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/12-tui.log" 2>&1 || TUI_STEP=$?
+cat "$STEPS_DIR/12-tui.log" || true
+append_step 12-tui "$TUI_STEP" 0 "12-tui.log" "bash docker/tui-lane.sh"
+
+# ── 13. the assertion that cannot be made here, stated instead of faked ───────
 record boot.llmTurn null \
   "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum." \
   "no credentials staged by design"
 
-# ── 13. pin the state the run measured (§7: quote a hash with its measurement moment) ──
+# ── 14. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {
   sha256sum "$APP_DIR/package.json" "$APP_DIR/packages/mpd-bundle/cordis.patch.yml" 2>/dev/null || true
   [ -f "$APP_DIR/presets/mpd.patch.yml" ] && sha256sum "$APP_DIR/presets/mpd.patch.yml" || true

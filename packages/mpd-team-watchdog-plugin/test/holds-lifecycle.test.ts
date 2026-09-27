@@ -29,7 +29,7 @@ import { dependencyBlocked } from "../src/team"
 import { agent, openOutstandingChannel, pluginCtx, sandbox, stubAdapter, teamViews, testConfig, writeTeam, type Sandbox, type StubAdapter } from "./support"
 
 /** The engine context a direct construction needs. */
-function stubCtx(): EngineContext {
+function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): EngineContext {
   return { on: () => () => {} } as unknown as EngineContext
 }
 
@@ -52,7 +52,7 @@ function stamp(at: number, overrides: Partial<HeartbeatStamp> = {}): HeartbeatSt
 /** Mount an engine on the stub adapter. */
 function mount(box: Sandbox, overrides: Partial<Parameters<typeof testConfig>[0]> = {}) {
   const stub = stubAdapter({ workspace: box.workspace })
-  const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir, ...overrides }))
+  const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir, ...overrides }))
   const disposers = engine.install()
   return { stub, engine, dispose: () => { for (const off of disposers) off() } }
 }

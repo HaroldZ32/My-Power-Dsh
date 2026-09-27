@@ -10,7 +10,7 @@ import { readHeartbeats } from "../src/store"
 
 import { agent, sandbox, stubAdapter, teamRecordOf, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
-function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
+function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
 
@@ -199,7 +199,7 @@ describe("an unwritable scene location", () => {
       writeFileSync(join(sceneRoot, "scene"), "not a directory\n")
 
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.install()
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
