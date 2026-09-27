@@ -77,5 +77,24 @@ driver learns to clear them so the review below them is possible.
 
 - Observation environment: DONE and committed (`docker/ui/**`, screenshots under `docker/ui/out/shots/`).
 - F1/F2/F3: measured, recorded here.
-- W1–W5: not started in code. `docs/plan-0.1.7-adaptation.md` §8 stays the source of truth for the
-  capability list W1 restores.
+- W2 first slice: `packages/mpd-bundle-plugin/src/team-sidebar.js` registers a PAGE type in the
+  HARNESS's right sidebar (`ctx.sidebarRightTabs` + the `sidebar.right.pane.tab` seat) and renders the
+  Lead Session's `agentTeam` projection as a team-progress view. Composed into the bundle client by
+  `scripts/build-mpd-client.mjs` (client.js grew to 318151 bytes, parses, 3 references).
+  **RENDER NOT YET VERIFIED** — see the blocker below.
+- W1, W3, W4: not started in code.
+
+### The verification blocker, named exactly
+
+The tab cannot be seen yet because the container's browser cannot reach a session with a team:
+
+1. a session created through `session/create` with `cwd=/data/ws` does NOT appear under Sessions
+   until `/data/ws` is a registered **Workspace**;
+2. the UI's own add-workspace path opens a native directory picker, which a headless run cannot drive;
+3. the client service is `ctx.workspaces.create(input)`, a Remote — not reachable from outside the app,
+   and the persisted store (`<DSH_HOME>/storages/workspace.json`) is `{global:{workspaceIds:[]},
+   tables:{workspaces:{}}}` with a record shape not yet confirmed.
+
+Next step, in order: confirm the workspace record shape (or the Remote's HTTP route) → seed `/data/ws`
+→ open the session → open the right sidebar → capture, and only THEN judge the tab. Until that
+happens this file claims nothing about how the tab looks.
