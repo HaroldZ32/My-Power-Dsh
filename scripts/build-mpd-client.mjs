@@ -64,8 +64,10 @@ const out = agentTeamsClient
   + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/team-page\", factory: " + teamPageFactory + " });\n"
   + "\n// ==== @mpd-dsh/settings-card: the mpd settings card (t35, additive + isolated) ====\n"
   + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/settings-card\", factory: " + settingsCardFactory + " });\n"
-  + "\n// ==== @mpd-dsh/team-sidebar: the Team tab in the HARNESS right sidebar ====\n"
-  + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/team-sidebar\", factory: " + teamSidebarFactory + " });\n"
+  // The Team tab for the harness right sidebar is spliced into the @mpd-dsh/mpd module
+  // itself (see src/web-client.js): only THAT module is APPLIED as a client plugin, while a
+  // sibling load() block is registered as a module and never applied — measured by adding
+  // one and watching the guide render no entry for it.
   + "\n// ==== @mpd-dsh/mpd bundled client: team page + workmate library ====\n"
   + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/mpd\", factory: " + webClientFactory + " });\n"
 writeFileSync(join(repoRoot, "packages", "mpd-bundle-plugin", "client.js"), out)

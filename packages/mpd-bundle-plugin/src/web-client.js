@@ -724,6 +724,145 @@
     return { mountSettingsCard: () => false };
   }
 
+  const h = react.createElement;
+  const TEAM_TAB_ID = "@mpd-dsh/team-sidebar";
+  const TEAM_TAB_KIND = "mpd-team";
+
+  /** Status → the colour a reader must be able to tell apart at a glance. */
+  const STATUS_COLOR = {
+    running: "#22a06b",
+    active: "#22a06b",
+    completed: "#22a06b",
+    provisioning: "#c98a12",
+    in_progress: "#2f6fed",
+    inactive: "#8a8f98",
+    pending: "#8a8f98",
+    failed: "#d64545",
+    deleted: "#c9ccd1",
+  };
+
+  const dim = { color: "var(--dsh-color-text-secondary, #8a8f98)", fontSize: "11px" };
+  const ellipsis = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 };
+  const rowStyle = { display: "flex", alignItems: "center", gap: "8px", padding: "5px 0", minWidth: 0 };
+  const dot = (color) => ({ width: "7px", height: "7px", borderRadius: "50%", flex: "0 0 auto", background: color });
+  const chip = (color) => ({
+    display: "inline-block", padding: "0 6px", borderRadius: "9px", fontSize: "10px", lineHeight: "16px",
+    border: "1px solid " + color, color, whiteSpace: "nowrap", flex: "0 0 auto",
+  });
+
+  /**
+   * The tab body: roster + shared task board + a completion bar.
+   *
+   * @param props - seat props from `sidebar.right.pane.tab`; `sessionId` comes from the seat's
+   *   own `inject`, and `useSessions`/`useSession` from the primitives package.
+   */
+  function TeamSidebarBody(props) {
+    const sessionId = props.sessionId;
+    const useSessions = props.useSessions || primitives.useSessions;
+    const useSession = props.useSession || primitives.useSession;
+    // A teammate's own panel addresses the LEAD's board: the same rule the official UI uses.
+    const ambientLead = typeof useSession === "function"
+      ? useSession((snapshot) => snapshot?.subagent?.address?.parentSessionId)
+      : undefined;
+    const leadId = ambientLead || sessionId;
+    const team = typeof useSessions === "function"
+      ? useSessions((state) => (leadId === undefined ? undefined : state.projectionsBySession?.[leadId]?.values?.agentTeam))
+      : undefined;
+
+    if (team === undefined) {
+      return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
+        "No team in this session yet. Ask the Lead to spawn one with spawn_teammate.");
+    }
+    const members = Array.isArray(team.members) ? team.members : [];
+    const tasks = Array.isArray(team.tasks) ? team.tasks : [];
+    const done = tasks.filter((task) => task.status === "completed").length;
+    const percent = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
+
+    return h("div", { style: { padding: "10px 12px 14px", overflowY: "auto" } },
+      h("div", { style: { display: "flex", alignItems: "baseline", gap: "8px" } },
+        h("strong", { style: { fontSize: "12px" } }, "Team progress"),
+        h("span", { style: dim }, done + "/" + tasks.length + " done"),
+      ),
+      h("div", { style: { height: "6px", borderRadius: "3px", background: "var(--dsh-color-fill-secondary, #e6e8eb)", marginTop: "6px", overflow: "hidden" } },
+        h("div", { style: { height: "100%", width: percent + "%", background: "#22a06b" } }),
+      ),
+      team.failure === undefined ? null
+        : h("div", { style: { ...dim, color: "#d64545", marginTop: "6px" } }, String(team.failure)),
+
+      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Members (" + members.length + ")"),
+      members.length === 0
+        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No member yet.")
+        : members.map((member) => h("div", { key: String(member.id), style: rowStyle },
+            h("span", { style: dot(STATUS_COLOR[member.phase] || "#8a8f98") }),
+            h("span", { style: { ...ellipsis, fontSize: "12px" } }, String(member.name)),
+            h("span", { style: chip(member.role === "lead" ? "#6b4fd8" : "#8a8f98") }, String(member.role)),
+            member.error === undefined ? null : h("span", { style: { ...dim, color: "#d64545", ...ellipsis } }, String(member.error)),
+          )),
+
+      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Tasks (" + tasks.length + ")"),
+      tasks.length === 0
+        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No shared task yet.")
+        : tasks.map((task) => h("div", { key: String(task.id), style: { ...rowStyle, alignItems: "flex-start" } },
+            h("span", { style: chip(STATUS_COLOR[task.status] || "#8a8f98") }, String(task.status)),
+            h("div", { style: { flex: "1 1 auto", minWidth: 0 } },
+              h("div", { style: { ...ellipsis, fontSize: "12px" } }, String(task.subject)),
+              h("div", { style: { ...dim, ...ellipsis } },
+                (task.ownerName === undefined ? "unowned" : String(task.ownerName)) +
+                (Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " · blocked by " + task.blockedBy.join(", ") : "") +
+                (task.ready === false ? " · not ready" : "")),
+            ))),
+    );
+  }
+
+  /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
+  function mountHarnessSidebar(ctx) {
+    const t = ctx.locale.bind("mpdTeamSidebar");
+    ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
+      en: {
+        "type.label": "Team",
+        "guide.title": "Team",
+        "guide.description": "Roster and shared task progress for this session",
+      },
+      zh: {
+        "type.label": "团队",
+        "guide.title": "团队",
+        "guide.description": "本会话的名册与共享任务进度",
+      },
+    }), "mpd-team-sidebar:copy");
+    // The guide entry names a COMMAND, not a callback: that command is a client shortcut.
+    ctx.inject(["shortcuts"], (scope) => {
+      scope.effect(() => scope.shortcuts.register({
+        id: "mpd-team.new",
+        label: () => t("guide.title"),
+        aliases: ["team", "open team tab"],
+        regions: ["page", "editable", "terminal"],
+        modals: [],
+        resolve: () => ({ status: "handled", run: () => ctx.sidebarRight.openTab(TEAM_TAB_KIND) }),
+      }), "mpd-team-sidebar:command");
+    });
+    ctx.inject(["sidebarRightTabs", "sidebarRight"], (sidebar) => {
+    sidebar.effect(() => sidebar.sidebarRightTabs.register({
+      id: TEAM_TAB_ID,
+      kind: TEAM_TAB_KIND,
+      priority: "extension",
+      title: () => t("type.label"),
+      guide: [{
+        id: "new",
+        commandId: "mpd-team.new",
+        order: 40,
+        title: () => t("guide.title"),
+        description: () => t("guide.description"),
+      }],
+    }), "mpd-team-sidebar:type");
+    sidebar.effect(() => sidebar.slots.register({
+      name: "sidebar.right.pane.tab",
+      key: TEAM_TAB_ID,
+      locale: "mpdTeamSidebar",
+      inject: (sessionId) => ({ sessionId }),
+    }, TeamSidebarBody), "mpd-team-sidebar:body");
+    });
+  }
+
   function apply(ctx) {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
     // declared dependency, so it is present.
@@ -735,6 +874,14 @@
     // ctx.inject callback, never from a probe here (that race is what left the sidebar's
     // "+" menu with no mpd row at all). A profile without the sidebar fires nothing.
     mountSidebarPages(ctx, loadTeamPage());
+    // THE HARNESS'S OWN RIGHT SIDEBAR. `dsh-better-sidebar` is a THIRD-PARTY host that a
+    // checkout install does not resolve (measured: the profile's node_modules holds only
+    // @mpd-dsh, so the bundle's own guard disables that row and NO mpd tab renders). The
+    // harness ships a right sidebar with a tab registry of its own, and its Files / Terminal /
+    // Browser tabs use it — so the Team view is registered THERE, from THIS module, because
+    // this module is the one the client-module registry APPLIES (a sibling
+    // `__ModuleLoader__.load` block is loaded as a module and never applied).
+    mountHarnessSidebar(ctx);
     // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
     // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
     // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided

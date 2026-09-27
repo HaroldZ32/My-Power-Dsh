@@ -55,6 +55,12 @@ await step("02-notice-dismissed", async () => {
 // 3) A session with an EXPLICIT workspace: without one the app answers
 //    "Unable to create default workspace" and nothing else can be reviewed.
 await step("03-session-created", async () => {
+  // The harness stacks FIRST-RUN modals: the testing notice, then "Add an API key". Both
+  // dim the app and swallow clicks, so both are cleared before anything is driven.
+  for (const label of [/configure later/i, /continue/i]) {
+    const button = page.getByRole("button", { name: label }).first()
+    if (await button.count() > 0) { await button.click({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(1200) }
+  }
   const result = await page.evaluate(async (cwd) => {
     const response = await fetch("/api/session/create", {
       method: "POST",
@@ -71,6 +77,13 @@ await step("03-session-created", async () => {
 // 4) The RIGHT sidebar is the surface this bundle must contribute to. Capture it closed,
 //    then open it through whatever the header actually renders.
 await step("04-sidebar-open", async () => {
+  // The first-run gates RE-APPEAR: the API-key modal returns after a reload and its overlay
+  // swallows every click behind it (measured: "Open right sidebar" was in the control list and
+  // the click did nothing). Clear it again, immediately before the click that matters.
+  for (const label of [/configure later/i, /continue/i]) {
+    const again = page.getByRole("button", { name: label }).first()
+    if (await again.count() > 0) { await again.click({ timeout: 6000, force: true }).catch(() => {}); await page.waitForTimeout(1200) }
+  }
   const labels = await page.evaluate(() => {
     const out = []
     for (const el of document.querySelectorAll("button,[role=button],[role=tab],a")) {
@@ -80,8 +93,17 @@ await step("04-sidebar-open", async () => {
     return [...new Set(out)].slice(0, 80)
   })
   report.controls = labels
-  const candidate = page.getByRole("button", { name: /expand|sidebar|panel|split/i }).first()
-  if (await candidate.count() > 0) { await candidate.click({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(2500) }
+  // EXACT name, not a regex: a loose /sidebar/i matched "Collapse sidebar" first and collapsed
+  // the LEFT rail instead of opening the right panel (measured 2026-09-27, screenshot 04).
+  let candidate = page.getByRole("button", { name: "Open right sidebar", exact: true }).first()
+  if (await candidate.count() === 0) candidate = page.getByRole("button", { name: /right sidebar/i }).first()
+  if (await candidate.count() > 0) { await candidate.click({ timeout: 6000, force: true }).catch(() => {}); await page.waitForTimeout(3000) }
+  // The guide page is what the kit draws for a column with no tabs open; its entry boxes are
+  // how a user reaches a contributed type.
+  const guide = page.getByText(/team/i).first()
+  if (await guide.count() > 0) { await guide.click({ timeout: 5000, force: true }).catch(() => {}); await page.waitForTimeout(2500) }
+  // What the sidebar actually offers: the tab strip and the guide's entry boxes.
+  report.sidebarText = (await page.locator("body").innerText().catch(() => "")).slice(0, 1500)
   return shot("04-sidebar")
 })
 // 5) The settings surface, reached by clicking (the app is a SPA: /settings is a 404).

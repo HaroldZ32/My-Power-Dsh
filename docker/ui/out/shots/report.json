@@ -45,7 +45,7 @@
   ],
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790508218234\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-bbb9ed72-95a4-432e-92c8-ca04636e14c4\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790508999171\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-609a8d02-55c9-4cc6-8bcd-251f7b3cb0b3\",\"agentPreset\":\"mpd\"}}}"
   },
   "controls": [
     "New session",
@@ -55,13 +55,21 @@
     "Search sessions",
     "View options",
     "Add workspace",
+    "Workspace actions for ws",
+    "New session in ws",
     "Settings",
-    "Choose workspace",
+    "Open right sidebar",
+    "ws",
     "MPD (Main Working Agent)",
     "Add files or run commands",
+    "Workspace Write",
+    "DeepSeek-V41-Flash\nHigh",
     "Send message",
-    "Configure later",
-    "Save and continue"
+    "New tab",
+    "Split",
+    "Fullscreen",
+    "Collapse right sidebar"
   ],
-  "visibleText": "New Session\nPlugins\nWorkspaces\nNo sessions yet\nSettings\nInto the Unknown\nPreview\nChoose workspace\nMPD (Main Working Agent)\nChoose a workspace to start\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue"
+  "sidebarText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nMPD (Main Working Agent)\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nTeam progress\n0/0 done\nMEMBERS (1)\nlead\nlead\nTASKS (0)\nNo shared task yet.",
+  "visibleText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nMPD (Main Working Agent)\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nTeam progress\n0/0 done\nMEMBERS (1)\nlead\nlead\nTASKS (0)\nNo shared task yet.\nAdd an API key to get started\n\nConfigure the official DeepSeek provider to start building.\n\nAPI key\nConfigure later\nSave and continue"
 }

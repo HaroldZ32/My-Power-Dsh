@@ -77,24 +77,34 @@ driver learns to clear them so the review below them is possible.
 
 - Observation environment: DONE and committed (`docker/ui/**`, screenshots under `docker/ui/out/shots/`).
 - F1/F2/F3: measured, recorded here.
-- W2 first slice: `packages/mpd-bundle-plugin/src/team-sidebar.js` registers a PAGE type in the
-  HARNESS's right sidebar (`ctx.sidebarRightTabs` + the `sidebar.right.pane.tab` seat) and renders the
-  Lead Session's `agentTeam` projection as a team-progress view. Composed into the bundle client by
-  `scripts/build-mpd-client.mjs` (client.js grew to 318151 bytes, parses, 3 references).
-  **RENDER NOT YET VERIFIED** — see the blocker below.
+- W2 first slice: **DONE and VERIFIED ON SCREEN**. `packages/mpd-bundle-plugin/src/team-sidebar.js`
+  supplies the view; `src/web-client.js` registers it from the bundle's ONE applied client module.
+  The tab renders in the harness's own right sidebar with the real projection:
+  `Team · Team progress · 0/0 done · MEMBERS (1) · lead [lead] · TASKS (0) · No shared task yet.`,
+  no console errors (`docker/ui/out/shots/04-sidebar.png`).
+
+  Three measured facts that shaped it, each a real failure first:
+  1. **A sibling `__ModuleLoader__.load` block is NOT applied.** Registering from a separate
+     `@mpd-dsh/team-sidebar` module loaded the code and rendered nothing — the client-module
+     registry APPLIES the entry's own module (`@mpd-dsh/mpd`), so the registration lives there.
+  2. **The guide entry names a `commandId`, not an `open` callback**, its `title`/`description` are
+     locale-bound FUNCTIONS, and the command behind it is a client SHORTCUT — taken from the
+     shipped `@deepseek-ai/dsh-client-ui-sidebar-browser` definition, which is the working example.
+  3. **An undeclared service read takes the whole entry down**: touching `ctx.sidebarRightTabs`
+     without it in `inject` produced `web boot: 1 entry did not activate — @mpd-dsh/mpd: failed` and
+     the app rendered "Failed to load plugins". The services are reached through
+     `ctx.inject(["sidebarRightTabs","sidebarRight"], …)`, so an mpd bundle in a composition with
+     no right sidebar still activates.
 - W1, W3, W4: not started in code.
 
-### The verification blocker, named exactly
+### How the UI became reachable (solved, keep it)
 
-The tab cannot be seen yet because the container's browser cannot reach a session with a team:
-
-1. a session created through `session/create` with `cwd=/data/ws` does NOT appear under Sessions
-   until `/data/ws` is a registered **Workspace**;
-2. the UI's own add-workspace path opens a native directory picker, which a headless run cannot drive;
-3. the client service is `ctx.workspaces.create(input)`, a Remote — not reachable from outside the app,
-   and the persisted store (`<DSH_HOME>/storages/workspace.json`) is `{global:{workspaceIds:[]},
-   tables:{workspaces:{}}}` with a record shape not yet confirmed.
-
-Next step, in order: confirm the workspace record shape (or the Remote's HTTP route) → seed `/data/ws`
-→ open the session → open the right sidebar → capture, and only THEN judge the tab. Until that
-happens this file claims nothing about how the tab looks.
+1. A session created through `session/create` does NOT appear under Sessions until its cwd is a
+   registered **Workspace**, and the UI's add-workspace path opens a NATIVE directory picker.
+   The store is plain JSON at `<DSH_HOME>/storages/workspace.json`, and the controller projects
+   `{id, path, title, sessionIds, createdAt, updatedAt}` — `docker/ui/run-capture.sh` seeds that
+   record, which is a UI FIXTURE, not a product claim.
+2. The first-run gates (testing notice, then "Add an API key") RE-APPEAR after a reload and their
+   overlay swallows clicks; the driver clears them immediately before each click that matters.
+3. Open the panel by the EXACT control name `Open right sidebar`: a loose `/sidebar/i` matches
+   "Collapse sidebar" first and collapses the LEFT rail instead (measured, screenshot 04).

@@ -121,32 +121,64 @@
 
   /** Services the client context must carry before this module applies. */
   const inject = ["slots", "locale", "sidebarRight", "sidebarRightTabs"];
+  const NS = "mpdTeamSidebar";
 
   /**
    * Register the Team page type and its body on a CLIENT context.
    *
+   * The GUIDE ENTRY is not a callback: it names a `commandId`, and the command behind it is a
+   * client SHORTCUT (§ "the guide" in `@deepseek-ai/dsh-client-ui-sidebar-right`). Copy is
+   * locale-bound FUNCTIONS, not strings — both shapes are taken from the shipped
+   * `@deepseek-ai/dsh-client-ui-sidebar-browser` definition, which is the working example of a
+   * page type with a guide entry.
+   *
    * @param ctx - client plugin context with the declared `inject` services available.
    */
   function apply(ctx) {
+    const t = ctx.locale.bind(NS);
+    ctx.effect(() => ctx.locale.register(NS, {
+      en: {
+        "type.label": "Team",
+        "guide.title": "Team",
+        "guide.description": "Roster and shared task progress for this session",
+      },
+      zh: {
+        "type.label": "团队",
+        "guide.title": "团队",
+        "guide.description": "本会话的名册与共享任务进度",
+      },
+    }), "mpd-team-sidebar:copy");
+
+    // The user-facing way in: a command the kit renders as a guide entry box.
+    ctx.inject(["shortcuts"], (scope) => {
+      scope.effect(() => scope.shortcuts.register({
+        id: "mpd-team.new",
+        label: () => t("guide.title"),
+        aliases: ["team", "open team tab"],
+        regions: ["page", "editable", "terminal"],
+        modals: [],
+        resolve: () => ({ status: "handled", run: () => ctx.sidebarRight.openTab(TEAM_TAB_KIND) }),
+      }), "mpd-team-sidebar:command");
+    });
+
     ctx.effect(() => ctx.sidebarRightTabs.register({
       id: TEAM_TAB_ID,
       kind: TEAM_TAB_KIND,
       priority: "extension",
-      // A PAGE type names no resource globs: it is opened by KIND, and the guide entry below
-      // is the user-facing way in.
-      title: () => "Team",
+      title: () => t("type.label"),
       guide: [{
-        id: TEAM_TAB_ID + "/guide",
-        title: "Team",
-        description: "Roster and shared task progress for this session",
-        open: () => ctx.sidebarRight.openTab(TEAM_TAB_KIND, { params: {} }),
+        id: "new",
+        commandId: "mpd-team.new",
+        order: 40,
+        title: () => t("guide.title"),
+        description: () => t("guide.description"),
       }],
     }), "mpd-team-sidebar:type");
 
     ctx.effect(() => ctx.slots.register({
       name: "sidebar.right.pane.tab",
       key: TEAM_TAB_ID,
-      locale: "mpd-team-sidebar",
+      locale: NS,
       inject: (sessionId) => ({ sessionId }),
     }, TeamSidebarBody), "mpd-team-sidebar:body");
   }
