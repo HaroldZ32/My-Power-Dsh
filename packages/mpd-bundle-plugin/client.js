@@ -6016,6 +6016,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
   function mountHarnessSidebar(ctx) {
+    // DEGRADE, NEVER TAKE THE ENTRY DOWN. `ctx.inject` is a client-framework seam: a
+    // composition (or the offline client harness) without it must simply not get this tab,
+    // while the workmate page and the settings card still mount. Measured: an unguarded read
+    // threw inside `apply`, and `bun test packages/mpd-bundle-plugin` reported
+    // "Unhandled error between tests" for every arm that drives the real client bytes.
+    // SILENT by design: the settings card's arms count the boot's console warnings, and an
+    // optional tab that is simply absent is not a warning-worthy event (the same reading the
+    // better-sidebar mount takes when its host never arrives).
+    if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
     const t = ctx.locale.bind("mpdTeamSidebar");
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
