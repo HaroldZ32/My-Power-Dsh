@@ -157,7 +157,12 @@ describe("namespace ownership (design §10.1): THIS package registers, with the 
     h.failRegistration('settings namespace "mpd" is already registered')
     apply(h.ctx)
     expect(h.provided.mpdConfig.states().settings.registration).toBe('settings namespace "mpd" is already registered')
-    expect(h.logs.some((line) => line.includes("the TUI fallback owns it now"))).toBe(true)
+    // MEASURED (2026-09-27): no harness composes a namespace registry any more, so the line this
+    // arm used to pin ("the TUI fallback owns it now") described a handover that no longer happens.
+    // What matters now is that a refused registration is still REPORTED, and says where the values
+    // actually come from: this row's own Config, served under the entry id.
+    expect(h.logs.some((line) => line.includes("namespace-registry model is RETIRED"))).toBe(true)
+    expect(h.logs.some((line) => line.includes('entry "mpd-config"'))).toBe(true)
   })
 
   test("A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace", () => {

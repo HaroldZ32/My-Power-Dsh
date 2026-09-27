@@ -411,6 +411,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       unsetPaths.push(key.split("\u0000"))
     }
     if (unsetPaths.length === 0) return
+    // The retired model has no document to clear: the file's value already applies, and this call
+    // could only fail. Skipping it is not a silent failure — the reason was logged once at mount.
+    if (settingsModelRetired) return
     void dsh
       .settingsMutate(SETTINGS_NS, unsetPaths.map((path) => ({ op: "unset" as const, path })), bridge.revision)
       .then((result: MutateResult) => {
@@ -628,6 +631,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return { base: undefined, reason: "ambiguous-multi-root", candidates: roots }
   }
 
+  /** Set once the harness answers that the namespace model is gone; the legacy paths then stay quiet. */
+  let settingsModelRetired = false
+
   const registerNamespace = (base: unknown): void => {
     if (typeof dsh.settingsRegister !== "function") {
       bridge.degraded = "adapter has no settingsRegister seam (rebuild packages/mpd-dsh-adapter-plugin/dist)"
@@ -636,9 +642,17 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const result = dsh.settingsRegister(SETTINGS_NS, SettingsSchema, { base, applies: "restart" })
     if (result.ok !== true) {
       bridge.namespaceRegistration = result.error
-      // The TUI package's guarded fallback still registers for this composition, so the front
-      // doors keep working; say which path was taken.
-      warn(`[mpd-config] settings bridge: could not register the "${SETTINGS_NS}" namespace (${result.error}) — the TUI fallback owns it now.`)
+      // THE MODEL IS RETIRED, and saying so ONCE is the whole of this path's job now.
+      //
+      // Harness 0.1.7-rc.2 replaced the namespace registry with the Cordis patch editor: the mpd
+      // knobs are this ROW's own `Config` (see {@link Config} and `markVolatile`), and BOTH front
+      // doors read and write them through `configForms.get("mpd-config")`. Nothing registers a
+      // namespace any more, so a per-boot "could not register" reads like a fault when it is simply
+      // the retired shape — and the parts of the legacy bridge that would have used it (the
+      // file-edit override clearing, the migration marker) are DORMANT by construction.
+      settingsModelRetired = true
+      bridge.degraded = `the namespace-registry model is retired in this harness (${result.error}); the knobs are served as this row's config under the entry "mpd-config"`
+      warn(`[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.`)
       return
     }
     bridge.namespaceRegistration = "registered"

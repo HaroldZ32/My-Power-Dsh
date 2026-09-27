@@ -3160,6 +3160,8 @@ function apply(ctx, config = {}) {
     }
     if (unsetPaths.length === 0)
       return;
+    if (settingsModelRetired)
+      return;
     dsh.settingsMutate(SETTINGS_NS, unsetPaths.map((path) => ({ op: "unset", path })), bridge.revision).then((result) => {
       if (result.ok) {
         bridge.cleared.push(...unsetPaths.map((path) => path.join(".")));
@@ -3327,6 +3329,7 @@ function apply(ctx, config = {}) {
     warn(`[mpd-config] settings bridge: ${roots.length} live workspaces (${roots.join(", ")}) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.`);
     return { base: undefined, reason: "ambiguous-multi-root", candidates: roots };
   };
+  let settingsModelRetired = false;
   const registerNamespace = (base) => {
     if (typeof dsh.settingsRegister !== "function") {
       bridge.degraded = "adapter has no settingsRegister seam (rebuild packages/mpd-dsh-adapter-plugin/dist)";
@@ -3335,7 +3338,9 @@ function apply(ctx, config = {}) {
     const result = dsh.settingsRegister(SETTINGS_NS, SettingsSchema, { base, applies: "restart" });
     if (result.ok !== true) {
       bridge.namespaceRegistration = result.error;
-      warn(`[mpd-config] settings bridge: could not register the "${SETTINGS_NS}" namespace (${result.error}) — the TUI fallback owns it now.`);
+      settingsModelRetired = true;
+      bridge.degraded = `the namespace-registry model is retired in this harness (${result.error}); the knobs are served as this row's config under the entry "mpd-config"`;
+      warn(`[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.`);
       return;
     }
     bridge.namespaceRegistration = "registered";

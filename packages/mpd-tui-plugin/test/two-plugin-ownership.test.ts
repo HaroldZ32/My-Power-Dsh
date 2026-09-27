@@ -134,6 +134,10 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
     })
     applyConfig(configCtx.ctx as never)
     expect(settings.registrations).toHaveLength(1)
-    expect(configCtx.warnings.some((line) => line.includes("the TUI fallback owns it now"))).toBe(true)
+    // The sentence this arm used to pin described a handover to the TUI fallback. No harness
+    // composes a namespace registry any more (measured 2026-09-27), so what the refusal must say is
+    // where the values come from instead: this row's own Config, under the entry id.
+    expect(configCtx.warnings.some((line) => line.includes("namespace-registry model is RETIRED"))).toBe(true)
+    expect(configCtx.warnings.some((line) => line.includes('entry "mpd-config"'))).toBe(true)
   })
 })
