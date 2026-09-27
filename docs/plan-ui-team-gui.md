@@ -179,11 +179,32 @@ registration-capable provider. `mpd-tui-plugin`'s guarded fallback then SKIPS wi
 `configPluginPresent(ctx)` true — its premise being "mpd-config owns the registration" — and nobody
 registers anything. The fallback's premise is false exactly when the owner cannot register.
 
-NEXT STEP, named: find what registers a settings namespace in a `dsh-tui` composition (the service
-above answers `describe()`/`get()` — a read surface; `mpd-tui-plugin` already types a
-`SettingsProviderLike` with `describe`/`get`/`register`, so the registration path exists somewhere),
-then either point the bridge at it or let the fallback take over when the owner's attempt FAILS
-rather than when the owner is merely present.
+**ROOT CAUSE FOUND — the API IS RETIRED, not racing.** Harness 0.1.7-rc.2 replaced the
+namespace-registry settings model with the **Cordis patch editor**: a plugin declares the fields it
+exposes in its OWN row's schemastery `Config` with `.volatile()`, and the settings UI edits them per
+profile ENTRY. Measured on the installed package
+(`dsh-settings@0.1.7-rc.2/lib/index.js`, 22630 bytes): the service exposes `describe()` and hangs the
+rest off `ownerContext.configEditor` — there is **no `register(namespace, …)`**. The model is visible
+in the harness's own code, e.g. `dsh-bash-local`:
+
+```js
+static Config = z.object({
+  cwd: z.string().volatile(),
+  timeoutMs: z.number().default(120000).volatile(),
+  …
+})
+```
+
+So `mpd-config`'s whole bridge (`settingsRegister(namespace, schema, {base, applies})`) targets an API
+that no longer exists, and BOTH surfaces are affected: the Web section renders because the CLIENT
+registers it, the TUI section renders because `tuiSettingsSections` registers it, and neither reads a
+value because nothing serves the namespace.
+
+NEXT STEP (W4c), named and sized: re-base the 25 mpd knobs onto the row-`Config` model — the knobs
+become `.volatile()` fields of the `mpd-config` ROW, which is what the harness's own settings
+machinery edits, and the namespace bridge + the custom TUI section become redundant. That is a
+deliberate design change (the `.mpd/mpd.jsonc` file layer, its write-back and the TUI/Web front doors
+all move with it), so it is a wave of its own and NOT something to rush at the end of a round.
 
 Also recorded while chasing it: an adapter-side diagnostic now says WHICH path ran
 (`deferred inject available/ABSENT`), because the two paths fail with the same downstream sentence.

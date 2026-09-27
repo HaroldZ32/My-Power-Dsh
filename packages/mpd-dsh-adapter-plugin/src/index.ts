@@ -2476,7 +2476,16 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         return { ok: false, error: "settings service is unavailable" }
       }
       if (typeof settings.register !== "function") {
-        return { ok: false, error: "the settings service is present but exposes no register() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")" }
+        // THE MODEL ITSELF IS GONE, not racing. Harness 0.1.7-rc.2 replaced the namespace-registry
+        // settings model with the CORDIS PATCH EDITOR: a plugin declares the fields it exposes in
+        // its OWN row's schemastery `Config` with `.volatile()`, and the settings UI edits them per
+        // profile ENTRY. `@deepseek-ai/dsh-settings@0.1.7-rc.2` exposes `describe()` and hangs the
+        // rest off `configEditor` — measured on the installed package: NO `register(namespace, …)`.
+        // Say that, with the replacement named, so the next reader does not re-run this hunt.
+        return {
+          ok: false,
+          error: "the settings service is present but exposes no register() — harness 0.1.7-rc.2 replaced the namespace-registry model with the Cordis patch editor, where a plugin declares its editable fields in its own row Config with .volatile() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")",
+        }
       }
       try {
         settings.register(namespace, schema, { ...(options?.base === undefined ? {} : { base: options.base }), ...(options?.applies === undefined ? {} : { applies: options.applies }) })

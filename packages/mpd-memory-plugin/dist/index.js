@@ -894,7 +894,10 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, error: "settings service is unavailable" };
       }
       if (typeof settings.register !== "function") {
-        return { ok: false, error: "the settings service is present but exposes no register() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")" };
+        return {
+          ok: false,
+          error: "the settings service is present but exposes no register() — harness 0.1.7-rc.2 replaced the namespace-registry model with the Cordis patch editor, where a plugin declares its editable fields in its own row Config with .volatile() (keys: " + Object.keys(settings).slice(0, 8).join(",") + ")"
+        };
       }
       try {
         settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
