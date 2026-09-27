@@ -102,6 +102,9 @@ const PLUGIN_PKGS = [
   // mpd-roster-provider-plugin is MOUNTED by the bundle patch (row `mpd-roster-provider`):
   // the per-member subagent provider the official team tool is pointed at.
   "mpd-roster-provider-plugin",
+  // mpd-better-sidebar-host is MOUNTED by the bundle patch (row `mpd-better-sidebar`): the
+  // bundle-owned door to the sidebar host it ships, so the sidebar mounts on a link: install too.
+  "mpd-better-sidebar-host",
   // mpd-ext-plugin is MOUNTED by the bundle patch (row `mpd-ext`) and was missing
   // from this list: the packed tree would omit `packages/mpd-ext-plugin/dist/` while
   // `npm run pack` still exited 0, and the packed boot would die ERR_MODULE_NOT_FOUND

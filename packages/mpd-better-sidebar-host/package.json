@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/better-sidebar-host",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The bundle's own door to the `dsh-better-sidebar` host it ships: a row named through the bundle's package name that imports the host by a computed relative path. Exists because a bare specifier does not resolve on a link: install, a file:// row name fails peer validation, and a node_modules exports target is forbidden by Node.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

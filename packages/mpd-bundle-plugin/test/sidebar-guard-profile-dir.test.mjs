@@ -76,7 +76,7 @@ const FOREIGN_MOUNT = [
 let profileSeq = 0;
 
 /** Materialize one throwaway profile: optional sidebar, optional foreign bundle layers. */
-function makeProfile({ withSidebar, bundles = [], foreign = [] }) {
+function makeProfile({ withSidebar, bundleSidebar = false, bundles = [], foreign = [] }) {
   profileSeq += 1;
   const dir = join(SANDBOX, "profiles", `p${profileSeq}`);
   mkdirSync(join(dir, "node_modules"), { recursive: true });
@@ -84,6 +84,12 @@ function makeProfile({ withSidebar, bundles = [], foreign = [] }) {
     join(dir, "package.json"),
     JSON.stringify({ name: `p${profileSeq}`, dsh: { profile: { bundles } } }),
   );
+  if (bundleSidebar) {
+    // The BUNDLE-relative copy: <profile>/node_modules/@mpd-dsh/mpd/node_modules/dsh-better-sidebar
+    const sidebar = join(dir, "node_modules", "@mpd-dsh", "mpd", "node_modules", "dsh-better-sidebar");
+    mkdirSync(sidebar, { recursive: true });
+    writeFileSync(join(sidebar, "package.json"), JSON.stringify({ name: "dsh-better-sidebar", version: "0.19.0-alpha.1" }));
+  }
   if (withSidebar) {
     const sidebar = join(dir, "node_modules", "dsh-better-sidebar");
     mkdirSync(sidebar, { recursive: true });
@@ -142,10 +148,24 @@ describe("sidebar mount guard: profile-dir derivation", () => {
     expect(disabled).toBe(false);
   });
 
-  test("DISABLED when the profile cannot resolve the sidebar", () => {
+  test("DISABLED only when NEITHER the profile nor the bundle can resolve the sidebar", () => {
+    // MEASURED (2026-09-27): a checkout install has no profile copy — `healProfileModuleFallback`
+    // does not materialize a declared dependency for a `link:` layer — while the BUNDLE ships one
+    // under `<bundle>/node_modules`. The clause therefore asks about both locations, and this arm
+    // models the case where both are absent. The fixture writes the bundle's copy too, so the
+    // bundle-present case is exercised by the arm below.
     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: false })));
     expect(disabled).toBe(true);
-    expect(warnings).toContain("not resolvable from the profile node_modules");
+    expect(warnings).toContain("resolvable from neither");
+  });
+
+  test("clause 1 PASSES when ONLY the BUNDLE has the host — the checkout install it exists for", () => {
+    // MEASURED on a real boot: with the bundle's copy present and the profile's absent, the guard
+    // logged `ENABLED - web plane present and no other layer mounts dsh-better-sidebar`, i.e. it got
+    // past resolvability. This arm asserts only that: whether the later clauses disable the row
+    // depends on the rest of the fixture's composition, which is not what this clause decides.
+    const { warnings } = decide(baseUrlOf(makeProfile({ withSidebar: false, bundleSidebar: true })));
+    expect(warnings).not.toContain("resolvable from neither");
   });
 
   test("DISABLED in favour of a foreign bundle layer that already mounts it", () => {

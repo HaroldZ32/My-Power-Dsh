@@ -433,3 +433,28 @@ is proven and the live dispatch is NOT claimed.
 
 Also fixed on the way: the boot line counted `disposers.length` as "tools", which read 14 for 13 tools
 and would have kept reading whatever the plane grew to.
+
+
+## 9. W3 — the sidebar host now mounts on a CHECKOUT install
+
+F1 said the bundle contributed no sidebar GUI because `dsh-better-sidebar` was not resolvable from the
+profile's `node_modules`. The repair took three measured attempts, and the two obvious ones are REFUSED:
+
+| Attempt | Result |
+|---|---|
+| a `file://` URL as the row NAME | the row MOUNTS, then the loader disables it: `its declared peer dependencies cannot be validated: name.startsWith is not a function` — the validator gets a URL where it expects a package name |
+| `@mpd-dsh/mpd/node_modules/dsh-better-sidebar/lib/index.js` through the bundle's `exports` | refused by NODE itself: `Invalid "exports" target "./node_modules/*"` — an exports target may not contain `node_modules` |
+| **`packages/mpd-better-sidebar-host`** — a bundle-owned module that imports the host by a COMPUTED relative path and re-exports a loader-facing `apply` | **works** |
+
+The shim has neither problem: no exports target, and the row resolves to the SHIM's package (empty
+peers), while the host's own dependencies resolve upward from its real location. The row is a normal
+`@mpd-dsh/mpd/packages/…` specifier, which both install layouts resolve.
+
+One trap inside the fix: cordis takes the DECLARED `inject` list from the module the row names — the
+shim — so an empty list loaded the host and starved it (`cannot get property "webServer" without
+inject`). The list is restated in the shim and `test/host-contract.test.ts` compares it against the
+shipped host's own whenever that package is resolvable, logging when it is not.
+
+Verified on a real boot: the guard logs
+`[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar`,
+there is no `entry did not activate`, and the boot log carries no warning or error at all.
