@@ -4,6 +4,30 @@ Human-readable release notes. Format: one section per released version, newest f
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
 
+## v0.11.1 — mailbox unread
+
+v0.11.0 shipped with this capability listed as a bound: "the official inbox exposes no read state".
+That was true of the TEAM SERVICE and false of the HARNESS, so it is implemented instead of documented
+away.
+
+**Added.**
+
+- **`agent_teams_mailbox`** — how many messages are WAITING for this agent. The count is the harness's
+  own arithmetic, not an estimate: the agent inbox emits `agent/inbox/inserted` when a message enters,
+  `agent/inbox/claimed` when the loop takes it and `agent/inbox/discarded` when it is dropped, and
+  `inserted − claimed − discarded` is "waiting, not yet taken". `watch: true` attaches the counter to
+  the calling agent (idempotent). The count clamps at zero, because a counter attached to an
+  already-running session may have missed claims it never saw.
+- **`subscribeAgentEvents`** on the adapter — the generic form of `registerAgentPreStep`'s agent-scoped
+  registration. The three inbox events are SCOPED (their `dsh-scope` subject resolver is
+  `args[0]["agent"]`), so a listener on a row's ctx is filtered out of their dispatch; this seam
+  registers on the agent's own scope and never lets a throwing observer break that dispatch.
+
+**Fixed.**
+
+- The team tools' boot line derived neither number: it printed `tools=10` while the plane had grown,
+  and then a literal breakdown that said "13 tools" when there were 14.
+
 ## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads
 
 The official Agent Teams plugin owns the team RUNTIME and nothing else. This release adds the WORKFLOW
