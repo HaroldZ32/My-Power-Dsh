@@ -33,13 +33,33 @@ import { agent, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
 /** The decision shape the harness's own turn loop consumes. */
 const FALLBACK = { kind: "enter" as const, messages: ["claimed-user-message"] }
 
+/**
+ * A stub adapter whose `onEvent` forwards to a REAL cordis context.
+ *
+ * The engine subscribes through the ADAPTER (AGENTS.md §6), and the real adapter forwards
+ * to `ctx.on` — so a test that drives `ctx.waterfall` / `ctx.emit` needs that forwarding,
+ * not a stub-private listener map. This IS the production contract, not a test shortcut.
+ */
+function adapterOn(ctx: Context, stub: ReturnType<typeof stubAdapter>) {
+  return {
+    ...stub.adapter,
+    onEvent: (event: string, handler: (...args: unknown[]) => unknown) => {
+      const disposer = ctx.on(event as never, handler as never)
+      return typeof disposer === "function" ? (disposer as unknown as () => void) : () => { /* bus owns teardown */ }
+    },
+  }
+}
+
 /** One engine whose listeners land on a REAL cordis context. */
 function realEngine(box: { workspace: string; stateDir: string }) {
   const ctx = new Context()
   const stub = stubAdapter({ workspace: box.workspace })
-  // The engine only needs `ctx.on`; `subscribe` keeps the disposer the real context
-  // returns, so disposal is exercised too (a broken disposer would leak listeners).
-  const handle = new WatchdogEngine(stub.adapter, ctx as unknown as EngineContext, testConfig({ stateDir: box.stateDir }))
+  // The engine subscribes through the ADAPTER (`dsh.onEvent`), and the REAL adapter
+  // forwards to `ctx.on`. This test needs the listener on the REAL cordis bus (it drives
+  // `ctx.waterfall`), so the stub adapter's `onEvent` is overlaid with exactly that
+  // forwarding — the production contract, not a test-only shortcut. The disposer is the
+  // real context's, so disposal is exercised too (a broken disposer would leak listeners).
+  const handle = new WatchdogEngine(adapterOn(ctx, stub), ctx as unknown as EngineContext, testConfig({ stateDir: box.stateDir }))
   const disposers = handle.install()
   return { ctx, handle, stub, disposers, dispose: () => { for (const off of disposers) off() } }
 }
@@ -119,7 +139,7 @@ describe("agent/pre-step is a waterfall (the decision must survive a heartbeat)"
         }) as EngineContext["on"],
       }
       const stub = stubAdapter({ workspace: box.workspace })
-      const handle = new WatchdogEngine(stub.adapter, ctx, testConfig({ stateDir: box.stateDir }))
+      const handle = new WatchdogEngine(adapterOn(ctx, stub), ctx, testConfig({ stateDir: box.stateDir }))
       const disposers = handle.install()
       try {
         const payload = { agent: agent("a1", box.workspace), source: { kind: "startup" } }
@@ -154,7 +174,7 @@ describe("agent/pre-step is a waterfall (the decision must survive a heartbeat)"
       writeTeam(box, { id: "team-a", members: [{ id: "a1", name: "Architect" }], tasks: [] })
       const ctx = new Context()
       const stub = stubAdapter({ workspace: box.workspace })
-      const handle = new WatchdogEngine(stub.adapter, ctx as unknown as EngineContext, testConfig({ stateDir: box.stateDir }))
+      const handle = new WatchdogEngine(adapterOn(ctx, stub), ctx as unknown as EngineContext, testConfig({ stateDir: box.stateDir }))
       const warnings: string[] = []
       ;(handle as unknown as { warn: (text: string) => void }).warn = (text: string) => { warnings.push(text) }
       ;(handle as unknown as { stamp: () => never }).stamp = () => { throw new Error("store exploded") }

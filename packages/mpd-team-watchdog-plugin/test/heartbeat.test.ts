@@ -14,13 +14,21 @@ import { WatchdogEngine } from "../src/engine"
 import { agent, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
 
 /** A ctx stub that records the event handlers an engine installs. */
-function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void; handlers: Map<string, (...args: any[]) => unknown> } {
+function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void; handlers: Map<string, (...args: any[]) => unknown> } {
   const handlers = new Map<string, (...args: any[]) => unknown>()
   return {
     handlers,
+    // The engine subscribes through `dsh.onEvent` (AGENTS.md §6: a harness event NAME is
+    // part of the surface the adapter absorbs), and the real adapter forwards to `ctx.on`.
+    // Registering on BOTH maps keeps `ctx.handlers` readable while letting `stub.emit(…)`
+    // drive the same listener, exactly as a real composition does.
     on: (event, handler) => {
+      const disposer = dsh?.onEvent(event, handler)
       handlers.set(event, handler)
-      return () => handlers.delete(event)
+      return () => {
+        handlers.delete(event)
+        if (typeof disposer === "function") disposer()
+      }
     },
   }
 }
@@ -35,7 +43,7 @@ describe("heartbeat store", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attempt: 1, attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.stamp("step", agent("a1", box.workspace))
 
       const stamps = readHeartbeats(box.workspace, box.stateDir, "Architect")
@@ -63,7 +71,7 @@ describe("heartbeat store", () => {
         tasks: [{ id: "t9", status: "in_progress", assignee: "captain", attempt: 1, attemptId: "att-cap" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.stamp("step", agent("cap-agent", box.workspace, "sess-cap"))
 
       const stamps = readHeartbeats(box.workspace, box.stateDir, "captain")
@@ -81,7 +89,7 @@ describe("heartbeat store", () => {
     try {
       writeTeam(box, { id: "team-a", members: [{ id: "a1", name: "Architect" }], tasks: [] })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.stamp("step", agent("stranger", box.workspace, "session-abcdef12"))
 
       const keys = listHeartbeatKeys(box.workspace, box.stateDir)
@@ -105,7 +113,7 @@ describe("heartbeat store", () => {
         tasks: [{ id: "t1", status: "claimed", assignee: "Architect", attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.install()
       // r6 installs BOTH halves; the POST half keeps its W-9 completion semantics.
       expect(stub.pre.length).toBe(1)
@@ -144,11 +152,11 @@ describe("heartbeat store", () => {
     try {
       writeTeam(box, { id: "team-a", members: [{ id: "a1", name: "Architect" }], tasks: [] })
       const stub = stubAdapter({ workspace: box.workspace })
-      const ctx = stubCtx()
+      const ctx = stubCtx(stub.adapter)
       const engine = new WatchdogEngine(stub.adapter, ctx, testConfig({ stateDir: box.stateDir }))
       engine.install()
-      const start = ctx.handlers.get("agent/session-start")
-      const stopping = ctx.handlers.get("agent/turn-stopping")
+      const start = stub.listener("agent/session-start")
+      const stopping = stub.listener("agent/turn-stopping")
       expect(typeof start).toBe("function")
       expect(typeof stopping).toBe("function")
 
@@ -176,7 +184,7 @@ describe("heartbeat store", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
       const stub = stubAdapter({ workspace: box.workspace })
-      const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       const seen: number[] = []
       for (let step = 0; step < 4; step += 1) {
         engine.stamp("step", agent("a1", box.workspace))

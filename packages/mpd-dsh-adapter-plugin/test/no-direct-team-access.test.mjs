@@ -33,6 +33,33 @@ import { fileURLToPath } from "node:url"
 /** The two literal identifiers this gate owns (adaptation plan §4, D6). */
 export const FORBIDDEN_IDENTIFIERS = ["agentTeams", "startContinuable"]
 
+/**
+ * Harness EVENT names this gate also owns: a plugin that subscribes to one of these on a
+ * raw ctx has spelled part of the harness's surface outside the adapter, which is exactly
+ * what the adapter exists to absorb (AGENTS.md §6).
+ *
+ * MEASURED before this rule existed (2026-09-27): `mpd-team-watchdog-plugin` subscribed to
+ * `agent/pre-step`, `agent/session-start` and `agent/turn-stopping` through a raw
+ * `ctx.on` while its `session/event` and `agent/assistant-stream` subscriptions already
+ * went through `dsh.onEvent` — a split nobody saw, because the identifier rule above
+ * cannot see an event NAME. `mpd-bootstrap-plugin`'s `fs/observed` had the same shape.
+ * Both were rebased onto `dsh.onEvent` and this rule keeps the class closed.
+ *
+ * SCOPE, stated so the rule is not read as "no ctx.on anywhere": cordis FRAMEWORK events
+ * (`internal/service`, `internal/ready`) are the plugin framework's own registry signals,
+ * not a harness seam, and are deliberately NOT listed.
+ */
+export const FORBIDDEN_EVENT_NAMES = [
+  "agent/pre-step",
+  "agent/session-start",
+  "agent/turn-stopping",
+  "agent/assistant-stream",
+  "agent/error",
+  "agent/request-error",
+  "session/event",
+  "fs/observed",
+]
+
 /** The one package allowed to touch them: the adapter IS the contact surface. */
 export const ADAPTER_PACKAGE = "mpd-dsh-adapter-plugin"
 
@@ -191,6 +218,23 @@ export function scanDirectTeamAccess(repoRoot = REPO_ROOT) {
           }
         }
       }
+      // The event rule: a SUBSCRIPTION to a harness event, on a raw ctx, outside the
+      // adapter. `ctx.on("…")` / `ctx.on?.("…")` / `this.ctx.on(…)` all match; a mention
+      // inside a string or a comment was already stripped or is not a call.
+      for (let index = 0; index < stripped.length; index += 1) {
+        const line = stripped[index]
+        for (const event of FORBIDDEN_EVENT_NAMES) {
+          const subscription = new RegExp(`\\bctx\\s*\\.\\s*on\\s*\\??\\.?\\s*\\(\\s*["'\`]${event.replace(/[/-]/g, (c) => "\\" + c)}["'\`]`)
+          if (subscription.test(line)) {
+            findings.push({
+              file: relPath,
+              line: index + 1,
+              identifier: `ctx.on(${event}) — subscribe through dsh.onEvent`,
+              text: (original[index] ?? "").trim(),
+            })
+          }
+        }
+      }
     }
   }
   return { findings, outOfBand, packages: roots.length, files }
@@ -257,6 +301,24 @@ export function selfTest() {
     write("packages/not-mpd/src/index.ts", "export const teams = (ctx) => ctx.agentTeams\n")
     // 5. A non-`.ts` file under a scanned package's src is REPORTED but never a failure.
     write("packages/mpd-fixture/src/legacy.js", "const agentTeams = require(\"some-vendored-team-plugin\")\n")
+    // 6. A RAW subscription to a harness EVENT is a finding of its own (the class the
+    //    identifier rule cannot see, measured 2026-09-27 in the watchdog + bootstrap).
+    write("packages/mpd-fixture/src/raw-event.ts", [
+      "export function apply(ctx) {",
+      "  ctx.on(\"agent/pre-step\", (payload, next) => next())",
+      "  return undefined",
+      "}",
+      "",
+    ].join("\n"))
+    // 7. A cordis FRAMEWORK event is deliberately OUT of the rule: it is the plugin
+    //    framework's own registry signal, not a harness seam.
+    write("packages/mpd-fixture/src/framework-event.ts", [
+      "export function apply(ctx) {",
+      "  ctx.on(\"internal/service\", (name) => name)",
+      "  return undefined",
+      "}",
+      "",
+    ].join("\n"))
 
     const result = scanDirectTeamAccess(tempRoot)
     const found = (file, line, identifier) => result.findings.some(
@@ -273,6 +335,16 @@ export function selfTest() {
         name: "seeded violation in a NESTED file (recursion)",
         ok: found("packages/mpd-fixture/src/nested/deep.ts", 2, "startContinuable"),
         detail: "ctx.subagents.startContinuable must redden",
+      },
+      {
+        name: "a RAW ctx.on(\"agent/pre-step\") subscription is a finding",
+        ok: result.findings.some((f) => f.file === "packages/mpd-fixture/src/raw-event.ts" && f.line === 2 && /ctx\.on\(agent\/pre-step\)/.test(f.identifier)),
+        detail: "subscribing to a harness EVENT outside the adapter must redden (this is the class that hid the watchdog's three raw subscriptions)",
+      },
+      {
+        name: "a cordis FRAMEWORK event (internal/service) is NOT a finding",
+        ok: !result.findings.some((f) => f.file === "packages/mpd-fixture/src/framework-event.ts"),
+        detail: "the rule lists harness EVENTS, never 'no ctx.on anywhere'",
       },
       {
         name: "the STRING spelling ctx.get(\"agentTeams\") reddens too",
@@ -295,8 +367,8 @@ export function selfTest() {
         detail: "only packages/mpd-* is scanned",
       },
       {
-        name: "exactly the three seeded findings are reported",
-        ok: result.findings.length === 3,
+        name: "exactly the four seeded findings are reported",
+        ok: result.findings.length === 4,
         detail: `got ${result.findings.length}: ${result.findings.map((finding) => `${finding.file}:${finding.line}`).join(", ")}`,
       },
       {
@@ -316,9 +388,10 @@ export function selfTest() {
       {
         name: "the fixture walker actually read the seeded band",
         // ONE scanned package root: the fixture, because the adapter package is excluded
-        // by name and `not-mpd` is outside the `mpd-*` band. FOUR .ts files; `legacy.js`
-        // is out of band and is counted under NOT COVERED instead.
-        ok: result.packages === 1 && result.files === 4,
+        // by name and `not-mpd` is outside the `mpd-*` band. SIX .ts files (the two event
+        // fixtures joined the original four); `legacy.js` is out of band and is counted
+        // under NOT COVERED instead.
+        ok: result.packages === 1 && result.files === 6,
         detail: `packages=${result.packages} files=${result.files}`,
       },
     ]

@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-09-27T01:58:11.402Z",
+  "finishedAt": "2026-09-27T02:02:13.753Z",
+  "docker": "Docker version 29.8.1, build 4a63305",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 162,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-U4lNuj",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml run --rm -T mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=40 failed=2 null=1 FAILED=[tui.sessionPreset,tui.laneExit] NULL=[boot.llmTurn]",
+  "exitCode": 1
+}

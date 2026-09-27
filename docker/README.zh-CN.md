@@ -70,6 +70,13 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     空 `.credentials.yaml` 是预期行为，并连同其大小一起登记）。随后 reporter 会重新读取自己写出的产物，拒绝
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
+15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.11.1`
+    （第一个 peer 范围包含 `0.1.7-rc.2` 的 dsh-tui 版本），把本 bundle 作为第三层 patch 装进 `dsh-tui`
+    profile，并记下十一条断言：宿主安装、两次 `plugin add`、组合、**TUI 自带作用域注册表行携带
+    `default: mpd`**、`preset-mpd` / `mpd-tui` / 官方团队行、真实 tmux PTY 启动并到达聊天界面、无致命签名，
+    以及所创建会话**实际**运行的预设——从 harness 自己的会话存储读出（`agentPreset: "mpd"`），绝不从界面文本
+    推断。若默认仍是 `standard`，TUI 就会去启动一个该组合并未声明的预设，因此这是一次真正的验收，不是冒烟。
 
 ## 它证明了什么——以及没有证明什么
 

@@ -65,6 +65,21 @@ const EXPECTED = [
   "isolation.home",
   "isolation.realHome",
   "isolation.noCredentials",
+  // ── the DSH-TUI edition (docker/tui-lane.sh) ─────────────────────────────────
+  // A developer host cannot install a global npm prefix, so the container is the ONLY
+  // place the TUI profile is exercised end to end. Every one of these is a real
+  // assertion; a failed boot lands as `false`, never as a silent skip.
+  "tui.hostInstall",
+  "tui.pluginAddHost",
+  "tui.pluginAddBundle",
+  "tui.compose",
+  "tui.registryDefaultMpd",
+  "tui.presetRow",
+  "tui.mpdTuiRow",
+  "tui.agentTeamRows",
+  "tui.boot",
+  "tui.noFatalSignatures",
+  "tui.sessionPreset",
   "boot.llmTurn",
 ]
 

@@ -1,0 +1,47 @@
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 550B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 3.66kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [1/8] FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
+#4 resolve docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 81.09MB 0.1s
+#5 transferring context: 203.76MB 0.5s done
+#5 DONE 0.5s
+
+#4 [1/8] FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
+#4 CACHED
+
+#6 [2/8] COPY . /src/
+#6 DONE 0.7s
+
+#7 [3/8] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#7 DONE 0.1s
+
+#8 [4/8] COPY docker/probe.mjs /opt/mpd-e2e/probe.mjs
+#8 DONE 0.0s
+
+#9 [5/8] COPY docker/lib/ /opt/mpd-e2e/lib/
+#9 DONE 0.0s
+
+#10 [6/8] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#10 DONE 0.0s
+
+#11 [7/8] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh && mkdir -p /work /out
+#11 DONE 0.2s
+
+#12 [8/8] WORKDIR /work
+#12 DONE 0.0s
+
+#13 exporting to image
+#13 exporting layers
