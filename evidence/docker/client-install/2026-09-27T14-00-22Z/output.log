@@ -1,85 +1,67 @@
- Image mpd-docker-e2e:local Building 
-#1 [internal] load local bake definitions
-#1 reading from stdin 550B done
-#1 DONE 0.0s
+===== Docker client-install E2E (ubuntu:24.04 + compose) =====
+stamp:   2026-09-27T14:00:28Z
+image:   mpd-docker-e2e:local
+command: node scripts/docker-e2e.mjs   (container: docker/entrypoint.sh)
 
-#2 [internal] load build definition from Dockerfile
-#2 transferring dockerfile: 4.10kB done
-#2 DONE 0.0s
+PROVES: a clean ubuntu:24.04 container installs node/bun/pnpm + @deepseek-ai/dsh,
+        copies this checkout, rebuilds every packages/*/dist from source, installs the
+        bundle with `dsh plugin --profile web add .`, composes the mpd rows, and MOUNTS
+        the installed profile in an isolated HOME/DSH_HOME with registration
+        instrumentation (docker/probe.mjs) reading the live tool registry, plus a real
+        `POST /api/session/create` with agentPreset=mpd (the gateway refuses on an
+        inactive preset row).
+DOES NOT PROVE: any live LLM turn (no credentials are staged, AGENTS.md §10); that the
+        COMPOSED row list equals the MOUNTED row list (the dump is labelled composition
+        only); a packed/tarball install (dist/mpd-package is not exercised here).
 
-#3 [internal] load metadata for docker.io/library/ubuntu:24.04
-#3 DONE 0.0s
+===== facts =====
+stamp = 2026-09-27T14:00:28Z
+entrypoint = docker/entrypoint.sh
+image = mpd-docker-e2e:local
+ubuntuImage = ubuntu 24.04 (Ubuntu 24.04.5 LTS)
+pins = node=24.19.0 dsh=0.1.7-rc.2 pnpm=11.23.0
+home = /root/sandbox-home
+dshHome = /root/sandbox-dsh
+aptSeconds = 13
+nodeArch = amd64 -> linux-x64
+node = v24.19.0 (npm 11.17.0)
+bun = 1.4.2 (BUN_INSTALL=/opt/toolchain/bun)
+pnpm = 11.23.0
+dsh = 0.1.7-rc.2 (/usr/local/bin/dsh)
+harnessVersion = 0.1.7-rc.2
+harnessVersionExpected = 0.1.7-rc.2
+copyManifest = @mpd-dsh/mpd
+rebuildEntries = ENTRIES=23
+profileDep = link:/opt/mpd
+profileBundles = @deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+bootCoreTools = 6/6
+bootTeamToolsRootPlane = 0/9
+bootAdapterCaps = tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister
+bootAgentTeamsMethods = listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+bootCookieJarLines = 4
+bootCookieExchange = http=303 tokenPresent=yes
+bootHttp = /plugins/mpd-workmate/list -> 200
+bootAgentTeamToolsScoped = [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-6816bf80-3448-4ae8-a453-c0c6c61d
+bootSessionGate = [mpd-roles] session gate listener registered for agent "session-6816bf80-3448-4ae8-a453-c0c6c61d9257" agentPreset=mpd
+hashesMeasuredAt = 2026-09-27T14:04:09Z
+finishedAt = 2026-09-27T14:04:09Z
 
-#4 [ 1/11] FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
-#4 resolve docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3 done
-#4 DONE 0.0s
+===== observations (reported, never gated) =====
+rebuildNoSrc = NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.mjs from the upstream checkout (no local src/)
+installTail = + @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 250ms using pnpm v11.23.0 
+dumpMpdRowIds = mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-tools,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-ui-agent-team,mpd-ulw,mpd-web-compat,mpd-workmate,
+dumpDefaultMpdLines = 1
+dumpAgentTeamRows = mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,
+retiredToolsPresent = agent_teams_create,agent_teams_delete
+teamToolPlane = root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below
+uiTeamRow = resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)
+sessionCreate = http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd
+realHomeMarkers = .bashrc,.profile,sandbox-dsh,sandbox-home,
+credentialFiles = .credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)
 
-#5 [internal] load build context
-#5 transferring context: 75.80MB 0.1s
-#5 transferring context: 204.92MB 0.5s done
-#5 DONE 0.6s
-
-#4 [ 1/11] FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
-#4 CACHED
-
-#6 [ 2/11] COPY . /src/
-#6 DONE 0.7s
-
-#7 [ 3/11] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
-#7 DONE 0.1s
-
-#8 [ 4/11] COPY docker/probe.mjs /opt/mpd-e2e/probe.mjs
-#8 DONE 0.0s
-
-#9 [ 5/11] COPY docker/lib/ /opt/mpd-e2e/lib/
-#9 DONE 0.0s
-
-#10 [ 6/11] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
-#10 DONE 0.0s
-
-#11 [ 7/11] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
-#11 DONE 0.0s
-
-#12 [ 8/11] COPY docker/ui/capture.mjs /opt/mpd-e2e/capture.mjs
-#12 DONE 0.0s
-
-#13 [ 9/11] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
-#13 DONE 0.0s
-
-#14 [10/11] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mjs /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
-#14 DONE 0.2s
-
-#15 [11/11] WORKDIR /work
-#15 DONE 0.0s
-
-#16 exporting to image
-#16 exporting layers
-#16 exporting layers 2.9s done
-#16 exporting manifest sha256:7f9a63ab5e21ae90c7fa75a6cb26059399ec37c902466012d373a499da8f8da7 done
-#16 exporting config sha256:81d8a9b3fb4d2f4f5d3f840e0f09471edb9c96c4b7a61bce6cc4075e7c46d2a9 done
-#16 exporting attestation manifest sha256:9ccefc56501d455f1385908c083aa53f820935b71a9b5e6ac6c1c52981e665c9 done
-#16 exporting manifest list sha256:99dcc9985f92fbc7dccb8fc228f0cb0b9466c4c0a786e73b2de2c0eb3d7dbd1c done
-#16 naming to docker.io/library/mpd-docker-e2e:local done
-#16 unpacking to docker.io/library/mpd-docker-e2e:local
-#16 unpacking to docker.io/library/mpd-docker-e2e:local 1.1s done
-#16 DONE 4.1s
-
-#17 resolving provenance for metadata file
-#17 DONE 0.0s
- Image mpd-docker-e2e:local Built 
- Container docker-mpd-client-run-dc9a265b32b5 Creating 
- Container docker-mpd-client-run-dc9a265b32b5 Created 
-===== Docker client-install E2E — 2026-09-27T14:00:28Z =====
-ubuntu image : ubuntu 24.04
-app dir      : /opt/mpd   (copy of /src)
-HOME         : /root/sandbox-home
-DSH_HOME     : /root/sandbox-dsh
-pins         : node=24.19.0 dsh=0.1.7-rc.2 pnpm=11.23.0
-[record] ubuntu.version=true — the base image is ubuntu:24.04
-
------ apt: curl git ca-certificates unzip xz-utils -----
-===== STEP 01-apt-update =====
-$ apt-get update
+===== steps =====
+----- STEP 01-apt-update (exit=0, 5s) -----
+$ apt-get update 
 Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]
 Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
 Get:3 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1547 kB]
@@ -101,9 +83,10 @@ Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Package
 Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
 Fetched 33.0 MB in 5s (7022 kB/s)
 Reading package lists...
-[step 01-apt-update] exit=0 seconds=5
-===== STEP 01-apt-install =====
-$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux
+
+
+----- STEP 01-apt-install (exit=0, 8s) -----
+$ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux 
 Reading package lists...
 Building dependency tree...
 Reading state information...
@@ -322,54 +305,33 @@ Updating certificates in /etc/ssl/certs...
 0 added, 0 removed; done.
 Running hooks in /etc/ca-certificates/update.d...
 done.
-[step 01-apt-install] exit=0 seconds=8
-[record] toolchain.apt=true — apt-get update + install curl git ca-certificates unzip xz-utils tmux
-curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
 
------ Node.js 24.19.0 -----
-===== STEP 02-node =====
-$ bash -c 
-set -euo pipefail
-V="$1"; A="$2"
-cd /tmp
-curl -fsSLO "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz"
-curl -fsSL -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt"
-grep " node-v${V}-linux-${A}.tar.xz\$" SHASUMS256.txt > node.sha256
-sha256sum -c node.sha256
-tar -xJf "node-v${V}-linux-${A}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner
-rm -f "node-v${V}-linux-${A}.tar.xz" SHASUMS256.txt node.sha256
-node -v
-npm -v
- _ 24.19.0 x64
+
+----- STEP 02-node (exit=0, 7s) -----
+$ bash -c  set -euo pipefail V="$1"; A="$2" cd /tmp curl -fsSLO "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz" curl -fsSL -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt" grep " node-v${V}-linux-${A}.tar.xz\$" SHASUMS256.txt > node.sha256 sha256sum -c node.sha256 tar -xJf "node-v${V}-linux-${A}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner rm -f "node-v${V}-linux-${A}.tar.xz" SHASUMS256.txt node.sha256 node -v npm -v  _ 24.19.0 x64 
 node-v24.19.0-linux-x64.tar.xz: OK
 v24.19.0
 11.17.0
-[step 02-node] exit=0 seconds=7
-[record] toolchain.node=true — install by official tarball, sha256 verified against the published SHASUMS256.txt
 
------ bun (official install script) -----
-===== STEP 03-bun =====
-$ bash -c set -euo pipefail; curl -fsSL https://bun.sh/install | bash
+
+----- STEP 03-bun (exit=0, 8s) -----
+$ bash -c set -euo pipefail; curl -fsSL https://bun.sh/install | bash 
 #=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                    -=O=-        #   #     #    #                                                                                                                             0.0%                                                                           0.1%                                                                           0.3%                                                                           0.4%                                                                           0.8%                                                                           1.3%#                                                                          2.0%##                                                                         3.3%###                                                                        5.5%######                                                                     9.0%##########                                                                14.4%##############                                                            20.6%####################                                                      28.3%#######################                                                   32.7%#############################                                             40.6%#################################                                         47.1%#######################################                                   55.4%#############################################                             63.3%###################################################                       71.7%#########################################################                 79.8%############################################################              83.9%##################################################################        92.2%######################################################################## 100.0%
 bun was installed successfully to /opt/toolchain/bun/bin/bun 
 Run 'bun --help' to get started
-[step 03-bun] exit=0 seconds=8
-[record] toolchain.bun=true — bun installed by the official script and asserted on PATH
 
------ pnpm 11.23.0 (required by 'dsh plugin') -----
-===== STEP 04-pnpm =====
-$ npm i -g pnpm@11.23.0
+
+----- STEP 04-pnpm (exit=0, 4s) -----
+$ npm i -g pnpm@11.23.0 
 
 added 1 package in 4s
 
 1 package is looking for funding
   run `npm fund` for details
-[step 04-pnpm] exit=0 seconds=4
-[record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
 
------ @deepseek-ai/dsh@0.1.7-rc.2 -----
-===== STEP 05-dsh =====
-$ npm i -g @deepseek-ai/dsh@0.1.7-rc.2
+
+----- STEP 05-dsh (exit=0, 67s) -----
+$ npm i -g @deepseek-ai/dsh@0.1.7-rc.2 
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
 added 520 packages in 1m
@@ -384,21 +346,14 @@ npm warn allow-scripts   @google/genai@1.52.0 (preinstall: echo 'preinstall: no-
 npm warn allow-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
 npm warn allow-scripts
 npm warn allow-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
-[step 05-dsh] exit=0 seconds=67
-[record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
 
------ build-context filter (did the image carry host state?) -----
-[record] copy.contextFiltered=true — the build context carries no host state, so nothing can pass for a dependency the container should have installed
 
------ copy the checkout to /opt/mpd -----
-===== STEP 06-copy =====
-$ cp -a /src/. /opt/mpd/
-[step 06-copy] exit=0 seconds=0
-[record] copy.repo=true — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+----- STEP 06-copy (exit=0, 0s) -----
+$ cp -a /src/. /opt/mpd/ 
 
------ bun install -----
-===== STEP 07-bun-install =====
-$ bash -c cd '/opt/mpd' && bun install
+
+----- STEP 07-bun-install (exit=0, 46s) -----
+$ bash -c cd '/opt/mpd' && bun install 
 bun install v1.4.2 (744846f84)
 Resolving dependencies
 Resolved, downloaded and extracted [296]
@@ -676,12 +631,10 @@ Saved lockfile
 + dsh-better-sidebar@0.19.0-alpha.1
 
 295 packages installed [45.95s]
-[step 07-bun-install] exit=0 seconds=46
-[record] build.bunInstall=true — bun install resolved the workspace and the dev/optional dependencies
 
------ rebuild every packages/*/dist from source (canonical repo-root bun build) -----
-===== STEP 08-rebuild =====
-$ node /opt/mpd-e2e/lib/rebuild.mjs --repo /opt/mpd --json /work/rebuild.json
+
+----- STEP 08-rebuild (exit=0, 0s) -----
+$ node /opt/mpd-e2e/lib/rebuild.mjs --repo /opt/mpd --json /work/rebuild.json 
 [rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1110)
 [rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=53699)
 [rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=71356)
@@ -711,12 +664,10 @@ $ node /opt/mpd-e2e/lib/rebuild.mjs --repo /opt/mpd --json /work/rebuild.json
 [rebuild] NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.mjs from the upstream checkout (no local src/)
 [rebuild] SKIPPED_SRC=mpd-bundle=src/ exists but owns no discoverable build entry,mpd-mcp-astgrep=src/ exists but owns no discoverable build entry,mpd-mcp-gitbash=src/ exists but owns no discoverable build entry,mpd-mcp-lsp=src/ exists but owns no discoverable build entry
 [rebuild] OK=true
-[step 08-rebuild] exit=0 seconds=0
-[record] build.dists=true — every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact
 
------ dsh plugin --profile web add . (the whole install) -----
-===== STEP 09-install =====
-$ bash -c cd '/opt/mpd' && dsh plugin --profile web add .
+
+----- STEP 09-install (exit=0, 0s) -----
+$ bash -c cd '/opt/mpd' && dsh plugin --profile web add . 
 dsh: initialized profile web at /root/sandbox-dsh/profiles/web
 
 dependencies:
@@ -724,14 +675,10 @@ dependencies:
 
 Already up to date
 Done in 250ms using pnpm v11.23.0
-[step 09-install] exit=0 seconds=0
-[record] install.exit=true — one command installed the bundle into the profile
-[record] install.profileDep=true — the profile links the checkout and keeps the box bundles
-[record] install.installedTree=true — the installed bundle resolves inside the profile
 
------ COMPOSITION ONLY: dsh --profile web --dump-config -----
-===== STEP 10-dump =====
-$ node /opt/mpd/scripts/dump-config.mjs --profile web
+
+----- STEP 10-dump (exit=0, 0s) -----
+$ node /opt/mpd/scripts/dump-config.mjs --profile web 
 [dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
 [dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
 [dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
@@ -2573,31 +2520,44 @@ dsh: [@mpd-dsh/mpd] patch: entry "dsh-tui-agent-preset-registry" not found
       - id: present
         name: '@deepseek-ai/dsh-tool-present'
 [dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).
-[step 10-dump] exit=0 seconds=0
-[label] the block above is COMPOSITION ONLY — rows composed, no plugin code executed
-[record] compose.dumpExit=true — the sanctioned composer exited 0
-[record] compose.mpdRows=true — the mpd host rows compose and the default preset selection is mpd
-[record] compose.presetRow=true — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
-[record] compose.agentTeamRows=true — the official agent-team rows compose under the mpd-owned ids (§4 D3)
 
------ MOUNTING BOOT (registration instrumentation) -----
-$ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
-[record] boot.probeApplied=true — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
-[record] boot.adapterService=true — the mpd-dsh-adapter row applied and provided the mpdDsh service
-[record] boot.adapterToolCall=true — an internal tool call through the adapter answered ok
-[record] boot.mpdTools=true — every core mpd tool answered from the live registry
-[record] boot.agentTeamService=true — the official TeamService is mounted in the booted process (its class name is the witness)
-[record] boot.servesHttp=true — the booted Web app answered 200
-[record] boot.presetMount=true — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
-[record] boot.agentTeamTools=true — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
-[record] boot.sessionGateListener=true — the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)
-[record] boot.noFatalSignatures=true — no fatal apply/module signature in the boot log
 
------ isolation -----
-[record] isolation.home=true — HOME and DSH_HOME stay on the sandbox paths for every harness command
-[record] isolation.realHome=true — no harness/toolchain marker under the real home (/root)
-[record] isolation.noCredentials=true — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
-===== STEP 12-tui =====
+----- STEP 11-boot (exit=-1, 10s) -----
+$ dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)
+[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/opt/mpd/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/work
+[mpd-bootstrap] skill corpus served from /opt/mpd/skills (provider mpd-bundle, bundle 0.11.0)
+[docker-probe] APPLIED=ok
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=14 (13 tools + the /agent-teams command)
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[docker-probe] CORE_TOOLS=6/6
+[docker-probe] CORE_TOOLS_MISSING=
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[docker-probe] TEAM_TOOLS_ROOT=0/9
+[docker-probe] AGENTS_AT_APPLY=0
+[docker-probe] RETIRED_TOOLS_PRESENT=agent_teams_create,agent_teams_delete
+[docker-probe] ADAPTER_SERVICE=present
+[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister
+[docker-probe] ADAPTER_TOOL_CALL=ok
+[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService
+[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+[docker-probe] DONE=1
+dsh web: http://127.0.0.1:3197/?token=<redacted>
+[mpd-roles] roster section registered for agent "session-6816bf80-3448-4ae8-a453-c0c6c61d9257" agentPreset=mpd — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-6816bf80-3448-4ae8-a453-c0c6c61d9257" agentPreset=mpd
+[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-6816bf80-3448-4ae8-a453-c0c6c61d scopelessRead=0/9
+[docker-probe] AGENT_VISIBLE_TOOLS=105 agent=session-6816bf80-3448-4ae8-a453-c0c6c61d
+
+
+----- STEP 12-tui (exit=0, 0s) -----
+$ bash docker/tui-lane.sh
 [record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
 [record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
 [record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
@@ -2610,6 +2570,97 @@ $ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
 [record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
 [record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
 [record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
-[record] boot.llmTurn=null — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
-[report] ok=true complete=false passed=42 failed=0 null=1 scrubbed=true -> /out/result.json
-[report] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+
+
+===== assertions =====
+PASS ubuntu.version — the base image is ubuntu:24.04
+     raw: ubuntu 24.04
+PASS toolchain.apt — apt-get update + install curl git ca-certificates unzip xz-utils tmux
+     raw: exit=0/0
+PASS toolchain.node — install by official tarball, sha256 verified against the published SHASUMS256.txt
+     raw: v24.19.0 (1:node-v24.19.0-linux-x64.tar.xz: OK )
+PASS toolchain.bun — bun installed by the official script and asserted on PATH
+     raw: 1.4.2
+PASS toolchain.pnpm — required by 'dsh plugin' (it forwards to pnpm), available on PATH
+     raw: 11.23.0
+PASS harness.version — npm i -g then 'dsh --version' printed the pin exactly
+     raw: 0.1.7-rc.2
+PASS copy.contextFiltered — the build context carries no host state, so nothing can pass for a dependency the container should have installed
+     raw: absent: node_modules .git evidence .toolchain dist
+PASS copy.repo — package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present
+     raw: name=@mpd-dsh/mpd
+PASS build.bunInstall — bun install resolved the workspace and the dev/optional dependencies
+     raw: exit=0
+PASS build.dists — every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact
+     raw: BUILD_OK=23/23
+PASS install.exit — one command installed the bundle into the profile
+     raw: exit=0
+PASS install.profileDep — the profile links the checkout and keeps the box bundles
+     raw: dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+PASS install.installedTree — the installed bundle resolves inside the profile
+     raw: /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd
+PASS compose.dumpExit — the sanctioned composer exited 0
+     raw: exit=0
+PASS compose.mpdRows — the mpd host rows compose and the default preset selection is mpd
+     raw: rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x1
+PASS compose.presetRow — the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)
+     raw: - id: preset-mpd
+PASS compose.agentTeamRows — the official agent-team rows compose under the mpd-owned ids (§4 D3)
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+PASS boot.probeApplied — the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition
+     raw: [docker-probe] APPLIED=ok
+PASS boot.adapterService — the mpd-dsh-adapter row applied and provided the mpdDsh service
+     raw: [mpd-dsh-adapter] mpdDsh provided
+PASS boot.adapterToolCall — an internal tool call through the adapter answered ok
+     raw: [docker-probe] ADAPTER_TOOL_CALL=ok
+PASS boot.mpdTools — every core mpd tool answered from the live registry
+     raw: CORE_TOOLS=6/6
+PASS boot.agentTeamTools — every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)
+     raw: [docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-6816bf80-3448-4ae8-a453-c0c6c61d
+PASS boot.sessionGateListener — the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)
+     raw: [mpd-roles] session gate listener registered for agent "session-6816bf80-3448-4ae8-a453-c0c6c61d9257" agentPreset=mpd
+PASS boot.agentTeamService — the official TeamService is mounted in the booted process (its class name is the witness)
+     raw: [docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+PASS boot.servesHttp — the booted Web app answered 200
+     raw: /plugins/mpd-workmate/list -> 200
+PASS boot.presetMount — the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)
+     raw: POST /api/session/create -> {"type":"server-response","rpcId":"rpc-1-1790517785-22592","result":{"ok":true,"value":{"sessionId":"session-6816bf80-3448-4ae8-a453-c0c6c61d9257","agentPreset":"mpd"}}}
+PASS boot.noFatalSignatures — no fatal apply/module signature in the boot log
+     raw: 0 matches
+PASS isolation.home — HOME and DSH_HOME stay on the sandbox paths for every harness command
+     raw: HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh
+PASS isolation.realHome — no harness/toolchain marker under the real home (/root)
+     raw: absent: .dsh .mpd .npm .bun
+PASS isolation.noCredentials — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
+     raw: inventory=.credentials.yaml(161B),
+PASS tui.hostInstall — the TUI host installs globally and lands on PATH
+     raw: version=0.11.1 bin=/usr/local/bin/dsh-tui
+PASS tui.pluginAddHost — the TUI host bundle installs into the dsh-tui profile
+     raw: exit=0
+PASS tui.pluginAddBundle — THIS bundle installs into the dsh-tui profile as the third patch layer
+     raw: exit=0
+PASS tui.compose — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+     raw: exit=0
+PASS tui.registryDefaultMpd — the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)
+     raw: id=dsh-tui-agent-preset-registry default=mpd
+PASS tui.presetRow — the mpd preset row is composed in the TUI plane
+     raw: id=preset-mpd
+PASS tui.mpdTuiRow — the bundle's mpd-tui row is composed in the TUI plane
+     raw: id=mpd-tui
+PASS tui.agentTeamRows — all three official Agent Teams rows are composed in the TUI plane
+     raw: ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team
+PASS tui.boot — the REAL TUI booted on a real PTY and reached its chat screen
+     raw: tmux=new-session-ok ready=chat-screen
+PASS tui.noFatalSignatures — no fatal apply/module/preset signature in the TUI pane or log
+     raw: scanned=pane+pane-log
+PASS tui.sessionPreset — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+     raw: {"found":true,"sessionId":"a6ffa19f-ca43-4880-85b0-f46d83798eeb","agentPreset":"mpd","bytes":436}
+NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+     raw: no credentials staged by design
+PASS tui.laneExit — the TUI lane ran to completion with every assertion green
+     raw: records=11
+
+===== summary =====
+passed=42 failed=0 null=1 total=43
+ok=true
+complete=false
