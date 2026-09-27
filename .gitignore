@@ -95,3 +95,7 @@ evidence/**/raw/final/
 # one command. The SCREENSHOTS and report are the evidence and stay: only the scratch is ignored.
 docker/ui/data/
 docker/ui/pw/
+# The stack's RAW runtime logs carry the Web app's launch token. The screenshots and the
+# capture report are the evidence; a live token is not, and AGENTS.md §10 keeps secret-shaped
+# strings out of committed artifacts (the same rule the QA lanes apply when they redact it).
+docker/ui/out/*.log

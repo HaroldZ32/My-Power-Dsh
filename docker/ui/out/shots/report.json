@@ -45,7 +45,7 @@
   ],
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790507917030\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-7a2dc4be-1a98-486a-b34c-93d4684a088e\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790508218234\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-bbb9ed72-95a4-432e-92c8-ca04636e14c4\",\"agentPreset\":\"mpd\"}}}"
   },
   "controls": [
     "New session",
