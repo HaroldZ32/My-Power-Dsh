@@ -289,3 +289,44 @@ Measured on the installed 0.1.7-rc.2 packages:
 **BOUND to state in the docs, not to discover later:** a slot that cannot be resolved must fail the
 spawn LOUDLY naming the member and the slot, write no state, and never clamp an effort — the rule the
 one-shot paths already follow (AGENTS.md §13).
+
+
+## 7. W4c — WHY the settings read empty, and the path that is actually open
+
+Read out of the installed `dsh-settings@0.1.7-rc.2`, not guessed:
+
+```js
+function volatileForm(schema) {
+  if (schema.meta.volatile) return plainSchema(schema);
+  if (schema.type === "object") { /* recurse into schema.dict */ }
+  return undefined;   // no volatile field anywhere -> the entry is NOT LISTED
+}
+…
+this.ownerContext.configEditor.configuration().flatMap(({ entry }) => {
+  const form = volatileForm(this.schema(entry));
+  if (form === undefined) return [];      // an entry with no volatile field has no form
+})
+```
+
+Three consequences, each of which explains an observation we already had:
+
+1. **The settings form is keyed by ENTRY ID, not by namespace.** `configForms.get(ns)` looks the id up with
+   `entries().find((row) => row.options.id === ns)` and THROWS `No configurable plugin entry "<ns>"`.
+   Our Web card passes `"mpd"` — a namespace that no entry has — which is why its inputs render empty.
+2. **An entry is listed only if its `Config` schema carries a volatile field**, so no plugin can be
+   "registered" into the dialog by any other route. That is what replaced the retired
+   `settings.register(namespace, schema, …)`.
+3. **The flag is plain metadata** — `schema.meta.volatile`, plus `schema.dict` / `type` / `list` /
+   `inner` — walked on a schema OBJECT. It is not a method call on the harness's own fork.
+
+**So the harness's `@deepseek-ai/schemastery` is NOT needed, and cannot be had anyway:** that package
+exists only inside the harness install (`…/dsh/node_modules/@deepseek-ai/…`, version 3.18.4) — not in
+the repo, not in the profile — and declaring it in the bundle's `dependencies` does NOT materialize it
+on a `link:` install (measured 2026-09-27: `dsh plugin add .` answered "Already up to date" and the
+profile's `node_modules` gained nothing; the official Agent Teams packages resolve because the HARNESS
+ships them, not because the heal fired). The dependency was reverted rather than left as decoration.
+
+The open path is therefore small and entirely ours: mark the leaves of our VENDORED schemastery's
+schema tree with `meta.volatile = true`, export that tree as the `mpd-config` row's `Config`, and
+repoint both front doors at the ENTRY (`mpd-config`) instead of the namespace. Then the rows read and
+write real values through the harness's own machinery, and the retired namespace bridge can go.
