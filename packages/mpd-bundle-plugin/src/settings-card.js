@@ -22,7 +22,7 @@
 //   • the component receives `{ t, edit, resetField, save, discard, use<X>Card }`, where `t` comes
 //     from the registered `locale` dictionaries and `use<X>Card` is the hook the registration's
 //     `inject()` result provides;
-//   • the write goes through the PUBLIC client seam `ctx.settingsScope.bind({namespace})`, whose
+//   • the write goes through the PUBLIC client seam `ctx.configForms.get(namespace)`, whose
 //     actions are `set`/`unset`/`mutate(ops, expectedRevision)` — i.e. the `settings/mutate` RPC
 //     the bridge consumes. The client performs NO filesystem I/O and cannot.
 // The host's `PluginCard`/`ValueField` are that package's PRIVATE components and are NOT imported
@@ -1033,7 +1033,7 @@
   }
 
   /**
-   * Mount the section. `settingsScope` is a PLUGIN-provided service, so it is reached through
+   * Mount the section. The namespace's form comes from the harness's `configForms` service, so
    * `ctx.inject` — never a declared dependency (a declared-but-absent service makes the whole page
    * fail as `entry: pending`; `web-client-adapt --self-test` asserts this rule against the built
    * client). One warning on absence, never a throw.
@@ -1052,13 +1052,29 @@
       }
       ctx.slots.inject(SECTION_SLOT, function* () {
         try {
-          ctx.inject(["settingsScope"], (scoped) => {
-            const service = typeof scoped.get === "function" ? scoped.get("settingsScope") : scoped.settingsScope
-            if (service === undefined || service === null || typeof service.bind !== "function") {
-              console.warn("[mpd] settings section: the settings scope is unavailable — the mpd section is not registered")
+          // THE FORM IS THE SCOPE. Until 2026-09-27 this block waited on
+          // an injected `settingsScope` service, and that service exists NOWHERE in harness
+          // 0.1.7-rc.2 (a grep over every @deepseek-ai/* client bundle returns nothing), so the
+          // callback never fired: the Settings dialog rendered General / Models / Built-in
+          // plugins / Agent presets with NO mpd section, and — because that path logged nothing
+          // — the absence was silent. The harness's own sections reach their namespace through
+          // `ctx.configForms.get(ns)`, whose controller carries the SAME shape this card already
+          // used (`getSnapshot`, `subscribe`, `set`, `mutate`), so the card is unchanged and
+          // only its host object moves.
+          // Read it BOTH ways: a real client context exposes services as properties, while a
+          // stub context (the offline harness) serves them through `get`. The card must not care
+          // which one it is talking to.
+          // STILL DEFERRED, and that is the point: `configForms` is provided by ANOTHER plugin's
+          // fiber, so a one-shot probe at apply() races it. The DYNAMIC form waits for the
+          // provider without parking this boot entry — a declared-but-absent service would turn
+          // the whole page into `entry: pending` (the rule `web-client-adapt --self-test` pins).
+          ctx.inject(["configForms"], (scoped) => {
+            const forms = (typeof scoped.get === "function" ? scoped.get("configForms") : undefined) ?? scoped.configForms
+            if (forms === undefined || forms === null || typeof forms.get !== "function") {
+              console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
-            const scope = service.bind({ namespace: NS })
+            const scope = forms.get(NS)
             // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
             // card's own store on every change. Started BEFORE the registration so the first
             // render already carries the real list when the providers are up.

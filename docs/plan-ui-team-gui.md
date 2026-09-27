@@ -125,10 +125,15 @@ Two distinct causes, one fixed and one not:
   warning either. The slot name is right (`settings.section` is what the harness's own sections
   use); the SERVICE is gone.
 
-  The real contract, read from `dsh-client-ui-settings-general`: a section declares
-  `inject = ["slots","locale","connection","remote","remote.settings","configForms","shortcuts"]`,
-  registers into `settings.section` with `{ close }`, and reads/writes values through
-  **`configForms` + `remote.settings`**. Re-basing our 1128-line card onto that is the W4 task.
+  **FIXED in the same wave, and verified on screen:** the service name was the whole of it.
+  `ctx.configForms.get(ns)` hands back a `ConfigFormController` with the SAME shape the card already
+  used (`getSnapshot`, `subscribe`, `set`, `mutate`, `unset`), so the card is untouched and only its
+  host object moved — and the mount stays DEFERRED through `ctx.inject(["configForms"], …)`, which is
+  what the harness's own sections do, because the service comes from another plugin's fiber and a
+  one-shot probe would race it. The Settings dialog now renders
+  `General / Models / Built-in plugins / Agent presets / MPD` (`05-settings.png`), and the offline
+  arms were migrated with it: the fixture had modelled `settingsScope.bind({namespace})`, i.e. the
+  test pinned the SAME dead service the code did — which is how the absence stayed green.
 
 ### W4 progress (verified on screen)
 
@@ -146,6 +151,9 @@ installs the capture tooling into the volume itself and copies `capture.mjs` / `
 the image, so a rebuilt stack can always look at itself.
 
 - W3: not started in code.
+- W4 next: the MPD section's own page is captured by `05b-mpd-section` now (the nav entry proves the
+  REGISTRATION, the page proves the card renders its rows — different claims); the TUI panels still
+  need the same treatment.
 
 ### How the UI became reachable (solved, keep it)
 

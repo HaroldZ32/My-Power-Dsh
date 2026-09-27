@@ -4,8 +4,11 @@
 // `{ name: "settings.section", id: "mpd", order, label, locale, inject }` behind
 // `ctx.slots.inject`, exactly the pattern the host's own settings-models section uses — and the
 // ABSENCE of the old keyed Plugins-tab item registration (w14 moved the section out of that tab);
-// (b) the mount is DEFERRED through `ctx.inject(["settingsScope"])` and never a declared
-// dependency; (c) the form behaviour: it reads what the namespace reports, stages edits, writes
+// (b) the mount reaches the namespace through the harness's `configForms` service and is never a
+// declared dependency — `settingsScope`, which this case used to pin, exists NOWHERE in harness
+// 0.1.7-rc.2, and pinning a service that does not exist is how the section stayed silently absent
+// (measured in docker/ui 2026-09-27: Settings rendered General/Models/Built-in plugins/Agent
+// presets, no mpd entry, and no warning anywhere); (c) the form behaviour: it reads what the namespace reports, stages edits, writes
 // `mutate(ops, revision)` with NESTED paths, and renders read-only with a reason when the scope
 // says `writable === false`; (d) the isolation rules; (e) the eleven fields/labels/zh descriptions
 // are IDENTICAL to the TUI section's, so the two front doors cannot drift.
@@ -13,7 +16,9 @@
 // WHAT IS NOT ASSERTED: that a real browser renders the section or that a click produces the
 // mutate. No browser binary exists in this environment; that claim is NOT-CLAIMED and the user sees
 // it in their own GUI. The rendered-state assertions below run in the offline hook runtime, which is
-// a different thing and is labelled as such.
+// a different thing and is labelled as such. Since 2026-09-27 the rendered-state arms below ARE
+// backed by a real browser run in docker/ui (screenshots + report.json), which is what caught the
+// absent section in the first place.
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
@@ -68,7 +73,7 @@ const READY = {
 }
 
 function mountedCard(scope) {
-  const client = loadMpdClient({ services: { settingsScope: scope } })
+  const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) } } })
   client.exports.apply(client.ctx)
   const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
   return { client, registration }
@@ -129,10 +134,11 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
     expect(pluginItemRegistrations(ARTIFACT)).toEqual([])
   })
 
-  test("the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams", () => {
-    expect(ARTIFACT).toContain('ctx.inject(["settingsScope"]')
+  test("the mount reaches configForms and the client still declares only the stable seams", () => {
+    expect(ARTIFACT).toContain('ctx.inject(["configForms"]')
+    expect(ARTIFACT).not.toContain('ctx.inject(["settingsScope"]')
     expect(ARTIFACT).toContain('const REQUIRED_SERVICES = ["slots", "locale"]')
-    expect(ARTIFACT).not.toContain('REQUIRED_SERVICES = ["slots", "locale", "settingsScope"]')
+    expect(ARTIFACT).not.toContain('REQUIRED_SERVICES = ["slots", "locale", "configForms"]')
   })
 
   test("the disclosure copy is the same sentence the TUI states, and no stale claim survives", () => {
@@ -143,8 +149,8 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
   })
 })
 
-describe("the registration only happens when the settings scope is served", () => {
-  test("no settingsScope -> no entry, one warning-free degrade, no throw out of apply", () => {
+describe("the registration only happens when the namespace form is available", () => {
+  test("no configForms -> no entry, one warning-free degrade, no throw out of apply", () => {
     const client = loadMpdClient()
     expect(() => client.exports.apply(client.ctx)).not.toThrow()
     expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.section")).toBe(false)
@@ -152,7 +158,7 @@ describe("the registration only happens when the settings scope is served", () =
     expect(client.calls.slots).not.toContain("settings.plugin.item")
   })
 
-  test("settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate", () => {
+  test("configForms at apply -> one SECTION entry, and its descriptor passes the whole predicate", () => {
     const { registration } = mountedCard(fakeScope(READY))
     expect(sectionDescriptorProblems(registration)).toEqual([])
     expect(registration.name).toBe("settings.section")
@@ -181,11 +187,11 @@ describe("the registration only happens when the settings scope is served", () =
     expect(sectionDescriptorProblems(undefined)).toEqual(["no registration"])
   })
 
-  test("a late-served settingsScope still mounts the section (provideService wakes the fiber)", () => {
+  test("a late-served configForms still mounts the section (provideService wakes the fiber)", () => {
     const client = loadMpdClient()
     client.exports.apply(client.ctx)
     expect((client.calls.slotsRegistered ?? []).some((definition) => definition.name === "settings.section")).toBe(false)
-    client.provideService("settingsScope", fakeScope(READY))
+    client.provideService("configForms", { get: (ns) => fakeScope(READY).bind({ namespace: ns }) })
     const late = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     expect(sectionDescriptorProblems(late)).toEqual([])
   })
@@ -493,7 +499,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   }
 
   function renderedTree(scope, services) {
-    const client = loadMpdClient({ services: { settingsScope: scope, ...services } })
+    const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) }, ...services } })
     client.exports.apply(client.ctx)
     const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     return client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }).then((tree) => ({ tree, client, registration }))
@@ -718,7 +724,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
    * asserted undefined in T-A, so the case cannot silently degrade into the old behaviour.
    */
   function injectedTree(scope, hiddenServices) {
-    const client = loadMpdClient({ services: { settingsScope: scope }, hiddenServices })
+    const client = loadMpdClient({ services: { configForms: { get: (ns) => scope.bind({ namespace: ns }) } }, hiddenServices })
     client.exports.apply(client.ctx)
     const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
     const props = { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }

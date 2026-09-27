@@ -112,6 +112,14 @@ await step("05-settings", async () => {
   if (await settings.count() > 0) { await settings.click({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(3000) }
   return shot("05-settings")
 })
+// 5b) The section this bundle contributes, opened: a nav entry proves the REGISTRATION, the page
+// proves the card renders its rows (they are different claims).
+await step("05b-mpd-section", async () => {
+  const entry = page.getByText(/^MPD$/, { exact: true }).first()
+  if (await entry.count() > 0) { await entry.click({ timeout: 6000, force: true }).catch(() => {}); await page.waitForTimeout(2500) }
+  report.mpdSectionText = (await page.locator("body").innerText().catch(() => "")).slice(0, 3000)
+  return shot("05b-mpd-section")
+})
 await step("06-plugins", async () => {
   await page.goto(BASE, { waitUntil: "domcontentloaded" })
   await page.waitForTimeout(2000)
