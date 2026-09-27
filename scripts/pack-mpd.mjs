@@ -180,12 +180,19 @@ const ROOT_ASSET_DIRS = [
 // parse it, is what makes the ADDITION-omission loud instead of only a later removal. The
 // extension author's machine contract joins the licence/README set because the artifact's own
 // README, docs/index.md and the extension authoring guide link to it by RELATIVE path: without
-// the file those links break for an external author who holds only the artifact (T-70).
+// the file those links break for an external author who holds only the artifact (T-70). The
+// contributor set (CONTRIBUTING pair + CHANGELOG) is named for the same reason: the shipped
+// README/docs hub link to them by relative path.
 const ROOT_FILES = [
   "LICENSE.md",
   "LICENSE-NOTICES.md",
   "README.md",
   "README.zh-CN.md",
+  "CONTRIBUTING.md",
+  "CONTRIBUTING.zh-CN.md",
+  "CHANGELOG.md",
+  "SECURITY.md",
+  "SECURITY.zh-CN.md",
   "EXTENSIONS-FOR-AGENTS.md",
 ]
 

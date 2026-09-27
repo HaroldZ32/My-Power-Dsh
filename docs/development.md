@@ -20,7 +20,8 @@ How to build, test, QA, pack and release this repository.
 │   ├── install-profile.mjs    legacy installer (default dry-run; --dsh-home for QA)
 │   ├── mpd-ext.mjs        extension developer CLI: validate / scaffold / list / --self-test
 │   ├── bootstrap.mjs      preflight + vendor check (P0-era, kept as checks)
-│   └── verify-vendor.mjs  blocking vendor gate
+│   ├── verify-vendor.mjs  blocking vendor gate
+│   └── lib/repo.mjs       shared primitives (repoRootFrom, readJson) every script imports
 ├── packages/              one package per plugin (src/ + dist/ + README.md)
 ├── extensions/            the bundle-shipped extension discovery root + the disabled reference extension
 ├── skills/                ported skill corpus + dsh-qa (QA skill)
@@ -78,7 +79,8 @@ A NEW plugin package must also be added to the `PLUGIN_PKGS` allowlist inside
 
 **Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,
 `ctx.subagents`, `ctx.skills` or `ctx.agentPresets` directly. Every row goes through
-`packages/mpd-dsh-adapter-plugin` (`const dsh = ctx.get("mpdDsh") ?? createDshAdapter(ctx)`),
+`packages/mpd-dsh-adapter-plugin` (`const dsh = resolveDshAdapter(ctx)`; the adapter also carries the
+bundle's pure shared helpers in `src/shared.ts`),
 so a harness release that reshapes a seam is fixed in that one package: edit
 `packages/mpd-dsh-adapter-plugin/src/index.ts`, rebuild it, re-pack — consumers pick the
 new mounted instance up without changes. Its unit tests
@@ -135,6 +137,17 @@ Two npm scripts, two lanes (t8): `bun run test:qa` runs EVERY case's offline `--
 `bun run test:qa:all` runs the REAL lane of the heavy/live subset, enumerated by name in
 `package.json` (criterion: the case needs a real headless dsh boot and/or a live provider).
 The allowlist is explicit so a new case is never silently treated as heavy.
+
+**Running the live lanes inside a sandbox.** Two environment facts decide whether a lane tests
+anything at all. (1) `BUN_TMPDIR` must point INSIDE the workspace (`BUN_TMPDIR="$PWD/.bun-tmp"`): a
+lane that spawns `bun` dies instantly with `EROFS accessing temporary directory` when `$BUN_INSTALL`
+(`~/.bun`) is outside the sandbox's writable set, so the case reports FAIL a few milliseconds in —
+which is what a run that never reached an assertion looks like. (2) A case that COPIES a script or a
+plugin `src/` into a scratch tree must stage the shared modules that copy imports (`scripts/lib/`, or
+the sibling `packages/mpd-dsh-adapter-plugin/src/`), or the arm reddens with
+`ERR_MODULE_NOT_FOUND` for a reason it is not about; `stageScript()` in
+`packages/mpd-agent-teams-plugin/self-fix-tests/scratch-scripts.mjs` is the helper for the scripts
+shape.
 
 **TUI lanes and the TUI packaging path.** The six DSH-TUI cases above ship the usual offline
 `--self-test`, but their LIVE legs need a real terminal: `dsh-tui` refuses to boot when stdout is not a

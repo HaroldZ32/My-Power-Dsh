@@ -1,0 +1,33 @@
+name: docs-parity
+
+# The bilingual documentation gate (AGENTS.md Language policy). It runs the repository's own
+# checker — `node scripts/verify-docs-parity.mjs` — which enforces, for every human-facing document:
+#   * the English file and its `*.zh-CN.md` twin both exist and link to each other under the title;
+#   * the heading tree (levels and order) is identical in both files;
+#   * the Chinese file carries real CJK content;
+#   * every relative link and image target resolves.
+# The checker imports Node built-ins only, so it needs no dependency install.
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-parity:
+    name: Bilingual documentation gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Verify documentation pairs, heading trees and link targets
+        run: node scripts/verify-docs-parity.mjs

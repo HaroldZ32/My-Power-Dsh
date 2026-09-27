@@ -46,7 +46,7 @@ the directory goes in** (§2) and **when the host re-reads it** (§4).
 The restriction is not cosmetic. Registering a tool or a skill provider is **process-global** in this
 harness, so a per-session MCP server or roster role cannot be represented honestly. A project-plane
 manifest that declares `mcp` or `roles` is refused **per item** with a stated reason
-(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:678-685`) — the refusal is loud, it names the item, and the
+(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:673-680`) — the refusal is loud, it names the item, and the
 skills and flows in the same manifest still load.
 
 Read the rule before writing the manifest rather than after the first refusal: it is the single most
@@ -72,7 +72,7 @@ decision nobody wrote down is indistinguishable from an oversight:
    stops accidental *environment* leakage; it is not a sandbox.
 2. **Author-declared secrets are real secrets.** Anything you write into a manifest `env` block is
    readable in the manifest on disk. `mpd_ext_show` redacts the **values** (keys stay visible,
-   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:643`) so a tool result in a session log cannot leak
+   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:640`) so a tool result in a session log cannot leak
    them — but the file itself is not encrypted, and a value you wrote down is a value you own.
 3. **Filesystem trust.** Installing an extension means executing a stdio server that you or someone
    else provided. There is no signature, no sandbox namespace, no seccomp profile and no capability
@@ -92,7 +92,7 @@ caveat for the audit that first stated them.
 
 ## 4. Lifecycle and restart matrix
 
-There is no reload tool in v1: **a restart is the reload** (`"No reload"`, `docs/extensions.md:524`). The matrix
+There is no reload tool in v1: **a restart is the reload** (`"No reload"`, `docs/extensions.md:525`). The matrix
 below is the part people get wrong, because the same directory behaves differently per kind and per
 plane.
 
@@ -101,7 +101,7 @@ plane.
 | `skills` | project | **per call**, from the calling session's workspace | no |
 | `flows` | project | **per call** | no |
 | `skills`, `flows` | user, bundle | discovered at **apply** | yes |
-| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1046`) | yes |
+| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1043`) | yes |
 | `roles` | user, bundle | the declaration is discovered at apply; the role itself is resolved **per call** by the roster plane, which re-reads the persona text (`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`) | yes for adding or renaming a role; editing only the persona body does not need one |
 
 Three consequences worth carrying in your head:
@@ -109,7 +109,7 @@ Three consequences worth carrying in your head:
 - A per-call kind in the project plane is the only combination that behaves like a live file: edit
   the skill or flow, use it in the next call, no restart.
 - An MCP server that fails does not fail the boot. It lands in `unavailable` or `failed` with a
-  bounded child-stderr tail (`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:42`), and every other extension
+  bounded child-stderr tail (`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:43`), and every other extension
   still activates. The next boot retries it.
 - `extensions.enable` / `extensions.disable` in `.mpd/mpd.jsonc` are **process-level**, not a
   per-session switch, and they only filter what is served — they never gate registration, so a
