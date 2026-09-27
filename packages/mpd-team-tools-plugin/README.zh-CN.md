@@ -25,6 +25,7 @@
 | `agent_teams_resume` | — | 解除暂停 |
 | `agent_teams_dispatch` | `dry_run?`、`limit?` | **把就绪任务与空闲成员配对**，并通知每个成员去做自己的任务；一趟一班，且记录在案 |
 | `agent_teams_dispatch_release` | `task_id` | 释放一个已派发任务，使其可再次派发 |
+| `agent_teams_mailbox` | `watch?` | 有多少条消息**正在等**这个 agent——数来自 harness 自己的收件箱事件 |
 | `agent_teams_status` | — | 把暂存计划与暂停**并排**放在官方名册和看板旁边 |
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
@@ -41,6 +42,11 @@
 - **契约是任务被认领那一刻的"含义"。** `attempt` 按任务单调递增，是"这是 t4 的第几次尝试"唯一的答案：官方看板的
   `revision` 会因任何改动而前进，因此不能替代 attempt。
 - **暂停不是结束。** 它只记录一次 hold；不打断任何成员，也不归档任何东西。
+- **信箱计数是 harness 自己的算术，不是估算。** agent 收件箱在消息**进入**时发 `agent/inbox/inserted`、
+  被循环**取走**时发 `agent/inbox/claimed`、被**丢弃**时发 `agent/inbox/discarded`——三者都经 **agent 的作用域载体**
+  派发（它们 `dsh-scope` 的主体解析器是 `args[0]["agent"]`）。所以 `inserted − claimed − discarded` 就是
+  "在等、还没被取走"，经 adapter 的按 agent 订阅缝合点接入。`watch: true` 把计数器挂到调用方 agent 上（幂等）；
+  计数**下限为零**，因为计数器挂上时若会话已在运行，它可能已经取走过本观察者没看见的消息。
 - **一切按工作区定位**，经 `dsh.workspaceRoot(exec)`，绝不用进程 cwd。
 
 ## 配置

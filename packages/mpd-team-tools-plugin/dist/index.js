@@ -533,6 +533,29 @@ function createDshAdapter(ctx, config = {}) {
       }
       return context.on("agent/pre-step", preStepWrapper(listener));
     },
+    subscribeAgentEvents(agent, events, handler) {
+      const context = scopeContextOf(agent);
+      if (typeof context?.on !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot subscribe to its events");
+      }
+      const offs = [];
+      for (const event of events) {
+        const off = context.on(event, (payload) => {
+          try {
+            handler(event, payload);
+          } catch {}
+        });
+        if (typeof off === "function")
+          offs.push(off);
+      }
+      return () => {
+        for (const off of offs) {
+          try {
+            off();
+          } catch {}
+        }
+      };
+    },
     hasTool(toolName) {
       const tools = service("tools");
       if (typeof tools?.get !== "function")
@@ -969,6 +992,24 @@ function createDshAdapter(ctx, config = {}) {
     }
   };
   return adapter;
+}
+
+// packages/mpd-team-tools-plugin/src/mailbox.ts
+function emptyCounts() {
+  return { inserted: 0, claimed: 0, discarded: 0 };
+}
+var INBOX_EVENTS = ["agent/inbox/inserted", "agent/inbox/claimed", "agent/inbox/discarded"];
+function applyInboxEvent(counts, event) {
+  if (event === "agent/inbox/inserted")
+    return { ...counts, inserted: counts.inserted + 1 };
+  if (event === "agent/inbox/claimed")
+    return { ...counts, claimed: counts.claimed + 1 };
+  if (event === "agent/inbox/discarded")
+    return { ...counts, discarded: counts.discarded + 1 };
+  return counts;
+}
+function unreadOf(counts) {
+  return Math.max(0, counts.inserted - counts.claimed - counts.discarded);
 }
 
 // packages/mpd-team-tools-plugin/src/dispatch.ts
@@ -1511,6 +1552,41 @@ function apply(ctx) {
     output: { schema: { type: "object", properties: { resumed: { type: "boolean" } } }, render: (_args, value) => text(value?.resumed === true ? "resumed" : "was not halted") },
     execute: async (_args, exec) => ({ resumed: clearHold(where(exec).workspace) })
   }));
+  const unread = new Map;
+  const counted = new Set;
+  const counterFor = (agent) => {
+    let entry = unread.get(agent);
+    if (entry === undefined) {
+      entry = emptyCounts();
+      unread.set(agent, entry);
+    }
+    return entry;
+  };
+  const countInbox = (agent) => {
+    try {
+      return dsh.subscribeAgentEvents(agent, [...INBOX_EVENTS], (event) => {
+        unread.set(agent, applyInboxEvent(counterFor(agent), event));
+      });
+    } catch (error) {
+      console.warn("[mpd-team-tools] the mailbox counter could not attach to this agent: " + String(error?.message ?? error));
+      return () => {};
+    }
+  };
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_mailbox",
+    description: "How many messages are WAITING for this session's agent and have not been taken yet — the harness's own arithmetic over its inbox events (entered − claimed − discarded), not an estimate. `watch` attaches the counter to the calling agent; without it the tool reports what it has seen since attach.",
+    parameters: { type: "object", properties: { watch: { type: "boolean", description: "Attach the counter to the calling agent (idempotent)." } }, additionalProperties: false },
+    output: { schema: { type: "object", properties: { unread: { type: "number" }, inserted: { type: "number" }, claimed: { type: "number" }, discarded: { type: "number" } } }, render: (_args, value) => text(`${value?.unread ?? 0} message(s) waiting (entered ${value?.inserted ?? 0}, taken ${value?.claimed ?? 0}, discarded ${value?.discarded ?? 0})`) },
+    execute: async (args, exec) => {
+      const agent = exec.agent;
+      if (args?.watch === true && agent !== undefined && !counted.has(agent)) {
+        counted.add(agent);
+        disposers.push(countInbox(agent));
+      }
+      const entry = unread.get(agent) ?? emptyCounts();
+      return { unread: unreadOf(entry), ...entry };
+    }
+  }));
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description: "Pair READY shared tasks with IDLE members and tell each member to work its task. One pass pairs each task with one member and RECORDS the pairing, so a second pass can never hand the same task to a second teammate. Respects agent_teams_halt (a held team dispatches nothing) and skips a task that is blocked, completed, already dispatched, or has no free member — reporting which, per task. dry_run reports the pairing without sending anything.",
@@ -1639,7 +1715,7 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
     try {
       const staging = join2(root, ".mpd", "team", "staging");
       const pending = existsSync2(staging) ? readdirSync2(staging).filter((file) => file.endsWith(".json")).length : 0;
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (13 tools + the /agent-teams command)`);
+      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
     } catch {}
   }
   if (typeof ctx?.on === "function")

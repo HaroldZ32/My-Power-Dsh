@@ -535,6 +535,29 @@ function createDshAdapter(ctx, config = {}) {
       }
       return context.on("agent/pre-step", preStepWrapper(listener));
     },
+    subscribeAgentEvents(agent, events, handler) {
+      const context = scopeContextOf(agent);
+      if (typeof context?.on !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot subscribe to its events");
+      }
+      const offs = [];
+      for (const event of events) {
+        const off = context.on(event, (payload) => {
+          try {
+            handler(event, payload);
+          } catch {}
+        });
+        if (typeof off === "function")
+          offs.push(off);
+      }
+      return () => {
+        for (const off of offs) {
+          try {
+            off();
+          } catch {}
+        }
+      };
+    },
     hasTool(toolName) {
       const tools = service("tools");
       if (typeof tools?.get !== "function")

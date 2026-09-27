@@ -25,6 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createDshAdapter, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { applyInboxEvent, emptyCounts, INBOX_EVENTS, unreadOf, type InboxCounts } from "./mailbox"
 import {
   assign,
   dispatchMessage,
@@ -417,6 +418,54 @@ export function apply(ctx: any): void {
     execute: async (_args: any, exec: DshToolExec) => ({ resumed: clearHold(where(exec).workspace) }),
   }))
 
+  // ── the mailbox: the harness's OWN inbox arithmetic ─────────────────────────
+  //
+  // "Unread" here is not an approximation. The harness's agent inbox emits three scoped events —
+  // `agent/inbox/inserted` when a message ENTERS the inbox, `agent/inbox/claimed` when the loop
+  // takes it, and `agent/inbox/discarded` when it is dropped — so `inserted − claimed − discarded`
+  // is the harness's own "waiting, not yet taken". They are dispatched through the AGENT's scope
+  // carrier, which is why the subscription goes through the adapter's per-agent seam and not this
+  // row's ctx.
+  const unread = new Map<unknown, InboxCounts>()
+  /** Agents whose counter is already attached, so `watch` is idempotent. */
+  const counted = new Set<unknown>()
+  const counterFor = (agent: unknown): InboxCounts => {
+    let entry = unread.get(agent)
+    if (entry === undefined) {
+      entry = emptyCounts()
+      unread.set(agent, entry)
+    }
+    return entry
+  }
+  /** Start counting for one agent; returns a disposer. Idempotent per agent. */
+  const countInbox = (agent: unknown): (() => void) => {
+    try {
+      return dsh.subscribeAgentEvents(agent, [...INBOX_EVENTS], (event) => {
+        unread.set(agent, applyInboxEvent(counterFor(agent), event))
+      })
+    } catch (error) {
+      console.warn("[mpd-team-tools] the mailbox counter could not attach to this agent: " + String((error as Error)?.message ?? error))
+      return () => {}
+    }
+  }
+
+  disposers.push(dsh.registerTool({
+    name: "agent_teams_mailbox",
+    description:
+      "How many messages are WAITING for this session's agent and have not been taken yet — the harness's own arithmetic over its inbox events (entered − claimed − discarded), not an estimate. `watch` attaches the counter to the calling agent; without it the tool reports what it has seen since attach.",
+    parameters: { type: "object", properties: { watch: { type: "boolean", description: "Attach the counter to the calling agent (idempotent)." } }, additionalProperties: false },
+    output: { schema: { type: "object", properties: { unread: { type: "number" }, inserted: { type: "number" }, claimed: { type: "number" }, discarded: { type: "number" } } }, render: (_args: any, value: any) => text(`${value?.unread ?? 0} message(s) waiting (entered ${value?.inserted ?? 0}, taken ${value?.claimed ?? 0}, discarded ${value?.discarded ?? 0})`) },
+    execute: async (args: any, exec: DshToolExec) => {
+      const agent = exec.agent
+      if (args?.watch === true && agent !== undefined && !counted.has(agent)) {
+        counted.add(agent)
+        disposers.push(countInbox(agent))
+      }
+      const entry = unread.get(agent) ?? emptyCounts()
+      return { unread: unreadOf(entry), ...entry }
+    },
+  }))
+
   // ── dispatch: the pairing nothing else performs ─────────────────────────────
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
@@ -550,7 +599,10 @@ export function apply(ctx: any): void {
       // not.
       // COUNT WHAT IT SAYS: `disposers` holds the tool registrations AND the command, so calling the
       // total "tools" read 14 for 13 tools. The label is the honest one now.
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (13 tools + the /agent-teams command)`)
+      // DERIVED, both numbers: `disposers` holds the tool registrations plus the ONE command this
+      // apply() registers last. The literal that used to sit here said "13 tools" while the plane had
+      // grown to 14 — a boot line a reader trusts must not be hand-maintained.
+      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
     } catch { /* a read-only workspace must not break the boot */ }
   }
 
