@@ -14,7 +14,35 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased
+## v0.11.2 — a TypeScript plugin, and a verification flow that ends in a real container
+
+**Added.**
+
+- **The Docker real-machine lane is the LAST step of the verification flow** (`bun run verify:docker`,
+  `node scripts/docker-e2e.ts`), and it is written into `AGENTS.md` §4/§11 with its skip policy: a
+  machine with no **rootless** Docker prints a notice and SKIPS (exit 0, the steps above still had to
+  pass), `--allow-rootful-docker` opts a rootful daemon in, and `--require-docker` turns any skip into
+  exit 3 for a release sweep. `--spec <install-spec>` drives any spec, including the live `github:` one.
+- **The mounting contract is a binding rule** (`AGENTS.md` §2 + §8): a row reaches the harness ONLY
+  through `cordis.patch.yml` + the profile mechanism — an independent package the profile references,
+  never a DSH source edit, never a hand-written profile, never a row pushed into `<DSH_HOME>`.
+- `agent-references/verification-flow.md` carries the ordered flow on demand, so the manual stays inside
+  its instruction budget.
+
+**Fixed.**
+
+- **The literal one-command GitHub install now works.** `dsh plugin --profile web add
+  github:HaroldZ32/My-Power-Dsh` failed on a clean `ubuntu:24.04` with `ERR_PNPM_IGNORED_BUILDS`; two
+  independent causes were measured and closed: a stray untracked `pnpm-workspace.yaml` at the repo root
+  carried pnpm's own `allowBuilds` template into the build context (its class is now excluded by
+  `docker/Dockerfile.dockerignore`, asserted by the entrypoint's `copy.contextFiltered` and by four new
+  `--self-test` arms), and `github:` resolves the repository's DEFAULT BRANCH — it served `master` while
+  the build-script-free closure sat on `dev`, so this release is what puts that closure on the default
+  branch.
+- The TypeScript conversion's own reds: the two source-text `eval` arms in the bundle-plugin tests now
+  erase types with the pinned transpiler, and the stale `mountSidebarPages(ctx, teamPage)` source pin
+  matches the claim instead of one spelling of its argument.
+
 
 ### A canonical TypeScript plugin, installable in one command
 
