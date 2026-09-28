@@ -275,6 +275,48 @@ function requiredPathsOf(patches: readonly string[], referenced: ReadonlySet<str
 }
 
 /** Run every packaging check for the repository manifest. */
+/**
+ * The two shipping descriptors that MUST carry the manifest's own version.
+ *
+ * WHY THIS IS A GATE AND NOT A NOTE: both files are user-visible identity documents — the DSH plugin
+ * descriptor a TUI/ecosystem consumer reads, and the distribution descriptor the TUI distribution case
+ * asserts against — and each pins a literal version. Measured 2026-09-28: a release bumped
+ * `package.json` alone, the distribution descriptor went stale, and `bun run test:qa` reddened only
+ * later inside a QA case. A release step nobody can forget is a rule this gate can check.
+ */
+const VERSION_CARRIERS: readonly string[] = ["dsh-plugin.json", "dsh-distribution.json"]
+
+/**
+ * Assert both shipping descriptors carry the manifest's version.
+ *
+ * @param manifest - The parsed root manifest.
+ * @param violations - Collector every finding is appended to.
+ * @returns One result per carrier, plus the summary result.
+ */
+function checkVersionCoherence(manifest: Record<string, unknown>, violations: Violation[]): CheckResult[] {
+  /** The manifest's own version, the value every carrier must reproduce. */
+  const version = typeof manifest.version === "string" ? manifest.version : "(missing)"
+  /** One result per descriptor, in a stable order. */
+  const results: CheckResult[] = []
+  for (const carrier of VERSION_CARRIERS) {
+    /** The parsed carrier document, or undefined when it is absent/unreadable. */
+    const doc = readJsonFile(join(repoRoot, carrier))
+    /** The version the carrier declares, wherever its schema puts it (root or `distribution`). */
+    const declared = doc === undefined
+      ? undefined
+      : typeof doc.version === "string"
+        ? doc.version
+        : typeof doc.distribution === "object" && doc.distribution !== null && typeof (doc.distribution as Record<string, unknown>).version === "string"
+          ? String((doc.distribution as Record<string, unknown>).version)
+          : undefined
+    /** True when the carrier reproduces the manifest version. */
+    const ok = declared === version
+    if (!ok) violations.push({ file: carrier, rule: "version-coherence", detail: `declares ${String(declared)}, package.json says ${version}` })
+    results.push({ id: `version:${carrier}`, ok, detail: ok ? `carries ${version}` : `declares ${String(declared)} — must match package.json (${version})` })
+  }
+  return results
+}
+
 function checkPackaging(manifest: Record<string, unknown>, violations: Violation[]): CheckResult[] {
 /** One result per packaging check. */
   const results: CheckResult[] = []
@@ -469,7 +511,23 @@ function selfTest(): number {
     if (!ok) failures += 1
     console.log(`${ok ? "ok  " : "FAIL"}  ${arm.name}: expected rule ${arm.expectRule} ${hit ? "fired" : "MISSING"}; clean control ${controlClean ? "green" : "RED"}`)
   }
-  console.log(failures === 0 ? "self-test PASS (5 arms, each with a clean control)" : `self-test FAIL (${failures} arm(s))`)
+  // 6th arm: the version-coherence rule, which reads the REAL carriers, so its mutant is a manifest
+  // version they cannot all carry and its control is the manifest's own version.
+/** Violations the version-coherence mutant produced. */
+  const versionViolations: Violation[] = []
+  checkVersionCoherence({ name: "x", version: "0.0.0-mutant" }, versionViolations)
+/** Whether a manifest version no carrier carries is rejected. */
+  const versionHit = versionViolations.some((violation) => violation.rule === "version-coherence")
+/** Violations the clean control (the manifest's real version) produced. */
+  const versionControlViolations: Violation[] = []
+/** The real manifest, read for the control arm. */
+  const realManifest = readJsonFile(join(repoRoot, "package.json")) ?? {}
+  checkVersionCoherence(realManifest, versionControlViolations)
+/** Whether the carriers agree with the manifest that ships them. */
+  const versionControlClean = versionControlViolations.length === 0
+  if (!(versionHit && versionControlClean)) failures += 1
+  console.log(`${versionHit && versionControlClean ? "ok  " : "FAIL"}  version-coherence: expected rule version-coherence ${versionHit ? "fired" : "MISSING"}; clean control ${versionControlClean ? "green" : "RED"}`)
+  console.log(failures === 0 ? "self-test PASS (6 arms, each with a clean control)" : `self-test FAIL (${failures} arm(s))`)
   return failures === 0 ? 0 : 1
 }
 
@@ -498,7 +556,7 @@ function main(): number {
 /** Every violation the scan produced. */
   const violations: Violation[] = []
 /** The rule results and the packaging results, in report order. */
-  const results = [...checkHardRules(manifest, "package.json", violations), ...checkPackaging(manifest, violations)]
+  const results = [...checkHardRules(manifest, "package.json", violations), ...checkVersionCoherence(manifest, violations), ...checkPackaging(manifest, violations)]
   if (argv.includes("--pack")) {
     /** The declared patch files, re-read so this arm does not depend on the earlier one. */
     const patches = patchFilesOf(manifest)
