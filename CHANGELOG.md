@@ -14,6 +14,19 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.11.3 — the one-command install actually completes
+
+**Fixed.**
+
+- **The self-referential dependency is gone.** `dependencies` declared
+  `"@mpd-dsh/mpd": "github:HaroldZ32/My-Power-Dsh"`, so a git-hosted install resolved the bundle as a
+  dependency OF ITSELF and pnpm 11 refused it (`ERR_PNPM_EXOTIC_SUBDEP … not allowed in subdependencies
+  when blockExoticSubdeps is enabled`). Nothing resolves the bundle by name from inside the repository
+  (the `@mpd-dsh/mpd` hits in `scripts/` are module-loader id strings), and Node's self-reference
+  feature still resolves `@mpd-dsh/mpd/package.json` through the manifest's own name + `exports`.
+  Measured after the fix: checkout lane 42 passed / 0 failed, scratch-git one-click lane green, and the
+  live `github:` lane green on the released default branch.
+
 ## v0.11.2 — a TypeScript plugin, and a verification flow that ends in a real container
 
 **Added.**
