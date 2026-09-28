@@ -1,0 +1,128 @@
+{
+  "wave": "one-command-install-verified-end-to-end",
+  "questionThisAnswers": "Does the LITERAL user command `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` complete on a clean machine and mount, and are the objective's five clauses each substantiated?",
+  "verdict": "YES — measured 2026-09-28/29 in a clean ubuntu:24.04 container against the live GitHub repository, on the released default branch (master, tag v0.11.6).",
+
+  "liveLaneProof": {
+    "command": "node scripts/docker-e2e.ts --mode oneclick --spec github:HaroldZ32/My-Power-Dsh",
+    "result": "ok=true, 44 passed, 0 failed, 3 NULL (two not applicable in one-click mode, one the credential-bound LLM turn), exit 0",
+    "whatItAsserts": "the install completes, the profile records the git spec and @mpd-dsh/mpd in dsh.profile.bundles, the installed tree carries the patch layers and built dists, and the profile MOUNTS: rows activate, tools register, the TUI boots on a real PTY, the harness's own session store records agentPreset=mpd",
+    "evidence": "evidence/docker/client-install-oneclick/2026-09-28T23-39-39Z",
+    "companionLanes": {
+      "checkout": "node scripts/docker-e2e.ts --mode source -> 42 passed / 0 failed (evidence/docker/client-install/2026-09-28T23-28-32Z)",
+      "scratchGit": "node scripts/docker-e2e.ts --mode oneclick -> exit 0 (evidence/docker/client-install-oneclick/2026-09-28T23-31-35Z)"
+    }
+  },
+
+  "defectsFoundByDrivingTheLiteralCommand": [
+    {
+      "id": "D1",
+      "symptom": "[ERR_PNPM_IGNORED_BUILDS] @ast-grep/cli, @code-yeongyu/comment-checker, node-pty",
+      "cause": "an UNTRACKED pnpm-workspace.yaml at the repo root carried pnpm's own `allowBuilds` template; it entered the Docker build context and pnpm's ancestor-config discovery read it for an install whose cwd sat there",
+      "fix": "removed; Dockerfile.dockerignore excludes pnpm-workspace.yaml / pnpm-lock.yaml / .npmrc / .pnpmfile.cjs; the entrypoint asserts their absence in copy.contextFiltered; four new --self-test arms pin both halves",
+      "commit": "75898a28"
+    },
+    {
+      "id": "D2",
+      "symptom": "the same three packages pulled from a RELEASED install",
+      "cause": "`github:<owner>/<repo>` resolves the repository's DEFAULT BRANCH: it served `master`, which still declared dsh-better-sidebar as a dependency plus the two binary tools as optionalDependencies — i.e. the pre-wave manifest",
+      "fix": "released the wave to the default branch (v0.11.2, tag + push) and recorded the rule in AGENTS.md §8/§11",
+      "commit": "9f1dd588 (master merge)"
+    },
+    {
+      "id": "D3",
+      "symptom": "[ERR_PNPM_EXOTIC_SUBDEP] Exotic dependency \"@mpd-dsh/mpd\" (resolved via git-repository) is not allowed in subdependencies",
+      "cause": "our own manifest declared `\"@mpd-dsh/mpd\": \"github:HaroldZ32/My-Power-Dsh\"` in `dependencies`, so a git-hosted install resolved the bundle as a dependency OF ITSELF",
+      "fix": "removed (nothing resolves the bundle by name from inside the repo — Node's self-reference still resolves @mpd-dsh/mpd/package.json through the manifest's name + exports)",
+      "commit": "0fb6d341",
+      "release": "v0.11.3"
+    },
+    {
+      "id": "D4",
+      "symptom": "install succeeded, run still failed on install.profileDep",
+      "cause": "the assertion accepted only the `git+…` URL shape, while the lane drives the documented `github:` shorthand",
+      "fix": "the arm accepts `oneclick:github:*` and the driver's offline self-test pins it",
+      "commit": "16ba2b83",
+      "release": "v0.11.4"
+    },
+    {
+      "id": "D5",
+      "symptom": "bun run test:qa red on tui-distribution.ts: \"distribution.version must match package.json (0.11.4)\"",
+      "cause": "the release version lives in THREE carriers (package.json, dsh-plugin.json, dsh-distribution.json) and only the first was bumped; a bulk edit then wrote a root `version` into the distribution descriptor whose version is at `distribution.version`, and the new gate's root-first reader accepted the stray key (false PASS)",
+      "fix": "all three carriers synced; verify:manifest gained a VERSION-COHERENCE rule with an EXPLICIT key path per carrier and stray-root detection; a sixth --self-test arm whose control is the real manifest; AGENTS.md §11 step 1 names the three files",
+      "commit": "44602f8c + 535fc35a",
+      "release": "v0.11.5"
+    },
+    {
+      "id": "D6",
+      "symptom": "verify:comments red on scripts/verify-plugin-manifest.ts (2 findings)",
+      "cause": "the version-coherence rewrite replaced a region and took the JSDoc above two functions with it",
+      "fix": "restored; the gate is green again on the release line",
+      "commit": "c174c820",
+      "release": "v0.11.6"
+    }
+  ],
+
+  "objectiveClauseByClause": {
+    "1_typescript_only_strict_and_documented": {
+      "status": "VERIFIED",
+      "evidence": [
+        "345 .ts / 1 .mjs in the wave scope (the .mjs is the generated visual-qa bundle); 155 .mjs + 3 .js deleted, 162 new .ts",
+        "tsconfig.json has strict: true and the root tsgo --noEmit reports 0 diagnostics over packages/*/{src,test,self-fix-tests}, scripts/, skills/*/scripts/, docker/, tests/, templates/, extensions/",
+        "bun run verify:comments PASS — every declaration carries a precise comment and every named function its parameter/return types"
+      ]
+    },
+    "2_mounting_only_through_cordis_patch_and_profile": {
+      "status": "VERIFIED",
+      "evidence": [
+        "AGENTS.md §2 and §8 carry the binding mounting contract: an independent package referenced by the profile; never a DSH source edit, never a hand-written profile, never a row pushed into DSH_HOME",
+        "the live lane's mount assertions (rows active, tools registered, TUI booted, agentPreset=mpd in the session store) are the runtime proof, not a composition dump"
+      ]
+    },
+    "3_one_command_install": {
+      "status": "VERIFIED",
+      "evidence": [
+        "the literal command passes in a clean ubuntu:24.04 against the live GitHub repo: 44 passed / 0 failed (evidence/docker/client-install-oneclick/2026-09-28T23-39-39Z)",
+        "npm publish --dry-run passes (@mpd-dsh/mpd 0.11.6, 7.6 MB packed / 1134 files) for the registry path"
+      ]
+    },
+    "4_standing_qa": {
+      "status": "VERIFIED",
+      "evidence": [
+        "bun run verify:manifest --pack PASS: no `cordis` in dependencies / peerDependencies / optionalDependencies (by NAME), none of the declared scripts carries preinstall / install / postinstall / prepare, and npm's own packlist carries every row-referenced path",
+        "the gate grew a VERSION-COHERENCE rule and a sixth self-test arm in this round; 6/6 arms pass with clean controls"
+      ]
+    },
+    "5_isolation_and_real_machine": {
+      "status": "VERIFIED",
+      "evidence": [
+        "every QA boot used a temp DSH_HOME + sandbox HOME + sandboxed workspace; the real ~/.dsh profile was never written (its mtime+inode were stat-ed before and after the sandboxed install and are unchanged)",
+        "the real-machine verification is a real ubuntu:24.04 container driven by docker/docker-compose.yml (rootless Docker, SecurityOptions name=rootless); the driver now skips with a notice on a machine without rootless Docker and can be made fatal with --require-docker"
+      ]
+    }
+  },
+
+  "releasesThisRound": [
+    { "tag": "v0.11.2", "master": "9f1dd588", "carries": "the TypeScript wave onto the default branch" },
+    { "tag": "v0.11.3", "master": "71cf70ca", "carries": "D3" },
+    { "tag": "v0.11.4", "master": "567917e5", "carries": "D4" },
+    { "tag": "v0.11.5", "master": "f67dbd1d", "carries": "D5" },
+    { "tag": "v0.11.6", "master": "f763e85f", "carries": "D6 + the manual's instruction budget" }
+  ],
+
+  "finalTreeState": {
+    "dev": "f763e85f",
+    "master": "f763e85f",
+    "cleanWorkingTree": true,
+    "gatesOnMaster": "verify:comments PASS, verify:manifest PASS"
+  },
+
+  "knownUnfixedFindings": [
+    "packages/mpd-config-plugin README's precedence table omits the L4 row-config layer",
+    "config write-back ignores the `config.projectFile` override",
+    "`agent_teams_*` error strings still name retired tool names (the plugin is not mounted)",
+    "skills/lsp-setup/scripts/verify-lsp.ts points at an upstream `packages/lsp-tools-mcp/` path that does not exist here",
+    "packages/mpd-modelchain-plugin/README.md documents upstream role ids rather than the functional names",
+    "the gitee mirror (https://gitee.com/nop_chip/my-power-dsh) is behind GitHub and was not pushed"
+  ]
+}
