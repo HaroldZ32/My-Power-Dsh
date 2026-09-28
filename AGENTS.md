@@ -218,7 +218,7 @@ specification.
 |---|---|---|
 | Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; the helper REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
 | Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff: every `packages/*/src` entry is rebuilt twice into a temp dir and compared byte-for-byte with its committed `dist/`; unmatched `dist/` files are printed in a loud NOT COVERED section, never silently skipped; `--self-test` seeds a mismatch; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
-| Row/parity | `bun run verify:rows` (`scripts/verify-rows-parity.ts`) **and** `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
+| Row/parity | `bun run verify:rows` + `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
 | Pack closure | `node scripts/verify-pack-closure.ts` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
 | Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
@@ -231,7 +231,7 @@ specification.
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout install, `--mode oneclick` = the PUBLISHED package). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the harness's own session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs (and the evidence quotes the measured mode), rootful skips unless `--allow-rootful-docker`, an absent daemon skips, and `--require-docker` turns any skip into exit 3 for a release sweep. A SKIP is not a pass — it means the steps ABOVE it had to carry the wave | every release sweep, and any change to the install/mount path (`package.json` `files`/`dsh.*`, a patch row, `docker/**`); `--self-test` in a fast gate run |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout install, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the harness's own session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs (quoting the measured mode), rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` turns any skip into exit 3. A SKIP is not a pass — the steps ABOVE it had to carry the wave | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
 **The pack-closure bound (T-91):** a green `node scripts/verify-pack-closure.ts` certifies COMPLETENESS
 plus the BYTE IDENTITY of every file whose source did not move; **freshness is NOT what the exit code
@@ -329,11 +329,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `registerHostTool` (VERBATIM, `Object.is` — `registerTool` cannot serve it), the `subagent*` /
   `agentTurn*` families, `llmListModels` / `llmResolveCallConfig`, `registerPromptSection`, `agentScope`.
   **One bypass is COUNTED, never routed:** the ctx the HOST hands `setup(childCtx, child)` stays DIRECT
-  on its **5 counted lines** in `lib/members.js` (the two raw `childCtx.on('agent/error' |
+  on its **5 counted lines** in `lib/members.js` (two raw `childCtx.on('agent/error' |
   'agent/request-error')` subscriptions, the `installModelSelection(childCtx, …)` hand-off into a
-  VENDORED `_deps/dsh-agent` helper, and the legacy `hostChild ?? childCtx.agent` read) — on a legacy
-  Alpha.2 host a `childCtx` need not be `child.ctx`, so re-resolving via `agentScope(agent)` could change
-  that path. `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts` pins exactly those
+  VENDORED `_deps/dsh-agent` helper, the legacy `hostChild ?? childCtx.agent` read) — on a legacy Alpha.2
+  host a `childCtx` need not be `child.ctx`, so re-resolving it could change that path. `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts` pins exactly those
   5 lines (plus the two `whenIdle` Class-B sites), so a NEW use reddens instead of hiding.
 - **Five further residuals stay NAMED**, so the closure is never read as unconditional: (R1)
   adapter-mediated registrations (`tools.register`, `commands.register`, `systemPrompt.section`,
@@ -483,16 +482,14 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   must not declare a `dist/**` pattern for itself (the platform's `inScope overlaps` validator refused
   exactly that, measured), because the declaration belongs at plan time.
 - **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
-  preset, patch or overlay change): a row config is validated with the installed plugin's own
-  schemastery `Config`, because that is what the loader runs. Two failure modes exist and only one is
-  loud: a MISSING REQUIRED key fails the row, and `dsh-agent-presets` then refuses to mount the whole
-  preset (`agent-preset/invalid … row(s) did not activate`), while an UNKNOWN key is silently KEPT by
-  schemastery — the row applies and quietly loses that setting. The case also pins the `mpd` preset's
-  row set against the installed shipped `standard` preset, because the harness moves rows between the
-  host and preset planes between releases (the Web overlay disables the host `tool-goal`/`command-goal`;
-  `present` only exists from 0.1.5-alpha.2), so a missing row is a capability every mpd session loses.
-  `--dump-config`, `agentPresets.list`/`resolve` and every `--self-test` that never creates a session
-  are all blind to this class — only a real mount is not.
+  preset/patch/overlay change): a row config is validated with the installed plugin's own schemastery
+  `Config`, because that is what the loader runs. Two failure modes, only one loud: a MISSING REQUIRED
+  key fails the row and `dsh-agent-presets` then refuses the whole preset (`agent-preset/invalid …
+  row(s) did not activate`), while an UNKNOWN key is silently KEPT — the row applies and quietly loses
+  that setting. It also pins the `mpd` preset's row set against the installed `standard` preset, because
+  the harness moves rows between the host and preset planes between releases, so a missing row is a
+  capability every mpd session loses. `--dump-config`, `agentPresets.list`/`resolve` and every
+  `--self-test` that never creates a session are blind to this class — only a real mount is not.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
 - **Verify on SETTLED hashes, and quote a hash WITH its measurement moment.** An edit or revert still
   landing is measurable — a verification pass once measured a half-reverted tree, reporting a failure
@@ -534,6 +531,10 @@ Docker lane hold this line.
   profile mechanism and NOTHING else. Proof: `verify-plugin-manifest --pack` plus the `mpd-oneclick`
   compose service on a bare `ubuntu:24.04` (`node scripts/docker-e2e.ts --mode oneclick`). The
   allowlist keeps the download small: 100.9 MB without it, 7.6 MB / 1134 files with it.
+- **A plain `github:<owner>/<repo>` spec resolves the repository's DEFAULT BRANCH.** Measured
+  2026-09-28: it served `master` while the wave sat on `dev`, so the install ran OLD code and failed on a
+  dependency that branch still declared. An installable wave is RELEASED to the default branch (§11); a
+  dev install must name the ref (`github:<owner>/<repo>#dev`).
 - **`cd <repo> && dsh plugin --profile web add .`** is the whole install from a CHECKOUT. The repo root
   IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
   `dsh.bundle.patch` (an ARRAY: `./packages/mpd-bundle/cordis.patch.yml` then
@@ -558,11 +559,10 @@ Docker lane hold this line.
   `mpd-bootstrap` → `<bundle>/skills`) — no home copy, so uninstall leaves no residue.
   Only user data stays: the workmate library under `~/.mpd/workmate`.
 - **`node scripts/pack-mpd.ts` (alias `npm run pack`) is the RELEASE step, not an install step.** It
-  assembles the relocatable `dist/mpd-package/` for publishing / tarball installs (`dsh plugin --profile
-  web add dist/mpd-package`): the built dists (incl. the combined web client), `skills/` + `presets/`,
-  `extensions/`, `templates/`, the `docs/` pairs, the on-demand `agent-references/` and `scripts/`,
-  declared in `files` (author-facing groups also in `exports`); it refuses to ship a package with a
-  missing `dist/`. A checkout install never needs it.
+  assembles the relocatable `dist/mpd-package/` (tarball installs: `dsh plugin --profile web add
+  dist/mpd-package`): the built dists, `skills/` + `presets/`, `extensions/`, `templates/`, the `docs/`
+  pairs, `agent-references/` and `scripts/`, declared in `files`; it refuses to ship a missing `dist/`.
+  A checkout install never needs it.
 - **After a code change:** rebuild the touched package's `dist/` (`bun build …`) and
   restart dsh — a `link:` install reads the checkout directly. Re-pack only when the
   distribution artifact must be refreshed, and bump `package.json` version for releases.
@@ -685,11 +685,11 @@ All seven are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus th
   exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
   exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
   `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files), and
-  `read`/`glob`/`grep` stay available. It is enforced TWO ways, and both must keep agreeing: the
-  one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same
-  seven names for a live Team teammate whose name normalises to a read-only roster member — because the
-  official `spawn_teammate` cannot accept a per-teammate tool filter. **Do NOT re-add
+  `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files);
+  `read`/`glob`/`grep` stay available. Enforced TWO ways that must keep agreeing: the one-shot path
+  passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same seven names for a
+  live Team teammate whose name normalises to a read-only roster member — the official `spawn_teammate`
+  accepts no per-teammate tool filter. **Do NOT re-add
   `str_replace_editor` or `apply_patch`**: both
   were REMOVED because they are not registered in this profile — the harness validates the WHOLE list
   at spawn time and rejects the child when any single name is unknown, so one dead entry breaks every

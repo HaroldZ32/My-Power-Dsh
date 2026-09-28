@@ -499,8 +499,15 @@ function selfTest(): void {
   /** Non-empty, comment-free ignore patterns of the build-context filter. */
   const ignore = stripComments(readFileSync(DOCKERIGNORE, "utf8")).split("\n").map((l: string) => l.trim()).filter((l: string) => l !== "")
   // Each pattern is host state or a build product that must not enter the image.
-  for (const pattern of [".git", "node_modules", "**/node_modules", "dist", "evidence", ".toolchain"]) {
+  for (const pattern of [".git", "node_modules", "**/node_modules", "dist", "evidence", ".toolchain", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"]) {
     check(`Dockerfile.dockerignore excludes ${pattern}`, ignore.includes(pattern))
+  }
+  // The install-affecting class must ALSO be asserted at RUN time (a file can be added to the context
+  // after the filter was written), so the entrypoint's marker list is checked here, offline.
+  /** The entrypoint's context-leak markers, read for the assertion below. */
+  const leakMarkers = /for marker in ([^;]+); do/.exec(readFileSync(join(DOCKER_DIR, "entrypoint.sh"), "utf8"))?.[1] ?? ""
+  for (const marker of ["pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"]) {
+    check(`entrypoint asserts the context carries no ${marker}`, leakMarkers.includes(marker))
   }
   check("Dockerfile.dockerignore does not exclude packages/", !ignore.some((p: string) => /^!?packages\//.test(p) || p === "packages"))
 

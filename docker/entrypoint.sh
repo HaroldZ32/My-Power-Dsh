@@ -351,13 +351,17 @@ log "----- build-context filter (did the image carry host state?) -----"
 # leaked in, `bun install` could succeed on the host's own node_modules and this whole run would be a
 # fake green — so the filter is asserted, not assumed.
 CONTEXT_LEAK=""
-for marker in node_modules .git evidence .toolchain dist .qa-recon; do
+# `pnpm-workspace.yaml` / `pnpm-lock.yaml` / `.npmrc` / `.pnpmfile.cjs` are install-affecting CONFIG: a
+# stray one makes the container resolve a different graph than a user's fresh clone would, which is a
+# false verdict in EITHER direction (measured: an untracked allowBuilds template reported a failure
+# that belonged to the host).
+for marker in node_modules .git evidence .toolchain dist .qa-recon pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; do
   [ -e "$SRC_DIR/$marker" ] && CONTEXT_LEAK="$CONTEXT_LEAK$marker,"
 done
 NESTED_DEPS="$(find "$SRC_DIR" -mindepth 2 -maxdepth 4 -name node_modules -type d 2>/dev/null | head -n 3 | tr '\n' ',' || true)"
 CONTEXT_LEAK="$CONTEXT_LEAK$NESTED_DEPS"
 if [ -z "$CONTEXT_LEAK" ]; then
-  record copy.contextFiltered true "the build context carries no host state, so nothing can pass for a dependency the container should have installed" "absent: node_modules .git evidence .toolchain dist"
+  record copy.contextFiltered true "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed" "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
 else
   record copy.contextFiltered false "the build context carries host state — every build assertion below would be invalid" "$CONTEXT_LEAK"
   bail "the build context was not filtered (docker/Dockerfile.dockerignore)"

@@ -109,7 +109,8 @@
   "dependencies": {
     "@deepseek-ai/dsh-experimental-agent-team": "0.1.7-rc.2",
     "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.1.7-rc.2",
+    "@mpd-dsh/mpd": "github:HaroldZ32/My-Power-Dsh"
   },
   "peerDependencies": {
     "dsh-better-sidebar": ">=0.19.0-alpha.1 <0.20.0"
