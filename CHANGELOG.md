@@ -14,6 +14,21 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.11.4 — the live-install lane judges the command it actually runs
+
+**Fixed.**
+
+- **The one-click lane accepts the `github:` shorthand it drives.** With v0.11.3's fix the live install
+  succeeded and the run still failed on one assertion of ours: `install.profileDep` recognised only the
+  `git+…` URL pnpm rewrites a spec into, while the lane runs
+  `github:HaroldZ32/My-Power-Dsh` — the shorthand the README prints. The arm now accepts both shapes,
+  and the driver's offline `--self-test` pins that it does.
+
+**Verified.** The live lane on a clean `ubuntu:24.04`, installing
+`github:HaroldZ32/My-Power-Dsh` from the released default branch:
+**44 passed / 0 failed**, rows activating, tools registering, the TUI booting on a real PTY and
+`agentPreset=mpd` in the harness's own session store.
+
 ## v0.11.3 — the one-command install actually completes
 
 **Fixed.**
