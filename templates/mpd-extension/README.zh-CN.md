@@ -3,24 +3,24 @@
 [English](./README.md)
 
 `templates/mpd-extension/` 是**上游模板目录**，也是新建 MPD 外部扩展（加载器行 `mpd-ext`）的
-唯一事实来源。它是一个完整、可加载的骨架，声明了全部四种贡献类型；`scripts/mpd-ext.mjs scaffold`
+唯一事实来源。它是一个完整、可加载的骨架，声明了全部四种贡献类型；`scripts/mpd-ext.ts scaffold`
 做的只是**拷贝它**——CLI 不再自己生成任何代码，只改写名字。本文中凡是说"你的拷贝"的地方，都指你
 放进某个发现根的那个扩展目录。
 
 ## 1. 拷贝它
 
 ```bash
-bun scripts/mpd-ext.mjs scaffold <name> --dir <where>              # 技能 + 流程 + 角色
-bun scripts/mpd-ext.mjs scaffold <name> --dir <where> --with-mcp   # 再加上 stdio MCP 服务器
-bun scripts/mpd-ext.mjs validate <where>/<name>
+bun scripts/mpd-ext.ts scaffold <name> --dir <where>              # 技能 + 流程 + 角色
+bun scripts/mpd-ext.ts scaffold <name> --dir <where> --with-mcp   # 再加上 stdio MCP 服务器
+bun scripts/mpd-ext.ts validate <where>/<name>
 ```
 
 两种拷贝之间的差别就是这一个开关，而且是刻意设计的：
 
 | 分支 | 拷贝出的 `contributes` | 文件 |
 |---|---|---|
-| 默认（不带开关） | `skills`、`flows`、`roles`——**三种类型** | `mcp` 配置块与 `server.mjs` 被**丢弃** |
-| `--with-mcp` | `skills`、`flows`、`roles`、`mcp`——**四种类型** | 保留 `server.mjs` |
+| 默认（不带开关） | `skills`、`flows`、`roles`——**三种类型** | `mcp` 配置块与 `server.ts` 被**丢弃** |
+| `--with-mcp` | `skills`、`flows`、`roles`、`mcp`——**四种类型** | 保留 `server.ts` |
 
 两种拷贝都能加载，CLI 的 `--self-test` 正是这么断言的：先校验本模板，再把两个分支
 都脚手架到临时目录，**分别重新校验拷贝**，逐文件与本模板做字节级比对（只允许名字改写
@@ -40,7 +40,7 @@ bun scripts/mpd-ext.mjs validate <where>/<name>
 
 占位符就是本模板**自己的清单 `id`**（见 `mpd-ext.json`；它是专门起的，与随包示例
 `mpd-ext-example` 不同）。拷贝时该占位符的每一次出现都会被替换成新的扩展名——包括所有
-文本文件（`.json`、`.md`、`.mjs`）的内容**以及每一级文件与目录名**。除此之外没有任何
+文本文件（`.json`、`.md`、`.ts`）的内容**以及每一级文件与目录名**。除此之外没有任何
 改动，因此派生名是：
 
 | 位置 | 派生值 |
@@ -63,7 +63,7 @@ bun scripts/mpd-ext.mjs validate <where>/<name>
 | `skills` | `skills/<name>-skill/SKILL.md` | 模型可加载的流程说明；frontmatter 的 `name`/`description` 必填，技能的身份就是 frontmatter 里的 `name`——目录名可以随意 |
 | `flows` | `flows/<name>-flow.json` | **声明式**流程，会被渲染成技能候选；流程 `id` 必须满足技能名语法 |
 | `roles` | `personas/<name>-reviewer.md` | 按调用解析的名单型专家；`readonly: true` 会拒绝其写入工具，所以模板自带的是只读评审者。`provider`/`model` 是可选的，且必须**一起给或都不给**——模板保持默认路由，所以两者都没有声明 |
-| `mcp` | `server.mjs` | **零依赖**的 stdio MCP 服务器（只用 node 标准库）；其工具以 `mcp__<serverName>__<tool>` 发布 |
+| `mcp` | `server.ts` | **零依赖**的 stdio MCP 服务器（只用 node 标准库）；其工具以 `mcp__<serverName>__<tool>` 发布 |
 
 不需要的部分请删掉——同时删掉 `mpd-ext.json` 中对应的 `contributes` 条目：声明了类型
 却缺少资产是加载错误，而没人声明的资产只是永远不会被读取。
@@ -85,8 +85,8 @@ bundle 内）。
 ## 5. 校验拷贝
 
 ```bash
-bun scripts/mpd-ext.mjs validate <dir>   # 退出码 0 = 本宿主可加载；退出码 1 = 每项一行错误
-bun scripts/mpd-ext.mjs list             # 本宿主按平面会发现的扩展
+bun scripts/mpd-ext.ts validate <dir>   # 退出码 0 = 本宿主可加载；退出码 1 = 每项一行错误
+bun scripts/mpd-ext.ts list             # 本宿主按平面会发现的扩展
 ```
 
 校验不是走过场：清单里的 `"enabled": false` 意味着被发现后仍然不生效，直到你把它改成
@@ -97,12 +97,12 @@ bun scripts/mpd-ext.mjs list             # 本宿主按平面会发现的扩展
 
 `templates/` 不在上面三个发现根之内，所以这里的内容不会被挂载——在本目录出现前后，未改动的
 代码树启动时发现的扩展完全相同。而且模板**不会被扩展加载器发现**，但它**确实会被打包**：发布打包脚本在其
-`ROOT_ASSET_DIRS` 中点名了 `templates`（读自 `scripts/pack-mpd.mjs`），因此
+`ROOT_ASSET_DIRS` 中点名了 `templates`（读自 `scripts/pack-mpd.ts`），因此
 `dist/mpd-package/templates/mpd-extension` 会随产物一同交付；若模板从打包中掉失，那就是
 交付资产的缺失（即打包器会高声拒绝的 T-38 类）。
 
 这件事有一个你在打包安装里伸手拿 CLI 之前应当知道的后果：打包器确实会拷贝
-`scripts/mpd-ext.mjs`，但它只拷贝 `packages/<pkg>/dist`、从不拷贝 `packages/<pkg>/src`，而这个
+`scripts/mpd-ext.ts`，但它只拷贝 `packages/<pkg>/dist`、从不拷贝 `packages/<pkg>/src`，而这个
 CLI 从 `src/` 导入唯一的校验器。因此在一个打包树里 CLI 根本无法运行；把 `src/` 补回去之后，
 `validate`/`list` 可以运行，而 `scaffold`（以及 `--self-test` 的模板分支）仍然需要本目录。
 **所以 AGENTS.md §4 的 Extension-CLI 关卡是一个检出关卡：在打包树里它是红的。** 该结论由上游仓库
@@ -110,13 +110,13 @@ CLI 从 `src/` 导入唯一的校验器。因此在一个打包树里 CLI 根本
 
 ## 7. stdio MCP 服务器（仅 `--with-mcp` 拷贝带有）
 
-`server.mjs` 是 `--with-mcp` 分支的载荷；默认拷贝不带它。它在 stdin/stdout 上使用按行分隔的
+`server.ts` 是 `--with-mcp` 分支的载荷；默认拷贝不带它。它在 stdin/stdout 上使用按行分隔的
 JSON-RPC 2.0（`initialize` → `notifications/initialized` → `tools/list` → `tools/call`），
 stdout 只承载协议数据，并从自己的 `mpd-ext.json` 读取 `serverInfo.name` 以及
 `describe_extension` 工具的回答。无需宿主即可自测，在它所在目录执行：
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <扩展根>/server.mjs
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <扩展根>/server.ts
 ```
 
 ## 8. 本 README 引用的清单取值
@@ -139,4 +139,4 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <扩展根
 | `mpd-ext.json` | `mcp.serverName` | `mpd-extension-template` |
 | `mpd-ext.json` | `mcp.transport` | `stdio` |
 | `mpd-ext.json` | `mcp.command` | `node` |
-| `mpd-ext.json` | `mcp.args` | `["server.mjs"]` |
+| `mpd-ext.json` | `mcp.args` | `["server.ts"]` |

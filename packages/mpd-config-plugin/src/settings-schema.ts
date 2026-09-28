@@ -16,8 +16,11 @@ export const TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"] as const
 
 /** One team-model slot: the provider, the model and the reasoning effort a member class stages on. */
 export interface TeamModelSlot {
+  /** Provider id the slot routes through, e.g. `deepseek-official`. */
   readonly provider: string
+  /** Model id that provider must offer; slot 4's model MUST accept image input. */
   readonly model: string
+  /** Reasoning effort (`off` / `low` / `high` / `max`); an unsupported level fails loudly, never clamped. */
   readonly reasoningEffort: string
 }
 
@@ -49,7 +52,7 @@ export const TEAM_MODEL_FALLBACK_OPTIONS = {
 } as const
 
 /** One slot's three leaves as a schema block whose defaults come from {@link TEAM_MODEL_SLOT_DEFAULTS}. */
-function teamModelSlotSchema(slot: TeamModelSlot) {
+function teamModelSlotSchema(slot: TeamModelSlot): Schemastery<TeamModelSlot> {
   return z.object({
     provider: z.string().default(slot.provider),
     model: z.string().default(slot.model),
@@ -144,6 +147,7 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
  * @returns the same node, flagged.
  */
 export function markVolatile<T>(schema: T): T {
+  // The same node viewed as the plain-data carrier the harness's volatile walk reads.
   const node = schema as unknown as { meta?: Record<string, unknown>; dict?: Record<string, unknown>; inner?: unknown; list?: unknown }
   // A SCHEMASTERy NODE IS A FUNCTION, not an object: `Schema.prototype = Object.create(Function.prototype)`.
   // Guarding on `typeof !== "object"` returned early for every node and marked NOTHING — which is why
@@ -184,6 +188,7 @@ export const BRIDGE_AMBIGUOUS_NOTICE = "saved to settings — not written to any
  * (which member group the slot feeds) has exactly one declaration.
  */
 export function knobHint(key: string, semantics?: string): string {
+  // The mpd.jsonc key every hint names, spelled as the path a reader can look up in the file.
   const pointer = `mpd.jsonc ${key}`
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
 }
@@ -292,6 +297,7 @@ export function teamModelLeafSentence(
   leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS,
   lang: "en" | "zh",
 ): string {
+  // Slot 4's OWN override wins; every other slot falls through to the shared template below.
   const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf]
   if (override !== undefined) return override[lang]
   return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang]
@@ -303,7 +309,9 @@ export function teamModelLeafSentence(
 
 /** The group heading a front door renders ABOVE a slot's three rows, e.g. `Slot 2 — analysis members (…)`. */
 export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], lang: "en" | "zh"): string {
+  // 1-based slot number: the heading names `Slot 1` … `Slot 4`, never the internal `slot1` id.
   const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
+  // The slot's human identity: the zh/en group names the heading must render.
   const group = TEAM_MODEL_SLOT_GROUPS[slot]
   return lang === "zh"
     ? `槽位 ${index} —— ${group.zh}（${teamModelMembers(slot, "zh")}）`
@@ -312,8 +320,11 @@ export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], la
 
 /** The twelve team-model knobs: every slot leaf, in slot order, each a `select` with a declared fallback list. */
 const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) => {
+  // 1-based slot number, so the knob labels below name the slot a user sees in the heading.
   const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
+  // The slot's group name, appended to each leaf label so a row is attributable without its heading.
   const group = TEAM_MODEL_SLOT_GROUPS[slot]
+  // The slot's three leaves, in the fixed order both front doors render them.
   const leaves: readonly { leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS; label: string; zh: string }[] = [
     { leaf: "provider", label: "provider", zh: "提供商" },
     { leaf: "model", label: "model", zh: "模型" },
@@ -333,10 +344,15 @@ const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot
 
 /** One knob: the decoded settings path plus the labels both front doors render. */
 export interface SettingsKnob {
+  /** Decoded settings path this knob edits, root segment first. */
   readonly path: readonly string[]
+  /** The EN row title a front door renders; kept short because it IS the row's own label. */
   readonly label: string
+  /** The zh row title, declared once here so both front doors render the same string. */
   readonly zh: string
+  /** Which editor widget a front door must render for this leaf. */
   readonly kind: "number" | "boolean" | "select" | "text"
+  /** The allowed values of a `select` knob, in display order; absent for every other kind. */
   readonly options?: readonly string[]
   /**
    * The knob's HUMAN sentence (EN): what the knob IS and what configuring it DOES. A front door

@@ -69,6 +69,6 @@ workspace.
 
 No model tools; the MCP companion row `mcp-codegraph` exposes
 `mcp__codegraph__*`. The `codegraph` MCP row's `command` env uses
-`MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/launch.mjs`; the launcher
+`MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/launch.ts`; the launcher
 (B8) resolves the binary itself and sets `MPD_CODEGRAPH_BIN` only when unset, so this
 plugin and the MCP row share the same resolver rules.

@@ -32,12 +32,15 @@ import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
 
 /** What the command needs from the rest of the plugin. */
 export interface CommandActions {
+  /** Opens the board; false when the scene seam is absent in this composition. */
   openBoard(via: "command" | "shortcut"): boolean
   /** Open the team-workflow surface (frozen §3.1). */
   openTeam(): boolean
   /** Open the plan-approval surface (frozen §3.2). */
   openPlan(): boolean
+  /** The status line as text, for the `/mpd status` print path. */
   statusText(): string
+  /** The workmate library as text, for the `/mpd workmates` print path. */
   workmatesText(): string
   /** Picker for the bare form; undefined when no dialog seam is available. */
   pickAction(): Promise<string | undefined>
@@ -45,8 +48,10 @@ export interface CommandActions {
   recordBoardOpened(via: "command" | "shortcut", session: SessionLike | undefined): void
 }
 
+/** What a command handler returns: success with optional output, or a user-facing error. */
 type CommandResult = { kind: "success"; text?: string } | { kind: "error"; text: string }
 
+/** The usage suffix of an unknown-action error; the action list is the tree's own. */
 const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
 
 /**
@@ -57,9 +62,11 @@ const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
  * @returns the seam handle.
  */
 export function registerCommands(ctx: PluginContextLike, log: Log, actions: CommandActions): { outcome(): SeamOutcome } {
+  /** The seam result, rewritten when the registration is requested or refused. */
   let outcome: SeamOutcome = { state: "absent", detail: "commands was not injected" }
 
   onService(ctx, "commands", (_scoped, service) => {
+    /** The probed service as the command registry, before `register` is trusted. */
     const commands = service as CommandsLike
     if (typeof commands?.register !== "function") {
       outcome = { state: "refused", detail: "commands.register is missing" }
@@ -70,7 +77,9 @@ export function registerCommands(ctx: PluginContextLike, log: Log, actions: Comm
         name: COMMAND_ROOT,
         description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
         handler: async (invocation): Promise<CommandResult> => {
+          /** The invocation's lower-cased input, empty for the bare `/mpd` form. */
           const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
+          /** The invoking session when the registry supplied one; the log-only record needs it. */
           const session = invocation?.agent?.session
           if (raw === "") {
             // Bare form = picker. The host dialog supplies the localized chrome;
@@ -78,6 +87,7 @@ export function registerCommands(ctx: PluginContextLike, log: Log, actions: Comm
             const picked = await actions.pickAction()
             return runAction(picked ?? "board", actions, session)
           }
+          /** The first whitespace-separated token, i.e. the action to run. */
           const head = raw.split(/\s+/u)[0] ?? ""
           return runAction(head, actions, session)
         },
@@ -100,6 +110,7 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     // Record BEFORE opening: the transcript row must be projected while the chat
     // is still the active screen (a scene hides it until it closes).
     actions.recordBoardOpened("command", session)
+    /** Whether the board scene opened; a refusal becomes a command error. */
     const opened = actions.openBoard("command")
     return opened
       ? { kind: "success" }
@@ -151,6 +162,12 @@ export function appendBoardOpened(
   }
 }
 
-function clamp(value: string, maxCells = 800): string {
+/**
+ * Clamps command output to the host's message budget.
+ * @param value - the text to clamp.
+ * @param maxCells - the cell cap; 800 when the caller does not say.
+ * @returns the clamped text, or an empty string when it is not renderable.
+ */
+function clamp(value: string, maxCells: number = 800): string {
   return scalarText(value, maxCells) ?? ""
 }

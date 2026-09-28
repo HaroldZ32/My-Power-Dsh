@@ -6,6 +6,12 @@ import { join, resolve as resolve2, sep } from "node:path";
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -21,9 +27,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -290,7 +293,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -483,7 +486,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -593,7 +596,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -953,11 +956,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -965,24 +968,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -990,6 +993,12 @@ function createDshAdapter(ctx, config = {}) {
     }
   };
   return adapter;
+}
+var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
 }
 
 // packages/mpd-workmate-plugin/src/index.ts
@@ -1013,8 +1022,8 @@ class WorkmateError extends Error {
   code;
   status;
   blocking;
-  constructor(code, message2, status, blocking = []) {
-    super(message2);
+  constructor(code, message, status, blocking = []) {
+    super(message);
     this.name = "WorkmateError";
     this.code = code;
     this.status = status;
@@ -1041,9 +1050,6 @@ var REPORT_SCHEMA = {
   required: ["name", "summary"],
   additionalProperties: false
 };
-function textBlock2(text) {
-  return [{ type: "text", text }];
-}
 function now() {
   return new Date().toISOString();
 }
@@ -1462,7 +1468,7 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
   }
 }
 function apply(ctx) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const dsh = resolveDshAdapter(ctx);
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
@@ -1540,7 +1546,7 @@ function apply(ctx) {
     name: "mpd_workmate_list",
     description: "List the workmate library (~/.mpd/workmate): each durable evolving agent instance with its base specialist, use count, last-updated time and note summary. Use before delegating a task: if a workmate's note matches well you can reuse it; otherwise initialize a new one.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a, v) => textBlock2("workmates (" + v.count + `):
+    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a, v) => textBlock("workmates (" + v.count + `):
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
@@ -1552,7 +1558,7 @@ function apply(ctx) {
     name: "mpd_workmate_init",
     description: `Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. "Deep Worker". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.`,
     parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
+    output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
     execute: async (args) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   });
@@ -1560,7 +1566,7 @@ note: ` + v.note) },
     name: "mpd_workmate_spawn",
     description: "Reuse a workmate instance: spawn it as a one-shot subagent carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The subagent must call mpd_workmate_reflect with a self-summary before finishing. For team work, instead add a member whose name equals the workmate name (its persona/memory are injected automatically).",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " (" + v.status + `)
+    output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "")) },
@@ -1610,7 +1616,7 @@ Work with the tools your role requires (read-only workmates must never modify an
     name: "mpd_workmate_reflect",
     description: "Self-evolve a workmate after a completed work session: append a bounded memory entry (oldest evicted past the cap), merge an optional persona revision, regenerate its short note, and bump the use count. Call this at the end of every task a workmate did — the workmate itself is instructed to do so; the caller may also call it on its behalf.",
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
+    output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
     execute: async (args) => {
       assertMutationSandboxed("reflect a workmate");
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
@@ -1639,7 +1645,7 @@ ${capText(outcome, 1200)}`);
     name: "mpd_workmate_match",
     description: "Score every workmate note against a task and return the ranked matches. If the best score is below the threshold, matched=false and you should initialize a NEW workmate (mpd_workmate_init) instead of forcing a weak match. If matched=true, delegate to the best workmate (mpd_workmate_spawn, or a team member named after it).",
     parameters: { type: "object", properties: { task: { type: "string" } }, required: ["task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { matched: { type: "boolean" }, threshold: { type: "number" }, matches: { type: "array", items: { type: "object" } }, suggestion: { type: "string" } }, required: ["matched", "threshold", "matches"], additionalProperties: false }, render: (_a, v) => textBlock2((v.matched ? "MATCHED" : "NO MATCH (threshold " + v.threshold + ")") + `
+    output: { schema: { type: "object", properties: { matched: { type: "boolean" }, threshold: { type: "number" }, matches: { type: "array", items: { type: "object" } }, suggestion: { type: "string" } }, required: ["matched", "threshold", "matches"], additionalProperties: false }, render: (_a, v) => textBlock((v.matched ? "MATCHED" : "NO MATCH (threshold " + v.threshold + ")") + `
 ` + v.matches.map((m) => "- " + m.name + " score=" + m.score.toFixed(2) + " [" + m.baseName + "] :: " + String(m.note).slice(0, 120)).join(`
 `) + (v.suggestion ? `
 ` + v.suggestion : "")) },
@@ -1661,7 +1667,7 @@ ${capText(outcome, 1200)}`);
     name: "mpd_workmate_rename",
     description: "Rename a workmate instance: MOVES its evolved identity (directory key, metadata, index key, note self-reference, previous-name history) instead of re-instantiating it — persona, memory, caps, use count and history are preserved byte-for-byte. Refused while the workmate is in use by a team member or an in-flight spawn, and refused if the target name already exists. Names are ASCII [a-z0-9_-] only: uppercase, CJK, spaces and punctuation are rejected before anything is touched.",
     parameters: { type: "object", properties: { name: { type: "string", description: "current workmate name (its directory key)" }, new_name: { type: "string", description: "new name — ASCII, lowercase, [a-z0-9_-]" } }, required: ["name", "new_name"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["ok", "name", "from"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.from + '" renamed to "' + v.name + '"' + (Array.isArray(v.renamedFrom) && v.renamedFrom.length ? `
+    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, from: { type: "string" }, renamedFrom: { type: "array", items: { type: "string" } } }, required: ["ok", "name", "from"], additionalProperties: false }, render: (_a, v) => textBlock('workmate "' + v.from + '" renamed to "' + v.name + '"' + (Array.isArray(v.renamedFrom) && v.renamedFrom.length ? `
 previous names: ` + v.renamedFrom.join(", ") : "")) },
     execute: async (args, exec) => renameWorkmate(args?.name, args?.new_name, [dsh.workspaceRoot(exec)])
   });
@@ -1669,7 +1675,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
     name: "mpd_workmate_delete",
     description: "Delete a workmate instance. ARCHIVE-FIRST by default: the instance leaves the library (no longer listed or matchable, and restorable) into ~/.mpd/workmate/.archive/. Real removal requires purge: true together with confirm set to the exact name — without both, nothing is destroyed. Refused while the workmate is in use by a team member or an in-flight spawn.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate name to delete" }, purge: { type: "boolean", description: "true = permanently remove instead of archiving (requires confirm)" }, confirm: { type: "string", description: "must equal name exactly when purge is true" } }, required: ["name"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a, v) => textBlock2('workmate "' + v.name + '" ' + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
+    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a, v) => textBlock('workmate "' + v.name + '" ' + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
     execute: async (args, exec) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])
   });
   let webRegistered = false;

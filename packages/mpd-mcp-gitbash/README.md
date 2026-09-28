@@ -8,7 +8,7 @@ Offline-built MCP server exposing **Git Bash** (native Windows git operations) a
 
 ## What it does
 
-- `dist/cli.js` (built offline by `scripts/build-mcp.mjs`) bridges MCP to native Git
+- `dist/cli.js` (built offline by `scripts/build-mcp.ts`) bridges MCP to native Git
   Bash on Windows.
 - **Windows-only by design** (the upstream original: `run` is available only on native
   Windows); the bundle row ships `disabled: true` by default so non-Windows

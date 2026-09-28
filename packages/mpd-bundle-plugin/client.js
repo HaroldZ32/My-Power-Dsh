@@ -3746,24 +3746,168 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
 // changed. The tab id is kept because the sidebar's `registerTab` throws on a duplicate and
 // the host keys restored tabs on it.
 //
-// Plain JS, React.createElement only: there is no JSX transform in this bundle.
-(require) => {
-  var module = { exports: {} };
+// Plain JS, React.createElement only: there is no JSX transform in this bundle. This file is a
+// FACTORY BODY, not a module: the whole file is ONE arrow-function expression, spliced into
+// `client.js` as `factory: <this file>`, so it has no top-level import/export and every type it
+// needs is declared inside the factory.
+(require                         ) => {
+  /** The surface of the host's React module this page renders with (no React typings here). */
+                          
+                                                                                                         
+                                                                                      
+                                                                                           
+                                                                                                                                                                             
+                                                                                          
+                                                                                         
+                                                                                                       
+                                                                  
+   
+
+  /** The one watchdog payload this page renders, or null before the first successful poll. */
+                           
+                                                                                  
+                                   
+                                                                                         
+                   
+   
+
+  /** The watchdog state route's payload, read only as far as this page renders it. */
+                             
+                                                                                         
+                
+                                                                                                  
+                                  
+                                                               
+                         
+                                                                  
+                                 
+                                                                 
+                      
+                                                                                       
+                    
+                                                 
+                    
+   
+
+  /** The banner row: the newest unread incident, or the hold that is currently in force. */
+                            
+                                                                             
+                 
+                                        
+                   
+                                                           
+                  
+                                                             
+                 
+   
+
+  /** One durable hold, as the holds section lists it. */
+                          
+                                   
+                   
+                                                           
+                  
+                                                      
+                 
+   
+
+  /** One activity row: an unread incident, or a hold without an incident. */
+                              
+                                                                              
+               
+                                                                                   
+                   
+                                                                
+                 
+                                          
+                   
+                                                                                            
+              
+                                                           
+                  
+                                                                                                
+                      
+   
+
+  /** The slice of the plugin context this page uses; the two services below are always present. */
+                         
+                                                                                            
+                                                        
+                                                                                            
+                                                            
+                                                                      
+                                                                               
+   
+
+  /** The locale service the page reads the active language from. */
+                           
+                                                                                    
+                       
+   
+
+  /** The better-sidebar host's tab registry, as this page uses it. */
+                            
+                                                                                            
+                                                       
+                                                                         
+                                    
+   
+
+  /** The tab descriptor this page registers with the sidebar host. */
+                           
+                                                                                         
+              
+                                                                                 
+                       
+                                                                         
+                                   
+                                                    
+                 
+                                                                   
+                   
+                                                      
+                                                                         
+                                                                                   
+                                   
+                                                                       
+                                          
+   
+
+  /** The props the sidebar host hands the page component (only the translator is read). */
+                           
+                                                                                            
+                               
+   
+
+  /** The CommonJS-shaped module record the client loader keeps for this factory. */
+  var module                                       = { exports: {} };
+  /** The object every export below is written onto (`module.exports`). */
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-  let react = require("react");
+  // The loader hands back the host's own React module, and this bundle ships no React typings,
+  // so the module boundary is described structurally and crossed with one cast.
+  /** The React surface this page renders with. */
+  let react = require("react")                ;
 
+  /** The tab id: the harness sidebar and the better-sidebar host both key this page on it. */
   const TEAM_TAB_ID = "mpd-agent-teams";
+  /** The tab's position among the sidebar's own tabs. */
   const TEAM_TAB_ORDER = 85;
+  /** The locale namespace this page's dictionaries are registered under. */
   const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
 
   // The watchdog's own routes, served by this bundle's main plugin (`src/watchdog-web.ts`).
+  /** The read-only state route the page polls. */
   const WATCHDOG_STATE_URL = "/plugins/mpd-team-watchdog/state";
+  /** The acknowledge route that advances this reader's watermark. */
   const WATCHDOG_ACK_URL = "/plugins/mpd-team-watchdog/ack";
+  /** The watermark key this page acknowledges as (the route's documented `web-panel` reader). */
   const WATCHDOG_WEB_READER = "web-panel";
+  /** How often the poller re-reads the state route, in milliseconds. */
   const WATCHDOG_POLL_MS = 15000;
 
-  const zh = {
+  /** The Simplified-Chinese dictionary (the page's own labels, not the harness's). */
+  const zh                                     = {
     "tab.title": "团队看门狗",
     "panel.subtitle": "只看门狗视图 —— 花名册与任务板由官方 Agent Teams 客户端提供。",
     "panel.loading": "加载中…",
@@ -3777,7 +3921,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     "panel.error": "看门狗状态不可读",
     "panel.replay": "（重放：这些事件尚未被确认）"
   };
-  const en = {
+  /** The English dictionary, key-complete against `zh` (the key-set source of truth). */
+  const en                                     = {
     "tab.title": "Team watchdog",
     "panel.subtitle": "Watchdog view only — the roster and task board belong to the official Agent Teams client.",
     "panel.loading": "Loading…",
@@ -3793,9 +3938,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   };
 
   /** The locale the browser is in, resolved through the host's own locale service. */
-  function activeLocale(ctx) {
+  function activeLocale(ctx                         )         {
     try {
+      /** The locale service, when this context exposes one. */
       const locale = ctx !== undefined && ctx !== null ? (typeof ctx.get === "function" ? ctx.get("locale") : undefined) : undefined;
+      /** The service's own answer, which must be a non-empty locale name to count. */
       const value = locale !== undefined && locale !== null && typeof locale.get === "function" ? locale.get() : undefined;
       if (typeof value === "string" && value !== "") return value;
     } catch {
@@ -3805,19 +3952,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   }
 
   /** A translator bound to this context's locale (a missing key falls back to the key). */
-  function translatorFor(ctx) {
+  function translatorFor(ctx                         )                          {
+    /** The dictionary for the active language: any `zh*` locale gets Chinese, everything else English. */
     const dict = activeLocale(ctx).toLowerCase().startsWith("zh") ? zh : en;
-    return (key) => (dict[key] !== undefined ? dict[key] : key);
+    return (key        )         => (dict[key] !== undefined ? dict[key] : key);
   }
 
   // ── the store the page renders (ONE payload, refreshed by ONE poller) ────────
-  let store = { payload: null, error: undefined };
-  const listeners = new Set();
-  let pollTimer = null;
+  /** The single store value the page renders and `useSyncExternalStore` compares by identity. */
+  let store                = { payload: null, error: undefined };
+  /** Every subscribed component, notified after each publish. */
+  const listeners = new Set            ();
+  /** The interval handle of the running poller, or null while it is stopped. */
+  let pollTimer                                        = null;
+  /** Whether a tick of the poller is currently awaiting the state route. */
   let pollInFlight = false;
+  /** Whether a watchdog refresh (tick or manual) is currently in flight. */
   let watchdogInFlight = false;
 
-  function publish(patch) {
+  /** Replace the store with `patch` merged over it, then wake every subscriber. */
+  function publish(patch                        )       {
     store = Object.assign({}, store, patch);
     for (const listener of [...listeners]) {
       try {
@@ -3828,29 +3982,40 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     }
   }
 
-  function subscribe(listener) {
+  /** Subscribe a component to the store; the returned function unsubscribes it. */
+  function subscribe(listener            )                {
     listeners.add(listener);
     return () => listeners.delete(listener);
   }
 
-  function getSnapshot() {
+  /** The store as the subscription primitives read it (must be the SAME reference until a publish). */
+  function getSnapshot()                {
     return store;
   }
 
-  async function fetchJson(url, init) {
-    const response = await fetch(url, init);
+  /** One JSON GET/POST against a route; a non-OK answer throws so the caller can render a reason. */
+  async function fetchJson(url        , init              )                   {
+    // The route's answer, widened to null/undefined because this page stays defensive about a
+    // host whose fetch resolves nothing (the checks below are the original ones, unchanged).
+    /** The route's response object. */
+    const response                              = await fetch(url, init);
     if (response === undefined || response === null || response.ok !== true) {
       throw new Error("HTTP " + String(response === undefined || response === null ? "?" : response.status));
     }
-    return await response.json();
+    // A route body carries no static type here, so the parsed value stays `unknown` for the caller.
+    /** The parsed body, narrowed by the caller. */
+    return await response.json()           ;
   }
 
   /** One poll of the watchdog state route. Never throws into a render. */
-  async function refreshWatchdog() {
+  async function refreshWatchdog()                                  {
     if (watchdogInFlight) return store.payload;
     watchdogInFlight = true;
     try {
-      const payload = await fetchJson(WATCHDOG_STATE_URL);
+      // The route answers this page's payload shape, and the `ok` marker in the condition below is
+      // the runtime check; the cast is how an untyped HTTP body enters the typed store.
+      /** The route's answer, read as a maybe-payload so its `ok` marker can be probed. */
+      const payload = await fetchJson(WATCHDOG_STATE_URL)                          ;
       if (payload !== null && typeof payload === "object" && payload.ok === true) {
         publish({ payload, error: undefined });
         return payload;
@@ -3865,9 +4030,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   }
 
   /** Acknowledge the replay up to ONE incident timestamp through the ack route. */
-  async function acknowledgeIncident(incidentTs) {
+  async function acknowledgeIncident(incidentTs        )                   {
     try {
-      const response = await fetch(WATCHDOG_ACK_URL, {
+      // Widened to null/undefined because the checks below are the original defensive ones.
+      /** The acknowledgement request's answer. */
+      const response                              = await fetch(WATCHDOG_ACK_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ reader: WATCHDOG_WEB_READER, upTo: incidentTs })
@@ -3883,7 +4050,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     }
   }
 
-  function startPolling() {
+  /** Start the one poller, unless it is already running. */
+  function startPolling()       {
     if (pollTimer !== null) return;
     void refreshWatchdog();
     try {
@@ -3899,7 +4067,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     }
   }
 
-  function stopPolling() {
+  /** Stop the poller, if one is running. */
+  function stopPolling()       {
     if (pollTimer === null) return;
     try {
       clearInterval(pollTimer);
@@ -3910,12 +4079,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   }
 
   // ── rendering ────────────────────────────────────────────────────────────────
+  /** The panel's own flex column layout. */
   const PANEL_STYLE = { display: "flex", flexDirection: "column", gap: "6px", padding: "8px", fontFamily: "inherit" };
+  /** The banner box: a bordered strip in the current text colour. */
   const BANNER_STYLE = { padding: "6px 8px", borderRadius: "4px", border: "1px solid currentColor" };
+  /** Secondary text (subtitles, section titles, the reader line). */
   const MUTED_STYLE = { opacity: 0.7, fontSize: "0.9em" };
+  /** One activity row: a two-line column. */
   const ROW_STYLE = { display: "flex", flexDirection: "column", gap: "2px", padding: "4px 0" };
 
-  function formatTime(at) {
+  /** An epoch-millisecond instant as an ISO string; a non-date value falls back to its text form. */
+  function formatTime(at        )         {
     try {
       return new Date(at).toISOString();
     } catch {
@@ -3929,13 +4103,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
    * A host WITHOUT `useSyncExternalStore` still renders: the component then reads the store
    * on each render and re-renders through the subscription.
    */
-  function useStoreSnapshot() {
+  function useStoreSnapshot()                {
+    /** The host's React module, under the name the original code used at this seam. */
     const React = react;
     if (typeof React.useSyncExternalStore === "function") {
       return React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     }
     if (typeof React.useState === "function") {
+      /** The fallback subscription's state pair (value plus setter). */
       const state = React.useState(store);
+      /** The setter half, which the subscription calls with a fresh snapshot. */
       const setState = state[1];
       React.useEffect(() => subscribe(() => setState(getSnapshot())), []);
       return state[0];
@@ -3944,18 +4121,25 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   }
 
   /** The panel body. Pure over `state`; every failure has an on-screen answer. */
-  function TeamPageView(props) {
-    const t = props !== undefined && typeof props.t === "function" ? props.t : (key) => key;
+  function TeamPageView(props                           )          {
+    /** The translator for this render, or the identity fallback when the host passed none. */
+    const t = props !== undefined && typeof props.t === "function" ? props.t : (key        )         => key;
+    /** The store snapshot this render is built from. */
     const state = useStoreSnapshot();
+    /** The payload being rendered, or null while loading/failed. */
     const payload = state.payload;
-    const rows = [];
+    /** The panel's children, appended in render order. */
+    const rows            = [];
     rows.push(react.createElement("div", { key: "subtitle", style: MUTED_STYLE }, t("panel.subtitle")));
     if (state.error !== undefined && payload === null) {
+      // The store keeps whatever was thrown, so its message is read through a structural cast
+      // (the null/undefined guards in front of the cast are the original ones, kept as they were).
       rows.push(react.createElement("div", { key: "error", "data-watchdog-error": true },
-        t("panel.error") + ": " + String((state.error !== null && state.error !== undefined && state.error.message !== undefined) ? state.error.message : state.error)));
+        t("panel.error") + ": " + String((state.error !== null && state.error !== undefined && (state.error                         ).message !== undefined) ? (state.error                         ).message : state.error)));
     } else if (payload === null) {
       rows.push(react.createElement("div", { key: "loading", style: MUTED_STYLE }, t("panel.loading")));
     } else {
+      /** The banner to render, or null when the route reported no stuck team. */
       const banner = payload.banner !== null && payload.banner !== undefined ? payload.banner : null;
       rows.push(react.createElement("div", {
         key: "banner",
@@ -3964,6 +4148,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
       }, banner === null
         ? t("panel.empty")
         : t("panel.stuck") + " · " + String(banner.teamId) + " · " + String(banner.cause) + " · " + t("panel.since") + " " + formatTime(banner.since)));
+      /** Every hold the route reported (an absent list renders no section). */
       const holds = Array.isArray(payload.held) ? payload.held : [];
       if (holds.length > 0) {
         rows.push(react.createElement("div", { key: "holds-title", style: MUTED_STYLE }, t("panel.hold")));
@@ -3972,6 +4157,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
             String(hold.teamId) + " · " + String(hold.cause) + " · " + t("panel.since") + " " + formatTime(hold.since)));
         }
       }
+      /** The unread incident replay (an absent list renders no section). */
       const activity = Array.isArray(payload.activity) ? payload.activity : [];
       if (activity.length > 0) {
         rows.push(react.createElement("div", { key: "activity-title", style: MUTED_STYLE }, t("panel.activity") + " (" + activity.length + ")"));
@@ -3984,7 +4170,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
               key: "ack",
               type: "button",
               "data-watchdog-ack": String(record.id),
-              onClick: () => { void acknowledgeIncident(record.at); }
+              onClick: ()       => { void acknowledgeIncident(record.at); }
             }, t("panel.ack"))));
         }
       }
@@ -3999,7 +4185,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
    * @param service - the `betterSidebar` service.
    * @returns true when the tab is registered (or already present).
    */
-  function registerTeamSidebarTab(ctx, service) {
+  function registerTeamSidebarTab(ctx             , service                                   )          {
     if (service === undefined || service === null || typeof service.registerTab !== "function") {
       console.warn("[mpd] better-sidebar exposes no registerTab — the team watchdog page has no host");
       return false;
@@ -4012,27 +4198,30 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
       // a throwing getTab means "cannot tell": fall through and register as before
     }
     try {
+      /** The translator this registration closes over (the title and body both use it). */
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
       ctx.effect(() => service.registerTab({
         id: TEAM_TAB_ID,
         title: () => t("tab.title"),
-        icon: (size) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F6A8}"),
+        icon: (size        ) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F6A8}"),
         order: TEAM_TAB_ORDER,
         single: true,
         createTab: () => ({ tab: { id: TEAM_TAB_ID, type: TEAM_TAB_ID, title: t("tab.title") } }),
         // The badge is the UNREAD count of the last poll: no fetch, never a throw.
-        badge: () => {
+        badge: ()                     => {
           try {
+            /** The last payload the poller published. */
             const payload = store.payload;
             if (payload === null || payload === undefined) return undefined;
+            /** How many incidents this reader has not acknowledged yet. */
             const unread = Array.isArray(payload.unread) ? payload.unread.length : 0;
             return unread > 0 ? unread : undefined;
           } catch {
             return undefined;
           }
         },
-        component: (props) => react.createElement(TeamPageView, Object.assign({ t }, props))
+        component: (props         ) => react.createElement(TeamPageView, Object.assign({ t }, props))
       }), "mpd-agent-teams: sidebar tab");
       ctx.effect(() => {
         startPolling();
@@ -4051,10 +4240,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   exports.SIDEBAR_TAB_ORDER = TEAM_TAB_ORDER;
   // Test seams: the offline driver polls and acknowledges through these instead of reaching
   // into module internals.
+  /** The test seam that reads the store without a render. */
   exports.__watchdogState = () => store;
+  /** The test seam that runs one poll through the real route code. */
   exports.__watchdogPoll = () => refreshWatchdog();
-  exports.__watchdogAck = (incidentTs) => acknowledgeIncident(incidentTs);
-  exports.__resetTeamPageForTests = () => {
+  /** The test seam that acknowledges one incident timestamp. */
+  exports.__watchdogAck = (incidentTs        ) => acknowledgeIncident(incidentTs);
+  /** The test seam that returns the module to its just-loaded state (poller stopped, store empty). */
+  exports.__resetTeamPageForTests = ()       => {
     stopPolling();
     pollInFlight = false;
     watchdogInFlight = false;
@@ -4107,7 +4300,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 // Labels/hints/zh descriptions are MIRRORED from the TUI section
 // (`packages/mpd-tui-plugin/src/settings.ts`) and a test asserts the two lists stay identical, so
 // the two front doors cannot drift.
-(require) => {
+//
+// This file is a FACTORY BODY, not a module: the whole file is ONE arrow-function expression, which
+// `scripts/build-mpd-client.ts` splices twice (as its own client module and as an IIFE inside the
+// applied web client). Every type it needs is therefore declared INSIDE the factory: the file has
+// no top-level import/export, no top-level type declaration, and nothing after its final `}`.
+(require                         ) => {
+  /** The settings namespace this section edits (the `mpd` namespace of the settings document). */
   const NS = "mpd"
   /**
    * THE ENTRY the harness's settings machinery serves, which is NOT the namespace.
@@ -4140,10 +4339,375 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * claim, which the host's mount-time base read does not support.
    */
   const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
+  /** The not-lost clause rendered under the two disclosures. */
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+
+  // ── types for the seams this factory crosses ────────────────────────────────
+  /** The subset of React this card uses; the host injects the real module at boot. */
+                          
+                                                                                                         
+                                                                                      
+   
+
+  /** The event shape a text input or select hands its change handler. */
+                         
+                                                                             
+                             
+   
+
+  /** One knob the card renders (the mirror of the ONE shared knob declaration in settings-schema.ts). */
+                             
+                                                                                                   
+                  
+                             
+                 
+                                        
+              
+                                                                     
+                
+                                                                                                           
+                      
+                                                                                               
+                      
+                                                   
+                        
+   
+
+  /** One leaf of a team-model slot, with the option list the parity contract declares for it. */
+                      
+                                                                  
+                
+                                  
+                 
+                                             
+              
+                                                         
+                     
+   
+
+  /** The member group one slot routes (both locales, plus the member list the sentences interpolate). */
+                       
+                                  
+              
+                                             
+              
+                                                              
+                   
+                                                              
+                     
+   
+
+  /** One localized sentence pair. */
+                           
+                                
+              
+                                           
+              
+   
+
+  /** One rendered option of a select (a `group` turns the list into optgroups). */
+                         
+                                                      
+                 
+                                           
+                 
+                                                                           
+                  
+   
+
+  /** One catalog provider group, as the host's model-selection service projects it. */
+                          
+                                                                
+              
+                                                        
+                 
+                                                                                                 
+                          
+   
+
+  /** One catalog model. */
+                          
+                                                          
+               
+                                                     
+                 
+                                             
+                                             
+   
+
+  /** One reasoning effort of one model (the runtime list is filtered for a usable id before use). */
+                           
+                                                                      
+              
+                                                      
+                 
+   
+
+  /** The catalog state the card renders and announces. */
+                         
+                                                                         
+                
+                                                       
+                      
+                                                    
+                   
+                                              
+                   
+                                                               
+                   
+                                                                                             
+                     
+   
+
+  /** The model directory of one session, as the host's service hands it over. */
+                            
+                                              
+             
+                                          
+                                                       
+                                                                      
+                                                      
+     
+                                                                                 
+                        
+   
+
+  /** The slice of a model-directory snapshot this card reads. */
+                               
+                                                     
+                           
+   
+
+  /** The host's model-directory service. */
+                                   
+                                                                                             
+                                                                          
+   
+
+  /** The client's session-list snapshot, as far as this card reads it. */
+                                 
+                                                
+                   
+                                                     
+                                                        
+                                                           
+                                                          
+                                                                                                        
+                                                            
+                                                                    
+                  
+   
+
+  /** The client's sessions service. */
+                             
+                                                                        
+            
+                                         
+                                                         
+                                                                     
+                                                      
+     
+                                                   
+                                   
+                                           
+                                     
+   
+
+  /** The live model catalog the card follows. */
+                         
+                                                                                       
+                        
+                                                                            
+                       
+                                                 
+                                
+                                       
+                           
+                                                                          
+                                                      
+   
+
+  /** One control of one row, as `project()` renders it. */
+                        
+                                    
+                
+                                                                     
+                        
+                                                                      
+                     
+   
+
+  /** One staged edit of one row. */
+                        
+                                   
+                
+                                                                  
+                   
+   
+
+  /** A staged row's interpretation: a clear marker, a parsed value, or undefined for an invalid draft. */
+                                                                            
+
+  /** One write a save would send (the harness's `settings/mutate` op). */
+                     
+                                                                 
+                       
+                                                
+                  
+                                              
+                   
+   
+
+  /** The three disclosure strings the card states once at its top. */
+                        
+                                                                           
+                             
+                                            
+                                
+                                                     
+                               
+   
+
+  /** The settings form's snapshot, as this card reads it. */
+                           
+                                             
+                   
+                                           
+                  
+                                            
+                   
+                                                                             
+                      
+                                                              
+                 
+                                                                    
+                     
+   
+
+  /** The per-namespace settings form this card drives. */
+                           
+                                       
+                                                
+                                                                                            
+                                                
+                                                    
+                                                                  
+                                                                                   
+                       
+   
+
+  /** The state the card component renders, published through its own store. */
+                       
+                                       
+                      
+                                       
+                     
+                                              
+                
+                                     
+                  
+                                               
+                    
+                                       
+                   
+                                        
+                   
+                                      
+                 
+                                                                   
+                                        
+                                                                
+                          
+                                              
+                        
+   
+
+  /** The store the card's hook reads (a minimal snapshot store, not the host's private one). */
+                       
+                             
+                                
+                                                                   
+                                                      
+                                                       
+                                  
+   
+
+  /** The face the slot registration injects into the component. */
+                      
+                                                             
+                                 
+                                
+                                             
+                                                
+                                     
+                                  
+                    
+                                     
+                       
+   
+
+  /** The controller behind that face. */
+                            
+                                                                 
+                          
+                                                                        
+                    
+                                                                  
+                       
+                                   
+                       
+   
+
+  /** The props the slot registration hands the card component. */
+                                
+                                                                                          
+                                                                           
+                                                                                  
+                               
+                                
+                                             
+                                                
+                                     
+                                  
+                    
+                                     
+                       
+   
+
+  /** The harness's per-namespace settings forms service. */
+                                  
+                                                         
+                                                         
+   
+
+  /** The client context this card is mounted with (only the members it touches are named). */
+                         
+                                                                           
+            
+                                                                                             
+                                                         
+                                                                                     
+                                                                                 
+     
+                                                                                                         
+                                                                                                               
+                                                                               
+                                                                                 
+                                                                               
+                                   
+                                                                             
+                                      
+   
+
+  /** The mount options (the offline harness pins its own field list). */
+                          
+                                                           
+                              
+   
 
   /**
    * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
@@ -4153,8 +4717,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * watchdog rows carry the sentence they always had). The slot leaves take their option lists
    * from the live catalog at render time instead.
    */
+  /** The four team-model slots, in the order the card renders them. */
   const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
-  const SLOT_LEAVES = [
+  /** The three leaves every slot carries, with their declared option lists. */
+  const SLOT_LEAVES                          = [
     { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
     { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
     { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
@@ -4167,26 +4733,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
    * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
    */
-  const SLOT_GROUPS = {
+  const SLOT_GROUPS                            = {
     slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
     slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
     slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
     slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
   }
   /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
-  const SLOT_IMPACT = {
+  const SLOT_IMPACT                         = {
     en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
     zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
   }
   /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
-  const SLOT_IMPACT_OVERRIDES = {
+  const SLOT_IMPACT_OVERRIDES                                         = {
     slot4: {
       en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
       zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
     },
   }
   /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
-  const SLOT_SENTENCE_OVERRIDES = {
+  const SLOT_SENTENCE_OVERRIDES                                                = {
     slot4: {
       provider: {
         en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
@@ -4203,11 +4769,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     },
   }
   /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
-  const impactOf = (slot, lang) => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
+  const impactOf = (slot        , lang        )         => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
   /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
-  function slotSentence(slot, leaf) {
+  function slotSentence(slot        , leaf        )                {
+    /** The slot's own override table, when it has one. */
     const override = SLOT_SENTENCE_OVERRIDES[slot]
     if (override !== undefined) return override[leaf]
+    /** The member group this slot routes. */
     const group = SLOT_GROUPS[slot]
     if (leaf === "provider") {
       return {
@@ -4227,12 +4795,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }
   /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
-  function slotHeading(slot, index) {
+  function slotHeading(slot        , index        )                {
+    /** The member group this slot routes. */
     const group = SLOT_GROUPS[slot]
     return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
   }
   /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
-  const SLOT_FIELDS = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+  const SLOT_FIELDS                    = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The slot leaf's own human sentence, which the row's hint leads with. */
     const sentence = slotSentence(slot, leaf)
     return {
       path: ["teamModels", slot, leaf],
@@ -4245,7 +4815,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }))
 
-  const FIELDS = [
+  /** The thirteen scalar knobs and the twelve slot leaves, in the order the card renders them. */
+  const FIELDS                    = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
     { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
@@ -4281,32 +4852,41 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * each knob's own sentence was pushed off screen, while the card already repeated the same text
    * again at the bottom.
    */
-  const keyOf = (field) => `mpd.jsonc ${field.path.join(".")}`
-  const hintOf = (field, lang = "en") => {
+  const keyOf = (field                 )         => `mpd.jsonc ${field.path.join(".")}`
+  /** One row's hint text: the human sentence first, then the dotted key in parentheses. */
+  const hintOf = (field                 , lang         = "en")         => {
+    /** The knob's human sentence in the requested locale. */
     const sentence = lang === "zh" ? field.semanticsZh : field.semantics
+    /** The dotted mpd.jsonc key this row edits. */
     const pointer = keyOf(field)
     return sentence === undefined || sentence.length === 0 ? pointer : `${sentence} (${pointer})`
   }
-  const fieldKey = (field) => field.path.join(".")
-  const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
+  /** The dictionary key of one row (the same dotted key the hint names). */
+  const fieldKey = (field                 )         => field.path.join(".")
+  /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
+  const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
 
   /** Parse the control's text into a value for this field, or undefined when it is not one. */
-  function parse(kind, text) {
+  function parse(kind        , text         )                                        {
     if (kind === "number") {
+      /** The text as a number, which must be finite to count. */
       const n = Number(String(text).trim())
       return Number.isFinite(n) ? n : undefined
     }
     if (kind === "boolean") {
+      /** The text normalized for the two boolean spellings. */
       const t = String(text).trim().toLowerCase()
       if (t === "true" || t === "1") return true
       if (t === "false" || t === "0") return false
       return undefined
     }
+    /** Every other kind keeps its text (an empty one is "unset"). */
     const t = String(text)
     return t.length === 0 ? undefined : t
   }
 
-  const format = (kind, value) => (value === undefined || value === null ? "" : String(value))
+  /** Render one settings value as the control's text (a missing value renders empty). */
+  const format = (kind        , value         )         => (value === undefined || value === null ? "" : String(value))
 
   /**
    * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
@@ -4335,13 +4915,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * working. Guarded: a missing sessions service, a missing list or an unbound session answer
    * undefined instead of throwing.
    */
-  function currentSessionIdOf(sessions) {
+  function currentSessionIdOf(sessions                             )                     {
     try {
+      /** The client's session-list snapshot. */
       const snapshot = listSnapshotOf(sessions)
       if (snapshot === undefined || snapshot === null) return undefined
+      /** The session the app is showing, in either the measured or the legacy spelling. */
       const current = snapshot.current
       if (typeof current === "string") return current.length === 0 ? undefined : current
       if (current !== null && typeof current === "object") {
+        /** The id the object form carries. */
         const id = current.sessionId ?? current.id
         return typeof id === "string" && id.length > 0 ? id : undefined
       }
@@ -4352,9 +4935,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** The client's session-list snapshot, or undefined when the service is absent or unreadable. */
-  function listSnapshotOf(sessions) {
+  function listSnapshotOf(sessions                             )                                  {
+    /** The list service, when the sessions service exposes one. */
     const list = sessions ? sessions.list : undefined
-    return list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
+    // The service hands back its own untyped snapshot; the card reads only the fields declared above.
+    return list && typeof list.getSnapshot === "function" ? list.getSnapshot()                        : undefined
   }
 
   /**
@@ -4362,9 +4947,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * field; `items` and `byId` are read too, so a snapshot from another host build still yields
    * candidates.
    */
-  function listedSessionIds(snapshot) {
-    const ids = []
-    const push = (id) => {
+  function listedSessionIds(snapshot                     )           {
+    /** The candidate ids, deduplicated in first-seen order. */
+    const ids           = []
+    /** Add one candidate id when it is a usable string and not already listed. */
+    const push = (id         )       => {
       if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id)
     }
     if (Array.isArray(snapshot.ids)) for (const id of snapshot.ids) push(id)
@@ -4384,16 +4971,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * No `open()` is needed and none is performed: the host mints a listed session's scope lazily
    * (`eligible(id) = current === id || ids.includes(id)`, measured resolving for every listed id).
    */
-  function boundSessionIdOf(sessions) {
+  function boundSessionIdOf(sessions                             )                     {
+    /** The session the app is showing, when it has one. */
     const current = currentSessionIdOf(sessions)
     if (current !== undefined) return current
     try {
       if (sessions === null || sessions === undefined) return undefined
       if (typeof sessions.scope !== "function" || typeof sessions.binding !== "function") return undefined
+      /** The client's session-list snapshot. */
       const snapshot = listSnapshotOf(sessions)
       if (snapshot === undefined || snapshot === null) return undefined
+      /** Every session id the snapshot carries. */
       const ids = listedSessionIds(snapshot)
+      /** The snapshot's session map, read for the `blank` placeholder flag. */
       const byId = snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object" ? snapshot.byId : {}
+      /** The ids with the real sessions first (a blank placeholder is a poor catalog pin). */
       const ordered = [...ids.filter((id) => byId[id]?.blank !== true), ...ids.filter((id) => byId[id]?.blank === true)]
       for (const id of ordered) {
         try {
@@ -4409,7 +5001,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** Read one service from a context that has it IN SCOPE (never throws). */
-  function readService(ctx, name) {
+  function readService(ctx                         , name        )          {
     try {
       return ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined
     } catch {
@@ -4421,16 +5013,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const CATALOG_ATTR = "data-mpd-catalog-state"
   /** The sentence a fallback MUST say out loud — a silent fallback is what hid this defect. */
   const CATALOG_FALLBACK_NOTICE = "declared fallback — live catalog unavailable"
-  const FALLBACK_CATALOG = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
+  /** The state the card starts in, before any injection has resolved. */
+  const FALLBACK_CATALOG              = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
 
   /** The one sentence the card renders for one catalog state: LIVE (with counts) or fallback. */
-  function catalogNotice(info) {
+  function catalogNotice(info                         )         {
+    /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
     if (state.mode === "live") {
+      /** How many providers the live catalog carries. */
       const providers = Number(state.providers ?? 0)
+      /** How many models the live catalog carries. */
       const models = Number(state.models ?? 0)
       return "live catalog — " + String(providers) + (providers === 1 ? " provider" : " providers") + " · " + String(models) + (models === 1 ? " model" : " models")
     }
+    /** The fallback's own reason, in parentheses, when it states one. */
     const reason = typeof state.reason === "string" && state.reason.length > 0 ? " (" + state.reason + ")" : ""
     return CATALOG_FALLBACK_NOTICE + reason
   }
@@ -4441,15 +5038,18 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * here — the hint is not part of the front-door parity contract (the parity pin compares the
    * declaration), so the suffix is a render-time addition only.
    */
-  function slotFallbackMarker(info) {
+  function slotFallbackMarker(info                         )         {
+    /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
     if (state.mode === "live") return ""
+    /** The fallback's own reason, or "" when it states none. */
     const reason = typeof state.reason === "string" && state.reason.length > 0 ? state.reason : ""
     return reason === "" ? " — declared fallback" : " — declared fallback: " + reason
   }
 
   /** The provider/model counts of one group list. */
-  function catalogCounts(groups) {
+  function catalogCounts(groups                )                                        {
+    /** How many models every group contributes. */
     let models = 0
     for (const group of groups) models += Array.isArray(group.models) ? group.models.length : 0
     return { providers: groups.length, models }
@@ -4464,7 +5064,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * plugin's
    * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
    * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
-   * The measured rule lives in this package's `src/web-client.js` header; the answer is the
+   * The measured rule lives in this package's `src/web-client.ts` header; the answer is the
    * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
    * for the providers
    * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
@@ -4494,17 +5094,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * up without a rebuild. `directoryFor` THROWS for a session the host does not know, so every
    * step is wrapped and degrades to the declared lists — with `info()` saying so out loud.
    */
-  function createLiveCatalog(hostCtx) {
-    let directory
-    let boundSessionId
-    let groups = []
-    let info = FALLBACK_CATALOG
-    let unsubscribeStore = null
-    let unsubscribeSessions = null
-    let fiber = null
-    const listeners = new Set()
+  function createLiveCatalog(hostCtx             )              {
+    /** The bound session's model directory, once one resolved. */
+    let directory                            
+    /** The session the directory is bound to (a switch rebinds it). */
+    let boundSessionId                    
+    /** The catalog's current provider groups. */
+    let groups                 = []
+    /** The catalog's current state. */
+    let info              = FALLBACK_CATALOG
+    /** The directory store's unsubscribe function, while one is held. */
+    let unsubscribeStore                      = null
+    /** The session-list unsubscribe function, while one is held. */
+    let unsubscribeSessions                      = null
+    /** The dynamic-injection fiber, while the injection is live. */
+    let fiber                                  = null
+    /** Every subscriber the card's store forwards to. */
+    const listeners = new Set            ()
 
-    function notify() {
+    /** Wake every subscriber (a broken one must not break the card). */
+    function notify()       {
       for (const listener of [...listeners]) {
         try {
           listener()
@@ -4530,14 +5139,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
      * The rendered state is unchanged (the visible fallback paragraph still says exactly this); only
      * the CONSOLE announce waits for the list to settle, so a warning means a degrade again.
      */
-    let announcedMode
-    function publish(nextGroups, nextInfo) {
+    /** The mode the console last announced, so a transition is announced exactly once. */
+    let announcedMode                    
+    /** Publish one catalog state and announce a transition. */
+    function publish(nextGroups                , nextInfo             )       {
       groups = nextGroups
       info = nextInfo
+      /** The mode this state renders as. */
       const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
+      /** Whether this fallback is only the session list still enumerating. */
       const pending = info !== null && info !== undefined && info.pending === true
       if (pending !== true && mode !== announcedMode) {
         announcedMode = mode
+        /** The one sentence this state is announced with. */
         const sentence = catalogNotice(info)
         if (mode === "live") console.info("[mpd] model catalog:", sentence)
         else console.warn("[mpd] model catalog:", sentence)
@@ -4545,11 +5159,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       notify()
     }
 
-    function fallback(reason, pending) {
+    /** Degrade to the declared lists, with the reason the card renders and announces. */
+    function fallback(reason        , pending          )       {
       publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason, pending: pending === true })
     }
 
-    function releaseDirectory() {
+    /** Drop the bound directory and its store subscription (the catalog keeps its last state). */
+    function releaseDirectory()       {
       if (unsubscribeStore !== null) {
         try {
           unsubscribeStore()
@@ -4562,16 +5178,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
 
     /** Re-read the bound directory's store and republish (live: called on every notification). */
-    function readStore() {
+    function readStore()       {
       try {
+        /** The bound directory's store, when it has one. */
         const store = directory ? directory.store : undefined
+        /** The store's current snapshot. */
         const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
+        /** The groups the snapshot carries (an absent list counts as none). */
         const raw = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
+        /** The groups that carry an id and a model list. */
         const next = raw.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
         if (next.length === 0) {
           fallback("the model directory for this session reports no provider")
           return
         }
+        /** The provider/model counts of the groups about to be published. */
         const counts = catalogCounts(next)
         publish(next, { mode: "live", providers: counts.providers, models: counts.models })
       } catch {
@@ -4579,7 +5200,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
     }
 
-    function bindDirectory(directories, sessions, force) {
+    /** Bind (or rebind) the directory of the current session and follow its store. */
+    function bindDirectory(directories                                          , sessions                             , force         )       {
+      /** The session the directory should belong to. */
       const sessionId = boundSessionIdOf(sessions)
       // A session-list notification is not a reason to re-fetch an unchanged directory: only a
       // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
@@ -4594,17 +5217,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         if (sessionId === undefined) {
           // "the list has not enumerated yet" is NOT the same state as "the list is ready and offers
           // no bindable session": only the second is a degrade worth a console warning.
+          /** The list snapshot, read only to tell enumeration from an empty list. */
           const snapshot = listSnapshotOf(sessions)
+          /** Whether the list is still enumerating (its phase is not `ready` yet). */
           const enumerating = snapshot !== undefined && snapshot !== null && snapshot.phase !== "ready"
           fallback("no session is bound", enumerating)
           return
         }
+        /** The directory the host resolved for that session. */
         const found = directories.directoryFor(sessionId)
         if (found === null || found === undefined) {
           fallback("the host resolved no model directory for this session")
           return
         }
         directory = found
+        /** The directory's own store, when it has one. */
         const store = found.store
         if (store && typeof store.subscribe === "function") unsubscribeStore = store.subscribe(() => readStore())
         readStore()
@@ -4620,12 +5247,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         // list does not satisfy the service's own reads (`cannot get property "remote.session"
         // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
         // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
-        const detail = error !== null && error !== undefined && typeof error.message === "string" ? error.message : ""
+        /** The failure's own message, or "" when it carries none. */
+        const detail = error !== null && error !== undefined && typeof (error                         ).message === "string" ? (error                         ).message           : ""
         fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
       }
     }
 
-    function bind(scoped) {
+    /** Bind the catalog to the services of one injected scope. */
+    function bind(scoped             )       {
       releaseDirectory()
       if (unsubscribeSessions !== null) {
         try {
@@ -4635,9 +5264,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         }
         unsubscribeSessions = null
       }
-      const directories = readService(scoped, "modelDirectories")
-      const sessions = readService(scoped, "sessions")
+      // Services come back untyped through the context probe; only the members declared above are read.
+      /** The host's model-directory service, when this scope exposes one. */
+      const directories = readService(scoped, "modelDirectories")                                     
+      /** The client's sessions service, when this scope exposes one. */
+      const sessions = readService(scoped, "sessions")                               
       try {
+        /** The session list, when the sessions service exposes one. */
         const list = sessions ? sessions.list : undefined
         // A session SWITCH re-binds the directory: the picker follows the session the page is on.
         if (list && typeof list.subscribe === "function") unsubscribeSessions = list.subscribe(() => bindDirectory(directories, sessions, false))
@@ -4650,7 +5283,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
     return {
       /** Start the dynamic injection. The scoped ctx of the callback is what reads the services. */
-      start() {
+      start()          {
         if (typeof hostCtx?.inject !== "function") {
           fallback("the client runtime exposes no ctx.inject")
           return false
@@ -4669,7 +5302,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         }
         return true
       },
-      dispose() {
+      /** Release the directory, the session subscription and the injection fiber. */
+      dispose()       {
         releaseDirectory()
         if (unsubscribeSessions !== null) {
           try {
@@ -4689,9 +5323,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         fiber = null
         listeners.clear()
       },
-      groups: () => groups,
-      info: () => info,
-      subscribe(listener) {
+      /** The catalog's current provider groups. */
+      groups: ()                 => groups,
+      /** The catalog's current state. */
+      info: ()              => info,
+      /** Subscribe to catalog changes; the returned function unsubscribes. */
+      subscribe(listener            )                {
         listeners.add(listener)
         return () => listeners.delete(listener)
       },
@@ -4699,12 +5336,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** The declared fallback options of one knob, in the { value, label } shape the card renders. */
-  function declaredOptions(field) {
+  function declaredOptions(field                 )                {
     return (Array.isArray(field.options) ? field.options : []).map((value) => ({ value, label: value }))
   }
 
   /** The catalog entry of one exact provider/model pair (the provider leaf picks the group). */
-  function findModel(groups, providerId, modelId) {
+  function findModel(groups                , providerId         , modelId         )                           {
+    /** The groups of the selected provider, which are searched first. */
     const preferred = groups.filter((group) => group.id === providerId)
     for (const group of [...preferred, ...groups.filter((group) => group.id !== providerId)]) {
       for (const model of group.models) if (model && model.id === modelId) return model
@@ -4720,25 +5358,34 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    *   model             -> every provider's models, GROUPED by provider (optgroup label)
    *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
    */
-  function optionsFor(field, groups, controls) {
+  function optionsFor(field                 , groups                , controls                                        )                {
+    /** The knob's declared options, which every degrade path returns. */
     const declared = declaredOptions(field)
     if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
+    /** The slot this row belongs to (`slot1`…`slot4`). */
     const slot = field.path[1]
+    /** The leaf this row edits. */
     const leaf = field.path[2]
     if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
     if (leaf === "model") {
-      const options = []
+      /** Every provider's models, in the catalog's own order. */
+      const options                = []
       for (const group of groups) {
         for (const model of group.models) if (model && typeof model.id === "string") options.push({ value: model.id, label: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id, group: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id })
       }
       return options.length > 0 ? options : declared
     }
-    const textOf = (path) => {
+    /** The text of one control of this slot, which the effort list derives from. */
+    const textOf = (path          )                     => {
+      /** The control the render is currently showing for that path. */
       const control = controls ? controls[path.join(".")] : undefined
       return control ? control.text : undefined
     }
+    /** The model the provider and model controls currently select. */
     const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    /** The selected model's own efforts (an absent list counts as none). */
     const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
+    /** Those efforts as rendered options. */
     const derived = efforts.filter((effort) => effort && typeof effort.id === "string").map((effort) => ({ value: effort.id, label: typeof effort.name === "string" && effort.name.length > 0 ? effort.name : effort.id }))
     return derived.length > 0 ? derived : declared
   }
@@ -4747,40 +5394,49 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * The option children of one select: `optgroup`s keyed by provider when the options carry a
    * group (the model control, where the provider is shown as a group), a flat list otherwise.
    */
-  function optionElements(createElement, options) {
+  function optionElements(createElement                               , options               )            {
     if (!options.some((option) => typeof option.group === "string")) {
       return options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))
     }
-    const labels = []
-    const byGroup = new Map()
+    /** The group labels, in first-seen order. */
+    const labels           = []
+    /** The options of every group. */
+    const byGroup = new Map                       ()
     for (const option of options) {
+      /** The option's group label (an ungrouped option lands in the empty group). */
       const label = typeof option.group === "string" ? option.group : ""
       if (!byGroup.has(label)) {
         byGroup.set(label, [])
         labels.push(label)
       }
-      byGroup.get(label).push(option)
+      // The `has`/`set` above is what makes the entry present; the assertion is type-level only.
+      byGroup.get(label) .push(option)
     }
     return labels.map((label) =>
       createElement(
         "optgroup",
         { key: label, label },
-        ...byGroup.get(label).map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
+        ...byGroup.get(label) .map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
       ),
     )
   }
 
   /** A minimal snapshot store (the host's own is private): subscribe + getSnapshot, stable refs. */
-  function createStore(initial) {
+  function createStore   (initial   )                                                                                                       {
+    /** The current snapshot, replaced only by `set`. */
     let snapshot = initial
-    const listeners = new Set()
+    /** Every subscriber the store wakes after a `set`. */
+    const listeners = new Set            ()
     return {
-      getSnapshot: () => snapshot,
-      subscribe(listener) {
+      /** The current snapshot (the same reference until the next `set`). */
+      getSnapshot: ()    => snapshot,
+      /** Subscribe a component; the returned function unsubscribes it. */
+      subscribe(listener            )                {
         listeners.add(listener)
         return () => listeners.delete(listener)
       },
-      set(next) {
+      /** Replace the snapshot and wake every subscriber. */
+      set(next   )       {
         snapshot = next
         for (const listener of [...listeners]) {
           try {
@@ -4798,31 +5454,48 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo = () => FALLBACK_CATALOG) {
-    const staged = new Map()
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG)                 {
+    /** Every staged edit, keyed by the row's dotted knob key. */
+    const staged = new Map                    ()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
     // call site is a TDZ ReferenceError (measured by this module's own test).
+    /** Whether a save is in flight. */
     let saving = false
+    /** Whether the last save failed. */
     let failed = false
+    /** The last failure's message. */
     let lastError = ""
+    /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
-    function readScope() {
+    /** The bound form's snapshot and the namespace sub-tree this card reads values from. */
+    function readScope()                                                            {
+      /** The form's current snapshot. */
       const snapshot = scope.getSnapshot()
       return { snapshot, section: snapshot?.value ?? snapshot?.user }
     }
 
-    function project() {
+    /** Project the whole card state (rows, flags, disclosures and catalog state). */
+    function project()            {
+      /** The form snapshot and the namespace sub-tree of this projection. */
       const { snapshot, section } = readScope()
-      const controls = {}
+      /** Every row's control, keyed by the row's dotted knob key. */
+      const controls                             = {}
+      /** Whether any row carries a staged edit. */
       let dirty = false
+      /** Whether any staged draft is invalid. */
       let invalid = false
       for (const field of fields) {
+        /** The row's dotted knob key. */
         const key = fieldKey(field)
+        /** The row's staged edit, when the user typed one. */
         const stagedEdit = staged.get(key)
         if (stagedEdit !== undefined) {
-          const parsed = stagedEdit.clear ? { kind: "clear" } : parse(field.kind, stagedEdit.text)
-          controls[key] = { text: stagedEdit.text, overridden: parsed?.kind === "set", invalid: parsed === undefined }
+          // A clear marker and a parsed value share this slot; only the marker carries `kind`, so
+          // the access is asserted where it is read (type-level only).
+          /** The staged draft's interpretation. */
+          const parsed             = stagedEdit.clear ? { kind: "clear" } : parse(field.kind, stagedEdit.text)
+          controls[key] = { text: stagedEdit.text, overridden: (parsed                                 )?.kind === "set", invalid: parsed === undefined }
           if (parsed === undefined) invalid = true
           dirty = true
           continue
@@ -4846,7 +5519,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
     }
 
-    function publish() {
+    /** Re-project and publish the card state. */
+    function publish()       {
       store.set(project())
     }
     try {
@@ -4856,16 +5530,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
 
     /** Every staged edit a save would write (an unparsable draft contributes no write). */
-    function plan() {
-      const writes = []
+    function plan()            {
+      /** The ops a save would send. */
+      const writes            = []
       for (const field of fields) {
+        /** The row's dotted knob key. */
         const key = fieldKey(field)
+        /** The row's staged edit, when the user typed one. */
         const stagedEdit = staged.get(key)
         if (stagedEdit === undefined) continue
         if (stagedEdit.clear) {
           writes.push({ op: "unset", path: [...field.path] })
           continue
         }
+        /** The staged draft's parsed value (an unparsable one contributes no write). */
         const parsed = parse(field.kind, stagedEdit.text)
         if (parsed === undefined) continue
         if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
@@ -4874,7 +5552,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       return writes
     }
 
-    async function save() {
+    /** Write every staged edit through the scope's mutate, with the revision fence. */
+    async function save()                {
+      /** The ops this save would send. */
       const writes = plan()
       // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
       // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
@@ -4891,13 +5571,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         staged.clear()
       } catch (error) {
         failed = true
-        lastError = String(error?.message ?? error)
+        lastError = String((error                         )?.message ?? error)
       }
       saving = false
       publish()
     }
 
-    function stage(key, edit) {
+    /** Stage one row's edit, clear the last failure and re-project. */
+    function stage(key        , edit            )       {
       staged.set(key, edit)
       failed = false
       lastError = ""
@@ -4906,15 +5587,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
     return {
       /** The face the slot registration injects: one hook store plus the form actions. */
-      inject() {
+      inject()           {
         return {
           hooks: { mpdCard: store },
-          edit: (key, text) => stage(key, { text, clear: false }),
-          resetField: (key) => stage(key, { text: "", clear: true }),
-          save: () => {
+          edit: (key        , text        ) => stage(key, { text, clear: false }),
+          resetField: (key        ) => stage(key, { text: "", clear: true }),
+          save: ()       => {
             void save()
           },
-          discard: () => {
+          discard: ()       => {
             if (staged.size === 0 && !failed) return
             staged.clear()
             failed = false
@@ -4925,10 +5606,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       },
       store,
       /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
-      refresh: () => {
+      refresh: ()       => {
         publish()
       },
-      dispose: () => {
+      /** Release the bound scope. */
+      dispose: ()       => {
         try {
           scope.dispose()
         } catch {
@@ -4939,36 +5621,52 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** The card component: self-contained markup, no private host components. */
-  function createCardComponent(react, fields = FIELDS, readGroups = () => []) {
+  function createCardComponent(react              , fields                    = FIELDS, readGroups                = () => [])                                         {
+    /** The element factory, destructured once per component construction. */
     const { createElement } = react
-    return function MpdSettingsCard(props) {
+    return function MpdSettingsCard(props                    )          {
+      /** The card state this render is built from. */
       const state = props.useMpdCard((snapshot) => snapshot)
-      const t = typeof props.t === "function" ? props.t : (key) => key
+      /** The translator for this render, or the identity fallback when the host passed none. */
+      const t = typeof props.t === "function" ? props.t : (key        )         => key
+      /** Whether every control renders disabled (a read-only page). */
       const disabled = !state.writable
       // The catalog branch this render used. Silent fallback is what hid the defect, so the state
       // is part of the rendered output (and of the data attributes) — never implicit.
+      /** The catalog state this render used. */
       const catalog = state.catalog ?? FALLBACK_CATALOG
-      let groups = []
+      /** The live provider groups the slot pickers derive their options from. */
+      let groups                 = []
       try {
+        /** The catalog probe's answer, which counts only when it is a list. */
         const probed = readGroups()
-        if (Array.isArray(probed)) groups = probed
+        if (Array.isArray(probed)) groups = probed                  
       } catch {
         /* a broken catalog probe degrades the OPTIONS, never the section */
       }
+      /** One rendered row per knob, in declaration order. */
       const rows = fields.map((field) => {
+        /** The row's dotted knob key. */
         const key = fieldKey(field)
+        /** The row's control (a knob with no projected control renders an empty input). */
         const control = state.controls[key] ?? { text: "" }
+        /** The row's label. */
         const label = t(key)
         // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
+        /** The row's hint, with the slot rows carrying the fallback marker. */
         const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
         // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
         // card. Repeating it per row is what buried every row's own sentence (measured in a real
         // browser: 2026-09-27, `05b-mpd-section.png`).
+        /** Where the dotted key starts inside the hint. */
         const keyAt = hint.indexOf("mpd.jsonc " + key)
         // The key sits inside parentheses now, so drop the opening one the slice leaves behind.
+        /** The human sentence half of the hint. */
         const human = keyAt > 0 ? hint.slice(0, keyAt).replace(/\(\s*$/, "").trim() : ""
+        /** The dotted-key half of the hint. */
         const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
+        /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
         const hintNode = human.length === 0
           ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
           : createElement(
@@ -4977,18 +5675,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
               createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
             )
+        /** The row's options (select knobs only). */
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
+        /** The row's control markup: a select when options exist, else a text input. */
         const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
-              { value: control.text, disabled, onChange: (event) => props.edit(key, event.target.value), style: { width: "100%" } },
+              { value: control.text, disabled, onChange: (event             ) => props.edit(key, event.target.value), style: { width: "100%" } },
               createElement("option", { value: "" }, "—"),
               ...optionElements(createElement, options),
             )
           : createElement("input", {
               value: control.text,
               disabled,
-              onChange: (event) => props.edit(key, event.target.value),
+              onChange: (event             ) => props.edit(key, event.target.value),
               style: { width: "100%" },
             })
         return createElement(
@@ -5009,9 +5709,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       // where the section's top notice is off-screen — so the SAME sentence renders again
       // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
+      /** The index of the first slot row (-1 when the field list carries no slot leaf). */
       const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      /** The thirteen scalar rows. */
       const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      /** The twelve slot rows. */
       const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
         { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
@@ -5020,9 +5724,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
       // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
       // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
-      const slotChildren = []
+      /** The slot rows interleaved with one heading/impact pair per slot. */
+      const slotChildren            = []
       for (let index = 0; index < slotRows.length; index++) {
+        /** The slot this row belongs to. */
         const slot = String(fields[slotStart + index].path[1])
+        /** The slot of the row above ("" at the first slot row). */
         const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
         if (slot !== previous) {
           slotChildren.push(createElement(
@@ -5084,8 +5791,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** The zh/en dictionaries: the TUI section's labels and zh descriptions, plus the card's copy. */
-  function dictionaries(fields = FIELDS) {
-    const en = {
+  function dictionaries(fields                    = FIELDS)                                                             {
+    /** The English dictionary, extended below with one entry per field. */
+    const en                         = {
       nav: "MPD",
       title: "MPD bundle",
       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
@@ -5097,7 +5805,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
       memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
     }
-    const zh = {
+    /** The Simplified-Chinese dictionary, extended below with one entry per field. */
+    const zh                         = {
       nav: "MPD",
       title: "MPD 插件包",
       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
@@ -5110,6 +5819,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
     }
     for (const field of fields) {
+      /** The row's dotted knob key, which is also its dictionary key. */
       const key = fieldKey(field)
       en[key] = field.label
       zh[key] = field.zh
@@ -5119,6 +5829,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
     // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
     for (const [index, slot] of SLOT_SLOTS.entries()) {
+      /** The slot's group heading in both locales. */
       const heading = slotHeading(slot, index + 1)
       en["teamModels." + slot + ".heading"] = heading.en
       zh["teamModels." + slot + ".heading"] = heading.zh
@@ -5136,10 +5847,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * @param ctx - the client entry's context.
    * @returns true when the registration was attempted.
    */
-  function mountSettingsCard(ctx, options = {}) {
+  function mountSettingsCard(ctx                                , options               = {})          {
     try {
       if (ctx === undefined || ctx === null || ctx.slots === undefined || typeof ctx.slots.inject !== "function") return false
+      /** The knobs this mount renders (the shared list unless a caller pinned one). */
       const fields = options.fields ?? FIELDS
+      /** The dictionaries this registration serves its labels from. */
       const dicts = dictionaries(fields)
       try {
         if (ctx.locale !== undefined && typeof ctx.locale.register === "function") ctx.locale.register(LOCALE_NS, dicts)
@@ -5165,11 +5878,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           // provider without parking this boot entry — a declared-but-absent service would turn
           // the whole page into `entry: pending` (the rule `web-client-adapt --self-test` pins).
           ctx.inject(["configForms"], (scoped) => {
-            const forms = (typeof scoped.get === "function" ? scoped.get("configForms") : undefined) ?? scoped.configForms
+            // The context probe answers an untyped service; only the members declared above are read.
+            /** The settings forms service, from the property or through `get`. */
+            const forms = ((typeof scoped.get === "function" ? scoped.get("configForms") : undefined) ?? scoped.configForms)                                    
             if (forms === undefined || forms === null || typeof forms.get !== "function") {
               console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
+            /** The form of this section's own configurable entry. */
             const scope = forms.get(CONFIG_ENTRY)
             // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
             // empty" has three possible causes that look identical on screen — the form lookup threw
@@ -5177,29 +5893,39 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             // Printing the snapshot's status and whether a value arrived tells them apart from a
             // capture, without a debugger.
             try {
+              /** The form's first snapshot, printed so an empty card is diagnosable. */
               const first = scope?.getSnapshot?.()
               console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
               if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+                /** The form's snapshot after the change that fired this line. */
                 const now = scope.getSnapshot?.()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
               })
             } catch (error) {
-              console.warn("[mpd] settings section: snapshot probe failed: " + String(error?.message ?? error))
+              console.warn("[mpd] settings section: snapshot probe failed: " + String((error                         )?.message ?? error))
             }
             // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
             // card's own store on every change. Started BEFORE the registration so the first
             // render already carries the real list when the providers are up.
+            /** The live catalog this card follows. */
             const catalog = createLiveCatalog(ctx)
-            const controller = createMpdCardController(scope, fields, undefined, () => catalog.info())
+            // An absent form is the probe path above (it renders its warning); the controller's own
+            // guarded calls keep the same behaviour the untyped original had for that case.
+            /** The card's form controller, bound to the resolved scope. */
+            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info())
+            /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
             })
             catalog.start()
             // The slot leaves render their option lists from the LIVE catalog on every render.
-            const Section = createCardComponent(require("react"), fields, () => catalog.groups())
+            // The host's React module is untyped here, so its used surface is asserted (type-level).
+            /** The card component, bound to the live catalog probe. */
+            const Section = createCardComponent(require("react")                , fields, () => catalog.groups())
             // The host's descriptor: id + explicit order + a label resolved through this
             // registration's locale dictionaries. `children` is omitted because this section
             // renders no nested slot of its own.
+            /** The unregister function the slot registry answered with. */
             const unregister = ctx.slots.register(
               { name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },
               Section,
@@ -5231,6 +5957,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }
 
+  /** Everything the offline harness and the bundle's client entry consume from this factory. */
   return {
     mountSettingsCard,
     createMpdCardController,
@@ -5256,26 +5983,308 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
 // ==== @mpd-dsh/mpd bundled client: team page + workmate library ====
 window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web client (factory body, inlined into the combined client.js by
-// scripts/build-mpd-client.mjs). Loaded as the client half of the @mpd-dsh/mpd bundle
+// scripts/build-mpd-client.ts). Loaded as the client half of the @mpd-dsh/mpd bundle
 // entry. It contributes the AgentTeams GUI as ONE DSH-better-sidebar tab (the page lives
-// in src/team-page.js, module id @mpd-dsh/team-page, composing the adopted views through
+// in src/team-page.ts, module id @mpd-dsh/team-page, composing the adopted views through
 // the export bridge) plus the null slash-command admission row, and the WORKMATE LIBRARY
 // as its own sidebar tab. Both features are sidebar-only: this file registers NO
 // overlay, NO chat node and no footer toggle. The adopted agent-teams client is required
 // for its views/store/locales/CSS, but its apply() is never called: that is what used to
 // register the removed in-conversation card and the removed overlay activity floater.
-// Plain JS, React.createElement only.
-(require) => {
-  var module = { exports: {} };
+// Plain JS, React.createElement only. This file is a FACTORY BODY, not a module: the whole
+// file is ONE arrow-function expression plus the ambient declaration below, and
+// `scripts/build-mpd-client.ts` splices it as `factory: <this file>`.
+(require                         ) => {
+  /** The CommonJS-shaped module record the client loader keeps for this factory. */
+  var module                                       = { exports: {} };
+  /** The object every export below is written onto (`module.exports`). */
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-  let react = require("react");
+  // The client loader hands back the host's own React module, and this bundle ships no React
+  // typings, so the module boundary is described structurally and crossed with one cast.
+  /** The React surface this factory renders with. */
+  let react = require("react")                ;
   // 0.1.7 REBASE: `require("@nanmicoder/dsh-agent-teams")` used to sit here. The retired
   // vendored client is NO LONGER required by any mpd client source: the official
   // `@deepseek-ai/dsh-experimental-client-ui-agent-team` client owns the roster/task-board UI,
-  // and this bundle's own team surface is the WATCHDOG view (src/team-page.js), which reads
+  // and this bundle's own team surface is the WATCHDOG view (src/team-page.ts), which reads
   // only this bundle's own routes through `fetch`. Nothing in this factory touches the
   // harness's client modules.
+
+  // ── types for the seams this factory crosses ───────────────────────────────
+  // All of them are function-scoped: this file is a SCRIPT (no import/export), so a top-level
+  // declaration would leak into the shared global scope of the client bundle.
+  /** The subset of React this factory uses; the host injects the real module at boot. */
+                          
+                                                                                                         
+                                                                                      
+                                                                                               
+                                                                          
+                                                                               
+                                                                  
+                                                                            
+                                                                                             
+   
+
+  /** An inline style object (React props are untyped here, so a style is an opaque record). */
+                                      
+
+  /** A translator: a dictionary key plus optional interpolation parameters. */
+                                                                            
+
+  /** A JSON object body: every call site narrows the fields it reads. */
+                                                    
+
+  /** The event shape a submit handler needs (a React synthetic event, structurally). */
+                       
+                                                
+                              
+   
+
+  /** The event shape a text input or select hands its change handler. */
+                         
+                                                                             
+                             
+   
+
+  /** One blocking entry of an in-use refusal, as the route reports it. */
+                           
+                                            
+                    
+                                                                
+                    
+   
+
+  /** A failed request: the HTTP status, the parsed body, and the §D reason when the body carried one. */
+                                          
+                                                   
+                   
+                                                                                          
+                  
+                                                                    
+                   
+                                                                      
+                              
+   
+
+  /** One workmate as the library list reports it (the fields this page renders). */
+                      
+                                                                                 
+                
+                                                                      
+                     
+                                                                 
+                      
+                                                        
+                 
+                                                      
+                 
+   
+
+  /** One roster BASE template as the library reports it. */
+                        
+                                                                             
+                
+                                             
+                      
+   
+
+  /** One workmate's full record, as `/get` answers it (the detail pane's fields). */
+                                             
+                                       
+                     
+                                      
+                    
+                                                          
+                      
+                                         
+                       
+                                              
+                       
+                                                  
+                      
+                                               
+                   
+   
+
+  /** The `/list` answer. */
+                                  
+                                                                                 
+                          
+   
+
+  /** The `/roster` answer. */
+                            
+                                                                                  
+                        
+   
+
+  /** A mutation answer, read field by field by its own caller. */
+                                                 
+
+  /** The event shape a component receives from the host (only the props used are named). */
+                            
+                                           
+                               
+   
+
+  /** The props the workmate library page receives (the seat passes a translator). */
+                                  
+                                                                                      
+                 
+   
+
+  /** The slot registry the client framework exposes. */
+                          
+                                                             
+                                                            
+                                                               
+                                                              
+   
+
+  /** The locale registry this entry adds its dictionaries to. */
+                            
+                                                                 
+                                                                   
+                                                     
+                                          
+   
+
+  /** The harness right sidebar this entry contributes its Team tab to. */
+                          
+                                                
+                                      
+   
+
+  /** A registry the harness exposes to plugins (shortcuts, right-sidebar tabs). */
+                      
+                              
+                                        
+   
+
+  /** The client-side plugin context this entry is applied with (only the members used are named). */
+                           
+                                                                                       
+                                  
+                                                                                     
+                                                                                                                    
+                                                      
+                                                            
+                                                                             
+                       
+                               
+                          
+                                                                                     
+                              
+                                        
+                       
+                                                  
+                              
+   
+
+  /** The better-sidebar host's service, as the workmate page uses it. */
+                            
+                                                                                            
+                                                              
+                                                                         
+                                    
+   
+
+  /** The tab descriptor this bundle registers with the DSH-better-sidebar host. */
+                                  
+                                                                                         
+              
+                         
+                       
+                                                                         
+                                   
+                                                    
+                 
+                                                                   
+                   
+                                                                             
+                      
+   
+
+  /** The team-page module's surface: the one registration this entry calls on it. */
+                            
+                                                                       
+                                                                                    
+   
+
+  /** The settings card module's surface: the one method this entry calls on it. */
+                                
+                                                           
+                                                      
+   
+
+  /** One teammate row of the shared board. */
+                        
+                                                          
+                
+                                     
+                  
+                                                      
+                  
+                                                                                            
+                 
+                                                    
+                   
+   
+
+  /** One shared task row of the board. */
+                      
+                                                        
+                
+                                   
+                     
+                                                                                             
+                  
+                                                                                 
+                       
+                                                               
+                   
+                                          
+                         
+   
+
+  /** The team projection the harness right sidebar exposes for one session. */
+                            
+                              
+                          
+                                   
+                      
+                                                             
+                     
+   
+
+  /** The client state slice the sessions hook selects from. */
+                           
+                                                            
+                                                                                                  
+   
+
+  /** The session snapshot the session hook selects from. */
+                             
+                                                                                      
+                                                         
+   
+
+  /** A client store hook: subscribe with a selector and return the selected slice. */
+                                                                                                                    
+
+  /** The single-session store hook: subscribe with a selector and return the selected slice. */
+                                                                                                        
+
+  /** The props the harness right sidebar hands the Team tab (its seat's `inject` result). */
+                              
+                                                                           
+                      
+                                                                                      
+                              
+                                                                                     
+                            
+   
 
   // ── Version-tolerant client seams ──────────────────────────────────────────
   // The web boot hard-fails the WHOLE page when one entry stays `pending`:
@@ -5298,6 +6307,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // why the adopted client half is no longer applied at all — its only use of
   // `conversationEvents` was the removed in-conversation card, and the sidebar team
   // page covers the same ground without it.
+  /** The services this entry declares: both are host-owned and present in every web profile. */
   const REQUIRED_SERVICES = ["slots", "locale"];
 
   /**
@@ -5317,7 +6327,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   * duplicate the replayed user message; the adopted client hid it the same way). The team
   * PANEL is not mounted here — see mountSidebarPages.
   */
-  function mountAgentTeams(ctx) {
+  function mountAgentTeams(ctx               )       {
     // Contained like every other optional surface: a broken registration must degrade to one
     // warning, never throw out of the client entry (that would fail the whole web page).
     try {
@@ -5344,11 +6354,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   * again after a provider remount, and it does NOT park this boot entry — a profile without
   * the sidebar simply never fires it, instead of becoming a fatal `pending` row.
   */
-  function mountSidebarPages(ctx, teamPage) {
+  function mountSidebarPages(ctx               , teamPage                )       {
+    /** The injection fiber, when the runtime returned one. */
     let fiber;
     try {
       fiber = ctx.inject(["betterSidebar"], (sidebarCtx) => {
-        const service = readService(sidebarCtx, "betterSidebar");
+        /** The better-sidebar service this callback was waiting for. */
+        const service = readService(sidebarCtx, "betterSidebar")                              ;
         if (service === undefined || typeof service.registerTab !== "function") {
           console.warn("[mpd] better-sidebar exposes no registerTab — no mpd page is registered");
           return;
@@ -5369,12 +6381,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       return;
     }
     if (fiber !== undefined && typeof fiber.dispose === "function") {
-      ctx.effect(() => () => { fiber.dispose(); }, "mpd: sidebar page injection");
+      // The guard above is what makes the fiber non-null here; the assertion is type-level only
+      // (a closure cannot keep the narrowing of a `let` that was assigned inside a `try`).
+      ctx.effect(() => () => { fiber .dispose(); }, "mpd: sidebar page injection");
     }
   }
 
   /** Read one service from a context that has it in scope (never throws). */
-  function readService(ctx, name) {
+  function readService(ctx               , name        )          {
     try {
       return ctx.get(name);
     } catch {
@@ -5388,7 +6402,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * A service WITHOUT `getTab` answers `false` (register as before), so this guard can only
    * ever remove a duplicate registration — never suppress the first one.
    */
-  function sidebarAlreadyHasTab(service, id) {
+  function sidebarAlreadyHasTab(service                , id        )          {
     try {
       return typeof service.getTab === "function" && service.getTab(id) !== undefined;
     } catch {
@@ -5396,27 +6410,37 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  /** The `/list` route the library page reads. */
   const LIST_URL = "/plugins/mpd-workmate/list";
+  /** The `/init` route that creates one workmate. */
   const INIT_URL = "/plugins/mpd-workmate/init";
+  /** The `/roster` route that offers the BASE templates. */
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
+  /** The `/get` route that answers one workmate's detail record. */
   const GET_URL = "/plugins/mpd-workmate/get";
   // Contract §D: mutations are POST-only and answer with a machine-readable `reason`,
   // which is what the page branches on (see failureReason).
+  /** The `/rename` route (POST). */
   const RENAME_URL = "/plugins/mpd-workmate/rename";
+  /** The `/delete` route (POST; archive-first, purge with confirmation). */
   const DELETE_URL = "/plugins/mpd-workmate/delete";
+  /** The locale namespace this page's dictionaries are registered under. */
   const WORKMATE_LOCALE_NAMESPACE = "mpdWorkmate";
   // The DSH-better-sidebar tab type this bundle registers. It is the ONLY GUI
   // surface for the workmate library: the sidebar owns layout/opening, we only
   // contribute the page.
+  /** The workmate tab's stable id. */
   const SIDEBAR_TAB_ID = "mpd-workmate";
   // Tab-strip label. The sidebar renders outside our React tree, so the title is a
   // plain string resolved at registration time; the sidebar's own i18n already names
   // every tab in the same place.
+  /** The workmate tab's title, resolved at registration time. */
   const SIDEBAR_TAB_TITLE = "Workmates";
 
   // Dictionary namespace for the workmate page. zh is the key-set source of truth;
   // en is checked complete against it.
-  const zh = {
+  /** The Simplified-Chinese dictionary of the workmate page. */
+  const zh                                     = {
     "tab.title": "Workmates",
     "panel.title": "Workmate 库（~/.mpd/workmate）",
     "panel.refresh": "刷新",
@@ -5471,7 +6495,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "mutate.reason.inUse": "该 workmate 正在被使用，已拒绝操作；请先结束或归档这些团队：{blocking}",
     "mutate.reason.failed": "操作失败"
   };
-  const en = {
+  /** The English dictionary, key-complete against `zh`. */
+  const en                                     = {
     "tab.title": "Workmates",
     "panel.title": "Workmate library (~/.mpd/workmate)",
     "panel.refresh": "Refresh",
@@ -5527,19 +6552,23 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "mutate.reason.failed": "The operation failed"
   };
 
-  function interpolate(template, params) {
+  /** Fill `{name}` placeholders from `params`; a missing parameter keeps the placeholder. */
+  function interpolate(template         , params                          )         {
     return String(template).replace(/\{(\w+)\}/g, (_m, key) =>
       params && params[key] !== undefined ? String(params[key]) : "{" + key + "}");
   }
-  function translateFor(props) {
+  /** The page's translator: the host's own `t` when it passed one, else the English dictionary. */
+  function translateFor(props                               )            {
     if (props && typeof props.t === "function") return props.t;
-    return (key, params) => interpolate(en[key] ?? key, params);
+    return (key        , params                          )         => interpolate(en[key] ?? key, params);
   }
 
-  function request(url, options) {
+  /** One workmate API call; a non-OK answer becomes a `RequestFailure` carrying status and body. */
+  function request   (url        , options              )             {
     return fetch(url, options).then(async (res) => {
       if (!res.ok) {
-        let body = null;
+        /** The failure body, or null when the route answered no JSON. */
+        let body          = null;
         try {
           body = await res.json();
         } catch {
@@ -5556,10 +6585,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /** One failed response as an error carrying status + reason + the rest of the body. */
-  function requestError(status, body) {
-    const payload = body !== null && typeof body === "object" ? body : {};
+  function requestError(status        , body         )                 {
+    // A route body is an untyped JSON object, and only its own fields are read below.
+    /** The body when it is an object, else an empty record. */
+    const payload          = body !== null && typeof body === "object" ? body            : {};
+    /** Whether the body carried the server's own message. */
     const described = typeof payload.error === "string" && payload.error.trim() !== "";
-    const error = new Error(described ? payload.error : "HTTP " + String(status));
+    // TypeScript does not carry the `described` alias into this expression, so the string the
+    // check above proved is asserted here (type-level only).
+    /** The failure the page will branch on. */
+    const error                 = new Error(described ? payload.error           : "HTTP " + String(status));
     error.status = status;
     error.body = payload;
     if (typeof payload.reason === "string") error.reason = payload.reason;
@@ -5568,22 +6603,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /** The §D reason code of a failure (undefined for anything else). */
-  function failureReason(error) {
+  function failureReason(error                                   )                     {
     if (error === null || error === undefined) return undefined;
     if (typeof error.reason === "string" && error.reason !== "") return error.reason;
+    /** The parsed body, when the failure carried one. */
     const body = error.body;
     if (body !== null && typeof body === "object" && typeof body.reason === "string" && body.reason !== "") return body.reason;
     return undefined;
   }
 
   /** The §E blocking team/member list of an in-use refusal, as plain `team/member` pairs. */
-  function blockingEntries(error) {
-    const raw = error !== null && error !== undefined && Array.isArray(error.blocking)
+  function blockingEntries(error                                   )           {
+    /** The raw entries, from the error itself or from its parsed body. */
+    const raw                  = error !== null && error !== undefined && Array.isArray(error.blocking)
       ? error.blocking
       : (error?.body !== null && typeof error?.body === "object" && Array.isArray(error.body.blocking) ? error.body.blocking : []);
     return raw
       .map((entry) => {
+        /** The team half of the pair, or "" when the entry does not name one. */
         const teamId = entry !== null && typeof entry === "object" && entry.teamId !== undefined ? String(entry.teamId) : "";
+        /** The member half of the pair, or "" when the entry does not name one. */
         const member = entry !== null && typeof entry === "object" && entry.member !== undefined ? String(entry.member) : "";
         if (teamId !== "" && member !== "") return teamId + "/" + member;
         return teamId !== "" ? teamId : member;
@@ -5597,11 +6636,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * confirm-required, 404 unknown, 409 collision and 409 in-use — the last one names the
    * blocking teams, because a refusal nobody can act on is not a refusal (§E).
    */
-  function describeFailure(error, t) {
+  function describeFailure(error                                   , t           )         {
+    /** The machine-readable reason the page branches on. */
     const reason = failureReason(error);
     // `""` is not text: the page must fall back to its own dictionary instead of rendering
     // an empty alert.
+    /** The server's own message, or "" when it sent none. */
     const server = typeof error?.message === "string" && error.message !== "" ? error.message : "";
+    /** The blocking pairs of an in-use refusal. */
     const blocking = blockingEntries(error);
     switch (reason) {
       case "invalid-name":
@@ -5627,48 +6669,71 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // like the AgentTeams page: the sidebar owns layout, opening and enable/disable, and
   // this bundle contributes nothing else (no overlay floater, no footer toggle). A
   // profile without DSH-better-sidebar simply has no workmate GUI.
-  const SURFACE_STYLE = {
+  /** The page's outer flex column, filling the tab body. */
+  const SURFACE_STYLE        = {
     display: "flex", flexDirection: "column", gap: 8, minHeight: 0, height: "100%",
     padding: 10, fontSize: 13, color: "inherit", fontFamily: "system-ui, sans-serif", boxSizing: "border-box",
   };
-  const MUTED = { color: "rgba(128,128,128,0.95)" };
-  const BUTTON_STYLE = { cursor: "pointer", border: "1px solid rgba(128,128,128,0.35)", borderRadius: 6, background: "transparent", color: "inherit", padding: "3px 8px", fontSize: 12 };
-  const INPUT_STYLE = { padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(128,128,128,0.35)", background: "transparent", color: "inherit", fontSize: 12, width: "100%", boxSizing: "border-box" };
+  /** The secondary-text colour used for labels and hints. */
+  const MUTED        = { color: "rgba(128,128,128,0.95)" };
+  /** The outline button style every action in this page uses. */
+  const BUTTON_STYLE        = { cursor: "pointer", border: "1px solid rgba(128,128,128,0.35)", borderRadius: 6, background: "transparent", color: "inherit", padding: "3px 8px", fontSize: 12 };
+  /** The text-input style every field in this page uses. */
+  const INPUT_STYLE        = { padding: "4px 6px", borderRadius: 6, border: "1px solid rgba(128,128,128,0.35)", background: "transparent", color: "inherit", fontSize: 12, width: "100%", boxSizing: "border-box" };
 
   /** The library page: list + detail + initialize form. Host-agnostic. */
-  function WorkmateLibraryView(props) {
+  function WorkmateLibraryView(props                                  )          {
+    /** The translator for this render. */
     const t = translateFor(props);
-    const [workmates, setWorkmates] = react.useState(null);
-    const [bases, setBases] = react.useState(null);
-    const [error, setError] = react.useState(null);
+    /** The library's instances, or null until the first list answer. */
+    const [workmates, setWorkmates] = react.useState                   (null);
+    /** The roster's BASE templates, or null until the first roster answer. */
+    const [bases, setBases] = react.useState                     (null);
+    /** The last page-level failure, rendered as an alert. */
+    const [error, setError] = react.useState               (null);
+    /** The list filter text. */
     const [filter, setFilter] = react.useState("");
+    /** The BASE template the initialize form will use. */
     const [base, setBase] = react.useState("");
+    /** The optional name for the instance being initialized. */
     const [name, setName] = react.useState("");
+    /** The optional note for the instance being initialized. */
     const [note, setNote] = react.useState("");
+    /** Whether the initialize request is in flight. */
     const [busy, setBusy] = react.useState(false);
-    const [selected, setSelected] = react.useState(null);
-    const [detail, setDetail] = react.useState(null);
+    /** The key of the instance whose detail pane is open. */
+    const [selected, setSelected] = react.useState               (null);
+    /** The open instance's detail record, or null while it loads (or failed). */
+    const [detail, setDetail] = react.useState                       (null);
     // Mutation surface: rename input, the explicit delete confirmation step (D1) and the
     // two message lanes. A mutation message outlives a refresh — only the next mutation
     // clears it — so it cannot share the load-error state.
+    /** The rename field's value (it starts at the current key). */
     const [renameTo, setRenameTo] = react.useState("");
-    const [confirming, setConfirming] = react.useState(null);
+    /** Which delete outcome the confirmation step is showing, or null before the first click. */
+    const [confirming, setConfirming] = react.useState               (null);
+    /** The purge confirmation text, which must equal the instance name. */
     const [purgeText, setPurgeText] = react.useState("");
+    /** Whether a mutation request is in flight. */
     const [mutating, setMutating] = react.useState(false);
-    const [mutationError, setMutationError] = react.useState(null);
-    const [notice, setNotice] = react.useState(null);
+    /** The last mutation failure, rendered as its own alert. */
+    const [mutationError, setMutationError] = react.useState               (null);
+    /** The last mutation success message. */
+    const [notice, setNotice] = react.useState               (null);
 
+    /** Reload the library list and the roster (both requests are independent). */
     const refresh = react.useCallback(() => {
-      request(LIST_URL)
+      request                      (LIST_URL)
         .then((data) => { setWorkmates(data.workmates ?? []); setError(null); })
         .catch((e) => { setError(String(e?.message ?? e)); setWorkmates([]); });
-      request(ROSTER_URL)
+      request                (ROSTER_URL)
         .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.name ?? "")); })
         .catch(() => setBases([]));
     }, []);
     react.useEffect(() => { refresh(); }, [refresh]);
 
-    const openDetail = (workmateName) => {
+    /** Open one instance's detail pane and load its record. */
+    const openDetail = (workmateName        )       => {
       setSelected(workmateName);
       setDetail(null);
       // A fresh load clears the previous failure: the pane renders its error state whenever
@@ -5678,7 +6743,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       // useful thing to show is the name being changed, not an empty box.
       setRenameTo(workmateName);
       setConfirming(null);
-      request(GET_URL + "?name=" + encodeURIComponent(workmateName))
+      request                (GET_URL + "?name=" + encodeURIComponent(workmateName))
         .then((data) => setDetail(data))
         .catch((e) => {
           setError(String(e?.message ?? e));
@@ -5688,19 +6753,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           if (failureReason(e) === "unknown") closeDetail();
         });
     };
-    const submit = (ev) => {
+    /** Create one workmate from the chosen BASE template. */
+    const submit = (ev           )       => {
       ev.preventDefault();
+      /** The BASE template name, trimmed (an empty one disables the form). */
       const chosen = base.trim();
       if (busy || chosen === "") return;
       setBusy(true);
+      /** The initialize request's JSON body (name and note are omitted when blank). */
       const body = JSON.stringify({ base: chosen, name: name.trim() || undefined, note: note.trim() || undefined });
-      request(INIT_URL, { method: "POST", headers: { "content-type": "application/json" }, body })
+      request                  (INIT_URL, { method: "POST", headers: { "content-type": "application/json" }, body })
         .then(() => { setBusy(false); setName(""); setNote(""); refresh(); })
         .catch((e) => { setBusy(false); setError(String(e?.message ?? e)); });
     };
 
     /** Leave the detail pane and reset the mutation surface (per-workmate state). */
-    const closeDetail = () => {
+    const closeDetail = ()       => {
       setSelected(null);
       setDetail(null);
       setRenameTo("");
@@ -5713,12 +6781,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
      * Run one library mutation. The detail pane must never keep pointing at a key that no
      * longer exists (contract §H): a rename follows the new key, a delete leaves detail.
      */
-    const runMutation = (url, body, onSuccess) => {
+    const runMutation = (url        , body         , onSuccess                                  )       => {
       if (mutating) return;
       setMutating(true);
       setMutationError(null);
       setNotice(null);
-      request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+      request                  (url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
         .then((data) => {
           setMutating(false);
           setConfirming(null);
@@ -5733,9 +6801,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         });
     };
 
-    const submitRename = (ev) => {
+    /** Rename the selected instance (a same-key rename is refused locally, §M2). */
+    const submitRename = (ev           )       => {
       ev.preventDefault();
       if (selected === null) return;
+      /** The requested new key, trimmed. */
       const next = renameTo.trim();
       if (next === "") return;
       // The same-key rename is refused HERE, which is what makes `mutate.reason.sameKey`
@@ -5748,16 +6818,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         setMutationError(t("mutate.reason.sameKey"));
         return;
       }
+      /** The key being renamed away from. */
       const from = selected;
       runMutation(RENAME_URL, { name: from, new_name: next }, (data) => {
+        /** The key the server actually landed on (its sanitized answer, else the request). */
         const to = typeof data.name === "string" && data.name !== "" ? data.name : next;
         setNotice(t("mutate.renamed", { from, to }));
         openDetail(to);
       });
     };
 
-    const submitDelete = (purge) => {
+    /** Archive or purge the selected instance. */
+    const submitDelete = (purge         )       => {
       if (selected === null) return;
+      /** The key being deleted. */
       const from = selected;
       runMutation(DELETE_URL, purge ? { name: from, purge: true, confirm: purgeText.trim() } : { name: from }, () => {
         setNotice(purge ? t("mutate.purged", { name: from }) : t("mutate.archived", { name: from }));
@@ -5765,15 +6839,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       });
     };
 
+    /** The filter text, normalized once per render. */
     const needle = filter.trim().toLowerCase();
+    /** The instances the filter keeps, matched on name, note and BASE name. */
     const rows = (workmates ?? []).filter((w) => needle === ""
       || String(w.name).toLowerCase().includes(needle)
       || String(w.note ?? "").toLowerCase().includes(needle)
       || String(w.baseName ?? "").toLowerCase().includes(needle));
 
     if (selected !== null) {
+      /** The open instance's record (null while it loads or after a failure). */
       const d = detail;
-      const section = (title, body) => body === undefined || body === null || String(body).trim() === "" ? null
+      /** One detail section, or null when the record has no text for it. */
+      const section = (title        , body         )          => body === undefined || body === null || String(body).trim() === "" ? null
         : react.createElement("div", { style: { marginTop: 8 } },
             react.createElement("div", { style: { fontWeight: 600, marginBottom: 2 } }, title),
             react.createElement("pre", { style: { margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12, fontFamily: "inherit", ...MUTED } }, String(body)),
@@ -5792,7 +6870,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           react.createElement("div", { style: { fontWeight: 600, fontSize: 12 } }, t("mutate.renameTitle")),
           react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("mutate.renameHint")),
           react.createElement("input", {
-            value: renameTo, onChange: (e) => setRenameTo(e.target.value),
+            value: renameTo, onChange: (e             ) => setRenameTo(e.target.value),
             placeholder: t("mutate.renamePlaceholder"), "aria-label": t("mutate.renameLabel"), style: INPUT_STYLE,
           }),
           react.createElement("button", {
@@ -5820,7 +6898,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               : react.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
                   react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("mutate.purgeHint")),
                   react.createElement("input", {
-                    value: purgeText, onChange: (e) => setPurgeText(e.target.value),
+                    value: purgeText, onChange: (e             ) => setPurgeText(e.target.value),
                     placeholder: t("mutate.purgeConfirmLabel"), "aria-label": t("mutate.purgeConfirmLabel"), style: INPUT_STYLE,
                   }),
                   react.createElement("div", { style: { display: "flex", gap: 6 } },
@@ -5875,7 +6953,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       error ? react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)) : null,
       notice !== null ? react.createElement("div", { role: "status", style: { ...MUTED, fontSize: 12 } }, String(notice)) : null,
       react.createElement("input", {
-        value: filter, onChange: (e) => setFilter(e.target.value), placeholder: t("panel.filter"),
+        value: filter, onChange: (e             ) => setFilter(e.target.value), placeholder: t("panel.filter"),
         "aria-label": t("panel.filter"), style: INPUT_STYLE,
       }),
       react.createElement("div", { style: { flex: 1, minHeight: 80, overflowY: "auto" } },
@@ -5900,18 +6978,18 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         react.createElement("label", { style: { display: "flex", flexDirection: "column", gap: 2, fontSize: 12 } },
           react.createElement("span", null, t("panel.baseLabel")),
           (bases ?? []).length > 0
-            ? react.createElement("select", { value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
+            ? react.createElement("select", { value: base, onChange: (e             ) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
                 (bases ?? []).map((b) => react.createElement("option", { key: b.name, value: b.name }, b.name + (b.readonly ? " · " + t("panel.readonly") : ""))))
-            : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE }),
+            : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e             ) => setBase(e.target.value), style: INPUT_STYLE }),
         ),
         bases !== null && (bases ?? []).length === 0 ? react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("panel.rosterUnavailable")) : null,
         react.createElement("label", { style: { display: "flex", flexDirection: "column", gap: 2, fontSize: 12 } },
           react.createElement("span", null, t("panel.nameLabel")),
-          react.createElement("input", { placeholder: t("panel.namePlaceholder"), value: name, onChange: (e) => setName(e.target.value), style: INPUT_STYLE }),
+          react.createElement("input", { placeholder: t("panel.namePlaceholder"), value: name, onChange: (e             ) => setName(e.target.value), style: INPUT_STYLE }),
         ),
         react.createElement("label", { style: { display: "flex", flexDirection: "column", gap: 2, fontSize: 12 } },
           react.createElement("span", null, t("panel.noteLabel")),
-          react.createElement("input", { placeholder: t("panel.notePlaceholder"), value: note, onChange: (e) => setNote(e.target.value), style: INPUT_STYLE }),
+          react.createElement("input", { placeholder: t("panel.notePlaceholder"), value: note, onChange: (e             ) => setNote(e.target.value), style: INPUT_STYLE }),
         ),
         react.createElement("button", { type: "submit", disabled: busy || base.trim() === "", style: { ...BUTTON_STYLE, opacity: busy || base.trim() === "" ? 0.5 : 1 } }, busy ? t("panel.initBusy") : t("panel.init")),
       ),
@@ -5919,13 +6997,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-  * Register the library as a DSH-better-sidebar tab. The sidebar service is passed in
-  * because it must be RESOLVED through `ctx.inject` (see mountSidebarPages) — a probe at
-  * apply() time races the provider and always loses. The descriptor owns the tab type, its
-  * + menu entry and its page component; there is no floating fallback by decision,
-  * mirroring the AgentTeams page.
-  */
-  function registerWorkmateSidebarTab(ctx, sidebar) {
+   * Register the library as a DSH-better-sidebar tab. The sidebar service is passed in
+   * because it must be RESOLVED through `ctx.inject` (see mountSidebarPages) — a probe at
+   * apply() time races the provider and always loses. The descriptor owns the tab type, its
+   * + menu entry and its page component; there is no floating fallback by decision,
+   * mirroring the AgentTeams page.
+   */
+  function registerWorkmateSidebarTab(ctx               , sidebar                )          {
     if (typeof sidebar.registerTab !== "function") return false;
     // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
     // and the sidebar's own `registerTab` THROWS on a duplicate id. Re-checking through the
@@ -5936,10 +7014,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,
         title: () => SIDEBAR_TAB_TITLE,
-        icon: (size) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F916}"),
+        icon: (size        ) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F916}"),
         order: 90,
         single: true,
-        component: (props) => react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) }),
+        component: (props                                  ) => react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) }),
       }), "mpd-workmate: sidebar tab");
       return true;
     } catch (error) {
@@ -5949,12 +7027,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-  * Load the AgentTeams page module defensively: a missing or broken module must cost the
-  * team page ONLY — never the workmate page beside it, and never the client entry.
-  */
-  function loadTeamPage() {
+   * Load the AgentTeams page module defensively: a missing or broken module must cost the
+   * team page ONLY — never the workmate page beside it, and never the client entry.
+   */
+  function loadTeamPage()                 {
     try {
-      const teamPage = require("@mpd-dsh/team-page");
+      // The module loader hands back its own registration; the shape is checked below, so the
+      // cast is how an untyped `require` boundary enters the typed page contract.
+      /** The sibling client module, whose surface is not trusted until it is probed. */
+      const teamPage = require("@mpd-dsh/team-page")                                     ;
       if (teamPage !== undefined && teamPage !== null && typeof teamPage.registerTeamSidebarTab === "function") {
         return teamPage;
       }
@@ -5966,1159 +7047,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-  * Load the mpd settings card module defensively. It is an ADDITIVE feature: a missing or broken
-  * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
-  * client entry fails the whole page as `entry: pending`).
-  */
-  var MPD_SETTINGS_CARD = (function () {
-  const NS = "mpd"
-  /**
-   * THE ENTRY the harness's settings machinery serves, which is NOT the namespace.
-   *
-   * MEASURED on a live boot (docker/ui, 2026-09-27): the loader gives the row
-   * `entry.options.id = "mpd-config"` (its `entry.id` is the address `include:mpd-config`, and
-   * `settings.describe()` reports it under `ns = "mpd-config"`). `configForms.get(ns)` resolves with
-   * `entries().find(row => row.options.id === ns)` and THROWS `No configurable plugin entry "mpd"` for
-   * a namespace no entry has — which is why every input on this card rendered empty.
+   * Load the mpd settings card module defensively. It is an ADDITIVE feature: a missing or broken
+   * card must cost the card ONLY — never the sidebar pages and never the client entry (a throwing
+   * client entry fails the whole page as `entry: pending`).
    */
-  const CONFIG_ENTRY = "mpd-config"
-  /** The locale namespace the section's own labels live in. */
-  const LOCALE_NS = "mpdSettings"
-  /** The LIST slot the settings shell renders as top-level sections. */
-  const SECTION_SLOT = "settings.section"
-  /** This section's stable id (the shell keys the active section by it). */
-  const SECTION_ID = "mpd"
-  /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
-  const SECTION_ORDER = 20
-
-  /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
-  /**
-   * The HOST LIMITATION half of the truth (T-18), byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
-   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
-   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
-   * a change made through the settings document can reach a running plugin (where it subscribes).
-   * This is the honest replacement for the old "any settings edit wins from the next tick on"
-   * claim, which the host's mount-time base read does not support.
-   */
-  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
-  const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
-  // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
-  // hint and the status line carry).
-  const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
-
-  /**
-   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
-   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
-   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
-   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
-   * from the live catalog at render time instead.
-   */
-  const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
-  const SLOT_LEAVES = [
-    { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
-    { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
-    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
-  ]
-  /**
-   * What each slot IS — the member group it routes, in the group's own order (mirror of
-   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
-   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
-   * the parity test compares every sentence and heading below with the shared declaration's own
-   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
-   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
-   */
-  const SLOT_GROUPS = {
-    slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
-    slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
-    slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
-    slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
-  }
-  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
-  const SLOT_IMPACT = {
-    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
-    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
-  }
-  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
-  const SLOT_IMPACT_OVERRIDES = {
-    slot4: {
-      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
-      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
-    },
-  }
-  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
-  const SLOT_SENTENCE_OVERRIDES = {
-    slot4: {
-      provider: {
-        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
-      },
-      model: {
-        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
-      },
-      reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
-      },
-    },
-  }
-  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
-  const impactOf = (slot, lang) => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
-  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
-  function slotSentence(slot, leaf) {
-    const override = SLOT_SENTENCE_OVERRIDES[slot]
-    if (override !== undefined) return override[leaf]
-    const group = SLOT_GROUPS[slot]
-    if (leaf === "provider") {
-      return {
-        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
-        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
-      }
-    }
-    if (leaf === "model") {
-      return {
-        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
-        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
-      }
-    }
-    return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
-    }
-  }
-  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
-  function slotHeading(slot, index) {
-    const group = SLOT_GROUPS[slot]
-    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
-  }
-  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
-  const SLOT_FIELDS = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
-    const sentence = slotSentence(slot, leaf)
-    return {
-      path: ["teamModels", slot, leaf],
-      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
-      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
-      kind: "select",
-      options,
-      semantics: sentence.en,
-      semanticsZh: sentence.zh,
-    }
-  }))
-
-  const FIELDS = [
-    { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
-    { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
-    { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
-    { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
-    { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
-    { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
-    { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
-    { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
-    { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
-    { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
-    { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
-    { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
-    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
-    // options come from the live catalog at render time (see optionsFor) and fall back to the
-    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
-    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
-    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
-    // exactly as the shared declaration states it (a test compares the two element-wise).
-    ...SLOT_FIELDS,
-  ]
-
-  // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what
-  // configuring it does) leads in the row's locale, then the real mpd.jsonc key with the bridge
-  // disclosure and the not-lost clause — byte-identical to the hint the TUI section builds for the
-  // same knob, so the two front doors state the same thing in the same order. A knob with no
-  // human sentence keeps the disclosure-only hint it always had.
-  /**
-   * One row's hint: its own sentence plus the dotted mpd.jsonc key. The bridge disclosure is stated
-   * ONCE at the top of the card, not once per row — measured in a real browser (docker/ui,
-   * 2026-09-27, `05b-mpd-section.png`): with it inlined, all 25 rows read as the same four lines and
-   * each knob's own sentence was pushed off screen, while the card already repeated the same text
-   * again at the bottom.
-   */
-  const keyOf = (field) => `mpd.jsonc ${field.path.join(".")}`
-  const hintOf = (field, lang = "en") => {
-    const sentence = lang === "zh" ? field.semanticsZh : field.semantics
-    const pointer = keyOf(field)
-    return sentence === undefined || sentence.length === 0 ? pointer : `${sentence} (${pointer})`
-  }
-  const fieldKey = (field) => field.path.join(".")
-  const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
-
-  /** Parse the control's text into a value for this field, or undefined when it is not one. */
-  function parse(kind, text) {
-    if (kind === "number") {
-      const n = Number(String(text).trim())
-      return Number.isFinite(n) ? n : undefined
-    }
-    if (kind === "boolean") {
-      const t = String(text).trim().toLowerCase()
-      if (t === "true" || t === "1") return true
-      if (t === "false" || t === "0") return false
-      return undefined
-    }
-    const t = String(text)
-    return t.length === 0 ? undefined : t
-  }
-
-  const format = (kind, value) => (value === undefined || value === null ? "" : String(value))
-
-  /**
-   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
-   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
-   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
-   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
-   * QA gate pins it), and the parity test compares the mirror with the real one.
-   */
-  const TEAM_MODEL_SLOT = "teamModels"
-
-  /**
-   * The session the catalog binds to, read from the client's OWN list snapshot.
-   *
-   * MEASURED in a real browser against the live host (`evidence/web-card-catalog/20260918T073000Z/`):
-   * `sessions.list.getSnapshot()` is `{ ids, byId, current, phase, subagentsByParent, jobsBySession,
-   * currentAddress }`, and `current` is the session ID **STRING** — never an object. The host's own
-   * consumers prove it: `dsh-client-ui-session` hands it straight to `sessions.binding(current)`, and
-   * `dsh-api-session-controller`'s `followCurrent()` indexes `snapshot.byId[current]`.
-   *
-   * THE DEFECT THIS REPLACES: `current.sessionId ?? current.id` on a STRING is always `undefined`, so
-   * a card with a live current session rendered `no session is bound` — the exact sentence measured in
-   * the user's browser. The earlier acceptance missed it because its fixture INJECTED
-   * `{ current: { sessionId } }`, i.e. it asserted the ASSUMED shape instead of the real one.
-   *
-   * The object form is still accepted (last) so an existing caller that injects `{ sessionId }` keeps
-   * working. Guarded: a missing sessions service, a missing list or an unbound session answer
-   * undefined instead of throwing.
-   */
-  function currentSessionIdOf(sessions) {
-    try {
-      const snapshot = listSnapshotOf(sessions)
-      if (snapshot === undefined || snapshot === null) return undefined
-      const current = snapshot.current
-      if (typeof current === "string") return current.length === 0 ? undefined : current
-      if (current !== null && typeof current === "object") {
-        const id = current.sessionId ?? current.id
-        return typeof id === "string" && id.length > 0 ? id : undefined
-      }
-      return undefined
-    } catch {
-      return undefined
-    }
-  }
-
-  /** The client's session-list snapshot, or undefined when the service is absent or unreadable. */
-  function listSnapshotOf(sessions) {
-    const list = sessions ? sessions.list : undefined
-    return list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
-  }
-
-  /**
-   * Every session id the list snapshot carries, in the snapshot's own order. `ids` is the MEASURED
-   * field; `items` and `byId` are read too, so a snapshot from another host build still yields
-   * candidates.
-   */
-  function listedSessionIds(snapshot) {
-    const ids = []
-    const push = (id) => {
-      if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id)
-    }
-    if (Array.isArray(snapshot.ids)) for (const id of snapshot.ids) push(id)
-    if (Array.isArray(snapshot.items)) for (const item of snapshot.items) push(item === null || item === undefined ? undefined : (item.sessionId ?? item.id))
-    if (snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object") for (const id of Object.keys(snapshot.byId)) push(id)
-    return ids
-  }
-
-  /**
-   * The session a model directory can actually be resolved FOR. The session the app is SHOWING wins
-   * (`current`); when the app has no current session — measured: the settings dialog opens before any
-   * conversation — every LISTED session is tried and the first for which BOTH `scope(id)` and
-   * `binding(id)` resolve wins, because that pair is exactly the precondition the host's resolver
-   * documents (`… resolved no scope` / `… resolved no binding`). A non-`blank` session is tried
-   * first: a placeholder row is a poor thing to pin a catalog preview to.
-   *
-   * No `open()` is needed and none is performed: the host mints a listed session's scope lazily
-   * (`eligible(id) = current === id || ids.includes(id)`, measured resolving for every listed id).
-   */
-  function boundSessionIdOf(sessions) {
-    const current = currentSessionIdOf(sessions)
-    if (current !== undefined) return current
-    try {
-      if (sessions === null || sessions === undefined) return undefined
-      if (typeof sessions.scope !== "function" || typeof sessions.binding !== "function") return undefined
-      const snapshot = listSnapshotOf(sessions)
-      if (snapshot === undefined || snapshot === null) return undefined
-      const ids = listedSessionIds(snapshot)
-      const byId = snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object" ? snapshot.byId : {}
-      const ordered = [...ids.filter((id) => byId[id]?.blank !== true), ...ids.filter((id) => byId[id]?.blank === true)]
-      for (const id of ordered) {
-        try {
-          if (sessions.scope(id) !== undefined && sessions.binding(id) !== undefined) return id
-        } catch {
-          /* an unresolvable id is not a candidate */
-        }
-      }
-    } catch {
-      /* an unreadable list is not a candidate */
-    }
-    return undefined
-  }
-
-  /** Read one service from a context that has it IN SCOPE (never throws). */
-  function readService(ctx, name) {
-    try {
-      return ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined
-    } catch {
-      return undefined
-    }
-  }
-
-  /** The data attribute carrying the branch that produced the option lists (assertable, no browser). */
-  const CATALOG_ATTR = "data-mpd-catalog-state"
-  /** The sentence a fallback MUST say out loud — a silent fallback is what hid this defect. */
-  const CATALOG_FALLBACK_NOTICE = "declared fallback — live catalog unavailable"
-  const FALLBACK_CATALOG = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
-
-  /** The one sentence the card renders for one catalog state: LIVE (with counts) or fallback. */
-  function catalogNotice(info) {
-    const state = info ?? FALLBACK_CATALOG
-    if (state.mode === "live") {
-      const providers = Number(state.providers ?? 0)
-      const models = Number(state.models ?? 0)
-      return "live catalog — " + String(providers) + (providers === 1 ? " provider" : " providers") + " · " + String(models) + (models === 1 ? " model" : " models")
-    }
-    const reason = typeof state.reason === "string" && state.reason.length > 0 ? " (" + state.reason + ")" : ""
-    return CATALOG_FALLBACK_NOTICE + reason
-  }
-
-  /**
-   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
-   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
-   * here — the hint is not part of the front-door parity contract (the parity pin compares the
-   * declaration), so the suffix is a render-time addition only.
-   */
-  function slotFallbackMarker(info) {
-    const state = info ?? FALLBACK_CATALOG
-    if (state.mode === "live") return ""
-    const reason = typeof state.reason === "string" && state.reason.length > 0 ? state.reason : ""
-    return reason === "" ? " — declared fallback" : " — declared fallback: " + reason
-  }
-
-  /** The provider/model counts of one group list. */
-  function catalogCounts(groups) {
-    let models = 0
-    for (const group of groups) models += Array.isArray(group.models) ? group.models.length : 0
-    return { providers: groups.length, models }
-  }
-
-  /**
-   * The LIVE model catalog: the host client's own provider groups
-   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`).
-   *
-   * THE DEFECT THIS REPLACES (measured): a BARE `ctx.get` probe for `modelDirectories` can never
-   * see the service — `@deepseek-ai/dsh-client-ui-model-selection` provides it from ANOTHER
-   * plugin's
-   * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
-   * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
-   * The measured rule lives in this package's `src/web-client.js` header; the answer is the
-   * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
-   * for the providers
-   * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
-   * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
-   * page (`assertEntriesActive` turns it into a `pending` entry).
-   *
-   * THE SECOND DEFECT (measured in a real browser, `evidence/web-card-catalog/`): the injection
-   * alone is not enough, because cordis services are CALLER-scoped — the service's own `ctx`
-   * resolves to the ACCESSING ctx. The host's model-directory resolver declares
-   * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
-   * `directoryFor()`, so a caller that injected only `["modelDirectories","sessions"]` is REJECTED
-   * with `cannot get property "remote.session" without inject`, the card degrades, and the UI shows
-   * the declared fallback while the browser's own catalog carries two providers. The caller must
-   * therefore declare the same dotted chain it makes the service read: `remote.session` is
-   * NECESSARY AND SUFFICIENT (measured: `["modelDirectories","sessions"]` throws,
-   * `+ "remote"` throws, `+ "remote.session"` is ready with 2 providers / 31 models). `remote` is
-   * NOT added: `this.ctx.remote` is a FIRST-LEVEL read, which a caller-scoped call re-roots at the
-   * RESOLVER's own fiber (where its `static inject` satisfies it) — only DOTTED seams are re-rooted
-   * at the CALLER's injection fiber, so `remote` would be one more activation precondition and
-   * nothing else. The name stays in the DYNAMIC inject list only: a declared-but-unregistered
-   * service on a loader ENTRY is page-fatal (`assertEntriesActive`), while a parked dynamic
-   * injection merely never fires and the card keeps its declared fallback.
-   *
-   * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
-   * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
-   * re-projects the card's own store — a provider/model that appears while the page is open shows
-   * up without a rebuild. `directoryFor` THROWS for a session the host does not know, so every
-   * step is wrapped and degrades to the declared lists — with `info()` saying so out loud.
-   */
-  function createLiveCatalog(hostCtx) {
-    let directory
-    let boundSessionId
-    let groups = []
-    let info = FALLBACK_CATALOG
-    let unsubscribeStore = null
-    let unsubscribeSessions = null
-    let fiber = null
-    const listeners = new Set()
-
-    function notify() {
-      for (const listener of [...listeners]) {
-        try {
-          listener()
-        } catch {
-          /* a broken listener must not break the card */
-        }
-      }
-    }
-
-    /**
-     * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
-     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
-     * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
-     * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
-     * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
-     * info when it becomes live. The sentence is `catalogNotice`'s — never a second wording.
-     */
-    /**
-     * Announce a state change ONCE per transition. `pending` marks a fallback that is only the
-     * sessions list still ENUMERATING: the card starts with the plugin (measured — the injected
-     * callback fires during app BOOT, long before any conversation exists), so announcing that first
-     * "no session is bound" put a `[mpd]` WARNING into every healthy boot while nothing was wrong.
-     * The rendered state is unchanged (the visible fallback paragraph still says exactly this); only
-     * the CONSOLE announce waits for the list to settle, so a warning means a degrade again.
-     */
-    let announcedMode
-    function publish(nextGroups, nextInfo) {
-      groups = nextGroups
-      info = nextInfo
-      const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
-      const pending = info !== null && info !== undefined && info.pending === true
-      if (pending !== true && mode !== announcedMode) {
-        announcedMode = mode
-        const sentence = catalogNotice(info)
-        if (mode === "live") console.info("[mpd] model catalog:", sentence)
-        else console.warn("[mpd] model catalog:", sentence)
-      }
-      notify()
-    }
-
-    function fallback(reason, pending) {
-      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason, pending: pending === true })
-    }
-
-    function releaseDirectory() {
-      if (unsubscribeStore !== null) {
-        try {
-          unsubscribeStore()
-        } catch {
-          /* the store may already be gone */
-        }
-        unsubscribeStore = null
-      }
-      directory = undefined
-    }
-
-    /** Re-read the bound directory's store and republish (live: called on every notification). */
-    function readStore() {
-      try {
-        const store = directory ? directory.store : undefined
-        const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
-        const raw = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
-        const next = raw.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
-        if (next.length === 0) {
-          fallback("the model directory for this session reports no provider")
-          return
-        }
-        const counts = catalogCounts(next)
-        publish(next, { mode: "live", providers: counts.providers, models: counts.models })
-      } catch {
-        fallback("the model directory could not be read")
-      }
-    }
-
-    function bindDirectory(directories, sessions, force) {
-      const sessionId = boundSessionIdOf(sessions)
-      // A session-list notification is not a reason to re-fetch an unchanged directory: only a
-      // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
-      if (force !== true && sessionId !== undefined && sessionId === boundSessionId && directory !== undefined) return
-      boundSessionId = sessionId
-      releaseDirectory()
-      try {
-        if (directories === null || directories === undefined || typeof directories.directoryFor !== "function") {
-          fallback("no model directory service is registered")
-          return
-        }
-        if (sessionId === undefined) {
-          // "the list has not enumerated yet" is NOT the same state as "the list is ready and offers
-          // no bindable session": only the second is a degrade worth a console warning.
-          const snapshot = listSnapshotOf(sessions)
-          const enumerating = snapshot !== undefined && snapshot !== null && snapshot.phase !== "ready"
-          fallback("no session is bound", enumerating)
-          return
-        }
-        const found = directories.directoryFor(sessionId)
-        if (found === null || found === undefined) {
-          fallback("the host resolved no model directory for this session")
-          return
-        }
-        directory = found
-        const store = found.store
-        if (store && typeof store.subscribe === "function") unsubscribeStore = store.subscribe(() => readStore())
-        readStore()
-        if (typeof found.load === "function") {
-          try {
-            Promise.resolve(found.load()).then(() => readStore(), () => { /* a failed load keeps the last snapshot */ })
-          } catch {
-            /* a synchronous throw keeps the last snapshot */
-          }
-        }
-      } catch (error) {
-        // directoryFor THROWS for a session the host does not know — and for a CALLER whose inject
-        // list does not satisfy the service's own reads (`cannot get property "remote.session"
-        // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
-        // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
-        const detail = error !== null && error !== undefined && typeof error.message === "string" ? error.message : ""
-        fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
-      }
-    }
-
-    function bind(scoped) {
-      releaseDirectory()
-      if (unsubscribeSessions !== null) {
-        try {
-          unsubscribeSessions()
-        } catch {
-          /* the list may be gone */
-        }
-        unsubscribeSessions = null
-      }
-      const directories = readService(scoped, "modelDirectories")
-      const sessions = readService(scoped, "sessions")
-      try {
-        const list = sessions ? sessions.list : undefined
-        // A session SWITCH re-binds the directory: the picker follows the session the page is on.
-        if (list && typeof list.subscribe === "function") unsubscribeSessions = list.subscribe(() => bindDirectory(directories, sessions, false))
-      } catch {
-        unsubscribeSessions = null
-      }
-      // The injection itself is a (re)bind: a provider remount must never keep a stale directory.
-      bindDirectory(directories, sessions, true)
-    }
-
-    return {
-      /** Start the dynamic injection. The scoped ctx of the callback is what reads the services. */
-      start() {
-        if (typeof hostCtx?.inject !== "function") {
-          fallback("the client runtime exposes no ctx.inject")
-          return false
-        }
-        try {
-          // The CALLER-SCOPED chain: `remote.session` is what the host's directory resolver reads on
-          // ITS ctx, and cordis resolves a service's ctx to the ACCESSING ctx — so it must be
-          // declared HERE (dynamically; never in the module's declared inject) or `directoryFor`
-          // throws `cannot get property "remote.session" without inject`. Measured necessary AND
-          // sufficient; see the class comment above.
-          fiber = hostCtx.inject(["modelDirectories", "sessions", "remote.session"], (scoped) => bind(scoped))
-        } catch (error) {
-          console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
-          fallback("the model catalog injection failed")
-          return false
-        }
-        return true
-      },
-      dispose() {
-        releaseDirectory()
-        if (unsubscribeSessions !== null) {
-          try {
-            unsubscribeSessions()
-          } catch {
-            /* the list may be gone */
-          }
-          unsubscribeSessions = null
-        }
-        if (fiber !== null && typeof fiber.dispose === "function") {
-          try {
-            fiber.dispose()
-          } catch {
-            /* the fiber may already be gone */
-          }
-        }
-        fiber = null
-        listeners.clear()
-      },
-      groups: () => groups,
-      info: () => info,
-      subscribe(listener) {
-        listeners.add(listener)
-        return () => listeners.delete(listener)
-      },
-    }
-  }
-
-  /** The declared fallback options of one knob, in the { value, label } shape the card renders. */
-  function declaredOptions(field) {
-    return (Array.isArray(field.options) ? field.options : []).map((value) => ({ value, label: value }))
-  }
-
-  /** The catalog entry of one exact provider/model pair (the provider leaf picks the group). */
-  function findModel(groups, providerId, modelId) {
-    const preferred = groups.filter((group) => group.id === providerId)
-    for (const group of [...preferred, ...groups.filter((group) => group.id !== providerId)]) {
-      for (const model of group.models) if (model && model.id === modelId) return model
-    }
-    return undefined
-  }
-
-  /**
-   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
-   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
-   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
-   *   provider          -> the catalog's provider ids (label = the provider's display name)
-   *   model             -> every provider's models, GROUPED by provider (optgroup label)
-   *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
-   */
-  function optionsFor(field, groups, controls) {
-    const declared = declaredOptions(field)
-    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
-    const slot = field.path[1]
-    const leaf = field.path[2]
-    if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
-    if (leaf === "model") {
-      const options = []
-      for (const group of groups) {
-        for (const model of group.models) if (model && typeof model.id === "string") options.push({ value: model.id, label: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id, group: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id })
-      }
-      return options.length > 0 ? options : declared
-    }
-    const textOf = (path) => {
-      const control = controls ? controls[path.join(".")] : undefined
-      return control ? control.text : undefined
-    }
-    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
-    const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
-    const derived = efforts.filter((effort) => effort && typeof effort.id === "string").map((effort) => ({ value: effort.id, label: typeof effort.name === "string" && effort.name.length > 0 ? effort.name : effort.id }))
-    return derived.length > 0 ? derived : declared
-  }
-
-  /**
-   * The option children of one select: `optgroup`s keyed by provider when the options carry a
-   * group (the model control, where the provider is shown as a group), a flat list otherwise.
-   */
-  function optionElements(createElement, options) {
-    if (!options.some((option) => typeof option.group === "string")) {
-      return options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))
-    }
-    const labels = []
-    const byGroup = new Map()
-    for (const option of options) {
-      const label = typeof option.group === "string" ? option.group : ""
-      if (!byGroup.has(label)) {
-        byGroup.set(label, [])
-        labels.push(label)
-      }
-      byGroup.get(label).push(option)
-    }
-    return labels.map((label) =>
-      createElement(
-        "optgroup",
-        { key: label, label },
-        ...byGroup.get(label).map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
-      ),
-    )
-  }
-
-  /** A minimal snapshot store (the host's own is private): subscribe + getSnapshot, stable refs. */
-  function createStore(initial) {
-    let snapshot = initial
-    const listeners = new Set()
-    return {
-      getSnapshot: () => snapshot,
-      subscribe(listener) {
-        listeners.add(listener)
-        return () => listeners.delete(listener)
-      },
-      set(next) {
-        snapshot = next
-        for (const listener of [...listeners]) {
-          try {
-            listener()
-          } catch {
-            /* a broken listener must not break the card */
-          }
-        }
-      },
-    }
-  }
-
-  /**
-   * The card's form controller: reads the bound settings scope, stages edits, and writes them with
-   * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
-   * express (it writes top-level fields only).
-   */
-  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo = () => FALLBACK_CATALOG) {
-    const staged = new Map()
-    // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
-    // call site is a TDZ ReferenceError (measured by this module's own test).
-    let saving = false
-    let failed = false
-    let lastError = ""
-    const store = createStore(project())
-
-    function readScope() {
-      const snapshot = scope.getSnapshot()
-      return { snapshot, section: snapshot?.value ?? snapshot?.user }
-    }
-
-    function project() {
-      const { snapshot, section } = readScope()
-      const controls = {}
-      let dirty = false
-      let invalid = false
-      for (const field of fields) {
-        const key = fieldKey(field)
-        const stagedEdit = staged.get(key)
-        if (stagedEdit !== undefined) {
-          const parsed = stagedEdit.clear ? { kind: "clear" } : parse(field.kind, stagedEdit.text)
-          controls[key] = { text: stagedEdit.text, overridden: parsed?.kind === "set", invalid: parsed === undefined }
-          if (parsed === undefined) invalid = true
-          dirty = true
-          continue
-        }
-        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
-      }
-      return {
-        available: snapshot?.status === "ready",
-        writable: snapshot?.writable === true,
-        mode: snapshot?.mode ?? "memory",
-        dirty,
-        invalid,
-        saving,
-        failed,
-        error: lastError,
-        controls,
-        disclosure,
-        // Which branch produced the slot option lists — LIVE (with counts) or the declared
-        // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
-        catalog: catalogInfo() ?? FALLBACK_CATALOG,
-      }
-    }
-
-    function publish() {
-      store.set(project())
-    }
-    try {
-      scope.subscribe(publish)
-    } catch {
-      /* a scope without subscribe still renders its first snapshot */
-    }
-
-    /** Every staged edit a save would write (an unparsable draft contributes no write). */
-    function plan() {
-      const writes = []
-      for (const field of fields) {
-        const key = fieldKey(field)
-        const stagedEdit = staged.get(key)
-        if (stagedEdit === undefined) continue
-        if (stagedEdit.clear) {
-          writes.push({ op: "unset", path: [...field.path] })
-          continue
-        }
-        const parsed = parse(field.kind, stagedEdit.text)
-        if (parsed === undefined) continue
-        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
-        writes.push({ op: "set", path: [...field.path], value: parsed })
-      }
-      return writes
-    }
-
-    async function save() {
-      const writes = plan()
-      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
-      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
-      // rather than being silently dropped on the wire.
-      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
-      saving = true
-      failed = false
-      lastError = ""
-      publish()
-      try {
-        // The revision fence: the scope reports the revision it read, so a concurrent change is a
-        // conflict the user can retry rather than a silent overwrite.
-        await scope.mutate(writes, scope.getSnapshot()?.revision)
-        staged.clear()
-      } catch (error) {
-        failed = true
-        lastError = String(error?.message ?? error)
-      }
-      saving = false
-      publish()
-    }
-
-    function stage(key, edit) {
-      staged.set(key, edit)
-      failed = false
-      lastError = ""
-      publish()
-    }
-
-    return {
-      /** The face the slot registration injects: one hook store plus the form actions. */
-      inject() {
-        return {
-          hooks: { mpdCard: store },
-          edit: (key, text) => stage(key, { text, clear: false }),
-          resetField: (key) => stage(key, { text: "", clear: true }),
-          save: () => {
-            void save()
-          },
-          discard: () => {
-            if (staged.size === 0 && !failed) return
-            staged.clear()
-            failed = false
-            lastError = ""
-            publish()
-          },
-        }
-      },
-      store,
-      /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
-      refresh: () => {
-        publish()
-      },
-      dispose: () => {
-        try {
-          scope.dispose()
-        } catch {
-          /* already disposed */
-        }
-      },
-    }
-  }
-
-  /** The card component: self-contained markup, no private host components. */
-  function createCardComponent(react, fields = FIELDS, readGroups = () => []) {
-    const { createElement } = react
-    return function MpdSettingsCard(props) {
-      const state = props.useMpdCard((snapshot) => snapshot)
-      const t = typeof props.t === "function" ? props.t : (key) => key
-      const disabled = !state.writable
-      // The catalog branch this render used. Silent fallback is what hid the defect, so the state
-      // is part of the rendered output (and of the data attributes) — never implicit.
-      const catalog = state.catalog ?? FALLBACK_CATALOG
-      let groups = []
-      try {
-        const probed = readGroups()
-        if (Array.isArray(probed)) groups = probed
-      } catch {
-        /* a broken catalog probe degrades the OPTIONS, never the section */
-      }
-      const rows = fields.map((field) => {
-        const key = fieldKey(field)
-        const control = state.controls[key] ?? { text: "" }
-        const label = t(key)
-        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
-        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
-        // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
-        // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
-        // card. Repeating it per row is what buried every row's own sentence (measured in a real
-        // browser: 2026-09-27, `05b-mpd-section.png`).
-        const keyAt = hint.indexOf("mpd.jsonc " + key)
-        // The key sits inside parentheses now, so drop the opening one the slice leaves behind.
-        const human = keyAt > 0 ? hint.slice(0, keyAt).replace(/\(\s*$/, "").trim() : ""
-        const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
-        const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
-          : createElement(
-              "span",
-              { style: { display: "block", marginBottom: 2 } },
-              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
-            )
-        const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
-        const input = field.kind === "select" && options.length > 0
-          ? createElement(
-              "select",
-              { value: control.text, disabled, onChange: (event) => props.edit(key, event.target.value), style: { width: "100%" } },
-              createElement("option", { value: "" }, "—"),
-              ...optionElements(createElement, options),
-            )
-          : createElement("input", {
-              value: control.text,
-              disabled,
-              onChange: (event) => props.edit(key, event.target.value),
-              style: { width: "100%" },
-            })
-        return createElement(
-          "label",
-          { key, style: { display: "block", margin: "8px 0" } },
-          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
-          hintNode,
-          input,
-          createElement(
-            "span",
-            { style: { fontSize: 11, opacity: 0.7 } },
-            (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
-            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
-          ),
-        )
-      })
-      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
-      // where the section's top notice is off-screen — so the SAME sentence renders again
-      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
-      // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
-      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
-      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
-      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
-      const slotLine = createElement(
-        "p",
-        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
-        catalogNotice(catalog),
-      )
-      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
-      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
-      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
-      const slotChildren = []
-      for (let index = 0; index < slotRows.length; index++) {
-        const slot = String(fields[slotStart + index].path[1])
-        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
-        if (slot !== previous) {
-          slotChildren.push(createElement(
-            "div",
-            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
-            t("teamModels." + slot + ".heading"),
-          ))
-          slotChildren.push(createElement(
-            "p",
-            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
-            t("teamModels." + slot + ".impact"),
-          ))
-        }
-        slotChildren.push(slotRows[index])
-      }
-      return createElement(
-        "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
-        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
-        disabled
-          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
-          : null,
-        createElement(
-          "p",
-          {
-            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
-            [CATALOG_ATTR]: catalog.mode,
-            "data-mpd-catalog-providers": String(catalog.providers ?? 0),
-            "data-mpd-catalog-models": String(catalog.models ?? 0),
-          },
-          catalogNotice(catalog),
-        ),
-        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
-          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
-          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
-          NOT_LOST),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
-          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
-        ...scalarRows,
-        slotLine,
-        ...slotChildren,
-        createElement(
-          "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
-          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
-          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
-          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
-        ),
-        state.mode === "memory"
-          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
-          : null,
-      )
-    }
-  }
-
-  /** The zh/en dictionaries: the TUI section's labels and zh descriptions, plus the card's copy. */
-  function dictionaries(fields = FIELDS) {
-    const en = {
-      nav: "MPD",
-      title: "MPD bundle",
-      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
-      save: "Save",
-      discard: "Discard",
-      reset: "Reset to the file value",
-      saving: "Saving…",
-      unsaved: "Unsaved",
-      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
-      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
-    }
-    const zh = {
-      nav: "MPD",
-      title: "MPD 插件包",
-      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
-      save: "保存",
-      discard: "放弃",
-      reset: "重置为文件值",
-      saving: "保存中…",
-      unsaved: "未保存",
-      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
-      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
-    }
-    for (const field of fields) {
-      const key = fieldKey(field)
-      en[key] = field.label
-      zh[key] = field.zh
-      en[key + ".hint"] = hintOf(field, "en")
-      zh[key + ".hint"] = hintOf(field, "zh")
-    }
-    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
-    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
-    for (const [index, slot] of SLOT_SLOTS.entries()) {
-      const heading = slotHeading(slot, index + 1)
-      en["teamModels." + slot + ".heading"] = heading.en
-      zh["teamModels." + slot + ".heading"] = heading.zh
-      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
-      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
-    }
-    return { en, zh }
-  }
-
-  /**
-   * Mount the section. The namespace's form comes from the harness's `configForms` service, so
-   * `ctx.inject` — never a declared dependency (a declared-but-absent service makes the whole page
-   * fail as `entry: pending`; `web-client-adapt --self-test` asserts this rule against the built
-   * client). One warning on absence, never a throw.
-   * @param ctx - the client entry's context.
-   * @returns true when the registration was attempted.
-   */
-  function mountSettingsCard(ctx, options = {}) {
-    try {
-      if (ctx === undefined || ctx === null || ctx.slots === undefined || typeof ctx.slots.inject !== "function") return false
-      const fields = options.fields ?? FIELDS
-      const dicts = dictionaries(fields)
-      try {
-        if (ctx.locale !== undefined && typeof ctx.locale.register === "function") ctx.locale.register(LOCALE_NS, dicts)
-      } catch (error) {
-        console.warn("[mpd] settings section: locale registration failed: " + String(error))
-      }
-      ctx.slots.inject(SECTION_SLOT, function* () {
-        try {
-          // THE FORM IS THE SCOPE. Until 2026-09-27 this block waited on
-          // an injected `settingsScope` service, and that service exists NOWHERE in harness
-          // 0.1.7-rc.2 (a grep over every @deepseek-ai/* client bundle returns nothing), so the
-          // callback never fired: the Settings dialog rendered General / Models / Built-in
-          // plugins / Agent presets with NO mpd section, and — because that path logged nothing
-          // — the absence was silent. The harness's own sections reach their namespace through
-          // `ctx.configForms.get(ns)`, whose controller carries the SAME shape this card already
-          // used (`getSnapshot`, `subscribe`, `set`, `mutate`), so the card is unchanged and
-          // only its host object moves.
-          // Read it BOTH ways: a real client context exposes services as properties, while a
-          // stub context (the offline harness) serves them through `get`. The card must not care
-          // which one it is talking to.
-          // STILL DEFERRED, and that is the point: `configForms` is provided by ANOTHER plugin's
-          // fiber, so a one-shot probe at apply() races it. The DYNAMIC form waits for the
-          // provider without parking this boot entry — a declared-but-absent service would turn
-          // the whole page into `entry: pending` (the rule `web-client-adapt --self-test` pins).
-          ctx.inject(["configForms"], (scoped) => {
-            const forms = (typeof scoped.get === "function" ? scoped.get("configForms") : undefined) ?? scoped.configForms
-            if (forms === undefined || forms === null || typeof forms.get !== "function") {
-              console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
-              return
-            }
-            const scope = forms.get(CONFIG_ENTRY)
-            // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
-            // empty" has three possible causes that look identical on screen — the form lookup threw
-            // (warned above), the store never fills, or it fills with a shape this card does not read.
-            // Printing the snapshot's status and whether a value arrived tells them apart from a
-            // capture, without a debugger.
-            try {
-              const first = scope?.getSnapshot?.()
-              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
-              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
-                const now = scope.getSnapshot?.()
-                console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
-              })
-            } catch (error) {
-              console.warn("[mpd] settings section: snapshot probe failed: " + String(error?.message ?? error))
-            }
-            // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
-            // card's own store on every change. Started BEFORE the registration so the first
-            // render already carries the real list when the providers are up.
-            const catalog = createLiveCatalog(ctx)
-            const controller = createMpdCardController(scope, fields, undefined, () => catalog.info())
-            const unsubscribeCatalog = catalog.subscribe(() => {
-              controller.refresh()
-            })
-            catalog.start()
-            // The slot leaves render their option lists from the LIVE catalog on every render.
-            const Section = createCardComponent(require("react"), fields, () => catalog.groups())
-            // The host's descriptor: id + explicit order + a label resolved through this
-            // registration's locale dictionaries. `children` is omitted because this section
-            // renders no nested slot of its own.
-            const unregister = ctx.slots.register(
-              { name: SECTION_SLOT, id: SECTION_ID, order: SECTION_ORDER, label: () => dicts.en.nav, locale: LOCALE_NS, inject: () => controller.inject() },
-              Section,
-            )
-            return () => {
-              try {
-                unregister()
-              } catch {
-                /* the slot may be gone */
-              }
-              try {
-                unsubscribeCatalog()
-              } catch {
-                /* already unsubscribed */
-              }
-              catalog.dispose()
-              controller.dispose()
-            }
-          })
-        } catch (error) {
-          console.warn("[mpd] settings section: could not mount the mpd section: " + String(error))
-        }
-        yield undefined
-      })
-      return true
-    } catch (error) {
-      console.warn("[mpd] settings section: slot registration failed: " + String(error))
-      return false
-    }
-  }
-
-  return {
-    mountSettingsCard,
-    createMpdCardController,
-    createCardComponent,
-    dictionaries,
-    createLiveCatalog,
-    catalogNotice,
-    optionsFor,
-    optionElements,
-    FIELDS,
-    SETTINGS_NS: NS,
-    LOCALE_NS,
-    SECTION_SLOT,
-    SECTION_ID,
-    SECTION_ORDER,
-    BRIDGE_DISCLOSURE,
-    BRIDGE_RESTART_LIMIT,
-    NO_WORKSPACE_NOTICE,
-    CATALOG_ATTR,
-    CATALOG_FALLBACK_NOTICE,
-  }
-  })();
-
-
-  function loadSettingsCard() {
+  function loadSettingsCard()                     {
     // THE SPLICED CARD FIRST. `require("@mpd-dsh/settings-card")` asks the module loader for a
     // SIBLING `__ModuleLoader__.load` block, and the loader's require map only serves the
     // modules it owns — measured on a real checkout install 2026-09-27: the Settings dialog
@@ -7129,7 +7062,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // offline harness uses.
     if (typeof MPD_SETTINGS_CARD === "object" && MPD_SETTINGS_CARD !== null) return MPD_SETTINGS_CARD;
     try {
-      const card = require("@mpd-dsh/settings-card");
+      /** The sibling card module, whose surface is not trusted until it is probed. */
+      const card = require("@mpd-dsh/settings-card")                                         ;
       if (card !== undefined && card !== null && typeof card.mountSettingsCard === "function") return card;
       console.warn("[mpd] settings card module exposes no mountSettingsCard — the mpd card is unavailable");
     } catch (error) {
@@ -7138,12 +7072,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     return { mountSettingsCard: () => false };
   }
 
+  /** The element factory, bound once for the Team tab's terser render tree. */
   const h = react.createElement;
+  /** The Team tab's stable id. */
   const TEAM_TAB_ID = "@mpd-dsh/team-sidebar";
+  /** The Team tab's kind (the tab registry keys open tabs on it). */
   const TEAM_TAB_KIND = "mpd-team";
 
   /** Status → the colour a reader must be able to tell apart at a glance. */
-  const STATUS_COLOR = {
+  const STATUS_COLOR                                     = {
     running: "#22a06b",
     active: "#22a06b",
     completed: "#22a06b",
@@ -7155,11 +7092,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     deleted: "#c9ccd1",
   };
 
-  const dim = { color: "var(--dsh-color-text-secondary, #8a8f98)", fontSize: "11px" };
-  const ellipsis = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 };
-  const rowStyle = { display: "flex", alignItems: "center", gap: "8px", padding: "5px 0", minWidth: 0 };
-  const dot = (color) => ({ width: "7px", height: "7px", borderRadius: "50%", flex: "0 0 auto", background: color });
-  const chip = (color) => ({
+  /** The secondary text style of the team tab. */
+  const dim        = { color: "var(--dsh-color-text-secondary, #8a8f98)", fontSize: "11px" };
+  /** The single-line ellipsis style for member and task names. */
+  const ellipsis        = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 };
+  /** One member or task row of the board. */
+  const rowStyle        = { display: "flex", alignItems: "center", gap: "8px", padding: "5px 0", minWidth: 0 };
+  /** A small status dot in the given colour. */
+  const dot = (color        )        => ({ width: "7px", height: "7px", borderRadius: "50%", flex: "0 0 auto", background: color });
+  /** A status chip in the given colour. */
+  const chip = (color        )        => ({
     display: "inline-block", padding: "0 6px", borderRadius: "9px", fontSize: "10px", lineHeight: "16px",
     border: "1px solid " + color, color, whiteSpace: "nowrap", flex: "0 0 auto",
   });
@@ -7170,15 +7112,23 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * @param props - seat props from `sidebar.right.pane.tab`; `sessionId` comes from the seat's
    *   own `inject`, and `useSessions`/`useSession` from the primitives package.
    */
-  function TeamSidebarBody(props) {
+  function TeamSidebarBody(props                  )          {
+    /** The session whose team this tab renders, as the seat resolved it. */
     const sessionId = props.sessionId;
-    const useSessions = props.useSessions || primitives.useSessions;
-    const useSession = props.useSession || primitives.useSession;
+    // The primitives package is a bare global here (see the ambient declaration above), so both
+    // fallbacks are narrowed to the hook shape at the point of use.
+    /** The sessions store hook: the seat's own, else the host's primitives package. */
+    const useSessions = props.useSessions || primitives.useSessions                ;
+    /** The session store hook: the seat's own, else the host's primitives package. */
+    const useSession = props.useSession || primitives.useSession               ;
     // A teammate's own panel addresses the LEAD's board: the same rule the official UI uses.
+    /** The parent session's id when this seat is a teammate's own panel. */
     const ambientLead = typeof useSession === "function"
       ? useSession((snapshot) => snapshot?.subagent?.address?.parentSessionId)
       : undefined;
+    /** The board this tab addresses: the ambient lead when there is one, else its own session. */
     const leadId = ambientLead || sessionId;
+    /** The team projection of that board, or undefined while it has no team. */
     const team = typeof useSessions === "function"
       ? useSessions((state) => (leadId === undefined ? undefined : state.projectionsBySession?.[leadId]?.values?.agentTeam))
       : undefined;
@@ -7187,15 +7137,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
         "No team in this session yet. Ask the Lead to spawn one with spawn_teammate.");
     }
+    /** The team's members (an absent list renders the empty-state line). */
     const members = Array.isArray(team.members) ? team.members : [];
+    /** The team's shared tasks (an absent list renders the empty-state line). */
     const tasks = Array.isArray(team.tasks) ? team.tasks : [];
+    /** How many tasks are completed. */
     const done = tasks.filter((task) => task.status === "completed").length;
+    /** The completion percentage (0 while the board has no tasks). */
     const percent = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
     // A completion bar alone cannot say whether anything is MOVING. The board already carries
     // `ready` and `blockedBy`, so the view states what a captain acts on: how many tasks a
     // teammate could pick up right now, and how many are waiting on something else.
+    /** How many open tasks a teammate could pick up right now. */
     const ready = tasks.filter((task) => task.status !== "completed" && task.ready === true).length;
+    /** How many open tasks are waiting on something else. */
     const blocked = tasks.filter((task) => task.status !== "completed" && task.ready === false).length;
+    /** How many members are currently working. */
     const running = members.filter((member) => member.phase === "active" || member.phase === "running").length;
 
     return h("div", { style: { padding: "10px 12px 14px", overflowY: "auto" } },
@@ -7237,7 +7194,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
-  function mountHarnessSidebar(ctx) {
+  function mountHarnessSidebar(ctx               )       {
     // DEGRADE, NEVER TAKE THE ENTRY DOWN. `ctx.inject` is a client-framework seam: a
     // composition (or the offline client harness) without it must simply not get this tab,
     // while the workmate page and the settings card still mount. Measured: an unguarded read
@@ -7247,6 +7204,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // optional tab that is simply absent is not a warning-worthy event (the same reading the
     // better-sidebar mount takes when its host never arrives).
     if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
+    /** The translator bound to this tab's own locale namespace. */
     const t = ctx.locale.bind("mpdTeamSidebar");
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
@@ -7289,12 +7247,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       name: "sidebar.right.pane.tab",
       key: TEAM_TAB_ID,
       locale: "mpdTeamSidebar",
-      inject: (sessionId) => ({ sessionId }),
+      inject: (sessionId         ) => ({ sessionId }),
     }, TeamSidebarBody), "mpd-team-sidebar:body");
     });
   }
 
-  function apply(ctx) {
+  /** The client entry: mount the command row, both sidebar pages and the settings card. */
+  function apply(ctx               )       {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
     // declared dependency, so it is present.
     mountAgentTeams(ctx);
@@ -7326,6 +7285,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   // zh is the key-set source of truth; en must stay key-complete against it. Exported so
   // the offline harness can assert that without a browser (contract §L A7).
+  /** The page's dictionaries, frozen so an offline assertion cannot mutate them. */
   const dictionaries = { zh: Object.freeze({ ...zh }), en: Object.freeze({ ...en }) };
 
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
@@ -7333,4 +7293,34 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
   module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
-} });
+}
+
+
+// The bare `primitives` global the host injects; this page reads its two store hooks. It is
+// declared AFTER the factory on purpose: the build splices this file as ONE expression, and both
+// this declaration and the interface above it erase to nothing — while a declaration placed
+// before the factory would leave its statement-terminating `;` inside the spliced expression.
+/** The two store hooks this page reads from the host's primitives package. */
+                            
+                                                                                 
+                      
+                                                                                       
+                     
+ 
+
+// The original source referenced the primitives package as a bare global and nothing in this
+// bundle defines it, so the lookup — including its failure mode on a host that never injects the
+// package — stays exactly as it was, and no runtime binding appears here.
+                                          
+
+// The build splices the card's factory body in as a function-scoped `var MPD_SETTINGS_CARD =
+// (function () { ... })()` right before `loadSettingsCard` (`scripts/build-mpd-client.ts`), so the
+// source declares the same name ambiently: the splice's own `var` shadows this declaration at
+// runtime, and the source needs no runtime binding of its own.
+/** The mpd settings card module the build splices into the client entry. */
+                                 
+                                                         
+                                              
+ 
+
+/** The spliced settings card module, or undefined when the build did not splice one. */ });

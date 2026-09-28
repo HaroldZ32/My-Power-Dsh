@@ -188,7 +188,7 @@
 
 - insert:
     # B8 (wave 2): this row names NO binary path any more. It launches
-    # packages/mpd-mcp-astgrep/launch.mjs, which resolves the binary
+    # packages/mpd-mcp-astgrep/launch.ts, which resolves the binary
     # bundle-relatively (env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the
     # optionalDependency -> <bundle>/.toolchain/node_modules/.bin/ast-grep|sg) and
     # sets MPD_AST_GREP_SG_PATH only when the caller left it unset, before the
@@ -202,7 +202,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")'
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.ts")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -227,7 +227,7 @@
           - mcp
         toolCallTimeoutMs: 60000
     # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
-    # launches packages/mpd-mcp-codegraph/launch.mjs, which resolves the binary
+    # launches packages/mpd-mcp-codegraph/launch.ts, which resolves the binary
     # bundle-relatively (env pin -> createRequire of the optionalDependency ->
     # <bundle>/.toolchain/node_modules/.bin/codegraph) and sets MPD_CODEGRAPH_BIN
     # only when the caller left it unset, then calls runCodegraphServe() (serve.js
@@ -242,7 +242,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")'
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts")'
         toolCallTimeoutMs: 60000
     # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
     # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)
@@ -254,7 +254,7 @@
     # whole GUI/agent down → boot-safety rule: optional rows stay COMMENTED
     # until the tools are installed and the env bins are pinned. To enable:
     #   1) pipx install wave-mcp && pipx install traceweave-mcp
-    #      (or run node scripts/install-mcp.mjs --with-wave --activate-wave)
+    #      (or run node scripts/install-mcp.ts --with-wave --activate-wave)
     #   2) export MPD_DSH_WAVE_MCP_BIN=$(command -v wave-mcp)
     #      export MPD_DSH_TRACEWEAVE_BIN=$(command -v traceweave-mcp)
     #   3) uncomment the two example rows below (command resolves env-first,

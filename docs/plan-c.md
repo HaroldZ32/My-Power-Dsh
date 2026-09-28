@@ -43,7 +43,7 @@ Each item = one `feature/<slug>` branch from `dev`, atomic commits, dsh-qa evide
 ### C1 — Team & visualization (adopt dsh-agent-teams)
 
 Deliverables:
-- `scripts/install-profile.mjs`: add the plugin via the official `dsh plugin --profile <name> add @nanmicoder/dsh-agent-teams@0.1.13` (managed DSH_HOME), then home patch config override:
+- `scripts/install-profile.ts`: add the plugin via the official `dsh plugin --profile <name> add @nanmicoder/dsh-agent-teams@0.1.13` (managed DSH_HOME), then home patch config override:
   ```yaml
   - id: agent-teams
     config:
@@ -55,7 +55,7 @@ Deliverables:
 - `AGENTS.md`: naming addendum — self-written = `mpd_*`; adopted third-party plugins keep vendor ids (`agent-teams`, context7, grep_app precedent).
 - Docs: `mpd_team_spawn/status` stay as lightweight one-shot tools; `agent-teams` is the full team protocol (supersession note in docs/feature-audit.md).
 
-QA (`skills/dsh-qa/scripts/agent-teams-adopt.mjs` + `--self-test`, isolated DSH_HOME with copied credentials):
+QA (`skills/dsh-qa/scripts/agent-teams-adopt.ts` + `--self-test`, isolated DSH_HOME with copied credentials):
 - compose: `dsh --dump-config` shows the `agent-teams` row with `stateDir: .mpd/team`;
 - live headless run: "use AgentTeams: create team of 2 members, one task with a dependency, run to completion, report status" → assert `.mpd/team/<id>/team.json` + `inbox/*.jsonl` exist and task terminal;
 - web route smoke: boot `dsh web` as a managed background job, `curl /plugins/dsh-agent-teams/state` → 200 JSON; panel mount seam (`shell.overlay`) already confirmed present in the installed dsh-client-ui-layout.

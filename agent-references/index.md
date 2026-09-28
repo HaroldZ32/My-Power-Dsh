@@ -16,3 +16,4 @@ keep their `§N` provenance lines as historical citations of the repository manu
 |---|---|
 | `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |
 | `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D42 table, registry mechanics, live region count, wave-2 driver-script warning (former `AGENTS.md` §6 body) |
+| `verification-flow.md` | the ordered verification flow behind `AGENTS.md` §4/§11: what each gate is worth, why the Docker real-machine lane is the LAST step, and the measured rootless / skip / `--require-docker` policy |

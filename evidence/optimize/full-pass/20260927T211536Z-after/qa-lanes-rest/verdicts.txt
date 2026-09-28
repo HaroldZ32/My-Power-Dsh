@@ -1,0 +1,12 @@
+session-start-team exit=124 ms=420000
+skill-catalog-probe exit=1 ms=20000
+software-smoke exit=1 ms=12000
+tool-output-validation exit=0 ms=32000
+ulw-command exit=1 ms=23000
+ultrawork-smoke exit=0 ms=30000
+vision-smoke exit=0 ms=1000
+web-client-adapt exit=1 ms=10000
+web-settings-bridge exit=1 ms=38000
+workmate-library exit=1 ms=58000
+workmate-team-member exit=1 ms=126000
+ALLDONE

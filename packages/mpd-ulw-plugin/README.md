@@ -61,11 +61,11 @@ An activated ULW run asks the user nothing:
 
 Run from the repository root with path-qualified arguments — the canonical form. A build
 run inside the package directory writes different bundler path comments, so
-`node scripts/verify-dist-fresh.mjs` flags its output as stale:
+`node scripts/verify-dist-fresh.ts` flags its output as stale:
 
 ```sh
 bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
 ```
 
 Test: `bun test packages/mpd-ulw-plugin`.
-Live QA: `node skills/dsh-qa/scripts/ultrawork-smoke.mjs`.
+Live QA: `node skills/dsh-qa/scripts/ultrawork-smoke.ts`.

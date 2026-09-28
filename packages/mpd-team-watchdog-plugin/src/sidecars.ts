@@ -12,11 +12,17 @@ import { message, writeFileAtomic } from "./store.js"
 
 /** The durable hold that marks a team as held by the watchdog. */
 export interface HoldRecord {
+  /** Stable hold id, unique for one team and cause. */
   id: string
+  /** The OFFICIAL team id whose new dispatches this hold freezes. */
   teamId: string
+  /** Epoch ms at which the hold was raised. */
   since: number
+  /** Human-readable cause of the hold, as shown in the incident. */
   cause: string
+  /** The held task, when the hold names one. */
   taskId: string | null
+  /** That task's attempt id, when the hold names one. */
   attemptId: string | null
   /** The scene written for the escalation that produced this hold. */
   sceneAt: number
@@ -60,12 +66,19 @@ export type IncidentCause = {
  * that shows an incident shows them, and neither can ever produce a hold.
  */
 export interface IncidentRecord {
+  /** Stable record id, unique within the incident log. */
   id: string
+  /** The team the incident was observed on. */
   teamId: string
+  /** Which incident class this record is: WARN-class or ESCALATE. */
   kind: IncidentKind
+  /** Epoch ms at which the incident was recorded (the watermark's unit). */
   at: number
+  /** The predicate and window that produced this incident. */
   cause: IncidentCause
+  /** The task the incident is about, when it names one. */
   taskId: string | null
+  /** That task's attempt id, when the incident names one. */
   attemptId: string | null
   /** The immutable scene file path, when it was written. */
   scene: string | null
@@ -77,6 +90,7 @@ export interface IncidentRecord {
 
 /** Read one team's hold sidecar; undefined when the team is not held. */
 export function readHold(workspace: string, stateDir: string, teamId: string): HoldRecord | undefined {
+  // Raw sidecar text; an absent or unreadable file leaves through the catch below.
   let text: string
   try {
     text = readFileSync(holdPath(workspace, stateDir, teamId), "utf8")
@@ -84,6 +98,7 @@ export function readHold(workspace: string, stateDir: string, teamId: string): H
     return undefined
   }
   try {
+    // The file's JSON, cast because an on-disk sidecar is untrusted; `id` is checked next.
     const parsed = JSON.parse(text) as HoldRecord
     if (parsed === null || typeof parsed !== "object" || typeof parsed.id !== "string") return undefined
     // T-17 back-compat: a hold persisted before `ttlMs` existed reads as 0 (no TTL) rather than
@@ -106,7 +121,9 @@ export function writeHold(
   stateDir: string,
   hold: HoldRecord,
 ): { ok: boolean; changed: boolean; path: string; error?: string } {
+  // Absolute path of the hold sidecar for this team.
   const path = holdPath(workspace, stateDir, hold.teamId)
+  // The atomic-write outcome, forwarded as the hold's own ok/changed pair.
   const written = writeFileAtomic(path, JSON.stringify(hold, null, 2) + "\n")
   if (written.error !== undefined) return { ok: false, changed: false, path, error: written.error }
   return { ok: true, changed: written.changed, path }
@@ -118,7 +135,9 @@ export function clearHold(
   stateDir: string,
   teamId: string,
 ): { cleared: boolean; path: string } {
+  // Absolute path of the sidecar to remove; an absent file is a successful no-op.
   const path = holdPath(workspace, stateDir, teamId)
+  // Whether an existing hold file was actually removed.
   let cleared = false
   try {
     if (existsSync(path)) {
@@ -137,6 +156,7 @@ export function appendIncident(
   stateDir: string,
   incident: IncidentRecord,
 ): { ok: boolean; path: string; error?: string } {
+  // Absolute path of the append-only incident log.
   const path = incidentsPath(workspace, stateDir)
   try {
     mkdirSync(dirname(path), { recursive: true })
@@ -149,17 +169,21 @@ export function appendIncident(
 
 /** Every incident record, in append order (malformed lines skipped). */
 export function readIncidents(workspace: string, stateDir: string): IncidentRecord[] {
+  // Raw log text; an absent log reads as "no incidents" below.
   let text: string
   try {
     text = readFileSync(incidentsPath(workspace, stateDir), "utf8")
   } catch {
     return []
   }
+  // Accepted records in append order; malformed lines are skipped.
   const records: IncidentRecord[] = []
   for (const raw of text.split("\n")) {
+    // The raw line without surrounding whitespace.
     const line = raw.trim()
     if (line === "") continue
     try {
+      // The line's JSON, cast because the on-disk log is untrusted; `id` is checked next.
       const parsed = JSON.parse(line) as IncidentRecord
       if (parsed !== null && typeof parsed === "object" && typeof parsed.id === "string") records.push(parsed)
     } catch {
@@ -171,6 +195,7 @@ export function readIncidents(workspace: string, stateDir: string): IncidentReco
 
 /** The per-reader read watermark map (`{<reader>: <lastAckedIncidentTs>}`). */
 export function readWatermarks(workspace: string, stateDir: string): Record<string, number> {
+  // Raw watermark text; an absent file leaves every reader at 0 below.
   let text: string
   try {
     text = readFileSync(watermarkPath(workspace, stateDir), "utf8")
@@ -178,8 +203,10 @@ export function readWatermarks(workspace: string, stateDir: string): Record<stri
     return {}
   }
   try {
+    // The watermark document, cast to an open record because any JSON value may sit here.
     const parsed = JSON.parse(text) as Record<string, unknown>
     if (parsed === null || typeof parsed !== "object") return {}
+    // The accepted reader-to-timestamp map; non-numeric entries are dropped.
     const out: Record<string, number> = {}
     for (const [reader, value] of Object.entries(parsed)) if (typeof value === "number") out[reader] = value
     return out
@@ -200,9 +227,13 @@ export function ackIncidents(
   reader: string,
   upTo: number,
 ): { ok: boolean; watermark: number; path: string; error?: string } {
+  // The whole watermark map as it stands before this acknowledgement.
   const current = readWatermarks(workspace, stateDir)
+  // The new watermark: monotonic, so an ack can only move a reader forward.
   const next = Math.max(current[reader] ?? 0, upTo)
+  // Absolute path of the watermark document shared by all readers.
   const path = watermarkPath(workspace, stateDir)
+  // The atomic-write outcome for the merged watermark document.
   const written = writeFileAtomic(path, JSON.stringify({ ...current, [reader]: next }, null, 2) + "\n")
   if (written.error !== undefined) return { ok: false, watermark: current[reader] ?? 0, path, error: written.error }
   return { ok: true, watermark: next, path }
@@ -215,6 +246,7 @@ export function unacknowledged(
   reader: string,
   teamId?: string,
 ): IncidentRecord[] {
+  // The reader's last acknowledged incident time, 0 when it never acknowledged one.
   const watermark = readWatermarks(workspace, stateDir)[reader] ?? 0
   return readIncidents(workspace, stateDir).filter(
     (record) => record.at > watermark && (teamId === undefined || record.teamId === teamId),

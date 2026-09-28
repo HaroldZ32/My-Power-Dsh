@@ -8,7 +8,7 @@ serverName `lsp`，stdio）包装。
 
 ## 功能
 
-- `dist/cli.js`（由 `scripts/build-mcp.mjs` 离线构建）与随附的 LSP daemon 说 MCP；
+- `dist/cli.js`（由 `scripts/build-mcp.ts` 离线构建）与随附的 LSP daemon 说 MCP；
   `mcp` 子命令用于选择 server 模式。
 - 在真实 home 上 daemon 会自动启动；设置破损的症状：`LSP daemon unreachable`
   （`~/.mpd` 不可写/缺失）。

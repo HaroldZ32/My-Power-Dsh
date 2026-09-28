@@ -18,14 +18,19 @@ import { projectTeamView, type TeamRecord } from "../src/team.js"
 
 /** A workspace under a fresh temp dir, removed by `cleanup()`. */
 export interface Sandbox {
+  /** Absolute path of the temp workspace this sandbox owns. */
   workspace: string
+  /** Team state directory, relative to that workspace. */
   stateDir: string
+  /** Remove the workspace tree; every test calls it from a `finally`. */
   cleanup: () => void
 }
 
 /** Create an isolated workspace (never the repo tree, never the real home). */
 export function sandbox(): Sandbox {
+  // A fresh temp directory, so no test can touch the repo tree or the real home.
   const workspace = mkdtempSync(join(tmpdir(), "watchdog-test-"))
+  // The production state directory, so paths resolve exactly as in a real session.
   const stateDir = join(".mpd", "team")
   return {
     workspace,
@@ -36,16 +41,25 @@ export function sandbox(): Sandbox {
 
 /** One live-team fixture, in the RETIRED record's vocabulary (what the tests were written in). */
 export interface TeamFixture {
+  /** The team id this fixture registers under. */
   id: string
+  /** Display name; the id is used when it is absent. */
   name?: string
+  /** Fixture phase word, carried into the retired-record file when one is written. */
   phase?: string
+  /** Fixture halt flag, kept so a consumer's shape still accepts the retired field. */
   halted?: boolean
+  /** Epoch ms of that halt, when the fixture states one. */
   haltedAt?: number
+  /** The Lead session id, which the projection matches the captain against. */
   captainSessionId?: string
   /** T-16: the record's own generation floor (absent = permissive, §0/A3). */
   createdAt?: number
+  /** The record's approval time, the other half of T-16's generation floor. */
   approvedAt?: number
+  /** Roster rows; the projection synthesises the Lead row rather than listing it here. */
   members: Array<{ id: string; name: string; status?: string }>
+  /** Board rows, in board order. */
   tasks: Array<{ id: string; status: string; assignee?: string; attempt?: number; attemptId?: string; dependencies?: string[] }>
 }
 
@@ -65,6 +79,7 @@ function revisionOf(task: TeamFixture["tasks"][number]): number {
 
 /** Project one fixture onto an official team view. */
 export function viewOf(team: TeamFixture): DshTeamView {
+  // The Lead pseudo-row every official readout carries.
   const lead = {
     id: team.captainSessionId ?? team.id + "-lead",
     name: "lead",
@@ -112,7 +127,9 @@ const liveTeams = new Map<string, DshTeamView[]>()
 
 /** Register one team fixture for a sandbox's workspace and return an immutable copy of its view. */
 export function writeTeam(box: Sandbox, team: TeamFixture): DshTeamView {
+  // The official-shaped view this fixture registers.
   const view = viewOf(team)
+  // The workspace's current fixtures, empty when none was registered before.
   const existing = liveTeams.get(box.workspace) ?? []
   liveTeams.set(box.workspace, [...existing.filter((entry) => entry.teamId !== view.teamId), view])
   // The team's scratch directory is kept: a scene/hold/heartbeat writer that wandered into the
@@ -132,8 +149,10 @@ export function writeTeam(box: Sandbox, team: TeamFixture): DshTeamView {
  * @returns the written record path.
  */
 export function writeTeamRecord(box: Sandbox, team: TeamFixture): string {
+  // The team's retired scratch directory (`<stateDir>/<teamId>`).
   const dir = join(box.workspace, box.stateDir, team.id)
   mkdirSync(join(dir, "inbox"), { recursive: true })
+  // The retired record file's content, rebuilt from the same fixture.
   const record = {
     id: team.id,
     name: team.name ?? team.id,
@@ -146,6 +165,7 @@ export function writeTeamRecord(box: Sandbox, team: TeamFixture): string {
     members: team.members.map((member) => ({ ...member })),
     tasks: team.tasks.map((task) => ({ ...task })),
   }
+  // The retired record path the still-retained vendored lib reads.
   const path = join(dir, "team.json")
   writeFileSync(path, JSON.stringify(record, null, 2))
   writeTeam(box, team)
@@ -164,6 +184,7 @@ export function clearTeams(workspace: string): void {
 
 /** The projected record of one fixture team (the plugin's own projection, not a second one). */
 export function teamRecordOf(box: Sandbox, teamId: string): TeamRecord | undefined {
+  // The registered view for that team id, when this workspace has one.
   const view = (liveTeams.get(box.workspace) ?? []).find((entry) => entry.teamId === teamId)
   return view === undefined ? undefined : projectTeamView(view)
 }
@@ -182,14 +203,19 @@ export function teamRecordOf(box: Sandbox, teamId: string): TeamRecord | undefin
  * teammate), so a liveness/projection read answers the same way it would on a live host.
  */
 export function provideTeamsOn(ctx: unknown, box: Sandbox, agents: unknown[] = []): void {
+  // The ctx as an open record, the only way to install services on an unknown ctx.
   const target = ctx as Record<string, unknown>
+  // The workspace's current fixture views.
   const views = (): DshTeamView[] => liveTeams.get(box.workspace) ?? []
+  // The same readout behind a call, matching the service methods' own shape.
   const target0 = (): DshTeamView[] => views()
   target.agentTeams = {
     tryMembership: (candidate: { id?: unknown }) => {
+      // The candidate's own id, accepted only as a string.
       const id = typeof candidate?.id === "string" ? candidate.id : ""
       for (const view of target0()) {
         if (id !== "" && id === view.leadSessionId) return { id: view.teamId, role: "lead", name: view.leadName }
+        // The teammate row whose id is the candidate, if the view has one.
         const member = view.members.find((entry) => entry.id === id && entry.role === "teammate")
         if (member !== undefined) return { id: view.teamId, role: "teammate", name: member.name }
       }
@@ -208,6 +234,7 @@ export function provideTeamsOn(ctx: unknown, box: Sandbox, agents: unknown[] = [
       return []
     },
   }
+  // The synthesised live-agent registry, keyed by agent id.
   const registry = new Map<string, unknown>()
   for (const view of views()) {
     registry.set(view.leadSessionId, { id: view.leadSessionId, session: { id: view.leadSessionId, header: { cwd: box.workspace } } })
@@ -216,6 +243,7 @@ export function provideTeamsOn(ctx: unknown, box: Sandbox, agents: unknown[] = [
     }
   }
   for (const entry of agents) {
+    // An explicitly supplied agent's id, when it states a string one.
     const id = (entry as { id?: unknown })?.id
     if (typeof id === "string") registry.set(id, entry)
   }
@@ -226,13 +254,15 @@ export function provideTeamsOn(ctx: unknown, box: Sandbox, agents: unknown[] = [
 }
 
 /** One live-agent stub (`id` + `session.header.cwd` is all the engine reads). */
-export function agent(id: string, workspace: string, sessionId = "session-" + id): Record<string, unknown> {
+export function agent(id: string, workspace: string, sessionId: string = "session-" + id): Record<string, unknown> {
   return { id, session: { id: sessionId, header: { cwd: workspace } } }
 }
 
 /** The options a stub adapter is built from. */
 export interface StubOptions {
+  /** Workspace root the stub resolves paths against. */
   workspace: string
+  /** The value `settingsReader("mpd").get()` answers. */
   settings?: unknown
   /**
    * Whether the stub advertises the live-agent registry via `capabilities().agents`. The engine's
@@ -245,17 +275,23 @@ export interface StubOptions {
 
 /** The stub adapter plus the handles a test needs to drive it. */
 export interface StubAdapter {
+  /** The stub adapter itself, cast to the real interface. */
   adapter: DshAdapter
+  /** Tools registered through the adapter, by name. */
   tools: Map<string, DshToolDef>
   /** The PRE-dispatch observers (`tools/pre-execute`), in registration order. */
   pre: Array<(exec: any, decision: any) => void>
+  /** The POST-completion observers (`tools/post-execute`), in registration order. */
   post: Array<(exec: any, result: any, downstream: any) => unknown>
+  /** `settings/document-updated` listeners the engine installed. */
   settingsListeners: Array<(revision?: number, source?: string) => void>
   /** The tool names executed through `toolRuntime().execute`, in order. */
   toolExecutes: string[]
+  /** Replace the value the settings reader answers, without notifying anyone. */
   setSettings: (value: unknown) => void
   /** Replace the live-agent list `liveAgents()` answers (the r4 liveness re-check). */
   setLiveAgents: (agents: unknown[]) => void
+  /** Fire `settings/document-updated` at every installed listener. */
   emitSettings: () => void
   /**
    * Dispatch one adapter event (`session/event`, `agent/assistant-stream`, …) to the
@@ -280,19 +316,29 @@ export interface StubAdapter {
  * the engine's hold path reaches the plugin's own action through the tool seam.
  */
 export function stubAdapter(options: StubOptions): StubAdapter {
+  // The registry `registerTool` fills and `toolRuntime().get` reads.
   const tools = new Map<string, DshToolDef>()
+  // PRE-dispatch observers, in registration order.
   const pre: Array<(exec: any, decision: any) => void> = []
+  // POST-completion observers, in registration order.
   const post: Array<(exec: any, result: any, downstream: any) => unknown> = []
+  // Settings-update listeners, in registration order.
   const settingsListeners: Array<(revision?: number, source?: string) => void> = []
+  // Names of the tools executed through `toolRuntime().execute`, in order. */
   const toolExecutes: string[] = []
+  // Event listeners by event name, mirroring the harness bus.
   const eventListeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
+  // The current settings value the reader answers.
   let settings = options.settings
+  // The current live-agent list `liveAgents()` answers.
   let liveAgents = options.liveAgents ?? []
+  // The stub adapter, implementing exactly the seams the watchdog calls.
   const adapter = {
     // The OFFICIAL team readout: the watchdog's only source of rosters and boards (0.1.7).
     teamLiveTeams: () => JSON.parse(JSON.stringify(liveTeams.get(options.workspace) ?? [])) as DshTeamView[],
     liveAgents: () => liveAgents,
     workspaceRoot: (exec?: unknown) => {
+      // The exec agent's session cwd, when the payload carries one.
       const cwd = (exec as { agent?: { session?: { header?: { cwd?: unknown } } } } | undefined)?.agent?.session?.header?.cwd
       return typeof cwd === "string" && cwd !== "" ? cwd : options.workspace
     },
@@ -301,6 +347,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     onSettingsDocumentUpdated: (_ns: string, listener: (revision?: number, source?: string) => void) => {
       settingsListeners.push(listener)
       return () => {
+        // Position of the listener being removed, -1 when it is already gone.
         const index = settingsListeners.indexOf(listener)
         if (index >= 0) settingsListeners.splice(index, 1)
       }
@@ -312,6 +359,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     onPreToolExecute: (listener: (exec: any, decision: any) => void) => {
       pre.push(listener)
       return () => {
+        // Position of the observer being removed, -1 when it is already gone.
         const index = pre.indexOf(listener)
         if (index >= 0) pre.splice(index, 1)
       }
@@ -319,15 +367,18 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     onPostToolExecute: (listener: (exec: any, result: any, downstream: any) => unknown) => {
       post.push(listener)
       return () => {
+        // Position of the observer being removed, -1 when it is already gone.
         const index = post.indexOf(listener)
         if (index >= 0) post.splice(index, 1)
       }
     },
     onEvent: (event: string, handler: (...args: unknown[]) => unknown) => {
+      // The listener list for this event, created on first use.
       const list = eventListeners.get(event) ?? []
       list.push(handler)
       eventListeners.set(event, list)
       return () => {
+        // Position of the handler being removed, -1 when it is already gone.
         const index = list.indexOf(handler)
         if (index >= 0) list.splice(index, 1)
       }
@@ -336,6 +387,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
       get: (toolName: string) => tools.get(toolName),
       execute: async (input: { name: string; arguments?: unknown }) => {
         toolExecutes.push(input.name)
+        // The registered tool, absent when the name is unknown (an error is thrown below).
         const definition = tools.get(input.name)
         if (definition === undefined) throw new Error("unknown tool " + input.name)
         return await definition.execute(input.arguments ?? {}, {})
@@ -354,6 +406,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     // subscribes through the ADAPTER (AGENTS.md §6), so a test that wants to invoke the
     // listener it installed reads it here rather than off a separate ctx stub.
     listener: (event: string) => {
+      // The listener list for this event, empty when none was registered.
       const list = eventListeners.get(event) ?? []
       return list[list.length - 1]
     },
@@ -367,6 +420,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
       for (const listener of settingsListeners) listener(2, "user")
     },
     emit: (event: string, ...args: unknown[]) => {
+      // How many listeners this emit reached.
       let called = 0
       for (const listener of eventListeners.get(event) ?? []) {
         listener(...args)
@@ -391,8 +445,10 @@ export function stubAdapter(options: StubOptions): StubAdapter {
  * @param at - the request's start (ms), i.e. the moment it became OUTSTANDING.
  * @returns the number of listeners each event reached.
  */
-export function openOutstandingChannel(stub: StubAdapter, sessionId: string, at: number, turn = 1, step = 1): number {
+export function openOutstandingChannel(stub: StubAdapter, sessionId: string, at: number, turn: number = 1, step: number = 1): number {
+  // Listeners reached by the `turn/start` event.
   const first = stub.emit("session/event", { id: sessionId }, { type: "turn/start", seq: 1, time: at, data: { turn } })
+  // Listeners reached by the `step/start` event.
   const second = stub.emit("session/event", { id: sessionId }, { type: "step/start", seq: 2, time: at, data: { turn, step } })
   return first + second
 }
@@ -412,32 +468,55 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     logPrefix: "mpd-team-watchdog-test",
     toolInFlightMaxMs: 900_000,
     holdTtlMs: 900_000,
+    // Skipped-team reasons stay off the console here: `false` is the engine's own resolved
+    // default (index.ts), so the suite's output is the pre-typing output.
+    verboseSkips: false,
     ...overrides,
   }
 }
 
 /** A plugin context stub: `get("mpdDsh")` hands `apply` the stub adapter. */
 export interface PluginCtx {
+  /** Service lookup; `mpdDsh` answers the stub adapter. */
   get: (id: string, strict?: boolean) => unknown
+  /** Service publication, recorded into `services`. */
   provide?: (id: string, value: unknown) => void
+  /** Event bus, backed by the stub adapter's own `onEvent` map. */
   on: (event: string, handler: (...args: any[]) => unknown) => () => void
+  /** Cleanup registration; `__dispose` runs everything pushed here. */
   effect: (callback: () => unknown) => void
+  /** Logger whose lines land in `warnings`, where the tests read them. */
   logger: { warn: (text: string) => void; info: (text: string) => void }
+  /** Last handler registered per event name. */
   handlers: Map<string, (...args: any[]) => unknown>
+  /** Every logger line, in order. */
   warnings: string[]
+  /** Cleanup callbacks registered through `effect`. */
   cleanups: Array<() => unknown>
   /** Services this row published (`ctx.provide`). */
   services: Map<string, unknown>
+  /** The stub adapter `get("mpdDsh")` hands out. */
   __stub: StubAdapter
+  /** Run every cleanup, plus a disposer a cleanup returns. */
   __dispose: () => void
+  /**
+   * Open-record tail a real cordis context also has; it is what makes this stub assignable
+   * where the engine's `EngineContext` (itself an open record) is the declared parameter.
+   */
+  [key: string]: unknown
 }
 
 /** Build a plugin context plus its stub adapter (the `apply` surface). */
 export function pluginCtx(workspace: string, settings?: unknown): PluginCtx {
+  // The adapter the ctx hands `apply` under the `mpdDsh` id.
   const stub = stubAdapter({ workspace, settings })
+  // Last handler per event name, for tests that invoke the listener directly.
   const handlers = new Map<string, (...args: any[]) => unknown>()
+  // Cleanup callbacks registered through `effect`.
   const cleanups: Array<() => unknown> = []
+  // Every logger line, in order.
   const warnings: string[] = []
+  // Services published through `provide`, by id.
   const services = new Map<string, unknown>()
   return {
     get: (id: string) => (id === "mpdDsh" ? stub.adapter : services.get(id)),
@@ -451,6 +530,7 @@ export function pluginCtx(workspace: string, settings?: unknown): PluginCtx {
     // and `stub.emit(event, …)` (which drives the adapter side) describing the same
     // listener, exactly as they do in a real composition.
     on: (event, handler) => {
+      // The subscription handle the stub's `onEvent` returned.
       const disposer = stub.adapter.onEvent(event, handler)
       handlers.set(event, handler)
       return () => {
@@ -471,6 +551,7 @@ export function pluginCtx(workspace: string, settings?: unknown): PluginCtx {
     __stub: stub,
     __dispose: () => {
       for (const cleanup of cleanups) {
+        // The cleanup's return value; a function is a nested disposer.
         const result = cleanup()
         if (typeof result === "function") (result as () => void)()
       }

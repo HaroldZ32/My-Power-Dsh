@@ -49,13 +49,17 @@ export const OFFICIAL_LEAD_NAME = "lead"
 
 /** One task of the projected record (only the fields the watchdog reads). */
 export interface TeamTask {
+  /** The OFFICIAL task id. */
   id: string
+  /** The board status verbatim (`in_progress`, `pending`, `completed`, ...). */
   status: string
+  /** The owning member's normalized name, when the board shows an owner. */
   assignee?: string
   /** The official board `revision` (the generation counter; see the module header). */
   attempt?: number
   /** The generation token: the revision as a string, or `undefined` for a hand-built fixture. */
   attemptId?: string
+  /** Epoch ms of the board's last mutation, when the view carries one. */
   updatedAt?: number
   /**
    * T-20 (§8): the task ids this task depends on (the official `blockedBy`). Carried because the
@@ -75,8 +79,11 @@ export interface TeamTask {
 
 /** One member of the projected record (only the fields the watchdog reads). */
 export interface TeamMember {
+  /** The member's Session id, which is the identity the agent registry keys on. */
   id: string
+  /** The member's display name, or the normalized `captain` for the Lead row. */
   name: string
+  /** The live status verbatim (`running`, `provisioning`, ...), when reported. */
   status?: string
 }
 
@@ -84,13 +91,19 @@ export interface TeamMember {
 export interface TeamRecord {
   /** The official team identity: the Lead Session id (`TeamId(root.id)`). */
   id: string
+  /** The team's display name, taken from the Lead row or the view's lead name. */
   name: string
+  /** Derived word for diagnostics: `active` while the roster has live work, else `idle`. */
   phase?: string
   /** Always absent: the official service has no halt (kept so a consumer reads a real field). */
   halted?: boolean
+  /** Always absent: the official service exposes no halt (kept for shape compatibility). */
   haltedAt?: number
+  /** The Lead Session id, which is the captain's own session. */
   captainSessionId?: string
+  /** The roster WITHOUT the Lead pseudo-row; the captain is addressed by session id. */
   members: TeamMember[]
+  /** Every board task, projected field-for-field. */
   tasks: TeamTask[]
   /**
    * Always `null`: the official view carries no timestamps. Kept so the r4/freshness call sites
@@ -99,6 +112,7 @@ export interface TeamRecord {
   activityAt: number | null
   /** Always `null`: no record creation time exists (T-16's floor is permissive by convention). */
   createdAt: number | null
+  /** Always null: the official board carries no approval timestamp. */
   approvedAt: number | null
   /** The raw projected view, kept for byte-level honesty checks in tests/lanes. */
   raw: Record<string, unknown>
@@ -106,15 +120,20 @@ export interface TeamRecord {
 
 /** A live agent, as far as identity resolution needs to see it. */
 export interface AgentLike {
+  /** The agent's own id, when the payload carries one. */
   id?: unknown
+  /** The agent's session sub-object, carrying the harness-side identity. */
   session?: { id?: unknown; header?: { cwd?: unknown } }
   [key: string]: unknown
 }
 
 /** What an agent's session says about who it is. */
 export interface AgentIds {
+  /** The agent id, or an empty string when it could not be read. */
   agentId: string
+  /** The session id, or an empty string when it could not be read. */
   sessionId: string
+  /** The session's workspace cwd, or undefined when the payload does not state one. */
   cwd: string | undefined
 }
 
@@ -125,9 +144,13 @@ export interface AgentIds {
  * @returns the agent id, the session id and the session's workspace cwd.
  */
 export function agentIds(agent: unknown): AgentIds {
+  // The payload read as an agent shape, because callers pass whatever the harness emitted.
   const candidate = (agent ?? {}) as AgentLike
+  // The agent id, accepted only as a string.
   const id = typeof candidate.id === "string" ? candidate.id : ""
+  // The session id, accepted only as a string.
   const sessionId = typeof candidate.session?.id === "string" ? candidate.session.id : ""
+  // The session's cwd, accepted only as a string; anything else reads as unstated.
   const cwd = typeof candidate.session?.header?.cwd === "string" ? candidate.session.header.cwd : undefined
   return { agentId: id, sessionId, cwd }
 }
@@ -143,6 +166,7 @@ export function agentIds(agent: unknown): AgentIds {
  * therefore a view with at least one TEAMMATE row, or at least one task on its board.
  */
 export function isWatchedTeam(view: DshTeamView): boolean {
+  // The roster rows, read defensively because a view may carry a non-array.
   const members = Array.isArray(view.members) ? view.members : []
   if (members.some((member) => member.role === "teammate")) return true
   return Array.isArray(view.tasks) && view.tasks.length > 0
@@ -169,20 +193,27 @@ function leadRow(members: readonly DshTeamMemberView[]): DshTeamMemberView | und
  * @returns the projected record.
  */
 export function projectTeamView(view: DshTeamView): TeamRecord {
+  // Roster rows as objects, dropping null or primitive entries a view may carry.
   const rawMembers = (Array.isArray(view.members) ? view.members : []).filter(
     (member): member is DshTeamMemberView => member !== null && typeof member === "object",
   )
+  // The Lead pseudo-row, or undefined when the roster carries none.
   const lead = leadRow(rawMembers)
   // The Lead pseudo-row is NOT a roster member: it is the captain, and the captain is addressed
   // through `captainSessionId` (exactly the split the retired record used). Keeping it in
   // `members` would let a roster scan mistake the Lead for a teammate.
   const teammates = rawMembers.filter((member) => member.role !== "lead")
+  // Board rows as objects, dropping null or primitive entries.
   const rawTasks = (Array.isArray(view.tasks) ? view.tasks : []).filter(
     (task): task is DshTeamTaskView => task !== null && typeof task === "object",
   )
+  // The board tasks projected onto the watchdog's own task vocabulary.
   const tasks: TeamTask[] = rawTasks.map((task) => {
+    // The task's owner name, when the board states a non-empty one.
     const owner = typeof task.ownerName === "string" && task.ownerName !== "" ? task.ownerName : undefined
+    // The owner normalized so a Lead-owned task reads as the captain.
     const assignee = owner === OFFICIAL_LEAD_NAME ? CAPTAIN_KEY : owner
+    // The generation token for this row: the board revision as a string, when numeric.
     const token = generationToken(task)
     return {
       id: String(task.id ?? ""),
@@ -196,6 +227,7 @@ export function projectTeamView(view: DshTeamView): TeamRecord {
         : {}),
     }
   })
+  // Whether any teammate is live, which is what gives the roster its `active` phase word.
   const running = teammates.some((member) => member.status === "running" || member.status === "provisioning")
   return {
     id: String(view.teamId ?? ""),
@@ -227,6 +259,7 @@ export function projectTeamView(view: DshTeamView): TeamRecord {
  * @returns the projected records, in adapter order.
  */
 export function readTeams(dsh: DshAdapter): TeamRecord[] {
+  // The adapter's live readout; an absent team service degrades to the empty list below.
   let views: DshTeamView[]
   try {
     views = dsh.teamLiveTeams() ?? []
@@ -238,6 +271,7 @@ export function readTeams(dsh: DshAdapter): TeamRecord[] {
 
 /** One Team by id, or undefined when the live readout does not carry it. */
 export function readTeam(dsh: DshAdapter, teamId: string): TeamRecord | undefined {
+  // The requested team id as a string, because a caller may pass a non-string.
   const wanted = String(teamId)
   return readTeams(dsh).find((team) => team.id === wanted)
 }
@@ -273,12 +307,18 @@ export function liveTasks(team: TeamRecord): TeamTask[] {
  *          blocking ids for diagnostics.
  */
 export function dependencyBlocked(team: TeamRecord, assignee: string): { blocked: boolean; waiting: string[] } {
+  // The member's non-terminal tasks, whose dependencies decide the blocked answer.
   const owned = liveTasks(team).filter((task) => task.assignee === assignee)
   if (owned.length === 0) return { blocked: false, waiting: [] }
+  // Blocking dependency ids collected across those tasks, for diagnostics.
   const waiting: string[] = []
+  // Whether EVERY open task of the member waits on an unfinished dependency.
   const blocked = owned.every((task) => {
+    // The dependencies this task declares; absent means "no dependency".
     const deps = task.dependencies ?? []
+    // Declared dependencies that are not terminal, or not present in the readout at all.
     const unfinished = deps.filter((id) => {
+      // The dependency's task row, absent when the readout does not carry it.
       const target = team.tasks.find((candidate) => candidate.id === id)
       return target === undefined || !TERMINAL_STATUSES.includes(target.status)
     })
@@ -297,9 +337,11 @@ export function dependencyBlocked(team: TeamRecord, assignee: string): { blocked
  * actually expected to advance.
  */
 export function currentTask(team: TeamRecord, assignee: string): TeamTask | undefined {
+  // The member's non-terminal tasks; an empty list answers "owns nothing".
   const owned = liveTasks(team).filter((task) => task.assignee === assignee)
   if (owned.length === 0) return undefined
   for (const status of ["in_progress", "claimed", "pending"]) {
+    // The task in the status now being considered, if the member has one.
     const found = owned.filter((task) => task.status === status)
     if (found.length > 0) return found[found.length - 1]
   }
@@ -310,8 +352,11 @@ export function currentTask(team: TeamRecord, assignee: string): TeamTask | unde
 export interface Identity {
   /** The member name (or `captain`), or null when the agent is not in this team. */
   member: string | null
+  /** True when the agent is this team's Lead, matched by Lead Session id. */
   isCaptain: boolean
+  /** The agent's own id. */
   agentId: string
+  /** The agent's session id. */
   sessionId: string
 }
 
@@ -325,11 +370,13 @@ export interface Identity {
  * is alive, and the file key keeps writers disjoint).
  */
 export function resolveIdentity(team: TeamRecord | undefined, agent: unknown): Identity {
+  // The identity facts read off the live agent.
   const ids = agentIds(agent)
   if (team === undefined) return { member: null, isCaptain: false, ...ids }
   if (ids.sessionId !== "" && team.captainSessionId === ids.sessionId) {
     return { member: CAPTAIN_KEY, isCaptain: true, ...ids }
   }
+  // The roster row whose id is this agent, which is how a teammate is matched.
   const byAgent = team.members.find((entry) => entry.id !== "" && entry.id === ids.agentId)
   if (byAgent !== undefined) return { member: byAgent.name, isCaptain: false, ...ids }
   return { member: null, isCaptain: false, ...ids }
@@ -344,6 +391,7 @@ export function resolveIdentity(team: TeamRecord | undefined, agent: unknown): I
  */
 export function teamOf(teams: readonly TeamRecord[], agent: unknown): TeamRecord | undefined {
   for (const team of teams) {
+    // This team's identity for the agent, non-null only when it resolves to a member.
     const identity = resolveIdentity(team, agent)
     if (identity.member !== null) return team
   }

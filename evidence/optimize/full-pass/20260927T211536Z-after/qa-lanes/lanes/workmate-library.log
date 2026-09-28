@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-27T21-45-00.194Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0,"attempts":2,"retryNotes":["attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"]}
+  flow: {"ok":true,"calls":{"mpd_workmate_init":{"called":true,"succeeded":true},"mpd_workmate_list":{"called":true,"succeeded":true},"mpd_workmate_spawn":{"called":true,"succeeded":true},"mpd_workmate_reflect":{"called":true,"succeeded":true},"mpd_workmate_match":{"c
+  files: {"ok":false,"uses":null,"noteChars":0,"memoryChars":0,"note":"","wmRoot":"/tmp/mpd-wm-home-qa3crm/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/home/haroldzhao/.mpd/workmate","before":null,"after":null,"sandboxHome":"/tmp/mpd-wm-home-qa3crm","sandboxRoot":"/tmp/mpd-wm-home-qa3crm/.mpd/workmate","homeSandboxed":true,"predicate":"HOME is the sandbox (so $HOME/.mpd/workmate resolves

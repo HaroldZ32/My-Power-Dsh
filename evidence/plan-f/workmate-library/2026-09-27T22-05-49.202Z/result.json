@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-VjL3xg",
+  "wmHome": "/tmp/mpd-wm-home-9TXvOw",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 2,
+      "retryNotes": [
+        "attempt 1 did not complete the flow (unproven tools: none; files present: false) — retrying once"
+      ]
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 95,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "DONE and then contents of note card ~/.mpd/workmate/alice/note.md. It doesn't exist. Let me verify. | dsh: reasoning: | Report honestly. Step 1 blocked everything downstream. Note card doesn't exist. |  | Should I offer/do the fix? The user asked exact order. I'll report honestly and explain the blocker, and note that substituting a valid base would work. But should I do it? The instruction was exact args. I'll not silently substitute. I could ask, but the request says end with DONE and the note card contents. I can't produce the note card. I'll end with DONE and state the note card does not e"
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-9TXvOw/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/home/haroldzhao/.mpd/workmate",
+      "before": null,
+      "after": null,
+      "sandboxHome": "/tmp/mpd-wm-home-9TXvOw",
+      "sandboxRoot": "/tmp/mpd-wm-home-9TXvOw/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

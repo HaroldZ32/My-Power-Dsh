@@ -2,12 +2,13 @@
 // mpd LSP overlay — drift-guard anchor: mpd-lsp-overlay-v1
 // ============================================================================
 // Patched copy of upstream lsp-core src/lsp/language-mappings.ts. This file REPLACES
-// the upstream file during the offline build (scripts/build-mcp.mjs applies it
+// the upstream file during the offline build (scripts/build-mcp.ts applies it
 // over the freshly-copied lsp-core source), so it must stay a superset of the
 // upstream baseline: keep every upstream export and entry intact. If the upstream
 // file drifts (new export shape), the build fails loudly via the baselineExport
-// check in build-mcp.mjs — re-sync this overlay from the upstream file.
+// check in build-mcp.ts — re-sync this overlay from the upstream file.
 
+/** LSP SymbolKind numbers to the names a tool result prints, so a kind never surfaces as a bare number. */
 export const SYMBOL_KIND_MAP: Record<number, string> = {
 	1: "File",
 	2: "Module",
@@ -37,6 +38,7 @@ export const SYMBOL_KIND_MAP: Record<number, string> = {
 	26: "TypeParameter",
 };
 
+/** LSP DiagnosticSeverity numbers to the severity labels the diagnostics report uses. */
 export const SEVERITY_MAP: Record<number, string> = {
 	1: "error",
 	2: "warning",
@@ -44,6 +46,7 @@ export const SEVERITY_MAP: Record<number, string> = {
 	4: "hint",
 };
 
+/** File extension to the LSP language id a server is asked to open the document as. */
 export const EXT_TO_LANG: Record<string, string> = {
 	".abap": "abap",
 	".bat": "bat",
@@ -178,6 +181,12 @@ export const EXT_TO_LANG: Record<string, string> = {
 	".gql": "graphql",
 };
 
+/**
+ * The language id to open a file as, resolved from its extension.
+ *
+ * @param ext - the file extension including its leading dot (for example `.ts`).
+ * @returns the mapped language id, or `plaintext` when the extension is unknown.
+ */
 export function getLanguageId(ext: string): string {
 	return EXT_TO_LANG[ext] ?? "plaintext";
 }

@@ -1,0 +1,23 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 1,
+    "retiredVocabulary": 1,
+    "signals": []
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under the session workspace: \"/tmp/mpd-sst-pdI5Iy/side/soft-complex/0/ws\". Some platform temporary areas may also be writable.\n\nApproval prompts are disabled in this session: actions that require ap",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": [
+    "the notice must state \"NO team was staged\", got 0",
+    "the notice must not name the RETIRED agent_teams_* vocabulary",
+    "the advisory notice must name the fired complexity signals"
+  ]
+}

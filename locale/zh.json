@@ -1,0 +1,4 @@
+{
+  "title": "my-power-dsh",
+  "description": "DeepSeek Harness 插件 bundle：专家花名册、模型链词表与团队界面，全部经由本 bundle 的 cordis.patch.yml 层挂载。"
+}

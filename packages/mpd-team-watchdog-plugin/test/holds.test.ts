@@ -20,14 +20,17 @@ import { readHold } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
 import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
+/** A ctx stub; the engine only ever reads `on` from it in this file. */
 function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
 
 /** Write a hold file the way ANOTHER process would (no registry involved). */
 function foreignHold(box: { workspace: string; stateDir: string }, teamId: string, id: string): string {
+  // The hold directory another process would write into.
   const dir = join(box.workspace, box.stateDir, "watchdog", "hold")
   mkdirSync(dir, { recursive: true })
+  // The hold file path for that team.
   const path = join(dir, teamId + ".json")
   writeFileSync(
     path,
@@ -38,11 +41,16 @@ function foreignHold(box: { workspace: string; stateDir: string }, teamId: strin
 
 describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   test("an unknown team is not held, and a recorded hold makes it held", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A registry with this workspace as its fallback root.
       const registry = new HoldRegistry(box.stateDir, box.workspace)
       expect(registry.isHeld("team-a", box.workspace)).toMatchObject({ held: false, holdId: null, source: "none" })
-      registry.record(box.workspace, { id: "h1", teamId: "team-a", since: 5, cause: "silence", taskId: "t1", attemptId: "att-1", sceneAt: 5 })
+      // T-17: a hold recorded by the plugin's own write path carries the resolved `holdTtlMs`
+      // (the suite's 900_000 default). The reader below exposes no TTL, so it is inert here.
+      registry.record(box.workspace, { id: "h1", teamId: "team-a", since: 5, cause: "silence", taskId: "t1", attemptId: "att-1", sceneAt: 5, ttlMs: 900_000 })
+      // The view after the hold was recorded in memory.
       const view = registry.isHeld("team-a", box.workspace)
       expect(view.held).toBe(true)
       expect(view.holdId).toBe("h1")
@@ -59,12 +67,15 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat)", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A registry hydrated from this workspace.
       const registry = new HoldRegistry(box.stateDir, box.workspace)
       registry.hydrate([box.workspace])
       expect(registry.isHeld("team-b", box.workspace).held).toBe(false)
       foreignHold(box, "team-b", "h-foreign")
+      // The view after another process wrote the hold file.
       const view = registry.isHeld("team-b", box.workspace)
       expect(view.held).toBe(true)
       expect(view.holdId).toBe("h-foreign")
@@ -77,14 +88,18 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("hydrate at apply loads the holds that already exist on disk", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       foreignHold(box, "team-a", "h-existing")
+      // The plugin context the row is applied to.
       const ctx = pluginCtx(box.workspace)
+      // The apply report; hydration must find the pre-existing hold.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
       expect(report.applied).toBe(true)
       expect(report.holdService).toBe(HOLD_SERVICE)
       expect(report.hydratedHolds).toBe(1)
+      // The published service, read as the gate-facing shape the cast names.
       const service = ctx.services.get(HOLD_SERVICE) as { isHeld: (t: string, w?: string) => { held: boolean; holdId: string | null } }
       expect(service.isHeld("team-a").held).toBe(true)
       expect(service.isHeld("team-a").holdId).toBe("h-existing")
@@ -95,9 +110,12 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("the documented gate call shape returns exactly what a decline gate branches on", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The plugin context the row is applied to.
       const ctx = pluginCtx(box.workspace)
+      // The apply report; its engine is stopped at the end of the case.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
       // THE gate expression w7 must use, verbatim.
       const gate = (teamId: string, workspace: string): boolean =>
@@ -117,13 +135,17 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A ctx whose `provide` seam is deleted below, i.e. the fail-open case.
       const ctx = pluginCtx(box.workspace) as { provide?: unknown }
       delete ctx.provide
+      // The apply report; a missing `provide` must not stop the row.
       const report = apply(ctx as never, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
       expect(report.applied).toBe(true)
       expect(report.holdService).toBe(null)
+      // The service lookup a gate would make, which must answer nothing.
       const watchdog = (ctx as unknown as { get: (id: string, strict?: boolean) => unknown }).get("mpdWatchdog", false)
       expect(watchdog).toBeUndefined()
       expect((watchdog as { isHeld?: unknown } | undefined)?.isHeld).toBeUndefined()
@@ -135,8 +157,10 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("never throws on a hostile path: the gates call it on every dispatch", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A registry whose hold directory is blocked by a regular file.
       const registry = new HoldRegistry(box.stateDir, box.workspace)
       // The hold directory's PLACE is a regular file: reading it cannot succeed.
       mkdirSync(join(box.workspace, box.stateDir, "watchdog"), { recursive: true })
@@ -150,11 +174,16 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("a mutation through the plugin's own actions keeps the reader in step, both ways", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The plugin context the row is applied to.
       const ctx = pluginCtx(box.workspace)
+      // The apply report whose engine is stopped at the end.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
+      // The published service, read as the gate-facing shape.
       const service = ctx.services.get(HOLD_SERVICE) as { isHeld: (t: string, w?: string) => { held: boolean } }
+      // The internal tool seam the actions are driven through.
       const runtime = ctx.__stub.adapter.toolRuntime()
       await runtime.execute({ name: HOLD_TOOL, arguments: { team_id: "team-a", task_id: "t1", attempt_id: "att-1" } })
       expect(service.isHeld("team-a", box.workspace).held).toBe(true)
@@ -169,6 +198,7 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
   })
 
   test("a direct applyResume with no registry argument still works (the registry is optional)", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       applyHold(box.workspace, box.stateDir, { team_id: "team-a" })
@@ -182,6 +212,7 @@ describe("the mpdWatchdog reader (A2-1 option (b))", () => {
 
 describe("the engine keeps the reader in step with its own hold", () => {
   test("an ESCALATE hold lands in the registry through the plugin's own tool action", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -189,7 +220,9 @@ describe("the engine keeps the reader in step with its own hold", () => {
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
+      // The plugin context the row is applied to.
       const ctx = pluginCtx(box.workspace)
+      // The apply report carrying the engine the ticks below drive.
       const report = apply(ctx, {
         stateDir: box.stateDir,
         teamCacheMs: 0,
@@ -200,18 +233,25 @@ describe("the engine keeps the reader in step with its own hold", () => {
         warnStreakToEscalate: 3,
         actionOnEscalate: "pause",
       })
+      // The engine handle, present because the row applied.
       const engine = report.engine!
       engine.stamp("step", agent("a1", box.workspace))
+      // The step stamp's time, which is the OUTSTANDING clock.
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
       // OUTSTANDING channel: the only state the §3 ladder may escalate (and hold) from.
       openOutstandingChannel(ctx.__stub, "a1", from)
       await engine.tickOnce(from + 90_001)
       await engine.tickOnce(from + 90_002)
+      // The third tick, which must escalate and raise the hold.
       const escalated = await engine.tickOnce(from + 90_003)
       expect(escalated.decisions.map((d) => d.type)).toEqual(["escalate"])
+      // The published service, read as the gate-facing shape.
       const service = ctx.services.get(HOLD_SERVICE) as { isHeld: (t: string, w?: string) => { held: boolean; holdId: string | null } }
       expect(service.isHeld("team-a", box.workspace).held).toBe(true)
-      expect(service.isHeld("team-a", box.workspace).holdId).toBe(report.engine ? readHold(box.workspace, box.stateDir, "team-a")?.id : null)
+      // The read-back is compared against the service's own `holdId` (`string | null`); the tick
+      // above just persisted this hold, so the `undefined` an optional chain can yield is ruled out
+      // at RUNTIME only — TS cannot narrow it away, hence the assertion on the access.
+      expect(service.isHeld("team-a", box.workspace).holdId).toBe(report.engine ? (readHold(box.workspace, box.stateDir, "team-a")?.id as string | null) : null)
       expect(ctx.__stub.toolExecutes).toContain(HOLD_TOOL)
       engine.stop()
       ctx.__dispose()
@@ -221,6 +261,7 @@ describe("the engine keeps the reader in step with its own hold", () => {
   })
 
   test("a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read)", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -231,14 +272,18 @@ describe("the engine keeps the reader in step with its own hold", () => {
       // Apply BEFORE the namespace exists (mpd-config parks its registration on the
       // settings service, so this is the real mount order hazard).
       const ctx = pluginCtx(box.workspace, undefined)
+      // The apply report; the settings namespace does not exist yet here.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
+      // The engine handle, present because the row applied.
       const engine = report.engine!
       engine.stamp("step", agent("a1", box.workspace))
+      // The step stamp's time, the clock the ticks are relative to.
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
       openOutstandingChannel(ctx.__stub, "a1", from)
       expect((await engine.tickOnce(from + 30_000)).decisions).toEqual([])
       // The namespace appears now, with a much lower threshold.
       ctx.__stub.setSettings({ watchdog: { warnSilenceMs: 20_000, tickIntervalMs: 3_600_000 } })
+      // The tick after the namespace appeared with a lower threshold.
       const warned = await engine.tickOnce(from + 30_001)
       expect(warned.decisions.map((d) => d.type)).toEqual(["warn"])
       expect(engine.getKnobs().warnSilenceMs).toBe(20_000)
@@ -255,8 +300,10 @@ describe("the engine keeps the reader in step with its own hold", () => {
 // (it is called on a render path); the acknowledge is the ONLY mutation and it happens HERE.
 describe("the mpdWatchdog service's front-door reads (w6b)", () => {
   test("heldTeams lists the live hold index from disk, sorted, and answers [] with no store", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A registry that has never hydrated.
       const registry = new HoldRegistry(box.stateDir, box.workspace)
       expect(registry.heldTeams(box.workspace)).toEqual([])
       foreignHold(box, "team-b", "hb")
@@ -270,10 +317,13 @@ describe("the mpdWatchdog service's front-door reads (w6b)", () => {
   })
 
   test("view / unread / acknowledge drive the durable watermark (byte-level) and never throw", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // A registry whose front-door reads are exercised below.
       const registry = new HoldRegistry(box.stateDir, box.workspace)
       foreignHold(box, "team-a", "ha")
+      // The incident log path the two hand-written records go into.
       const incidents = join(box.workspace, box.stateDir, "watchdog", "incidents.jsonl")
       mkdirSync(join(box.workspace, box.stateDir, "watchdog"), { recursive: true })
       writeFileSync(
@@ -286,6 +336,7 @@ describe("the mpdWatchdog service's front-door reads (w6b)", () => {
           .join("\n") + "\n",
       )
 
+      // The full front-door view for one reader.
       const view = registry.view("mpd-tui", box.workspace)
       expect(view.workspace).toBe(box.workspace)
       expect(view.holds).toEqual(["team-a"])
@@ -310,6 +361,7 @@ describe("the mpdWatchdog service's front-door reads (w6b)", () => {
       expect(registry.acknowledge("mpd-tui", 1, fresh).ok).toBe(true)
       // A target that cannot be a directory at all is a REPORTED failure, never a throw.
       writeFileSync(join(box.workspace, "blocker"), "not a directory\n")
+      // The acknowledge against a path that cannot be a directory.
       const blocked = registry.acknowledge("mpd-tui", 1, join(box.workspace, "blocker", "ws"))
       expect(blocked.ok).toBe(false)
       expect(typeof blocked.error).toBe("string")
@@ -319,11 +371,15 @@ describe("the mpdWatchdog service's front-door reads (w6b)", () => {
   })
 
   test("the published service carries every front-door member, and holdService is still mpdWatchdog", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The plugin context the row is applied to.
       const ctx = pluginCtx(box.workspace)
+      // The apply report whose published service is inspected.
       const report = apply(ctx, { stateDir: box.stateDir, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
       expect(report.holdService).toBe(HOLD_SERVICE)
+      // The published service as an open record, so each member can be probed.
       const service = ctx.services.get(HOLD_SERVICE) as Record<string, unknown>
       for (const member of ["isHeld", "holds", "list", "hydratedRoots", "hydrate", "heldTeams", "unread", "acknowledge", "view", "gateCall"])
         expect(typeof service[member]).toBe(member === "gateCall" ? "string" : "function")

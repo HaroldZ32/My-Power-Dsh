@@ -36,7 +36,9 @@ export const DEFAULT_KEEP_GENERATIONS = 3
  * @returns a non-empty single path segment.
  */
 export function safeSegment(value: unknown): string {
+  // The raw id as text; a null or undefined id folds to an empty string so the segment stays stable.
   const text = String(value ?? "")
+  // The id NFC-normalised, trimmed and lower-cased, with every run of non-alphanumerics folded to one dash.
   const cleaned = text
     .normalize("NFC")
     .trim()
@@ -44,11 +46,13 @@ export function safeSegment(value: unknown): string {
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
   if (cleaned === "") return "k-" + digest(text)
+  // The cleaned id as code points, so the 48-character cap counts characters rather than UTF-16 units.
   const points = [...cleaned]
   if (points.length > 48) return points.slice(0, 48).join("") + "-" + digest(text)
   return cleaned
 }
 
+/** First 8 hex characters of the SHA-256 of the raw text: keeps a fully collapsed id unique and stable. */
 function digest(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 8)
 }
@@ -58,12 +62,12 @@ export function stateRoot(workspace: string, stateDir: string = DEFAULT_STATE_DI
   return join(workspace, stateDir)
 }
 
-/** `<workspace>/<stateDir>/watchdog`. */
+/** The watchdog namespace root, `<workspace>/<stateDir>/watchdog`. */
 export function watchdogRoot(workspace: string, stateDir: string = DEFAULT_STATE_DIR): string {
   return join(stateRoot(workspace, stateDir), WATCHDOG_DIR)
 }
 
-/** `<stateDir>/watchdog/heartbeat`. */
+/** The directory holding every member's heartbeat file, `<stateDir>/watchdog/heartbeat`. */
 export function heartbeatDir(workspace: string, stateDir: string = DEFAULT_STATE_DIR): string {
   return join(watchdogRoot(workspace, stateDir), "heartbeat")
 }
@@ -78,7 +82,7 @@ export function sceneDir(workspace: string, stateDir: string, teamId: string): s
   return join(watchdogRoot(workspace, stateDir), "scene", safeSegment(teamId))
 }
 
-/** `<stateDir>/watchdog/hold`. */
+/** The directory holding one durable host-side hold per team, `<stateDir>/watchdog/hold`. */
 export function holdDir(workspace: string, stateDir: string = DEFAULT_STATE_DIR): string {
   return join(watchdogRoot(workspace, stateDir), "hold")
 }

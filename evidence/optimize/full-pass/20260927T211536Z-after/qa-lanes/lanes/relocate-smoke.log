@@ -1,0 +1,9 @@
+[relocate-smoke] npm install (relocated bundle + ast-grep + codegraph)...
+[relocate-smoke] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/plan-d/relocate/2026-09-27T21-25-03.609Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0,"leaked":false}
+  live: {"ok":false,"exit":0,"preset":null,"trust":null,"expectedPreset":"/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated/presets/mpd.patch.yml","fixtureBase":null}
+  noPresetCopy: {"ok":true,"count":0}
+  noSkillCopy: {"ok":true,"count":0}
+  servedFromRelocated: {"ok":true,"staged":"/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/mpd-pkg-relocated"}
+  bootstrap: {"ok":true}

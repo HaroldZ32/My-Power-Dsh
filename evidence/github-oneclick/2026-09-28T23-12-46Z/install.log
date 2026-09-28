@@ -1,0 +1,16 @@
+dsh: initialized profile web at /tmp/mpd-github-oneclick-JtXhGT/dsh-home/profiles/web
+[ERR_SQLITE_ERROR] unable to open database file
+
+pnpm: unable to open database file
+    at file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:102565:19
+    at sqliteRetry (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:102475:14)
+    at StoreIndex.openDatabase (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:102564:9)
+    at new StoreIndex (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:102549:14)
+    at createNewStoreController (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:184222:83)
+    at async installDeps (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:221462:17)
+    at async Object.handler4 [as add] (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:222131:3)
+    at async file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:323980:19
+    at async main4 (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:323948:30)
+    at async runPnpm (file:///home/haroldzhao/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/86295a4dd76ab3322070c27f401b6b25eca1ea0087e361314a40ae9967aa1cec/node_modules/@pnpm/exe/dist/pnpm.mjs:324244:5)
+dsh: plugin command failed; diagnostics: /tmp/mpd-github-oneclick-JtXhGT/dsh-home/profiles/web/.plugin-manager/logs/operation-5nYlPE/pnpm.log
+dsh: git-hosted plugins build on install via their prepare script, which pnpm blocks until allowed — add the exact key pnpm printed above under allowBuilds in /tmp/mpd-github-oneclick-JtXhGT/dsh-home/profiles/web/pnpm-workspace.yaml, then re-run

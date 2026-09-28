@@ -9,24 +9,28 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync } from "node:fs"
 import { apply } from "../src/index"
 import { applyHold, applyResume, HOLD_TOOL, RESUME_TOOL, STATUS_TOOL } from "../src/actions"
-import { ackIncidents, appendIncident, readHold, readIncidents, readWatermarks, unacknowledged, writeHold } from "../src/sidecars"
+import { ackIncidents, appendIncident, readHold, readIncidents, readWatermarks, unacknowledged, writeHold, type HoldRecord } from "../src/sidecars"
 import { join } from "node:path"
 import { pluginCtx, sandbox, teamViews, writeTeam } from "./support"
 
 describe("the hold sidecar", () => {
   test("lives in the watchdog's own tree and never changes the live team readout", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The live readout before the hold, compared byte-for-byte at the end.
       const teamView = writeTeam(box, {
         id: "team-a",
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
+      // The hold action's outcome, whose path must stay inside the watchdog tree.
       const applied = applyHold(box.workspace, box.stateDir, { team_id: "team-a", task_id: "t1", attempt_id: "1", cause: "silence", scene_at: 7 })
       expect(applied.applied).toBe(true)
       expect(existsSync(applied.path)).toBe(true)
       expect(applied.path.startsWith(box.workspace)).toBe(true)
       expect(applied.path.startsWith(join(box.workspace, box.stateDir, "watchdog"))).toBe(true)
+      // The hold read back from disk.
       const hold = readHold(box.workspace, box.stateDir, "team-a")
       expect(hold?.taskId).toBe("t1")
       expect(hold?.attemptId).toBe("1")
@@ -39,10 +43,15 @@ describe("the hold sidecar", () => {
   })
 
   test("is idempotent by id: a second identical write changes no bytes", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
-      const hold = { id: "h1", teamId: "team-a", since: 1, cause: "silence", taskId: "t1", attemptId: "att-1", sceneAt: 2 }
+      // The same hold record written twice, to prove byte-idempotence.
+      // T-17: it carries the resolved `holdTtlMs` (900_000), the bound every plugin-written hold has.
+      const hold: HoldRecord = { id: "h1", teamId: "team-a", since: 1, cause: "silence", taskId: "t1", attemptId: "att-1", sceneAt: 2, ttlMs: 900_000 }
+      // The first write, which must report a change.
       const first = writeHold(box.workspace, box.stateDir, hold)
+      // The second write of identical bytes, which must report no change.
       const second = writeHold(box.workspace, box.stateDir, hold)
       expect(first.changed).toBe(true)
       expect(second.changed).toBe(false)
@@ -53,9 +62,12 @@ describe("the hold sidecar", () => {
   })
 
   test("re-applying a hold keeps the original id and since (the hold is not restarted)", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The first hold, whose id and start time must survive the re-apply.
       const first = applyHold(box.workspace, box.stateDir, { team_id: "team-a", cause: "silence" })
+      // The re-applied hold, which must keep the original identity.
       const second = applyHold(box.workspace, box.stateDir, { team_id: "team-a", cause: "silence" })
       expect(second.hold?.id).toBe(first.hold?.id)
       expect(second.hold?.since).toBe(first.hold?.since)
@@ -65,6 +77,7 @@ describe("the hold sidecar", () => {
   })
 
   test("a resume of a non-held team is a no-op, and a second resume is a no-op", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       expect(applyResume(box.workspace, box.stateDir, { team_id: "team-a" })).toMatchObject({ resumed: false, reason: "not-held" })
@@ -78,8 +91,10 @@ describe("the hold sidecar", () => {
   })
 
   test("a hold without a team_id is refused with a reason, never thrown", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The refusal a hold without a team id must return.
       const refused = applyHold(box.workspace, box.stateDir, {})
       expect(refused.applied).toBe(false)
       expect(refused.error).toContain("team_id")
@@ -91,8 +106,10 @@ describe("the hold sidecar", () => {
 
 describe("incidents and the read watermark", () => {
   test("a record per incident plus a watermark per reader", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The incident fields shared by the two records appended below.
       const base = {
         teamId: "team-a",
         kind: "warn" as const,
@@ -109,6 +126,7 @@ describe("incidents and the read watermark", () => {
       expect(readWatermarks(box.workspace, box.stateDir)).toEqual({})
       // Without an acknowledgement the replay is permanent by design.
       expect(unacknowledged(box.workspace, box.stateDir, "web").length).toBe(2)
+      // The acknowledgement that moves the reader's watermark up to 200.
       const acked = ackIncidents(box.workspace, box.stateDir, "web", 200)
       expect(acked.ok).toBe(true)
       expect(readWatermarks(box.workspace, box.stateDir)).toEqual({ web: 200 })
@@ -126,11 +144,15 @@ describe("incidents and the read watermark", () => {
 
 describe("the plugin's own actions", () => {
   test("apply() registers exactly the three actions on the adapter", () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The plugin context whose adapter records every registration.
       const ctx = pluginCtx(box.workspace)
+      // The apply report; this case asserts which tools it registered.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
       expect(report.applied).toBe(true)
+      // The stub adapter, whose tool map holds what `apply` registered.
       const stub = ctx.__stub
       expect([...stub.tools.keys()].sort()).toEqual([HOLD_TOOL, RESUME_TOOL, STATUS_TOOL].sort())
       report.engine?.stop()
@@ -141,19 +163,27 @@ describe("the plugin's own actions", () => {
   })
 
   test("the hold and resume actions are reachable through the adapter's internal tool seam", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // The plugin context whose adapter exposes the internal tool runtime.
       const ctx = pluginCtx(box.workspace)
+      // The apply report; its engine is stopped at the end of the case.
       const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
+      // The internal tool seam the actions must be reachable through.
       const runtime = ctx.__stub.adapter.toolRuntime()
+      // The hold result, its shape asserted because the tool seam answers an unknown value.
       const held = (await runtime.execute({ name: HOLD_TOOL, arguments: { team_id: "team-a", task_id: "t1", attempt_id: "att-1" } })) as { applied: boolean }
       expect(held.applied).toBe(true)
       expect(readHold(box.workspace, box.stateDir, "team-a")?.id).toBeDefined()
+      // The resume result, shape-asserted for the same reason.
       const resumed = (await runtime.execute({ name: RESUME_TOOL, arguments: { team_id: "team-a" } })) as { resumed: boolean }
       expect(resumed.resumed).toBe(true)
+      // The second resume, which must be the not-held no-op.
       const again = (await runtime.execute({ name: RESUME_TOOL, arguments: { team_id: "team-a" } })) as { resumed: boolean; reason: string }
       expect(again.resumed).toBe(false)
       expect(again.reason).toBe("not-held")
+      // The status result, shape-asserted for the same reason.
       const status = (await runtime.execute({ name: STATUS_TOOL, arguments: {} })) as { workspace: string }
       expect(status.workspace).toBe(box.workspace)
       report.engine?.stop()

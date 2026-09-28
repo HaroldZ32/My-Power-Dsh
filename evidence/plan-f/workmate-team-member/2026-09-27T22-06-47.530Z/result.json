@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wtm-dsh-j5XHbd",
+  "wmHome": "/tmp/mpd-wtm-home-EhxIrb",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": false,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": "m on undefined). | - Direct spawn_teammate alice → success (target alice, running). | - team_task_create task-1 → created. | - agent_teams_dispatch run → failed stale internal teammate id. | - send_message to alice accepted → alice ran the task. | - Result: alice's one-sentence answer: \"My independent workmate memory says the build token is PINEAPPLE42.\" Evidence: value NOT surfaced by mpd_workmate_list/match/recall/read; it came from ~/.mpd/workmate/alice/memory.md literally containing the token. Reflect succeeded uses=2. task-1 status completed, ownerName alice, revision 3. |  | Key verdicts: | - Exact sequence as written cannot run on this deployment: invalid base + missing tool names. | "
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-27T22:07:33.337Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-27T22:08:15.253Z — report build token\nMy independent workmate memory says the build token "
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/home/haroldzhao/.mpd/workmate",
+      "before": null,
+      "after": null
+    }
+  }
+}

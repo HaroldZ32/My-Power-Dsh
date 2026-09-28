@@ -10,7 +10,7 @@
 #   • the TUI inside tmux, captured with `docker exec … tmux capture-pane`.
 #
 # It is an INSPECTION harness, not a gate: it asserts nothing about the bundle. The verdict
-# for the install path stays with `scripts/docker-e2e.mjs`.
+# for the install path stays with `scripts/docker-e2e.ts`.
 set -uo pipefail
 
 : "${MPD_UI_PORT:=3080}"
@@ -52,7 +52,7 @@ for entry in packages/*/src/index.ts packages/mpd-ext-plugin/src/sdk.ts; do
   [ "$(basename "$entry")" = "sdk.ts" ] && out="packages/mpd-ext-plugin/dist/sdk.js"
   bun build "$entry" --target node --format esm --outfile "$out" >>"$LOG_DIR/rebuild.log" 2>&1
 done
-node scripts/build-mpd-client.mjs >>"$LOG_DIR/rebuild.log" 2>&1
+node scripts/build-mpd-client.ts >>"$LOG_DIR/rebuild.log" 2>&1
 
 log "dsh plugin --profile web add ."
 dsh plugin --profile web add . >>"$LOG_DIR/plugin-web.log" 2>&1
@@ -101,7 +101,19 @@ if [ ! -d "$LOG_DIR/node_modules/playwright" ]; then
     && npm i playwright@1.49.1 >>"$LOG_DIR/pw-install.log" 2>&1 \
     && npx playwright install --with-deps chromium >>"$LOG_DIR/pw-install.log" 2>&1 )
 fi
-cp -f /opt/mpd-e2e/capture.mjs "$LOG_DIR/capture.mjs" 2>/dev/null || true
+# THE VOLUME KEEPS THE BROWSER, NOT ITS LIBRARIES. Only the browser download and the npm package
+# live under /data; the apt packages `--with-deps` pulls in belong to the CONTAINER LAYER and are
+# gone the moment the container is recreated, while the volume survives and makes the guard above
+# skip. Measured 2026-09-28: a rebuilt image + recreated container kept
+# `/data/node_modules/playwright`, skipped this whole block, and the first capture died with
+# `headless_shell: error while loading shared libraries: libglib-2.0.so.0`. So the second guard
+# keys on a LIBRARY, not on the directory the first guard already finds.
+if ! ldconfig -p 2>/dev/null | grep -q 'libglib-2\.0\.so\.0'; then
+  log "installing chromium's system libraries (playwright install-deps)"
+  ( cd "$LOG_DIR" && npx playwright install-deps chromium >>"$LOG_DIR/pw-install.log" 2>&1 ) \
+    || log "install-deps failed — the capture step will fail on missing shared libraries; see ${LOG_DIR}/pw-install.log"
+fi
+cp -f /opt/mpd-e2e/capture.ts "$LOG_DIR/capture.ts" 2>/dev/null || true
 cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
 
 # ── 4. the TUI surface, held open in tmux ─────────────────────────────────────

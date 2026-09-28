@@ -51,9 +51,9 @@ architecture decisions from the user:
   mpd-ulw (ulw.*), mpd-boulder (boulder.dir), mpd-modelchain
   (modelchain.<chainKey>). mpd-config row moved first in the bundle patch.
 - Bundle patch: mpd-roles row added; header/order updated.
-- QA corpus: `preset-register.mjs` rewritten (mpd preset + roster probe, runtime
+- QA corpus: `preset-register.ts` rewritten (mpd preset + roster probe, runtime
   overlay substitution — no committed checkout-absolute paths); `team-route-rewire.mjs`
-  and `relocate-smoke.mjs` de-hardcoded (`MPD_DEV_ROOT` fallback = repoRoot,
+  and `relocate-smoke.ts` de-hardcoded (`MPD_DEV_ROOT` fallback = repoRoot,
   default preset `mpd`); `tests/overlays/*` templates path-free.
 - Skill corpus: `persona="mpd-<role>"` tokens (25) replaced by the
   `mpd_role_persona`/`mpd_role_spawn` pattern; mechanism prose in ulw-plan /

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { charWidth, stringWidth } from "./east-asian-width"
+import { charWidth, stringWidth } from "./east-asian-width.ts"
 
 describe("charWidth", () => {
 	test("#given an ASCII letter #when measured #then it is one column", () => {

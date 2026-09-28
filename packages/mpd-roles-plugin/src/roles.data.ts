@@ -10,15 +10,21 @@
 // (chain lookup). Team mode is the OFFICIAL Agent Teams plugin, whose Lead stages
 // these members BY NAME (`spawn_teammate` + `team_task_create`).
 export interface MpdRoleSpec {
+  /** The STABLE chain key — also the `personas/<id>.md` file name and the workmate `meta.baseId`. INTERNAL: no tool output, description, render, web route or GUI ever exposes it. */
   id: string
+  /** The functional display name a teammate is addressed by — the ONLY base key any tool accepts. */
   name: string
+  /** One-line role summary, shown wherever the roster is listed. */
   description: string
   /** Read-only roles spawn with a write-tool deny filter; workers spawn unrestricted. */
   readonly: boolean
+  /** The model-chain candidates for this member, tried in order by `mpd_modelchain_resolve`. */
   chain: Array<{ provider: string; model: string }>
+  /** Path of the persona template, relative to this package, read by `mpd_role_persona`. */
   personaFile: string
 }
 
+/** The eleven specialists, in the order the roster lists them. */
 export const ROLES: MpdRoleSpec[] = [
   {
     "id": "oracle",
@@ -144,4 +150,5 @@ export const ROLES: MpdRoleSpec[] = [
   }
 ]
 
+/** The roster indexed by stable id, for the internal chain lookups that key on it. */
 export const ROLE_BY_ID: Record<string, MpdRoleSpec> = Object.fromEntries(ROLES.map((r) => [r.id, r]))

@@ -46,7 +46,7 @@
           #     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
           #     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
           #     step with `standard` — a missing row is a missing capability for every mpd
-          #     session. `skills/dsh-qa/scripts/preset-conformance.mjs` checks both the
+          #     session. `skills/dsh-qa/scripts/preset-conformance.ts` checks both the
           #     row set and every row config against the INSTALLED harness at gate time.
           #
           # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a

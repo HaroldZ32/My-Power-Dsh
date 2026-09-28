@@ -1,0 +1,3 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=299654977d65 lanes=11 evidence=evidence/optimize/full-pass/20260927T211536Z-after/qa-lanes-rest
+[mpd-qa:(only)] discovery=44 lane script(s) (.mjs entries 44, underscore-excluded 0, unlisted 0, outside-suite 18)
+[mpd-qa:(only)] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=34

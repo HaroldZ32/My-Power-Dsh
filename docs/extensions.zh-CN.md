@@ -6,7 +6,7 @@
 
 `@mpd-dsh/mpd` bundle 的扩展接口：通过一份**冻结契约**，让一个插件包——或者磁盘上的一个普通目录——在不改动核心 bundle 的前提下贡献 **skill**、**flow**、**MCP server** 与 **role**。Loader row id 为 `mpd-ext`，cordis service 为 `mpdExtensions`。
 
-本指南面向希望加入 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.mjs`），每条命令都按原样运行过——见 [§12](#12-本指南中的示例如何验证)。
+本指南面向希望加入 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.ts`），每条命令都按原样运行过——见 [§12](#12-本指南中的示例如何验证)。
 
 ---
 
@@ -69,7 +69,7 @@ ext?.register(
 │   └── change-triage-flow.json
 ├── personas/             # { "roles": [{ "persona": "personas/…" }] }
 │   └── code-reviewer.md
-└── server.mjs            # { "mcp": [{ "command": "node", "args": ["server.mjs"] }] }
+└── server.ts            # { "mcp": [{ "command": "node", "args": ["server.ts"] }] }
 ```
 
 manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`），且必须是严格 JSON——与 `.mpd/mpd.jsonc` 不同，manifest 不支持 JSONC 注释。
@@ -267,7 +267,7 @@ manifest 条目（`extensions/mpd-ext-example/mpd-ext.json`）：
       "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
-      "args": ["server.mjs"],
+      "args": ["server.ts"],
       "cwd": ".",
       "env": {},
       "connectTimeoutMs": 10000,
@@ -277,7 +277,7 @@ manifest 条目（`extensions/mpd-ext-example/mpd-ext.json`）：
 }
 ```
 
-server 必须在 stdio 上说换行分隔的 JSON-RPC 2.0（`initialize`、`tools/list`、`tools/call`；`notifications/tools/list_changed` 也会被响应）。实际发布的 `extensions/mpd-ext-example/server.mjs` 就是一个完整、零依赖的示例，而 `scripts/mpd-ext.mjs scaffold <name> --with-mcp` 会写出等价的一份。
+server 必须在 stdio 上说换行分隔的 JSON-RPC 2.0（`initialize`、`tools/list`、`tools/call`；`notifications/tools/list_changed` 也会被响应）。实际发布的 `extensions/mpd-ext-example/server.ts` 就是一个完整、零依赖的示例，而 `scripts/mpd-ext.ts scaffold <name> --with-mcp` 会写出等价的一份。
 
 作者最容易弄错的两点：
 
@@ -350,19 +350,19 @@ v1 提供**四个**工具——早期计划里数到五个，其中 `mpd_ext_rel
 # 1. 直接脚手架出一个最小、可加载的扩展到一个发现根目录。
 #    四种类型都贡献时，user plane 才是正确选择；project plane
 #    （<workspace>/.mpd/extensions）只接受 skills + flows。
-bun scripts/mpd-ext.mjs scaffold demo-ext --dir ~/.mpd/extensions
+bun scripts/mpd-ext.ts scaffold demo-ext --dir ~/.mpd/extensions
 # [mpd-ext] scaffolded "demo-ext" at /home/<you>/.mpd/extensions/demo-ext
 #   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
-#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/demo-ext
+#   next: bun scripts/mpd-ext.ts validate /home/<you>/.mpd/extensions/demo-ext
 
 # 2. 用运行时**同一个**校验器验证它（exit 0 = 可加载）。
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/demo-ext
+bun scripts/mpd-ext.ts validate ~/.mpd/extensions/demo-ext
 # [mpd-ext] validate /home/<you>/.mpd/extensions/demo-ext (plane=user)
 #   extension "demo-ext": loadable
 # [mpd-ext] ok
 
 # 3. 看看本宿主会逐 plane 发现什么（含 bundle plane）。
-bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.ts list
 
 # 4. 编辑 manifest：写入你的真实内容并把 "enabled": true
 #    （脚手架出来的扩展默认是禁用的，这是刻意的）。
@@ -381,7 +381,7 @@ $EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 CLI 也会自检：
 
 ```sh
-bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用临时目录
+bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list，仅使用临时目录
 ```
 
 关于 `validate` 输出的一点说明：它会为每个已声明的 MCP server 打印一条 `pending` 记录，因为 CLI 是一个**离线检查器**——它只校验契约，从不连接任何东西。运行时则由桥在 apply 阶段连接 server，`mpd_ext_show` / `mpd_ext_list` 会用该 server 的实时状态（`connecting` / `connected` / `unavailable` / `failed` / `disabled`）取代那条记录。请把 `pending` 行理解为"已声明，状态尚未观测"。
@@ -430,14 +430,14 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 
 ```sh
 # 实际发布的参考扩展可通过校验，exit 0（四种类型齐全）
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
 
 # §8 的工作流端到端（scaffold -> validate -> enable -> list）
-SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold demo-ext --dir $SB/.mpd/extensions
-HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/demo-ext
+SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.ts scaffold demo-ext --dir $SB/.mpd/extensions
+HOME=$SB bun scripts/mpd-ext.ts validate $SB/.mpd/extensions/demo-ext
 
 # CLI 自身的检查（仅使用临时目录）
-bun scripts/mpd-ext.mjs --self-test
+bun scripts/mpd-ext.ts --self-test
 
 # 本指南引用的契约常量
 grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/mpd-ext-plugin/src/sdk.ts

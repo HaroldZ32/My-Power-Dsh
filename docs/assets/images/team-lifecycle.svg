@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="704" viewBox="0 0 1180 704" role="img" aria-labelledby="title desc">
+  <title id="title">Team mode lifecycle and guardrails</title>
+  <desc id="desc">Pipeline of a team run: the session-start complexity gate advises only, the Lead decides the roster and task graph, teammates are spawned and tasks posted, members claim and complete tasks, the wave is compacted and the next wave starts in a new session. A guardrails band lists the read-only tool denial, the durable mailbox, the compare-and-set board and advisory write scopes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .h1 { font: 700 24px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 400 13.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .band { fill: #fffbeb; stroke: #fcd34d; stroke-width: 1.5; }
+      .band-h { font: 700 14px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #92400e; }
+      .band-s { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #a16207; }
+      .step { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .step-h { font: 700 14px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .step-s { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+      .chip { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; }
+      .chip-h { font: 700 12.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .chip-s { font: 400 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .mono { font: 600 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #334155; }
+      .note { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="704" fill="#ffffff"/>
+  <text class="h1" x="40" y="44">Team mode — one wave, end to end</text>
+  <text class="sub" x="40" y="68">The session agent is the Lead. The official Agent Teams plugin owns the runtime; the workflow around it is the captain's.</text>
+
+  <!-- Session-start gate band -->
+  <rect class="band" x="40" y="92" width="1060" height="60" rx="12"/>
+  <text class="band-h" x="62" y="118">Session-start complexity gate — ADVISES, stages nothing</text>
+  <text class="band-s" x="62" y="138">A triggered auto-route injects one notice naming the fired signals and stating that no team was staged; an explicit team: / !team request is advice too.</text>
+
+  <!-- Row 1 -->
+  <rect class="step" x="40" y="176" width="340" height="96" rx="12"/>
+  <text class="step-h" x="60" y="204">1 · Decide</text>
+  <text class="step-s" x="60" y="226">The Lead shapes the roster and the task DAG.</text>
+  <text class="step-s" x="60" y="244">Nothing is staged before this step, and the</text>
+  <text class="step-s" x="60" y="260">captain may continue solo and say so.</text>
+
+  <path d="M380 224 L396 224" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect class="step" x="400" y="176" width="340" height="96" rx="12"/>
+  <text class="step-h" x="420" y="204">2 · Stage</text>
+  <text class="step-s" x="420" y="226">spawn_teammate reserves a name and opens a</text>
+  <text class="step-s" x="420" y="244">lane; team_task_create posts its task with an</text>
+  <text class="step-s" x="420" y="260">acceptance contract and optional blockers.</text>
+
+  <path d="M740 224 L756 224" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect class="step" x="760" y="176" width="340" height="96" rx="12"/>
+  <text class="step-h" x="780" y="204">3 · Run</text>
+  <text class="step-s" x="780" y="226">Any member claims a READY task and completes</text>
+  <text class="step-s" x="780" y="244">it. The board is compare-and-set on revision,</text>
+  <text class="step-s" x="780" y="260">so a stale claim cannot overwrite newer work.</text>
+
+  <!-- wrap arrow row1 -> row2 -->
+  <path d="M930 272 V282 H210 V290" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Row 2 -->
+  <rect class="step" x="40" y="294" width="340" height="96" rx="12"/>
+  <text class="step-h" x="60" y="322">4 · Coordinate</text>
+  <text class="step-s" x="60" y="344">send_message · wait_agent · interrupt_agent.</text>
+  <text class="step-s" x="60" y="362">The watchdog lane detects stalls (OUTSTANDING</text>
+  <text class="step-s" x="60" y="378">→ IN-FLIGHT → ALIVE → PARKED), warns, then escalates.</text>
+
+  <path d="M380 342 L396 342" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect class="step" x="400" y="294" width="340" height="96" rx="12"/>
+  <text class="step-h" x="420" y="322">5 · Close the wave</text>
+  <text class="step-s" x="420" y="344">When every task is terminal and every member</text>
+  <text class="step-s" x="420" y="362">idle, mpd_team_compact_run compacts the</text>
+  <text class="step-s" x="420" y="378">members' contexts — the Lead is never compacted.</text>
+
+  <path d="M740 342 L756 342" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect class="step" x="760" y="294" width="340" height="96" rx="12"/>
+  <text class="step-h" x="780" y="322">6 · Next wave</text>
+  <text class="step-s" x="780" y="344">One team per wave: end the team when the wave</text>
+  <text class="step-s" x="780" y="362">lands and start the next one in a new session,</text>
+  <text class="step-s" x="780" y="378">so members and tasks do not accumulate.</text>
+
+  <!-- Guardrails -->
+  <text class="step-h" x="40" y="434">Guardrails that hold in every team</text>
+
+  <rect class="chip" x="40" y="450" width="250" height="106" rx="10"/>
+  <text class="chip-h" x="56" y="474">Read-only roster names</text>
+  <text class="chip-s" x="56" y="496">Architect, Researcher, Planner,</text>
+  <text class="chip-s" x="56" y="513">Explorer, Plan Reviewer and Vision</text>
+  <text class="chip-s" x="56" y="530">Analyst are denied the seven write</text>
+  <text class="chip-s" x="56" y="547">tools by a guard — bash included.</text>
+
+  <rect class="chip" x="310" y="450" width="250" height="106" rx="10"/>
+  <text class="chip-h" x="326" y="474">Durable mailbox</text>
+  <text class="chip-s" x="326" y="496">A message is stored before delivery,</text>
+  <text class="chip-s" x="326" y="513">so the result is accepted or queued.</text>
+  <text class="chip-s" x="326" y="530">A queued message is already stored</text>
+  <text class="chip-s" x="326" y="547">— never resend it.</text>
+
+  <rect class="chip" x="580" y="450" width="250" height="106" rx="10"/>
+  <text class="chip-h" x="596" y="474">Compare-and-set board</text>
+  <text class="chip-s" x="596" y="496">team_task_update carries the</text>
+  <text class="chip-s" x="596" y="513">revision you read; a stale revision</text>
+  <text class="chip-s" x="596" y="530">is rejected instead of overwriting</text>
+  <text class="chip-s" x="596" y="547">newer work.</text>
+
+  <rect class="chip" x="850" y="450" width="250" height="106" rx="10"/>
+  <text class="chip-h" x="866" y="474">Advisory write scopes</text>
+  <text class="chip-s" x="866" y="496">Overlapping scopes raise a warning;</text>
+  <text class="chip-s" x="866" y="513">they never lock a claim and never</text>
+  <text class="chip-s" x="866" y="530">authorise a write. Bash, formatters</text>
+  <text class="chip-s" x="866" y="547">and generators bypass every check.</text>
+
+  <text class="note" x="40" y="590">Roster, mailbox and board live in the LEAD's session log. The path</text>
+  <text class="mono" x="380" y="590">&lt;workspace&gt;/.mpd/team/</text>
+  <text class="note" x="510" y="590">holds legacy records only and is read by the stall detector and the workmate in-use check.</text>
+
+  <text class="note" x="40" y="626">Tools every member holds: spawn_teammate (Lead-only) · send_message · list_agents · wait_agent · interrupt_agent ·</text>
+  <text class="mono" x="40" y="646">team_task_create · team_task_list · team_task_get · team_task_update</text>
+
+  <text class="note" x="40" y="682">The team lifetime is the session: the roster, the mailbox and the board are projected from the Lead's live session, not from a project state directory.</text>
+</svg>

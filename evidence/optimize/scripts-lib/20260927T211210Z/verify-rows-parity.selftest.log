@@ -1,0 +1,10 @@
+[verify-rows-parity] self-test PASS - (a) fixture parity -> exit 0 :: exit 0; [verify-rows-parity] ok: 3 row ids match the 1-file bundle patch layer (row-a, row-b, row-c)
+[verify-rows-parity] self-test PASS - (b) seeded missing row -> exit 1 + the fault named :: exit 1;   MISSING from scripts/install-profile.mjs: row-d
+[verify-rows-parity] self-test PASS - (c) installer-only row -> exit 1 + EXTRA named :: exit 1;   EXTRA in scripts/install-profile.mjs (not in the patch layer): row-z
+[verify-rows-parity] self-test PASS - (d) duplicate installer id -> exit 1 + DUPLICATE named :: exit 1;   DUPLICATE ids in the installer: row-a
+[verify-rows-parity] self-test PASS - (e) zero-subject patch -> exit 1 (degraded, never a pass) :: exit 1
+[verify-rows-parity] self-test PASS - (g) two patch files -> id-target + insert from the second both count :: exit 0; [verify-rows-parity] ok: 5 row ids match the 2-file bundle patch layer (preset-row, registry-row, row-a, row-b, row-c)
+[verify-rows-parity] self-test PASS - (g2) dropping the second file -> exit 1 with BOTH of its rows named MISSING :: exit 1; (no MISSING line)
+[verify-rows-parity] self-test PASS - (h) live manifest declares >= 2 patch files and discovery finds them all :: packages/mpd-bundle/cordis.patch.yml, presets/mpd.patch.yml
+[verify-rows-parity] self-test PASS - (f) hermetic: temp fixtures only; the live patches' bytes + mtimes are unchanged :: fixture root /tmp/mpd-rows-parity-selftest-caiQVk (temp); live patches unchanged; elapsed 293ms
+[verify-rows-parity] self-test PASS: 9/9 arms

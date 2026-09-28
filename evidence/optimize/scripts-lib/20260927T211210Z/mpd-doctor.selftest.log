@@ -1,0 +1,9 @@
+[mpd-doctor] self-test arm=all-present-fixture: PASS (6/6 entries ok, exit 0)
+[mpd-doctor] self-test arm=pin-nonexistent-astgrep: PASS (ast-grep [OPTIONAL] MISSING ⇒ degrades with the pin named, no fallback used, exit 2)
+[mpd-doctor] self-test arm=missing-required-exit1: PASS (lsp [REQUIRED] MISSING ⇒ degrades with the override named, exit 1)
+[mpd-doctor] self-test arm=optional-degrade-exit2-distinct: PASS (optional-only miss = exit 2, required miss = exit 1 (distinct codes, each naming its rule))
+[mpd-doctor] self-test arm=absent-ast-grep-named: PASS (absent ast-grep NAMED with its degrade sentence; the foreign `sg` was rejected, exit 2)
+[mpd-doctor] self-test arm=hung-probe-is-missing: PASS (the fixture stub hung: MISSING-with-reason (timeout named, stub path named) and contained to its own entry, exit 2)
+[mpd-doctor] self-test arm=json-mode: PASS (one prefixed JSON line, 6 entry records with degrade + resolution, exit 0)
+[mpd-doctor] self-test census: arms=7 passed=7 failed=0 fixture=/tmp/mpd-doctor-selftest-RrpS5o (mkdtemp; the real tree is never read)
+[mpd-doctor] self-test PASS: 7/7 arms

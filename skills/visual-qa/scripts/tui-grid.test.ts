@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
-import { checkTui } from "./tui-grid"
+import { checkTui } from "./tui-grid.ts"
 
+/** The ESC control character, used to build the ANSI fixture without a raw control byte. */
 const ESC = String.fromCharCode(0x1b)
 
 describe("checkTui", () => {

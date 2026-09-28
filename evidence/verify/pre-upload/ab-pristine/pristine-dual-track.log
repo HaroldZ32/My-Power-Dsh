@@ -1,0 +1,2 @@
+[llm-dual-track] official ok=true (16137ms, exit=0) -> /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/official/2026-09-27T23-21-52.365Z
+[llm-dual-track] deepseek ok=false (9973ms, exit=1) -> /tmp/mpd-pristine-bsoiFN/evidence/dsh-qa/llm-dual-track/deepseek/2026-09-27T23-22-02.341Z

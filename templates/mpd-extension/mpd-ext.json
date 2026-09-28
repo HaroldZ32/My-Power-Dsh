@@ -30,7 +30,7 @@
         "transport": "stdio",
         "command": "node",
         "args": [
-          "server.mjs"
+          "server.ts"
         ],
         "cwd": ".",
         "env": {},

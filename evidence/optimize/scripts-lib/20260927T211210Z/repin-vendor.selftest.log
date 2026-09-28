@@ -1,0 +1,97 @@
+[repin-vendor] SELF-TEST PASS - authority-shape: mirror still matches scripts/verify-vendor.mjs
+[repin-vendor]   mirror matches all 7 decisive token(s) of scripts/verify-vendor.mjs
+[repin-vendor] SELF-TEST PASS - hand-computed expectation: one-file tree fold (independent of fingerprint())
+[repin-vendor]   sha256("a.txt\n" + sha256("x\ny\n") + "\n") = 71c4ddcf49e96763e47ac8fd363b7dba2bffbe262ad33d68e097ea885aef8658
+[repin-vendor] SELF-TEST PASS - LF normalization: a CRLF file hashes exactly like its LF twin; a NUL file stays raw
+[repin-vendor]   CRLF twin == LF twin (33e2658703ec...), NUL file raw in both
+[repin-vendor] SELF-TEST FAIL - (a) matching scrub fixture lock -> --check exits 0
+[repin-vendor]   exit 1, stderr=node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs' imported from /tmp/repin-vendor-cli-NGMy9t/scripts/repin-vendor.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs'
+}
+
+Node.js v24.19.0
+[repin-vendor] SELF-TEST FAIL - (b) drifted scratch lock -> --check exits 1 and prints the delta
+[repin-vendor]   delta line missing: 
+[repin-vendor] SELF-TEST FAIL - (c) --write mutates ONLY the treeSha field, and --check then exits 0
+[repin-vendor]   write exit 1, stderr=node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs' imported from /tmp/repin-vendor-cli-NGMy9t/scripts/repin-vendor.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs'
+}
+
+Node.js v24.19.0
+[repin-vendor] SELF-TEST FAIL - (d) default VENDOR_LOCK.json guard: --write refuses, real file byte-identical
+[repin-vendor]   guard is name-scoped: a copy at a different path was refused (exit 1)
+[repin-vendor] SELF-TEST FAIL - (e) dry run mutates nothing
+[repin-vendor]   dry run exit 1
+[repin-vendor] SELF-TEST FAIL - (f) bad flag -> exit 1 + usage
+[repin-vendor]   no unknown-flag message: node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs' imported from /tmp/repin-vendor-cli-NGMy9t/scripts/repin-vendor.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs'
+}
+
+Node.js v24.19.0
+[repin-vendor] SELF-TEST FAIL - (g) negative control: a tampered authority makes the mirror guard REFUSE
+[repin-vendor]   no shape-refusal message: node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs' imported from /tmp/repin-vendor-cli-NGMy9t/scripts/repin-vendor.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///tmp/repin-vendor-cli-NGMy9t/scripts/lib/repo.mjs'
+}
+
+Node.js v24.19.0
+[repin-vendor] SELF-TEST FAIL - 3/10 arm(s) passed

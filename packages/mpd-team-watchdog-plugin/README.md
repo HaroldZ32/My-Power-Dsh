@@ -448,9 +448,9 @@ unreachable).
 ```
 bun run typecheck
 bun test packages/mpd-team-watchdog-plugin
-node scripts/verify-rows-parity.mjs
-bun skills/dsh-qa/scripts/bundle-lifecycle.mjs
-node skills/dsh-qa/scripts/preset-conformance.mjs
+node scripts/verify-rows-parity.ts
+bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+node skills/dsh-qa/scripts/preset-conformance.ts
 ```
 
 ## Files

@@ -50,7 +50,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 | `D_FIRST` | Every qualifying session starts with **no team and no team notice** unless a complexity signal fires. | Upstream parity, not local taste: upstream `team_mode.enabled` defaults to `false` (t3 `[U2][U3]`). |
 | `D_AUTOROUTE_SPLIT` | The mechanical gate and the legacy injection mode are **decoupled**: `sessionTeamPolicy.mode` defaults to `off` (existing enum values kept); the new mechanical gate is a separate key `sessionTeamPolicy.autoRoute` (default enabled). | Upstream has **no** complexity heuristic (0 hits for heuristic/threshold in t3); activation upstream is an explicit keyword. The split lets us add a gate without silently changing what `off`/`instruct` mean. |
 | `D_AUTOROUTE_ADVISORY` | A triggered auto-route **stages nothing**: the gate injects ONE advisory notice (same marker `[AgentTeams] Session-start team rule`) that names the fired signals, states that **no team was staged**, and asks the captain to stage one with the official `spawn_teammate` + `team_task_create` (at the time of this wave: the plugin's own create-team tool with `approval="required", profile="mpd"` — it no longer exists) only at the moment the work actually warrants a team — otherwise to continue solo and say so. An explicit `team:`/`!team` flag is likewise only ADVISED; nothing is pre-staged for it. | User clause 4 (2026-09-17): judging complexity must not cost the user a pre-staged team plus an approval step. The advisory wording deliberately says nothing against automatic approval, because a ULW run stages its own team (frozen contract §4.3). |
-| `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.mjs`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
+| `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.ts`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
 | `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
 | `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
 
@@ -164,9 +164,9 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement (RETIRED path; the preset is now `presets/mpd.patch.yml`) |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | the whole `会话启动团队门（强制）` section (same commit as `L4`) |
-| `L6` | `scripts/install-profile.mjs` | row config + its `--self-test` assertion (now pins `mode === "off"` **and** `autoRoute === true`) |
+| `L6` | `scripts/install-profile.ts` | row config + its `--self-test` assertion (now pins `mode === "off"` **and** `autoRoute === true`) |
 | `L7` | `skills/dsh-qa/SKILL.md` | the `session-start-team` case row |
-| `L8` | `skills/dsh-qa/scripts/session-start-team.mjs` | `assessTeamState` inverts to a two-sided assertion |
+| `L8` | `skills/dsh-qa/scripts/session-start-team.ts` | `assessTeamState` inverts to a two-sided assertion |
 | `L9` | `AGENTS.md` | the startup-rule section and the delta-table row describing the old behaviour |
 
 The frozen contract's `changeLocations.items` is the authority and enumerates **ten** entries: the
@@ -210,14 +210,14 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Gate | Command | State |
 |---|---|---|
 | typecheck | `bun run typecheck` | verified (exit 0) |
-| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.mjs`; registry 46 → 48 regions) |
+| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.ts`; registry 46 → 48 regions) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
-| runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
-| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified at this pre-advisory anchor (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true). **Superseded for the current tree by `D_AUTOROUTE_ADVISORY`:** the complex side must now assert 0 staged teams + one advisory notice and the explicit-flag side must assert exactly one staged team; that re-run belongs to this wave's QA case (`L7`/`L8`) |
-| preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | verified (30 harness rows conform, row parity 31/31) |
-| installer | `node scripts/install-profile.mjs --self-test` | verified (exit 0) |
-| vendor | `node scripts/verify-vendor.mjs` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |
-| trigger-rate study | `node evidence/omo-parity-rate/raw/probe.mjs --json` | verified (20 real ordinary prompts, 0 triggered; anchors and per-row verdicts recomputable — see §3) |
+| runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
+| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.ts` | verified at this pre-advisory anchor (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true). **Superseded for the current tree by `D_AUTOROUTE_ADVISORY`:** the complex side must now assert 0 staged teams + one advisory notice and the explicit-flag side must assert exactly one staged team; that re-run belongs to this wave's QA case (`L7`/`L8`) |
+| preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | verified (30 harness rows conform, row parity 31/31) |
+| installer | `node scripts/install-profile.ts --self-test` | verified (exit 0) |
+| vendor | `node scripts/verify-vendor.ts` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |
+| trigger-rate study | `node evidence/omo-parity-rate/raw/probe.ts --json` | verified (20 real ordinary prompts, 0 triggered; anchors and per-row verdicts recomputable — see §3) |
 
 This ledger is updated **in the same commit as the change it records**; an evidence-free pass is not
 a pass (AGENTS.md `§2.3`, `§4`).

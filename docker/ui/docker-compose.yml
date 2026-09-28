@@ -37,7 +37,7 @@ services:
       # The stack's own scratch (sandbox homes, tmux socket, npm prefix, the launch log) is a
       # NAMED VOLUME, deliberately NOT a bind under the repo: measured 2026-09-27, a bind here
       # left `docker/ui/data/**` in the working tree and a repo-wide scanner
-      # (`scripts/check-citations.mjs`, driven by the wave2b-lane-d QA case) then died on a path
+      # (`scripts/check-citations.ts`, driven by the wave2b-lane-d QA case) then died on a path
       # inside it — an unrelated gate reddening because a UI stack keeps its state under the
       # source root. Only the EVIDENCE is a bind, and only the evidence is committed.
       - ui-data:/data

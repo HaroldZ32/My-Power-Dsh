@@ -4,24 +4,24 @@
 
 `templates/mpd-extension/` is the **upstream template directory** and the single source of truth for
 a new MPD external extension (loader row `mpd-ext`). It is a complete, valid skeleton that declares
-all four contribution kinds, and `scripts/mpd-ext.mjs scaffold` **copies it** — the CLI emits no code
+all four contribution kinds, and `scripts/mpd-ext.ts scaffold` **copies it** — the CLI emits no code
 of its own, it rewrites names and nothing else. Wherever this file says "your copy", read it as the
 extension directory you put into a discovery root.
 
 ## 1. Copy it
 
 ```bash
-bun scripts/mpd-ext.mjs scaffold <name> --dir <where>              # skill + flow + role
-bun scripts/mpd-ext.mjs scaffold <name> --dir <where> --with-mcp   # + the stdio MCP server
-bun scripts/mpd-ext.mjs validate <where>/<name>
+bun scripts/mpd-ext.ts scaffold <name> --dir <where>              # skill + flow + role
+bun scripts/mpd-ext.ts scaffold <name> --dir <where> --with-mcp   # + the stdio MCP server
+bun scripts/mpd-ext.ts validate <where>/<name>
 ```
 
 The flag is the whole difference between the two arms, and it is deliberate:
 
 | Arm | `contributes` in the copy | Files |
 |---|---|---|
-| default (no flag) | `skills`, `flows`, `roles` — **three kinds** | the `mcp` block and `server.mjs` are **dropped** |
-| `--with-mcp` | `skills`, `flows`, `roles`, `mcp` — **four kinds** | `server.mjs` is kept |
+| default (no flag) | `skills`, `flows`, `roles` — **three kinds** | the `mcp` block and `server.ts` are **dropped** |
+| `--with-mcp` | `skills`, `flows`, `roles`, `mcp` — **four kinds** | `server.ts` is kept |
 
 Both arms are loadable, and the CLI's `--self-test` asserts exactly that: it
 validates this template, scaffolds both arms into a temp directory, **re-validates
@@ -45,7 +45,7 @@ target:
 The placeholder is this template's **own manifest `id`** (see `mpd-ext.json`; it is
 purpose-built and distinct from the shipped example `mpd-ext-example`). On copy, every
 occurrence of that placeholder is replaced by the new extension name — in the contents
-of every text file (`.json`, `.md`, `.mjs`) **and in every file and directory name**.
+of every text file (`.json`, `.md`, `.ts`) **and in every file and directory name**.
 Nothing else changes, so the derived names are:
 
 | Where | Derived value |
@@ -69,7 +69,7 @@ copy.
 | `skills` | `skills/<name>-skill/SKILL.md` | a procedure the model can load; the frontmatter `name`/`description` pair is required, and the skill's identity is that frontmatter `name` — the directory name is free |
 | `flows` | `flows/<name>-flow.json` | a **declarative** procedure rendered into a skill candidate; the flow `id` must satisfy the skill-name grammar |
 | `roles` | `personas/<name>-reviewer.md` | a roster-shaped specialist resolved per call; `readonly: true` denies it write tools, which is why the template ships a read-only reviewer. `provider`/`model` are optional and must be supplied **together or not at all** — the template keeps the default route, so it declares neither |
-| `mcp` | `server.mjs` | a **dependency-free** stdio MCP server (node stdlib only); its tools are published as `mcp__<serverName>__<tool>` |
+| `mcp` | `server.ts` | a **dependency-free** stdio MCP server (node stdlib only); its tools are published as `mcp__<serverName>__<tool>` |
 
 Delete what you do not need — and delete the matching `contributes` entry in
 `mpd-ext.json`, because a declared kind whose asset is missing is a load error, while
@@ -93,8 +93,8 @@ loudly. A four-kind extension therefore belongs in `~/.mpd/extensions/` (or the 
 ## 5. Verify the copy
 
 ```bash
-bun scripts/mpd-ext.mjs validate <dir>   # exit 0 = this host would load it; exit 1 = one line per item
-bun scripts/mpd-ext.mjs list             # what this host would discover, plane by plane
+bun scripts/mpd-ext.ts validate <dir>   # exit 0 = this host would load it; exit 1 = one line per item
+bun scripts/mpd-ext.ts list             # what this host would discover, plane by plane
 ```
 
 Validation is not a formality: the manifest sets `"enabled": false`, so a discovered
@@ -108,12 +108,12 @@ must never be accepted and then do nothing.
 boot of the unmodified tree discovers exactly the extensions it discovered before this
 directory existed. And the template is **not discovered by the extension loader**, but it IS
 **packed**: the release packer names `templates` in its `ROOT_ASSET_DIRS` (read at
-`scripts/pack-mpd.mjs`), so `dist/mpd-package/templates/mpd-extension` ships in the artifact, and
+`scripts/pack-mpd.ts`), so `dist/mpd-package/templates/mpd-extension` ships in the artifact, and
 a template that dropped out of the pack would be a shipped-asset loss (the T-38 class the packer
 refuses loudly).
 
 That has a consequence worth knowing before you reach for the CLI in a packed install: the
-packer does ship `scripts/mpd-ext.mjs`, but it ships `packages/<pkg>/dist` and never
+packer does ship `scripts/mpd-ext.ts`, but it ships `packages/<pkg>/dist` and never
 `packages/<pkg>/src`, while this CLI imports the one validator from `src/`. So in a packed
 tree the CLI cannot run at all, and with `src/` restored `validate`/`list` run while
 `scaffold` (and `--self-test`'s template arm) still need this directory. **The AGENTS.md §4
@@ -122,14 +122,14 @@ the upstream repository's packed-tree probe under `evidence/extensions/template-
 
 ## 7. The stdio MCP server (`--with-mcp` copies only)
 
-`server.mjs` is the `--with-mcp` arm's payload; a default copy does not carry it. It speaks
+`server.ts` is the `--with-mcp` arm's payload; a default copy does not carry it. It speaks
 newline-delimited JSON-RPC 2.0 on stdin/stdout (`initialize` → `notifications/initialized` →
 `tools/list` → `tools/call`), keeps stdout for protocol data only, and reads its own `mpd-ext.json`
 for `serverInfo.name` and for the `describe_extension` tool's answer. Smoke it without any host,
 from the directory that holds it:
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <extension-root>/server.mjs
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <extension-root>/server.ts
 ```
 
 ## 8. The manifest values this README quotes
@@ -153,4 +153,4 @@ prose and the `stdio`/`node` pair stay as quoted until you replace them):
 | `mpd-ext.json` | `mcp.serverName` | `mpd-extension-template` |
 | `mpd-ext.json` | `mcp.transport` | `stdio` |
 | `mpd-ext.json` | `mcp.command` | `node` |
-| `mpd-ext.json` | `mcp.args` | `["server.mjs"]` |
+| `mpd-ext.json` | `mcp.args` | `["server.ts"]` |

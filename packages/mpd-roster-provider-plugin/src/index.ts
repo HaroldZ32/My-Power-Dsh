@@ -25,13 +25,14 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
 import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
 import { applyRoute, labelOf, memberFromLabel, routeForMember, type RoutableRequest, type SlotRoute } from "./route"
 
+/** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-roster-provider"
 /**
  * The ONE seam this row needs, DECLARED.
@@ -57,15 +58,21 @@ const SLOT_OF_MEMBER: ReadonlyMap<string, string> = new Map(
 
 /** What this module needs from the config service. */
 interface ConfigLike {
+  /** Dotted-key read; optional, because a mounted service without it is treated as "no config". */
   get?: (key?: string) => unknown
 }
 
 /** The provider contract, as the harness calls it. */
 interface ProviderLike {
+  /** The name the harness addresses this provider by. */
   name: string
+  /** Which optional provider capabilities this implementation advertises. */
   capabilities: Record<string, boolean>
+  /** Whether a run keeps the Lead's context instead of the options handed to it. */
   inheritsParentContext: boolean
+  /** Optional pre-start hook, called when the harness prepares a continuable child. */
   prepareContinuable?: (request: unknown) => unknown
+  /** Start one child run; the composition's own provider is what actually runs it. */
   start: (request: unknown) => unknown
 }
 
@@ -79,8 +86,17 @@ export interface RosterProviderConfig {
   enabled?: boolean
 }
 
+/**
+ * Register the `mpd-roster` provider, which delegates to the composition's own provider and applies
+ * the named member's slot route on the way through.
+ *
+ * @param ctx - the row context; the subagent plane is reached through the adapter, never directly.
+ * @param config - row overrides for the provider delegated to and the on/off switch.
+ */
 export function apply(ctx: any, config: RosterProviderConfig = {}): void {
-  const dsh: DshAdapter = (typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  /** The adapter, which owns every harness seam this row touches. */
+  const dsh: DshAdapter = resolveDshAdapter(ctx)
+  /** The row's registrations, released together when the row is disposed. */
   const disposers: Array<() => void> = []
 
   /** The slot that routes a member, from the shared membership declaration (never a second copy). */
@@ -89,7 +105,9 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /** The configured slots, read PER CALL: the config layer can change under a running session. */
   const slotsNow = (): Record<string, unknown> | undefined => {
     try {
+      /** The runtime config service, when the composition mounts one. */
       const config = (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as ConfigLike | undefined
+      /** The `teamModels` subtree, accepted only when it really is an object. */
       const value = config?.get?.("teamModels")
       return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : undefined
     } catch {
@@ -100,6 +118,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /** The names a label may match: the union of the slots' member lists. */
   const knownNames = (): string[] => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
 
+  /** The provider to delegate to, defaulting to the harness's own `spawn` provider. */
   const configBaseName = typeof config.baseProvider === "string" && config.baseProvider !== "" ? config.baseProvider : "spawn"
 
   /**
@@ -111,7 +130,9 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
    */
   const baseProvider = (): ProviderLike | undefined => {
     try {
+      /** The configured provider name, re-read per call so a dismissal cannot leave the default behind. */
       const configured = typeof configBaseName === "string" && configBaseName !== "" ? configBaseName : "spawn"
+      /** What the catalogue answered for that name; a half-present catalogue answers nothing. */
       const found = dsh.subagentProvider(configured)
       return found === undefined || found === null ? undefined : (found as ProviderLike)
     } catch {
@@ -126,6 +147,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
    * route, which is the behaviour every teammate had before this row existed.
    */
   const routeFor = (request: RoutableRequest): SlotRoute | undefined => {
+    /** The roster member the label names, or undefined when it names none. */
     const member = memberFromLabel(labelOf(request), knownNames())
     if (member === undefined) return undefined
     return routeForMember(member, slotOf(member), slotsNow())
@@ -138,23 +160,29 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     // handed resolved child options and is responsible for the run they describe.
     capabilities: { agentOptions: true, outputSchema: true, depthLimit: true, toolFilter: true, persona: true },
     inheritsParentContext: false,
+    /** Delegate the preparation to the composition's provider, so the harness sees one normal child. */
     prepareContinuable(request: unknown): unknown {
+      /** The composition's own provider, resolved fresh so a late registration is still seen. */
       const base = baseProvider()
       if (base === undefined || typeof base.prepareContinuable !== "function") {
         throw new Error(`mpd-roster: the "${configBaseName}" provider is not registered in this composition, so no teammate can be prepared through ${PROVIDER_NAME}`)
       }
       return base.prepareContinuable(request)
     },
+    /** Apply the member's route to the request, then start the run on the composition's provider. */
     start(request: unknown): unknown {
+      /** The composition's own provider, resolved fresh so a late registration is still seen. */
       const base = baseProvider()
       if (base === undefined || typeof base.start !== "function") {
         throw new Error(`mpd-roster: the "${configBaseName}" provider is not registered in this composition, so no teammate can be started through ${PROVIDER_NAME}`)
       }
+      /** This request read through the routing contract; every other field is forwarded untouched. */
       const routable = request as RoutableRequest
       // A route resolution that THROWS (an incomplete slot) must reach the captain unchanged: the
       // spawn fails loudly, naming the member and the slot, and nothing is silently substituted.
       const routed = applyRoute(routable, routeFor(routable))
       if (routed !== routable) {
+        /** The options the harness will actually run on, logged so a wrong label is visible at spawn time. */
         const options = routed.agentOptions ?? {}
         console.log(`[mpd-roster] routed teammate "${String(labelOf(routable) ?? "")}" -> ${String(options.provider)}/${String(options.model)}${options.reasoningEffort === undefined ? "" : " @ " + String(options.reasoningEffort)}`)
       }

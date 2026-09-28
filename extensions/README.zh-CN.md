@@ -27,7 +27,7 @@ id 相同时的优先级为 **project → user → bundle**（先到者胜）；
 ## 附带示例
 
 `mpd-ext-example` 声明了全部四种贡献种类，并附带一个可用的、零依赖的 stdio MCP 服务器
-（[`server.mjs`](./mpd-ext-example/server.mjs)）。它以 `"enabled": false` 发布，因此全新
+（[`server.ts`](./mpd-ext-example/server.ts)）。它以 `"enabled": false` 发布，因此全新
 安装不会启动任何东西。
 
 若想端到端观察整条链路，把它复制到一个可写位置，将 `"enabled"` 改为 `true`，然后重启 `dsh`：
@@ -50,10 +50,10 @@ cp -r extensions/mpd-ext-example ~/.mpd/extensions/
 开发者 CLI 与运行时共享 **同一个** 校验器：`validate` 接受的清单，loader 也会接受。
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # 通过则退出码 0，否则逐条目报错
-bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/ext  # 清单 + skill + flow + role
-bun scripts/mpd-ext.mjs list                                  # 本主机会发现什么
-bun scripts/mpd-ext.mjs --self-test                           # CLI 自身的检查
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # 通过则退出码 0，否则逐条目报错
+bun scripts/mpd-ext.ts scaffold my-extension --dir /tmp/ext  # 清单 + skill + flow + role
+bun scripts/mpd-ext.ts list                                  # 本主机会发现什么
+bun scripts/mpd-ext.ts --self-test                           # CLI 自身的检查
 ```
 
 `validate` 在任何一项有问题时以退出码 `1` 结束，并对每个条目打印一行，因此可以安全用于 CI。

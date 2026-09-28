@@ -1,0 +1,165 @@
+{
+  "case": "docker-ui-flow-capture",
+  "measuredAtUtc": "2026-09-27T21:19:07Z",
+  "objective": "Start the project in Docker, walk the main usage flow, capture real screenshots, place them in the repo and reference them from the README with captions.",
+  "environment": {
+    "driver": "docker compose -f docker/ui/docker-compose.yml up -d --build",
+    "image": "mpd-ui-view:latest",
+    "imageId": "4243c8c4b598",
+    "inContainerInstall": "dsh plugin --profile web add . (real client flow inside ubuntu:24.04)",
+    "base": "http://127.0.0.1:3080 (container loopback), host mapping 127.0.0.1:3081",
+    "viewport": [
+      1600,
+      1000
+    ],
+    "browser": "playwright chromium 1.49.1 (headless, inside the container)"
+  },
+  "flow": {
+    "steps": [
+      {
+        "name": "01-first-run",
+        "ok": true,
+        "file": "01-first-run.png"
+      },
+      {
+        "name": "02-home",
+        "ok": true,
+        "file": "02-home.png"
+      },
+      {
+        "name": "03-plugins",
+        "ok": true,
+        "file": "03-plugins.png"
+      },
+      {
+        "name": "04-settings-mpd",
+        "ok": true,
+        "file": "04-settings-mpd.png"
+      },
+      {
+        "name": "05-settings-agent-presets",
+        "ok": true,
+        "file": "05-settings-agent-presets.png"
+      },
+      {
+        "name": "06-team-panel",
+        "ok": true,
+        "file": "06-team-panel.png"
+      }
+    ],
+    "checks": {
+      "homeShowsMpdPreset": true,
+      "pluginsShowsInstalledBundle": true,
+      "presetsShowMpdDefault": true,
+      "mpdSectionRendered": true,
+      "sessionCreatedOnMpdPreset": true,
+      "teamPanelShowsRoster": true
+    },
+    "sessionCreate": {
+      "status": 200,
+      "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1790543898199\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-59998b62-6b81-42ef-8ef3-0a7b97ca7abd\",\"agentPreset\":\"mpd\"}}}"
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "settingsNav": [
+      "General",
+      "Models",
+      "Built-in plugins",
+      "Agent presets",
+      "MPD"
+    ],
+    "note": "A session is created through the same session/create RPC the app uses, with agentPreset=mpd; the gateway refuses that request when any row of the preset failed to activate, so the 200 is the preset MOUNT proof."
+  },
+  "screenshots": {
+    "docs/assets/images/web-ui-session.png": {
+      "source": "docker/ui/out/shots/06-team-panel.png",
+      "docSha256": "2eeb0327b4a1691a20942cdcc97734dcd73670c35287ef81c00fb762b71de4d7",
+      "sourceSha256": "2eeb0327b4a1691a20942cdcc97734dcd73670c35287ef81c00fb762b71de4d7",
+      "byteIdentical": true,
+      "copiedFromShippedRun": true
+    },
+    "docs/assets/images/web-ui-home.png": {
+      "source": "docker/ui/out/shots/02-home.png",
+      "docSha256": "e6d67b84fd9fd9a63080bb6882c94a7b509c61accc149772641509d89a16a04a",
+      "sourceSha256": "e6d67b84fd9fd9a63080bb6882c94a7b509c61accc149772641509d89a16a04a",
+      "byteIdentical": true,
+      "copiedFromShippedRun": true
+    },
+    "docs/assets/images/web-ui-plugins.png": {
+      "source": "docker/ui/out/shots/03-plugins.png",
+      "docSha256": "b11edbc1950b66625ecfe1ac043dbe58af145bd9b1318556d69b28b8d66f5b4a",
+      "sourceSha256": "b11edbc1950b66625ecfe1ac043dbe58af145bd9b1318556d69b28b8d66f5b4a",
+      "byteIdentical": true,
+      "copiedFromShippedRun": true
+    },
+    "docs/assets/images/web-ui-agent-presets.png": {
+      "source": "docker/ui/out/shots/05-settings-agent-presets.png",
+      "docSha256": "ada08144ba2929276a75b7a3c999c1978cd5fdfe2bbc2b7f6e08d499449b52f3",
+      "sourceSha256": "ada08144ba2929276a75b7a3c999c1978cd5fdfe2bbc2b7f6e08d499449b52f3",
+      "byteIdentical": true,
+      "copiedFromShippedRun": true
+    },
+    "docs/assets/images/web-ui-settings.png": {
+      "source": "docker/ui/out/shots/04-settings-mpd.png",
+      "docSha256": "9111beeb6f0998a5e1ea638561d996bdc878e0a7a5e8c51d18e61624ae1a52d6",
+      "sourceSha256": "9111beeb6f0998a5e1ea638561d996bdc878e0a7a5e8c51d18e61624ae1a52d6",
+      "byteIdentical": true,
+      "copiedFromShippedRun": true
+    }
+  },
+  "laneChange": {
+    "file": "docker/ui/entrypoint.sh",
+    "what": "the chromium system-library guard keys on libglib-2.0.so.0, not on the playwright package directory",
+    "symptomMeasured": "after a rebuilt image + recreated container the volume kept /data/node_modules/playwright, the old guard skipped, and the capture died with headless_shell: error while loading shared libraries: libglib-2.0.so.0",
+    "witness": "[ui] installing chromium's system libraries (playwright install-deps) then [ui] ready — web=:3080"
+  },
+  "docs": {
+    "readmeEn": "README.md",
+    "readmeZh": "README.zh-CN.md",
+    "hubEn": "docs/index.md",
+    "hubZh": "docs/index.zh-CN.md",
+    "inserted": [
+      {
+        "image": "web-ui-session.png",
+        "en": "hero",
+        "zh": "hero"
+      },
+      {
+        "image": "web-ui-plugins.png",
+        "en": "What the install mounts",
+        "zh": "这次安装挂载了哪些插件"
+      },
+      {
+        "image": "web-ui-home.png",
+        "en": "Quick start",
+        "zh": "快速上手"
+      },
+      {
+        "image": "web-ui-agent-presets.png",
+        "en": "Project rules and the main agent",
+        "zh": "主智能体与你的项目规则"
+      },
+      {
+        "image": "web-ui-settings.png",
+        "en": "Configuration",
+        "zh": "配置"
+      }
+    ]
+  },
+  "gates": [
+    {
+      "gate": "bun run verify:docs",
+      "result": "PASS",
+      "detail": "pairs=41 failed=0 violations=0 links=419 dead=0"
+    },
+    {
+      "gate": "local image-reference resolution (README.md, README.zh-CN.md, docs/index.md, docs/index.zh-CN.md, docs/design.md, docs/design.zh-CN.md)",
+      "result": "PASS",
+      "detail": "checked 20 local image refs; missing: 0"
+    }
+  ],
+  "notClaimed": [
+    "no live LLM turn is shown or attempted: the container stages no provider credential (AGENTS.md §10), so no model reply appears in any screenshot",
+    "the screenshots show the shipped bundle installed by the real client flow inside the container, not a host profile"
+  ]
+}

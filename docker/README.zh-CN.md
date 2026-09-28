@@ -5,7 +5,7 @@
 在仓库根目录执行一条命令：
 
 ```bash
-node scripts/docker-e2e.mjs
+node scripts/docker-e2e.ts
 ```
 
 它会通过 `docker/docker-compose.yml` 构建 `docker/Dockerfile`（一个纯净的 `ubuntu:24.04`，其中没有
@@ -37,10 +37,10 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
    packages/<pkg>/dist/<entry>.js`）。
 7. 切换到隔离的 `HOME=/root/sandbox-home` 与 `DSH_HOME=/root/sandbox-dsh`，然后执行真正的客户端安装：
    `cd /opt/mpd && dsh plugin --profile web add .`。
-8. 用受认可的封装器组合 profile（`node scripts/dump-config.mjs --profile web`），断言 mpd 行 id、
+8. 用受认可的封装器组合 profile（`node scripts/dump-config.ts --profile web`），断言 mpd 行 id、
    `preset-mpd` 行，以及三个官方 agent-team 行及其包名。**这一步只是 COMPOSITION（组合）证据**——它不会
    执行任何插件代码。
-9. 通过 `--patch` 插入注册插桩（`docker/probe.mjs`）来**启动**已安装的 profile，并从启动日志断言插件树
+9. 通过 `--patch` 插入注册插桩（`docker/probe.ts`）来**启动**已安装的 profile，并从启动日志断言插件树
    确实挂载了：探针的 `apply()` 执行过；适配器提供了 `mpdDsh`；通过适配器发起的一次内部工具调用返回
    `ok`；每一个核心 mpd 工具都从活体工具注册表应答；官方 TeamService 已挂载（`ctx.get("agentTeams")`
    → 类 `TeamService`，即 `mpd-agent-team` 行提供的服务）；官方 agent-team 工具同样从注册表应答；Web 应用
@@ -141,7 +141,7 @@ compose。
 
 - `docker/docker-compose.yml` 只声明**一个**服务与**一个**绑定挂载：证据目录 `/out`。它不挂载 `$HOME`、
   `~/.dsh`、`~/.mpd`、`~/.agents`、docker socket 或仓库本身，并且
-  `node scripts/docker-e2e.mjs --self-test` 会静态断言这一点。
+  `node scripts/docker-e2e.ts --self-test` 会静态断言这一点。
 - 容器内的 `HOME` 与 `DSH_HOME` 在工具链运行**之前**就被重定向到沙箱路径，`NPM_CONFIG_CACHE` /
   `BUN_INSTALL` 指向 `/opt/toolchain`，因此连包管理器缓存都不会落到真实 home。
 - 证据中的本地 Web UI token 由两道彼此独立的脱敏（容器内的 reporter 与宿主机驱动）清除；reporter 还会重新读取
@@ -150,8 +150,8 @@ compose。
 ## 开关与退出码
 
 ```bash
-node scripts/docker-e2e.mjs --self-test   # 离线：不需要 docker，也不需要网络
-node scripts/docker-e2e.mjs --no-build    # 复用已有的 mpd-docker-e2e:local 镜像
+node scripts/docker-e2e.ts --self-test   # 离线：不需要 docker，也不需要网络
+node scripts/docker-e2e.ts --no-build    # 复用已有的 mpd-docker-e2e:local 镜像
 ```
 
 不需要驱动时的原始 compose 路径：
@@ -183,7 +183,7 @@ docker。
 
 ## 自检
 
-`node scripts/docker-e2e.mjs --self-test` 是离线的，既不需要 docker 也不需要网络。它检验驱动自身的记账逻辑
+`node scripts/docker-e2e.ts --self-test` 是离线的，既不需要 docker 也不需要网络。它检验驱动自身的记账逻辑
 ——UTC 证据时间戳、判定到退出码的映射、脱敏规则、BUILDX_CONFIG 注入——以及 compose 文件、Dockerfile、
 ignore 文件与 entrypoint 的静态规则，并对证据写入做一次往返验证。记账未被检验的驱动只会产出自信的废话，
 所以它先被检验。

@@ -1,0 +1,206 @@
+=== install ===
+/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-roster-provider
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-roster-provider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-tools
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-tools-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxPendingMessagesPerMember: 64
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== main arm (exit 1, 11492ms) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-9ee421fa-1849-452b-8c58-f6f3227bf7e2" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-9ee421fa-1849-452b-8c58-f6f3227bf7e2" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== failure arm (exit 1) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=marker binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-80a437aa-b7ad-4187-86de-38d0112b0657" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-80a437aa-b7ad-4187-86de-38d0112b0657" agentPreset=none
+[mpd-ext] qa-bad-json (/tmp/mpd-extension-lifecycle-K7tsq8/ws/.mpd/extensions/qa-bad-json/mpd-ext.json) rejected: descriptor must be a JSON object
+[mpd-ext] qa-bad-version (/tmp/mpd-extension-lifecycle-K7tsq8/ws/.mpd/extensions/qa-bad-version/mpd-ext.json) rejected: apiVersion must equal 1 (got 9)
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== session-a (cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws-a) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws-a
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-b03fa046-2e6e-4bc1-a143-a0b78a3bde34" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-b03fa046-2e6e-4bc1-a143-a0b78a3bde34" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== session-b (cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws-b) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-K7tsq8/ws-b
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-0d22c2f4-b5e8-4b9a-8b29-a97ce16a0b14" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-0d22c2f4-b5e8-4b9a-8b29-a97ce16a0b14" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== decoy-cwd-control (cwd=/tmp/mpd-extension-lifecycle-K7tsq8/decoy) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-lifecycle-K7tsq8/decoy
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-ext-user, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-63698d4e-a2cc-4180-a826-d470f7771a8e" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-63698d4e-a2cc-4180-a826-d470f7771a8e" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+
+
+=== scratch pack via the sanctioned --out flag (exit 0, out-dir /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-05-09.467Z/scratch-pack/mpd-package) ===
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 1212 files (644: 1200, 755: 12)
+[pack-mpd] staged package -> /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-05-09.467Z/scratch-pack/mpd-package  (out-dir source: command line (--out /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-lifecycle/2026-09-27T21-05-09.467Z/scratch-pack/mpd-package))
+
+
+=== packed negative control (fixture trees) ===
+{
+  "closed": {
+    "hasRow": true,
+    "hasPlugin": true,
+    "hasExtensions": true,
+    "ok": true
+  },
+  "no-plugin-package": {
+    "hasRow": true,
+    "hasPlugin": false,
+    "hasExtensions": true,
+    "ok": false
+  },
+  "no-extensions-root": {
+    "hasRow": true,
+    "hasPlugin": true,
+    "hasExtensions": false,
+    "ok": false
+  },
+  "no-mpd-ext-row": {
+    "hasRow": false,
+    "hasPlugin": true,
+    "hasExtensions": true,
+    "ok": false
+  }
+}
+
+=== canonical artifact stamp (before/after) ===
+{
+  "canonicalBefore": {
+    "present": true,
+    "root": "/home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package",
+    "files": 1212,
+    "manifestSha256": "a2fdf63376c1426668ffa1d60464e45825919809e10dd843b8686d243057dca5",
+    "patchSha256": "b32c0e76cc7e108cc2ba3e17930cb4b2433d509834446f2e39049a879e6a5b21"
+  },
+  "canonicalAfter": {
+    "present": true,
+    "root": "/home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package",
+    "files": 1212,
+    "manifestSha256": "a2fdf63376c1426668ffa1d60464e45825919809e10dd843b8686d243057dca5",
+    "patchSha256": "b32c0e76cc7e108cc2ba3e17930cb4b2433d509834446f2e39049a879e6a5b21"
+  },
+  "canonicalUnmoved": true
+}

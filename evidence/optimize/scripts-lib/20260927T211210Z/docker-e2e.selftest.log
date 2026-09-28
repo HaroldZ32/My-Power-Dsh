@@ -1,0 +1,58 @@
+[self-test] ok   utcStamp is a filesystem-safe UTC second stamp
+[self-test] ok   utcStamp has no colons
+[self-test] ok   evidenceDir lands under evidence/docker/client-install
+[self-test] ok   redact removes a boot URL token
+[self-test] ok   redact removes an api-key-shaped value
+[self-test] ok   redact leaves ordinary text alone
+[self-test] ok   decideExit(ok) === 0
+[self-test] ok   decideExit(failed) === 1
+[self-test] ok   decideExit(null) === 2
+[self-test] ok   summarize names the failed assertion
+[self-test] ok   docker/src does not exist
+[self-test] ok   docker/repo does not exist
+[self-test] ok   docker/checkout does not exist
+[self-test] ok   docker/context does not exist
+[self-test] ok   compose does not reference $HOME
+[self-test] ok   compose does not reference ~/.dsh
+[self-test] ok   compose does not reference ~/.mpd
+[self-test] ok   compose does not reference $DSH_HOME
+[self-test] ok   compose does not reference /root/.dsh
+[self-test] ok   compose does not reference /root/.mpd
+[self-test] ok   compose does not reference .agents
+[self-test] ok   compose declares exactly one bind mount
+[self-test] ok   the only bind mount is the evidence /out mount
+[self-test] ok   compose builds from the REPOSITORY ROOT context
+[self-test] ok   compose points at docker/Dockerfile
+[self-test] ok   compose names the image
+[self-test] ok   compose declares exactly one service
+[self-test] ok   Dockerfile FROM ubuntu:24.04
+[self-test] ok   Dockerfile copies the context (never a bind mount)
+[self-test] ok   Dockerfile.dockerignore excludes .git
+[self-test] ok   Dockerfile.dockerignore excludes node_modules
+[self-test] ok   Dockerfile.dockerignore excludes **/node_modules
+[self-test] ok   Dockerfile.dockerignore excludes dist
+[self-test] ok   Dockerfile.dockerignore excludes evidence
+[self-test] ok   Dockerfile.dockerignore excludes .toolchain
+[self-test] ok   Dockerfile.dockerignore does not exclude packages/
+[self-test] ok   entrypoint is strict bash
+[self-test] ok   entrypoint performs the real client install
+[self-test] ok   entrypoint installs the harness at a pin
+[self-test] ok   entrypoint isolates HOME and DSH_HOME
+[self-test] ok   entrypoint never copies a credential file
+[self-test] ok   entrypoint never reads the real harness home
+[self-test] ok   entrypoint asserts the build context was filtered
+[self-test] ok   entrypoint asserts the preset mount through /api/session/create
+[self-test] ok   entrypoint asserts the session-gate LISTENER registration
+[self-test] ok   entrypoint records the un-provable LLM assertion as null
+[self-test] ok   buildxEnv injects a writable BUILDX_CONFIG
+[self-test] ok   buildxEnv keeps the caller's BUILDX_CONFIG
+[self-test] ok   result.json round-trips byte-identically
+[self-test] ok   output.log is written redacted
+[self-test] ok   resolveDocker reports a missing docker precisely
+[self-test] ok   the scrub guard fails a planted leak (exit 1)
+[self-test] ok   the scrub guard marks the verdict red
+[self-test] ok   the guard names itself in failedNames
+[self-test] ok   no planted shape survives into the artifacts
+[self-test] ok   a clean report carries evidenceScrubbed: true
+[self-test] ok   a clean report exits 0
+[self-test] all arms passed (offline: no docker, no network)

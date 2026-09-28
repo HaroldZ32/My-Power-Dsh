@@ -19,7 +19,7 @@ boot, and the tool that produced it is committed (`docker/ui/**`).
   the relay's authority via `--trusted-host`.
 - the TUI inside `tmux` (`docker exec ui-ui-1 tmux -S /data/tui.sock capture-pane -p`).
 
-`docker/ui/capture.mjs` drives the container's OWN headless Chromium (Playwright) against the GUI and
+`docker/ui/capture.ts` drives the container's OWN headless Chromium (Playwright) against the GUI and
 writes PNGs plus a JSON report (visible text, the control list, console errors, failed requests) to
 `docker/ui/out/shots/`. Measured on a working run: 6 steps, `sessionCreate.status = 200`,
 `agentPreset: "mpd"`, no console errors, and the first-run modals dismissed by the script.
@@ -78,7 +78,7 @@ driver learns to clear them so the review below them is possible.
 - Observation environment: DONE and committed (`docker/ui/**`, screenshots under `docker/ui/out/shots/`).
 - F1/F2/F3: measured, recorded here.
 - W2 first slice: **DONE and VERIFIED ON SCREEN**. `packages/mpd-bundle-plugin/src/team-sidebar.js`
-  supplies the view; `src/web-client.js` registers it from the bundle's ONE applied client module.
+  supplies the view; `src/web-client.ts` registers it from the bundle's ONE applied client module.
   The tab renders in the harness's own right sidebar with the real projection:
   `Team · Team progress · 0/0 done · MEMBERS (1) · lead [lead] · TASKS (0) · No shared task yet.`,
   no console errors (`docker/ui/out/shots/04-sidebar.png`).
@@ -114,7 +114,7 @@ Two distinct causes, one fixed and one not:
 
 - **Fixed:** the card mounted through `require("@mpd-dsh/settings-card")`, a SIBLING
   `__ModuleLoader__.load` block the real loader's require map cannot serve — the same class as F1.
-  `scripts/build-mpd-client.mjs` now splices the card's own factory body into `@mpd-dsh/mpd` (the
+  `scripts/build-mpd-client.ts` now splices the card's own factory body into `@mpd-dsh/mpd` (the
   module the registry APPLIES) behind an IIFE, and `loadSettingsCard()` prefers it while keeping the
   `require` path as the offline harness's fallback. The boot log no longer carries
   `settings card module failed to load`.
@@ -140,14 +140,14 @@ Two distinct causes, one fixed and one not:
 - The Team tab now states what a captain acts on: `1 of 1 running · 0 ready · 0 blocked` beside the
   completion bar, read from the same projection (`ready` / `blockedBy` were already on the board).
 - Both empty states name the tool that fills them instead of saying "none yet".
-- `src/team-sidebar.js` was DELETED: its body had been hand-spliced into `web-client.js` and the two
+- `src/team-sidebar.js` was DELETED: its body had been hand-spliced into `web-client.ts` and the two
   copies could drift. One source now, in the module that is actually applied.
 
 ### The UI stack is self-sufficient
 
 `down -v` empties the named volume, and the capture then died on `ERR_MODULE_NOT_FOUND` while the
 reviewer read the PREVIOUS run's screenshots — a stale-evidence trap, not a UI bug. The entrypoint now
-installs the capture tooling into the volume itself and copies `capture.mjs` / `run-capture.sh` in from
+installs the capture tooling into the volume itself and copies `capture.ts` / `run-capture.sh` in from
 the image, so a rebuilt stack can always look at itself.
 
 ### F5 — the TUI's MPD settings section shows every knob as `（未设置）`
@@ -545,6 +545,6 @@ itself against a number the model pays every turn.
 
 ### 11.4 Verified on a real boot
 
-`node scripts/docker-e2e.mjs` on the final tree: `[driver] ok=true passed=42 failed=0 null=1`,
+`node scripts/docker-e2e.ts` on the final tree: `[driver] ok=true passed=42 failed=0 null=1`,
 `DRIVER_EXIT=0`, TUI lane green (`tui.laneExit=true`), with `boot.presetMount`, `boot.agentTeamTools`
 (every official team tool answering from an EXACT AGENT SCOPE) and `boot.sessionGateListener` all true.

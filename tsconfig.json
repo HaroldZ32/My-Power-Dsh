@@ -12,6 +12,14 @@
     ]
   },
   "include": [
-    "packages/*/src/**/*.ts"
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "packages/*/self-fix-tests/**/*.ts",
+    "scripts/**/*.ts",
+    "skills/*/scripts/**/*.ts",
+    "docker/**/*.ts",
+    "tests/**/*.ts",
+    "templates/**/*.ts",
+    "extensions/**/*.ts"
   ]
 }

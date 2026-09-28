@@ -33,9 +33,13 @@ export type { ChannelState }
 
 /** One record-stream event, as much of it as the fold reads. */
 export interface ChannelEventLike {
+  /** The event's type verbatim (`turn/start`, `tool/call`, `assistant/message`, ...). */
   type?: unknown
+  /** The record stream's own sequence number, when the event carries one. */
   seq?: unknown
+  /** The event's wall-clock time in ms epoch, when it states one. */
   time?: unknown
+  /** The event's payload, shape-checked at every read. */
   data?: unknown
 }
 
@@ -54,6 +58,7 @@ export interface ChannelView {
   inFlightTool: string | null
   /** The open turn/step, for diagnostics; null when no step is open. */
   turn: number | null
+  /** The open step's index inside that turn, or null when no step is open. */
   step: number | null
   /** The newest event time folded for this session, or null when none carried one. */
   lastEventAt: number | null
@@ -67,15 +72,21 @@ export interface ChannelView {
 
 /** One assistant-stream frame, as the enrichment seam delivers it. */
 export interface StreamFrameLike {
+  /** The frame's type: `start`, `end` or `settled`. */
   type?: unknown
+  /** The turn the frame belongs to; absent means the fold's open step. */
   turn?: unknown
+  /** The step the frame belongs to; absent means the fold's open step. */
   step?: unknown
+  /** The frame's time in ms epoch, stored as the streaming marker's stamp. */
   time?: unknown
 }
 
 /** The per-session fold state. */
 interface SessionFold {
+  /** The turn this session currently has open, or null between turns. */
   openTurn: number | null
+  /** The step open inside that turn, with its start time; null between steps. */
   openStep: { turn: number; step: number; at: number } | null
   /** Committed answers: `turn/step` -> the event time that committed them. */
   answered: Map<string, number>
@@ -83,8 +94,11 @@ interface SessionFold {
   streaming: Map<string, number>
   /** Open tool calls: callId -> its start. */
   openCalls: Map<string, { since: number; tool: string | null }>
+  /** Newest event time folded for this session, or null when none carried one. */
   lastEventAt: number | null
+  /** Newest event type folded for this session (diagnostics). */
   lastEventType: string | null
+  /** How many events this session's fold consumed. */
   events: number
 }
 
@@ -93,14 +107,17 @@ function stepKey(turn: number, step: number): string {
   return String(turn) + "/" + String(step)
 }
 
+/** The value as a plain record, or null when it is not a non-null object. */
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : null
 }
 
+/** The value as a finite number, or null (NaN and non-numbers included). */
 function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
+/** The value as a non-empty string, or null. */
 function asString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }
@@ -123,6 +140,7 @@ function dataOf(event: unknown): Record<string, unknown> {
  * the tick's `now`, and §1 rule 2 says only an OUTSTANDING request has a clock).
  */
 export function eventTimeOf(event: unknown): number | null {
+  // The event as a record, so both time spellings can be probed without a throw.
   const record = asRecord(event)
   return asNumber(record?.time) ?? asNumber(dataOf(event).time)
 }
@@ -135,9 +153,13 @@ export function eventTimeOf(event: unknown): number | null {
  * level. A shape that carries none is handled by `completeOldest` below.
  */
 export function callIdOf(event: unknown): string | null {
+  // The event's payload, where the call id is carried.
   const data = dataOf(event)
+  // The model-facing message a result may wrap the call id in.
   const message = asRecord(data.message)
+  // The message's content blocks; a non-array reads as "no blocks".
   const content = Array.isArray(message?.content) ? (message?.content as unknown[]) : []
+  // The first content block, which is where a tool result names its call.
   const first = asRecord(content[0])
   return (
     asString(data.callId) ??
@@ -150,6 +172,7 @@ export function callIdOf(event: unknown): string | null {
 
 /** The tool name a `tool/call` names. */
 function toolNameOf(event: unknown): string | null {
+  // The call event's payload, which names the tool.
   const data = dataOf(event)
   return asString(data.name) ?? asString(asRecord(data.message)?.name)
 }
@@ -162,6 +185,7 @@ function toolNameOf(event: unknown): string | null {
  * (a future harness event must never be able to take the watchdog down).
  */
 export class ChannelFold {
+  /** Per-session fold state, keyed by the member session id. */
   private readonly folds = new Map<string, SessionFold>()
 
   /** How many events were folded (including unrecognized ones). */
@@ -171,22 +195,30 @@ export class ChannelFold {
 
   /** Fold ONE record event for one session. */
   apply(sessionId: unknown, event: unknown): ChannelView | null {
+    // The session id, accepted only as a non-empty string.
     const id = asString(sessionId)
     if (id === null) {
       this.unattributed += 1
       return null
     }
+    // This session's fold, created on first sight of the session.
     const fold = this.foldOf(id)
     this.applied += 1
+    // The event's type; null marks an event the fold cannot read at all.
     const type = eventTypeOf(event)
+    // The event's time, or null when it states none (the fold then keeps its own).
     const at = eventTimeOf(event)
     fold.events += 1
     if (type !== null) fold.lastEventType = type
     if (at !== null) fold.lastEventAt = at
     if (type === null) return this.view(id)
+    // The event's payload, where the turn/step and tool fields live.
     const data = dataOf(event)
+    // The turn the event belongs to, when it states one.
     const turn = asNumber(data.turn)
+    // The step inside that turn, when the event states one.
     const step = asNumber(data.step)
+    // The stamp used by state that needs a clock; 0 marks "the event stated no time".
     const time = at ?? 0
 
     try {
@@ -229,11 +261,13 @@ export class ChannelFold {
           break
         }
         case "tool/call": {
+          // The id pairing this call with its result, when readable.
           const callId = callIdOf(event)
           if (callId !== null) fold.openCalls.set(callId, { since: time, tool: toolNameOf(event) })
           break
         }
         case "tool/result": {
+          // The id pairing this result with its call, when readable.
           const callId = callIdOf(event)
           if (callId !== null) fold.openCalls.delete(callId)
           else this.completeOldest(fold)
@@ -259,18 +293,25 @@ export class ChannelFold {
    * @returns whether a fold consumed the frame.
    */
   noteStreamFrame(sessionId: unknown, frame: unknown): boolean {
+    // The session id, accepted only as a non-empty string.
     const id = asString(sessionId)
     if (id === null) {
       this.unattributed += 1
       return false
     }
+    // The session's existing fold; a frame for an unknown session is dropped.
     const fold = this.folds.get(id)
     if (fold === undefined) return false
+    // The frame as a record, so its fields can be probed safely.
     const record = asRecord(frame)
+    // The frame's type verbatim (`start`, `end`, `settled`).
     const type = asString(record?.type)
+    // The frame's turn, defaulting to the fold's open step.
     const turn = asNumber(record?.turn) ?? fold.openStep?.turn ?? null
+    // The frame's step, defaulting to the fold's open step.
     const step = asNumber(record?.step) ?? fold.openStep?.step ?? null
     if (turn === null || step === null) return false
+    // The `turn/step` key the streaming marker is stored under.
     const key = stepKey(turn, step)
     if (type === "start") {
       fold.streaming.set(key, asNumber(record?.time) ?? fold.lastEventAt ?? 0)
@@ -282,20 +323,27 @@ export class ChannelFold {
 
   /** Whether this session has any folded event (the §4 "no channel evidence" test). */
   has(sessionId: string): boolean {
+    // The session's fold, absent when no event was ever folded for it.
     const fold = this.folds.get(sessionId)
     return fold !== undefined && fold.events > 0
   }
 
   /** The conclusion for one session, or `null` when the fold has no data for it. */
   view(sessionId: unknown): ChannelView | null {
+    // The session id, accepted only as a non-empty string.
     const id = asString(sessionId)
     if (id === null) return null
+    // The session's fold state, absent for a session that was never folded.
     const fold = this.folds.get(id)
     if (fold === undefined || fold.events === 0) return null
 
+    // The single state this view will report.
     let state: ChannelState
+    // The open step's start, set only for OUTSTANDING.
     let outstandingSince: number | null = null
+    // The oldest open call's start, set only for IN-FLIGHT.
     let inFlightSince: number | null = null
+    // The oldest open call's tool name, set only for IN-FLIGHT.
     let inFlightTool: string | null = null
 
     if (fold.openTurn === null) {
@@ -306,14 +354,18 @@ export class ChannelFold {
       // The turn has not closed but no step is open: the loop is between steps.
       state = "ALIVE"
     } else {
+      // The key of the step currently open.
       const key = stepKey(fold.openStep.turn, fold.openStep.step)
+      // Whether a committed answer covers that step.
       const answered = fold.answered.has(key)
+      // Whether an enrichment start frame covers that step.
       const streaming = fold.streaming.has(key)
       if (!answered && !streaming) {
         state = "OUTSTANDING"
         outstandingSince = fold.openStep.at
       } else if (fold.openCalls.size > 0) {
         state = "IN-FLIGHT"
+        // The earliest open call, whose start is the IN-FLIGHT clock.
         let oldest: { since: number; tool: string | null } | null = null
         for (const call of fold.openCalls.values()) if (oldest === null || call.since < oldest.since) oldest = call
         inFlightSince = oldest === null ? null : oldest.since
@@ -344,8 +396,10 @@ export class ChannelFold {
 
   /** The fold's own counters, for the status surface. */
   snapshot(): { events: number; unattributed: number; sessions: number; states: Record<string, ChannelState> } {
+    // The per-session state map this snapshot reports.
     const states: Record<string, ChannelState> = {}
     for (const id of this.sessions()) {
+      // The session's conclusion; a fold with no events contributes nothing.
       const view = this.view(id)
       if (view !== null) states[id] = view.state
     }
@@ -357,7 +411,9 @@ export class ChannelFold {
     this.folds.delete(sessionId)
   }
 
+  /** The session's fold state, created empty on first use. */
   private foldOf(sessionId: string): SessionFold {
+    // The existing fold state for this session, if any.
     let fold = this.folds.get(sessionId)
     if (fold === undefined) {
       fold = {
@@ -385,7 +441,9 @@ export class ChannelFold {
    */
   private completeOldest(fold: SessionFold): void {
     if (fold.openCalls.size === 0) return
+    // The call id of the earliest open call, once one is found.
     let oldestId: string | null = null
+    // Start time of the earliest open call seen so far, in ms epoch.
     let oldestSince = Number.POSITIVE_INFINITY
     for (const [callId, call] of fold.openCalls) {
       if (call.since < oldestSince) {

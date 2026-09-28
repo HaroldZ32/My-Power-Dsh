@@ -36,9 +36,13 @@ export const ACKNOWLEDGE_OPTION = "acknowledge"
  * context: a partial or older service must degrade, never throw into a render path.
  */
 export interface WatchdogServiceLike {
+  /** Team ids the watchdog currently holds in this workspace. */
   heldTeams?(workspace?: string): string[]
+  /** Incidents this reader has not acknowledged yet. */
   unread?(reader: string, workspace?: string): IncidentRecord[]
+  /** Advances this reader's watermark; reports failure instead of pretending it landed. */
   acknowledge?(reader: string, upTo: number, workspace?: string): { ok: boolean; watermark: number; error?: string }
+  /** The whole durable view in one read, when the service offers it. */
   view?(reader: string, workspace?: string): { workspace: string | null; holds: string[]; unread: IncidentRecord[] }
 }
 
@@ -65,10 +69,13 @@ export function readWatchdogView(service: WatchdogServiceLike | undefined, reade
   if (service === undefined || service === null) return EMPTY_WATCHDOG_VIEW
   try {
     if (typeof service.view === "function") {
+      /** The service's own view; a nullish answer falls through to the two-call form below. */
       const view = service.view(reader, workspace)
       if (view !== undefined && view !== null) return { holds: [...(view.holds ?? [])], unread: [...(view.unread ?? [])] }
     }
+    /** Held teams from the per-call accessor, empty when the service does not expose it. */
     const holds = typeof service.heldTeams === "function" ? (service.heldTeams(workspace) ?? []) : []
+    /** Unread incidents from the per-call accessor, empty when the service does not expose it. */
     const unread = typeof service.unread === "function" ? (service.unread(reader, workspace) ?? []) : []
     return { holds: [...holds], unread: [...unread] }
   } catch {
@@ -93,6 +100,7 @@ export function heldTeams(service: WatchdogServiceLike | undefined, workspace: s
  * from "you missed N incident(s)" (replay), and the acknowledge is what retires the replay.
  */
 export function watchdogNotice(view: WatchdogView): string | undefined {
+  /** The notice's halves: the live hold first, then the unread replay count. */
   const parts: string[] = []
   if (view.holds.length > 0) parts.push(`held ${view.holds.join(", ")}`)
   if (view.unread.length > 0) parts.push(`${view.unread.length} unread incident${view.unread.length === 1 ? "" : "s"}`)
@@ -101,18 +109,22 @@ export function watchdogNotice(view: WatchdogView): string | undefined {
 
 /** Join the notice providers the status line renders, or undefined when none has anything to say. */
 export function composeNotices(...notices: readonly (string | undefined)[]): string | undefined {
+  /** The providers that had something to say, in call order. */
   const parts = notices.filter((notice): notice is string => typeof notice === "string" && notice.length > 0)
   return parts.length === 0 ? undefined : parts.join(" · ")
 }
 
 /** The dialog request for the replayed condition; returned so a test can assert the exact text. */
 export interface WatchdogDialogRequest {
+  /** The dialog's title, carrying the notice text and the reason it is shown. */
   readonly title: string
+  /** The two choices: acknowledge now, or keep the incidents for the next start. */
   readonly options: readonly { id: string; label: string; description?: string }[]
 }
 
 /** Build the replay dialog: the notice text plus the acknowledge action. */
 export function watchdogDialog(view: WatchdogView): WatchdogDialogRequest {
+  /** Why the dialog is shown: a live hold, or incidents recorded while nobody watched. */
   const detail =
     view.holds.length > 0
       ? `Team ${view.holds.join(", ")} is held by the team watchdog (a member went silent).`
@@ -161,13 +173,19 @@ export function attachWatchdogFrontDoor(
     replayOnAttach?: boolean
   },
 ): WatchdogFrontDoor {
+  /** The resolved service, undefined until the deferred activation runs. */
   let service: WatchdogServiceLike | undefined
+  /** Whether the dialog seam is composed; the replay needs both seams. */
   let dialogsReady = false
+  /** Whether the absent-service warning was already emitted; it is stated once. */
   let warnedAbsent = false
+  /** Whether the automatic replay already ran; it must never repeat. */
   let replayed = false
 
+  /** Whether the watchdog service is mounted, i.e. whether its store is readable at all. */
   const available = (): boolean => service !== undefined && service !== null
 
+  /** Reads the durable view, degrading to the empty view on any failure. */
   const read = (): WatchdogView => {
     try {
       return readWatchdogView(service, WATCHDOG_READER, options.workspaceRoot())
@@ -177,12 +195,14 @@ export function attachWatchdogFrontDoor(
     }
   }
 
-  const acknowledge: WatchdogFrontDoor["acknowledge"] = (upTo) => {
+  /** Advances the reader's watermark through the service; never claims a write that did not land. */
+  const acknowledge: WatchdogFrontDoor["acknowledge"] = (upTo: number): { ok: boolean; watermark: number; error?: string } => {
     if (!available() || typeof service?.acknowledge !== "function") {
       // Never pretend an acknowledge landed: the caller and the user are told it did not.
       return { ok: false, watermark: 0, error: `the ${WATCHDOG_SERVICE} service is not mounted — the watchdog store was not written` }
     }
     try {
+      /** The service's own answer, which decides whether the post-ack hook runs. */
       const result = service.acknowledge(WATCHDOG_READER, upTo, options.workspaceRoot())
       if (result !== undefined && result !== null && result.ok === true) options.onAcknowledged?.()
       return result ?? { ok: false, watermark: 0, error: "the acknowledge returned nothing" }
@@ -191,7 +211,8 @@ export function attachWatchdogFrontDoor(
     }
   }
 
-  const offer: WatchdogFrontDoor["offer"] = async () => {
+  /** Offers the replay dialog when incidents are unread, and acknowledges the user's choice. */
+  const offer: WatchdogFrontDoor["offer"] = async (): Promise<string | undefined> => {
     if (!available()) {
       // The absent-service path, stated once: no store, therefore nothing to replay and no action
       // to offer. The status line stays the plain board line and the user sees no dialog.
@@ -203,18 +224,23 @@ export function attachWatchdogFrontDoor(
       }
       return undefined
     }
+    /** The durable view this offer is based on. */
     const view = read()
     if (view.unread.length === 0) return undefined
     if (!options.dialogs.available()) return undefined
+    /** The dialog request, built from that same view. */
     const request = watchdogDialog(view)
+    /** The user's choice; undefined when the dialog was cancelled. */
     const choice = await options.dialogs.select(request.title, request.options)
     if (choice === ACKNOWLEDGE_OPTION) {
+      /** The newest incident timestamp, i.e. the watermark an acknowledge advances to. */
       const upTo = view.unread.reduce((max, record) => Math.max(max, record.at), 0)
       acknowledge(upTo)
     }
     return choice
   }
 
+  /** Runs the once-only automatic replay, when both seams are ready. */
   const maybeReplay = (): void => {
     if (replayed || !dialogsReady || !available()) return
     replayed = true

@@ -19,7 +19,7 @@
         "serverName": "lint-mcp",
         "transport": "stdio",
         "command": "node",
-        "args": ["server.mjs"],
+        "args": ["server.ts"],
         "cwd": ".",
         "env": {},
         "connectTimeoutMs": 10000,

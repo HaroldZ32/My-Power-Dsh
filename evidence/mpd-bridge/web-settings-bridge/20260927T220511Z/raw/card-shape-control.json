@@ -1,0 +1,72 @@
+{
+  "control": "the PRE-MOVE `settings.plugin.item` card registration re-injected into the REAL built client bytes (the defect this lane was red on)",
+  "mutationLanded": true,
+  "flippedChecks": [
+    "W2a",
+    "W2b"
+  ],
+  "greenChecks": [
+    {
+      "id": "W2a",
+      "ok": true,
+      "detail": "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)"
+    },
+    {
+      "id": "W2b",
+      "ok": true,
+      "detail": "the built client names the slot \"settings.section\" with id \"mpd\", order 20, locale \"mpdSettings\" (want \"settings.section\" / \"mpd\" / 20 / \"mpdSettings\")"
+    },
+    {
+      "id": "W2c",
+      "ok": false,
+      "detail": "the section's mount is DEFERRED through ctx.inject (never a declared dependency)"
+    },
+    {
+      "id": "W2d",
+      "ok": true,
+      "detail": "the client still declares only the stable seams"
+    },
+    {
+      "id": "W2e",
+      "ok": true,
+      "detail": "the section's copy is the same disclosure the TUI states"
+    },
+    {
+      "id": "W2f",
+      "ok": true,
+      "detail": "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)"
+    }
+  ],
+  "redChecks": [
+    {
+      "id": "W2a",
+      "ok": true,
+      "detail": "the BUILT client injects the `settings.section` LIST slot and registers the shipped descriptor (name/id/order/label/locale/inject)"
+    },
+    {
+      "id": "W2b",
+      "ok": false,
+      "detail": "the built client names the slot \"settings.plugin.item\" with id \"mpd\", order 20, locale \"mpdSettings\" (want \"settings.section\" / \"mpd\" / 20 / \"mpdSettings\")"
+    },
+    {
+      "id": "W2c",
+      "ok": false,
+      "detail": "the section's mount is DEFERRED through ctx.inject (never a declared dependency)"
+    },
+    {
+      "id": "W2d",
+      "ok": true,
+      "detail": "the client still declares only the stable seams"
+    },
+    {
+      "id": "W2e",
+      "ok": true,
+      "detail": "the section's copy is the same disclosure the TUI states"
+    },
+    {
+      "id": "W2f",
+      "ok": false,
+      "detail": "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)"
+    }
+  ]
+}

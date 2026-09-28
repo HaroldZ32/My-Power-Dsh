@@ -36,6 +36,16 @@ evidence
 .bun-tmp
 .mpd
 
+# INSTALL-AFFECTING CONFIG: a stray one at the context root silently changes what pnpm resolves
+# (measured 2026-09-28: an untracked `pnpm-workspace.yaml` carrying pnpm's own `allowBuilds` template
+# turned the container's install into an `ERR_PNPM_IGNORED_BUILDS` failure that belonged to the HOST,
+# not to the bundle). The entrypoint asserts their absence for the same reason, so this pattern and
+# that assertion are two halves of one rule.
+pnpm-workspace.yaml
+pnpm-lock.yaml
+.npmrc
+.pnpmfile.cjs
+
 # this case's own scratch
 docker/out
 docker/.selftest

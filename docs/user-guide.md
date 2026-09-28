@@ -48,7 +48,7 @@ cd <repo> && dsh plugin --profile dsh-tui add .
 The same bundle installs into the terminal UI as the **THIRD patch layer**, on top of the TUI
 package: after the install `dsh.profile.bundles` is
 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
-`node scripts/dump-config.mjs --profile dsh-tui` (the repo wrapper, which prints the
+`node scripts/dump-config.ts --profile dsh-tui` (the repo wrapper, which prints the
 composition-only warning in its own output) shows our rows in a layer of their own
 (`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`) with the `mpd` preset as the
 session default. Start the TUI with the `dsh-tui` launcher (alias `dst`):
@@ -67,7 +67,7 @@ its NOT-CLAIMED list and its verification record are in
 ### Packed package (release / publishing)
 
 ```bash
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/ (relocatable)
+node scripts/pack-mpd.ts                          # -> dist/mpd-package/ (relocatable)
 dsh plugin --profile web add dist/mpd-package
 dsh plugin --profile dsh-tui add dist/mpd-package
 # or from any published location
@@ -82,9 +82,9 @@ the scaffold
 packed-form patch) that does not depend on a checkout. Since the 2026-09-17 packaging change the
 artifact is **author-facing** too: the extension CLI, the scaffold template and the guides all
 travel inside the package, so an installed bundle answers
-`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>` and its `docs/` is readable in
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>` and its `docs/` is readable in
 place. Use it when publishing, shipping a tarball, or testing relocation; a local install never
-needs it. What the artifact must carry is not left to trust: `node scripts/verify-pack-closure.mjs`
+needs it. What the artifact must carry is not left to trust: `node scripts/verify-pack-closure.ts`
 fails loudly when a declared asset is absent, when `docs/`+`templates/` differ from the source file
 for file, or when the packed manifest's `files` list disagrees with what is on disk.
 
@@ -106,13 +106,13 @@ workmate library (`~/.mpd/workmate`) and each workspace's `.mpd/` state.
 
 Upgrading from a bundle `<= 0.2.6` (which copied presets + skills into `$DSH_HOME`): the first
 boot of `>= 0.3.0` removes those stamped copies itself. Unstamped copies left by the legacy
-`scripts/install-profile.mjs` flow are not touched — delete them by hand if you used that flow.
+`scripts/install-profile.ts` flow are not touched — delete them by hand if you used that flow.
 
 ### Legacy installer (dev/QA only)
 
 ```bash
-node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]
-node scripts/install-profile.mjs            # --dry-run prints the plan, writes nothing
+node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]
+node scripts/install-profile.ts            # --dry-run prints the plan, writes nothing
 ```
 
 Never run the legacy installer against the real home from a QA context (`--dsh-home` exists for
@@ -514,8 +514,8 @@ author declared — the keys stay visible, the secrets do not reach your session
 flows. Validate a directory before trusting it:
 
 ```bash
-bun scripts/mpd-ext.mjs validate <dir>     # exit 1 + one line per problem
-bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skeleton
+bun scripts/mpd-ext.ts validate <dir>     # exit 1 + one line per problem
+bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skeleton
 ```
 
 **The honest limits.**
@@ -562,7 +562,7 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
   roots (`~/.mpd/extensions/`, `<bundle>/extensions/`) may contribute tools and providers. Move
   the directory, or drop the unsupported kinds from the manifest.
 - Workmates tab missing from the sidebar → rebuild the shipped client
-  (`node scripts/build-mpd-client.mjs`, then reload) and confirm the profile has the sidebar host.
+  (`node scripts/build-mpd-client.ts`, then reload) and confirm the profile has the sidebar host.
   The bundle installs it itself (declared dependency + the `mpd-better-sidebar` row); if
   `dsh-better-sidebar` is absent from the profile, the install did not materialize the dependency —
   run `bun install` in the checkout (or
@@ -756,9 +756,9 @@ mpd_flow_show { "id": "<flow id>" }
 ```
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example    # exit 1 + one line per problem
-bun scripts/mpd-ext.mjs list
-bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp --with-mcp
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example    # exit 1 + one line per problem
+bun scripts/mpd-ext.ts list
+bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 ```
 
 ### 13.9 The team loop (Lead and member)

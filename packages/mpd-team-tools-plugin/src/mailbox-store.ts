@@ -32,20 +32,31 @@ export type MailboxRecord =
 
 /** A message as the log knows it. */
 export interface MailMessage {
+  /** Message id, unique within the mailbox; the later `delivered`/`read` records point at it. */
   id: string
+  /** Sender's session id; a member may not address itself, so this differs from the recipient. */
   fromId: string
+  /** Sender's display name, kept so a folded message reads without a roster lookup. */
   fromName: string
+  /** Recipient's session id — the member this message is TARGETED at. */
   toId: string
+  /** Recipient's display name at send time; a later rename never rewrites history. */
   toName: string
+  /** The one-line subject; the oldest unread subject is what a status view surfaces. */
   subject: string
+  /** The full instruction text, stored and delivered verbatim. */
   body: string
+  /** ISO instant the `send` record was written. */
   sentAt: string
+  /** ISO instant the transport accepted it; absent means it is still queued. */
   deliveredAt?: string
+  /** ISO instant the RECIPIENT acknowledged it — the transition only this mailbox records. */
   readAt?: string
 }
 
 /** The folded state: messages in insertion order. */
 export interface MailboxState {
+  /** The folded messages in insertion order, each carrying its own delivery and read state. */
   messages: MailMessage[]
 }
 
@@ -56,11 +67,14 @@ export function mailboxPath(workspace: string): string {
 
 /** Fold the log into the current state. Unknown or malformed lines are SKIPPED, never fatal. */
 export function fold(records: readonly unknown[]): MailboxState {
+  /** The fold's working state: one message per `send` record, keyed by id. */
   const byId = new Map<string, MailMessage>()
   for (const raw of records) {
+    /** The current log line, read as a partial record because a malformed one must be skipped. */
     const record = raw as Partial<MailboxRecord> | null
     if (record === null || typeof record !== "object") continue
     if (record.t === "send") {
+      /** The line narrowed to the `send` variant, the only one that creates a message. */
       const send = record as Extract<MailboxRecord, { t: "send" }>
       if (typeof send.id !== "string" || send.id === "") continue
       byId.set(send.id, {
@@ -76,9 +90,12 @@ export function fold(records: readonly unknown[]): MailboxState {
       continue
     }
     if (record.t === "delivered" || record.t === "read") {
+      /** The message id this state record points at; an empty one can never match. */
       const id = String((record as { id?: unknown }).id ?? "")
+      /** The message being advanced, or undefined when the log references an unknown id. */
       const message = byId.get(id)
       if (message === undefined) continue
+      /** The instant carried by this state record. */
       const at = String((record as { at?: unknown }).at ?? "")
       if (record.t === "delivered") message.deliveredAt = at
       else message.readAt = at
@@ -89,14 +106,17 @@ export function fold(records: readonly unknown[]): MailboxState {
 
 /** Every record in the log, oldest first. A missing file is an empty log. */
 export function readRecords(workspace: string): unknown[] {
+  /** The mailbox log for this workspace; a missing file reads as an empty log. */
   const path = mailboxPath(workspace)
   if (!existsSync(path)) return []
+  /** The log's raw text, or the empty string when the file cannot be read. */
   let text = ""
   try {
     text = readFileSync(path, "utf8")
   } catch {
     return []
   }
+  /** Parsed records in file order; only the last line may be a partial write. */
   const out: unknown[] = []
   for (const line of text.split("\n")) {
     if (line.trim() === "") continue
@@ -137,10 +157,15 @@ export function undeliveredOf(state: MailboxState, memberId: string): MailMessag
 
 /** A per-member mail summary, for a status view. */
 export interface MailSummary {
+  /** The member's session id, which is what an inbox filters on. */
   memberId: string
+  /** The member's display name as of first appearance in the log. */
   memberName: string
+  /** Messages ever sent to this member and still present in the log. */
   total: number
+  /** Messages this member has not acknowledged. */
   unread: number
+  /** Messages the transport has not accepted yet. */
   undelivered: number
   /** The oldest unread subject, so a reader sees WHAT is waiting without listing everything. */
   oldestUnread?: string
@@ -148,9 +173,12 @@ export interface MailSummary {
 
 /** Summarise every member that has mail, in the order they first appear. */
 export function summarise(state: MailboxState): MailSummary[] {
+  /** Member ids in first-appearance order, so the summary is stable across folds. */
   const order: string[] = []
+  /** The accumulating per-member summaries, keyed by recipient id. */
   const seen = new Map<string, MailSummary>()
   for (const message of state.messages) {
+    /** The recipient's summary, created on first sight of that member. */
     let entry = seen.get(message.toId)
     if (entry === undefined) {
       entry = { memberId: message.toId, memberName: message.toName, total: 0, unread: 0, undelivered: 0 }
@@ -175,11 +203,17 @@ export type SendResult = { ok: true; message: MailMessage } | { ok: false; reaso
 
 /** What one send needs. */
 export interface SendInput {
+  /** Sender's session id; equal to `toId` is refused as a self-send. */
   fromId: string
+  /** Sender's display name, recorded onto the message. */
   fromName: string
+  /** Recipient session id; it must appear in `memberIds` or the send is refused. */
   toId: string
+  /** Recipient's display name, echoed into refusals so they name a person, not an id. */
   toName: string
+  /** One-line subject, stored exactly as given. */
   subject: string
+  /** The instruction text, stored as given and delivered verbatim. */
   body: string
   /** The live roster: a message goes to a MEMBER, never to an id nobody serves. */
   memberIds: readonly string[]
@@ -202,13 +236,18 @@ export function send(workspace: string, input: SendInput, now: Date): SendResult
   if (!input.memberIds.includes(input.toId)) {
     return { ok: false, reason: "unknown-recipient", detail: `"${input.toName || input.toId}" is not a member of this team` }
   }
+  /** The mailbox as it stands, which is what the backlog bound is measured against. */
   const state = readMailbox(workspace)
+  /** How many messages to this member the transport has not accepted yet. */
   const backlog = undeliveredOf(state, input.toId).length
+  /** Effective backlog bound; zero or less disables the bound entirely. */
   const cap = input.maxUndelivered ?? 8
   if (cap > 0 && backlog >= cap) {
     return { ok: false, reason: "backlog-full", detail: `"${input.toName || input.toId}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` }
   }
+  /** The send instant, shared by the message record and the log line. */
   const at = now.toISOString()
+  /** The message as it will be folded back out of the log. */
   const message: MailMessage = {
     id: `mail-${at.replace(/[-:.TZ]/g, "").slice(0, 14)}-${(state.messages.length + 1).toString().padStart(3, "0")}`,
     fromId: input.fromId,
@@ -229,10 +268,14 @@ export function send(workspace: string, input: SendInput, now: Date): SendResult
  * @returns the ids that actually moved (a repeat is not an error, and not a change either).
  */
 export function markDelivered(workspace: string, ids: readonly string[], now: Date): string[] {
+  /** The mailbox as it stands, so a repeat delivery is a no-op rather than a second record. */
   const state = readMailbox(workspace)
+  /** Messages indexed by id, to resolve each requested id in one lookup. */
   const byId = new Map(state.messages.map((message) => [message.id, message]))
+  /** Ids that actually changed state; a repeat is neither an error nor a change. */
   const moved: string[] = []
   for (const id of ids) {
+    /** The message this id resolves to, or undefined when the mailbox does not know it. */
     const message = byId.get(id)
     if (message === undefined || message.deliveredAt !== undefined) continue
     appendRecord(workspace, { t: "delivered", id, at: now.toISOString() })
@@ -248,10 +291,14 @@ export function markDelivered(workspace: string, ids: readonly string[], now: Da
  * @returns the ids that actually moved from unread to read.
  */
 export function markRead(workspace: string, ids: readonly string[], now: Date): string[] {
+  /** The mailbox as it stands, so a repeat acknowledgement is a no-op. */
   const state = readMailbox(workspace)
+  /** Messages indexed by id, to resolve each requested id in one lookup. */
   const byId = new Map(state.messages.map((message) => [message.id, message]))
+  /** Ids that actually moved from unread to read. */
   const moved: string[] = []
   for (const id of ids) {
+    /** The message this id resolves to, or undefined when the mailbox does not know it. */
     const message = byId.get(id)
     if (message === undefined || message.readAt !== undefined) continue
     appendRecord(workspace, { t: "read", id, at: now.toISOString() })

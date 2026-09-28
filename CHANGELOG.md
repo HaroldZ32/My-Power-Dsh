@@ -1,8 +1,189 @@
 # Changelog
 
-Human-readable release notes. Format: one section per released version, newest first. This file is
+Human-readable release notes for **my-power-dsh** (`@mpd-dsh/mpd`). Newest first, one section per
+released version, the changes grouped by kind (`Added`, `Changed`, `Fixed`, `Removed`). This file is
 English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
 `packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
+
+Further reading:
+
+- [`README.md`](./README.md) — what the bundle is, and how to install it;
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development setup, gates and the git model;
+- [`docs/index.md`](./docs/index.md) — the documentation hub;
+- [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases) — the annotated tags, newest first;
+- [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
+  against.
+
+## v0.11.2 — a TypeScript plugin, and a verification flow that ends in a real container
+
+**Added.**
+
+- **The Docker real-machine lane is the LAST step of the verification flow** (`bun run verify:docker`,
+  `node scripts/docker-e2e.ts`), and it is written into `AGENTS.md` §4/§11 with its skip policy: a
+  machine with no **rootless** Docker prints a notice and SKIPS (exit 0, the steps above still had to
+  pass), `--allow-rootful-docker` opts a rootful daemon in, and `--require-docker` turns any skip into
+  exit 3 for a release sweep. `--spec <install-spec>` drives any spec, including the live `github:` one.
+- **The mounting contract is a binding rule** (`AGENTS.md` §2 + §8): a row reaches the harness ONLY
+  through `cordis.patch.yml` + the profile mechanism — an independent package the profile references,
+  never a DSH source edit, never a hand-written profile, never a row pushed into `<DSH_HOME>`.
+- `agent-references/verification-flow.md` carries the ordered flow on demand, so the manual stays inside
+  its instruction budget.
+
+**Fixed.**
+
+- **The literal one-command GitHub install now works.** `dsh plugin --profile web add
+  github:HaroldZ32/My-Power-Dsh` failed on a clean `ubuntu:24.04` with `ERR_PNPM_IGNORED_BUILDS`; two
+  independent causes were measured and closed: a stray untracked `pnpm-workspace.yaml` at the repo root
+  carried pnpm's own `allowBuilds` template into the build context (its class is now excluded by
+  `docker/Dockerfile.dockerignore`, asserted by the entrypoint's `copy.contextFiltered` and by four new
+  `--self-test` arms), and `github:` resolves the repository's DEFAULT BRANCH — it served `master` while
+  the build-script-free closure sat on `dev`, so this release is what puts that closure on the default
+  branch.
+- The TypeScript conversion's own reds: the two source-text `eval` arms in the bundle-plugin tests now
+  erase types with the pinned transpiler, and the stale `mountSidebarPages(ctx, teamPage)` source pin
+  matches the claim instead of one spelling of its argument.
+
+
+### A canonical TypeScript plugin, installable in one command
+
+**Changed.**
+
+- **JavaScript is gone from the source tree.** 158 hand-written `.js`/`.mjs` files — every repository
+  script and gate, all 54 QA cases, the docker probes, the extension template and example servers, and
+  the package test suites — are now `.ts`, executed directly by Node (`node <file>.ts`, type stripping;
+  the manifest states `engines.node: ">=22.18"`). Four trees stay JavaScript ON PURPOSE and are named in
+  `AGENTS.md` §6: build products (`packages/*/dist/**` and the generated
+  `skills/visual-qa/scripts/visual-qa.mjs`), adopted upstream bytes (`packages/mpd-agent-teams-plugin/lib/**`
+  and `_deps/**`), and fixture DATA (`skills/ultimate-browsing/engine/templates/*.js`,
+  `tests/golden/fixtures/math.js`). Two exceptions to the source rule are deliberate and adjacent to
+  those: `skills/programming/scripts/typescript/check-no-excuse-rules.ts` resolves the CALLER project's
+  TypeScript 7 API, so the repository's own TypeScript devDependency is declared under the alias
+  `typescript5` and never shadows it.
+- **Strict typing across the whole source set.** The root `tsconfig.json` now covers `scripts/**`,
+  `skills/*/scripts/**`, `docker/**`, `tests/**`, `templates/**`, `extensions/**` and every
+  `packages/*/test/**` tree, and `bun run typecheck` (`tsgo --noEmit`) exits 0 with zero diagnostics —
+  the conversion of the test trees alone surfaced and closed 84 pre-existing fixture diagnostics.
+- **Every declaration documented, and enforced.** `scripts/verify-comment-coverage.ts`
+  (`bun run verify:comments`) is a TypeScript-AST gate: a precise comment must sit immediately above
+  every declaration in that set, and every named function must write down its parameter and return
+  types. It measured **8,376 violations and now measures zero**; inline callbacks, structural
+  type-literal members and statements are out of family on purpose, and the report says so.
+- **The two install-time rules became a standing gate.** `scripts/verify-plugin-manifest.ts`
+  (`bun run verify:manifest`) refuses `cordis` in `dependencies` / `peerDependencies` /
+  `optionalDependencies` — by name, and the optional field is NOT an exemption — and refuses any
+  `preinstall` / `install` / `postinstall` / `prepare` script name. It also asserts the packaging
+  contract the one-command install rests on (declared patch files exist, every row module path resolves,
+  the `files` allowlist admits every runtime path, the frozen `evidence/` tree is excluded, and npm's own
+  `npm pack --dry-run` list carries them). Both gates are members of `bun run verify:gates` and of the
+  new `.github/workflows/gates.yml`, which runs on Node 24 + Bun.
+- **The package is publish-ready.** A `files` allowlist takes the packed tarball from **100.9 MB to
+  7.6 MB** (879 → 1134 files of source and build output; the 291 MB frozen `evidence/` tree is out),
+  `icon.svg` plus `locale/{en,zh}.json` provide the plugin-inventory display metadata, the manifest
+  carries repository/homepage/bugs/licence/`engines`/`publishConfig`, and `npm publish --dry-run`
+  completes. There is no lifecycle script and no `cordis` dependency, so installing the package runs no
+  code from it.
+- **One-command install from the published package, verified on a bare `ubuntu:24.04`.** The dependency
+  closure was made build-script-free, because pnpm 11 refuses an install whose dependencies have
+  unapproved build scripts (`ERR_PNPM_IGNORED_BUILDS`): `dsh-better-sidebar` became an optional PEER
+  dependency (still a `devDependency`, so the checkout keeps it; its row already disables itself when the
+  host is absent), and the two binary tooling packages left the closure (`@ast-grep/cli`,
+  `@code-yeongyu/comment-checker` — their launchers resolve from `PATH`/`.toolchain` and report an
+  actionable error otherwise). `docker/docker-compose.yml` now declares an `mpd-oneclick` service beside
+  `mpd-client`, and `node scripts/docker-e2e.ts --mode oneclick` runs the user's path end to end:
+  `dsh plugin --profile web add git+file://…` (the local stand-in for
+  `github:HaroldZ32/My-Power-Dsh`), the allowlist check on the INSTALLED tree, byte identity of the
+  shipped `dist/` against the source tree's build, the mounting boot, the preset session and the
+  isolation assertions.
+
+**Fixed.**
+
+- `skills/dsh-qa/scripts/wave2b-lane-d.ts` used `require("node:zlib")` inside an ES module, so its
+  two-frame zstd arm threw before it could assert anything; the import is now an ESM import and the case
+  passes 8/8 arms.
+- `skills/lsp-setup/scripts/verify-lsp.ts` used a constructor parameter property, which Node's
+  strip-only TypeScript mode REJECTS (`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`), and 22 relative specifiers
+  across `skills/visual-qa/scripts/**` and `skills/lsp-setup/scripts/**` omitted their extension, so
+  `node <file>.ts` could not resolve them. Both are now erasable-syntax/extension-clean and run under
+  Node as well as Bun.
+- `docker/tui-lane.sh`'s session-store probe imported `skills/dsh-qa/scripts/lib/session-evidence.ts`,
+  which the wave renamed; the TUI lane's preset assertion and its exit verdict were red for that reason
+  alone and are green now.
+- `scripts/check-citations.ts` accepted only `.mjs` driver files, so its live header scan would have
+  found ZERO drivers and passed vacuously after the conversion; the accepted spellings are `.ts` and
+  `.mjs`, and the wrong-extension audit is now measured against a separate list.
+
+
+### One implementation per repeated decision
+
+A consolidation pass with no intended behaviour change. What proves that is not the diff but the
+sweep around it: the same unit suite, the same static gates and the same user-facing QA lanes, run
+before and after, with the one pre-existing red (`bundle-lifecycle`'s live probe) reproduced
+identically on a pristine `HEAD` snapshot.
+
+**Changed.**
+
+- **Pure helpers have one home.** `packages/mpd-dsh-adapter-plugin/src/shared.ts` holds `isRecord`,
+  `errorMessage` and `bundleRootOf`, re-exported from the adapter entry. Nine
+  identical `message()` bodies, four `isRecord()` bodies and five bundle-root resolutions were
+  deleted from the rows that carried them.
+- **One adapter resolution.** `resolveDshAdapter(ctx)` replaces the eager
+  `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` expression that sixteen rows spelled inline;
+  `createLazyDshAdapter(ctx, { label })` stays the choice for a row that must also survive a
+  transient "provider not ACTIVE yet" miss.
+- **One skill-frontmatter parser.** `packages/mpd-ext-plugin/src/skill-frontmatter.ts` is the single
+  implementation of the corpus YAML subset, consumed by the extension skill plane AND by
+  `mpd-bootstrap`'s bundle-corpus provider, which loses its ~140-line copy of it.
+- **Shared script primitives.** `scripts/lib/repo.ts` (`repoRootFrom`, `readJson`) replaces ten
+  hand-written root walks and twenty-eight hand-written JSON reads across the gate/helper scripts.
+  The vendored-corpus fingerprint helpers stay duplicated on purpose: `scripts/repin-vendor.ts`
+  re-checks its mirror against `scripts/verify-vendor.ts`'s own bytes.
+
+**Fixed.**
+
+- The documentation citations that the moved lines rotted are repaired, and
+  `node scripts/check-citations.ts` is green (25/25) where it was 21/25 — including four anchors
+  that were already dead before this pass.
+
+### An open-source front door, and captures of the shipped surfaces
+
+**Added.**
+
+- **The repository now reads as a project.** `CONTRIBUTING.md` (setup, build and test commands, the
+  gates, the git model) and `SECURITY.md` (how to report privately) join the root set, each with its
+  `*.zh-CN.md` twin, and `.github/` carries the docs-parity workflow, a pull-request template, and
+  bug-report and feature-request issue templates.
+- **Three diagrams and a real documentation hub.** `docs/assets/images/` holds the authored
+  `architecture.svg`, `ulw-loop.svg` and `team-lifecycle.svg`; `docs/index.md` is rebuilt as a hub
+  with separate reading paths for users, extension authors, contributors and agents.
+- **Six captures of the running app** (`docker/ui/`): first run, home, installed plugins, the MPD
+  settings section, agent presets and the team panel — taken inside the container, against the bundle
+  installed by the real client flow. Five of them are referenced from the README, its zh-CN twin and
+  the hub, and the checks behind them are recorded with the run: the `mpd` preset selected, the MPD
+  section rendered, a session created with `agentPreset: "mpd"`, the team panel showing its roster,
+  and no console or page error.
+
+**Changed.**
+
+- **`README.md` is a product page** — badges, a table of contents, a features table, install and
+  quick start, configuration and an FAQ — with `README.zh-CN.md` updated in the same change, as the
+  language policy requires. `CHANGELOG.md` gains the same further-reading set.
+- **The packer ships the five new root documents** (`ROOT_FILES` in `scripts/pack-mpd.ts`), so the
+  README's relative links resolve inside the packed artifact as well as in the checkout.
+
+**Fixed.**
+
+- **The UI capture lane's chromium guard keyed on the wrong thing.** It tested for the playwright
+  package directory, so a rebuilt image with a recycled volume skipped the install and the capture
+  died with `headless_shell: error while loading shared libraries: libglib-2.0.so.0`; it now keys on
+  the shared library itself.
+
+### Evidence files a lane regenerates stay out of the repository
+
+`evidence/**/scratch-pack*/` joins the two sibling `scratch-*` rules: the dsh-qa extension lane
+stages a full packed tree under its own evidence directory, and three runs of it added ~40 MB across
+~3,700 files that one `node scripts/pack-mpd.ts --out <dir>` reproduces. The lane's own record —
+`result.json`, `output.log` and `raw/` — is committed as before, and the earlier waves' already
+tracked `scratch-pack` paths stay, forward-only.
 
 ## v0.11.1 — mailbox unread
 
@@ -106,7 +287,7 @@ the real TUI on a tmux PTY and reads the created session's preset from the harne
   `fs/observed`, all on a raw ctx while neighbouring subscriptions already used `dsh.onEvent`. Both
   are rebased, and the D6 gate gained an event-name rule family so the class cannot return.
 - A patch COMMENT that named `disabled: !!js` could displace the real scalar in
-  `sidebar-guard-profile-dir.test.mjs` and kill the run in `JSON.parse`; the finder now accepts only
+  `sidebar-guard-profile-dir.test.ts` and kill the run in `JSON.parse`; the finder now accepts only
   a candidate that really parses.
 
 **Added.**
@@ -138,7 +319,7 @@ the real TUI on a tmux PTY and reads the created session's preset from the harne
 
 **Tests.**
 
-- `skills/dsh-qa/scripts/session-start-team.mjs` now splits its live verdict into named
+- `skills/dsh-qa/scripts/session-start-team.ts` now splits its live verdict into named
   sub-assertions and asserts the boot's own session-store key plus the row's `sessionGate=advisory`
   report, so "the gate was never mounted" and "the gate is mounted and did not fire" are different
   readings with different owners. Its earlier green was partly vacuous on 3 of 6 sides; that is fixed,
@@ -170,7 +351,7 @@ the real TUI on a tmux PTY and reads the created session's preset from the harne
   (`teamService` / `teamMembership` / `teamListMembers` / `teamListTasks` / `teamCreateTask` /
   `teamGetTask` / `teamUpdateTask` / `teamSendMessage` / `teamSpawnTeammate` / `teamInterrupt` /
   `teamWaitForChange` / `teamLiveTeams` / `registerSubagentProvider`), and a new gate
-  (`packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs`) fails on a direct
+  (`packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts`) fails on a direct
   `ctx.agentTeams` / `subagents.startContinuable` reference anywhere outside the adapter.
 
 **Capability bound.** `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to
@@ -183,7 +364,7 @@ session-start complexity gate is re-implemented on the official seams by `mpd-ro
 **Added.**
 
 - A Docker end-to-end client test: `docker/Dockerfile` (ubuntu:24.04) + `docker/docker-compose.yml` +
-  `docker/entrypoint.sh`, driven by `node scripts/docker-e2e.mjs`, which installs Node 24, bun and
+  `docker/entrypoint.sh`, driven by `node scripts/docker-e2e.ts`, which installs Node 24, bun and
   `@deepseek-ai/dsh@0.1.7-rc.2` into a clean Ubuntu 24.04 machine, runs the real
   `dsh plugin --profile web add .`, and asserts a mounting boot plus a `session/create` preset mount.
   See `docker/README.md` for what it proves and what it does not.

@@ -1,0 +1,9 @@
+[tool-output-validation] config-get-lossless: ok=true -> /home/haroldzhao/dshProj/my-power-dsh/evidence/fix/config-get-lossless/2026-09-27T21-42-50.555Z
+  live: {"ok":true,"exit":0}
+  expect: {"ok":true,"hits":["memory.vcs"]}
+  forbid: {"ok":true,"hits":[]}
+[tool-output-validation] boulder-status-planprogress: ok=true -> /home/haroldzhao/dshProj/my-power-dsh/evidence/fix/boulder-status-planprogress/2026-09-27T21-43-05.883Z
+  live: {"ok":true,"exit":0}
+  expect: {"ok":true,"hits":[".mpd/boulder.json"]}
+  forbid: {"ok":true,"hits":[]}
+[tool-output-validation] PASS

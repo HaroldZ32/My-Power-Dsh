@@ -40,11 +40,11 @@ Plan C / C2 — 在 DSH subagent seam 上的固定策略 ultrawork 引擎（v2�
 
 ## 构建 / 测试
 
-在仓库根目录、使用带路径参数的命令（规范形式）。在包目录内构建会写入不同的 bundler 路径注释，`node scripts/verify-dist-fresh.mjs` 会将其判为 stale：
+在仓库根目录、使用带路径参数的命令（规范形式）。在包目录内构建会写入不同的 bundler 路径注释，`node scripts/verify-dist-fresh.ts` 会将其判为 stale：
 
 ```sh
 bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
 ```
 
 测试：`bun test packages/mpd-ulw-plugin`。
-Live QA：`node skills/dsh-qa/scripts/ultrawork-smoke.mjs`。
+Live QA：`node skills/dsh-qa/scripts/ultrawork-smoke.ts`。

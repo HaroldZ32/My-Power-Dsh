@@ -58,17 +58,25 @@ export interface HoldView {
 
 /** A read-only listing entry. */
 export interface HoldSummary {
+  /** The workspace the hold belongs to; a team id is unique only inside its workspace. */
   workspace: string
+  /** The held team's OFFICIAL id. */
   teamId: string
+  /** The durable hold record's id. */
   holdId: string
+  /** Epoch ms at which the hold was raised. */
   since: number
+  /** The recorded reason for the hold. */
   cause: string
+  /** The task whose silence raised the hold, when known. */
   taskId: string | null
+  /** That task's attempt id at escalation time, when known. */
   attemptId: string | null
 }
 
 /** Parse one hold file; undefined when absent or unreadable. */
 function readHoldFile(workspace: string, stateDir: string, teamId: string): HoldRecord | undefined {
+  // Raw hold file text; an absent or unreadable file leaves through the catch below.
   let text: string
   try {
     text = readFileSync(holdPath(workspace, stateDir, teamId), "utf8")
@@ -76,6 +84,7 @@ function readHoldFile(workspace: string, stateDir: string, teamId: string): Hold
     return undefined
   }
   try {
+    // The file's JSON, cast because an on-disk hold is untrusted; `id` is checked next.
     const parsed = JSON.parse(text) as HoldRecord
     if (parsed === null || typeof parsed !== "object" || typeof parsed.id !== "string") return undefined
     return parsed
@@ -91,9 +100,13 @@ function readHoldFile(workspace: string, stateDir: string, teamId: string): Hold
  * hold belongs to ONE team in ONE workspace and one host serves many sessions.
  */
 export class HoldRegistry {
+  /** Team state directory every hold file is resolved under. */
   private readonly stateDir: string
+  /** Holds this process knows, keyed by resolved workspace and team id. */
   private readonly entries = new Map<string, HoldRecord>()
+  /** Resolved workspaces already scanned, which makes `hydrate` idempotent per root. */
   private readonly hydrated = new Set<string>()
+  /** Resolved workspace used when a caller omits one; null until a root is known. */
   private fallbackWorkspace: string | null = null
 
   /**
@@ -105,6 +118,7 @@ export class HoldRegistry {
     this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve(fallbackWorkspace)
   }
 
+  /** Compose the registry key from a resolved workspace and a team id. */
   private key(workspace: string, teamId: string): string {
     return resolve(workspace) + "\u0000" + teamId
   }
@@ -116,13 +130,16 @@ export class HoldRegistry {
    * @returns how many hold files were loaded.
    */
   hydrate(roots: readonly string[]): number {
+    // Hold files loaded by this call, returned to the caller for its diagnostics.
     let loaded = 0
     for (const root of roots) {
       if (typeof root !== "string" || root === "") continue
+      // The root in absolute form, so two spellings of one workspace share entries.
       const workspace = resolve(root)
       if (this.fallbackWorkspace === null) this.fallbackWorkspace = workspace
       if (this.hydrated.has(workspace)) continue
       this.hydrated.add(workspace)
+      // Directory entries of this workspace's hold index; an absent one skips the root.
       let files: string[]
       try {
         files = readdirSync(holdDir(workspace, this.stateDir))
@@ -131,7 +148,9 @@ export class HoldRegistry {
       }
       for (const file of files) {
         if (!file.endsWith(".json")) continue
+        // The team id encoded in the file name (one `.json` file per held team).
         const teamId = file.slice(0, -".json".length)
+        // The hold read back from that file, or undefined when it is absent or unreadable.
         const hold = readHoldFile(workspace, this.stateDir, teamId)
         if (hold === undefined) continue
         this.entries.set(this.key(workspace, teamId), hold)
@@ -162,7 +181,9 @@ export class HoldRegistry {
    * @returns the view; `held: false` with `source: 'none'` when nothing holds it.
    */
   isHeld(teamId: string, workspace?: string): HoldView {
+    // The requested team id as a string; an empty id is never held.
     const id = String(teamId ?? "")
+    // Build the negative answer with one varying field, so every early return keeps the shape.
     const notHeld = (from: HoldView["source"], where: string | null = null): HoldView => ({
       held: false,
       holdId: null,
@@ -174,13 +195,16 @@ export class HoldRegistry {
       source: from,
     })
     if (id === "") return notHeld("none")
+    // The workspace to consult: the argument when given, else this registry's fallback root.
     const where = workspace !== undefined && workspace !== "" ? workspace : this.fallbackWorkspace
     if (where !== null) {
+      // The hold this process already knows about, which costs no file read.
       const known = this.entries.get(this.key(where, id))
       if (known !== undefined) return this.holdView(known, where, "memory")
       // The cheap file fallback: another process may have written this hold, and a
       // gate must not need a restart to learn about it.
       try {
+        // The hold another process may have written; this cheap read keeps gates restart-free.
         const hold = readHoldFile(where, this.stateDir, id)
         if (hold !== undefined) {
           this.entries.set(this.key(where, id), hold)
@@ -193,6 +217,7 @@ export class HoldRegistry {
     }
     // No workspace at all: answer from memory only (a single-workspace host).
     for (const [key, hold] of this.entries) {
+      // The registry key split back into its workspace and team parts.
       const [root, team] = key.split("\u0000")
       if (team === id) return this.holdView(hold, root, "memory")
     }
@@ -206,8 +231,10 @@ export class HoldRegistry {
 
   /** Every hold this registry knows about (read-only, for diagnostics). */
   list(): HoldSummary[] {
+    // The listing entries, assembled from every hold this registry knows.
     const out: HoldSummary[] = []
     for (const [key, hold] of this.entries) {
+      // The registry key split into its workspace and team parts.
       const [workspace, teamId] = key.split("\u0000")
       out.push({ workspace, teamId, holdId: hold.id, since: hold.since, cause: hold.cause, taskId: hold.taskId, attemptId: hold.attemptId })
     }
@@ -229,14 +256,17 @@ export class HoldRegistry {
    * @returns the held team ids, sorted.
    */
   heldTeams(workspace?: string): string[] {
+    // The workspace whose durable hold index is read; null answers "nothing held".
     const where = this.workspaceOf(workspace)
     if (where === null) return []
+    // Hold index entries; an absent directory answers the empty list below.
     let files: string[]
     try {
       files = readdirSync(holdDir(where, this.stateDir))
     } catch {
       return []
     }
+    // Held team ids accumulated from the index files.
     const held: string[] = []
     for (const file of files) {
       if (!file.endsWith(".json")) continue
@@ -257,9 +287,11 @@ export class HoldRegistry {
    * @returns the unacknowledged incidents in append order; `[]` on any failure.
    */
   unread(reader: string, workspace?: string): IncidentRecord[] {
+    // The workspace whose incident log is read; null answers "nothing unread".
     const where = this.workspaceOf(workspace)
     if (where === null) return []
     try {
+      // The reader's last acknowledged incident time, 0 when it never acknowledged one.
       const watermark = readWatermarks(where, this.stateDir)[String(reader)] ?? 0
       return readIncidents(where, this.stateDir).filter((record) => record.at > watermark)
     } catch {
@@ -279,9 +311,11 @@ export class HoldRegistry {
    * @returns the outcome; `ok: false` with a reason on any failure (never throws).
    */
   acknowledge(reader: string, upTo: number, workspace?: string): { ok: boolean; watermark: number; error?: string } {
+    // The workspace whose watermark is advanced; null is a reported failure, never a throw.
     const where = this.workspaceOf(workspace)
     if (where === null) return { ok: false, watermark: 0, error: "no workspace resolved" }
     try {
+      // The durable acknowledgement, whose error field is forwarded when present.
       const result = ackIncidents(where, this.stateDir, String(reader), Number(upTo))
       return result.error === undefined ? { ok: result.ok, watermark: result.watermark } : { ok: result.ok, watermark: result.watermark, error: result.error }
     } catch (error) {
@@ -297,6 +331,7 @@ export class HoldRegistry {
    * @returns the view; all-empty when nothing is held and nothing is unread.
    */
   view(reader: string, workspace?: string): { workspace: string | null; holds: string[]; unread: IncidentRecord[] } {
+    // The workspace the view reads; null yields the all-empty view below.
     const where = this.workspaceOf(workspace)
     if (where === null) return { workspace: null, holds: [], unread: [] }
     return { workspace: where, holds: this.heldTeams(where), unread: this.unread(reader, where) }
@@ -308,6 +343,7 @@ export class HoldRegistry {
     return this.fallbackWorkspace
   }
 
+  // Project a durable hold onto the gate-facing view, marked held.
   private holdView(hold: HoldRecord, workspace: string, source: HoldView["source"]): HoldView {
     return {
       held: true,
@@ -341,15 +377,18 @@ export const HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, wor
  * to release an expired hold). A missing directory answers `[]`, never a throw.
  */
 export function heldTeamIds(workspace: string, stateDir: string): string[] {
+  // Hold index entries; an absent directory means no team is held.
   let files: string[]
   try {
     files = readdirSync(holdDir(workspace, stateDir))
   } catch {
     return []
   }
+  // Team ids whose hold file still parses as a hold.
   const held: string[] = []
   for (const file of files) {
     if (!file.endsWith(".json")) continue
+    // The team id encoded in this file's name.
     const teamId = file.slice(0, -".json".length)
     try {
       if (readHoldFile(workspace, stateDir, teamId) !== undefined) held.push(teamId)
@@ -360,6 +399,7 @@ export function heldTeamIds(workspace: string, stateDir: string): string[] {
   return held.sort()
 }
 
+/** Whether the team has a hold file on disk, whichever spelling the store resolved. */
 export function holdFileExists(workspace: string, stateDir: string, teamId: string): boolean {
   try {
     return statSync(holdPath(workspace, stateDir, teamId)).isFile()

@@ -39,16 +39,20 @@ import { approvalPhrase, mailboxKey, planProjectionLines, readTeamWorkflow, task
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState } from "../src/state"
 
+/** Every temp root this file created, removed in `afterEach`. */
 const temporary: string[] = []
+/** A silent logger: these arms assert rendered text, not logs. */
 const log = createLog(undefined, "mpd-tui-test", {})
 
 afterEach(() => {
   while (temporary.length > 0) {
+    /** The temp root this iteration removes. */
     const dir = temporary.pop()
     if (dir !== undefined) rmSync(dir, { recursive: true, force: true })
   }
 })
 
+/** The repository root, derived from this file's own directory. */
 const REPO = join(import.meta.dir, "..", "..", "..")
 
 /**
@@ -68,13 +72,18 @@ const viewsOf = (workspace: string): DshTeamView[] => FIXTURE_VIEWS.get(workspac
  * also written to the retired record path the readers must ignore).
  */
 function teamFixture(record: Record<string, unknown>, opts: { captainInbox?: string[]; memberInbox?: Record<string, string[]> } = {}): string {
+  /** The temp root this fixture owns, registered for cleanup. */
   const root = mkdtempSync(join(tmpdir(), "mpd-tui-team-"))
   temporary.push(root)
+  /** The fixture workspace under that root. */
   const workspace = join(root, "workspace")
+  /** The team id the fixture record names, or its default. */
   const id = String(record.id ?? "team-1")
+  /** The retired mailbox directory: written so the arms keep proving nothing reads it. */
   const inbox = join(workspace, ".mpd", "team", id, "inbox")
   mkdirSync(inbox, { recursive: true })
   writeFileSync(join(workspace, ".mpd", "team", id, "team.json"), JSON.stringify(record, null, 2))
+  /** The captain mailbox lines the caller supplied. */
   const captain = opts.captainInbox ?? []
   if (captain.length > 0) writeFileSync(join(inbox, "captain.jsonl"), captain.join("\n") + "\n")
   for (const [name, lines] of Object.entries(opts.memberInbox ?? {})) {
@@ -86,9 +95,13 @@ function teamFixture(record: Record<string, unknown>, opts: { captainInbox?: str
 
 /** One official team view, projected from the fixture's record vocabulary. */
 function viewOf(record: Record<string, unknown>): DshTeamView {
+  /** The team id the view carries. */
   const id = String(record.id ?? "team-1")
+  /** The Lead session id, or one derived from the team id. */
   const leadSessionId = String(record.captainSessionId ?? id + "-lead")
+  /** The record's member rows, empty when the field is not an array. */
   const members = Array.isArray(record.members) ? (record.members as Record<string, unknown>[]) : []
+  /** The record's task rows, empty when the field is not an array. */
   const tasks = Array.isArray(record.tasks) ? (record.tasks as Record<string, unknown>[]) : []
   return {
     teamId: id,
@@ -128,6 +141,7 @@ function viewOf(record: Record<string, unknown>): DshTeamView {
 
 /** A staged plan with dependencies, a failed dependency, a cycle-free DAG and mail. */
 function stagedRecord(): Record<string, unknown> {
+  /** The fixture's clock, so the record carries plausible timestamps. */
   const now = Date.now()
   return {
     id: "mpd-fixture-1",
@@ -154,6 +168,7 @@ function stagedRecord(): Record<string, unknown> {
 
 describe("team-workflow projection (read-only, from the OFFICIAL live readout)", () => {
   test("renders the roster, the task DAG, the counts and the honest blanks", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord(), {
       captainInbox: [
         JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }),
@@ -163,6 +178,7 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
         Architect: [JSON.stringify({ id: "c", from: "captain", to: "Architect", content: "go", ts: 4 })],
       },
     })
+    /** The projection under test. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     expect(workflow.team?.id).toBe("mpd-fixture-1")
     // 0.1.7: a team has NO name and NO phase of its own on the official plane — the readout names
@@ -182,6 +198,7 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
     // Depth is computed, then the projection is ORDERED by it (§3.1 item 4): t1 and t3 are
     // roots (depth 0, creation order t1 then t3) and t2 sits behind t1 (depth 1).
     expect(workflow.tasks.map((task) => task.id)).toEqual(["t1", "t3", "t2"])
+    /** Task lookup by id, for the row-level assertions. */
     const byId = new Map(workflow.tasks.map((task) => [task.id, task]))
     expect(byId.get("t2")?.dependencies).toEqual(["t1"])
     expect(byId.get("t2")?.depth).toBe(1)
@@ -193,6 +210,7 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
     expect(workflow.mail.captainInbox).toEqual([])
     expect(workflow.members.map((member) => member.unread)).toEqual([null, null])
 
+    /** The rendered workflow body. */
     const rows = teamWorkflowLines(workflow).join("\n")
     expect(rows).toContain("team       lead (mpd-fixture-1)")
     expect(rows).toContain("phase      idle")
@@ -214,17 +232,20 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
   })
 
   test("the depth walk and the failed-dependency marking match the panel's own semantics", () => {
+    /** A hand-built DAG, including one unknown dependency id. */
     const tasks = [
       { id: "a", dependencies: [] },
       { id: "b", dependencies: ["a"] },
       { id: "c", dependencies: ["b", "x"] },
     ]
+    /** The computed depth per task id. */
     const depths = taskDepths(tasks)
     expect(depths.get("a")).toBe(0)
     expect(depths.get("b")).toBe(1)
     // An unknown dependency id is not a dependency at all (the panel's own filter).
     expect(depths.get("c")).toBe(2)
 
+    /** This arm's fixture workspace. */
     const workspace = teamFixture({
       id: "dep-1",
       name: "Dep",
@@ -237,12 +258,15 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
         { id: "t4", subject: "unblocked", status: "pending", dependencies: ["t1"] },
       ],
     })
+    /** The projection under test. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
+    /** Task lookup by id. */
     const byId = new Map(workflow.tasks.map((task) => [task.id, task]))
     // A FAILED dependency does not block (OPT-1), it is reported separately.
     expect(byId.get("t3")?.failedDependencies).toEqual(["t2"])
     expect(byId.get("t3")?.visual).toBe("open")
     expect(byId.get("t4")?.visual).toBe("open")
+    /** The rendered workflow body. */
     const text = teamWorkflowLines(workflow).join("\n")
     expect(text).toContain("t3 [-] blocked · pending")
     expect(text).toContain("failed-dep=t2")
@@ -250,6 +274,7 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
   })
 
   test("a pending task behind an UNFINISHED dependency renders BLOCKED", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture({
       id: "blocked-1",
       name: "Blocked",
@@ -260,13 +285,16 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
         { id: "t2", subject: "second", status: "pending", dependencies: ["t1"] },
       ],
     })
+    /** The rendered body of the blocked arm. */
     const text = teamWorkflowLines(readTeamWorkflow(workspace, [], viewsOf(workspace))).join("\n")
     expect(text).toContain("t2 [-] second · pending deps=t1 BLOCKED")
   })
 
   test("a corrupt / absent / cyclic record renders an empty state and never throws", () => {
+    /** The temp root of the broken-input arm. */
     const root = mkdtempSync(join(tmpdir(), "mpd-tui-broken-"))
     temporary.push(root)
+    /** A workspace holding a corrupt retired record and no live view. */
     const workspace = join(root, "workspace")
     mkdirSync(join(workspace, ".mpd", "team", "broken"), { recursive: true })
     writeFileSync(join(workspace, ".mpd", "team", "broken", "team.json"), "{ not json")
@@ -278,6 +306,7 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
     expect(broken.problems).toEqual([])
     expect(teamWorkflowLines(broken)).toEqual(["team       (none in this workspace)"])
 
+    /** The projection of a workspace that does not exist. */
     const absent = readTeamWorkflow(join(root, "does-not-exist"))
     expect(absent.team).toBeUndefined()
     expect(absent.tasks).toEqual([])
@@ -294,16 +323,21 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
         { id: "b", subject: "b", status: "pending", dependencies: ["a"] },
       ],
     })
+    /** The projection of the cyclic board. */
     const workflow = readTeamWorkflow(cyclic, [], viewsOf(cyclic))
     expect(workflow.problems.some((problem) => problem.startsWith("cycle "))).toBe(true)
     expect(workflow.tasks.every((task) => Number.isInteger(task.depth))).toBe(true)
   })
 
   test("the REAL record of this session's own team projects without a hand-built object", () => {
+    /** The retired record path of a real session's team, when this clone has one. */
     const path = join(REPO, ".mpd", "team", "mpd-default-8d65a2b2", "team.json")
     if (!existsSync(path)) return // absent in a fresh clone: the fixture tests above carry the load
+    /** The repository root, used as this arm's workspace. */
     const workspace = join(REPO)
+    /** The projection of the real record. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
+    /** The record file itself, for the id/name/phase cross-check. */
     const raw = JSON.parse(readFileSync(path, "utf8")) as { id: string; name: string; phase: string; members: unknown[]; tasks: unknown[] }
     expect(workflow.team?.id).toBe(raw.id)
     expect(workflow.team?.name).toBe(raw.name)
@@ -320,8 +354,11 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
   })
 
   test("the board carries the derived team row and never a staged claim", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** The board projection. */
     const state = readBoardState(workspace, process.env.HOME ?? workspace, viewsOf(workspace))
+    /** The board body. */
     const rows = boardLines(state)
     // 0.1.7: a team has no name and no review state on the official plane, so the board shows the
     // Lead name and the DERIVED phase — and it never claims a staged plan.
@@ -333,19 +370,31 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
 
 // ── the React / ui double ───────────────────────────────────────────────────
 
+/** A rendered element as the React double produces it. */
 interface Element {
+  /** The element type: a host component or a tag name. */
   type: unknown
+  /** The element's props, with the double's defaults applied. */
   props: Record<string, unknown>
+  /** The element's children, in render order. */
   children: unknown[]
 }
 
+/** The host kit double one arm renders with. */
 interface Kit {
+  /** The React double the scenes must use. */
   React: Record<string, unknown>
+  /** The ui kit double the scenes must use. */
   ui: Record<string, unknown>
+  /** Captured `useInput` handlers, most recent last. */
   handlers: ((input: string, key: Record<string, unknown> | undefined) => void)[]
+  /** Resets one render pass: hook index 0 and no handlers. */
   begin(): void
+  /** Runs the effects queued by the last render; true when any ran. */
   flush(): boolean
+  /** Dispatches one key to the most recently registered handler. */
   press(input: string, key?: Record<string, unknown>): void
+  /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
 }
 
@@ -354,14 +403,20 @@ interface Kit {
  * render, and `useInput` handlers captured for key dispatch.
  */
 function makeKit(terminal: { columns: number; rows: number } = { columns: 100, rows: 30 }): Kit {
+  /** Hook state and effects, keyed by hook position. */
   const store = new Map<string, unknown>()
+  /** The captured input handlers. */
   const handlers: ((input: string, key: Record<string, unknown> | undefined) => void)[] = []
+  /** The hook counter of the current render pass. */
   let index = 0
+  /** Effects queued by the current render, run by `flush`. */
   let pending: (() => unknown)[] = []
 
+  /** The React double: index-keyed hooks, effects deferred to `flush`. */
   const React: Record<string, unknown> = {
     createElement: (type: unknown, props: Record<string, unknown> | null, ...children: unknown[]): Element => ({ type, props: props ?? {}, children }),
     useState: (initial: unknown): [unknown, (next: unknown) => void] => {
+      /** This state cell's key, derived from the hook position. */
       const key = `state:${index}`
       index += 1
       if (!store.has(key)) store.set(key, typeof initial === "function" ? (initial as () => unknown)() : initial)
@@ -373,6 +428,7 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       ]
     },
     useEffect: (fn: () => unknown): void => {
+      /** This effect's key, derived from the hook position. */
       const key = `effect:${index}`
       index += 1
       if (store.has(key)) return
@@ -380,6 +436,7 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       pending.push(fn)
     },
     useRef: (initial: unknown): { current: unknown } => {
+      /** This ref's key, derived from the hook position. */
       const key = `ref:${index}`
       index += 1
       if (!store.has(key)) store.set(key, { current: initial })
@@ -388,8 +445,11 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
     useSyncExternalStore: (): void => {},
   }
 
+  /** The Text component: identity plus the children it renders. */
   const Text = (props: { children?: unknown }): Element => ({ type: "Text", props: props as Record<string, unknown>, children: [props?.children] })
+  /** The Box component: identity plus the props it carries. */
   const Box = (props: { children?: unknown }): Element => ({ type: "Box", props: props as Record<string, unknown>, children: [] })
+  /** The ui kit, with `useInput` capturing and a fixed terminal size. */
   const ui: Record<string, unknown> = {
     Box,
     Text,
@@ -408,18 +468,22 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       handlers.length = 0
     },
     flush: () => {
+      /** The effects queued for this flush. */
       const list = pending
       pending = []
       for (const fn of list) fn()
       return list.length > 0
     },
     press: (input: string, key: Record<string, unknown> = {}) => {
+      /** The most recently registered input handler. */
       const handler = handlers.at(-1)
       if (handler === undefined) throw new Error("no useInput handler was registered by the scene")
       handler(input, key)
     },
     text: (tree: unknown): string => {
+      /** The text collected by the walk. */
       const out: string[] = []
+      /** Appends one node's text, and its children's, to `out`. */
       const walk = (node: unknown): void => {
         if (node === null || node === undefined) return
         if (typeof node === "string") {
@@ -434,6 +498,7 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
           for (const child of node) walk(child)
           return
         }
+        /** This node as an element, the only shape left after the guards. */
         const element = node as Element
         if (element.props?.children !== undefined) walk(element.props.children)
         for (const child of element.children ?? []) walk(child)
@@ -449,8 +514,11 @@ function mountScenes(
   workspace: string,
   options: { holds?: readonly string[]; actions?: PlanActions; terminal?: { columns: number; rows: number } } = {},
 ): { kit: Kit; components: Record<string, unknown>; opened: string[]; seam: ReturnType<typeof registerScene> } {
+  /** The registered scene components, by id. */
   const components: Record<string, unknown> = {}
+  /** Every scene id the host double was asked to open. */
   const opened: string[] = []
+  /** The services this composition exposes. */
   const services: Record<string, unknown> = {
     tuiScenes: {
       register: (descriptor: { id: string; component: unknown }) => {
@@ -462,8 +530,10 @@ function mountScenes(
       },
     },
   }
+  /** The context double, injecting only services that exist. */
   const ctx = {
     inject: (deps: readonly string[], callback: (scoped: Record<string, unknown>) => void) => {
+      /** The injected scope the scene reaches services through. */
       const scoped = { get: (name: string) => services[name] }
       if (deps.every((id) => services[id] !== undefined)) callback(scoped)
       return {}
@@ -471,6 +541,7 @@ function mountScenes(
     get: () => undefined,
     logger: { info: () => {}, warn: () => {}, debug: () => {} },
   }
+  /** The registered scene seam. */
   const seam = registerScene(
     ctx as never,
     log,
@@ -487,13 +558,16 @@ function mountScenes(
     () => viewsOf(workspace),
   )
   expect(seam.outcome().state).toBe("requested")
+  /** The kit the caller renders with. */
   const kit = makeKit(options.terminal)
   return { kit, components, opened, seam }
 }
 
 /** Render a scene component until its effects settle, and return the rendered text. */
 function render(kit: Kit, component: unknown): string {
+  /** The props the host would pass to a scene. */
   const props = { React: kit.React, ui: kit.ui, close: () => {}, channel: undefined }
+  /** The last rendered tree. */
   let tree: unknown
   for (let pass = 0; pass < 5; pass += 1) {
     kit.begin()
@@ -513,9 +587,13 @@ function pressAndRender(kit: Kit, component: unknown, input: string, key: Record
 
 describe("the two surfaces register through the existing tuiScenes seam", () => {
   test("all three scene ids are registered with their frozen titles", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** The registered components, by id. */
     const components: Record<string, unknown> = {}
+    /** The registrations the host double received, in order. */
     const registered: { id: string; title?: string }[] = []
+    /** A host double exposing only `tuiScenes`. */
     const services = {
       tuiScenes: {
         register: (descriptor: { id: string; title?: string; component: unknown }) => {
@@ -525,6 +603,7 @@ describe("the two surfaces register through the existing tuiScenes seam", () => 
         open: () => true,
       },
     }
+    /** The context double for that host. */
     const ctx = {
       inject: (deps: readonly string[], callback: (scoped: unknown) => void) => {
         if (deps.every((id) => (services as Record<string, unknown>)[id] !== undefined)) callback({ get: (name: string) => (services as Record<string, unknown>)[name] })
@@ -541,9 +620,12 @@ describe("the two surfaces register through the existing tuiScenes seam", () => 
   })
 
   test("a scene renders null instead of crashing when the host kit is absent", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** The registered components of the mounted scenes. */
     const { components } = mountScenes(workspace)
     for (const id of [TEAM_SCENE_ID, PLAN_SCENE_ID]) {
+      /** The component under test, called as the host would call it. */
       const component = components[id] as (props: unknown) => unknown
       expect(component({ React: {}, ui: null, close: () => {} })).toBeNull()
       expect(component({})).toBeNull()
@@ -553,8 +635,11 @@ describe("the two surfaces register through the existing tuiScenes seam", () => 
 
 describe("surface T1 — the team workflow", () => {
   test("renders the real record's header, roster, DAG and counts", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** This arm's kit and the registered components. */
     const { kit, components } = mountScenes(workspace)
+    /** The rendered team scene. */
     const text = render(kit, components[TEAM_SCENE_ID])
     expect(text).toContain("MPD team — lead")
     expect(text).toContain("mpd-fixture-1")
@@ -567,9 +652,12 @@ describe("surface T1 — the team workflow", () => {
   })
 
   test("a team that is NOT staged refuses the approval hop with a notice and opens nothing", () => {
+    /** This arm's fixture workspace (a team that is NOT staged). */
     const workspace = teamFixture({ id: "run-1", name: "Running", phase: "running", members: [], tasks: [] })
+    /** This arm's kit, components and the opened-scene log. */
     const { kit, components, opened } = mountScenes(workspace)
     render(kit, components[TEAM_SCENE_ID])
+    /** The scene after the approval key was pressed. */
     const text = pressAndRender(kit, components[TEAM_SCENE_ID], "a")
     expect(text).toContain("plan approval needs a staged team")
     expect(opened).toEqual([])
@@ -577,19 +665,26 @@ describe("surface T1 — the team workflow", () => {
 
 
   test("a bare `r` refresh re-reads the record without throwing", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** This arm's kit and the registered components. */
     const { kit, components } = mountScenes(workspace)
     render(kit, components[TEAM_SCENE_ID])
+    /** The scene after the refresh key was pressed. */
     const text = pressAndRender(kit, components[TEAM_SCENE_ID], "r")
     expect(text).toContain("MPD team — lead")
   })
 
 
   test("the watchdog HOLD is rendered only when the watchdog reports it", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** A mount whose watchdog holds THIS team. */
     const held = mountScenes(workspace, { holds: ["mpd-fixture-1"] })
+    /** The rendered scene while the hold lasts. */
     const text = render(held.kit, held.components[TEAM_SCENE_ID])
     expect(text).toContain("watchdog   HELD (mpd-fixture-1)")
+    /** A mount whose watchdog holds a DIFFERENT team. */
     const other = mountScenes(workspace, { holds: ["someone-else"] })
     expect(render(other.kit, other.components[TEAM_SCENE_ID])).not.toContain("watchdog")
   })
@@ -611,11 +706,14 @@ describe("surface T2 — the plan approval", () => {
 
 
   test("Esc mutates nothing and returns to the workflow when it was the entry point", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, components, open log and seam. */
     const { kit, components, opened, seam } = mountScenes(workspace)
     seam.openPlan({ teamId: "mpd-fixture-1", returnToTeam: true })
     render(kit, components[PLAN_SCENE_ID])
     for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
+    /** The scene after Esc. */
     const text = pressAndRender(kit, components[PLAN_SCENE_ID], "", { escape: true })
     expect(opened).toEqual([PLAN_SCENE_ID, TEAM_SCENE_ID])
     expect(text).not.toContain("approved:")
@@ -623,7 +721,9 @@ describe("surface T2 — the plan approval", () => {
   })
 
   test("Esc from the command entry point leaves the scene instead of hopping", () => {
+    /** This arm's fixture workspace. */
     const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, components, open log and seam. */
     const { kit, components, opened, seam } = mountScenes(workspace)
     seam.openPlan({ teamId: "mpd-fixture-1" })
     render(kit, components[PLAN_SCENE_ID])
@@ -635,7 +735,9 @@ describe("surface T2 — the plan approval", () => {
     // The plain `planActionLines` projection is the falsifiable form of barrier 4:
     // only the two chords can mutate, and every printable key only edits the echo.
     const workspace = teamFixture(stagedRecord())
+    /** The projection the action block is built from. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
+    /** The action block with the discard arm live. */
     const rows = planActionLines(workflow, "approve x", true, "some message")
     expect(rows.join("\n")).toContain("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan")
     expect(rows.join("\n")).toContain("some message")
@@ -676,12 +778,15 @@ describe("§9.4 — the ONE render boundary strips control characters (finding F
     // there. (The retired `.mpd/team/<hostile>/team.json` direction has no source left.)
     const root = mkdtempSync(join(tmpdir(), "mpd-tui-hostile-view-"))
     temporary.push(root)
+    /** A workspace whose view carries control characters in its id. */
     const workspace = join(root, "hostile")
     mkdirSync(workspace, { recursive: true })
     FIXTURE_VIEWS.set(workspace, [
       viewOf({ id: "bad\u001bname\u0007", members: [{ name: "na\u0007me" }], tasks: [{ id: "t1", status: "pending" }] }),
     ])
+    /** This arm's kit and the registered components. */
     const { kit, components } = mountScenes(workspace)
+    /** The rendered scene for the hostile view. */
     const text = render(kit, components[TEAM_SCENE_ID])
     expect(text).toContain("bad")
     for (const control of ["\u001b", "\u0007", "\u009b"]) expect(text).not.toContain(control)
@@ -690,6 +795,7 @@ describe("§9.4 — the ONE render boundary strips control characters (finding F
 
 describe("§3.1 item 4 — the DAG order (finding F2)", () => {
   test("tasks come out ordered by depth, with creation order as the tiebreak", () => {
+    /** This arm's fixture workspace, with a hostile record order. */
     const workspace = teamFixture({
       id: "order-1",
       name: "Order",
@@ -703,12 +809,14 @@ describe("§3.1 item 4 — the DAG order (finding F2)", () => {
         { id: "grandchild", subject: "grandchild", status: "pending", dependencies: ["child"] },
       ],
     })
+    /** The projection whose order this arm pins. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     // depth: parent 0, peer 0, child 1, grandchild 2. Creation index: child 0, parent 1, peer 2, grandchild 3.
     expect(workflow.tasks.map((task) => task.id)).toEqual(["parent", "peer", "child", "grandchild"])
 
     // BOTH renderers emit that ONE order (the sort lives in the projection, not in a loop).
     const ids = ["parent", "peer", "child", "grandchild"]
+    /** The task ids a rendered body emits, in emitted order. */
     const emittedOrder = (rows: string[]): string[] =>
       rows.map((row) => row.trim().split(" ")[0] ?? "").filter((token) => ids.includes(token))
     expect(emittedOrder(teamWorkflowLines(workflow))).toEqual(ids)
@@ -729,7 +837,8 @@ describe("§4.5 — the consent echo is consumed only by a SUCCESSFUL approve (f
 
 describe("t8 — a COMMITTED approval is confirmed on screen (t3's F1)", () => {
   /** The adopted `approveStagedTeam` signature: phase -> running, approvedAt set, planReviewState gone. */
-  const flipper = (recordPath: string) => (): void => {
+  const flipper = (recordPath: string): (() => void) => (): void => {
+    /** The record as the flipper reads it. */
     const record = JSON.parse(readFileSync(recordPath, "utf8")) as Record<string, unknown>
     record.phase = "running"
     record.approvedAt = Date.now()
@@ -746,9 +855,12 @@ describe("t8 — a COMMITTED approval is confirmed on screen (t3's F1)", () => {
 
 describe("package invariants", () => {
   test("no source file in this package imports a filesystem WRITE primitive", () => {
+    /** Every forbidden token found, with the file it was found in. */
     const offenders: string[] = []
+    /** The write primitives this package must never contain. */
     const forbidden = ["writeFileSync", "appendFileSync", "mkdirSync", "rmSync", "unlinkSync", "cpSync", "createWriteStream", "writeFile(", "rm(", "mkdir(", "unlink("]
     for (const name of ["team-state.ts", "state.ts", "scenes.ts", "index.ts"]) {
+      /** The source text of this file under the invariant check. */
       const source = readFileSync(join(import.meta.dir, "..", "src", name), "utf8")
       for (const token of forbidden) if (source.includes(token)) offenders.push(`${name}: ${token}`)
     }
@@ -756,6 +868,7 @@ describe("package invariants", () => {
   })
 
   test("the built dist carries the two scene ids and no write primitive", () => {
+    /** The built bytes of this package's entry. */
     const dist = readFileSync(join(import.meta.dir, "..", "dist", "index.js"), "utf8")
     expect(dist).toContain(TEAM_SCENE_ID)
     expect(dist).toContain(PLAN_SCENE_ID)

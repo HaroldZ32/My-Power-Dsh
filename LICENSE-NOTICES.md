@@ -49,7 +49,7 @@ retained:
   `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-subagent`, `@deepseek-ai/dsh-tools`,
   `@deepseek-ai/dsh-agent` (MIT, Copyright (c) 2021-present Shigma and the DeepSeek team —
   versions pinned to the host installation at vendor time; regenerate via
-  `node scripts/vendor-agent-teams.mjs`);
+  `node scripts/vendor-agent-teams.ts`);
 - `zod` (MIT) and `@standard-schema/spec` (MIT).
 Native package-name resolution cannot be relied on (pnpm never links a bundle's
 transitive deps into the profile root, and code outside the profile's node_modules

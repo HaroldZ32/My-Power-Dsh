@@ -17,6 +17,7 @@ import { onService } from "./host.js"
 export interface DialogSeam {
   /** True once the service is composed (activation is deferred). */
   available(): boolean
+  /** How activation went: `absent`, `available` or `refused`, as the aggregate diagnostic reports it. */
   outcome(): SeamOutcome
   /** Pick one option id; undefined on cancel/timeout/absent service. */
   select(title: string, options: readonly { id: string; label: string; description?: string }[], timeoutMs?: number): Promise<string | undefined>
@@ -32,12 +33,16 @@ export interface DialogSeam {
  *   UI consumer (headless embedder) so the caller's `await` always settles.
  * @returns the facade.
  */
-export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs = 30_000): DialogSeam {
+export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs: number = 30_000): DialogSeam {
+  /** The composed dialog service, undefined until the deferred activation runs. */
   let dialogs: TuiDialogsLike | undefined
+  /** The activation result, kept so the boot line can state it. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiDialogs was not injected" }
 
   onService(ctx, "tuiDialogs", (_scoped, service) => {
+    /** The probed service as the dialog surface, before any of its methods is trusted. */
     const runtime = service as TuiDialogsLike
+    /** Whether the service carries all three request methods this facade forwards. */
     const usable =
       runtime !== undefined &&
       runtime !== null &&
@@ -52,9 +57,11 @@ export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs
     outcome = { state: "available", detail: "request-based seam; nothing to register" }
   })
 
+  /** Whether the dialog service is composed, i.e. whether a picker can be offered at all. */
   const available = (): boolean => dialogs !== undefined
 
-  const select: DialogSeam["select"] = async (title, options, timeoutMs = defaultTimeoutMs) => {
+  /** Opens the host picker and settles as undefined on cancel, timeout or an absent service. */
+  const select: DialogSeam["select"] = async (title: string, options: readonly { id: string; label: string; description?: string }[], timeoutMs: number = defaultTimeoutMs): Promise<string | undefined> => {
     if (dialogs === undefined) return undefined
     try {
       return await dialogs.select({ title, options, timeoutMs })
@@ -64,7 +71,8 @@ export function createDialogs(ctx: PluginContextLike, log: Log, defaultTimeoutMs
     }
   }
 
-  const confirm: DialogSeam["confirm"] = async (title, message, timeoutMs = defaultTimeoutMs) => {
+  /** Opens the host yes/no dialog and settles as undefined on cancel, timeout or an absent service. */
+  const confirm: DialogSeam["confirm"] = async (title: string, message?: string, timeoutMs: number = defaultTimeoutMs): Promise<boolean | undefined> => {
     if (dialogs === undefined) return undefined
     try {
       return await dialogs.confirm({ title, message, timeoutMs })

@@ -5,7 +5,9 @@ import { join } from "node:path"
 import { stripJsonc, deepMerge, apply } from "../src/index.ts"
 
 test("stripJsonc removes comments and trailing commas", () => {
+  // A JSONC document carrying a line comment, an inline block comment and a trailing comma.
   const src = ['{', '  // user layer', '  "memory": { "vcs": "git", /* inline */ "enabled": true },', '  "ulw": { "maxRounds": 5, },', '}'].join(String.fromCharCode(10))
+  // The stripped text, which must parse as strict JSON with no comment markers left.
   const out = stripJsonc(src)
   expect(out).not.toContain("//")
   expect(out).not.toContain("/*")
@@ -14,37 +16,48 @@ test("stripJsonc removes comments and trailing commas", () => {
 })
 
 test("stripJsonc keeps comments inside strings", () => {
+  // The `//` here lives inside a string VALUE, so the scan must not treat it as a comment.
   const out = stripJsonc('{ "a": "http://x" }')
   expect(JSON.parse(out).a).toBe("http://x")
 })
 
 test("deepMerge project wins, nested merged, pollution safe", () => {
+  // Lower layer: two nested keys, shaped like a file a user declares.
   const base = { memory: { vcs: "git", dir: ".mpd/memory" }, team: { stateDir: ".mpd/team" } } as any
+  // Higher layer: one overlapping leaf plus one key the base does not have at all.
   const over = { memory: { vcs: "both" }, ulw: { maxRounds: 3 } }
+  // The merge under test: nested objects merge, and the LATER layer wins on a shared leaf.
   const merged = deepMerge(base, over)
   expect(merged.memory).toEqual({ vcs: "both", dir: ".mpd/memory" })
   expect(merged.team.stateDir).toBe(".mpd/team")
   expect(merged.ulw.maxRounds).toBe(3)
+  // A `__proto__` key arriving from parsed JSON must never reach the prototype chain.
   const polluted = deepMerge({}, JSON.parse('{"__proto__":{"pol":true}}'))
   expect((Object.prototype as any).pol).toBeUndefined()
   expect(JSON.stringify(polluted)).not.toContain("pol")
 })
 
 test("mpd_config_get result is lossless JSON for a missing key (value null, never undefined)", async () => {
+  // Saved so the fake env is restored even when an assertion in the try block throws.
   const prevHome = process.env.DSH_HOME
+  // Saved for the same reason as DSH_HOME above: this test owns both env keys while it runs.
   const prevRoot = process.env.DSH_WORKSPACE_ROOT
   process.env.DSH_HOME = mkdtempSync(join(tmpdir(), "mpd-cfg-home-"))
   process.env.DSH_WORKSPACE_ROOT = mkdtempSync(join(tmpdir(), "mpd-cfg-ws-"))
   try {
+    // Tools the plugin registers on the fake ctx; the get tool is the subject here.
     const tools: any[] = []
     apply({ tools: { register: (t: any) => tools.push(t) }, provide: () => {} } as any, {})
+    // The registered `mpd_config_get` tool, called directly — no harness required.
     const get = tools.find((t) => t.name === "mpd_config_get")
+    // Explicit-key read of a leaf the sandbox never declares, so `value` is JSON null.
     const withKey = await get.execute({ key: "memory.vcs" })
     expect(withKey.value).toBeNull()
     expect(withKey.key).toBe("memory.vcs")
     // host contract: JSON round-trip must be lossless and contain no undefined fields
     expect(JSON.parse(JSON.stringify(withKey))).toEqual(withKey)
     expect(Object.values(withKey)).not.toContain(undefined)
+    // Key-less read: `config` only, so the optional `key` and `value` fields are absent.
     const noKey = await get.execute({})
     expect(JSON.parse(JSON.stringify(noKey))).toEqual(noKey)
     expect(noKey.value).toBeUndefined() // field omitted entirely when no key requested
@@ -55,14 +68,18 @@ test("mpd_config_get result is lossless JSON for a missing key (value null, neve
 })
 
 test("mpdConfig service get resolves dot-paths (consistent with mpd_config_get)", () => {
+  // Saved so this test restores the caller's env even when an assertion throws.
   const prevHome = process.env.DSH_HOME
+  // Saved for the same reason as DSH_HOME above: this test owns both env keys while it runs.
   const prevRoot = process.env.DSH_WORKSPACE_ROOT
+  // A throwaway workspace holding exactly one `.mpd/mpd.jsonc` project file.
   const dir = mkdtempSync(join(tmpdir(), "mpd-cfg-svc-"))
   mkdirSync(join(dir, ".mpd"), { recursive: true })
   writeFileSync(join(dir, ".mpd", "mpd.jsonc"), '{ "modelchain": { "sisyphus-junior": [{ "provider": "deepseek-official", "model": "deepseek-v4-pro" }] }, "memory": { "vcs": "svn" } }')
   process.env.DSH_HOME = mkdtempSync(join(tmpdir(), "mpd-cfg-svc-home-"))
   process.env.DSH_WORKSPACE_ROOT = dir
   try {
+    // The service value the fake ctx captures on `provide("mpdConfig", …)`.
     let provided: any = null
     apply({ tools: { register: () => {} }, provide: (n: string, v: any) => { provided = v } } as any, {})
     expect(provided.get("memory.vcs")).toBe("svn")

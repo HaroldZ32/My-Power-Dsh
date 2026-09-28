@@ -25,11 +25,16 @@ export const PROJECT_CONFIG_FILE = join(".mpd", "mpd.jsonc")
  * survive, and the plugin must not add a dependency for this.
  */
 export function stripJsonComments(text: string): string {
+  // The comment-free document accumulated so far, returned verbatim once the scan ends.
   let out = ""
+  // Whether the scanner is currently inside a double-quoted string literal.
   let inString = false
+  // Whether the previous string character was a backslash, so the next quote does not close the string.
   let escaped = false
   for (let index = 0; index < text.length; index += 1) {
+    // The character under the cursor.
     const char = text[index]
+    // The character after the cursor, used to recognise a `//` or `/*` opener.
     const next = text[index + 1]
     if (inString) {
       out += char
@@ -72,7 +77,9 @@ export function stripTrailingCommas(text: string): string {
  *          `section:undefined` when the file exists but states no `watchdog` object.
  */
 export function readWatchdogSection(workspace: string): { found: boolean; path: string; section: unknown } {
+  // Absolute path of the project config file inside the caller's workspace.
   const path = join(workspace, PROJECT_CONFIG_FILE)
+  // Raw file text when readable; an unreadable file leaves through the `found:false` return below.
   let text: string
   try {
     text = readFileSync(path, "utf8")
@@ -80,8 +87,11 @@ export function readWatchdogSection(workspace: string): { found: boolean; path: 
     return { found: false, path, section: undefined }
   }
   try {
+    // The parsed document, typed as an open record because a JSONC file is untrusted input.
     const parsed = JSON.parse(stripTrailingCommas(stripJsonComments(text))) as Record<string, unknown>
+    // The document object itself, or an empty record when the top-level value is not an object.
     const root = parsed !== null && typeof parsed === "object" ? parsed : {}
+    // The raw `watchdog` value as the file states it, before any shape check.
     const section = (root as Record<string, unknown>).watchdog
     return {
       found: true,

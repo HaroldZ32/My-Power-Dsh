@@ -96,6 +96,7 @@ export const WATCHDOG_DEFAULTS: WatchdogKnobs = {
  * restart is needed for the file value to take effect.
  */
 export interface KnobReading {
+  /** The `watchdog.<name>` key this reading is about. */
   knob: string
   /** The value the running process resolved (the settings namespace + the row defaults). */
   live: number | boolean | string
@@ -103,6 +104,7 @@ export interface KnobReading {
   file: number | boolean | string | undefined
   /** Whether the file states a DIFFERENT value, i.e. whether a restart would change anything. */
   differs: boolean
+  /** Whether a restart is needed for the file value to take effect (`differs`). */
   restartRequired: boolean
 }
 
@@ -117,12 +119,18 @@ export interface KnobReading {
  * @returns one reading per knob, in the frozen §3 order.
  */
 export function knobReadings(live: WatchdogKnobs, fileSection: unknown): KnobReading[] {
+  // The file's `watchdog` section as a plain object; anything else reads as "states nothing".
   const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
+  // Knob names in the frozen contract order the status view prints them in.
   const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "enabled"]
   return knobs.map((knob) => {
+    // The value this process runs with, cast because a keyed read cannot narrow the knob union.
     const liveValue = live[knob] as number | boolean | string
+    // The raw value the file states for this knob, of any JSON type.
     const raw = file[knob]
+    // The file value when it is a scalar; an object or array states nothing readable.
     const fileValue = typeof raw === "number" || typeof raw === "boolean" || typeof raw === "string" ? raw : undefined
+    // Whether the file states a scalar the process is not running with.
     const differs = fileValue !== undefined && fileValue !== liveValue
     return { knob: String(knob), live: liveValue, file: fileValue, differs, restartRequired: differs }
   })
@@ -130,19 +138,25 @@ export function knobReadings(live: WatchdogKnobs, fileSection: unknown): KnobRea
 
 /** A knob that had to be rejected or clamped, with the reason. */
 export interface KnobIssue {
+  /** Dotted config path of the rejected knob, e.g. `watchdog.tickIntervalMs`. */
   path: string
+  /** Why the value was rejected, in the words the boot log prints. */
   problem: string
+  /** The value actually used instead, of whatever type that knob has. */
   fallback: unknown
 }
 
 /** The resolved knobs plus every adjustment made while reading them. */
 export interface ResolvedKnobs extends WatchdogKnobs {
+  /** Every adjustment made while reading the knobs, for the boot log. */
   issues: KnobIssue[]
 }
 
 /** The `watchdog` section of a namespace value as a plain object (`{}` when it states none). */
 export function watchdogSectionOf(namespaceValue: unknown): Record<string, unknown> {
+  // The namespace value as a plain object; anything else reads as an empty namespace.
   const root = namespaceValue !== null && typeof namespaceValue === "object" ? (namespaceValue as Record<string, unknown>) : {}
+  // The raw `watchdog` leaf, before its shape is checked.
   const sectionRaw = root.watchdog
   return sectionRaw !== null && typeof sectionRaw === "object" ? (sectionRaw as Record<string, unknown>) : {}
 }
@@ -156,9 +170,12 @@ export function watchdogSectionOf(namespaceValue: unknown): Record<string, unkno
  */
 export function sectionDigest(section: unknown): string | null {
   if (section === null || typeof section !== "object") return null
+  // The section as an open record, the only shape a digest can serialize.
   const record = section as Record<string, unknown>
+  // The section's own keys, sorted so key order alone cannot fake a change.
   const keys = Object.keys(record).sort()
   if (keys.length === 0) return null
+  // The section rewritten in sorted-key order, which is what gets serialized.
   const ordered: Record<string, unknown> = {}
   for (const key of keys) ordered[key] = record[key]
   return JSON.stringify(ordered)
@@ -179,7 +196,9 @@ export function sectionDigest(section: unknown): string | null {
  * @returns a namespace-shaped value with the file layer applied on top.
  */
 export function overlayWatchdogSection(namespaceValue: unknown, fileSection: unknown): unknown {
+  // The namespace value copied as an open record, so the merge cannot mutate the caller's.
   const base = namespaceValue !== null && typeof namespaceValue === "object" ? { ...(namespaceValue as Record<string, unknown>) } : {}
+  // The file's section as an open record; a non-object states no leaves at all.
   const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
   return { ...base, watchdog: { ...watchdogSectionOf(namespaceValue), ...file } }
 }
@@ -209,9 +228,13 @@ export function readKnobs(
   env: Record<string, string | undefined> = process.env,
   defaults: WatchdogKnobs = WATCHDOG_DEFAULTS,
 ): ResolvedKnobs {
+  // The `watchdog` object the resolved namespace value carries.
   const section = watchdogSectionOf(namespaceValue)
+  // Adjustments recorded while reading, returned together with the resolved knobs.
   const issues: KnobIssue[] = []
+  // Read a numeric knob: unusable values fall back to the default and record an issue.
   const number = (key: keyof WatchdogKnobs, min: number): number => {
+    // The raw value the section states for this knob, if any.
     const raw = section[key]
     if (raw === undefined) return defaults[key] as number
     if (typeof raw !== "number" || !Number.isFinite(raw) || raw < min) {
@@ -221,7 +244,9 @@ export function readKnobs(
     return raw
   }
 
+  // The OUTSTANDING age in ms that triggers the first WARN.
   const warnSilenceMs = number("warnSilenceMs", 1)
+  // Tick cadence in ms, clamped below when it would outrun the warn bound.
   let tickIntervalMs = number("tickIntervalMs", 1)
   if (tickIntervalMs >= warnSilenceMs) {
     // The streak arithmetic needs at least two observations inside one silence
@@ -237,13 +262,16 @@ export function readKnobs(
     tickIntervalMs = clamped
   }
 
+  // Consecutive OUTSTANDING observations before ESCALATE, rounded to an integer.
   let warnStreakToEscalate = number("warnStreakToEscalate", 1)
   if (!Number.isInteger(warnStreakToEscalate)) {
+    // The rounded streak bound, never below one observation.
     const clamped = Math.max(1, Math.round(warnStreakToEscalate))
     issues.push({ path: "watchdog.warnStreakToEscalate", problem: "expected an integer; rounded", fallback: clamped })
     warnStreakToEscalate = clamped
   }
 
+  // What ESCALATE does; the default unless the section states one of the two verbs.
   let actionOnEscalate: "pause" | "warn-only" = defaults.actionOnEscalate
   if (section.actionOnEscalate !== undefined) {
     if (section.actionOnEscalate === "pause" || section.actionOnEscalate === "warn-only") {
@@ -260,6 +288,7 @@ export function readKnobs(
   // T-17's hold TTL (§3). 0 is likewise meaningful (`never expire`).
   const holdTtlMs = number("holdTtlMs", 0)
 
+  // The kill switch: defaults first, the environment override applied last.
   let enabled = defaults.enabled
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean") enabled = section.enabled
@@ -276,9 +305,13 @@ export function readKnobs(
 
 /** One silence candidate: a live task whose owner is expected to be stepping. */
 export interface SilenceCandidate {
+  /** The team the silent task belongs to. */
   teamId: string
+  /** The task whose owner has gone silent. */
   taskId: string
+  /** The generation token of that task; empty when the board carries none. */
   attemptId: string
+  /** The owning member's name, or `captain`. */
   assignee: string
   /** The heartbeat file key of the owner. */
   memberKey: string
@@ -404,8 +437,10 @@ export class WatchdogMachine {
    */
   observe(candidates: readonly SilenceCandidate[], now: number, knobs: WatchdogKnobs): Decision[] {
     if (!knobs.enabled) return []
+    // The decisions of this observation pass, in candidate order.
     const decisions: Decision[] = []
     for (const candidate of candidates) {
+      // This candidate's streak and escalation key.
       const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId)
       if (this.escalated.has(key)) continue
 
@@ -428,6 +463,7 @@ export class WatchdogMachine {
         continue
       }
       if (channel === "OUTSTANDING") {
+        // When the request became OUTSTANDING; the last stamp is only a fallback clock.
         const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen
         // No clock at all: the fold cannot say when the request became outstanding, and
         // inventing one is exactly the wall-clock inference this redesign removes.
@@ -508,6 +544,7 @@ export class WatchdogMachine {
     decisions: Decision[],
   ): void {
     this.streaks.delete(key)
+    // The open call's start: the heartbeat stamp first, the fold's call time as fallback.
     const since =
       typeof candidate.inFlightSince === "number"
         ? candidate.inFlightSince
@@ -518,6 +555,7 @@ export class WatchdogMachine {
       this.inFlightSuppressed += 1
       return
     }
+    // How long the call has been open, in ms.
     const inFlightMs = now - since
     if (inFlightMs <= knobs.toolInFlightMaxMs) {
       this.inFlightSuppressed += 1
@@ -561,8 +599,10 @@ export class WatchdogMachine {
       this.streaks.delete(key)
       return
     }
+    // The streak after this observation: one more than the stored count.
     const streak = (this.streaks.get(key) ?? 0) + 1
     this.streaks.set(key, streak)
+    // The decision fields shared by the WARN and ESCALATE shapes.
     const base = {
       teamId: candidate.teamId,
       taskId: candidate.taskId,
@@ -590,6 +630,7 @@ export class WatchdogMachine {
 
   /** A stamp arrived for a key: the streak resets and the key is not escalated. */
   clear(teamId: string, taskId: string, attemptId: string): void {
+    // The key whose per-generation reports are forgotten.
     const key = streakKey(teamId, taskId, attemptId)
     this.streaks.delete(key)
     this.neverStarted.delete(key)
@@ -629,7 +670,9 @@ export class WatchdogMachine {
  * @returns the newest unmatched start, or null when nothing is in flight.
  */
 export function inFlightFor(stamps: readonly HeartbeatStamp[]): { since: number; tool: string | null } | null {
+  // Call ids that already have their POST completion stamp.
   const completed = new Set<string>()
+  // The PRE stamps seen, in file order.
   const starts: HeartbeatStamp[] = []
   for (const stamp of stamps) {
     if (stamp.kind === "tool" && typeof stamp.callId === "string" && stamp.callId !== "") completed.add(stamp.callId)
@@ -639,14 +682,17 @@ export function inFlightFor(stamps: readonly HeartbeatStamp[]): { since: number;
   // newest-stamp rule, which is exactly right for the sequential call pattern a real turn has.
   const pairable = starts.some((stamp) => typeof stamp.callId === "string" && stamp.callId !== "")
   if (pairable) {
+    // The newest unmatched start, i.e. the call still in flight.
     let newestStart: HeartbeatStamp | undefined
     for (const stamp of starts) {
+      // This start's call id, or null when the harness stamped none.
       const callId = typeof stamp.callId === "string" && stamp.callId !== "" ? stamp.callId : null
       if (callId !== null && completed.has(callId)) continue
       if (newestStart === undefined || stamp.at >= newestStart.at) newestStart = stamp
     }
     return newestStart === undefined ? null : { since: newestStart.at, tool: newestStart.tool ?? null }
   }
+  // The newest stamp overall, used by the unpaired fallback rule.
   let newest: HeartbeatStamp | undefined
   for (const stamp of stamps) if (newest === undefined || stamp.at >= newest.at) newest = stamp
   if (newest === undefined || newest.kind !== "tool-start") return null
@@ -664,6 +710,7 @@ export function inFlightFor(stamps: readonly HeartbeatStamp[]): { since: number;
  * @returns the floor in ms epoch, or null when the record does not state one.
  */
 export function generationFloorOf(team: { createdAt?: number | null; approvedAt?: number | null }): number | null {
+  // The finite record timestamps, one per field the record carries.
   const stamps = [team.createdAt, team.approvedAt].filter((value): value is number => typeof value === "number" && Number.isFinite(value))
   return stamps.length === 0 ? null : Math.max(...stamps)
 }
@@ -680,12 +727,17 @@ export function candidateFor(
   stampSource: (memberKey: string) => readonly HeartbeatStamp[],
   memberKeyOf: (assignee: string) => string,
 ): SilenceCandidate[] {
+  // The generation bound every accepted stamp must be at or after; null is permissive.
   const generationFloor = generationFloorOf(team)
+  // The candidates derived from the record's non-terminal owned tasks.
   const candidates: SilenceCandidate[] = []
   for (const task of team.tasks) {
     if (task.assignee === undefined || TERMINAL_STATUSES.includes(task.status)) continue
+    // The heartbeat file key of this task's owner.
     const memberKey = memberKeyOf(task.assignee)
+    // The generation token recorded on the candidate; empty when the board carries none.
     const attemptId = task.attemptId ?? ""
+    // Every stamp on disk for the owner, before the per-task filters below.
     const stamps = stampSource(memberKey)
     // W11-2: the filter is by task id AND, when the stamp CARRIES one, by attempt id. A stamp
     // with no attempt information (undefined/null/empty) cannot contradict this generation and
@@ -718,6 +770,7 @@ export function candidateFor(
       // rule below uses (and the reason the writer records `teamId` on every stamp).
       const stampTeam = stamp.teamId
       if (stampTeam !== undefined && stampTeam !== null && stampTeam !== "" && stampTeam !== team.id) return false
+      // The attempt the stamp names; absent means it cannot contradict this generation.
       const stampAttempt = stamp.attemptId
       if (stampAttempt === undefined || stampAttempt === null || stampAttempt === "") return true
       return stampAttempt === taskAttempt
@@ -742,6 +795,7 @@ export function candidateFor(
     // set exactly at claim/reassign time, so the `dispatched` flag the projection carries is the
     // faithful spelling of "somebody was handed this".
     const dispatched = task.dispatched === true || taskAttempt !== ""
+    // Whether ANY stamp ever worked this task in this team, of any generation.
     const workedOn = stamps.some(
       (stamp) =>
         stamp.taskId === task.id &&
@@ -751,6 +805,7 @@ export function candidateFor(
         (stamp.teamId === undefined || stamp.teamId === null || stamp.teamId === "" || stamp.teamId === team.id),
     )
     if (!dispatched && !workedOn) continue
+    // The newest stamp of the generation-scoped slice, or undefined when it is empty.
     const newest = forTask.reduce<HeartbeatStamp | undefined>((best, stamp) => (best === undefined || stamp.at >= best.at ? stamp : best), undefined)
     // r6: the SAME filtered slice answers the in-flight question, so a start recorded
     // against another team/attempt can never explain THIS candidate's silence away.

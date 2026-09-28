@@ -99,7 +99,7 @@ is carried as explicit guidance inside the spawn prompt. Per-member routing stil
 mechanically on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
 `agentOptions` themselves.
 
-### The D6 gate (`test/no-direct-team-access.test.mjs`)
+### The D6 gate (`test/no-direct-team-access.test.ts`)
 
 A static gate scans `packages/mpd-*/src/**/*.ts`, except this package, for the literal
 identifiers `agentTeams` and `startContinuable`, fails naming file + line, strips comments first
@@ -107,8 +107,8 @@ identifiers `agentTeams` and `startContinuable`, fails naming file + line, strip
 OUTSIDE the `*.ts` band in a loud `NOT COVERED` section instead of silently skipping them:
 
 ```bash
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs            # scan
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs --self-test # negative control
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts            # scan
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-test # negative control
 ```
 
 It is also a `bun test` case, so `bun test packages/mpd-dsh-adapter-plugin` runs it too.
@@ -159,10 +159,11 @@ or a `capabilities()` flag the caller can branch on.
 ## Usage
 
 ```js
-import { createDshAdapter } from '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
+import { resolveDshAdapter } from '@mpd-dsh/mpd/packages/mpd-dsh-adapter-plugin/dist/index.js'
 
 export function apply(ctx) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  // the mounted `mpdDsh` when this composition provides one, else a row-private adapter
+  const dsh = resolveDshAdapter(ctx)
   dsh.registerTool({ name: "mpd_x", description: "…", execute: async (args, exec) => ({ ok: true }) })
   dsh.guardTool((exec) => (exec.name === "write" ? "denied" : undefined))
   // observe-only: the gate decision is returned unchanged, whatever this listener does
@@ -173,10 +174,27 @@ export function apply(ctx) {
 }
 ```
 
-`ctx.get("mpdDsh")` returns the mounted instance (provided by the `mpd-dsh-adapter`
-row, which the bundle patch inserts before every other mpd row); `createDshAdapter(ctx)`
-builds an equivalent one, so a plugin works standalone in unit tests and partial
-installs.
+`resolveDshAdapter(ctx)` returns the mounted instance when the `mpd-dsh-adapter` row
+(which the bundle patch inserts before every other mpd row) has provided it, and
+otherwise builds an equivalent one with `createDshAdapter(ctx)` — so a plugin works
+standalone in unit tests and partial installs, and every row states the rule once. A row
+that must also survive a TRANSIENT miss (the service is registered but its fiber is not
+ACTIVE yet) calls `createLazyDshAdapter(ctx, { label })`, which re-probes on every use.
+
+### Shared helpers
+
+The package also owns the bundle's pure, harness-free helpers — `src/shared.ts`,
+re-exported from the same entry point — so a row needs one import for both the seam
+surface and these:
+
+| Helper | What it is |
+|---|---|
+| `isRecord(value)` | the plain-object guard (`typeof === "object"`, not null, not an array) |
+| `errorMessage(error)` | `Error#message` for anything thrown, without throwing on a non-Error |
+| `bundleRootOf(import.meta.url)` | the bundle root for a module at `<bundle>/packages/<pkg>/{src,dist}/<file>` |
+
+They touch no harness seam, which is why they live beside — never inside — the seam
+surface: `src/index.ts` stays the ONE contact surface AGENTS.md §6 requires.
 
 ## Config
 

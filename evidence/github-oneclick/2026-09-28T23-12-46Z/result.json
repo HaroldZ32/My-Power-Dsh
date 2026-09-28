@@ -1,0 +1,10 @@
+{
+  "spec": "github:HaroldZ32/My-Power-Dsh",
+  "installExit": 1,
+  "sandbox": "/tmp/mpd-github-oneclick-JtXhGT",
+  "assertionsFailed": 1,
+  "installedPackage": false,
+  "profileBundleRecorded": false,
+  "realProfileBefore": "1790550836-439360",
+  "realProfileAfter": "1790550836-439360"
+}

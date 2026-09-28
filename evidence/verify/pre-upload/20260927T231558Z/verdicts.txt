@@ -1,0 +1,9 @@
+20-verify-gates rc=0 secs=1
+21-preset-conformance rc=0 secs=25
+22-dump-config rc=1 secs=0
+23-install-profile rc=0 secs=1
+24-pack rc=0 secs=0
+25-pack-closure rc=0 secs=0
+26-bundle-lifecycle rc=1 secs=4
+27-dual-track-smoke rc=1 secs=25
+28-mcp-call rc=1 secs=32

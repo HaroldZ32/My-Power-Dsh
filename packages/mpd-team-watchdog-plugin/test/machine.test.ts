@@ -6,11 +6,12 @@
 // from the `mpd` namespace and are re-read on settings/document-updated; a claimed task
 // whose owner never stamped is a non-escalating `never-started` observation.
 import { describe, expect, test } from "bun:test"
-import { WatchdogMachine, WATCHDOG_DEFAULTS, readKnobs, streakKey } from "../src/machine"
+import { WatchdogMachine, WATCHDOG_DEFAULTS, readKnobs, streakKey, type Decision, type SilenceCandidate } from "../src/machine"
 import { WatchdogEngine } from "../src/engine"
 import { readHeartbeats } from "../src/store"
 import { agent, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
+/** A ctx stub; the engine only ever reads `on` from it in this file. */
 function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
@@ -23,6 +24,7 @@ const knobs = { ...WATCHDOG_DEFAULTS, warnSilenceMs: 90_000, warnStreakToEscalat
 
 describe("knobs", () => {
   test("an absent namespace resolves to the frozen defaults", () => {
+    // The knobs resolved from an absent namespace value.
     const resolved = readKnobs(undefined, {})
     expect(resolved.enabled).toBe(true)
     expect(resolved.warnSilenceMs).toBe(600_000)
@@ -33,6 +35,7 @@ describe("knobs", () => {
   })
 
   test("the watchdog section is read from the mpd namespace by its exact paths", () => {
+    // The knobs resolved from that namespace section.
     const resolved = readKnobs(
       { watchdog: { warnSilenceMs: 12_345, tickIntervalMs: 1_000, warnStreakToEscalate: 2, actionOnEscalate: "warn-only", enabled: false } },
       {},
@@ -45,6 +48,7 @@ describe("knobs", () => {
   })
 
   test("a cadence at or beyond the silence threshold is clamped loudly, not thrown", () => {
+    // The knobs resolved with the out-of-range cadence.
     const resolved = readKnobs({ watchdog: { warnSilenceMs: 1_000, tickIntervalMs: 5_000 } }, {})
     expect(resolved.tickIntervalMs).toBeLessThan(resolved.warnSilenceMs)
     expect(resolved.issues.length).toBe(1)
@@ -52,6 +56,7 @@ describe("knobs", () => {
   })
 
   test("a bad knob type falls back with a recorded issue", () => {
+    // The knobs resolved with the unusable value.
     const resolved = readKnobs({ watchdog: { warnSilenceMs: "soon" } }, {})
     expect(resolved.warnSilenceMs).toBe(600_000)
     expect(resolved.issues.some((issue) => issue.path === "watchdog.warnSilenceMs")).toBe(true)
@@ -63,7 +68,8 @@ describe("knobs", () => {
 })
 
 describe("the machine", () => {
-  const candidate = (overrides: Record<string, unknown> = {}) => ({
+  // Build a silence candidate, overriding only the fields a case needs.
+  const candidate = (overrides: Record<string, unknown> = {}): SilenceCandidate => ({
     teamId: "team-a",
     taskId: "t1",
     attemptId: "att-1",
@@ -83,11 +89,15 @@ describe("the machine", () => {
   })
 
   test("exactly one WARN per silent tick, and the third WARN escalates once", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // The first silent tick, which must warn.
     const first = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 1, knobs)
     expect(first.map((d) => d.type)).toEqual(["warn"])
+    // The second silent tick: a second warn for the same attempt.
     const second = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 2, knobs)
     expect(second.map((d) => d.type)).toEqual(["warn"])
+    // The third silent tick, which must escalate exactly once.
     const third = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 3, knobs)
     expect(third.map((d) => d.type)).toEqual(["escalate"])
     // No fourth WARN, no second ESCALATE, ever.
@@ -97,15 +107,18 @@ describe("the machine", () => {
   })
 
   test("a new attemptId starts a clean streak", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
     machine.observe([candidate()], 200_000, knobs)
     machine.observe([candidate()], 200_001, knobs)
+    // The observation after the attempt id changed to `att-2`.
     const retry = machine.observe([candidate({ attemptId: "att-2" })], 200_002, knobs)
     expect(retry.map((d) => d.type)).toEqual(["warn"])
     expect(machine.snapshot().streaks[streakKey("team-a", "t1", "att-2")]).toBe(1)
   })
 
   test("any recent stamp resets the streak", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
     machine.observe([candidate()], 200_000, knobs)
     expect(machine.observe([candidate({ lastSeen: 200_010 })], 200_020, knobs)).toEqual([])
@@ -113,15 +126,20 @@ describe("the machine", () => {
   })
 
   test("a claimed task whose owner never stamped is never-started, and never escalates", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // The single decision a never-stamped candidate produces.
     const decisions = machine.observe([candidate({ lastSeen: null, lastKind: null, everStampedForTask: false })], 999_999, knobs)
     expect(decisions.map((d) => d.type)).toEqual(["never-started"])
+    // The second observation of the same never-stamped candidate.
     const again = machine.observe([candidate({ lastSeen: null, lastKind: null, everStampedForTask: false })], 1_000_000, knobs)
     expect(again).toEqual([])
   })
 
   test("a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // A candidate whose newest stamp closed its turn.
     const completed = candidate({ lastKind: "turn-end", lastSeen: 1_000 })
     // Well past the threshold, and for far longer than the 3-WARN streak would need.
     expect(machine.observe([completed], 1_000 + knobs.warnSilenceMs * 10, knobs)).toEqual([])
@@ -132,6 +150,7 @@ describe("the machine", () => {
   })
 
   test("a stale streak is RESET by the boundary (the completed turn cannot spend it later)", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
     machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 1, knobs)
     machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 2, knobs)
@@ -141,7 +160,9 @@ describe("the machine", () => {
     // ...and the streak is gone, so the next silent tick is a FIRST warn, not an escalate.
     const resumed = machine.observe([candidate()], 1_000 + knobs.warnSilenceMs + 4, knobs)
     expect(resumed.map((d) => d.type)).toEqual(["warn"])
-    expect(resumed[0].streak).toBe(1)
+    // `streak` is carried by the warn/escalate rungs only, and TS cannot see through the `toEqual`
+    // above; the read is asserted against the rungs that carry the field.
+    expect((resumed[0] as Extract<Decision, { streak: number }>).streak).toBe(1)
   })
 
   test("W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick", () => {
@@ -152,8 +173,11 @@ describe("the machine", () => {
     //     removed key : tick1 A warn:1, B warn:2 -> tick2 A ESCALATE:3, B [] (and B never again)
     // A correct per-team machine escalates NEITHER team in that scenario — that is the falsifier.
     const machine = new WatchdogMachine()
+    // Team A's task `t1`, with no attempt id at all.
     const teamA = candidate({ teamId: "team-a", taskId: "t1", attemptId: "" })
+    // Team B's task `t1`, identical except for its team.
     const teamB = candidate({ teamId: "team-b", taskId: "t1", attemptId: "" })
+    // The instant of the first observation, just past the silence bound.
     const now = 1_000 + knobs.warnSilenceMs + 1
 
     // (0) the two candidates must NOT share a key any more — the collision WAS the defect.
@@ -164,9 +188,13 @@ describe("the machine", () => {
 
     // (1) the reviewer's two ticks: both teams observed once per tick.
     const tick1 = machine.observe([teamA, teamB], now, knobs)
+    // The second tick, which must keep the two streaks separate.
     const tick2 = machine.observe([teamA, teamB], now + 1, knobs)
-    expect(tick1.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:warn:1", "team-b:warn:1"])
-    expect(tick2.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:warn:2", "team-b:warn:2"])
+    // `map` hands each callback the whole `Decision` union while `streak` lives on the ladder rungs
+    // alone, so the read is asserted against the rungs that carry it (the kinds are pinned below).
+    expect(tick1.map((d) => `${d.teamId}:${d.type}:${(d as Extract<Decision, { streak: number }>).streak}`)).toEqual(["team-a:warn:1", "team-b:warn:1"])
+    // Same cast, same reason: only a warn/escalate rung has a `streak` to print.
+    expect(tick2.map((d) => `${d.teamId}:${d.type}:${(d as Extract<Decision, { streak: number }>).streak}`)).toEqual(["team-a:warn:2", "team-b:warn:2"])
     // THE FALSIFIER: in the reviewer's scenario a correct per-team machine escalates NOBODY.
     // (The removed key produced exactly one ESCALATE here, for the wrong team.)
     expect(tick1.some((d) => d.type === "escalate")).toBe(false)
@@ -175,24 +203,30 @@ describe("the machine", () => {
 
     // (2) only a team's OWN third consecutive warn escalates, and the keys stay distinct.
     const tick3 = machine.observe([teamA], now + 2, knobs)
-    expect(tick3.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-a:escalate:3"])
+    // The third tick escalates exactly once, and `streak` has the same union problem as above.
+    expect(tick3.map((d) => `${d.teamId}:${d.type}:${(d as Extract<Decision, { streak: number }>).streak}`)).toEqual(["team-a:escalate:3"])
     expect(machine.hasEscalated("team-a", "t1", "")).toBe(true)
     expect(machine.hasEscalated("team-b", "t1", "")).toBe(false)
     expect(machine.snapshot().streaks[streakKey("team-b", "t1", "")]).toBe(2)
 
+    // Team B's own third consecutive observation.
     const tick4 = machine.observe([teamB], now + 3, knobs)
-    expect(tick4.map((d) => `${d.teamId}:${d.type}:${d.streak}`)).toEqual(["team-b:escalate:3"])
+    // The same union-limited `streak` read as above, on team B's own escalation.
+    expect(tick4.map((d) => `${d.teamId}:${d.type}:${(d as Extract<Decision, { streak: number }>).streak}`)).toEqual(["team-b:escalate:3"])
     expect(machine.snapshot().escalated.sort()).toEqual(["team-a\u0000t1\u0000", "team-b\u0000t1\u0000"].sort())
   })
 
   test("W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent)", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // A candidate whose silence is backed by no stamp of this generation.
     const fromAnotherAttempt = candidate({ taskId: "t1", attemptId: "", lastSeen: null, lastKind: null, everStampedForTask: false })
     // candidateFor() is what decides that; this asserts the OBSERVE half of the contract.
     expect(machine.observe([fromAnotherAttempt], 999_999, knobs).map((d) => d.type)).toEqual(["never-started"])
   })
 
   test("a disabled watchdog observes nothing", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
     expect(machine.observe([candidate()], 999_999, { ...knobs, enabled: false })).toEqual([])
   })
@@ -200,6 +234,7 @@ describe("the machine", () => {
 
 describe("the machine over a real team record", () => {
   test("WARN then ESCALATE land on disk with the hold applied through the tool seam", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -207,28 +242,38 @@ describe("the machine over a real team record", () => {
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attempt: 1, attemptId: "att-1" }],
       })
+      // The stub adapter the engine stamps and ticks through.
       const stub = stubAdapter({ workspace: box.workspace })
+      // The engine under test, with the shared test config.
       const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
+      // A fixed clock, kept only so the intent of the case is readable (see the `void`).
       const startedAt = 1_000_000
       engine.install()
       engine.stamp("step", agent("a1", box.workspace))
+      // The heartbeat the step stamp wrote.
       const stamps = readHeartbeats(box.workspace, box.stateDir, "Architect")
+      // The stamp's own time, used as the OUTSTANDING clock.
       const silenceFrom = stamps[0].at
       // The §1 channel authority: an OUTSTANDING request (an open step with no committed
       // answer) is the only state the ladder warns/escalates from.
       openOutstandingChannel(stub, "a1", silenceFrom)
 
+      // The first tick past the bound: one warn and one scene.
       const first = await engine.tickOnce(silenceFrom + 90_001)
       expect(first.decisions.map((d) => d.type)).toEqual(["warn"])
       expect(first.scenes.length).toBe(1)
+      // The second tick: a second warn for the same attempt.
       const second = await engine.tickOnce(silenceFrom + 90_002)
       expect(second.decisions.map((d) => d.type)).toEqual(["warn"])
+      // The third tick: escalate, and the hold lands through the tool seam.
       const third = await engine.tickOnce(silenceFrom + 90_003)
       expect(third.decisions.map((d) => d.type)).toEqual(["escalate"])
       expect(third.holds).toEqual(["team-a"])
+      // The fourth tick, which must produce nothing at all.
       const fourth = await engine.tickOnce(silenceFrom + 90_004)
       expect(fourth.decisions).toEqual([])
 
+      // The engine counters after the four ticks.
       const stats = engine.getStats()
       expect(stats.scenes).toBe(3)
       expect(stats.holdsApplied).toBe(1)
@@ -241,6 +286,7 @@ describe("the machine over a real team record", () => {
   })
 
   test("a live knob change is picked up without a restart", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -248,13 +294,16 @@ describe("the machine over a real team record", () => {
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
+      // A stub whose settings namespace starts at the 90 s default.
       const stub = stubAdapter({
         workspace: box.workspace,
         settings: { watchdog: { warnSilenceMs: 90_000, tickIntervalMs: 15_000 } },
       })
+      // The engine under test.
       const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir }))
       engine.install()
       engine.stamp("step", agent("a1", box.workspace))
+      // The step stamp's time, the clock every tick below is relative to.
       const first = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
 
       // 30 s of silence must NOT warn under the 90 s default.
@@ -263,6 +312,7 @@ describe("the machine over a real team record", () => {
       // A live edit raises nothing but LOWERS the threshold: now 30 s of silence warns.
       stub.setSettings({ watchdog: { warnSilenceMs: 20_000, tickIntervalMs: 15_000 } })
       stub.emitSettings()
+      // The tick after the live settings edit lowered the bound.
       const warned = await engine.tickOnce(first + 30_001)
       expect(warned.decisions.map((d) => d.type)).toEqual(["warn"])
       expect(engine.getKnobs().warnSilenceMs).toBe(20_000)

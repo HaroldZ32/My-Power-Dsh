@@ -11,24 +11,36 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 
 /** Bounded caps so one pathological state directory cannot stall a render. */
 const MAX_TEAMS = 20
+/** Plan files scanned before the projection stops counting, a render-stall bound. */
 const MAX_PLANS = 200
+/** Workmate directories enumerated before the projection stops, a render-stall bound. */
 const MAX_WORKMATES = 200
+/** Tasks counted per team before the tally stops, a render-stall bound. */
 const MAX_TASKS = 5000
+/** Problem notes kept for display; further ones are dropped, not queued. */
 const MAX_PROBLEMS = 5
 
+/** The live team as the board and status line show it, projected from the official readout. */
 export interface TeamSummary {
+  /** The team's own id, sanitized; `?` when the readout does not carry one. */
   id: string
+  /** The lead's name, sanitized; `?` when the readout does not carry one. */
   name: string
+  /** Derived phase: `active` while a teammate runs or provisions, else `idle`. */
   phase: string
+  /** The team's description; has no official source in 0.1.7, so it stays absent. */
   description?: string
   /** `awaiting_review` | `awaiting_feedback` — present only while the team is staged. */
   planReviewState?: string
+  /** Teammates on the roster, the lead excluded. */
   members: number
+  /** Task tally by state, one bucket per official status plus `other`. */
   tasks: {
     total: number
     completed: number
@@ -41,36 +53,47 @@ export interface TeamSummary {
   }
 }
 
+/** The boulder work ledger as the board shows it, tallied by status. */
 export interface BoulderSummary {
+  /** Works recorded in the ledger. */
   works: number
+  /** Works whose status is `active` (also the default for a record without one). */
   active: number
+  /** Works whose status is `completed`. */
   completed: number
+  /** Works whose status is `paused`. */
   paused: number
+  /** Works whose status is `abandoned`. */
   abandoned: number
+  /** Highest plan name seen across the works, by plain string order. */
   newestPlan?: string
 }
 
+/** One board projection: the three workspace sections plus the home-side workmate library. */
 export interface BoardState {
   /** Workspace root the workspace-local sections were read from. */
   workspace: string
   /** Home directory the workmate library was read from. */
   home: string
+  /** The live team, absent when the readout carries none. */
   team?: TeamSummary
+  /** The work ledger, absent when the file is missing or unreadable. */
   boulder?: BoulderSummary
+  /** Plan-file count and the newest name, ordered by file name. */
   plans: { count: number; newest?: string }
+  /** Workmate instances found in the library, sorted by display name. */
   workmates: { count: number; names: string[] }
   /** Bounded, sanitized notes about entries that could not be read. */
   problems: string[]
 }
 
+/** Reads and parses a JSON file; a missing or malformed file throws to the caller. */
 function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8"))
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-}
 
+/** Treats a non-array as absent, so a malformed section degrades to empty. */
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
 }
@@ -86,14 +109,18 @@ function asArray(value: unknown): unknown[] {
  * invented a review state would be claiming a staged plan the plane cannot have.
  */
 function readTeam(views: readonly DshTeamView[], problems: string[]): TeamSummary | undefined {
+  /** The readout entry with the most tasks; the board shows exactly one team. */
   let best: DshTeamView | undefined
   for (const view of views.slice(0, MAX_TEAMS)) {
+    /** Task count of this readout entry, zero when the field is not an array. */
     const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0
     if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0)) best = view
   }
   if (best === undefined) return undefined
+  /** Roster rows of the winning entry, empty when the field is not an array. */
   const rows = Array.isArray(best.members) ? best.members : []
   if (rows.length === 0 && (Array.isArray(best.tasks) ? best.tasks.length : 0) === 0) return undefined
+  /** Task tally being accumulated, one bucket per official status plus `other`. */
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 }
   for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS)) {
     if (!isRecord(task)) continue
@@ -121,7 +148,9 @@ function readTeam(views: readonly DshTeamView[], problems: string[]): TeamSummar
         counts.other += 1
     }
   }
+  /** Roster rows that are members, i.e. everything but the lead. */
   const teammates = rows.filter((member) => isRecord(member) && member.role !== "lead")
+  /** Whether any teammate is running or provisioning, which is what `active` means. */
   const active = teammates.some((member) => member.status === "running" || member.status === "provisioning")
   if (views.length > MAX_TEAMS) problems.push(`team readout truncated to ${MAX_TEAMS} entries`)
   return {
@@ -135,26 +164,33 @@ function readTeam(views: readonly DshTeamView[], problems: string[]): TeamSummar
 
 /** `.mpd/boulder.json` — `works` is keyed by work id (tolerates an array form). */
 function readBoulder(root: string, problems: string[]): BoulderSummary | undefined {
+  /** Path of the work ledger under this workspace root. */
   const path = join(root, ".mpd", "boulder.json")
+  /** The parsed ledger document; stays undefined when the file cannot be read. */
   let document: unknown
   try {
     document = readJson(path)
   } catch (error) {
+    /** The filesystem error code, used to tell a missing file from a malformed one. */
     const code = (error as { code?: string } | undefined)?.code
     if (code !== "ENOENT") problems.push(`boulder.json: ${code === undefined ? "unreadable" : "invalid JSON"}`)
     return undefined
   }
   if (!isRecord(document)) return undefined
+  /** The work records, from either the keyed or the array form of the ledger. */
   const raw = isRecord(document.works) ? Object.values(document.works) : asArray(document.works)
+  /** The tally being accumulated for the board row. */
   const summary: BoulderSummary = { works: 0, active: 0, completed: 0, paused: 0, abandoned: 0 }
   for (const work of raw) {
     if (!isRecord(work)) continue
     summary.works += 1
+    /** This work's status; a record without one counts as `active`. */
     const status = String(work.status ?? "active")
     if (status === "active") summary.active += 1
     else if (status === "completed") summary.completed += 1
     else if (status === "paused") summary.paused += 1
     else if (status === "abandoned") summary.abandoned += 1
+    /** This work's plan name, under either key the ledger has used. */
     const plan = scalarText(work.plan_name ?? work.active_plan, 120)
     if (plan !== undefined && (summary.newestPlan === undefined || plan > summary.newestPlan)) summary.newestPlan = plan
   }
@@ -163,8 +199,10 @@ function readBoulder(root: string, problems: string[]): BoulderSummary | undefin
 
 /** `.mpd/plans/*.md` — the plan files a boulder work can be bound to. */
 function readPlans(root: string): { count: number; newest?: string } {
+  /** Path of the plan directory under this workspace root. */
   const dir = join(root, ".mpd", "plans")
   try {
+    /** Plan file names, sorted; a directory without any yields a zero count. */
     const names = readdirSync(dir)
       .filter((name) => name.endsWith(".md"))
       .sort()
@@ -176,16 +214,21 @@ function readPlans(root: string): { count: number; newest?: string } {
 
 /** `$HOME/.mpd/workmate/<key>/meta.json` — the durable workmate library. */
 function readWorkmates(home: string): { count: number; names: string[] } {
+  /** Path of the durable workmate library under this home directory. */
   const dir = join(home, ".mpd", "workmate")
   try {
+    /** Candidate instance keys: visible directories, capped by `MAX_WORKMATES`. */
     const names = readdirSync(dir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
       .map((entry) => entry.name)
       .slice(0, MAX_WORKMATES)
+    /** Display names of the instances that proved addressable. */
     const present: string[] = []
     for (const name of names) {
       try {
+        /** This instance's metadata file; a missing one marks an orphan directory. */
         const meta = readJson(join(dir, name, "meta.json"))
+        /** The instance's display name, falling back to its directory key. */
         const label = isRecord(meta) ? scalarText(meta.name ?? name, 60) : undefined
         present.push(label ?? scalarText(name, 60) ?? "?")
       } catch {
@@ -206,7 +249,9 @@ function readWorkmates(home: string): { count: number; names: string[] } {
  * @returns the projection; never throws.
  */
 export function readBoardState(workspace: string, home: string = homedir(), views: readonly DshTeamView[] = []): BoardState {
+  /** Bounded notes about entries that could not be read, rendered last on the board. */
   const problems: string[] = []
+  /** The projection being assembled; the two optional sections land below. */
   const state: BoardState = {
     workspace,
     home,
@@ -242,10 +287,19 @@ export const NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to 
  */
 export const AMBIGUOUS_MULTI_ROOT_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)"
 
+/**
+ * Renders the one-line status contribution.
+ * @param state - the board projection to summarize.
+ * @param notice - the settings-bridge notice to append last, when one applies.
+ * @returns the `mpd: …` line, contributions joined by ` · `.
+ */
 export function statusLine(state: BoardState, notice?: string): string {
+  /** The contributions, in the order the host will join them. */
   const parts: string[] = []
   if (state.team !== undefined) {
+    /** Completed task count of the team row. */
     const done = state.team.tasks.completed
+    /** Total task count of the team row. */
     const total = state.team.tasks.total
     parts.push(`team ${state.team.name} ${state.team.members}·${done}/${total}`)
     if (state.team.tasks.failed > 0) parts.push(`failed ${state.team.tasks.failed}`)
@@ -264,9 +318,11 @@ export function statusLine(state: BoardState, notice?: string): string {
 
 /** Body lines for the board scene, already sanitized and bounded. */
 export function boardLines(state: BoardState, holds: readonly string[] = []): string[] {
+  /** The body lines, in board order. */
   const lines: string[] = []
   lines.push(`workspace  ${state.workspace}`)
   if (state.team !== undefined) {
+    /** The team's task tally, rendered as the `tasks` row. */
     const tasks = state.team.tasks
     lines.push("")
     lines.push(`team       ${state.team.name} (${state.team.id}) · phase ${state.team.phase}`)

@@ -1,0 +1,66 @@
+=== install ===
+rovider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-tools
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-tools-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxPendingMessagesPerMember: 64
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (33 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== mcp arm (exit 1, 11653ms) ===
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-codegraph] init status=ok binary=/home/haroldzhao/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-extension-mcp-bridge-q7cWO2/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.11.1)
+[mpd-team-tools] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+[mpd-ext] extension "qa-mcp-dead" mcp server "qa_mcp_dead" unavailable: mcp-client(qa_mcp_dead): cannot start "/nonexistent/mpd-ext-qa-missing-binary": spawn /nonexistent/mpd-ext-qa-missing-binary ENOENT
+[mpd-ext] extension "qa-mcp-schema" mcp server "qa_mcp_schema": 2 tool(s) published, 1 skipped, 1 downgraded
+[mpd-ext] extension "qa-mcp-live" mcp server "qa_mcp_live": 8 tool(s) published
+[mpd-ext] extension "qa-mcp-stderr" mcp server "qa_mcp_stderr" unavailable: mcp-client(qa_mcp_stderr): the server process exited (code=1, signal=null)
+[mpd-ext] extension "qa-mcp-dup" mcp server "qa_mcp_dup" unavailable: server "qa_mcp_dup" listed tool "dup_tool" more than once — invalid tool list
+[mpd-ext] extension "qa-mcp-hang" mcp server "qa_mcp_hang" unavailable: mcp-client(qa_mcp_hang): initialize timed out after 1500ms
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:qa-mcp-live, mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[mpd-roles] roster section registered for agent "session-6d55abbf-5bcb-485a-8cd7-2079280e0896" agentPreset=none — mpd:roster order=605
+[mpd-roles] session gate listener registered for agent "session-6d55abbf-5bcb-485a-8cd7-2079280e0896" agentPreset=none
+
+dsh: MALFORMED_RESPONSE: DeepSeek Messages SSE event type mismatch
+[mpd-ext] extension "qa-mcp-live" mcp server "qa_mcp_live" failed: the server process exited (code=null, signal=SIGTERM)
+[mpd-ext] extension "qa-mcp-schema" mcp server "qa_mcp_schema" failed: the server process exited (code=0, signal=null)
+

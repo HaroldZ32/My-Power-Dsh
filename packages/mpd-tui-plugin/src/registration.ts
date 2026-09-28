@@ -23,7 +23,9 @@ import type { Log } from "./log.js"
 /** The type this plugin appends (see `session-events.d.ts`). */
 export const BOARD_OPENED_EVENT = "mpd-tui/board-opened"
 
+/** The slice of a dsh-session copy this module reads: its known-event-type registry. */
 interface KnownTypesModule {
+  /** The set a session log is validated against; absent in a copy that does not export it. */
   KNOWN_SESSION_EVENT_TYPES?: Set<string>
 }
 
@@ -34,18 +36,22 @@ interface KnownTypesModule {
  * @returns deduplicated anchor paths; unresolvable ones are simply skipped later.
  */
 export function candidateAnchors(env: Record<string, string | undefined> = process.env, home: string = homedir()): string[] {
+  /** The candidate anchors, deduplicated before they are used. */
   const anchors: string[] = []
   try {
     anchors.push(fileURLToPath(import.meta.url))
   } catch {
     // A non-file module URL (bundled embedder): the remaining anchors still apply.
   }
+  /** The script path node was started with, the ecosystem template's second anchor. */
   const argv1 = process.argv[1]
   if (typeof argv1 === "string" && argv1.length > 0) anchors.push(argv1)
+  /** Home roots whose installed profiles may hold a reachable dsh-session copy. */
   const homes: string[] = []
   if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0) homes.push(env.DSH_HOME)
   homes.push(join(home, ".dsh"), join(home, ".dsh-tui"))
   for (const root of homes) {
+    /** This home root's profiles directory, probed for installed profiles. */
     const profiles = join(root, "profiles")
     try {
       for (const entry of readdirSync(profiles, { withFileTypes: true })) {
@@ -65,6 +71,7 @@ export function candidateAnchors(env: Record<string, string | undefined> = proce
  * @returns true when the type is present in that copy's set afterwards.
  */
 export function registerInto(moduleLike: unknown, type: string): boolean {
+  /** The copy's known-type set, when the module namespace exposes one. */
   const set = (moduleLike as KnownTypesModule | null | undefined)?.KNOWN_SESSION_EVENT_TYPES
   if (!(set instanceof Set)) return false
   try {
@@ -92,10 +99,13 @@ export function registerInto(moduleLike: unknown, type: string): boolean {
  * @returns true when at least one copy verified the type as known.
  */
 export function registerLogOnlyEventType(type: string, log: Log): boolean {
+  /** Whether at least one copy verified the type as known. */
   let verified = false
+  /** How many anchors resolved a copy, reported so a failure is diagnosable. */
   let resolved = 0
   for (const anchor of candidateAnchors()) {
     try {
+      /** The resolved module namespace of that copy. */
       const required = createRequire(anchor)("@deepseek-ai/dsh-session") as unknown
       resolved += 1
       if (registerInto(required, type)) verified = true

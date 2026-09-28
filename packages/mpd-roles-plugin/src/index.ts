@@ -16,18 +16,21 @@
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
+/** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
+/** The seams this row needs declared: the tool registry and the subagent spawner, both read through the adapter. */
 export const inject = ["tools", "subagents"]
 
+/** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
+/** The row config; only the persona directory is configurable. */
 type Config = { personasDir?: string }
 
 // Every entry must be a tool this profile actually registers: the harness
@@ -49,6 +52,7 @@ export const READONLY_DENY = [
   "mcp__lsp__rename",
 ]
 
+/** Output schema of a one-shot specialist's structured report, so the tool result is validated. */
 const REPORT_SCHEMA = {
   type: "object",
   properties: {
@@ -62,12 +66,10 @@ const REPORT_SCHEMA = {
   additionalProperties: false
 }
 
-function textBlock(text: string): any { return [{ type: "text", text }] }
-
-export function pkgRoot(): string {
-  // this file lives at <pkg-root>/packages/mpd-roles-plugin/dist/index.js
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+// The bundle root, resolved by the shared helper (bundleRootOf): this file lives at
+// <bundle>/packages/mpd-roles-plugin/{src,dist}/index.ts|js. Location-derived, never a
+// hard-coded repo path, so the checkout and the packed install both resolve.
+export function pkgRoot(): string { return bundleRootOf(import.meta.url) }
 
 /** Collapsed form of a team-style roster name: case-, space-, hyphen- and
  *  underscore-insensitive ("Deep Worker" === "deep-worker" === "deepworker"). */
@@ -100,6 +102,7 @@ export function rosterFunctionList(): string {
 
 /** "Strategic technical advisor: architecture review, deep debugging." -> "architecture review, deep debugging" */
 function functionOf(description: string): string {
+  /** The description minus its leading role-noun prefix, when it carries one. */
   const afterColon = description.includes(": ") ? description.slice(description.indexOf(": ") + 2) : description
   return afterColon
     .replace(/\s*\(([^()]*)\)/g, ", $1")
@@ -115,6 +118,7 @@ function functionOf(description: string): string {
  * separator spelling).
  */
 export function normalizeRoleKey(key: string): string | null {
+  /** The key as given, trimmed; an empty one resolves to nothing. */
   const k = String(key ?? "").trim()
   if (!k) return null
   if (ROLE_BY_ID[k]) return k
@@ -124,15 +128,24 @@ export function normalizeRoleKey(key: string): string | null {
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null
 }
 
+/** The persona asset path: the configured directory, or this package's own `personas/`. */
 function personaPath(config: Config, spec: MpdRoleSpec): string {
   return config.personasDir
     ? join(resolve(config.personasDir), spec.id + ".md")
     : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md")
 }
 
+/** The persona TEXT for a role: the asset when it is readable and non-empty, else the description. */
 export function readPersona(config: Config, spec: MpdRoleSpec): string {
+  /** The asset path this role would read. */
   const p = personaPath(config, spec)
-  try { if (existsSync(p)) { const t = readFileSync(p, "utf8").trim(); if (t) return t } } catch { /* fall through */ }
+  try {
+    if (existsSync(p)) {
+      /** The asset's trimmed body; empty means the description is the better text. */
+      const t = readFileSync(p, "utf8").trim()
+      if (t) return t
+    }
+  } catch { /* fall through */ }
   return spec.description
 }
 
@@ -159,12 +172,19 @@ const PROJECT_ROLES_REASON =
 /** One role this roster exposes, whichever plane contributed it: a base specialist
  *  (`extension === null`) or an extension-contributed role. */
 export interface ResolvedRole {
+  /** The stable chain key. INTERNAL: no tool output, description, render, web route or GUI exposes it. */
   id: string
+  /** The functional display name a caller addresses this role by. */
   name: string
+  /** One-line role summary, as the roster declares it. */
   description: string
+  /** True for the members the read-only discipline protects. */
   readonly: boolean
+  /** The model-chain candidates, copied so a caller cannot mutate the roster. */
   chain: Array<{ provider: string; model: string }>
+  /** The persona text, already resolved from the asset or the description. */
   persona: string
+  /** Where the persona text came from, for diagnostics — never a key. */
   personaFile: string
   /** Owning extension id; `null` for a base roster role. */
   extension: string | null
@@ -172,21 +192,28 @@ export interface ResolvedRole {
 
 /** An extension-contributed role the roster REFUSED to expose, with its one-line reason. */
 export interface RefusedRole {
+  /** The extension whose role was refused. */
   extension: string
+  /** The role name exactly as the extension declared it. */
   name: string
+  /** One line saying why it is not exposed, naming the colliding owner where there is one. */
   reason: string
 }
 
 /** The roster as ONE call sees it: the base specialists plus this call's extension roles. */
 export interface RoleSurface {
+  /** The roles this call may address: base specialists plus this call's extension roles. */
   roles: ResolvedRole[]
+  /** Extension roles that were refused, each with its reason — a refusal is never silent. */
   refused: RefusedRole[]
 }
 
+/** A string field read defensively: a non-string reads as empty. */
 function text(value: unknown): string {
   return typeof value === "string" ? value : ""
 }
 
+/** A thrown value's message, for a warning that must never itself throw. */
 function errText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -195,6 +222,7 @@ function errText(error: unknown): string {
  *  words and none starts with `ext-`, so this namespace can never collide with one; the id
  *  doubles as a modelchain chain key and as the workmate `meta.baseId`. */
 export function extensionRoleId(extensionId: string, name: string): string {
+  /** The name reduced to a kebab slug, so the namespaced id stays readable and stable. */
   const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
   return "ext-" + extensionId + "-" + (slug || "role")
 }
@@ -204,8 +232,10 @@ export function extensionRoleId(extensionId: string, name: string): string {
 function readExtensionPersona(root: string, file: string): string | null {
   if (!root || !file) return null
   try {
+    /** The artifact-relative persona path, resolved against the extension root. */
     const path = resolve(root, file)
     if (existsSync(path)) {
+      /** The persona's trimmed body; empty counts as unreadable. */
       const body = readFileSync(path, "utf8").trim()
       if (body) return body
     }
@@ -228,12 +258,15 @@ function readExtensionPersona(root: string, file: string): string | null {
  * extension root, and `chain` from the optional provider+model pair.
  */
 export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => void): { roles: ResolvedRole[]; refused: RefusedRole[] } {
+  /** Roles accepted so far, the base roster excluded. */
   const roles: ResolvedRole[] = []
+  /** Roles refused so far, each with its actionable reason. */
   const refused: RefusedRole[] = []
   // Name collision map. The base roster owns its names first: the base always wins.
   const owner = new Map<string, string>()
   for (const role of ROLES) owner.set(normalizeRoleNameKey(role.name), "the base roster")
 
+  /** The mpdExtensions service, or undefined when that row is not mounted. */
   let service: any
   try {
     service = typeof ctx?.get === "function" ? ctx.get(EXTENSIONS_SERVICE) : undefined
@@ -244,8 +277,10 @@ export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => 
   }
   if (service === undefined || service === null || typeof service.list !== "function") return { roles, refused }
 
+  /** The extension views this call sees, or an empty list when the snapshot is unusable. */
   let views: any[]
   try {
+    /** The service's own snapshot; a shape it does not carry reads as no extensions. */
     const snapshot = service.list({ exec })
     views = Array.isArray(snapshot?.extensions) ? snapshot.extensions : []
   } catch (error) {
@@ -254,11 +289,13 @@ export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => 
   }
 
   for (const view of views) {
+    /** The contributing extension's id, which namespaces the role ids below. */
     const extensionId = text(view?.id)
     if (extensionId === "") continue
     // A config-disabled extension contributes nothing anywhere else, so it contributes no
     // roles either.
     if (view?.enabled === false) continue
+    /** The roles the extension declares, when it declares any at all. */
     const declared = view?.descriptor?.contributes?.roles
     if (!Array.isArray(declared)) continue
     // A PROJECT-plane extension may contribute skills and flows only: tool and provider
@@ -270,35 +307,46 @@ export function extensionRoles(ctx: Ctx, exec: unknown, warn: (line: string) => 
     // so the refusal is visible in mpd_roles_list instead of being dropped silently.
     if (view?.plane === PROJECT_ONLY_PLANE) {
       for (const item of declared) {
+        /** The declared role name; an empty one is not addressable and is skipped. */
         const name = text(item?.name).trim()
         if (name === "") continue
         refused.push({ extension: extensionId, name, reason: PROJECT_ROLES_REASON })
       }
       continue
     }
+    /** The extension's root, against which its persona paths resolve. */
     const root = text(view?.root)
     declared.forEach((item: any, index: number) => {
+      /** The declared role name; an empty one was already rejected by the registry. */
       const name = text(item?.name).trim()
       if (name === "") return // the registry already rejected it; there is nothing to expose
+      /** Record this role's refusal with its one-line reason. */
       const refuse = (reason: string): void => { refused.push({ extension: extensionId, name, reason }) }
+      /** The declared item's address inside the descriptor, quoted in every refusal. */
       const itemLabel = "contributes.roles[" + index + "]"
+      /** The collision key, in the roster's own collapsed-name form. */
       const key = normalizeRoleNameKey(name)
+      /** Who already owns that name, or undefined when it is still free. */
       const takenBy = owner.get(key)
       if (takenBy !== undefined) {
         refuse("role name \"" + name + "\" (" + itemLabel + " of extension \"" + extensionId + "\") is already taken by " + takenBy + " — this extension role is not exposed")
         return
       }
+      /** The namespaced stable id this role would take. */
       const id = extensionRoleId(extensionId, name)
       if (ROLE_BY_ID[id] !== undefined) {
         refuse("role id \"" + id + "\" collides with the base roster — this extension role is not exposed")
         return
       }
+      /** Where the persona was looked for, reported when it turns out to be unreadable. */
       const personaFile = root === "" ? text(item?.persona) : resolve(root, text(item?.persona))
+      /** The persona text, or null when the file is unreadable — which refuses this ONE role. */
       const persona = readExtensionPersona(root, text(item?.persona))
       if (persona === null) {
         refuse("persona file is not readable: " + personaFile)
         return
       }
+      /** The role's model chain: the declared provider+model pair, or empty when either is absent. */
       const chain = typeof item?.provider === "string" && typeof item?.model === "string"
         ? [{ provider: item.provider, model: item.model }]
         : []
@@ -333,8 +381,11 @@ export {
   ADAPTER_IDENTITY_PENDING,
 } from "../../mpd-dsh-adapter-plugin/src/index"
 
+/** Row entry point: provide `mpdRoles`, register the three tools, then install the team plane. */
 export function apply(ctx: Ctx, config: Config = {}): void {
+  /** Report one line through the ctx logger, falling back to stdout. */
   const warn = (line: string): void => {
+    /** The line with this row's prefix, so a boot log attributes it. */
     const message = "[mpd-roles] " + line
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
@@ -345,6 +396,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // `ctx.logger.warn` has no sink there (the same measured reason mpd-ext writes
   // every line to stdout), so this one line always reaches stdout AND the logger.
   const adapterWarn = (line: string): void => {
+    /** The line with this row's prefix, for the stdout-first reporter. */
     const message = "[mpd-roles] " + line
     try {
       console.log(message)
@@ -361,6 +413,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // A refusal or a failed lookup is reported ONCE per process+reason: mpd_roles_list is
   // polled, and a repeating warning is noise. Never fatal.
   const warned = new Set<string>()
+  /** Report a line at most once per key: the roster tools are polled, and repeats are noise. */
   const warnOnce = (key: string, line: string): void => {
     if (warned.has(key)) return
     warned.add(key)
@@ -369,6 +422,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
   const roleSurface = (exec?: unknown): RoleSurface => {
+    /** The base roster projected for THIS call, each persona already read. */
     const base: ResolvedRole[] = ROLES.map((r) => ({
       id: r.id,
       name: r.name,
@@ -379,6 +433,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       personaFile: personaPath(config, r),
       extension: null,
     }))
+    /** The extension plane's contributions and refusals for this call. */
     const contributed = extensionRoles(ctx, exec, (line) => warnOnce("lookup:" + line, line))
     for (const refusal of contributed.refused) {
       // The refused role is NAMED here (its reason does not always carry the name — the project
@@ -391,15 +446,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** Resolve one role key against a surface: the base ids/legacy aliases/names first, then an
    *  extension role by its namespaced id or its declared name in any case/separator spelling. */
   const roleOf = (surface: RoleSurface, key: string): ResolvedRole | null => {
+    /** The key in its canonical internal form, when it resolved to one. */
     const id = normalizeRoleKey(key)
     if (id) {
+      /** The BASE role that id names; an extension role never resolves through this path. */
       const found = surface.roles.find((role) => role.extension === null && role.id === id)
       if (found) return found
     }
+    /** The trimmed key, tried next as an extension role's namespaced id or name. */
     const raw = String(key ?? "").trim()
     if (raw === "") return null
+    /** An extension role addressed by its namespaced stable id. */
     const namespaced = surface.roles.find((role) => role.extension !== null && role.id === raw)
     if (namespaced) return namespaced
+    /** The key in the roster's collapsed-name form, the last thing tried. */
     const nameKey = normalizeRoleNameKey(raw)
     return surface.roles.find((role) => role.extension !== null && normalizeRoleNameKey(role.name) === nameKey) ?? null
   }
@@ -412,6 +472,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     adapterIdentity: dshAdapterIdentity(ctx),
     list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
     get: (key: string) => {
+      /** The resolved role, or null when the key names nothing on this surface. */
       const spec = roleOf(roleSurface(undefined), key)
       return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension }
     }
@@ -423,7 +484,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join("\n") + (Array.isArray(v.refused) && v.refused.length > 0 ? "\nrefused (" + v.refused.length + "):\n" + v.refused.map((r: any) => "- " + r.name + " (" + r.extension + ") — " + r.reason).join("\n") : "")) },
     execute: async (_args: any, exec: any) => {
+      /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
+      /** The listed rows: name, capability and route, never the internal id. */
       const roles = surface.roles.map((r) => ({ name: r.name, description: r.description, readonly: r.readonly, provider: r.chain[0]?.provider ?? null, model: r.chain[0]?.model ?? null, extension: r.extension }))
       return { roles, count: roles.length, refused: surface.refused.map((r) => ({ extension: r.extension, name: r.name, reason: r.reason })) }
     }
@@ -435,15 +498,23 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
+      /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
+      /** The resolved role, or null — in which case the error lists every addressable name. */
       const spec = roleOf(surface, String(args?.role ?? ""))
       if (spec === null) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
+      /** The task text; empty is a caller error and must not spawn an empty prompt. */
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_role_spawn: task required")
+      /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
+      /** The primary route's provider, falling back to the deployment default. */
       const provider = spec.chain[0]?.provider ?? "deepseek-official"
+      /** The model for this spawn: the caller's override when given, else the role's primary. */
       const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model
+      /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+      /** The spawn result, whose structured report is echoed into this tool's output. */
       const result = await dsh.spawnAgent({
         label: spec.name,
         prompt,
@@ -455,6 +526,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         outputSchema: REPORT_SCHEMA,
         ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
       })
+      /** The structured report, or an empty object when the subagent answered none. */
       const st = result.structured ?? {}
       return { role: spec.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
     }
@@ -466,7 +538,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.chars + " chars):\n" + v.persona) },
     execute: async (args: any, exec: any) => {
+      /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
+      /** The resolved role, or null — in which case the error lists every addressable name. */
       const spec = roleOf(surface, String(args?.role ?? ""))
       if (spec === null) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length }
@@ -482,13 +556,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
   //   3. the advisory session-start gate (it NEVER stages a team).
   // Each installer degrades with a warning instead of taking the row down.
-  const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
+  const teamMembers = (): Array<{ name: string; description: string; readonly: boolean }> => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
   // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
   // outcome, so an integration boot asserts the guard reached the tool registry (a
   // `[mpd-roles] team plane: readOnlyGuard=installed deny=7 …` line) instead of trusting the
   // absence of an error. The roster section logs its OWN line per agent scope when it lands.
   const guardOutcome: string[] = []
   try {
+    /** The guard's install outcome, which the team-plane boot signature reports below. */
     const guard = installReadonlyGuard(dsh, {
       deny: READONLY_DENY,
       members: teamMembers(),

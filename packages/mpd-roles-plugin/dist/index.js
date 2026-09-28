@@ -1,7 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join as join2, resolve as resolve2 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join as join2, resolve as resolve2 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -505,6 +504,17 @@ function installRosterSection(dsh, options) {
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function bundleRootOf(moduleUrl) {
+  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -520,9 +530,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -789,7 +796,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -982,7 +989,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -1092,7 +1099,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -1452,11 +1459,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1464,24 +1471,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -1580,11 +1587,8 @@ var REPORT_SCHEMA = {
   required: ["role", "summary"],
   additionalProperties: false
 };
-function textBlock2(text) {
-  return [{ type: "text", text }];
-}
 function pkgRoot() {
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+  return bundleRootOf(import.meta.url);
 }
 function normalizeRoleNameKey(name2) {
   return String(name2 ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -1739,20 +1743,20 @@ function extensionRoles(ctx, exec, warn) {
 }
 function apply(ctx, config = {}) {
   const warn = (line) => {
-    const message2 = "[mpd-roles] " + line;
+    const message = "[mpd-roles] " + line;
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message2);
+        ctx.logger.warn(message);
       else
-        console.log(message2);
+        console.log(message);
     } catch {}
   };
   const adapterWarn = (line) => {
-    const message2 = "[mpd-roles] " + line;
+    const message = "[mpd-roles] " + line;
     try {
-      console.log(message2);
+      console.log(message);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message2);
+        ctx.logger.warn(message);
     } catch {}
   };
   const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn });
@@ -1809,7 +1813,7 @@ function apply(ctx, config = {}) {
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
+    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
 `) + (Array.isArray(v.refused) && v.refused.length > 0 ? `
 refused (` + v.refused.length + `):
@@ -1825,7 +1829,7 @@ refused (` + v.refused.length + `):
     name: "mpd_role_spawn",
     description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated one-shot spawns: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.status + `)
+    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `
@@ -1870,7 +1874,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
     name: "mpd_role_persona",
     description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.',
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
+    output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },
     execute: async (args, exec) => {
       const surface = roleSurface(exec);

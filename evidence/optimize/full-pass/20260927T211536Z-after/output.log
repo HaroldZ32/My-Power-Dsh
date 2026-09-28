@@ -1,0 +1,77 @@
+my-power-dsh — whole-project optimization pass (2026-09-28)
+===========================================================
+
+WHAT THIS ROUND DID
+  code      : removed the duplicated implementations, one module per repeated decision
+  structure : two new shared modules for the packages, one for the scripts
+  tests     : the full user-facing QA lane sweep, run on BOTH the pristine HEAD and the
+              refactored tree, verdict by verdict
+  docs      : structure docs, package contracts, the manual, the changelog and the
+              duplicated-line citations updated to match
+
+CODE CONSOLIDATION (net -294 lines across packages/*/src, 27 files)
+  * packages/mpd-dsh-adapter-plugin/src/shared.ts        NEW  isRecord / errorMessage /
+                                                              bundleRootOf, re-exported from
+                                                              the adapter entry
+      - 9 identical `message()` bodies, 4 `isRecord()` bodies and 5 bundle-root
+        resolutions deleted from the rows that carried them
+  * resolveDshAdapter(ctx)                               NEW  one adapter resolution;
+      - the eager `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` expression that 16 rows
+        spelled inline is gone
+  * packages/mpd-ext-plugin/src/skill-frontmatter.ts     NEW  the ONE corpus frontmatter
+                                                              parser (YAML subset + readers)
+      - mpd-bootstrap's ~140-line copy deleted; ext/skills.ts lost ~136 lines
+  * scripts/lib/repo.mjs                                 NEW  repoRootFrom / readJson
+      - 10 hand-written root walks and 28 hand-written JSON reads rewired
+
+  DELIBERATELY NOT MERGED: scripts/repin-vendor.mjs MIRRORS scripts/verify-vendor.mjs's
+  fingerprint algorithm and re-checks that mirror against the authority's own bytes
+  (assertAuthorityShape), so those two helper bodies stay duplicated by contract.
+
+CODE-ADJACENT TEST INFRASTRUCTURE (consequence of the shared modules)
+  A scratch tree that copies a script or a plugin `src/` must stage the shared module the
+  copy imports. Fixed at every measured site: the watchdog lane-c scratch now mirrors the
+  sibling adapter src; scripts/repin-vendor.mjs, check-citations' T-82 arm and the four
+  self-fix suites stage scripts/lib/ (the last four through a new shared helper,
+  self-fix-tests/scratch-scripts.mjs).
+
+TEST ROUND
+  Unit/type: typecheck PASS; bun test 1244 pass / 3 skip / 1 fail — the SAME single
+             environmental failure as the recorded pre-change baseline
+             (`REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails`).
+  Gates    : verify:gates 5/5 PASS; test:qa PASS; verify-dist-fresh 23/23 FRESH (double
+             rebuild, byte-identical); verify-pack-closure PASS; verify-docs-parity PASS
+             (41 pairs, 0 dead links); verify-manual-paths PASS;
+             check-citations 25/25 (was 21/25).
+  User-facing: node scripts/run-qa-lanes.mjs (26 real-boot lanes + 6 gates) run twice —
+             once on a pristine `git archive` of HEAD and once on the refactored tree.
+             28 verdicts identical; 2 explained by the gitignored packed artifact's
+             presence (relocate-smoke, skill-catalog-probe — packing the PRISTINE tree
+             reproduces the after result); 2 re-run to PASS on both trees
+             (session-start-team under a longer cap, workmate-library after its own retry).
+             No lane regressed.
+
+  ENVIRONMENT FACT that decides whether a lane tests anything at all, now documented:
+    BUN_TMPDIR must point INSIDE the workspace. BUN_INSTALL (~/.bun) is read-only under
+    the file sandbox, so a bun-spawning lane dies with
+    `EROFS accessing temporary directory` a few milliseconds in — a FAIL that never
+    reached an assertion.
+
+DOC UPDATES
+  docs/design.md + zh          : a "shared modules" section in §2 and the adapter's
+                                 resolution/helpers in §6b
+  docs/development.md + zh     : scripts/lib in the layout, resolveDshAdapter in the
+                                 adapter rule, and the two sandbox facts above
+  packages/*/README.md + zh    : the adapter's shared helpers and usage snippet; the ext
+                                 package's shared frontmatter parser; bootstrap's pointer
+  AGENTS.md                    : §3 (scripts/lib) and §6 (resolveDshAdapter + shared)
+  CHANGELOG.md                 : an "Unreleased" section for the pass
+  agent-references/troubleshooting.md : the EROFS row and the scratch-tree staging row
+  docs/extension-*             : 6 citations rotted by the moved lines and 4 already-dead
+                                 anchors repaired (EN + zh)
+
+ARTIFACTS
+  evidence/optimize/full-pass/<stamp>-after/{result.json, *.log, qa-lanes*.out, ab-verdicts.txt,
+  pack-ab-verdicts.txt}
+  evidence/optimize/pristine-baseline/{bundle-lifecycle.log, pristine-boot.log,
+  qa-lanes-pristine.out}

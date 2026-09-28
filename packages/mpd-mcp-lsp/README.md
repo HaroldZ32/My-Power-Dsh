@@ -8,7 +8,7 @@ bundle's `mcp-lsp` row (`@deepseek-ai/dsh-mcp-client`, serverName `lsp`, stdio).
 
 ## What it does
 
-- `dist/cli.js` (built offline by `scripts/build-mcp.mjs`) speaks MCP to the bundled
+- `dist/cli.js` (built offline by `scripts/build-mcp.ts`) speaks MCP to the bundled
   LSP daemon; the `mcp` subcommand selects the server mode.
 - The daemon self-starts on a real home; symptom of a broken setup:
   `LSP daemon unreachable` (`~/.mpd` unwritable/missing).

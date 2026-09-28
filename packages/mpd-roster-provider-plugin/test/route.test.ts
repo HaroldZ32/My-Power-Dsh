@@ -3,10 +3,15 @@
 // could go silently wrong: matching a member the label never named, and half-configuring a slot.
 import { describe, expect, test } from "bun:test"
 import { applyRoute, labelOf, memberFromLabel, routeForMember } from "../src/route"
+import type { RoutableRequest, SlotRoute } from "../src/route"
 import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
 
-const NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
-const SLOTS = {
+// Every roster name the label matcher may return, flattened out of the four slot groups: this is the
+// vocabulary a teammate description has to name to be routed at all.
+const NAMES: readonly string[] = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
+// The configured `teamModels` subtree: all four slots complete, so a slot-routed member has a route
+// of its own to resolve and the half-configured arms below stand out against a working table.
+const SLOTS: Record<string, SlotRoute> = {
   slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" },
   slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
   slot3: { provider: "gateway", model: "fast", reasoningEffort: "off" },
@@ -35,6 +40,7 @@ describe("reading the member out of the descriptor label", () => {
   })
 
   test("the LONGEST name wins, so a prefix cannot steal the match", () => {
+    // The roster vocabulary plus the shorter "Reviewer", so a prefix match would be observable here.
     const extended = [...NAMES, "Reviewer"]
     expect(memberFromLabel("Plan Reviewer — read it", extended)).toBe("Plan Reviewer")
   })
@@ -42,6 +48,7 @@ describe("reading the member out of the descriptor label", () => {
 
 describe("resolving the slot route", () => {
   test("every roster member maps to a slot, and a complete slot resolves to its own route", () => {
+    // The roster as the slot table declares it, re-derived so the count below guards that table.
     const members = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
     expect(members).toHaveLength(11)
     for (const [slot, group] of Object.entries(TEAM_MODEL_SLOT_GROUPS)) {
@@ -62,6 +69,7 @@ describe("resolving the slot route", () => {
   })
 
   test("an effort the slot does not state is OMITTED, so the harness keeps its own resolution", () => {
+    // A slot stating provider and model but no effort: the resolved route must carry no effort key.
     const route = routeForMember("Deep Worker", "slot3", { slot3: { provider: "p", model: "m" } })
     expect(route).toEqual({ provider: "p", model: "m" })
     expect("reasoningEffort" in (route ?? {})).toBe(false)
@@ -69,13 +77,17 @@ describe("resolving the slot route", () => {
 })
 
 describe("applying a route to a request", () => {
-  const request = {
+  // The request double: the Lead's own route, the descriptor the router reads the member from, and
+  // one unrelated field the merge has to carry through. `agentOptions` is typed as the open record
+  // the package declares rather than as this literal's own shape, so the arms below assert the MERGE.
+  const request: RoutableRequest & { agentOptions: Record<string, unknown> } = {
     agentOptions: { provider: "lead-provider", model: "lead-model", reasoningEffort: "low", maxDepth: 3 },
     descriptor: { label: "Architect — module boundaries" },
     unrelated: "kept",
   }
 
   test("the route replaces the three route fields and NOTHING else", () => {
+    // The routed copy: the three route fields come from the slot, every other field stays the Lead's.
     const routed = applyRoute(request, { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" })
     expect(routed.agentOptions).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max", maxDepth: 3 })
     expect(routed.unrelated).toBe("kept")
@@ -88,12 +100,16 @@ describe("applying a route to a request", () => {
   })
 
   test("a route with no effort CLEARS an inherited one instead of leaving it behind", () => {
+    // An effort-less route over a Lead route that HAS one: the inherited effort must be gone.
     const routed = applyRoute(request, { provider: "p", model: "m" })
     expect(routed.agentOptions).toEqual({ provider: "p", model: "m", maxDepth: 3 })
   })
 
   test("a request with no agentOptions at all is still routable", () => {
-    const routed = applyRoute({ descriptor: { label: "Architect" } }, { provider: "p", model: "m", reasoningEffort: "high" })
+    // The explicit type argument pins the literal to the package's own request contract, which is what
+    // makes `agentOptions` a property of the result the assertion below can read; the inference would
+    // otherwise be the literal's own shape, which has none.
+    const routed = applyRoute<RoutableRequest>({ descriptor: { label: "Architect" } }, { provider: "p", model: "m", reasoningEffort: "high" })
     expect(routed.agentOptions).toEqual({ provider: "p", model: "m", reasoningEffort: "high" })
   })
 

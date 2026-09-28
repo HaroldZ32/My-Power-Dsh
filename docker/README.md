@@ -5,7 +5,7 @@
 One command, run from the repository root:
 
 ```bash
-node scripts/docker-e2e.mjs
+node scripts/docker-e2e.ts
 ```
 
 It builds `docker/Dockerfile` through `docker/docker-compose.yml` (a bare `ubuntu:24.04` with no
@@ -39,10 +39,10 @@ run produced no `result.json` at all, `3` the host has no usable docker.
    packages/<pkg>/src/<entry>.ts --target node --format esm --outfile packages/<pkg>/dist/<entry>.js`).
 7. Switches to an isolated `HOME=/root/sandbox-home` and `DSH_HOME=/root/sandbox-dsh`, then runs the
    real client install: `cd /opt/mpd && dsh plugin --profile web add .`.
-8. Composes the profile with the sanctioned wrapper (`node scripts/dump-config.mjs --profile web`)
+8. Composes the profile with the sanctioned wrapper (`node scripts/dump-config.ts --profile web`)
    and asserts the mpd row ids, the `preset-mpd` row and the three official agent-team rows plus
    their package names. **This step is COMPOSITION ONLY** — it never executes plugin code.
-9. **Boots** the installed profile with registration instrumentation (`docker/probe.mjs`, inserted
+9. **Boots** the installed profile with registration instrumentation (`docker/probe.ts`, inserted
    through `--patch`) and asserts from the boot log that the plugin tree really applied: the probe's
    `apply()` ran, the adapter provided `mpdDsh`, an internal tool call through the adapter answered
    `ok`, every core mpd tool answered from the live tool registry, the official TeamService is mounted
@@ -160,7 +160,7 @@ copied anywhere**. By hand, `export BUILDX_CONFIG=$(mktemp -d)` before invoking 
 
 - `docker/docker-compose.yml` declares **one** service and **one** bind mount: the evidence `/out`
   directory. There is no mount of `$HOME`, `~/.dsh`, `~/.mpd`, `~/.agents`, the docker socket or the
-  repository, and `node scripts/docker-e2e.mjs --self-test` asserts that statically.
+  repository, and `node scripts/docker-e2e.ts --self-test` asserts that statically.
 - Inside the container, `HOME` and `DSH_HOME` are redirected to sandbox paths **before** the toolchain
   runs, and `NPM_CONFIG_CACHE` / `BUN_INSTALL` point at `/opt/toolchain`, so not even a
   package-manager cache lands in the real home.
@@ -171,8 +171,8 @@ copied anywhere**. By hand, `export BUILDX_CONFIG=$(mktemp -d)` before invoking 
 ## Flags and exit codes
 
 ```bash
-node scripts/docker-e2e.mjs --self-test   # offline: no docker, no network
-node scripts/docker-e2e.mjs --no-build    # reuse the existing mpd-docker-e2e:local image
+node scripts/docker-e2e.ts --self-test   # offline: no docker, no network
+node scripts/docker-e2e.ts --no-build    # reuse the existing mpd-docker-e2e:local image
 ```
 
 The raw compose path, when the driver is not what you want:
@@ -205,7 +205,7 @@ An assertion recorded as `null` is *not* a pass: it means the run stopped before
 
 ## Self-test
 
-`node scripts/docker-e2e.mjs --self-test` is offline and needs neither docker nor network. It
+`node scripts/docker-e2e.ts --self-test` is offline and needs neither docker nor network. It
 exercises the driver's own bookkeeping — the UTC evidence stamp, the verdict → exit-code mapping, the
 redaction rule, the BUILDX_CONFIG injection — plus the static rules of the compose file, the
 Dockerfile, the ignore file and the entrypoint, and round-trips the evidence writer. A driver whose

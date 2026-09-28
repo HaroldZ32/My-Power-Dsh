@@ -49,6 +49,16 @@
 - 流程 id 必须满足**技能名语法**（`^[a-z0-9]+(?:-[a-z0-9]+)*$`）——描述符 id 语法更宽松，因此像 `a--b` 这样的 id 会按文件被明确拒绝。
 - **角色默认值**：`description` 默认 `""`，`readonly` 默认 `false`，且 `provider`/`model` 必须**成对**提供——只给一半会按条目被拒绝。MCP 条目默认 `args: []`、`env: {}`、`cwd: "."`、`toolCallTimeoutMs: 60000`、`connectTimeoutMs: 10000`。
 
+## 共享的 frontmatter 解析器
+
+skill frontmatter 的读取并不是本包私有的。`src/skill-frontmatter.ts` 是语料所用那套刻意精简的
+YAML 子集（顶层标量、一层嵌套映射、可选块标量）以及 `stringField` / `frontmatterBoolean` /
+`parseInvocation` 读取逻辑的唯一实现——而 `mpd-bootstrap-plugin` 为自己的语料消费同一个模块。
+
+共享本身就是重点：bundle 语料与扩展语料是读取同一文件格式的两个面，而**解析器**存在两份副本，
+正是两者开始接受不同文档的起点。该子集由
+`packages/mpd-bootstrap-plugin/test/bootstrap.test.ts` 对每一个随包发布的 `SKILL.md` 钉住。
+
 ## 三个根目录，两种生命周期
 
 | 根目录 | 生命周期 | 可贡献的种类 |

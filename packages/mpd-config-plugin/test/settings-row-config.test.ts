@@ -13,6 +13,7 @@ import { markVolatile } from "../src/settings-schema"
 describe("the row Config", () => {
   test("it marks EVERY node volatile, including the ones a function-blind walk would skip", () => {
     markVolatile(Config)
+    // `Config` viewed as the raw schemastery node tree the marking walk mutates in place.
     const schema = Config as unknown as { meta?: { volatile?: boolean }; dict?: Record<string, { meta?: { volatile?: boolean } }> }
     expect(schema.meta?.volatile).toBe(true)
     for (const key of ["hashline", "commentChecker", "ulw", "memory", "team", "boulder", "teamModels", "watchdog"]) {
@@ -43,15 +44,21 @@ describe("the row config is an EFFECTIVE layer", () => {
     // The form writes the ROW CONFIG. Without this layer an edit would render, accept, and change
     // NOTHING — the worst of the three outcomes, because it looks like it worked.
     const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs")
+    // Sandbox helpers imported inside the case that owns the temp tree, not at module scope.
     const { tmpdir } = await import("node:os")
+    // Path join for the box's `.mpd` directory and for its home twin.
     const { join } = await import("node:path")
+    // The workspace box: the only root this config load is allowed to see.
     const box = mkdtempSync(join(tmpdir(), "mpd-row-layer-"))
     mkdirSync(join(box, ".mpd"), { recursive: true })
     writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ ulw: { maxRounds: 4 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } }))
+    // The ambient DSH_HOME this case overrides, restored in the finally block below.
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = join(box, "home")
     try {
+      // Imported only after DSH_HOME points at the sandbox, so a module-scope read cannot see the caller's.
       const { loadConfig } = await import("../src/index")
+      // The resolved config: the row layer's knob on top of the file's untouched siblings.
       const out = loadConfig({ ulw: { maxRounds: 7 } } as never, box)
       // the row layer WINS over the file for the knob it carries...
       expect(out.config.ulw.maxRounds).toBe(7)
@@ -66,15 +73,22 @@ describe("the row config is an EFFECTIVE layer", () => {
   })
 
   test("the ROUTING keys never leak into the effective config", async () => {
+    // Sandbox filesystem helpers, imported locally so this case owns its own temp tree.
     const { mkdtempSync, mkdirSync } = await import("node:fs")
+    // Temp-root helper for this case's sandbox box.
     const { tmpdir } = await import("node:os")
+    // Path join for the box's `.mpd` directory.
     const { join } = await import("node:path")
+    // The workspace box whose project file the row config below names explicitly.
     const box = mkdtempSync(join(tmpdir(), "mpd-row-routing-"))
     mkdirSync(join(box, ".mpd"), { recursive: true })
+    // The ambient DSH_HOME this case overrides, restored in the finally block below.
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = join(box, "home")
     try {
+      // Loaded here, after DSH_HOME is redirected, so the module cannot resolve the caller's home.
       const { loadConfig } = await import("../src/index")
+      // A load whose row config carries ONLY routing keys — none may reach the effective config.
       const out = loadConfig({ projectFile: join(box, ".mpd", "mpd.jsonc"), userFile: join(box, "u.jsonc"), writeBack: false, settingsBridge: { writeBack: false } } as never, box)
       for (const key of ["projectFile", "userFile", "writeBack", "settingsBridge"]) expect(out.config[key]).toBeUndefined()
       expect(out.config.ulw).toBeUndefined()

@@ -1,0 +1,9 @@
+[extension-mcp-bridge] ok=false -> /home/haroldzhao/dshProj/my-power-dsh/evidence/extensions/extension-mcp-bridge/2026-09-27T21-22-41.386Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":false,"offered":true,"called":false,"succeeded":false,"reason":"the harness recorded no tool/call for mcp__qa_mcp_live__status (answer-only narration is not tool evidence)","resultHead":""}
+  dead: {"vacuous":true,"ok":false,"offeredNoTool":true,"headerSawNoTool":true,"reported":false,"stateText":""}
+  hang: {"vacuous":true,"ok":false,"connectTimeoutMs":1500,"durationMs":11653,"offeredNoTool":true,"reported":false,"stateText":""}
+  schema: {"vacuous":true,"ok":false,"goodToolOffered":true,"badInputSkipped":true,"badOutputOffered":true,"badOutputSchemaDropped":false,"reportedReason":false,"stateText":""}
+  dup: {"vacuous":true,"ok":false,"zeroTools":true,"headerZeroTools":true,"stateText":"","collisionPremise":"the SAME raw name (dup_tool) advertised twice makes the tool list invalid (\"listed tool ... more than once\"), which rolls the whole generation back to ZERO tools; two DIFFERENT raw names can never
+  stderr: {"vacuous":true,"ok":false,"cap":2000,"floodLength":3053,"reportedTailLength":0,"headDropped":true,"tailKept":false,"reported":false,"tailHead":"","stateHead":""}
+  containment: {"ok":false,"exit":1,"control":{"liveToolOffered":true,"liveCallSucceeded":false},"showCallOrder":[],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegraph_explore","mcp__context7__query-docs","mcp__context7__resolve-libra

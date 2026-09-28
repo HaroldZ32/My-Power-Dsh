@@ -922,6 +922,12 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -937,9 +943,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -1206,7 +1209,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -1399,7 +1402,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -1509,7 +1512,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -1869,11 +1872,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1881,24 +1884,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -1906,6 +1909,12 @@ function createDshAdapter(ctx, config = {}) {
     }
   };
   return adapter;
+}
+var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
 }
 
 // packages/mpd-hashline-plugin/src/index.ts
@@ -1922,9 +1931,6 @@ function mergedConfig(ctx, config) {
     maxDiffChars: typeof v("hashline.maxDiffChars") === "number" ? v("hashline.maxDiffChars") : config.maxDiffChars,
     registryFile: typeof v("hashline.registryFile") === "string" ? v("hashline.registryFile") : config.registryFile
   };
-}
-function textBlock2(text) {
-  return [{ type: "text", text }];
 }
 function registryPath(config, dsh, exec) {
   return config.registryFile ? resolve2(config.registryFile) : join(dsh.workspaceRoot(exec), ".mpd", "hashline-files.json");
@@ -1966,14 +1972,14 @@ function editFile(fp, edits, maxDiffChars) {
   };
 }
 function apply(ctx, config = {}) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const dsh = resolveDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
   const maxDiffChars = cfg.maxDiffChars ?? 4000;
   dsh.registerTool({
     name: "mpd_hashline_read",
     description: "Show a file as hashline view: one 'LINE#HASH|content' line per source line, where LINE#HASH is the anchor to use with mpd_hashline_edit. Read-only; the file on disk stays plain.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
-    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock2(v.view) },
+    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock(v.view) },
     execute: async (args, exec) => {
       const fp = sessionPath(String(args?.path), dsh, exec);
       if (!existsSync(fp))
@@ -1998,7 +2004,7 @@ function apply(ctx, config = {}) {
     },
     output: {
       schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, noopEdits: { type: "integer" }, deduplicatedEdits: { type: "integer" }, diff: { type: "string" } }, required: ["path", "lines"], additionalProperties: false },
-      render: (_a, v) => textBlock2("hashline edited: " + v.path + " (" + v.lines + " lines, noop=" + v.noopEdits + ", deduped=" + v.deduplicatedEdits + `)
+      render: (_a, v) => textBlock("hashline edited: " + v.path + " (" + v.lines + " lines, noop=" + v.noopEdits + ", deduped=" + v.deduplicatedEdits + `)
 ` + (v.diff ?? ""))
     },
     execute: async (args, exec) => {
@@ -2016,7 +2022,7 @@ function apply(ctx, config = {}) {
     name: "mpd_hashline_format",
     description: "Register a file for the hashline discipline (idempotent; the file on disk is NOT changed). After registration the post-edit guard warns when plain edit/write tools change the file. The returned view is the hashline anchor view.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
-    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock2("hashline disciplined: " + v.path + `
+    output: { schema: { type: "object", properties: { path: { type: "string" }, lines: { type: "integer" }, view: { type: "string" } }, required: ["path", "lines", "view"] }, render: (_a, v) => textBlock("hashline disciplined: " + v.path + `
 ` + v.view) },
     execute: async (args, exec) => {
       const fp = sessionPath(String(args?.path), dsh, exec);
@@ -2034,7 +2040,7 @@ function apply(ctx, config = {}) {
     name: "mpd_hashline_restore",
     description: "Unregister a file from the hashline discipline (the plain file content is untouched). After this, plain edits no longer trigger the hashline guard.",
     parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
-    output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a, v) => textBlock2("hashline discipline removed: " + v.path) },
+    output: { schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }, render: (_a, v) => textBlock("hashline discipline removed: " + v.path) },
     execute: async (args, exec) => {
       const fp = sessionPath(String(args?.path), dsh, exec);
       const rp = registryPath(cfg, dsh, exec);

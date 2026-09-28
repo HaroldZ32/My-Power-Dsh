@@ -39,6 +39,7 @@ export function readableService<T>(scoped: PluginContextLike, id: string): T | u
   if (scoped === undefined || scoped === null) return undefined
   if (typeof scoped.get === "function") {
     try {
+      /** The service the soft probe returned; null and undefined both mean "not readable here". */
       const found = scoped.get(id, false)
       if (found !== undefined && found !== null) return found as T
     } catch {
@@ -46,6 +47,7 @@ export function readableService<T>(scoped: PluginContextLike, id: string): T | u
     }
   }
   try {
+    /** The service as a property of the injected scope, the host's second exposure form. */
     const property = (scoped as Record<string, unknown>)[id]
     if (property !== undefined && property !== null) return property as T
   } catch {
@@ -64,6 +66,7 @@ export function readableService<T>(scoped: PluginContextLike, id: string): T | u
 export function serviceOf<T>(ctx: PluginContextLike, id: string): T | undefined {
   if (ctx === undefined || ctx === null || typeof ctx.get !== "function") return undefined
   try {
+    /** The probed service; null and undefined both mean this row cannot reach it. */
     const found = ctx.get(id, false)
     return found === undefined || found === null ? undefined : (found as T)
   } catch {
@@ -92,6 +95,7 @@ export function onService(
   if (ctx === undefined || ctx === null || typeof ctx.inject !== "function") return
   try {
     ctx.inject([id], (scoped: PluginContextLike) => {
+      /** The injected service, absent when the scope cannot read it back. */
       const service = readableService(scoped, id)
       if (service === undefined) return
       try {

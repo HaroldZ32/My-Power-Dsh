@@ -71,6 +71,18 @@ Rules that are enforced, not documented-only:
   must be supplied **together** — a partial route is rejected per item. An MCP item defaults to
   `args: []`, `env: {}`, `cwd: "."`, `toolCallTimeoutMs: 60000`, `connectTimeoutMs: 10000`.
 
+## The shared frontmatter parser
+
+The skill-frontmatter reader is NOT private to this package. `src/skill-frontmatter.ts` is the one
+implementation of the deliberately small YAML subset the corpus uses (top-level scalars, one nested
+mapping, optional block scalars) plus the `stringField` / `frontmatterBoolean` / `parseInvocation`
+readers — and `mpd-bootstrap-plugin` consumes the very same module for the bundle's own corpus.
+
+That sharing is the point: the bundle corpus and the extension corpus are two planes reading the
+same file format, and two copies of a PARSER is how they start accepting different documentation.
+The subset is pinned against every shipped `SKILL.md` by
+`packages/mpd-bootstrap-plugin/test/bootstrap.test.ts`.
+
 ## Three roots, two lifecycles
 
 | Root | Lifecycle | May contribute |

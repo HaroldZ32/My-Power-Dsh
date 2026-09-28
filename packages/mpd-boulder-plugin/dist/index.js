@@ -664,6 +664,12 @@ import { join as join4 } from "node:path";
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve as resolve2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/shared.ts
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -679,9 +685,6 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
-}
-function message(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 function sessionCwdOf(agent) {
   try {
@@ -948,7 +951,7 @@ function createDshAdapter(ctx, config = {}) {
     try {
       providers = await llm.listProviders();
     } catch (error) {
-      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      warnLlmCatalogOnce("listProviders() failed: " + errorMessage(error));
       return { providers: [], degraded: true };
     }
     if (!Array.isArray(providers)) {
@@ -1141,7 +1144,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -1251,7 +1254,7 @@ function createDshAdapter(ctx, config = {}) {
         }
         return { ok: true, isError: false, value: raw?.value, raw };
       } catch (error) {
-        return { ok: false, isError: true, error: message(error) };
+        return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
     async spawnAgent(spec) {
@@ -1611,11 +1614,11 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1623,24 +1626,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -1648,6 +1651,12 @@ function createDshAdapter(ctx, config = {}) {
     }
   };
   return adapter;
+}
+var SERVICE_NAME = "mpdDsh";
+function resolveDshAdapter(ctx) {
+  const get = typeof ctx?.get === "function" ? ctx.get : undefined;
+  const mounted = get === undefined ? undefined : get.call(ctx, SERVICE_NAME);
+  return mounted ?? createDshAdapter(ctx);
 }
 
 // packages/mpd-boulder-plugin/src/index.ts
@@ -1660,21 +1669,18 @@ function mergedConfig(ctx, config) {
   const v = svc.get("boulder.dir");
   return typeof v === "string" ? { ...config, boulderDir: v } : config;
 }
-function textBlock2(text) {
-  return [{ type: "text", text }];
-}
 function boulderRoot(config, dsh, exec) {
   return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec);
 }
 function apply(ctx, config = {}) {
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
+  const dsh = resolveDshAdapter(ctx);
   const merged = mergedConfig(ctx, config);
   const root = (exec) => boulderRoot(merged, dsh, exec);
   dsh.registerTool({
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
-    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a, v) => textBlock2("boulder status: " + v.stateFile + `
+    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a, v) => textBlock("boulder status: " + v.stateFile + `
 active works: ` + JSON.stringify(v.activeWorks, null, 1) + `
 resume: ` + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? `
 plan: ` + JSON.stringify(v.planProgress) : "")) },
@@ -1703,7 +1709,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     name: "mpd_boulder_start",
     description: "Start a boulder work bound to a plan markdown file (e.g. .mpd/plans/<slug>.md). Creates .mpd/boulder.json if absent; the work becomes active with status active and the calling session recorded.",
     parameters: { type: "object", properties: { planPath: { type: "string" }, agent: { type: "string" }, worktreePath: { type: "string" }, sessionId: { type: "string" } }, required: ["planPath"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, stateFile: { type: "string" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock2("boulder started: " + v.workId + " (" + v.status + ") " + v.stateFile) },
+    output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, stateFile: { type: "string" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock("boulder started: " + v.workId + " (" + v.status + ") " + v.stateFile) },
     execute: async (args, exec) => {
       const dir = root(exec);
       const planPath = String(args?.planPath);
@@ -1727,7 +1733,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     name: "mpd_boulder_complete",
     description: "Complete the active boulder work (or one given by workId): sets status completed, records ended_at + elapsed_ms and persists .mpd/boulder.json.",
     parameters: { type: "object", properties: { workId: { type: "string" } } },
-    output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock2("boulder completed: " + v.workId + " status=" + v.status + " elapsedMs=" + v.elapsedMs) },
+    output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock("boulder completed: " + v.workId + " status=" + v.status + " elapsedMs=" + v.elapsedMs) },
     execute: async (args, exec) => {
       const dir = root(exec);
       const state = completeBoulder(dir, args?.workId);
@@ -1742,7 +1748,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     name: "mpd_boulder_task_timer",
     description: "Start or end a per-task session timer inside a boulder work (taskKey = TODO id in the plan, e.g. '1' or 'F1'). action=start marks running; action=end marks completed and records elapsed_ms.",
     parameters: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, action: { type: "string", enum: ["start", "end"] }, taskLabel: { type: "string" }, taskTitle: { type: "string" }, sessionId: { type: "string" } }, required: ["workId", "taskKey", "action"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, status: { type: "string" } }, required: ["workId", "taskKey", "status"] }, render: (_a, v) => textBlock2("boulder timer: " + v.taskKey + " (" + v.status + ") in " + v.workId) },
+    output: { schema: { type: "object", properties: { workId: { type: "string" }, taskKey: { type: "string" }, status: { type: "string" } }, required: ["workId", "taskKey", "status"] }, render: (_a, v) => textBlock("boulder timer: " + v.taskKey + " (" + v.status + ") in " + v.workId) },
     execute: async (args, exec) => {
       const dir = root(exec);
       const workId = String(args?.workId);
@@ -1765,7 +1771,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     name: "mpd_boulder_plan_progress",
     description: "Parse a plan markdown file for its checklist progress: '## TODOs' items (N.) and '## Final Verification Wave' items (F<n>.), returning done/remaining with the plan path resolution.",
     parameters: { type: "object", properties: { planPath: { type: "string" } }, required: ["planPath"] },
-    output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a, v) => textBlock2("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
+    output: { schema: { type: "object", properties: { planPath: { type: "string" }, progress: { type: "object" } }, required: ["planPath", "progress"] }, render: (_a, v) => textBlock("plan progress " + v.planPath + ": " + JSON.stringify(v.progress, null, 1)) },
     execute: async (args, exec) => {
       const dir = root(exec);
       const planPath = String(args?.planPath);
@@ -1777,7 +1783,7 @@ plan: ` + JSON.stringify(v.planProgress) : "")) },
     name: "mpd_boulder_plans",
     description: "List plan markdown files under .mpd/plans that can be started as boulder works.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { plans: { type: "array", items: { type: "string" } } }, required: ["plans"] }, render: (_a, v) => textBlock2("plans: " + v.plans.join(`
+    output: { schema: { type: "object", properties: { plans: { type: "array", items: { type: "string" } } }, required: ["plans"] }, render: (_a, v) => textBlock("plans: " + v.plans.join(`
 `)) },
     execute: async (_args, exec) => ({ plans: findPrometheusPlans(root(exec)) })
   });

@@ -1,0 +1,197 @@
+=== docs parity (checkout root) ===
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-tools-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.js: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js: registry 1 id(s), live 1 id(s) — agree
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=401 checked=327 resolved=320 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=30 ignoredAnchorOnly=44 files=100
+
+[verify-docs-parity] root=/home/haroldzhao/dshProj/my-power-dsh pairs=41 failed=0 violations=0 exempt=21 derived=3 links=401 dead=0 — PASS
+exit=0
+
+=== docs parity (packed artifact dist/mpd-package) ===
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-tools-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: site file not present in this root (packed artifact / partial copy) — delta-range claims skipped
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.js: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js: registry 1 id(s), live 1 id(s) — agree
+note README.md — LINK: link-absent-site:README.md:./AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved
+note README.zh-CN.md — LINK: link-absent-site:README.zh-CN.md:./AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved
+note docs/index.md — LINK: link-absent-site:docs/index.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved
+note docs/index.zh-CN.md — LINK: link-absent-site:docs/index.zh-CN.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=397 checked=323 resolved=308 dead=0 exemptProvenance=7 absentSite=8 ignoredExternal=30 ignoredAnchorOnly=44 files=96
+
+[verify-docs-parity] root=dist/mpd-package pairs=39 failed=0 violations=0 exempt=21 derived=3 links=397 dead=0 — PASS
+exit=0
+
+=== docs parity self-test (falsifiability) ===
+ok   clean tree passes — pairs=7 exempt=16 violations=0
+ok   recursive discovery: nested docs/ and extensions/ pairs are checked (nesting cannot hide a pair) — found: docs/guides/nested.md, extensions/deep/README.md
+ok   an extensions ASSET (.md that is not a README) is not demanded a twin — extensions/deep/skills/thing/SKILL.md left out of the pair set
+ok   EVERY documented exemption is asserted (reported with its reason, never a silent skip) — 16 exemption paths reported
+ok   T-30: a doc carrying the IN-FILE marker is exempt WITHOUT editing the gate — {"path":"docs/from-1999.md","reason":"historical note (AGENTS.md §3)"}
+ok   T-30 NEGATIVE: the SAME doc without the marker is a VIOLATION — {"pair":"docs/from-1999.md","ok":false,"problems":["missing zh-CN file"]}
+ok   T-30: the TWO ANTICIPATORY paths are reported as their OWN class (never silently dropped) — [{"path":"docs/adder4.md","reason":"internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]"},{"path":"docs/cnt8.md","reason":"internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]"}]
+ok   T-29: templates/**/README.md pairs enter the discovery set as POLICED pairs — pairs=7, template pair present=true
+ok   T-29 NEG CONTROL: an UNMARKED non-README *.md under templates/ stays an ASSET — templates/tpl/notes/asset.md left out of the pair set
+ok   T-29 NEGATIVE: a misplaced doc carrying the PROMOTION marker REDDENS instead of escaping — {"pair":"templates/tpl/notes/promoted.md","ok":false,"problems":["missing zh-CN file"]}
+ok   negative: missing switch link — docs/guide.md: EN switch link missing/not under the title
+ok   negative: re-levelled heading — docs/guide.md: heading tree differs: EN [1,2,3,2] vs zh [1,2,3,1]
+ok   negative: pure-ASCII zh file — README.md: zh-CN file carries no CJK content (copy-paste of the EN file?)
+ok   negative: nested pair with a mis-pointed switch link — docs/guides/nested.md: EN switch link missing/not under the title
+ok   exempt file gaining a zh twin is checked (its missing heading parity fails) — {"pair":"docs/decisions.md","ok":false,"problems":["EN switch link missing/not under the title","heading tree differs: EN [1] vs zh [1,2]"]}
+ok   exempt file with a CONFORMANT twin passes
+ok   negative: a zh-CN file with no EN twin is a VIOLATION (inverse scan) — [{"id":"inverse:docs/orphan.zh-CN.md","detail":"zh-CN file has no EN twin (docs/orphan.md is missing)"}]
+ok   an inverse orphan whose EN path is an exempt record is reported as an exemption, not a violation — [{"path":"docs/plan-orphan.md","reason":"process record (AGENTS.md §3: plan-*.md) — its zh file exists, but an exempt record requires no EN twin"}]
+ok   negative: a non-exempt package directory without a README is a FAILURE — [{"id":"package-no-readme:packages/silent","detail":"package directory silent has no README (not an exempt package)"},{"id":"inverse:docs/orphan.zh-CN.md","detail":"zh-CN file has no EN twin (docs/orphan.md is missing)"}]
+ok   the exempt package (mpd-mcp-shared) is a reported note, not a violation — packages/mpd-mcp-shared stays on the exemption list
+ok   T-75 arm 1 (positive): the artifact-derived range and counts PASS and are REPORTED — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 arm 2 (NEGATIVE CONTROL): the pre-t39 pointer A1–D26 REDDENS and NAMES the file/value — derived-value:delta-range:AGENTS.md:3 — AGENTS.md:3 carries "A1–D26" but the ARTIFACT derives "A1–D7" (3 table ids in agent-references/agent-teams-deltas.md, first A1, last D7) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+ok   T-75 arm 2b (NEGATIVE CONTROL, SECOND instance): the stale index pointer A1–D26 REDDENS and NAMES agent-references/index.md:5 — derived-value:delta-range:agent-references/index.md:5 — agent-references/index.md:5 carries "A1–D26" but the ARTIFACT derives "A1–D7" (3 table ids in agent-references/agent-teams-deltas.md, first A1, last D7) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+ok   T-75 arm 3 (NEGATIVE CONTROL): a stale region count REDDENS and NAMES the deltas doc — derived-value:region-count:agent-references/agent-teams-deltas.md:9 — agent-references/agent-teams-deltas.md:9 claims **65** regions across **9** adopted files but packages/mpd-agent-teams-plugin/lib/mpd-deltas.js derives 3 regions across 2 files — the registry is the AUTHORITY (it is what the applier heals from; regenerate it with: node scripts/patch-agent-teams-fixes.mjs --write-registry), so UPDATE THIS SENTENCE to the derived pair in the same change that moves the registry
+ok   T-75 zero-subject guard: a site whose claim is GONE is a VIOLATION, not a silent pass — [{"id":"derived-value:delta-range:AGENTS.md:missing-claim","detail":"AGENTS.md carries NO \"A1–D<n>\" registry pointer while agent-references/agent-teams-deltas.md derives \"A1–D7\" (zero-subject run: refusing to report PASS with nothing compared). If the pointer was deliberately removed, update this rule in the same change."}]
+ok   T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file AND the ids), never a violation — the applier's --check owns it — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 2 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0, mpd-delta fixture-1]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-57: a region NESTED inside another span counts as its OWN region and surfaces as a NAMED mismatch (the old walk counted 2, this counts 3) — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 3 id(s) — MISMATCH (registered but not on the tree: []; on the tree but unregistered: [mpd-delta fixture-extra]); adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 bound: an ABSENT site file (packed artifact, no AGENTS.md) is a NOTE while the PRESENT index site is still checked — [{"path":"AGENTS.md","reason":"site file not present in this root (packed artifact / partial copy) — delta-range claims skipped"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   links POSITIVE: an existing relative target resolves and the checker RAN — {"files":6,"links":13,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":2,"anchorOnly":1}
+ok   links IGNORED: external, protocol-relative, mailto, anchor, empty, code-span and fenced targets are counted but never resolved — {"files":7,"links":18,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":5,"anchorOnly":3}
+ok   links NEGATIVE: a link to a missing file REDDENS and NAMES source + target — FAIL link-missing:docs/guide.md:./does-not-exist.md — docs/guide.md:17 links "./does-not-exist.md" but neither a file nor a directory exists at /tmp/mpd-docs-links-selftest-IDrZHE/full/docs/does-not-exist.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+ok   links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked — {"counters":{"files":6,"links":13,"checked":10,"resolved":7,"dead":0,"skippedProvenance":0,"absentSite":3,"external":2,"anchorOnly":1},"notes":[{"path":"docs/guide.md","reason":"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved"}]}
+ok   links PROVENANCE: a dead link in the VERBATIM file stays green and is REPORTED as EXEMPT, while the SAME dead link in a non-exempt README reddens (the skip is FILE-scoped) — {"violations":["link-missing:packages/mpd-fixture-pkg/README.md:./dead.md"],"counters":{"files":9,"links":22,"checked":14,"resolved":12,"dead":1,"skippedProvenance":1,"absentSite":0,"external":5,"anchorOnly":3},"provenanceNote":{"path":"packages/mpd-agent-teams-plugin/README.md","reason":"EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 1 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/usage.md"}}
+ok   links ROOT-RELATIVE: a `/`-prefixed target resolves against the REPO ROOT (existing file + directory count as RESOLVED), while a missing one still REDDENS with its id — {"resolvedBefore":12,"resolvedWithTwoLiveTargets":14,"deadBefore":1,"deadWithMissingTarget":2,"finding":"link-missing:docs/root-relative.md:/nowhere/absent.md"}
+
+[verify-docs-parity self-test] 34/34 checks passed — PASS
+exit=0
+
+=== pack closure ===
+[verify-pack-closure] ok: 20 dist/index.js row(s) + 0 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 21 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/dshProj/my-power-dsh/dist/mpd-package (386 asset files); agent references 3/3; root files 1/1; declared packages 25/25 present in the artifact; content bytes: 1198 file(s) compared, 1198 identical, 0 drift, 0 expected-after-pack; completeness: 416 declared source file(s) compared, 415 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-27T20:10:57.179Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+exit=0
+
+=== verify:gates (aggregate static) ===
+[verify-gates] member vendor: exit=0 PASS - 863ms
+[verify-gates] member dist-fresh: exit=0 PASS - 272ms
+[verify-gates] member rows-parity: exit=0 PASS - 52ms
+[verify-gates] member docs-parity: exit=0 PASS - 59ms
+[verify-gates] member preset-conformance: exit=0 PASS - 229ms
+[verify-gates] PASS - 5/5 member gate(s) green
+exit=0

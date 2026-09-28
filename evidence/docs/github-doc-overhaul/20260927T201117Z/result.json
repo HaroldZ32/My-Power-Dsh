@@ -1,0 +1,202 @@
+{
+  "task": "Overhaul the external-facing documentation to GitHub open-source standards, with diagrams, screenshots, badges and a contributing/changelog/security set",
+  "timestamp": "20260927T201117Z",
+  "verdict": "PASS",
+  "changedFiles": {
+    "README.md": {
+      "sha256": "ebb231c8549d4d6f31d36b740ad8bce92d786f9858e9157301b91268af3e0acc",
+      "bytes": 63638
+    },
+    "README.zh-CN.md": {
+      "sha256": "5848dbe45df1ed806120409b42668c519f43c91f759bcbe8e269df2cb2a6507a",
+      "bytes": 62883
+    },
+    "CONTRIBUTING.md": {
+      "sha256": "212ff14527a187cb49b156acca086612e9faf5f028099c7f4443f8bc117f0b9e",
+      "bytes": 11312
+    },
+    "CONTRIBUTING.zh-CN.md": {
+      "sha256": "e6f7627ae5dd34797b1b86d11f97cb63ab93bfbe444a150cf196e02cb717bfc9",
+      "bytes": 11182
+    },
+    "SECURITY.md": {
+      "sha256": "522d1fa7fc6ec2c0d36f55658d65f8f42bbba90f843db6b28b9a970db89dad26",
+      "bytes": 1791
+    },
+    "SECURITY.zh-CN.md": {
+      "sha256": "f025f5eea5de0aeaadcbd6ca37ff832718469f773880cbe6560d942a89bdf3d0",
+      "bytes": 1695
+    },
+    "CHANGELOG.md": {
+      "sha256": "3be57bca903906258fb26f967721e2576f3222ab581369de4c9d1edc0a134925",
+      "bytes": 14372
+    },
+    "docs/index.md": {
+      "sha256": "7fa24faa1d4f480cf15e3eddb73cd2dfee415294be9efc4d85baed8216a1e8e7",
+      "bytes": 10444
+    },
+    "docs/index.zh-CN.md": {
+      "sha256": "126e0bd6dc2f409af56a67a0d60c9ec3ec91e50693c1694b14e0c162ae97112a",
+      "bytes": 10551
+    },
+    "docs/design.md": {
+      "sha256": "db41819567f37698ee6cf147ba7c73196d72c1a6226e23f042a8e6beb706360d",
+      "bytes": 56429
+    },
+    "docs/design.zh-CN.md": {
+      "sha256": "8b5664e8446a8ee4eb14a874f116783ebbbd35cac847a7018bff1d9e7d583ef9",
+      "bytes": 55676
+    },
+    "scripts/pack-mpd.mjs": {
+      "sha256": "cb3d38a7fc3a8095092d85d6300866237980e7bdae4572a4def5a0b77d66002e",
+      "bytes": 38503
+    },
+    "docs/assets/images/architecture.svg": {
+      "sha256": "bda55cc12f81184fc955df2f99ec8efbe2cc81b099c31228f150184c07b3d702",
+      "bytes": 8788
+    },
+    "docs/assets/images/ulw-loop.svg": {
+      "sha256": "0c66427862549d3386e1e6a91aaf1eb3087c6a1f96c5693b5d51c6e7bfa3b902",
+      "bytes": 6458
+    },
+    "docs/assets/images/team-lifecycle.svg": {
+      "sha256": "eb037a83afa3324bcfd37a090a186f59945943366a3dec56f36563a78cb36d0a",
+      "bytes": 8685
+    },
+    "docs/assets/images/web-ui-session.png": {
+      "sha256": "2eeb0327b4a1691a20942cdcc97734dcd73670c35287ef81c00fb762b71de4d7",
+      "bytes": 60722
+    },
+    "docs/assets/images/web-ui-settings.png": {
+      "sha256": "807bccd39bdda998cf5e5ab377975563d26ced90589c1cec9e6002d7fbf6630f",
+      "bytes": 154007
+    },
+    ".github/PULL_REQUEST_TEMPLATE.md": {
+      "sha256": "1c49ef5c2b5bcb58b53980c6b419cd21effb4371eed604f9ece0a6548075133d",
+      "bytes": 1548
+    },
+    ".github/ISSUE_TEMPLATE/bug_report.yml": {
+      "sha256": "32bb4d39122c78dea6fcfaed9c860e6858d2fe264a26123b2eeceaa8345437e0",
+      "bytes": 2074
+    },
+    ".github/ISSUE_TEMPLATE/feature_request.yml": {
+      "sha256": "3845ee45557463f475ae6ddb3dba08a54c7344041a81fa425a5c3dad233d5343",
+      "bytes": 1784
+    },
+    ".github/ISSUE_TEMPLATE/config.yml": {
+      "sha256": "a1ce209c67d1dce922d8844079c9bdd86ab58ff4e9e9a101b747a5cefba56e1e",
+      "bytes": 437
+    },
+    ".github/workflows/docs-parity.yml": {
+      "sha256": "df2867803787ce62889487390c91f75a6db49deeea48a92d28899d71cee87ece",
+      "bytes": 1106
+    }
+  },
+  "gates": [
+    {
+      "gate": "documentation pairs / heading tree / link targets (checkout root)",
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exit": 0,
+      "reading": "pairs=41 failed=0 violations=0 links=394 dead=0"
+    },
+    {
+      "gate": "documentation pairs on the PACKED artifact",
+      "command": "node scripts/verify-docs-parity.mjs --root dist/mpd-package",
+      "exit": 0,
+      "reading": "pairs=39 failed=0 violations=0 links=397 dead=0 absentSite notes only (the packed copy ships no AGENTS.md)"
+    },
+    {
+      "gate": "docs-gate self-test (falsifiability)",
+      "command": "node scripts/verify-docs-parity.mjs --self-test",
+      "exit": 0,
+      "reading": "34/34 checks passed"
+    },
+    {
+      "gate": "packed-artifact closure",
+      "command": "node scripts/verify-pack-closure.mjs",
+      "exit": 0,
+      "reading": "1198/1198 content bytes identical, 0 drift; completeness 415/416 present, 1 declared exemption, 0 absent"
+    },
+    {
+      "gate": "static gate aggregate",
+      "command": "bun run verify:gates",
+      "exit": 0,
+      "reading": "5/5 member gates green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance)"
+    }
+  ],
+  "assetPlacement": [
+    {
+      "path": "docs/assets/images/architecture.svg",
+      "kind": "authored SVG",
+      "referencedFrom": [
+        "README.md#architecture",
+        "README.zh-CN.md#架构",
+        "docs/index.md",
+        "docs/index.zh-CN.md",
+        "docs/design.md",
+        "docs/design.zh-CN.md"
+      ]
+    },
+    {
+      "path": "docs/assets/images/ulw-loop.svg",
+      "kind": "authored SVG",
+      "referencedFrom": [
+        "README.md (Drive long work)",
+        "README.zh-CN.md (推进长任务)",
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ]
+    },
+    {
+      "path": "docs/assets/images/team-lifecycle.svg",
+      "kind": "authored SVG",
+      "referencedFrom": [
+        "README.md (Team mode)",
+        "README.zh-CN.md (团队模式)",
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ]
+    },
+    {
+      "path": "docs/assets/images/web-ui-session.png",
+      "kind": "capture of the shipped Web UI, copied from docker/ui/out/shots/04-sidebar.png (byte-identical)",
+      "referencedFrom": [
+        "README.md (hero, under the intro)",
+        "README.zh-CN.md",
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ]
+    },
+    {
+      "path": "docs/assets/images/web-ui-settings.png",
+      "kind": "capture of the shipped Web UI, copied from docker/ui/out/shots/05b-mpd-section.png (byte-identical)",
+      "referencedFrom": [
+        "README.md#configuration",
+        "README.zh-CN.md#配置",
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ]
+    }
+  ],
+  "badges": [
+    "version 0.11.1 (package.json)",
+    "license SUL-1.0 (LICENSE.md)",
+    "DeepSeek Harness 0.1.7-rc.2 (pinned dependency set)",
+    "platforms web | dsh-tui (dsh.profile rows)",
+    "runtime Bun 1.4.0 (package.json buildToolchain)",
+    "GitHub Actions docs-parity workflow",
+    "docs EN + zh-CN (bilingual band, enforced by verify:docs)"
+  ],
+  "packagingChange": {
+    "file": "scripts/pack-mpd.mjs",
+    "change": "ROOT_FILES now names CONTRIBUTING.md, CONTRIBUTING.zh-CN.md, CHANGELOG.md, SECURITY.md and SECURITY.zh-CN.md, so the shipped README/docs-hub relative links resolve inside the packed artifact",
+    "verifiedBy": "node scripts/verify-pack-closure.mjs (exit 0) plus a real re-pack whose tree carries all five files"
+  },
+  "notes": [
+    "No feature, command, tool name or setting was invented: every added sentence is derived from README/docs/AGENTS.md/package.json/git remote, and the install/run commands were checked against the installed CLI (dsh --help) and the repository scripts.",
+    "The GitHub Actions workflow runs ONLY the dependency-free docs gate; no other CI claim is made by any badge.",
+    "The two PNG captures are byte-identical copies of committed Docker-lane captures (sha256 match), not re-rendered or edited screenshots.",
+    "CONTRIBUTING.md/SECURITY.md/CHANGELOG.md live at the repository root, which the bilingual discovery band does not police; they still ship English + zh-CN twins per the AGENTS.md language policy.",
+    "The docs gate was green on the checkout root AND on the re-packed artifact after the packer change."
+  ]
+}

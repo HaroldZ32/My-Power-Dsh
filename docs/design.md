@@ -11,6 +11,10 @@ to type, the settings knobs and the recipes live in [`README.md`](../README.md) 
 task-oriented [user guide](user-guide.md) — this is the document those two link to when the
 mechanism behind a feature matters.
 
+![Layered architecture diagram: the DeepSeek Harness host, the bundle's two patch layers, the single adapter seam, the user surfaces and the state roots.](./assets/images/architecture.svg)
+
+*The bundle at a glance. §3–§7 below take the same picture apart layer by layer: the package structure, the patch layers and boot chain, the plugin inventory, the interaction flows and the state layout. A shorter version of this diagram is in the [README](../README.md#architecture).*
+
 Reading order: what is designed → design principles → bundle and package structure → patch layer
 and boot chain → plugin inventory → interaction flows → state layout → web client wiring → TUI
 wiring → known limits.
@@ -102,7 +106,7 @@ declares `dsh.bundle.patch` (the ARRAY `["./packages/mpd-bundle/cordis.patch.yml
 "./presets/mpd.patch.yml"]`), `dsh.client`,
 the `exports` map the rows resolve through and the toolchain `optionalDependencies`, so
 `dsh plugin add .` in the repo root installs the whole unit in ONE command (no pack
-step). `scripts/pack-mpd.mjs` is the RELEASE step: it assembles the relocatable
+step). `scripts/pack-mpd.ts` is the RELEASE step: it assembles the relocatable
 `dist/mpd-package/` for publishing / tarball installs — a self-contained npm package with
 **no checkout-absolute paths**:
 
@@ -140,7 +144,22 @@ Manifest invariants (why they exist):
   and order-independent (§4), so a composition that mounts the package itself keeps
   working and an unresolvable package degrades to "no sidebar", never a dead boot.
 
-`scripts/build-mpd-client.mjs` composes the combined client (see §7).
+`scripts/build-mpd-client.ts` composes the combined client (see §7).
+
+**Shared modules: one implementation per repeated decision.** Three shapes used to be copy-pasted
+per package and now have exactly one home. Each is imported by relative path, so it is bundled into
+the consumer's `dist/` and nothing is added to the published surface.
+
+| Module | What it owns | Who consumes it |
+|---|---|---|
+| `packages/mpd-dsh-adapter-plugin/src/shared.ts` | the pure, harness-free helpers every row needs — `isRecord`, `errorMessage`, `bundleRootOf` — re-exported from the adapter entry so a row needs one specifier | every mpd row |
+| `packages/mpd-ext-plugin/src/skill-frontmatter.ts` | the skill-frontmatter YAML subset: `parseFrontmatter`, `parseYamlBlock`, `stringField`, `frontmatterBoolean`, `parseInvocation`, `isAbsent` | the extension skill plane and `mpd-bootstrap`'s corpus provider |
+| `scripts/lib/repo.ts` | `repoRootFrom` and `readJson` — the two primitives every script under `scripts/` used to spell by hand | the repository's own gate and helper scripts |
+
+The counter-example is deliberate rather than an oversight: `scripts/repin-vendor.ts` MIRRORS the
+fingerprint algorithm of `scripts/verify-vendor.ts` and re-checks that mirror against the
+authority's own bytes (`assertAuthorityShape()`), so those two helper bodies stay duplicated on
+purpose — hoisting them would break the check that keeps them from drifting.
 
 ## 3. Patch layer, boot chain & the web-compat self-row
 
@@ -184,7 +203,7 @@ to bare package names.
 **Every row of `packages/mpd-bundle/cordis.patch.yml`, by composition.** The patch layer is
 additive and carries **28 `insert` rows**; the bundle's SECOND patch file
 (`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
-in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.mjs` asserts that this
+in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.ts` asserts that this
 list and the repository's own row bookkeeping agree. One further entry is an **id-target**, not an
 insert — it REPLACES a row the host itself owns — so it is listed in its own table below.
 
@@ -198,10 +217,10 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 
 | Row id | Package | Composition | Purpose | Tools / service | Key config |
 |---|---|---|---|---|---|
-| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | local ast-grep stdio server; `launch.mjs` resolves the binary bundle-relatively (env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire of the optional dependency → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`, every candidate expanded into the spellings the host can EXECUTE: win32 resolves `.exe`/`.com` and never a `.cmd` shim the shell-less runner cannot start) | `mcp__ast_grep__*` (search / rewrite / scan) | `serverName: ast_grep`, `toolCallTimeoutMs: 60000` |
+| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | local ast-grep stdio server; `launch.ts` resolves the binary bundle-relatively (env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire of the optional dependency → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`, every candidate expanded into the spellings the host can EXECUTE: win32 resolves `.exe`/`.com` and never a `.cmd` shim the shell-less runner cannot start) | `mcp__ast_grep__*` (search / rewrite / scan) | `serverName: ast_grep`, `toolCallTimeoutMs: 60000` |
 | `mcp-gitbash` | dsh-mcp-client | web + dsh-tui, **disabled by default** | local git-bash stdio server; upstream designs it as Windows-only, so the row ships `disabled: true` | `mcp__git_bash__*` once enabled | flip `disabled: false` to enable |
 | `mcp-lsp` | dsh-mcp-client | web + dsh-tui | local LSP bridge (`…/mpd-mcp-lsp/dist/cli.js mcp`) | `mcp__lsp__*` | `serverName: lsp`, `toolCallTimeoutMs: 60000` |
-| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | local codegraph stdio server; `launch.mjs` resolves the binary bundle-relatively and sets `MPD_CODEGRAPH_BIN` only when the caller left it unset | `mcp__codegraph__*` | `serverName: codegraph`, `toolCallTimeoutMs: 60000` |
+| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | local codegraph stdio server; `launch.ts` resolves the binary bundle-relatively and sets `MPD_CODEGRAPH_BIN` only when the caller left it unset | `mcp__codegraph__*` | `serverName: codegraph`, `toolCallTimeoutMs: 60000` |
 | `mcp-context7` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
 | `mcp-grepapp` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry (the web client loads only for an entry of that exact name); hosts the combined web client | no-op apply; `./client` | — |
@@ -330,7 +349,7 @@ so a data-plane directory and a code-plane plugin row produce identical registry
   becomes a teammate on its own: a teammate exists only when the Lead spawns it by name with
   `spawn_teammate`.
 - Four tools inspect all of it — `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` —
-  and `scripts/mpd-ext.mjs` (`validate` / `scaffold` / `list`) shares the same runtime validator.
+  and `scripts/mpd-ext.ts` (`validate` / `scaffold` / `list`) shares the same runtime validator.
 
 ### Service timing
 Sibling-provided services are read **lazily at tool-execute time**
@@ -364,8 +383,15 @@ Harness services. Every mpd row calls `dsh.registerTool` / `dsh.guardTool` /
 that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 
 - The row is inserted before every other mpd row and provides the `mpdDsh` service;
-  consumers use `ctx.get("mpdDsh") ?? createDshAdapter(ctx)`, so a plugin still works
-  standalone in unit tests.
+  consumers resolve it through the adapter's own `resolveDshAdapter(ctx)` — the mounted
+  service first, a row-private `createDshAdapter(ctx)` in unit tests — so one resolution
+  rule serves every row. A row that must also survive a transient "provider not ACTIVE
+  yet" miss uses `createLazyDshAdapter(ctx, { label })` instead.
+- Alongside the seam surface the package carries the bundle's pure helpers
+  (`src/shared.ts`, re-exported from the entry): `isRecord`, `errorMessage`,
+  `bundleRootOf(import.meta.url)`. They touch no
+  harness seam, and they exist so the nine `message()`, four `isRecord()` and five
+  root-resolution copies that used to travel per row have one implementation.
 - The adapter is `inject`-free and resolves every seam lazily: the loader applies
   sibling rows concurrently (a snapshot at `apply` would under-report) and reading an
   uninjected service as a property throws in Cordis. `capabilities()` reports one
@@ -445,7 +471,7 @@ actually installed, and that mirroring is load-bearing:
   `$.prefix missing required value` on every `mpd` session creation. Nothing in the gate set
   saw it: `--dump-config` never executes plugin code, `agentPresets.list`/`resolve` parse the
   composition for YAML shape and row resolvability only, and no case created a session.
-- The gate is `skills/dsh-qa/scripts/preset-conformance.mjs`: its `--self-test` validates
+- The gate is `skills/dsh-qa/scripts/preset-conformance.ts`: its `--self-test` validates
   every `@deepseek-ai/*` row of the preset, the bundle patch and the QA overlays against the
   INSTALLED schemas (unknown keys included, `!!js` nodes materialized) and pins row-id parity
   with the installed `standard` preset; its real run boots the web profile in an isolated
@@ -456,17 +482,17 @@ actually installed, and that mirroring is load-bearing:
 
 ## 7. Web client wiring (the subtle part)
 
-`packages/mpd-bundle-plugin/client.js` (generated by `scripts/build-mpd-client.mjs`) is
+`packages/mpd-bundle-plugin/client.js` (generated by `scripts/build-mpd-client.ts`) is
 one script:
 
 1. the retained agent-teams `lib/client.js` **verbatim** — it self-registers
    `@nanmicoder/dsh-agent-teams`. It is used strictly as a **view library**:
-   `scripts/patch-agent-teams-client.mjs` additively exports its views (`TeamSection`,
+   `scripts/patch-agent-teams-client.ts` additively exports its views (`TeamSection`,
    historic cards), monitor store, zh/en dictionaries and CSS through a pinned export
-   bridge that `scripts/vendor-agent-teams.mjs` re-applies after every refresh, and the
+   bridge that `scripts/vendor-agent-teams.ts` re-applies after every refresh, and the
    adopted `apply(ctx)` is **never called** — that is what registered the removed surfaces;
 2. a `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` entry retained from the same
-   vendored body (`src/team-page.js`). Its HOST half was the retired `agent-teams` plugin's routes
+   vendored body (`src/team-page.ts`). Its HOST half was the retired `agent-teams` plugin's routes
    (`/plugins/dsh-agent-teams/{state,halt,plan,assets}`), and no mounted row serves those any more —
    so **the shipped team surface is the official plugin's panel** (`mpd-ui-agent-team`, next
    section), and this entry is NOT documented as providing one;
@@ -492,7 +518,7 @@ and the sidebar's `+` menu offered no mpd row at all. The fix is the runtime's o
 `ctx.inject(['betterSidebar'], cb)` (the same call better-sidebar uses for its
 asynchronously-mounted `remote.session`) — which waits for the provider, re-runs after a
 provider remount, and never parks this entry: a profile without the sidebar simply never
-fires the callback. `packages/mpd-bundle-plugin/test/client-harness.mjs` models that race by
+fires the callback. `packages/mpd-bundle-plugin/test/client-harness.ts` models that race by
 default (the sidebar service is published AFTER `apply()`), so the suite fails loudly if a
 probe ever comes back.
 
@@ -509,7 +535,7 @@ something a normal install sees. The **Agent Teams panel** is separate and does 
 sidebar at all: it is the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client
 plugin, mounted by the bundle's own `mpd-ui-agent-team` row, and it registers a
 conversation-header action that renders the Lead session's `agentTeam` projection (roster + task
-board, read-only). `scripts/build-mpd-client.mjs` enforces the sidebar rule at build
+board, read-only). `scripts/build-mpd-client.ts` enforces the sidebar rule at build
 time: it fails if any mpd client source registers `agent-teams-activity`,
 `conversation.chat.node`, `shell.overlay` or `sidebar.footer.action` — the removed card, the
 removed activity floater and the removed workmate floater/footer toggle.
@@ -547,7 +573,7 @@ What that plugin does — and what it deliberately does not:
   disposed through `ctx.effect`.
 - **Does not** write to the filesystem at all — the settings write-back lives in
   `packages/mpd-config-plugin` (below), and the TUI package's zero-write property is asserted by its own
-  lane (`tui-settings-bridge.mjs`, check T7). It also claims no admitted Component identity: the
+  lane (`tui-settings-bridge.ts`, check T7). It also claims no admitted Component identity: the
   bundle-level `dsh-plugin.json` declares the host facet, and the host's own admission answers
   `waiting_authorization` for the four default-deny decision-event permissions, so the effect ledger
   attributes the registration as `undeclared` (`docs/tui.md` §4 and §6.1).
@@ -587,7 +613,7 @@ document should carry, stated rather than left to be discovered:
   key fails the row and the preset registry then refuses the WHOLE preset (`agent-preset/invalid: …
   row(s) did not activate`) — while an UNKNOWN key is silently kept by schemastery, so the row
   applies and quietly loses that setting. `agentPresets.list` / `resolve` see neither class; only
-  `skills/dsh-qa/scripts/preset-conformance.mjs` (with its negative control) does (§6c).
+  `skills/dsh-qa/scripts/preset-conformance.ts` (with its negative control) does (§6c).
 - **No plugin-module hot reload.** ESM caches a module at session start, so a plugin edit is
   invisible until `dsh` restarts; an edit applied mid-session must be verified on the next boot.
 - **Two configuration paths with different latency.** The `mpd.jsonc` layers (schema defaults → the
@@ -632,8 +658,8 @@ carried forward here instead of being dropped:
   section rests on the patch, the two installed profile manifests and a live tool list — its own
   `dump-config` runs failed on a read-only filesystem — so §4 cites the stored
   `evidence/tui/composition/20260915T053445Z` artifacts. **No mounting boot in an isolated
-  `DSH_HOME` was run for this document**; `skills/dsh-qa/scripts/preset-conformance.mjs` and
-  `bundle-lifecycle.mjs` remain the gates that would prove a load.
+  `DSH_HOME` was run for this document**; `skills/dsh-qa/scripts/preset-conformance.ts` and
+  `bundle-lifecycle.ts` remain the gates that would prove a load.
 - **The fact base is hash-anchored and therefore perishable.** It was measured while this document
   was being rewritten, so its line references describe the pre-rewrite bytes even though the
   findings it reports — the §4 table missing `mpd-team-watchdog`, `mpd-team-compact` and `mpd-tui`,

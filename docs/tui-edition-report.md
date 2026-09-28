@@ -17,7 +17,7 @@ first-class QA lanes that prove the result against the real host. This report st
 verified, what is NOT claimed, and what remains — nothing here is a projection.
 
 > **Amendment 1 (captain-directed, after t14's terminal completion).** AC-15 moved `not-claimed` →
-> `passed`: the captain ran R6 itself on the current revision (`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`
+> `passed`: the captain ran R6 itself on the current revision (`bun skills/dsh-qa/scripts/bundle-lifecycle.ts`
 > → `[bundle-lifecycle] PASS`, EXIT=0) and the evidence landed at
 > `evidence/dsh-qa/bundle-lifecycle/2026-09-15T07-24-59.974Z/` (console copy
 > `evidence/tui/delivery/20260915T072355Z/raw/web-profile-boot.log`). The run writes no product artifact,
@@ -36,7 +36,7 @@ dsh plugin --profile dsh-tui add /root/dshProj/my-power-dsh
 
 One command is the whole install: the repo root IS the bundle package (`dsh.bundle.patch` → the bundle
 patch; the `mpd-tui` row is composed from it), the skills corpus and the `mpd` preset are SERVED from
-the bundle by reference, and a packed release artifact is produced by `node scripts/pack-mpd.mjs` when
+the bundle by reference, and a packed release artifact is produced by `node scripts/pack-mpd.ts` when
 publishing (`dsh plugin --profile dsh-tui add dist/mpd-package`). Measured single-install evidence:
 `evidence/tui/live/20260915T063140Z/raw/install-fresh-root.sh` (exit 0 on a fresh root) and the triple
 `dsh.profile.bundles = ["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"]` in
@@ -70,12 +70,12 @@ record was inert in a real boot), `evidence/tui/plugin/20260915T060934Z/result.j
 
 | Lane | Command | Result | Evidence |
 |---|---|---|---|
-| live-mount | `bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root>` | **PASS** — triple layer in order, `mpd-tui` composed, zero apply-crash signatures, keyed status line + counters, preset `mpd` from the session this run created, isolation clean | `evidence/tui/lanes/2026-09-15T07-05-19.752Z/`, independent `evidence/tui/live/20260915T063140Z/lanes/tui-mount/` |
-| panels | `bun skills/dsh-qa/scripts/tui-panels.mjs --sandbox-root <root>` | **6 of 7 surfaces render**; `/settings` renders WITH its unbridged marker; `/mpd` never reaches the model; `tuiRenderers` NOT-CLAIMED (host-side); negative control fails as required | `evidence/tui/lanes/2026-09-15T07-05-58.634Z/`, `evidence/tui/plugin/20260915T060934Z/mount/` (20 captures) |
-| admission | `bun skills/dsh-qa/scripts/tui-admission.mjs --sandbox-root <root>` | **PASS** — host-pinned parse → project → profile/registry validation → five-state negotiation; live `/plugins check` = `waiting_authorization`, `forbidden: []`; three negative controls | `evidence/tui/lanes/2026-09-15T07-08-44.315Z/` |
-| distribution | `bun skills/dsh-qa/scripts/tui-distribution.mjs --sandbox-root <root>` | **PASS** — the protocol's own CLI ran in-sandbox: install/build/check exit 0, `fullyValidated: true` | `evidence/tui/lanes/2026-09-15T07-07-47.413Z/` |
-| spec-conformance | `bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --sandbox-root <root>` | **PASS (7/7 with the pinned parser)** — plus the upgrade where the protocol's own `validate-manifest.mjs` RAN and independently confirmed `waiting_authorization`; the suite runner's blocker is named (a git-submodule fetch) | `evidence/tui/lanes/2026-09-15T07-07-04.875Z/`, `evidence/tui/conformance/20260915T064521Z/` |
-| regression | `bun run typecheck`; `bun test packages`; `node scripts/verify-rows-parity.mjs`; `node skills/dsh-qa/scripts/preset-conformance.mjs`; `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | typecheck 0; 547/0 tests; rows parity 0 at 24 ids; preset-conformance PASS with its negative control; mount boot PASS; **R6 `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` PASS, EXIT=0** (web-profile boot: web triple layer, `boot http:true`, corpus served from the checkout, `noHomeCopy`, `layerDurability ok`, `uninstall ok` with `residue: []`). **Full gate sweep green on the frozen revision:** `node scripts/verify-vendor.mjs` PASS (after the single re-pin: `asset OK: skills 307 files`), **`bun run test:qa` all self-tests passed, exit 0**, `bun run typecheck` exit 0, `bun test packages` 547/0, `install-profile --dry-run` exit 0, R4 rows-parity 24 ids, R5 preset-conformance PASS with its negative control, R6 PASS, R7/R8/R11 ok | `evidence/tui/conformance/20260915T064521Z/`, `evidence/tui/lanes/*/` |
+| live-mount | `bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root>` | **PASS** — triple layer in order, `mpd-tui` composed, zero apply-crash signatures, keyed status line + counters, preset `mpd` from the session this run created, isolation clean | `evidence/tui/lanes/2026-09-15T07-05-19.752Z/`, independent `evidence/tui/live/20260915T063140Z/lanes/tui-mount/` |
+| panels | `bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root <root>` | **6 of 7 surfaces render**; `/settings` renders WITH its unbridged marker; `/mpd` never reaches the model; `tuiRenderers` NOT-CLAIMED (host-side); negative control fails as required | `evidence/tui/lanes/2026-09-15T07-05-58.634Z/`, `evidence/tui/plugin/20260915T060934Z/mount/` (20 captures) |
+| admission | `bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root <root>` | **PASS** — host-pinned parse → project → profile/registry validation → five-state negotiation; live `/plugins check` = `waiting_authorization`, `forbidden: []`; three negative controls | `evidence/tui/lanes/2026-09-15T07-08-44.315Z/` |
+| distribution | `bun skills/dsh-qa/scripts/tui-distribution.ts --sandbox-root <root>` | **PASS** — the protocol's own CLI ran in-sandbox: install/build/check exit 0, `fullyValidated: true` | `evidence/tui/lanes/2026-09-15T07-07-47.413Z/` |
+| spec-conformance | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts --sandbox-root <root>` | **PASS (7/7 with the pinned parser)** — plus the upgrade where the protocol's own `validate-manifest.mjs` RAN and independently confirmed `waiting_authorization`; the suite runner's blocker is named (a git-submodule fetch) | `evidence/tui/lanes/2026-09-15T07-07-04.875Z/`, `evidence/tui/conformance/20260915T064521Z/` |
+| regression | `bun run typecheck`; `bun test packages`; `node scripts/verify-rows-parity.ts`; `node skills/dsh-qa/scripts/preset-conformance.ts`; `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` | typecheck 0; 547/0 tests; rows parity 0 at 24 ids; preset-conformance PASS with its negative control; mount boot PASS; **R6 `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` PASS, EXIT=0** (web-profile boot: web triple layer, `boot http:true`, corpus served from the checkout, `noHomeCopy`, `layerDurability ok`, `uninstall ok` with `residue: []`). **Full gate sweep green on the frozen revision:** `node scripts/verify-vendor.ts` PASS (after the single re-pin: `asset OK: skills 307 files`), **`bun run test:qa` all self-tests passed, exit 0**, `bun run typecheck` exit 0, `bun test packages` 547/0, `install-profile --dry-run` exit 0, R4 rows-parity 24 ids, R5 preset-conformance PASS with its negative control, R6 PASS, R7/R8/R11 ok | `evidence/tui/conformance/20260915T064521Z/`, `evidence/tui/lanes/*/` |
 
 ## 4. Acceptance ledger
 
@@ -133,7 +133,7 @@ Every AC of the frozen contract has a final status with its artifact:
 
 **For the captain (commit-time).** The wave's SINGLE `VENDOR_LOCK.json` re-pin has **LANDED** —
 `skills` `fileCount 307`, treeSha `ba0c3922889614225dfd3c30b97ed369ee9b5b0ae374635a5d52d561123816ef`
-(the tool prints `tree=307/ba0c39228896`), and `node scripts/verify-vendor.mjs` reports
+(the tool prints `tree=307/ba0c39228896`), and `node scripts/verify-vendor.ts` reports
 `asset OK: skills 307 files` / PASS — so `bun run test:qa` is **all self-tests passed, exit 0** and the
 captain's gate sweep is green on the frozen revision. What remains is the commit itself (branch
 `feature/tui-edition`, no version bump). No task edited `VENDOR_LOCK.json`. One captain-directed post-review pass is also recorded: the `docs/tui.zh-CN.md`
@@ -199,11 +199,11 @@ broken regex. Evidence: `evidence/tui/composition/20260915T072139Z-zh-mirror-pas
 
 ## 7. Attribution and provenance (this wave produced several no-task-id passes)
 
-- `scripts/pack-mpd.mjs`'s `PLUGIN_PKGS` `mpd-tui-plugin` entry ← **the Lead's t17 repair** (one array
+- `scripts/pack-mpd.ts`'s `PLUGIN_PKGS` `mpd-tui-plugin` entry ← **the Lead's t17 repair** (one array
   element, no duplicates, `node --check` ok); Deep Worker's only edit to that file is the `cpAssets()`
   per-package asset table (`themes`/`skills`), now recorded under **t25**, verified by a real
-  `node scripts/pack-mpd.mjs` run and the packed-tree import check; the `mpd-tui` mirror row in
-  `scripts/install-profile.mjs` ← **t5** (Deep Worker) and `node scripts/verify-rows-parity.mjs` exits
+  `node scripts/pack-mpd.ts` run and the packed-tree import check; the `mpd-tui` mirror row in
+  `scripts/install-profile.ts` ← **t5** (Deep Worker) and `node scripts/verify-rows-parity.ts` exits
   0 with 24 matching ids. Evidence: `evidence/tui/composition/20260915T062202Z/{attribution.json,PACKAGING.md,raw/*}`.
 - `packages/mpd-bundle/cordis.patch.yml` splits as rows → t5/t17, citation block → t19 plus a
   **captain-directed R2-3 comment pass with no task id** (comment-only: of the wave's 82 added / 2
@@ -215,8 +215,8 @@ broken regex. Evidence: `evidence/tui/composition/20260915T072139Z-zh-mirror-pas
   `evidence/tui/packaging/20260915T064658Z/{BY-DESIGN-AUDIT.md,raw/by-design-audit.json}` (the five
   by-design items re-derived on the current revision).
 - The packed-tree closure class is walked class-wide and has exactly **two** members
-  (`mpd-mcp-astgrep/launch.mjs`, `mpd-mcp-codegraph/launch.mjs`, both importing
-  `../mpd-mcp-shared/bin-resolve.mjs`, the second also `./daemon-policy.mjs`); `mpd-mcp-gitbash` and
+  (`mpd-mcp-astgrep/launch.ts`, `mpd-mcp-codegraph/launch.ts`, both importing
+  `../mpd-mcp-shared/bin-resolve.ts`, the second also `./daemon-policy.ts`); `mpd-mcp-gitbash` and
   `mpd-mcp-lsp` ship no launcher and exec `dist/cli.js`, already shipped by `cpDist()`.
 - **Review history, unsmoothed**: t28's first round failed prematurely because the auto-created repair
   had been routed to a read-only member and never started; the repair landed and the re-review passed.
@@ -283,16 +283,16 @@ bundle client did not. `VENDOR_LOCK.json` is the captain's single re-pin for the
 307 files / treeSha `ba0c3922889614225dfd…`) and was not touched here.
 
 **Gates on the FROZEN revision (the captain's t14/t31 sweep — unchanged by this documentation pass, which
-writes no product artifact):** `bun run test:qa` all self-tests passed, exit 0; `node scripts/verify-vendor.mjs`
+writes no product artifact):** `bun run test:qa` all self-tests passed, exit 0; `node scripts/verify-vendor.ts`
 PASS; `bun run typecheck` 0; `bun test packages` 547/0; rows parity 24 ids; R6 `bundle-lifecycle` PASS.
 
 > **Correction (t50, measured on the working tree — merge blocker, not caused by t50).** Two of those
 > gates are **RED on the current tree**, because the bridge wave (t35–t49) added three lane scripts under
-> `skills/` — `skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs`,
-> `skills/dsh-qa/scripts/tui-settings-bridge.mjs`, `skills/dsh-qa/scripts/web-settings-bridge.mjs` — and
-> modified three tracked ones (`skills/dsh-qa/SKILL.md`, `skills/dsh-qa/scripts/tui-panels.mjs`,
-> `skills/dsh-qa/scripts/extension-isolation.mjs`) **after** the wave's single `VENDOR_LOCK` re-pin
-> (307 / `ba0c3922…`) had landed. Measured: `node scripts/verify-vendor.mjs` exits 1 with
+> `skills/` — `skills/dsh-qa/scripts/lib/settings-bridge-lane.ts`,
+> `skills/dsh-qa/scripts/tui-settings-bridge.ts`, `skills/dsh-qa/scripts/web-settings-bridge.ts` — and
+> modified three tracked ones (`skills/dsh-qa/SKILL.md`, `skills/dsh-qa/scripts/tui-panels.ts`,
+> `skills/dsh-qa/scripts/extension-isolation.ts`) **after** the wave's single `VENDOR_LOCK` re-pin
+> (307 / `ba0c3922…`) had landed. Measured: `node scripts/verify-vendor.ts` exits 1 with
 > `FAIL - asset skills count drifted: 310 vs 307` and a treeSha mismatch; `bun run test:qa` exits 1 at
 > `agent-teams-messaging` with `VENDOR_LOCK skills asset is stale: lock=307/ba0c39228896
 > tree=310/8ec53287296e`. The three files are still uncommitted (`git status` shows them untracked), so
@@ -304,7 +304,7 @@ PASS; `bun run typecheck` 0; `bun test packages` 547/0; rows parity 24 ids; R6 `
 >
 > **Correction to that correction (t51, measured minutes later).** The re-pin LANDED while t51 was in
 > progress: `VENDOR_LOCK.json` `assets/skills` is now **310 files / treeSha
-> `8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268`**, `node scripts/verify-vendor.mjs`
+> `8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268`**, `node scripts/verify-vendor.ts`
 > exits **0** with `asset OK: skills 310 files` + `PASS`, and `bun run test:qa` is re-measured in the same
 > pass: `bun run test:qa` exits **0** (`all self-tests passed`) — `evidence/mpd-bridge/integration/t51/raw/test-qa-t51.log`. The block above is kept as the record of the moment
 > it measured; the re-pin is **no longer owed**.
@@ -345,7 +345,7 @@ and `packages/mpd-config-plugin/src/index.ts:511`.
 | **A — the base and its cardinality** | `docs/tui.md` §6.2 (+ zh twin): a three-row table; also `packages/mpd-tui-plugin/README{,.zh-CN}.md` item 2 and both `mpd-config-plugin` READMEs | one live root ⇒ that workspace's `<workspace>/.mpd/mpd.jsonc`; zero roots ⇒ the mount-time (exec-less) root (`DSH_WORKSPACE_ROOT` or the process cwd), an absent file there giving an **empty base** = schema defaults — the **normal boot path**, since this row usually precedes any live session; more than one root ⇒ **no file base invented** (`base: undefined`, reason `ambiguous-multi-root`, every candidate warned and surfaced by `states()`), and a save in that state is refused, so the ambiguity cannot reach disk |
 | **A — the timing disclosure** | same places | the base is **fixed for the process lifetime** because the host exposes **no disposal handle** for a live registration (its own settings installers keep their base fixed the same way) — which is exactly why the shipped sentence is "takes effect for the mpd plugins **after a restart**"; the **resolved value** plus the config layer's **per-call file reads** are what the plugins use, so each session still resolves its own file. No sentence on the page promises a live-refreshed base |
 | **B — D1, the cross-home boundary** | `docs/tui.md` §6.6 (new) + zh twin | the four scopes by mechanism (DSH-HOME `settings.yaml` + user `mpd.jsonc`; workspace `<workspace>/.mpd/**`; HOME `~/.mpd/workmate`; bundle presets + corpus), and the boundary: **one DSH home ⇒ the settings document is shared; separate DSH homes ⇒ two documents, so an edit is invisible as a settings VALUE across doors — while `<workspace>/.mpd/mpd.jsonc` still converges because both doors write that same file** |
-| **C — the Web card's complete evidence level** | `docs/tui.md` §3.1 + zh twin | witnessed: the registration contract in the **built and served** `client.js` (`dd9c8893…`, 282453 B), the registration shape + field parity in the card's suite, the module's render/write/refuse/read-only behaviour in the **offline hook harness**, and the **write path end to end** through the host's authenticated settings API (`web-settings-bridge.mjs` W1–W13); **NOT witnessed**: a real browser render and a click-driven save (`cardClaim.W3.witnessed === false`), with the human repro steps retained |
+| **C — the Web card's complete evidence level** | `docs/tui.md` §3.1 + zh twin | witnessed: the registration contract in the **built and served** `client.js` (`dd9c8893…`, 282453 B), the registration shape + field parity in the card's suite, the module's render/write/refuse/read-only behaviour in the **offline hook harness**, and the **write path end to end** through the host's authenticated settings API (`web-settings-bridge.ts` W1–W13); **NOT witnessed**: a real browser render and a click-driven save (`cardClaim.W3.witnessed === false`), with the human repro steps retained |
 
 **Records.** This report (and its `.mpd` twin) carry Amendment 4 + §10; `evidence/tui/ACCEPTANCE-LEDGER.md`
 carries a fourth amendment; `evidence/tui/EVIDENCE-INDEX.md` §7.1 indexes the added claims and this pass's
@@ -358,7 +358,7 @@ ruling), t41 (card), t49 (re-review), t50 (the surrounding docs); the closure ed
 
 **Gate state at t51's close (re-measured, after the captain's re-pin landed):**
 `VENDOR_LOCK.json` `assets/skills` = **310 files / treeSha
-`8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268`**; `node scripts/verify-vendor.mjs`
+`8ec53287296edb43b1f622046ff932a8e339f081184622854db4a2c0445a3268`**; `node scripts/verify-vendor.ts`
 → **exit 0** (`asset OK: skills 310 files`, `PASS`); `bun run test:qa` → **exit 0**, `all self-tests
 passed` (`evidence/mpd-bridge/integration/t51/raw/test-qa-t51.log`). The re-pin is therefore **closed**, not owed.
 

@@ -1,11 +1,11 @@
 {
   "manifestVersion": 1,
-  "description": "The dsh-qa lane registry. This file is the LANE LIST the suite runs (data, never an inline for-loop in package.json), and it is also the drift ledger: every .mjs under skills/dsh-qa/scripts/ is either a member of a suite or carries an outsideSuites reason. scripts/run-qa-lanes.mjs --list prints it, --check-drift fails when a script is in NEITHER list. Every lane also declares `immutabilityGuard` (required | exempt:<reason>) so the runner can prove that a caller-supplied evidence target is guarded.",
-  "runner": "scripts/run-qa-lanes.mjs",
+  "description": "The dsh-qa lane registry. This file is the LANE LIST the suite runs (data, never an inline for-loop in package.json), and it is also the drift ledger: every .ts under skills/dsh-qa/scripts/ is either a member of a suite or carries an outsideSuites reason. scripts/run-qa-lanes.ts --list prints it, --check-drift fails when a script is in NEITHER list. Every lane also declares `immutabilityGuard` (required | exempt:<reason>) so the runner can prove that a caller-supplied evidence target is guarded.",
+  "runner": "scripts/run-qa-lanes.ts",
   "docs": "skills/dsh-qa/SKILL.md",
   "suites": {
     "all": "the real-lane sweep behind `bun run test:qa:all`: every entry with \"all\" in suites. Strict by default — the runner passes --no-skip, so a lane whose declared prerequisite is missing reports FAIL++reason instead of SKIP, and the runner classifies that reason as UNAVAILABLE (exit 2, never a pass).",
-    "selfTest": "the offline sweep behind `bun run test:qa` / `test:qa:strict`: a glob over skills/dsh-qa/scripts/*.mjs --self-test, so it needs no manifest entry and cannot go stale."
+    "selfTest": "the offline sweep behind `bun run test:qa` / `test:qa:strict`: a glob over skills/dsh-qa/scripts/*.ts --self-test, so it needs no manifest entry and cannot go stale."
   },
   "verdicts": {
     "pass": "exit 0 with no [mpd-qa] marker",
@@ -31,11 +31,11 @@
     "unsupported-platform"
   ],
   "driftRule": "On-disk lane scripts with no manifest entry, and manifest entries whose script is gone, are reported by every run and by --list; --check-drift exits 1, and the `qa-lane-drift` gate below runs it inside the `all` suite so drift fails the suite loudly. A lane deliberately outside every suite is declared here with outsideSuites instead of being omitted.",
-  "immutabilityRule": "Every lane entry carries a MANDATORY `immutabilityGuard` declaration: \"required\" means the runner asserts the driver source contains the literal specifier ./lib/immutable-output.mjs; anything else must be \"exempt: <reason>\". An omitted or malformed declaration reddens (the same declare-never-omit rule as outsideSuites), the resolved required set is printed on every run including required=0, and an EMPTY required set is a RED. Enforced by --check-drift, so the qa-lane-drift gate carries it.",
+  "immutabilityRule": "Every lane entry carries a MANDATORY `immutabilityGuard` declaration: \"required\" means the runner asserts the driver source contains the literal specifier ./lib/immutable-output.ts; anything else must be \"exempt: <reason>\". An omitted or malformed declaration reddens (the same declare-never-omit rule as outsideSuites), the resolved required set is printed on every run including required=0, and an EMPTY required set is a RED. Enforced by --check-drift, so the qa-lane-drift gate carries it.",
   "lanes": [
     {
       "case": "agent-teams-adopt",
-      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.ts",
       "suites": [
         "all"
       ],
@@ -43,14 +43,14 @@
     },
     {
       "case": "agent-teams-messaging",
-      "script": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "script": "skills/dsh-qa/scripts/agent-teams-messaging.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.mjs --only=agent-teams-messaging"
+      "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.ts --only=agent-teams-messaging"
     },
     {
       "case": "bundle-lifecycle",
-      "script": "skills/dsh-qa/scripts/bundle-lifecycle.mjs",
+      "script": "skills/dsh-qa/scripts/bundle-lifecycle.ts",
       "suites": [
         "all"
       ],
@@ -58,7 +58,7 @@
     },
     {
       "case": "codegraph-smoke",
-      "script": "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/codegraph-smoke.ts",
       "suites": [
         "all"
       ],
@@ -66,7 +66,7 @@
     },
     {
       "case": "dual-track-smoke",
-      "script": "skills/dsh-qa/scripts/dual-track-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/dual-track-smoke.ts",
       "suites": [
         "all"
       ],
@@ -74,14 +74,14 @@
     },
     {
       "case": "extension-isolation",
-      "script": "skills/dsh-qa/scripts/extension-isolation.mjs",
+      "script": "skills/dsh-qa/scripts/extension-isolation.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "shared proof helper for the three extension cases, not a case: it has no lane mode (without --self-test it does nothing and exits 0) — SKILL.md documents this — run it explicitly: node scripts/run-qa-lanes.mjs --only=extension-isolation"
+      "outsideSuites": "shared proof helper for the three extension cases, not a case: it has no lane mode (without --self-test it does nothing and exits 0) — SKILL.md documents this — run it explicitly: node scripts/run-qa-lanes.ts --only=extension-isolation"
     },
     {
       "case": "extension-lifecycle",
-      "script": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "script": "skills/dsh-qa/scripts/extension-lifecycle.ts",
       "suites": [
         "all"
       ],
@@ -93,7 +93,7 @@
     },
     {
       "case": "extension-mcp-bridge",
-      "script": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "script": "skills/dsh-qa/scripts/extension-mcp-bridge.ts",
       "suites": [
         "all"
       ],
@@ -106,7 +106,7 @@
     },
     {
       "case": "extension-template",
-      "script": "skills/dsh-qa/scripts/extension-template.mjs",
+      "script": "skills/dsh-qa/scripts/extension-template.ts",
       "suites": [
         "all"
       ],
@@ -119,7 +119,7 @@
     },
     {
       "case": "install-dependencies",
-      "script": "skills/dsh-qa/scripts/install-dependencies.mjs",
+      "script": "skills/dsh-qa/scripts/install-dependencies.ts",
       "suites": [
         "all"
       ],
@@ -131,7 +131,7 @@
     },
     {
       "case": "mcp-call",
-      "script": "skills/dsh-qa/scripts/mcp-call.mjs",
+      "script": "skills/dsh-qa/scripts/mcp-call.ts",
       "suites": [
         "all"
       ],
@@ -139,7 +139,7 @@
     },
     {
       "case": "memory-smoke",
-      "script": "skills/dsh-qa/scripts/memory-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/memory-smoke.ts",
       "suites": [
         "all"
       ],
@@ -147,7 +147,7 @@
     },
     {
       "case": "mount-assert",
-      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "script": "skills/dsh-qa/scripts/mount-assert.ts",
       "suites": [
         "all"
       ],
@@ -158,7 +158,7 @@
     },
     {
       "case": "plan-c-smoke",
-      "script": "skills/dsh-qa/scripts/plan-c-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/plan-c-smoke.ts",
       "suites": [
         "all"
       ],
@@ -166,7 +166,7 @@
     },
     {
       "case": "preset-conformance",
-      "script": "skills/dsh-qa/scripts/preset-conformance.mjs",
+      "script": "skills/dsh-qa/scripts/preset-conformance.ts",
       "suites": [
         "all"
       ],
@@ -174,7 +174,7 @@
     },
     {
       "case": "preset-register",
-      "script": "skills/dsh-qa/scripts/preset-register.mjs",
+      "script": "skills/dsh-qa/scripts/preset-register.ts",
       "suites": [
         "all"
       ],
@@ -182,14 +182,14 @@
     },
     {
       "case": "readonly-deny",
-      "script": "skills/dsh-qa/scripts/readonly-deny.mjs",
+      "script": "skills/dsh-qa/scripts/readonly-deny.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "live fix lane (read-only spawn): starts a real child and measures the tool filter it really got — run it explicitly: node scripts/run-qa-lanes.mjs --only=readonly-deny"
+      "outsideSuites": "live fix lane (read-only spawn): starts a real child and measures the tool filter it really got — run it explicitly: node scripts/run-qa-lanes.ts --only=readonly-deny"
     },
     {
       "case": "relocate-smoke",
-      "script": "skills/dsh-qa/scripts/relocate-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/relocate-smoke.ts",
       "suites": [
         "all"
       ],
@@ -200,7 +200,7 @@
     },
     {
       "case": "session-start-team",
-      "script": "skills/dsh-qa/scripts/session-start-team.mjs",
+      "script": "skills/dsh-qa/scripts/session-start-team.ts",
       "suites": [
         "all"
       ],
@@ -208,7 +208,7 @@
     },
     {
       "case": "skill-catalog-probe",
-      "script": "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+      "script": "skills/dsh-qa/scripts/skill-catalog-probe.ts",
       "suites": [
         "all"
       ],
@@ -219,7 +219,7 @@
     },
     {
       "case": "software-smoke",
-      "script": "skills/dsh-qa/scripts/software-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/software-smoke.ts",
       "suites": [
         "all"
       ],
@@ -227,49 +227,49 @@
     },
     {
       "case": "team-watchdog-boot",
-      "script": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-boot.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: a real dsh spawn plus a live model call (heavy) — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-boot"
+      "outsideSuites": "team-watchdog lane: a real dsh spawn plus a live model call (heavy) — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-boot"
     },
     {
       "case": "team-watchdog-config",
-      "script": "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-config.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-config"
+      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-config"
     },
     {
       "case": "team-watchdog-fault",
-      "script": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-fault.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists and the verified fault fixture — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-fault"
+      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists and the verified fault fixture — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-fault"
     },
     {
       "case": "team-watchdog-heartbeat",
-      "script": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-heartbeat.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-heartbeat"
+      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-heartbeat"
     },
     {
       "case": "team-watchdog-notify",
-      "script": "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-notify.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: payloads and built bytes only, in-process — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-notify"
+      "outsideSuites": "team-watchdog lane: payloads and built bytes only, in-process — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-notify"
     },
     {
       "case": "team-watchdog-scene",
-      "script": "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+      "script": "skills/dsh-qa/scripts/team-watchdog-scene.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-scene"
+      "outsideSuites": "team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.ts --only=team-watchdog-scene"
     },
     {
       "case": "tool-output-validation",
-      "script": "skills/dsh-qa/scripts/tool-output-validation.mjs",
+      "script": "skills/dsh-qa/scripts/tool-output-validation.ts",
       "suites": [
         "all"
       ],
@@ -277,28 +277,28 @@
     },
     {
       "case": "tui-admission",
-      "script": "skills/dsh-qa/scripts/tui-admission.mjs",
+      "script": "skills/dsh-qa/scripts/tui-admission.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
         "absent-runtime",
         "absent-fixture"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary plus a TUI sandbox profile (absent on a headless host) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-admission"
+      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary plus a TUI sandbox profile (absent on a headless host) — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-admission"
     },
     {
       "case": "tui-distribution",
-      "script": "skills/dsh-qa/scripts/tui-distribution.mjs",
+      "script": "skills/dsh-qa/scripts/tui-distribution.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
         "absent-runtime"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs pnpm and the dsh-distribution protocol CLI — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-distribution"
+      "outsideSuites": "DSH-TUI edition lane: needs pnpm and the dsh-distribution protocol CLI — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-distribution"
     },
     {
       "case": "tui-mount",
-      "script": "skills/dsh-qa/scripts/tui-mount.mjs",
+      "script": "skills/dsh-qa/scripts/tui-mount.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
@@ -306,11 +306,11 @@
         "absent-runtime",
         "absent-fixture"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (the TUI refuses a non-TTY) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-mount"
+      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (the TUI refuses a non-TTY) — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-mount"
     },
     {
       "case": "tui-panels",
-      "script": "skills/dsh-qa/scripts/tui-panels.mjs",
+      "script": "skills/dsh-qa/scripts/tui-panels.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
@@ -318,31 +318,31 @@
         "absent-runtime",
         "absent-fixture"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-panels"
+      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-panels"
     },
     {
       "case": "tui-settings-bridge",
-      "script": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+      "script": "skills/dsh-qa/scripts/tui-settings-bridge.ts",
       "suites": [],
       "immutabilityGuard": "required",
       "prereq": [
         "absent-bundle-dist"
       ],
-      "outsideSuites": "DSH-TUI edition lane: judged against the built packages/mpd-tui-plugin dist — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-settings-bridge"
+      "outsideSuites": "DSH-TUI edition lane: judged against the built packages/mpd-tui-plugin dist — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-settings-bridge"
     },
     {
       "case": "tui-spec-conformance",
-      "script": "skills/dsh-qa/scripts/tui-spec-conformance.mjs",
+      "script": "skills/dsh-qa/scripts/tui-spec-conformance.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
         "absent-fixture"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs the populated dsh-ecosystem-spec checkout at the pinned revision — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-spec-conformance"
+      "outsideSuites": "DSH-TUI edition lane: needs the populated dsh-ecosystem-spec checkout at the pinned revision — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-spec-conformance"
     },
     {
       "case": "tui-team-surface",
-      "script": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+      "script": "skills/dsh-qa/scripts/tui-team-surface.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "prereq": [
@@ -350,11 +350,11 @@
         "absent-runtime",
         "absent-fixture"
       ],
-      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-team-surface"
+      "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-team-surface"
     },
     {
       "case": "ulw-command",
-      "script": "skills/dsh-qa/scripts/ulw-command.mjs",
+      "script": "skills/dsh-qa/scripts/ulw-command.ts",
       "suites": [
         "all"
       ],
@@ -362,7 +362,7 @@
     },
     {
       "case": "ultrawork-smoke",
-      "script": "skills/dsh-qa/scripts/ultrawork-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/ultrawork-smoke.ts",
       "suites": [
         "all"
       ],
@@ -370,7 +370,7 @@
     },
     {
       "case": "vision-smoke",
-      "script": "skills/dsh-qa/scripts/vision-smoke.mjs",
+      "script": "skills/dsh-qa/scripts/vision-smoke.ts",
       "suites": [
         "all"
       ],
@@ -378,14 +378,14 @@
     },
     {
       "case": "watchdog-redesign",
-      "script": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+      "script": "skills/dsh-qa/scripts/watchdog-redesign.ts",
       "suites": [],
       "immutabilityGuard": "required",
-      "outsideSuites": "contract §9 RED→GREEN driver (t24): needs the .mpd/red-baseline worktree and drives BOTH trees in-process, each with its own modules (heavy) — run it explicitly: node scripts/run-qa-lanes.mjs --only=watchdog-redesign"
+      "outsideSuites": "contract §9 RED→GREEN driver (t24): needs the .mpd/red-baseline worktree and drives BOTH trees in-process, each with its own modules (heavy) — run it explicitly: node scripts/run-qa-lanes.ts --only=watchdog-redesign"
     },
     {
       "case": "web-client-adapt",
-      "script": "skills/dsh-qa/scripts/web-client-adapt.mjs",
+      "script": "skills/dsh-qa/scripts/web-client-adapt.ts",
       "suites": [
         "all"
       ],
@@ -393,7 +393,7 @@
     },
     {
       "case": "web-settings-bridge",
-      "script": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+      "script": "skills/dsh-qa/scripts/web-settings-bridge.ts",
       "suites": [
         "all"
       ],
@@ -405,7 +405,7 @@
     },
     {
       "case": "workmate-library",
-      "script": "skills/dsh-qa/scripts/workmate-library.mjs",
+      "script": "skills/dsh-qa/scripts/workmate-library.ts",
       "suites": [
         "all"
       ],
@@ -413,7 +413,7 @@
     },
     {
       "case": "workmate-team-member",
-      "script": "skills/dsh-qa/scripts/workmate-team-member.mjs",
+      "script": "skills/dsh-qa/scripts/workmate-team-member.ts",
       "suites": [
         "all"
       ],
@@ -421,7 +421,7 @@
     },
     {
       "case": "wave2b-lane-d",
-      "script": "skills/dsh-qa/scripts/wave2b-lane-d.mjs",
+      "script": "skills/dsh-qa/scripts/wave2b-lane-d.ts",
       "suites": [],
       "outsideSuites": "wave-2b lane D corpus arms: the six rows are asserted by their own --self-test and by a named run; the suite sweep is not where a corpus-property scan belongs.",
       "immutabilityGuard": "required"
@@ -433,7 +433,7 @@
       "kind": "gate",
       "argv": [
         "node",
-        "scripts/run-qa-lanes.mjs",
+        "scripts/run-qa-lanes.ts",
         "--check-drift"
       ],
       "suites": [
@@ -445,7 +445,7 @@
       "kind": "gate",
       "argv": [
         "node",
-        "scripts/run-qa-lanes.mjs",
+        "scripts/run-qa-lanes.ts",
         "--self-test"
       ],
       "suites": [
@@ -457,7 +457,7 @@
       "kind": "gate",
       "argv": [
         "bun",
-        "scripts/mpd-ext.mjs",
+        "scripts/mpd-ext.ts",
         "--self-test"
       ],
       "suites": [
@@ -469,7 +469,7 @@
       "kind": "gate",
       "argv": [
         "bun",
-        "scripts/mpd-ext.mjs",
+        "scripts/mpd-ext.ts",
         "validate",
         "extensions/mpd-ext-example"
       ],
@@ -482,7 +482,7 @@
       "kind": "gate",
       "argv": [
         "bun",
-        "scripts/mpd-ext.mjs",
+        "scripts/mpd-ext.ts",
         "validate",
         "templates/mpd-extension"
       ],
@@ -495,7 +495,7 @@
       "kind": "gate",
       "argv": [
         "node",
-        "scripts/verify-pack-closure.mjs"
+        "scripts/verify-pack-closure.ts"
       ],
       "suites": [
         "all"

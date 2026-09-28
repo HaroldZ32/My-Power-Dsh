@@ -98,7 +98,7 @@ team profiles + approval-staged planning GUI) with runtime deps under `_deps/`
 (`@deepseek-ai/schemastery` → `@deepseek-ai/cosmokit`, MIT); the bundle `exports` map serves
 the entry + `./client`, `dsh.client` declares the web panel, the row name is
 `@mpd-dsh/mpd/third-party/dsh-agent-teams`, and the self-disabling guard is gone.
-Legacy `scripts/install-profile.mjs` pin bumped to `@0.1.14` (kept as the dev flow).
+Legacy `scripts/install-profile.ts` pin bumped to `@0.1.14` (kept as the dev flow).
 QA: `team-route-rewire` real case (official `dsh plugin add` flow, resolution proof,
 live boot, web route smoke) → `evidence/plan-e/e4-team-vendor/`.
 

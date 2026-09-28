@@ -1,5 +1,8 @@
+/** An inclusive Unicode code point interval. */
 interface CodePointRange {
+	/** First code point of the interval, inclusive. */
 	readonly start: number
+	/** Last code point of the interval, inclusive. */
 	readonly end: number
 }
 
@@ -43,6 +46,7 @@ const WIDE_RANGES: readonly CodePointRange[] = [
 	{ start: 0x20000, end: 0x3fffd }, // CJK Unified Ext B and beyond
 ]
 
+/** Whether the code point falls inside any of the given intervals; the first hit wins. */
 function inRanges(codePoint: number, ranges: readonly CodePointRange[]): boolean {
 	for (const range of ranges) {
 		if (codePoint >= range.start && codePoint <= range.end) {
@@ -52,6 +56,7 @@ function inRanges(codePoint: number, ranges: readonly CodePointRange[]): boolean
 	return false
 }
 
+/** Columns this code point advances a terminal cursor by: 0 for controls and combining marks, 2 for East Asian Wide/Fullwidth, otherwise 1. */
 export function charWidth(codePoint: number): 0 | 1 | 2 {
 	if (codePoint === 0) return 0
 	if (codePoint < 0x20) return 0 // C0 control
@@ -61,9 +66,12 @@ export function charWidth(codePoint: number): 0 | 1 | 2 {
 	return 1
 }
 
+/** Columns the whole string occupies; iterates code points, so a surrogate pair counts once. */
 export function stringWidth(text: string): number {
+	/** Running column total. */
 	let total = 0
 	for (const char of text) {
+		/** The character's code point, undefined only for an unpaired surrogate. */
 		const codePoint = char.codePointAt(0)
 		if (codePoint === undefined) continue
 		total += charWidth(codePoint)

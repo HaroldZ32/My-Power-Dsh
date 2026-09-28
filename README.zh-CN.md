@@ -2,6 +2,14 @@
 
 [English](./README.md) | **中文**
 
+[![版本](https://img.shields.io/badge/version-0.11.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![许可证：SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.1.7--rc.2-4B32C3.svg)](#鸣谢)
+[![平台](https://img.shields.io/badge/platforms-web%20%7C%20dsh--tui-informational.svg)](./docs/tui.zh-CN.md)
+[![运行时](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
+[![质量门](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
+[![文档](https://img.shields.io/badge/docs-EN%20%2B%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success.svg)](./docs/index.zh-CN.md)
+
 **my-power-dsh** 是 **DeepSeek Harness（DSH）** 的插件 bundle。一次安装，就能把一套朴素的 DSH
 环境变成真正可用于工程开发的工作环境：一个会自动读取你项目规则的主智能体、十一位可供咨询或委派的
 专家、一个会记住自己所学内容的持久化 workmate 智能体库、跑在 harness 官方 Agent Teams 插件上的
@@ -9,17 +17,44 @@
 在不改动核心的前提下贡献 skill、flow、MCP 服务器与专家。
 
 本文是它的**使用手册**：怎么安装、该敲什么、每条命令与每个工具做什么、怎么配置、你的数据放在哪里。
-内部实现（启动链、包的构成、插件机制）只写在一处，本文用最后那一节 *架构：只留一条指引* 指过去。
+内部实现（启动链、包的构成、插件机制）只写在一处，本文用 *架构* 一节指过去。
 
 这个 bundle 就是包 `@mpd-dsh/mpd`，而本仓库根目录**就是**这个包。它用一条命令安装，也用一条命令
 卸载，不留残留。
 
-## 一次安装，你得到什么
+![my-power-dsh 会话在 DSH Web 界面中的样子：已选中 MPD（Main Working Agent）preset，Agent Teams 面板显示名册与共享任务板，模型选择器显示 DeepSeek-V41-Flash。](./docs/assets/images/web-ui-session.png)
+
+*DSH Web 界面中的 **MPD（Main Working Agent）** preset，会话旁边是打开着的 Agent Teams 名册与共享任务板。本手册中的每张截图都是随包发布 bundle 的真实截图，由 Docker UI 通道从运行中的应用里截取（`docker/ui/`）。*
+
+## 目录
+
+- [特性](#特性)
+- [环境要求](#环境要求)
+- [安装](#安装)
+- [快速上手](#快速上手)
+- [主智能体与你的项目规则](#主智能体与你的项目规则)
+- [命令](#命令)
+- [用法](#用法)
+- [专家名册](#专家名册)
+- [团队模式](#团队模式)
+- [Web GUI](#web-gui)
+- [DSH-TUI 版本](#dsh-tui-版本)
+- [配置](#配置)
+- [你的状态存放在哪里](#你的状态存放在哪里)
+- [架构](#架构)
+- [常见问题](#常见问题)
+- [文档](#文档)
+- [贡献指南](#贡献指南)
+- [变更日志](#变更日志)
+- [鸣谢](#鸣谢)
+- [许可证](#许可证)
+
+## 特性
 
 | 你想做的事 | 用什么 | 详细说明在哪 |
 |---|---|---|
 | 让智能体知道你的项目规则 | **`mpd` preset**（本 bundle 唯一随包提供的 preset） | *主智能体与你的项目规则* |
-| 要一份第二意见，或一个范围明确的执行者 | **专家名册** —— `mpd_role_spawn` | *专家：名册* |
+| 要一份第二意见，或一个范围明确的执行者 | **专家名册** —— `mpd_role_spawn` | *专家名册* |
 | 养一个会不断积累知识的专家 | **workmate 库** —— `mpd_workmate_*` | *养一个会成长的智能体* |
 | 跑一条真正的多智能体流水线 | **团队模式** —— 官方 Agent Teams 工具（`spawn_teammate`、`team_task_*`）+ Web 名册/任务面板 | *团队模式* |
 | 把一个长期目标推到完成 | **ULW 循环** —— `/ulw` | *推进长任务：ULW 循环* |
@@ -27,51 +62,112 @@
 | 跨会话记住事实 | **记忆引擎** —— `mpd_memory_*` | *保存持久记忆* |
 | 避免行号漂移导致的误改 | **哈希锚定编辑** —— `mpd_hashline_*` | *安全地编辑文件* |
 | 快速看懂陌生代码库 | **MCP 服务器** —— ast-grep、LSP、CodeGraph | *理解代码库* |
-| 让 bundle 学会一项新本事 | **扩展接口** —— `mpd_ext_*` | *扩展接口* |
+| 让 bundle 学会一项新本事 | **扩展接口** —— `mpd_ext_*` | *配置与扩展* |
 | 全部在终端里驱动 | **DSH-TUI 版本** | *DSH-TUI 版本* |
+
+## 环境要求
+
+- **DeepSeek Harness（DSH）**，使用 `web` 或 `headless` profile，并在 DSH 中配置好模型凭据 ——
+  本 bundle 从不会替你配置密钥。本 bundle 是针对 harness **0.1.7-rc.2** 构建并验证的。
+- **Node.js** 与 **Bun**（`1.4.0`，即 `package.json` 中 `buildToolchain` 字段记录的版本），需要在
+  `PATH` 上，供仓库脚本使用（`bun` 用来跑测试与扩展 CLI）。
+- **git**：源码安装需要它 —— 主要流程就是克隆本仓库并从检出目录安装。
+- 可选项：若要使用代码智能相关服务器，可用 bundle 提供的工具链安装
+  （`node scripts/install-mcp.ts`），也可以用自己的二进制文件，并通过文档中给出的环境变量指向它
+  （`MPD_DSH_AST_GREP_SG_PATH`、`MPD_CODEGRAPH_BIN` 等）。
 
 ## 安装
 
-### 环境要求
+### 一条命令，无需克隆（推荐）
 
-- DeepSeek Harness（DSH），使用 `web` 或 `headless` profile，并在 DSH 中配置好模型凭据 ——
-  本 bundle 从不会替你配置密钥。
-- 仓库脚本需要 `PATH` 上有 Node.js 与 `bun`（`bun` 用来跑测试与扩展 CLI）。
-- 可选项：若要使用代码智能相关服务器，可用 bundle 提供的工具链安装
-  （`node scripts/install-mcp.mjs`），也可以用自己的二进制文件，并通过文档中给出的环境变量指向它
-  （`MPD_DSH_AST_GREP_SG_PATH`、`MPD_CODEGRAPH_BIN` 等）。
-
-### 从检出目录安装（web profile）
+本 bundle 就是一个普通包：profile 拉取它，按清单里的 `files` 白名单打包，再用它自带的
+`cordis.patch.yml` 各层完成挂载。你的机器上不需要克隆，也不需要构建。
 
 ```bash
-cd <repo> && dsh plugin --profile web add .
+dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh
+```
+
+随后重启 `dsh`，在会话里选择 **MPD（Main Working Agent）** preset：
+
+```bash
+dsh web            # 启动（或重启）web profile —— 等同于：dsh --profile web
+```
+
+前置条件：**Node.js ≥ 22.18**，并且 `pnpm` 在 `PATH` 上 —— `dsh plugin` 会把安装交给 pnpm，而本
+bundle 直接依靠 Node 的类型擦除执行 TypeScript。包内**没有** `cordis` 依赖，也没有
+`preinstall`/`install`/`postinstall`/`prepare` 脚本，因此安装过程不会执行包内的任何代码。
+
+卸载：
+
+```bash
+dsh plugin --profile web remove @mpd-dsh/mpd
+```
+
+### 从检出目录开始
+
+克隆是贡献者、需要固定版本、以及 DSH-TUI 版检出流程的路径。本节余下内容以检出为准；如果你装的是
+已发布的包，命令完全一致。
+
+```bash
+git clone https://github.com/HaroldZ32/My-Power-Dsh.git
+cd My-Power-Dsh
+```
+
+### 安装依赖
+
+```bash
+bun install
+```
+
+本 bundle 声明了四个运行时依赖 —— `dsh-better-sidebar`（承载 Workmates 标签页的社区侧边栏
+bundle）以及提供团队模式的三个官方 Agent Teams 包（见 *这次安装挂载了哪些插件*）—— 因此检出目录
+安装要先把仓库依赖落到本地。
+
+如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以不带构建脚本安装该侧边栏 ——
+只有侧边栏的终端面板会降级：
+
+```bash
+bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+```
+
+从打包产物安装时无需这一步（pnpm 会装好声明的依赖），见下方 *从打包产物安装*。
+
+### 从源码构建
+
+仓库中已提交的 `dist/` 文件就是构建产物，随仓库一起发布，所以普通安装不需要构建步骤。只重建你改动的
+那个包，并且要**在仓库根目录**用带路径的完整参数执行：
+
+```bash
+bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
+```
+
+多入口的包对每个入口重复这条命令。`node scripts/verify-dist-fresh.ts` 会重建每一个
+`packages/*/src` 入口并与已提交的 `dist/` 逐字节比较，所以源码改动与它的重建属于同一次提交。
+另外两条最常用的命令是 `bun run typecheck`（根目录）与 `bun test packages`；完整关卡清单见
+[`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md)。
+
+检出目录安装会直接读取该目录：改动代码后，重新构建所改包的 `dist/`，再重启 `dsh`。
+
+### 把 bundle 安装进 DSH（web profile）
+
+```bash
+dsh plugin --profile web add .
 ```
 
 仓库根目录就是 bundle 包本身，所以这一条命令会同时安装全部插件行、`mpd` preset、18 个 skill 的
 语料库与扩展根目录 —— 不需要打包步骤，也不需要复制步骤。之后重启 `dsh`，在会话中选择
-**MPD（Main Working Agent）** preset。
-
-本 bundle 声明了四个运行时依赖 —— `dsh-better-sidebar`（承载 Workmates 标签页的社区侧边栏
-bundle）以及提供团队模式的三个官方 Agent Teams 包（见 *这次安装挂载了哪些插件*）—— 因此检出目录
-安装要先把仓库依赖落到本地：
+**MPD（Main Working Agent）** preset：
 
 ```bash
-cd <repo> && bun install                     # 把声明的运行时依赖落到仓库 node_modules
-cd <repo> && dsh plugin --profile web add .
+dsh web            # 启动（或重启）web profile —— 等同于 dsh --profile web
 ```
-
-如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以不带构建脚本安装该侧边栏：
-`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` —— 只有侧边栏的终端面板会降级。
-从打包产物安装时无需这一步（pnpm 会装好声明的依赖），见下方 *从打包产物安装*。
-
-检出目录安装会直接读取该目录：改动代码后，重新构建所改包的 `dist/`，再重启 `dsh`。
 
 ### 安装到终端界面（`dsh-tui` profile）
 
 同一个 bundle 也能装进终端界面 profile：
 
 ```bash
-cd <repo> && dsh plugin --profile dsh-tui add .
+dsh plugin --profile dsh-tui add .
 ```
 
 安装后，本 bundle 成为该 profile 的**第三层 patch**，叠在 TUI 包之上：`dsh.profile.bundles`
@@ -97,7 +193,7 @@ dsh-tui --help     # update | doctor | version | help；其余参数原样转发
 如果要使用已发布包或 tarball，先组装出可迁移的 bundle，再把该产物加入你实际使用的那个 profile：
 
 ```bash
-node scripts/pack-mpd.mjs                       # -> dist/mpd-package/（可迁移）
+node scripts/pack-mpd.ts                       # -> dist/mpd-package/（可迁移）
 dsh plugin --profile web add dist/mpd-package
 dsh plugin --profile dsh-tui add dist/mpd-package
 ```
@@ -122,7 +218,7 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 *本 bundle id 定向的宿主行*）—— 并被上面那一条 `dsh plugin add` 一次性挂载。`package.json` 把
 这两个文件列为数组 `dsh.bundle.patch`。主 patch 一共写了 **29 个 `- id:` 条目，分两种**：**本
 bundle 插入（insert）的 28 行**（分组如下）与**它 id 定向（id-target，即 replace，不是 insert）的
-1 个宿主行**。`node scripts/verify-rows-parity.mjs` 让这些行 id 与安装脚本保持一致。
+1 个宿主行**。`node scripts/verify-rows-parity.ts` 让这些行 id 与安装脚本保持一致。
 
 **Bundle 宿主插件 —— 18 个 insert 行**
 
@@ -224,6 +320,10 @@ harness 自己的包（`@deepseek-ai/*`）属于 DSH 的依赖，而不是本 bu
 | `@colbymchenry/codegraph` | `1.5.0` | `mcp-codegraph` 与 `mpd-codegraph` 行 |
 | `@code-yeongyu/comment-checker` | `0.8.0` | `mpd_comment_check` |
 
+![安装命令执行完后的 DSH Web 界面 Plugins 页面：@mpd-dsh/mpd 列在 Installed 分区且开关已打开，上方是 harness 自带的官方插件。](./docs/assets/images/web-ui-plugins.png)
+
+*一条安装命令之后，用户看到的样子：Plugins 页面把 `@mpd-dsh/mpd` 列在 **Installed** 分区、开关已打开 —— 整个 bundle 就是这一个包。*
+
 ## 快速上手
 
 1. **安装**（见上），重启 `dsh`，在 **MPD** preset 上开启一个会话。
@@ -240,6 +340,10 @@ harness 自己的包（`@deepseek-ai/*`）属于 DSH 的依赖，而不是本 bu
 6. **接入你自己的能力。** 把一个扩展目录放进 `<工作区>/.mpd/extensions/`，再用 `mpd_ext_list`
    查看它。
 
+![DSH Web 界面的工作区首页：输入框里已选中 MPD（Main Working Agent）preset，旁边显示 DeepSeek-V41-Flash 模型路线。](./docs/assets/images/web-ui-home.png)
+
+*Web 界面里的第 1 步：新会话的输入框已经处于 **MPD（Main Working Agent）** preset，旁边是模型路线与权限模式。*
+
 ## 主智能体与你的项目规则
 
 本 bundle 只随包提供一个 preset：**MPD（Main Working Agent）**。在会话中选中它，你会得到：
@@ -251,6 +355,10 @@ harness 自己的包（`@deepseek-ai/*`）属于 DSH 的依赖，而不是本 bu
   MCP 服务器）就排在它们旁边。
 - **内建路由** —— preset 的人设解释了专家名册、workmate 库与团队模式，因此智能体无需额外配置
   就知道该找谁。
+
+![Agent presets 设置页：MPD（Main Working Agent）preset 列在 CUSTOM 分区，并带有“新任务默认”的标记。](./docs/assets/images/web-ui-agent-presets.png)
+
+*设置里的 **Agent presets** 页：本 bundle 的 `mpd` preset 就是那个带 **New task default** 标记的自定义项，因此新会话无需挑选就会用它。*
 
 你不必为每件事重选 preset：同一个会话保持它自己的 preset，下面每一项能力在其中都可以直接用。
 
@@ -265,9 +373,9 @@ harness 自己的包（`@deepseek-ai/*`）属于 DSH 的依赖，而不是本 bu
 | 消息里的 `team:` / `!team` | 一次显式的组队请求。会话起点的复杂度门只会**建议**，不会替你组建任何团队；智能体自己用 `spawn_teammate` + `team_task_create` 组队 |
 | `/mpd`（TUI） | 终端命令树：只敲 `/mpd` 打开选择器；动作有 `board`、`team`、`plan`、`workmates`、`status`（`/mpd status` 打印摘要，其余打开各自的 TUI 界面） |
 | `/goal <目标>` | 创建一个持久的会话目标（宿主的目标行，由 `mpd` preset 启用）：一个会跨轮次持续推进的长期目标 |
-| `/settings`（TUI） | 编辑下面 *设置* 一节列出的 `mpd.jsonc` 旋钮 |
+| `/settings`（TUI） | 编辑下面 *配置* 一节列出的 `mpd.jsonc` 旋钮 |
 
-## 按用途划分的工具
+## 用法
 
 这里只是索引；下面每一小节给出可直接照抄的调用。
 
@@ -332,6 +440,10 @@ mpd_hashline_restore { "path": "src/config.ts" }     // 取消登记
 `@code-yeongyu/comment-checker` 二进制，或 `MPD_DSH_COMMENT_CHECKER_BIN`。
 
 ### 推进长任务：ULW 循环
+
+![ultrawork 运行流程图：入口、分诊、可选计划、按轮次执行 pin → red → green → surface → clean 循环、验证关卡与质量关卡，以及从红色关卡回到本轮执行的反馈路径。](./docs/assets/images/ulw-loop.svg)
+
+*一次 ultrawork 运行的完整路径，从 `/ulw` 到"完成"—— 目标先被分诊，只有两道关卡都通过后才会报告完成。运行状态与逐通道台账位于 `<工作区>/.mpd/ulw/<id>/`。*
 
 ```jsonc
 mpd_ulw { "objective": "make the docs gate cover every extension README", "maxRounds": 6 }
@@ -447,7 +559,7 @@ interrupt_agent { "target": "senior-1" }                  // 仅 Lead：停下�
 在许诺结果之前，有两条边界要知道：
 
 - **队友继承 Lead 的模型路由。** 官方 `TeamService` 只把提示词与父会话转发给 subagent 注册表，因此
-  无法为单个队友注入 provider、人设或工具过滤器。所以 `teamModels` 槽位（见 *设置*）只作用于
+  无法为单个队友注入 provider、人设或工具过滤器。所以 `teamModels` 槽位（见 *配置*）只作用于
   **一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）；如果某位队友需要别的模型，就在它的
   提示词里说明。
 - **名册的只读纪律依然生效。** 名字规范化后落在只读名册成员（Architect、Researcher、Planner、
@@ -476,12 +588,12 @@ mpd_flow_show { "id": "…" }
 扩展开发者 CLI 随包提供：
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # 合法时退出 0，否则逐项报错并退出 1
-bun scripts/mpd-ext.mjs scaffold <dir>                        # 从 templates/mpd-extension/ 起步
-bun scripts/mpd-ext.mjs list                                  # 本宿主发现了什么
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # 合法时退出 0，否则逐项报错并退出 1
+bun scripts/mpd-ext.ts scaffold <dir>                        # 从 templates/mpd-extension/ 起步
+bun scripts/mpd-ext.ts list                                  # 本宿主发现了什么
 ```
 
-## 专家：名册
+## 专家名册
 
 十一位专家以"一次性专家子智能体"的形式提供，而不是独立的 preset。用名字称呼他们即可（大小写、
 空格或连字符写法都可以）：
@@ -503,6 +615,10 @@ bun scripts/mpd-ext.mjs list                                  # 本宿主发现�
 - **可复用的就提升。** `mpd_workmate_init` 能把专家变成持久 workmate（见 *养一个会成长的智能体*）。
 
 ## 团队模式
+
+![团队模式生命周期：会话起点的复杂度门只给建议，Lead 决定名册与任务图，创建队友并开任务，成员认领并完成工作，整波压缩收尾，下一波在新会话里开始。下方护栏栏列出只读工具禁用、持久邮箱、compare-and-set 任务板与提示性写入范围。](./docs/assets/images/team-lifecycle.svg)
+
+*一波团队工作的完整路径。会话起点的复杂度门只负责建议；真正组队由 Lead 自己完成，而这一波落地时会被压缩并结束。*
 
 会话智能体就是 **Lead**（captain）。它决定名册与任务 DAG，把每位成员创建成具名队友，把每个任务开在
 共享任务板上，并亲自整合结果。成员就是上面的专家；只读纪律成员的只读性依然成立；可以把某个 workmate
@@ -602,11 +718,15 @@ bundle 一起安装并挂载**：`dsh-better-sidebar` 是已声明的运行时�
 [`docs/tui-parity.zh-CN.md`](./docs/tui-parity.zh-CN.md)，深入细节（准入、分发产物、逐包兼容性）见
 [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md)。
 
-## 设置（`.mpd/mpd.jsonc`）
+## 配置
 
 配置是 JSONC，并且分层：项目文件 `<工作区>/.mpd/mpd.jsonc` 会逐键合并到用户文件
 `$DSH_HOME/mpd.jsonc` 之上，**项目层获胜**。用 `mpd_config_get` 读取当前生效的值
 （只看一个键：`mpd_config_get { "key": "memory.vcs" }`），用 `mpd_config_reload` 重新读取文件。
+
+![DSH 设置面板的 MPD 分区，显示本 bundle 的旋钮：内联 diff 上限、注释检查器、ultrawork 轮次、记忆后端、团队状态目录、boulder 目录与看门狗开关，每个值都配有"恢复为文件中的值"按钮。](./docs/assets/images/web-ui-settings.png)
+
+*Web 界面中的 **MPD** 设置卡片 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮，每个值都会显示它是否来自文件。截图取自随包发布的 bundle。*
 
 ```jsonc
 // <工作区>/.mpd/mpd.jsonc
@@ -685,7 +805,39 @@ subagent 注册表，所以队友继承 Lead 的路由。某位队友需要别�
 | `~/.mpd/extensions/` | 主机级扩展（可贡献 MCP 服务器与 roles） |
 | `$DSH_HOME/mpd.jsonc` | 你的用户级设置，合并到每个项目文件之下 |
 
-## 故障排查
+## 架构
+
+![分层架构图：最上方是 DeepSeek Harness 宿主；patch 层 1 是 bundle 的插件行与 MCP 行；patch 层 2 是 mpd preset；中间是唯一的 mpd-dsh-adapter 接缝；下面是用户接触到的界面（Web GUI、DSH-TUI 版本、按引用提供的 skill 语料库）；最底部是各个状态根目录。](./docs/assets/images/architecture.svg)
+
+*本 bundle 是怎么拼起来的：DSH 宿主、两层 patch、唯一的适配器接缝、用户接触到的界面，以及状态根目录。完整组装说明见 [`docs/design.zh-CN.md`](./docs/design.zh-CN.md)。*
+
+本文刻意只讲**怎么用**。bundle 是怎么拼起来的 —— 启动链、patch 层及其顺序、插件清单与每一行注册了
+什么、适配器接缝、状态布局，以及背后的各项不变量 —— 是
+[`docs/design.zh-CN.md`](./docs/design.zh-CN.md) 的主题（英文版为
+[`docs/design.md`](./docs/design.md)）。改动 `packages/` 下任何东西之前，先读它。
+
+## 常见问题
+
+### 常见疑问
+
+**一定要克隆仓库吗？** 不必。克隆是主要的源码安装方式，也是你想要改动本 bundle 时必须走的路。已发布的
+tarball 用 `dsh plugin --profile web add dist/mpd-package` 安装即可（见 *从打包产物安装*）。
+
+**bundle 会替我配置模型凭据吗？** 不会。凭据与 provider 由 DSH 管理；本 bundle 只声明它的名册所要
+使用的模型路由（*配置* → 团队模型槽位）。
+
+**应该选哪个 preset？** **MPD（Main Working Agent）** —— 本 bundle 唯一随包提供的 preset。在宿主
+存在 `agent-preset-registry` 行的地方，它已经是默认值。
+
+**我的数据放在哪里？** 在各工作区的 `.mpd/` 目录下，外加用户级 workmate 库 `~/.mpd/workmate/`。
+完整清单见 *你的状态存放在哪里*；卸载 bundle 永远不会删除它们。
+
+**这是 oh-my-openagent 的 fork 吗？** 不是。专家名册、模型链术语与固定的能力基线来自那个项目，来源
+记录在 *鸣谢*、[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md) 与 `VENDOR_LOCK.json` 中。
+
+**为什么保存了设置却看不到变化？** 插件在挂载时就固定了配置，所以保存的旋钮要在重启之后生效。
+
+### 症状 → 修复对照
 
 | 症状 | 怎么办 |
 |---|---|
@@ -704,10 +856,11 @@ subagent 注册表，所以队友继承 Lead 的路由。某位队友需要别�
 [`agent-references/troubleshooting.md`](./agent-references/troubleshooting.md)（面向智能体）是完整的
 症状 → 原因 → 修复对照表。
 
-## 文档地图
+## 文档
 
 | 文档 | 适合谁 |
 |---|---|
+| [`docs/index.zh-CN.md`](./docs/index.zh-CN.md) | 文档中心与阅读顺序 |
 | [`docs/user-guide.zh-CN.md`](./docs/user-guide.zh-CN.md) | 长文使用者指南：安装/卸载、preset、工具、专家、workmate、团队、GUI、配置、扩展、故障排查 |
 | [`docs/design.zh-CN.md`](./docs/design.zh-CN.md) | 详细设计文档：bundle 如何组装与挂载 —— 启动链、插件清单、状态布局 |
 | [`docs/tui.zh-CN.md`](./docs/tui.zh-CN.md) | DSH-TUI 版本：安装、TUI 原生界面、准入与分发产物、兼容性台账、NOT-CLAIMED 清单 |
@@ -715,15 +868,40 @@ subagent 注册表，所以队友继承 Lead 的路由。某位队友需要别�
 | [`docs/extensions.zh-CN.md`](./docs/extensions.zh-CN.md) | 扩展开发者指南：契约、四种贡献种类、CLI |
 | [`EXTENSIONS-FOR-AGENTS.md`](./EXTENSIONS-FOR-AGENTS.md) | 供智能体写扩展使用的机器契约（英文） |
 | [`docs/development.zh-CN.md`](./docs/development.zh-CN.md) | 本仓库的构建、测试、QA 关卡、打包与发布 |
-| [`docs/index.zh-CN.md`](./docs/index.zh-CN.md) | 文档中心与阅读顺序 |
+| [`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md) | 如何贡献：开发环境、关卡、git 模型、评审期望 |
+| [`CHANGELOG.md`](./CHANGELOG.md) | 发布说明，每个已发布版本一节 |
 | [`AGENTS.md`](./AGENTS.md) | 面向智能体与维护者的仓库手册（英文） |
 
-## 架构：只留一条指引
+所有面向人的文档都同时提供英文与简体中文两个版本；中文版与英文版同目录并列、以 `.zh-CN.md` 结尾，
+两个文件都在标题下方互相链接。
 
-本文刻意只讲**怎么用**。bundle 是怎么拼起来的 —— 启动链、patch 层及其顺序、插件清单与每一行注册了
-什么、适配器接缝、状态布局，以及背后的各项不变量 —— 是
-[`docs/design.zh-CN.md`](./docs/design.zh-CN.md) 的主题（英文版为
-[`docs/design.md`](./docs/design.md)）。改动 `packages/` 下任何东西之前，先读它。
+## 贡献指南
+
+欢迎贡献 —— 问题报告、文档修正、扩展与代码同样欢迎。
+
+1. **先读 [`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md)**（英文版：
+   [`CONTRIBUTING.md`](./CONTRIBUTING.md)）。它涵盖开发环境、构建与测试命令、关卡清单、git 模型
+   （`dev` 是集成分支；`feature/<slug>` 与 `fix/<slug>` 分支；`<type>(<scope>): <summary>` 提交
+   格式）以及证据规则。
+2. **保持文档双语。** 每份面向人的文档都同时提供英文文件与 `*.zh-CN.md` 中文版，并在标题下方带语言
+   切换链接；改动其中一个，必须在同一次提交里同步另一个。`bun run verify:docs` 会校验成对关系、
+   标题树、真实中文内容和每一条相对链接目标。
+3. **让仓库保持绿色。** `bun run verify:gates` 跑快速静态关卡（vendor、dist 新鲜度、行一致性、
+   文档成对、preset 合规）；`bun run typecheck` 与 `bun test` 覆盖各包。没有落盘证据的改动不算完成。
+4. **提交小而聚焦的 pull request。** 一个分支只做一项能力或一个缺陷，用 `--no-ff` 与描述性提交信息
+   合并；已发布的分支永不 rebase。报告问题时，附上确切的命令、观察到的结果与期望的结果最有帮助 ——
+   [开一个 issue](https://github.com/HaroldZ32/My-Power-Dsh/issues) 或直接发 pull request。
+
+安全问题走另一条私密路径：见 [`SECURITY.zh-CN.md`](./SECURITY.zh-CN.md)，绝不要为它开公开 issue。
+
+本仓库采用 SUL-1.0 许可（[`LICENSE.md`](./LICENSE.md)）；你贡献的内容将按同样的条款分发。请不要在
+issue、pull request 或证据里包含凭据、令牌或私有数据。
+
+## 变更日志
+
+发布说明位于 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在最前，每个已发布版本一节（当前版本为
+**v0.11.1**）。带注释的标签列在
+[Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases) 页面。
 
 ## 鸣谢
 

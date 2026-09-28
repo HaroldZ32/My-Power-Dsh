@@ -10,15 +10,21 @@
 
 /** One member's resolved route, as the mpd `teamModels` slots declare it. */
 export interface SlotRoute {
+  /** Provider id the member's teammate must run on (`deepseek-official`, `gateway`, …). */
   provider: string
+  /** Model id that provider must run for this member. */
   model: string
+  /** Optional effort keyword; absent means the slot states none and the harness keeps its own resolution. */
   reasoningEffort?: string
 }
 
 /** The shape this module needs from a request; the rest is forwarded untouched. */
 export interface RoutableRequest {
+  /** The resolved child options the harness hands the provider; the three route fields live here. */
   agentOptions?: Record<string, unknown>
+  /** The teammate descriptor, whose `label` is the one identity channel the team service forwards. */
   descriptor?: { label?: unknown }
+  /** Fallback identity on the request itself, read only when the descriptor carries no label. */
   label?: unknown
   [key: string]: unknown
 }
@@ -43,8 +49,10 @@ export interface RoutableRequest {
  */
 export function memberFromLabel(label: unknown, knownNames: readonly string[]): string | undefined {
   if (typeof label !== "string") return undefined
+  /** The text before the first separator, trimmed; a member name must be the WHOLE head to match. */
   const head = label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? ""
   if (head === "") return undefined
+  /** The head lower-cased once, since the comparison below is case-insensitive. */
   const needle = head.toLowerCase()
   // Longest name first: "Plan Reviewer" must win over a hypothetical "Reviewer" prefix match.
   const ordered = [...knownNames].sort((left, right) => right.length - left.length)
@@ -71,12 +79,16 @@ export function routeForMember(
   slots: Record<string, unknown> | undefined,
 ): SlotRoute | undefined {
   if (slotOf === undefined) return undefined
+  /** The configured subtree for this member's slot, when the config layer supplies one. */
   const slot = slots?.[slotOf] as Record<string, unknown> | undefined
   if (slot === undefined || slot === null || typeof slot !== "object") {
     throw new Error(`mpd-roster: ${member} is routed by ${slotOf}, but no ${slotOf} is configured for this workspace`)
   }
+  /** The slot's provider id, trimmed; an empty string counts as unset, not as a route. */
   const provider = typeof slot.provider === "string" ? slot.provider.trim() : ""
+  /** The slot's model id, trimmed; an empty string counts as unset, not as a route. */
   const model = typeof slot.model === "string" ? slot.model.trim() : ""
+  /** The slot's optional effort keyword, trimmed; an empty string means the slot states no effort. */
   const effort = typeof slot.reasoningEffort === "string" ? slot.reasoningEffort.trim() : ""
   if (provider === "" || model === "") {
     throw new Error(
@@ -100,6 +112,7 @@ export function routeForMember(
  */
 export function applyRoute<T extends RoutableRequest>(request: T, route: SlotRoute | undefined): T {
   if (route === undefined) return request
+  /** The merged child options: the request's own, with the three route fields replaced. */
   const agentOptions: Record<string, unknown> = { ...(request.agentOptions ?? {}), provider: route.provider, model: route.model }
   if (route.reasoningEffort !== undefined) agentOptions.reasoningEffort = route.reasoningEffort
   else delete agentOptions.reasoningEffort
@@ -108,6 +121,7 @@ export function applyRoute<T extends RoutableRequest>(request: T, route: SlotRou
 
 /** The label a request carries, from the descriptor first and the request's own field second. */
 export function labelOf(request: RoutableRequest): unknown {
+  /** The descriptor's label when it has one; the request's own `label` is only the fallback. */
   const fromDescriptor = request.descriptor?.label
   return fromDescriptor === undefined ? request.label : fromDescriptor
 }

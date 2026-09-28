@@ -20,15 +20,21 @@ import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { isAbsent, parseFrontmatter, parseInvocation, stringField, type Frontmatter } from "../../mpd-ext-plugin/src/skill-frontmatter"
 
+/** Cordis plugin id; the bundle patch mounts this row as `mpd-bootstrap`, and the id is what an id-targeted override or unload addresses. */
 export const name = "mpd-bootstrap"
 // The skills registry is a host-plane service shipped by dsh-base; declaring it
 // is a true hard dependency (this row's whole purpose is to contribute to it).
 export const inject = ["skills"]
 
+/**
+ * Row config, every key optional: the bundle patch mounts this row with NO config, so the
+ * default is "serve the corpus and run the legacy migration". Each key only narrows that —
+ * a different corpus directory, or one of the two cleanup halves.
+ */
 type Config = {
   /** Corpus directory override; defaults to <bundle>/skills. */
   skillsDir?: string
@@ -40,6 +46,7 @@ type Config = {
   skipLegacyCleanup?: boolean
 }
 
+/** Structural ctx the row needs to stand alone in a unit test; every real harness SEAM is reached through the adapter, never through this type. */
 type Ctx = { skills: any; logger?: any; on?: (event: string, fn: (...args: any[]) => any) => void; [k: string]: any }
 
 /** Provider name registered on the skill registry; must be unique process-wide. */
@@ -49,18 +56,17 @@ const BUNDLED_SKILL_RANK = 600
 /** Public skill-name grammar (mirrors @deepseek-ai/dsh-skill). */
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-function bundleRoot(): string {
-  // Location-derived, no package-name resolution: this file lives at
-  // <pkg-root>/packages/mpd-bootstrap-plugin/dist/index.js, so the package root
-  // is four directories up. The skill corpus is <pkg-root>/skills and the
-  // presets are <pkg-root>/presets in BOTH layouts (repo root and packed root).
-  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-}
+// The bundle root is resolved by the shared helper (bundleRootOf): this file lives
+// at <pkg-root>/packages/mpd-bootstrap-plugin/{src,dist}/index.ts|js, so the skill
+// corpus is <pkg-root>/skills and the presets are <pkg-root>/presets in BOTH layouts.
+const bundleRoot = (): string => bundleRootOf(import.meta.url)
 
+/** Absolute harness home the legacy migration READS: `$DSH_HOME` when set, else `~/.dsh`. Nothing is ever created under it. */
 function harnessHome(): string {
   return process.env.DSH_HOME || join(homedir(), ".dsh")
 }
 
+/** Directory READ to learn which preset ids this bundle ships — `<pkg-root>/presets`, with the pre-0.3.0 checkout spelling as a fallback; the migration never writes here. */
 function presetsSource(root: string): string {
   // Both layouts ship presets at <pkg-root>/presets; keep the legacy checkout
   // fallback so an older working copy still resolves.
@@ -68,6 +74,7 @@ function presetsSource(root: string): string {
   return existsSync(packed) ? packed : join(root, "packages", "mpd-bootstrap-plugin", "presets")
 }
 
+/** Report one recoverable problem through the row logger, falling back to stdout; logging must never fail provisioning. */
 function warn(ctx: Ctx, message: string): void {
   try {
     if (ctx.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
@@ -75,151 +82,15 @@ function warn(ctx: Ctx, message: string): void {
   } catch { /* logging must never fail provisioning */ }
 }
 
-// ── frontmatter parsing ─────────────────────────────────────────────────────
-// The corpus is ours and its frontmatter is a deliberately small YAML subset
-// (top-level scalars, one nested `metadata` mapping, optional block scalars).
-// Parsing it here keeps the plugin dependency-free; packages/mpd-bootstrap-plugin/
-// test/frontmatter.test.ts pins the subset against every shipped skill file.
+// ── frontmatter ─────────────────────────────────────────────────────────────
+// The corpus frontmatter parser is SHARED with the extension skill plane
+// (packages/mpd-ext-plugin/src/skill-frontmatter.ts): one implementation for
+// the YAML subset, the name/description readers and the legacy-key refusal,
+// so the bundle corpus and the extension corpus cannot drift apart. The subset
+// stays pinned against every shipped SKILL.md by test/bootstrap.test.ts.
 
-type Frontmatter = { data: Record<string, unknown>; body: string }
 
-function isAbsent(error: unknown): boolean {
-  const code = (error as { code?: string } | undefined)?.code
-  return code === "ENOENT" || code === "ENOTDIR"
-}
-
-function parseFrontmatter(raw: string): Frontmatter | undefined {
-  const firstLineEnd = raw.indexOf("\n")
-  if (firstLineEnd < 0) return undefined
-  if (raw.slice(0, firstLineEnd).replace(/\r$/, "") !== "---") return undefined
-  let lineStart = firstLineEnd + 1
-  let closingStart = -1
-  let bodyStart = -1
-  while (lineStart <= raw.length) {
-    const nextNewline = raw.indexOf("\n", lineStart)
-    const lineEnd = nextNewline < 0 ? raw.length : nextNewline
-    if (raw.slice(lineStart, lineEnd).replace(/\r$/, "") === "---") {
-      closingStart = lineStart
-      bodyStart = nextNewline < 0 ? raw.length : nextNewline + 1
-      break
-    }
-    if (nextNewline < 0) return undefined
-    lineStart = nextNewline + 1
-  }
-  if (closingStart < 0) return undefined
-  return { data: parseYamlBlock(raw.slice(firstLineEnd + 1, closingStart)), body: raw.slice(bodyStart) }
-}
-
-function parseScalar(value: string): unknown {
-  const text = value.trim()
-  if (text === "") return ""
-  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
-    try { return JSON.parse(text) as unknown } catch { return text.slice(1, -1) }
-  }
-  if (text.startsWith("'") && text.endsWith("'") && text.length >= 2) return text.slice(1, -1).replace(/''/g, "'")
-  const lower = text.toLowerCase()
-  if (lower === "true" || lower === "yes" || lower === "on") return true
-  if (lower === "false" || lower === "no" || lower === "off") return false
-  if (lower === "null" || text === "~") return null
-  if (/^-?\d+$/.test(text)) return Number(text)
-  if (/^-?\d*\.\d+$/.test(text)) return Number(text)
-  return text
-}
-
-function foldLines(lines: string[]): string {
-  let out = ""
-  for (const line of lines) {
-    if (line === "") out += "\n"
-    else out += (out === "" || out.endsWith("\n") ? "" : " ") + line
-  }
-  return out
-}
-
-function parseYamlBlock(text: string): Record<string, unknown> {
-  const lines = text.split("\n")
-  const root: Record<string, unknown> = {}
-  const stack: Array<{ indent: number; map: Record<string, unknown> }> = [{ indent: -1, map: root }]
-  let index = 0
-  while (index < lines.length) {
-    const raw = lines[index]
-    index += 1
-    if (raw.trim() === "" || raw.trimStart().startsWith("#")) continue
-    const indent = raw.length - raw.trimStart().length
-    const line = raw.slice(indent)
-    const match = /^([A-Za-z0-9_][A-Za-z0-9_.-]*)\s*:(?:[ \t]+(.*))?$/.exec(line)
-    if (match === null) throw new Error("unsupported frontmatter line: " + line)
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop()
-    const parent = stack[stack.length - 1].map
-    const key = match[1]
-    const rest = match[2] ?? ""
-    if (rest.trim() === "") {
-      let next: { indent: number; text: string } | undefined
-      for (let probe = index; probe < lines.length; probe += 1) {
-        const candidate = lines[probe]
-        if (candidate.trim() === "" || candidate.trimStart().startsWith("#")) continue
-        next = { indent: candidate.length - candidate.trimStart().length, text: candidate.trimStart() }
-        break
-      }
-      if (next !== undefined && next.indent > indent && /^[A-Za-z0-9_][A-Za-z0-9_.-]*\s*:/.test(next.text)) {
-        const child: Record<string, unknown> = {}
-        parent[key] = child
-        stack.push({ indent, map: child })
-      } else parent[key] = null
-      continue
-    }
-    const block = /^([|>])([+-]?)(\d*)$/.exec(rest.trim())
-    if (block !== null) {
-      const collected: string[] = []
-      let blockIndent = -1
-      while (index < lines.length) {
-        const candidate = lines[index]
-        if (candidate.trim() === "") { collected.push(""); index += 1; continue }
-        const candidateIndent = candidate.length - candidate.trimStart().length
-        if (candidateIndent <= indent) break
-        if (blockIndent < 0) blockIndent = candidateIndent
-        collected.push(candidate.slice(Math.min(blockIndent, candidateIndent)))
-        index += 1
-      }
-      while (collected.length > 0 && collected[collected.length - 1] === "") collected.pop()
-      const joined = block[1] === "|" ? collected.join("\n") : foldLines(collected)
-      parent[key] = block[2] === "-" ? joined.replace(/\n+$/, "") : joined
-      continue
-    }
-    parent[key] = parseScalar(rest)
-  }
-  return root
-}
-
-function stringField(data: Record<string, unknown>, key: string): string | undefined {
-  const value = data[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-function frontmatterBoolean(data: Record<string, unknown>, key: string): boolean | undefined {
-  if (!Object.hasOwn(data, key)) return undefined
-  const value = data[key]
-  if (typeof value === "boolean") return value
-  if (value === 1 || value === "1") return true
-  if (value === 0 || value === "0") return false
-  if (typeof value === "string") {
-    switch (value.toLowerCase()) {
-      case "true": case "yes": case "on": return true
-      case "false": case "no": case "off": return false
-    }
-  }
-  throw new TypeError(`frontmatter field "${key}" must be a boolean`)
-}
-
-function parseInvocation(data: Record<string, unknown>): { modelInvocable: boolean; userInvocable: boolean } {
-  for (const legacy of ["disableModelInvocation", "modelInvocable", "userInvocable"]) {
-    if (Object.hasOwn(data, legacy)) throw new Error(`frontmatter field "${legacy}" is unsupported; use "${legacy === "userInvocable" ? "user-invocable" : "disable-model-invocation"}"`)
-  }
-  return {
-    modelInvocable: frontmatterBoolean(data, "disable-model-invocation") !== true,
-    userInvocable: frontmatterBoolean(data, "user-invocable") !== false,
-  }
-}
-
+/** One corpus skill after frontmatter parsing: the provider-facing fields plus the trimmed body, with `metadata` kept only when it is a plain object. */
 type ParsedSkill = {
   name: string
   description: string
@@ -229,7 +100,9 @@ type ParsedSkill = {
   content: string
 }
 
+/** Read and parse one corpus `SKILL.md`; returns undefined (after a warning) for an unreadable file or invalid frontmatter, so one bad entry can never take the whole catalog down. */
 async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | undefined> {
+  // Raw file text, declared separately so this call site can tell an absent file from a read failure.
   let raw: string
   try {
     raw = await readFile(filePath, "utf8")
@@ -237,6 +110,7 @@ async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | 
     if (isAbsent(error)) return undefined
     throw error
   }
+  // Parsed frontmatter, or undefined when the file carries no `---` block at all.
   let parsed: Frontmatter | undefined
   try {
     parsed = parseFrontmatter(raw)
@@ -248,7 +122,9 @@ async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | 
     warn(ctx, `skill file ${filePath} ignored: missing YAML frontmatter`)
     return undefined
   }
+  // Frontmatter `name`; undefined is rejected below because the catalog addresses a skill by this key.
   const skillName = stringField(parsed.data, "name")
+  // Frontmatter `description`; the corpus contract requires BOTH name and description.
   const description = stringField(parsed.data, "description")
   if (skillName === undefined || description === undefined) {
     warn(ctx, `skill file ${filePath} ignored: frontmatter requires name and description`)
@@ -258,6 +134,7 @@ async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | 
     warn(ctx, `skill file ${filePath} ignored: invalid skill name "${skillName}"`)
     return undefined
   }
+  // Invocation policy as the SHARED parser resolves it: defaults applied, and a legacy key refused loudly.
   let invocation: { modelInvocable: boolean; userInvocable: boolean }
   try {
     invocation = parseInvocation(parsed.data)
@@ -265,6 +142,7 @@ async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | 
     warn(ctx, `skill file ${filePath} ignored: ${String((error as Error)?.message ?? error)}`)
     return undefined
   }
+  // Free-form metadata block; anything that is not a plain object is dropped rather than surfaced to the catalog.
   const metadata = parsed.data.metadata
   return {
     name: skillName,
@@ -278,6 +156,7 @@ async function readSkillFile(filePath: string, ctx: Ctx): Promise<ParsedSkill | 
 
 /** Corpus entries in the filesystem provider's shape: directory bundles + flat markdown files. */
 async function listCorpus(root: string): Promise<Array<{ entry: string; locator: string; directory: string }>> {
+  // Directory listing of the corpus root; an absent root means "not installed yet" and reads as an EMPTY corpus, not an error.
   let entries
   try {
     entries = await readdir(root, { withFileTypes: true, encoding: "utf8" })
@@ -285,6 +164,7 @@ async function listCorpus(root: string): Promise<Array<{ entry: string; locator:
     if (isAbsent(error)) return []
     throw error
   }
+  // Entries in name order, so the published catalog does not depend on readdir order.
   const found: Array<{ entry: string; locator: string; directory: string }> = []
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
     if (entry.name === ".system") continue
@@ -294,13 +174,54 @@ async function listCorpus(root: string): Promise<Array<{ entry: string; locator:
   return found
 }
 
-/** The bundled-corpus provider: read-only, lazily loaded, ranked below user roots. */
-function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () => void) {
+/**
+ * The bundled-corpus provider: read-only, lazily loaded, ranked below user roots.
+ *
+ * The return type is written out because the shape is the harness's provider contract
+ * (`name`/`list`/`get`, declared as `SkillProvider` in packages/mpd-ext-plugin/src/skills.ts)
+ * with ONE difference that matters: `list()` answers a BARE ARRAY here, which the harness reads
+ * as complete and therefore CACHES, so an edited skill only comes back through the
+ * `fs/observed` invalidation wired up below. Both member shapes are built from this package's
+ * own `ParsedSkill` alias and repeated on the two methods, so each declaration states its
+ * signature in full.
+ */
+function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () => void): {
+  /** Provider name the registry keys this corpus under; a duplicate name makes registration throw. */
+  name: string
+  /** One candidate per READABLE corpus entry and call, in name order; each is the parsed skill plus the locator `get()` needs. */
+  list: () => Promise<Array<Omit<ParsedSkill, "content"> & {
+    provider: string
+    source: string
+    rank: number
+    locator: { path: string; directory: string }
+    resourceBase: { kind: string; path: string }
+    path: string
+  }>>
+  /** Full definition — the parsed skill plus `content` — for a candidate `list()` handed out; undefined when its locator no longer parses. */
+  get: (candidate: any) => Promise<(Omit<ParsedSkill, "content"> & {
+    provider: string
+    source: string
+    resourceBase: { kind: string; path: string }
+    path?: string
+    content: string
+  }) | undefined>
+} {
+  // The provider object registered on the skills registry; `name` is fixed at module scope so a second registration is loud.
   const provider = {
     name: PROVIDER_NAME,
-    async list() {
+    /** Every readable corpus entry as a candidate, each ranked BUNDLED_SKILL_RANK so user and project roots still win. */
+    async list(): Promise<Array<Omit<ParsedSkill, "content"> & {
+      provider: string
+      source: string
+      rank: number
+      locator: { path: string; directory: string }
+      resourceBase: { kind: string; path: string }
+      path: string
+    }>> {
+      // Candidates accumulated for this read; a file that fails to parse is SKIPPED by readSkillFile, never thrown.
       const candidates = []
       for (const entry of await listCorpus(root)) {
+        // Parsed entry for this corpus file; undefined means it was skipped and warned about.
         const parsed = await readSkillFile(entry.locator, ctx)
         if (parsed === undefined) continue
         candidates.push({
@@ -319,7 +240,15 @@ function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () 
       }
       return candidates
     },
-    async get(candidate: any) {
+    /** Load ONE definition from the locator the caller listed before; the candidate's own resource base is kept, and a fallback is derived from the locator when it is absent. */
+    async get(candidate: any): Promise<(Omit<ParsedSkill, "content"> & {
+      provider: string
+      source: string
+      resourceBase: { kind: string; path: string }
+      path?: string
+      content: string
+    }) | undefined> {
+      // Re-read of the located file: a skill that vanished or broke between list() and get() yields undefined, not a throw.
       const parsed = await readSkillFile(candidate?.locator?.path ?? "", ctx)
       if (parsed === undefined) return undefined
       return {
@@ -347,8 +276,10 @@ function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () 
   if (typeof dsh.onEvent === "function") {
     dsh.onEvent("fs/observed", (target: any, _observation: any, actor: any) => {
       try {
+        // Actor name of the observation; only a model-facing edit/write may invalidate the cached catalog.
         const toolName = actor?.name
         if (toolName !== "edit" && toolName !== "write") return
+        // Path the observation carries; the corpus check is a prefix test on it, so a path outside the corpus is ignored.
         const displayPath = typeof target?.displayPath === "string" ? target.displayPath : undefined
         if (displayPath === undefined || !displayPath.startsWith(root)) return
         invalidate()
@@ -362,6 +293,11 @@ function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () 
 
 // ── legacy (<= 0.2.6) home-copy migration ───────────────────────────────────
 
+/**
+ * Recursively delete ONE path under the harness home when it exists, and report whether it did.
+ * It is only ever reached from inside a stamp check, so an UNSTAMPED home keeps every file —
+ * no stamp, no ownership, no removal (AGENTS.md §7 isolation).
+ */
 function removeIfPresent(target: string): boolean {
   if (!existsSync(target)) return false
   rmSync(target, { recursive: true, force: true })
@@ -371,22 +307,26 @@ function removeIfPresent(target: string): boolean {
 /**
  * Remove the version-stamped copies bundle <= 0.2.6 wrote into the harness home.
  * The stamp file is the ownership proof: without it this function does nothing,
- * so a legacy install that never stamped (scripts/install-profile.mjs copies)
+ * so a legacy install that never stamped (scripts/install-profile.ts copies)
  * and user-authored content are both left untouched. Synchronous on purpose:
  * the migration must complete during apply, before any boot failure downstream
  * could abort the process mid-cleanup.
  */
 function cleanLegacyCopies(ctx: Ctx, corpus: string, presets: string, config: Config): string[] {
+  // Absolute home paths removed by THIS run, returned so the caller reports exactly what was taken.
   const removed: string[] = []
+  // Ownership stamp bundle <= 0.2.6 wrote beside the copied skills; its presence is the only licence to delete under <home>/skills.
   const skillsStamp = join(harnessHome(), "skills", ".mpd-skills-version")
   if (existsSync(skillsStamp)) {
     for (const name of listCorpusSync(corpus)) {
+      // One stamped home copy, matched by corpus entry NAME (directory bundle or flat markdown file alike).
       const target = join(harnessHome(), "skills", name)
       if (removeIfPresent(target)) removed.push(target)
     }
     removeIfPresent(skillsStamp)
   }
   if (config.skipPresets !== true) {
+    // Same ownership proof for the copied presets; absent means the preset half of the migration does nothing.
     const presetsStamp = join(harnessHome(), ".agent-presets", ".mpd-presets-version")
     if (existsSync(presetsStamp)) {
       // Preset IDs this bundle ships, in BOTH shipped shapes. Harness 0.1.7-rc.2 replaced the
@@ -404,6 +344,7 @@ function cleanLegacyCopies(ctx: Ctx, corpus: string, presets: string, config: Co
           .filter((id) => id === "mpd" || id.startsWith("mpd-"))
       } catch { ids = [] }
       for (const id of ids) {
+        // One stamped home preset copy: the ID SET comes from the bundle's own presets dir, never from the home, so a user dir named like a shipped preset is matched too.
         const target = join(harnessHome(), ".agent-presets", id)
         if (removeIfPresent(target)) removed.push(target)
       }
@@ -428,12 +369,25 @@ function listCorpusSync(root: string): string[] {
 
 // ── plugin entry ────────────────────────────────────────────────────────────
 
+/**
+ * Cordis entry point: serve the corpus BY REFERENCE first, then migrate the legacy home copies.
+ *
+ * Read/write DIRECTION, stated once for the whole row: the home is READ to find the
+ * `.mpd-*-version` stamps, and the only home-side MODIFICATION is the REMOVAL of the copies those
+ * stamps claim — nothing is ever written or overwritten there. No stamp means no ownership, so an
+ * unstamped home is left exactly as found (AGENTS.md §7). Registration runs first so that a
+ * cleanup failure, or `skipLegacyCleanup`, can never cost a session its corpus.
+ */
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
-  const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
+  const dsh: any = resolveDshAdapter(ctx)
+  // Bundle root from this module's own location, so a checkout and a packed install resolve identically.
   const root = bundleRoot()
+  // Corpus actually SERVED: the config override when given, else the bundle's own `skills/`.
   const corpus = config.skillsDir ? config.skillsDir : join(root, "skills")
+  // Directory the migration READS to learn which preset ids this bundle ships (it is never written to).
   const presets = presetsSource(root)
+  // Bundle version for the boot log line only; an unreadable package.json must not fail the apply.
   let version = "unknown"
   try { version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown" } catch { /* keep */ }
 
