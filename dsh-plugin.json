@@ -3,7 +3,7 @@
   "manifestVersion": "0.15",
   "id": "com.mpd-dsh.mpd-tui",
   "name": "@mpd-dsh/mpd",
-  "version": "0.11.5",
+  "version": "0.11.6",
   "facets": {
     "host": {
       "entry": "packages/mpd-tui-plugin/dist/index.js",

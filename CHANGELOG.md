@@ -14,6 +14,17 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.11.6 — the gate's own comments, and the manual's budget
+
+**Fixed.**
+
+- **The two doc comments the version-coherence rewrite dropped are restored**
+  (`checkVersionCoherence`, `checkPackaging` in `scripts/verify-plugin-manifest.ts`). `bun run
+  verify:comments` reddened on them on the release line; this patch is what puts the green gate back on
+  the default branch.
+- `AGENTS.md` is back inside the loader's instruction budget after the version-carrier rule pushed it
+  104 bytes past the cap (meaning only: the injected copy was truncated at the tail).
+
 ## v0.11.5 — the release version lives in three files, and the gate knows it
 
 **Fixed.**
