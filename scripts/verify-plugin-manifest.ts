@@ -311,6 +311,13 @@ function readPath(doc: unknown, path: readonly string[]): string | undefined {
   return typeof current === "string" ? current : undefined
 }
 
+/**
+ * Assert every shipping descriptor carries the manifest's version at its DECLARED key path.
+ *
+ * @param manifest - The parsed root manifest.
+ * @param violations - Collector every finding is appended to.
+ * @returns One result per carrier.
+ */
 function checkVersionCoherence(manifest: Record<string, unknown>, violations: Violation[]): CheckResult[] {
   /** The manifest's own version, the value every carrier must reproduce. */
   const version = typeof manifest.version === "string" ? manifest.version : "(missing)"
@@ -345,6 +352,14 @@ function checkVersionCoherence(manifest: Record<string, unknown>, violations: Vi
   return results
 }
 
+/**
+ * Assert the packaging contract a one-command install rests on: declared patch files exist, every row
+ * module path resolves, the `files` allowlist admits every runtime path and `evidence/` stays out.
+ *
+ * @param manifest - The parsed root manifest.
+ * @param violations - Collector every finding is appended to.
+ * @returns One result per packaging rule.
+ */
 function checkPackaging(manifest: Record<string, unknown>, violations: Violation[]): CheckResult[] {
 /** One result per packaging check. */
   const results: CheckResult[] = []
