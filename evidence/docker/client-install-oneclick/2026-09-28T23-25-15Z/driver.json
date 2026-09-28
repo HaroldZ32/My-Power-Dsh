@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-09-28T23:25:15.282Z",
+  "finishedAt": "2026-09-28T23:27:56.474Z",
+  "docker": "Docker version 29.8.1, build 4a63305",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 305,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-9JC1FN",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh mpd-oneclick",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=9 failed=1 null=33 FAILED=[install.exit] NULL=[build.bunInstall,build.dists,install.profileDep,install.installedTree,compose.dumpExit,compose.mpdRows,compose.presetRow,compose.agentTeamRows,boot.probeApplied,boot.adapterService,boot.adapterToolCall,boot.mpdTools,boot.agentTeamTools,boot.sessionGateListener,boot.agentTeamService,boot.servesHttp,boot.presetMount,boot.noFatalSignatures,isolation.home,isolation.realHome,isolation.noCredentials,tui.hostInstall,tui.pluginAddHost,tui.pluginAddBundle,tui.compose,tui.registryDefaultMpd,tui.presetRow,tui.mpdTuiRow,tui.agentTeamRows,tui.boot,tui.noFatalSignatures,tui.sessionPreset,boot.llmTurn]",
+  "exitCode": 1
+}
