@@ -10,14 +10,14 @@
 #      `packages/*/dist` entry with the canonical repo-root command (AGENTS.md §6),
 #   4. the install COMPOSES the mpd rows (labelled composition-only evidence, AGENTS.md §4),
 #   5. and the installed profile MOUNTS: a real boot in an isolated HOME/DSH_HOME with
-#      registration instrumentation (docker/probe.mjs) reading the live tool registry.
+#      registration instrumentation (docker/probe.ts) reading the live tool registry.
 #
 # WHAT IT DELIBERATELY DOES NOT DO: no credential is copied in, read, or written (AGENTS.md §10),
 # so no live LLM turn is attempted. That assertion is recorded as `null` WITH ITS REASON rather
 # than faked — see docker/README.md.
 #
-# Every assertion is recorded through docker/lib/record.mjs (argv -> JSON.stringify, so a raw
-# witness line survives quoting intact) and the verdict is assembled by docker/lib/report.mjs,
+# Every assertion is recorded by the pure-bash `record()` helper below (argv -> JSON.stringify, so a
+# raw witness line survives quoting intact) and the verdict is assembled by docker/lib/report.ts,
 # which emits every assertion the run never reached as `null` + "not reached". A partial run
 # therefore still produces a complete, honest result.json.
 set -euo pipefail
@@ -28,9 +28,25 @@ APP_DIR="${MPD_E2E_APP:-/opt/mpd}"
 WORK_DIR="${MPD_E2E_WORK:-/work}"
 OUT_DIR="${MPD_E2E_OUT:-/out}"
 LIB_DIR="${MPD_E2E_LIB:-/opt/mpd-e2e/lib}"
-PROBE_SRC="${MPD_E2E_PROBE:-/opt/mpd-e2e/probe.mjs}"
+PROBE_SRC="${MPD_E2E_PROBE:-/opt/mpd-e2e/probe.ts}"
 TOOLCHAIN_DIR="${MPD_E2E_TOOLCHAIN:-/opt/toolchain}"
 IMAGE="${MPD_E2E_IMAGE:-mpd-docker-e2e:local}"
+
+# ── which install this run judges ─────────────────────────────────────────────
+# `source` (the default) installs the CHECKOUT by path, after `bun install` and a from-source
+# rebuild of every `packages/*/dist` entry. `oneclick` installs the PUBLISHED package from a git
+# spec with NO build at all — the user-facing `dsh plugin --profile web add github:...` path —
+# reproduced locally against a scratch git repository built from the same build context. Both modes
+# then share the SAME downstream verdict: composition, a mounting boot with registration
+# instrumentation, the preset session and the isolation assertions.
+INSTALL_MODE="${MPD_E2E_INSTALL_MODE:-source}"
+# The spec handed to `dsh plugin --profile web add`. `.` is the checkout; a git spec is the
+# published-package path.
+INSTALL_SPEC="${MPD_E2E_INSTALL_SPEC:-.}"
+# Scratch "remote" for the one-click mode: a working copy the entrypoint commits, and the bare
+# repository the spec clones from. Both live inside the container.
+ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
+ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
 DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.1.7-rc.2}"
@@ -94,7 +110,7 @@ json_escape() {
 # PURE BASH ON PURPOSE, and this is not a style choice: the first assertions are recorded BEFORE node
 # exists (apt precedes the Node install), so a node-based recorder aborted the very first run at the
 # ubuntu.version line with `node: command not found` (measured 2026-09-27). The state file is NDJSON;
-# docker/lib/report.mjs parses it and turns a corrupt line into a FAILED assertion rather than
+# docker/lib/report.ts parses it and turns a corrupt line into a FAILED assertion rather than
 # dropping evidence silently.
 record() {
   local name="$1" status="$2" reason="${3:-}" raw="${4:-}"
@@ -147,7 +163,7 @@ bash_fallback_report() {
   {
     printf '{\n  "case": "docker-client-install",\n'
     printf '  "ok": %s,\n  "complete": false,\n' "$([ "$failed" -eq 0 ] && echo true || echo false)"
-    printf '  "reporter": "bash fallback: node was never installed, so docker/lib/report.mjs could not run",\n'
+    printf '  "reporter": "bash fallback: node was never installed, so docker/lib/report.ts could not run",\n'
     printf '  "assertions": [%s]\n}\n' "$assertions"
   } > "$OUT_DIR/result.json"
   {
@@ -178,7 +194,7 @@ finish() {
   fi
   fact finishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if command -v node >/dev/null 2>&1; then
-    node "$LIB_DIR/report.mjs" --work "$WORK_DIR" --out "$OUT_DIR" --image "$IMAGE" --started "$STARTED_EPOCH" || code=$?
+    node "$LIB_DIR/report.ts" --work "$WORK_DIR" --out "$OUT_DIR" --image "$IMAGE" --started "$STARTED_EPOCH" || code=$?
   else
     log "[warn] node is not installed — writing the bash fallback report"
     bash_fallback_report || code=$?
@@ -359,18 +375,55 @@ else
   bail "copy failed"
 fi
 
+# ── the scratch "remote" the one-click spec pulls from ───────────────────────
+# WHAT THIS REPRODUCES: the files a `github:owner/repo` install would receive. The spec's resolver
+# clones and packs the repository through the manifest's `files` allowlist, so the scratch repository
+# carries the build context as-is; the assertions after the install then read what actually landed.
+if [ "$INSTALL_MODE" = "oneclick" ]; then
+  log ""
+  log "----- one-click mode: build the scratch git repository the spec will pull -----"
+  run_step 06b-oneclick-repo bash -c "rm -rf '$ONE_CLICK_SRC' '$ONE_CLICK_REPO' \
+    && mkdir -p '$ONE_CLICK_SRC' \
+    && cp -a '$SRC_DIR/.' '$ONE_CLICK_SRC/' \
+    && cd '$ONE_CLICK_SRC' \
+    && git init -q . \
+    && git add -A \
+    && git -c user.email=e2e@local -c user.name='mpd e2e' commit -qm 'one-click fixture: the build context as committed' \
+    && git clone -q --bare . '$ONE_CLICK_REPO'"
+  ONE_CLICK_COMMIT="$(git --git-dir="$ONE_CLICK_REPO" rev-parse HEAD 2>/dev/null || true)"
+  fact oneclick.spec "$INSTALL_SPEC"
+  fact oneclick.commit "$ONE_CLICK_COMMIT"
+  if [ "$STEP_CODE" -eq 0 ] && [ -n "$ONE_CLICK_COMMIT" ]; then
+    record oneclick.scratchRepo true "the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path" "commit=$ONE_CLICK_COMMIT repo=$ONE_CLICK_REPO"
+  else
+    record oneclick.scratchRepo false "the scratch remote could not be built, so nothing downstream would prove the published-package path" "$(witness "$STEPS_DIR/06b-oneclick-repo.log" 'error|Error|fatal' 3)"
+    bail "the one-click fixture repository could not be built"
+  fi
+fi
+
 log ""
 log "----- bun install -----"
+if [ "$INSTALL_MODE" = "oneclick" ]; then
+  # NOT a gap in the evidence: this lane's whole claim is that a user's install runs NO build, so a
+  # from-source rebuild here would repair exactly the staleness the run is meant to expose.
+  record build.bunInstall null "not applicable in one-click mode: the published package carries its own dependencies and the install materializes them" "skipped by design"
+else
 run_step 07-bun-install bash -c "cd '$APP_DIR' && bun install"
 if [ "$STEP_CODE" -eq 0 ]; then
   record build.bunInstall true "bun install resolved the workspace and the dev/optional dependencies" "exit=0"
 else
   record build.bunInstall false "bun install failed (exit=$STEP_CODE)" "$(witness "$STEPS_DIR/07-bun-install.log" 'error|Error|failed' 3)"
 fi
+fi
 
 log ""
 log "----- rebuild every packages/*/dist from source (canonical repo-root bun build) -----"
-run_step 08-rebuild node "$LIB_DIR/rebuild.mjs" --repo "$APP_DIR" --json "$WORK_DIR/rebuild.json"
+if [ "$INSTALL_MODE" = "oneclick" ]; then
+  # Same reason as build.bunInstall: the one-click lane asserts that NO build is needed, and a
+  # rebuild here would silently repair a stale committed `dist/` that a real user would receive.
+  record build.dists null "not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them" "skipped by design"
+else
+run_step 08-rebuild node "$LIB_DIR/rebuild.ts" --repo "$APP_DIR" --json "$WORK_DIR/rebuild.json"
 REBUILD_LINE="$(witness "$STEPS_DIR/08-rebuild.log" '^\[rebuild\] (BUILD_OK|OK)=' 3)"
 REBUILD_FAILED="$(grep -m1 '^\[rebuild\] BUILD_FAILED=' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || true)"
 REBUILD_OK="$(grep -m1 '^\[rebuild\] OK=' "$STEPS_DIR/08-rebuild.log" 2>/dev/null || true)"
@@ -381,18 +434,20 @@ if [ "$STEP_CODE" -eq 0 ] && [ "$REBUILD_OK" = "[rebuild] OK=true" ]; then
 else
   record build.dists false "at least one dist entry failed to rebuild" "$REBUILD_FAILED $(witness "$STEPS_DIR/08-rebuild.log" '^\[rebuild\] FAIL' 2)"
 fi
+fi
 
 # ── 08. the REAL client install: one command from the checkout ────────────────
 log ""
-log "----- dsh plugin --profile web add . (the whole install) -----"
-run_step 09-install bash -c "cd '$APP_DIR' && dsh plugin --profile web add ."
+log "----- dsh plugin --profile web add $INSTALL_SPEC (the whole install, mode=$INSTALL_MODE) -----"
+run_step 09-install bash -c "cd '$APP_DIR' && dsh plugin --profile web add '$INSTALL_SPEC'"
 INSTALL_CODE=$STEP_CODE
+fact obs.installSpec "$INSTALL_SPEC"
 fact obs.installTail "$(tail -n 4 "$STEPS_DIR/09-install.log" 2>/dev/null | tr '\n' ' ')"
 if [ "$INSTALL_CODE" -ne 0 ]; then
-  record install.exit false "'dsh plugin --profile web add .' exited $INSTALL_CODE" "$(witness "$STEPS_DIR/09-install.log" 'ERR_|error|Error|not found' 3)"
+  record install.exit false "'dsh plugin --profile web add $INSTALL_SPEC' exited $INSTALL_CODE" "$(witness "$STEPS_DIR/09-install.log" 'ERR_|error|Error|not found' 3)"
   bail "the client install failed — nothing downstream can be asserted"
 fi
-record install.exit true "one command installed the bundle into the profile" "exit=0"
+record install.exit true "one command installed the bundle into the profile" "exit=0 spec=$INSTALL_SPEC"
 
 if [ -f "$PROFILE_DIR/package.json" ]; then
   node -e '
@@ -406,15 +461,34 @@ INSTALL_DEP="$(grep -m1 '^dep=' "$WORK_DIR/manifest.txt" 2>/dev/null | cut -d= -
 INSTALL_BUNDLES="$(grep -m1 '^bundles=' "$WORK_DIR/manifest.txt" 2>/dev/null | cut -d= -f2- || true)"
 fact profileDep "$INSTALL_DEP"
 fact profileBundles "$INSTALL_BUNDLES"
-case "$INSTALL_DEP" in
-  link:*|file:*)
-    if printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@mpd-dsh/mpd,' \
-      && printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@deepseek-ai/dsh-base,' \
-      && printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@deepseek-ai/dsh-web-app,'; then
+# The bundle-layer check is the SAME in both modes — the package name must appear in
+# `dsh.profile.bundles` — but the dependency SHAPE differs by design: a checkout install records a
+# link, while the published-package install records the git spec pnpm resolved (a `git+…` URL with
+# the commit it pinned). Each mode asserts its own shape, so neither can pass on the other's.
+if printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@mpd-dsh/mpd,' \
+  && printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@deepseek-ai/dsh-base,' \
+  && printf '%s' ",$INSTALL_BUNDLES," | grep -q ',@deepseek-ai/dsh-web-app,'; then
+  BUNDLE_LAYER_OK=1
+else
+  BUNDLE_LAYER_OK=0
+fi
+case "$INSTALL_MODE:$INSTALL_DEP" in
+  source:link:*|source:file:*)
+    if [ "$BUNDLE_LAYER_OK" -eq 1 ]; then
       record install.profileDep true "the profile links the checkout and keeps the box bundles" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
     else
       record install.profileDep false "the bundle layer or a box bundle is missing from dsh.profile.bundles" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
     fi
+    ;;
+  oneclick:git+*|oneclick:git:*)
+    if [ "$BUNDLE_LAYER_OK" -eq 1 ]; then
+      record install.profileDep true "the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
+    else
+      record install.profileDep false "the git-installed bundle is not in dsh.profile.bundles, so the layer would never mount" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
+    fi
+    ;;
+  oneclick:*)
+    record install.profileDep false "one-click mode requires a GIT dependency shape; this profile recorded something else" "dep=$INSTALL_DEP"
     ;;
   *)
     record install.profileDep false "the profile dependency is not a path install" "dep=$INSTALL_DEP"
@@ -426,13 +500,65 @@ else
   record install.installedTree false "no installed bundle tree in the profile" "$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
 fi
 
+# ── 08b. ONE-CLICK PACKAGING: what the published package actually carried ─────
+# WHAT THIS ANSWERS, and why a passing mount is not enough on its own: a mount proves the ROWS
+# resolved from the tree that landed, but it cannot tell a package that carried everything from one
+# that carried a superset (the frozen `evidence/` tree, the repository's own tests) — and the user's
+# download size is exactly that difference. These assertions read the INSTALLED tree: every path a row
+# names is present, the `files` allowlist was honoured (no `evidence/`, no `.git`, no `docker/`), and
+# the dist entries that landed are BYTE-IDENTICAL to the ones the source tree built.
+if [ "$INSTALL_MODE" = "oneclick" ]; then
+  INSTALLED_DIR="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
+  log ""
+  log "----- one-click packaging: what the published package carried -----"
+  ONE_CLICK_MISSING=""
+  for rel in packages/mpd-bundle/cordis.patch.yml presets/mpd.patch.yml \
+             packages/mpd-mcp-astgrep/launch.ts packages/mpd-mcp-codegraph/launch.ts \
+             packages/mpd-bundle-plugin/client.js icon.svg locale/en.json \
+             dsh-plugin.json skills/dsh-qa/SKILL.md; do
+    [ -e "$INSTALLED_DIR/$rel" ] || ONE_CLICK_MISSING="$ONE_CLICK_MISSING$rel,"
+  done
+  if [ -z "$ONE_CLICK_MISSING" ]; then
+    record oneclick.requiredPaths true "every path the rows and the display metadata name is present in the installed package" "checked: patch files, MCP launchers, web client, icon, locale, skills corpus"
+  else
+    record oneclick.requiredPaths false "the installed package is missing a path its own rows name — a real user's install would break the same way" "$ONE_CLICK_MISSING"
+  fi
+
+  ONE_CLICK_LEAKED=""
+  for rel in evidence .git docker .qa-tmp; do
+    [ -e "$INSTALLED_DIR/$rel" ] && ONE_CLICK_LEAKED="$ONE_CLICK_LEAKED$rel,"
+  done
+  if [ -z "$ONE_CLICK_LEAKED" ]; then
+    record oneclick.filesAllowlist true "the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package" "absent: evidence/ .git/ docker/ .qa-tmp/"
+  else
+    record oneclick.filesAllowlist false "the installed package carries paths the allowlist was meant to exclude, so a user's download is larger than the manifest promises" "$ONE_CLICK_LEAKED"
+  fi
+
+  ONE_CLICK_DRIFT=""
+  ONE_CLICK_COMPARED=0
+  for rel in $(cd "$APP_DIR" 2>/dev/null && ls packages/*/dist/*.js 2>/dev/null | head -40); do
+    if [ -f "$INSTALLED_DIR/$rel" ] && [ -f "$APP_DIR/$rel" ]; then
+      ONE_CLICK_COMPARED=$((ONE_CLICK_COMPARED + 1))
+      cmp -s "$APP_DIR/$rel" "$INSTALLED_DIR/$rel" || ONE_CLICK_DRIFT="$ONE_CLICK_DRIFT$rel,"
+    fi
+  done
+  fact oneclick.distCompared "$ONE_CLICK_COMPARED"
+  if [ "$ONE_CLICK_COMPARED" -gt 0 ] && [ -z "$ONE_CLICK_DRIFT" ]; then
+    record oneclick.distByteIdentical true "$ONE_CLICK_COMPARED committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds" "cmp -s on each entry"
+  elif [ "$ONE_CLICK_COMPARED" -eq 0 ]; then
+    record oneclick.distByteIdentical null "no dist entry could be compared: either the installed package carries none (its own failure above) or the source tree has none to compare against" "compared=0"
+  else
+    record oneclick.distByteIdentical false "an installed dist entry differs from the one the source tree builds — the package was rebuilt somewhere, or a stale artifact was published" "$ONE_CLICK_DRIFT"
+  fi
+fi
+
 # ── 09. COMPOSITION: what the profile composes (never a load proof, AGENTS.md §4) ──
 log ""
 log "----- COMPOSITION ONLY: dsh --profile web --dump-config -----"
-if [ -f "$APP_DIR/scripts/dump-config.mjs" ]; then
-  run_step 10-dump node "$APP_DIR/scripts/dump-config.mjs" --profile web
+if [ -f "$APP_DIR/scripts/dump-config.ts" ]; then
+  run_step 10-dump node "$APP_DIR/scripts/dump-config.ts" --profile web
 else
-  log "[warn] the repository wrapper scripts/dump-config.mjs is missing; falling back to the raw flag"
+  log "[warn] the repository wrapper scripts/dump-config.ts is missing; falling back to the raw flag"
   run_step 10-dump dsh --profile web --dump-config
 fi
 DUMP_EXIT=$STEP_CODE
@@ -518,7 +644,7 @@ fact bootCoreTools "$PROBE_CORE"
 fact bootTeamToolsRootPlane "$PROBE_TEAM_ROOT"
 fact bootAdapterCaps "$PROBE_CAPS"
 fact obs.retiredToolsPresent "${PROBE_RETIRED:-<probe did not report>}"
-# The official team tools are AGENT-scoped (see docker/probe.mjs), so the root-plane read is an
+# The official team tools are AGENT-scoped (see docker/probe.ts), so the root-plane read is an
 # OBSERVATION that the plane is what we think it is — the graded read happens after a real agent
 # exists, further down.
 fact obs.teamToolPlane "root-plane read=$PROBE_TEAM_ROOT (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below"
@@ -634,7 +760,7 @@ fi
 # rows ACTIVATE; creating a session with `agentPreset: "mpd"` does, because the gateway refuses the
 # request when any row of that preset failed to mount. The cwd is a sandbox workspace, never the repo.
 # It is ALSO what makes the agent-scoped team tools observable: session creation produces the agent
-# whose scope holds them, and docker/probe.mjs reports them on `agent/created`.
+# whose scope holds them, and docker/probe.ts reports them on `agent/created`.
 #
 # THE WIRE SHAPE IS AN RPC ENVELOPE, not a bare body: the connection layer accepts
 # `{type:"client-request", rpcId, method, payload}` where `method` is the ENDPOINT — the gateway
@@ -751,7 +877,7 @@ else
   record isolation.realHome false "the real home was written to" "$REAL_TOUCHED"
 fi
 # A FILENAME is not credential material. The first run's naive `-name '*credential*'` scan flagged
-# (a) the repository's own QA helper `skills/dsh-qa/scripts/lib/credentials.mjs` and (b) the EMPTY
+# (a) the repository's own QA helper `skills/dsh-qa/scripts/lib/credentials.ts` and (b) the EMPTY
 # `.credentials.yaml` the harness materializes in the sandbox home — neither is a secret, and a check
 # that reddens on those is a check nobody can trust (measured 2026-09-27). So: inventory every
 # credential-shaped file with its size, and judge only CONTENT — a non-empty secret-shaped value.

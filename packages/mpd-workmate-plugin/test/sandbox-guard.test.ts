@@ -12,12 +12,14 @@
 //   · a FALSIFIABILITY check that runs the same arms against the PRE-fix predicate and requires the
 //     sandbox arm to FAIL there.
 import { describe, expect, test } from "bun:test"
-import { spawnSync } from "node:child_process"
+import { spawnSync, type SpawnSyncReturns } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
+/** This package's directory, derived from the test file's own location. */
 const PLUGIN = dirname(import.meta.dir)
+/** The built artifact the arms import: the shipped dist, never a src re-implementation. */
 const DIST = join(PLUGIN, "dist", "index.js")
 
 /** One probe, spawned per arm: it imports the artifact under test and reports the observable surface. */
@@ -30,6 +32,7 @@ try { assertMutationSandboxed("suite arm probe"); console.log("ALLOWED") }
 catch (e) { console.log("REFUSED:" + (e.status ?? "?") + ":" + (e.code ?? "?")) }
 `
 
+/** One row of the control table: what the arm expected, what it observed, and whether it can discriminate. */
 export type ArmRow = { id: string; expect: "ALLOWED" | "REFUSED"; got: string; discriminating?: boolean }
 
 /**
@@ -39,23 +42,32 @@ export type ArmRow = { id: string; expect: "ALLOWED" | "REFUSED"; got: string; d
  * short-circuits before the real-home check, so it stays green under the defect and cannot discriminate.
  */
 export function armTableVerdict(rows: ArmRow[]): { ok: boolean; oneSided: boolean } {
+  /** True only when every arm in the table produced the outcome it expected. */
   const ok = rows.every((r) => r.got === r.expect)
   return { ok, oneSided: ok && !rows.some((r) => r.discriminating === true) }
 }
 
+/** The runtimes that can actually execute the probe here: both are probed, never assumed. */
 function runtimes(): string[] {
+  /** The runtimes whose version probe succeeded, in probe order. */
   const out: string[] = []
   for (const rt of ["node", "bun"]) {
+    /** The version probe for this runtime; a non-zero status drops the runtime from the arm matrix. */
     const probe = spawnSync(rt, ["--version"], { encoding: "utf8", timeout: 20000 })
     if (probe.status === 0) out.push(rt)
   }
   return out
 }
 
-function spawnArm(runtime: string, probe: string, dist: string, env: Record<string, string>, unsetHome: boolean) {
+/** Runs one arm in a CHILD process — the shape production uses — and reduces its output to an observable verdict. */
+function spawnArm(runtime: string, probe: string, dist: string, env: Record<string, string>, unsetHome: boolean): string {
+  /** The child environment: the parent's variables plus the arm's, so PATH and friends survive. */
   const fullEnv: Record<string, string> = { ...(process.env as Record<string, string>), ARM_DIST: dist, ...env }
   if (unsetHome) delete fullEnv.HOME
-  const r = spawnSync(runtime, [probe], { env: fullEnv, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 20000 })
+  /** The child's raw result, reduced below to ALLOWED / REFUSED:<status>:<code> / ERROR:<detail>; a failed
+   * spawn reports a NodeJS.ErrnoException, whose `code` names the failure. */
+  const r: SpawnSyncReturns<string> & { error?: NodeJS.ErrnoException } = spawnSync(runtime, [probe], { env: fullEnv, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 20000 })
+  /** The probe's last stdout line, the only surface the child is allowed to report through. */
   const line = (r.stdout || "").trim().split("\n").pop() || ""
   if (line.startsWith("ALLOWED")) return "ALLOWED"
   if (line.startsWith("REFUSED")) return line
@@ -86,18 +98,24 @@ export function assertMutationSandboxed(operation) {
 `
 
 describe("T-43 real-home guard — both sides, in the shape production uses", () => {
+  /** The per-run scratch tree holding both sandbox homes and both probe modules. */
   const work = mkdtempSync(join(tmpdir(), "sandbox-guard-"))
   WORKDIR = work
+  /** The sandbox $HOME the sandbox-allowed arm points at. */
   const sandboxHome = join(work, "home")
+  /** The sandbox $DSH_HOME that makes the child look isolated to the guard. */
   const dshHome = join(work, "dsh")
   mkdirSync(sandboxHome, { recursive: true })
   mkdirSync(dshHome, { recursive: true })
-  const probe = join(work, "probe.mjs")
+  /** The artifact probe module, written out so a child can import it by URL. */
+  const probe = join(work, "probe.ts")
   writeFileSync(probe, PROBE)
+  /** The pre-fix guard module the falsifiability arm runs the same probes against. */
   const preFix = join(work, "pre-fix-guard.mjs")
   writeFileSync(preFix, PRE_FIX_GUARD)
   // The real user home must be HOME-independent for the arm's expectation to mean anything.
   const realHome = (() => {
+    /** A passwd-derived home probe, independent of $HOME by construction. */
     const r = spawnSync("node", ["-e", "process.stdout.write(require('node:os').userInfo().homedir)"], { encoding: "utf8", timeout: 20000 })
     if (r.status === 0 && r.stdout) return r.stdout.trim()
     // node's passwd emulation can fail on a Windows host (`uv_os_get_passwd returned ENOMEM`),
@@ -107,6 +125,7 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
     return homedir()
   })()
 
+  /** The control table: one row per environment shape the guard must answer differently for. */
   const ARMS: Array<{ id: string; label: string; expect: "ALLOWED" | "REFUSED"; env: Record<string, string>; unsetHome?: boolean }> = [
     { id: "sandbox", label: "sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes)", expect: "ALLOWED", env: { HOME: sandboxHome, DSH_HOME: dshHome } },
     { id: "home-unset", label: "HOME unset + DSH_HOME -> REFUSED", expect: "REFUSED", env: { DSH_HOME: dshHome }, unsetHome: true },
@@ -117,6 +136,7 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
   for (const runtime of runtimes()) {
     for (const arm of ARMS) {
       test(`${runtime}: ${arm.label}`, () => {
+        /** The arm's observed outcome, compared against the table's expectation. */
         const got = spawnArm(runtime, probe, DIST, arm.env, arm.unsetHome === true)
         expect(got === arm.expect || (arm.expect === "REFUSED" && got.startsWith("REFUSED"))).toBe(true)
         if (arm.expect === "REFUSED" && arm.id === "real-home") expect(got).toContain("403")
@@ -125,6 +145,7 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
   }
 
   test("CONTROL: a one-sided arm table is reported as HIDING the defect (the t23 failure shape)", () => {
+    /** A table containing the discriminating sandbox-allowed arm — the shape that can catch the defect. */
     const full: ArmRow[] = [
       { id: "sandbox", expect: "ALLOWED", got: "ALLOWED", discriminating: true },
       { id: "home-unset", expect: "REFUSED", got: "REFUSED" },
@@ -144,6 +165,7 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
   })
 
   test("FALSIFIABILITY: the same arms FAIL against the pre-fix predicate (homedir() follows $HOME)", () => {
+    /** The pre-fix outcome for the sandbox arm, which must be a refusal. */
     const got = spawnArm("node", probe, preFix, { HOME: sandboxHome, DSH_HOME: dshHome }, false)
     expect(got.startsWith("REFUSED")).toBe(true) // the defect the arms exist to catch
     expect(got).toContain("403")
@@ -154,6 +176,7 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
   })
 })
 
+/** The scratch tree cleaned up at process exit; undefined until the describe body has run. */
 let WORKDIR: string | undefined
 
 process.on("exit", () => {

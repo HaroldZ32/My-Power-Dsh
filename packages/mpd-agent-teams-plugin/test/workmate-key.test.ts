@@ -1,4 +1,7 @@
 import { test, expect } from "bun:test"
+// The adopted member surface is vendored JavaScript with no declaration file, and its types are
+// not recoverable without re-authoring upstream, so `workmateKey` arrives untyped.
+// @ts-expect-error vendored JavaScript has no declaration file
 import { workmateKey } from "../lib/members.js"
 
 // The member-name → workmate directory key must stay byte-for-byte identical to

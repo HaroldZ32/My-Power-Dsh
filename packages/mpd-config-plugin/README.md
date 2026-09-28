@@ -110,7 +110,7 @@ and a saved edit is projected into the workspace's `<workspace>/.mpd/mpd.jsonc`.
   read-only targets. The user-facing statement of this rule is `docs/tui.md` §6.5.
 
 Evidence: `evidence/mpd-bridge/implementation/20260915T080138Z/` (two real boots,
-one live root and two live roots), lane `skills/dsh-qa/scripts/tui-settings-bridge.mjs`,
+one live root and two live roots), lane `skills/dsh-qa/scripts/tui-settings-bridge.ts`,
 re-review `evidence/mpd-bridge/review/REREVIEW-t49.md`, ruling
 `evidence/mpd-bridge/captain/RULING-duplicate-unset-FINAL.md`.
 

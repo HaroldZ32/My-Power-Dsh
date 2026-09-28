@@ -10,7 +10,7 @@
 #   • the TUI inside tmux, captured with `docker exec … tmux capture-pane`.
 #
 # It is an INSPECTION harness, not a gate: it asserts nothing about the bundle. The verdict
-# for the install path stays with `scripts/docker-e2e.mjs`.
+# for the install path stays with `scripts/docker-e2e.ts`.
 set -uo pipefail
 
 : "${MPD_UI_PORT:=3080}"
@@ -52,7 +52,7 @@ for entry in packages/*/src/index.ts packages/mpd-ext-plugin/src/sdk.ts; do
   [ "$(basename "$entry")" = "sdk.ts" ] && out="packages/mpd-ext-plugin/dist/sdk.js"
   bun build "$entry" --target node --format esm --outfile "$out" >>"$LOG_DIR/rebuild.log" 2>&1
 done
-node scripts/build-mpd-client.mjs >>"$LOG_DIR/rebuild.log" 2>&1
+node scripts/build-mpd-client.ts >>"$LOG_DIR/rebuild.log" 2>&1
 
 log "dsh plugin --profile web add ."
 dsh plugin --profile web add . >>"$LOG_DIR/plugin-web.log" 2>&1
@@ -113,7 +113,7 @@ if ! ldconfig -p 2>/dev/null | grep -q 'libglib-2\.0\.so\.0'; then
   ( cd "$LOG_DIR" && npx playwright install-deps chromium >>"$LOG_DIR/pw-install.log" 2>&1 ) \
     || log "install-deps failed — the capture step will fail on missing shared libraries; see ${LOG_DIR}/pw-install.log"
 fi
-cp -f /opt/mpd-e2e/capture.mjs "$LOG_DIR/capture.mjs" 2>/dev/null || true
+cp -f /opt/mpd-e2e/capture.ts "$LOG_DIR/capture.ts" 2>/dev/null || true
 cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
 
 # ── 4. the TUI surface, held open in tmux ─────────────────────────────────────

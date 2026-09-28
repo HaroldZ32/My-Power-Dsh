@@ -6,7 +6,7 @@
 
 ## 它做什么
 
-- `launch.mjs` 是该 row 的入口（B8）：它以**相对 bundle 的方式**解析二进制——调用方
+- `launch.ts` 是该 row 的入口（B8）：它以**相对 bundle 的方式**解析二进制——调用方
   env 固定值 → 通过 `createRequire` 解析 `@colbymchenry/codegraph` 可选依赖（packed
   布局；使用该包自身的 `bin` 条目，例如 `npm-shim.js`）→
   `<bundle>/.toolchain/node_modules/.bin/codegraph`（checkout `link:` 安装）。仅当调用方
@@ -23,16 +23,16 @@
   在其第一个守卫处返回 null，子进程作为 unavailable MCP server 存活（0 个工具，stderr 输出
   skip 提示，退出码 0），而不是以未捕获异常崩溃。仅当 stdout 尚未写入任何内容时才重试（MCP
   协议独占 stdout）。该降级位于 launcher，而**不是** `dist/serve.js` 内的 delta：后者是受
-  sha 固定、由阻塞式 vendor 门禁（`scripts/verify-vendor.mjs`）保护的预构建文件，在那里打标记
+  sha 固定、由阻塞式 vendor 门禁（`scripts/verify-vendor.ts`）保护的预构建文件，在那里打标记
   delta 要么使门禁失败，要么把门禁变成自我背书
   （`evidence/wave3/registry-redesign/t1-decision-record.txt` §A4）。
 - **预构建文件“加载失败”时同样降级（主机缺陷，2026-09-22 实测）**：该产物在**模块加载期**执行
   `var ACCOUNT_HOME_DIR = userInfo().homedir`，因此在 libuv 的 `uv_os_get_passwd` 失败的主机上，
   它在回答第一帧之前就抛出 `SystemError: ... ENOMEM`；而一个 MCP 子进程崩溃会把整个 bundle 的启动
-  一起拖垮（Web 应用始终无法提供服务）。因此 `launch.mjs` 现在包裹该 `import`：失败时由自身作为
+  一起拖垮（Web 应用始终无法提供服务）。因此 `launch.ts` 现在包裹该 `import`：失败时由自身作为
   UNAVAILABLE server 应答握手（0 个工具，原因输出到 stderr，退出码 0），会话照常启动、原因可读。
   规则同上：delta 只写在 launcher 里，绝不写进受 sha 固定的预构建文件。
-- **共享 daemon 策略（`daemon-policy.mjs`）**：被采纳的 server 既可依托按项目根共享的 daemon
+- **共享 daemon 策略（`daemon-policy.ts`）**：被采纳的 server 既可依托按项目根共享的 daemon
   （`<projectRoot>/.codegraph/daemon.{sock,pid}`），也可用自身进程内引擎服务会话。daemon 的消失
   并不受会话控制——上游会在空闲 30 分钟后回收它（即使仍有客户端连接，`DEFAULT_MAX_IDLE_MS`），
   `codegraph daemon` 的停止会 SIGTERM 它，而基于 pid 的存活探测在 PID namespace 中不可信——连接
@@ -57,7 +57,7 @@
 ## 用法
 
 ```bash
-node scripts/pack-mpd.mjs   # 将 dist/serve.js + launch.mjs 打包进 bundle
+node scripts/pack-mpd.ts   # 将 dist/serve.js + launch.ts 打包进 bundle
 ```
 
 bundle patch 行的配置：
@@ -69,6 +69,6 @@ bundle patch 行的配置：
     serverName: codegraph
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-codegraph/launch.mjs]
+    args: [<bundle>/packages/mpd-mcp-codegraph/launch.ts]
     toolCallTimeoutMs: 60000
 ```

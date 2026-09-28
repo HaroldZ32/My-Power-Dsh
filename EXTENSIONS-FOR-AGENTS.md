@@ -15,7 +15,7 @@ the loader accepts. No rationale, no tutorial: for prose, read
 | Flow document parsing and rendering | `packages/mpd-ext-plugin/src/flows.ts` |
 | Skill document reading (frontmatter subset) | `packages/mpd-ext-plugin/src/skills.ts` |
 | stdio MCP client, child environment policy, stderr tail | `packages/mpd-ext-plugin/src/mcp-client.ts` |
-| The CLI that shares this validator (`validate`, `scaffold`, `list`, `--self-test`) | `scripts/mpd-ext.mjs` |
+| The CLI that shares this validator (`validate`, `scaffold`, `list`, `--self-test`) | `scripts/mpd-ext.ts` |
 | The copy-me template this contract's skeleton is drawn from | `templates/mpd-extension/mpd-ext.json` |
 
 Inspection tools available in a session: `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`,
@@ -46,7 +46,7 @@ refused at every level — descriptor, `contributes`, and each item.
 ## 3. Manifest skeleton (validates as written)
 
 The skeleton below is extracted from this file by
-`scripts/check-citations.mjs`, materialized next to the template's four
+`scripts/check-citations.ts`, materialized next to the template's four
 assets, and validated with the CLI; the run must exit 0.
 
 <!-- citation-check: illustrative: the skeleton's own extension-root-relative asset paths -->
@@ -72,7 +72,7 @@ assets, and validated with the CLI; the run must exit 0.
         "serverName": "for-agents-skeleton",
         "transport": "stdio",
         "command": "node",
-        "args": ["server.mjs"],
+        "args": ["server.ts"],
         "cwd": ".",
         "env": {},
         "connectTimeoutMs": 10000,
@@ -92,11 +92,11 @@ mpd-ext.json
 skills/for-agents-skeleton-skill/SKILL.md
 flows/for-agents-skeleton-flow.json
 personas/for-agents-skeleton-reviewer.md
-server.mjs
+server.ts
 ```
 
 That tree is `templates/mpd-extension/` with the placeholder id rewritten, which is exactly what
-`bun scripts/mpd-ext.mjs scaffold for-agents-skeleton --dir ~/.mpd/extensions --with-mcp` produces.
+`bun scripts/mpd-ext.ts scaffold for-agents-skeleton --dir ~/.mpd/extensions --with-mcp` produces.
 
 Drop a kind from the manifest and delete its assets; keep an asset nobody declares and it is simply
 never read.
@@ -148,10 +148,10 @@ only: tool and provider registration is process-global and cannot be scoped to a
 mkdir -p ~/.mpd/extensions
 
 # 1. copy the template through the CLI (rewrites id + every derived name)
-bun scripts/mpd-ext.mjs scaffold for-agents-skeleton --dir ~/.mpd/extensions --with-mcp
+bun scripts/mpd-ext.ts scaffold for-agents-skeleton --dir ~/.mpd/extensions --with-mcp
 
 # 2. validate with the runtime's own validator: exit 0, "loadable", four kinds
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/for-agents-skeleton
+bun scripts/mpd-ext.ts validate ~/.mpd/extensions/for-agents-skeleton
 
 # 3. enable it in the manifest ("enabled": true) and restart dsh — discovery is at apply
 
@@ -163,25 +163,25 @@ bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/for-agents-skeleton
 
 # 5. project-plane variant: skills + flows only, read per call, no restart needed
 mkdir -p .mpd/extensions
-bun scripts/mpd-ext.mjs scaffold for-agents-proj --dir .mpd/extensions
-bun scripts/mpd-ext.mjs validate .mpd/extensions/for-agents-proj
+bun scripts/mpd-ext.ts scaffold for-agents-proj --dir .mpd/extensions
+bun scripts/mpd-ext.ts validate .mpd/extensions/for-agents-proj
 ```
 
-A `--with-mcp` copy keeps the manifest `mcp` block and `server.mjs`; without the flag both are
+A `--with-mcp` copy keeps the manifest `mcp` block and `server.ts`; without the flag both are
 dropped and the copy contributes three kinds.
 
 ## 7. Gate commands
 
 ```bash
-bun scripts/mpd-ext.mjs validate <dir>        # exit 0 = loadable; exit 1 = one line per item
-bun scripts/mpd-ext.mjs validate templates/mpd-extension
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
-bun scripts/mpd-ext.mjs --self-test           # both scaffold arms, per-file equivalence, negative control
-bun scripts/mpd-ext.mjs list                  # what this host would discover, plane by plane
+bun scripts/mpd-ext.ts validate <dir>        # exit 0 = loadable; exit 1 = one line per item
+bun scripts/mpd-ext.ts validate templates/mpd-extension
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+bun scripts/mpd-ext.ts --self-test           # both scaffold arms, per-file equivalence, negative control
+bun scripts/mpd-ext.ts list                  # what this host would discover, plane by plane
 bun test packages/mpd-ext-plugin              # the interface's own suite
-bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-template.mjs
+bun skills/dsh-qa/scripts/extension-lifecycle.ts --no-skip
+bun skills/dsh-qa/scripts/extension-mcp-bridge.ts --no-skip
+bun skills/dsh-qa/scripts/extension-template.ts
 ```
 
 `dsh --profile <p> --dump-config` is **not** a gate for extension code: it composes rows and executes

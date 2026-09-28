@@ -97,8 +97,8 @@ Both halves are recorded in AGENTS.md so no reader mistakes the reduction for an
 |---|---|---|
 | A (captain) | `packages/mpd-bundle/**`, `package.json` | patch/preset migration, official team rows, release |
 | B | `packages/mpd-dsh-adapter-plugin/**` | the adapter team surface + the direct-access gate |
-| C | `skills/dsh-qa/scripts/**`, `scripts/verify-rows-parity.mjs`, `scripts/pack-mpd.mjs`, `scripts/install-profile.mjs` | gates and QA cases rebased onto the new preset model |
-| D | `docker/**`, `scripts/docker-e2e.mjs` | ubuntu:24.04 + compose end-to-end client install test |
+| C | `skills/dsh-qa/scripts/**`, `scripts/verify-rows-parity.ts`, `scripts/pack-mpd.ts`, `scripts/install-profile.ts` | gates and QA cases rebased onto the new preset model |
+| D | `docker/**`, `scripts/docker-e2e.ts` | ubuntu:24.04 + compose end-to-end client install test |
 | E | `packages/mpd-team-watchdog-plugin/**`, `packages/mpd-team-compact-plugin/**`, `packages/mpd-ulw-plugin/**`, `packages/mpd-tui-plugin/**`, `packages/mpd-bundle-plugin/**` | consumers rebased onto the adapter team surface |
 
 ## 6. Retired assertions (recorded, not silently dropped)
@@ -124,7 +124,7 @@ silently into a fix, because each is a CLASS of evidence gap worth keeping.
 
 ### 7.1 The session-start gate was MOUNTED but NEVER FIRED
 
-Lane C's rebased `skills/dsh-qa/scripts/session-start-team.mjs` — after lane C fixed two of its own
+Lane C's rebased `skills/dsh-qa/scripts/session-start-team.ts` — after lane C fixed two of its own
 instrumentation bugs (a shared `DSH_HOME` legitimately holds one session-store key per side, so the
 side's own workspace was the wrong isolation bound) — booted six headless sessions and measured ZERO
 notices on every triggered side:

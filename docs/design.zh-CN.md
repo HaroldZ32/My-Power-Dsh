@@ -89,7 +89,7 @@ profile 添加行。它贡献：
 `dsh.bundle.patch`（数组：先是 `./packages/mpd-bundle/cordis.patch.yml`，再是
 `./presets/mpd.patch.yml`）、`dsh.client`、各行解析所依赖的
 `exports` 映射以及工具链 `optionalDependencies`，因此在仓库根执行 `dsh plugin add .` 一条命令即可
-完成整体安装（无需打包步骤）。`scripts/pack-mpd.mjs` 是**发布**步骤：为发布/tarball 安装组装
+完成整体安装（无需打包步骤）。`scripts/pack-mpd.ts` 是**发布**步骤：为发布/tarball 安装组装
 可迁移的 `dist/mpd-package/` —— 一个**没有任何 checkout 绝对路径**的自包含 npm 包：
 
 | 部件 | 去向 | 原因 |
@@ -122,7 +122,7 @@ Manifest 不变式（为什么存在）：
   的行（`mpd-better-sidebar`）带守卫且与层序无关（§4），因此自己挂载该包的组合照常工作，无法解析
   的包只降级为"没有侧边栏"，绝不会让启动失败。
 
-`scripts/build-mpd-client.mjs` 组合出合并 client（见 §7）。
+`scripts/build-mpd-client.ts` 组合出合并 client（见 §7）。
 
 **共享模块：同一个决策只实现一次。** 过去有三种形态按包复制，现在各自只有一处实现。它们都以相对
 路径被引入，因此会被打包进消费方的 `dist/`，对外发布面没有任何新增。
@@ -131,9 +131,9 @@ Manifest 不变式（为什么存在）：
 |---|---|---|
 | `packages/mpd-dsh-adapter-plugin/src/shared.ts` | 每行都需要的纯工具（不触碰任何接缝）——`isRecord`、`errorMessage`、`bundleRootOf`，并从适配器入口再导出，因此一行只需一个 import | 所有 mpd 行 |
 | `packages/mpd-ext-plugin/src/skill-frontmatter.ts` | skill frontmatter 的 YAML 子集：`parseFrontmatter`、`parseYamlBlock`、`stringField`、`frontmatterBoolean`、`parseInvocation`、`isAbsent` | 扩展的 skill 面与 `mpd-bootstrap` 的语料 provider |
-| `scripts/lib/repo.mjs` | `repoRootFrom` 与 `readJson`——`scripts/` 下每个脚本过去都要手写一遍的两个原语 | 仓库自身的门禁与辅助脚本 |
+| `scripts/lib/repo.ts` | `repoRootFrom` 与 `readJson`——`scripts/` 下每个脚本过去都要手写一遍的两个原语 | 仓库自身的门禁与辅助脚本 |
 
-反例是刻意的、不是疏漏：`scripts/repin-vendor.mjs` 镜像了 `scripts/verify-vendor.mjs` 的指纹
+反例是刻意的、不是疏漏：`scripts/repin-vendor.ts` 镜像了 `scripts/verify-vendor.ts` 的指纹
 算法，并拿权威文件自身的字节复核这份镜像（`assertAuthorityShape()`），因此这两份 helper 的实现
 体是有意保留的重复——把它们上提会破坏那条防止二者漂移的检查。
 
@@ -174,7 +174,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 **`packages/mpd-bundle/cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
 共携带 **28 个 `insert` 行**；本 bundle 的**第二个** patch 文件（`presets/mpd.patch.yml`）再携带一个
 插入行 —— `preset-mpd` —— 两个文件都列在 manifest 的 `dsh.bundle.patch` **数组**里。
-`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
+`node scripts/verify-rows-parity.ts` 断言这份列表与本仓库自身的行
 账目一致。另有一条 **id-target**（不是插入行）——它**替换** host 自己拥有的行——因此单独列在下面的
 表里。
 
@@ -187,10 +187,10 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 
 | 行 id | 包 | Composition | 用途 | 工具 / 服务 | 关键配置 |
 |---|---|---|---|---|---|
-| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | 本地 ast-grep stdio 服务器；`launch.mjs` 按 bundle 相对路径解析二进制（env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire 可选依赖 → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`；每个候选都会展开为该主机可执行的各种拼写：win32 解析 `.exe`/`.com`，绝不使用无 shell 运行器无法启动的 `.cmd` 垫片） | `mcp__ast_grep__*`（search / rewrite / scan） | `serverName: ast_grep`、`toolCallTimeoutMs: 60000` |
+| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | 本地 ast-grep stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制（env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire 可选依赖 → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`；每个候选都会展开为该主机可执行的各种拼写：win32 解析 `.exe`/`.com`，绝不使用无 shell 运行器无法启动的 `.cmd` 垫片） | `mcp__ast_grep__*`（search / rewrite / scan） | `serverName: ast_grep`、`toolCallTimeoutMs: 60000` |
 | `mcp-gitbash` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git-bash stdio 服务器；上游按 Windows 专属设计，因此该行自带 `disabled: true` | 启用后为 `mcp__git_bash__*` | 改 `disabled: false` 启用 |
 | `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP 桥（`…/mpd-mcp-lsp/dist/cli.js mcp`） | `mcp__lsp__*` | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
-| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | 本地 codegraph stdio 服务器；`launch.mjs` 按 bundle 相对路径解析二进制，并且只在调用方未设置时写入 `MPD_CODEGRAPH_BIN` | `mcp__codegraph__*` | `serverName: codegraph`、`toolCallTimeoutMs: 60000` |
+| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | 本地 codegraph stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制，并且只在调用方未设置时写入 `MPD_CODEGRAPH_BIN` | `mcp__codegraph__*` | `serverName: codegraph`、`toolCallTimeoutMs: 60000` |
 | `mcp-context7` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
 | `mcp-grepapp` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry（只有存在该确切名字的 entry，web client 才会加载）；承载合并 web client | no-op apply；`./client` | — |
@@ -300,7 +300,7 @@ key**。
   作为 workmate 的基础模板。它永远不会自己变成队友：只有 Lead 用 `spawn_teammate`
   按名字创建出来，才存在队友。
 - 四个工具可以检查这一切 —— `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` ——
-  而 `scripts/mpd-ext.mjs`（`validate` / `scaffold` / `list`）共享同一个运行时校验器。
+  而 `scripts/mpd-ext.ts`（`validate` / `scaffold` / `list`）共享同一个运行时校验器。
 
 ### 服务时序
 兄弟插件提供的服务在**工具执行时惰性读取**（`mpd_modelchain`、`mpd-workmate` 在
@@ -404,7 +404,7 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
   每次创建 `mpd` 会话都报 `$.prefix missing required value`。既有门禁全都没看见它：
   `--dump-config` 从不执行插件代码，`agentPresets.list`/`resolve` 只解析组合文件的 YAML 结构与行可解析性，
   而没有任何用例真正创建过会话。
-- 对应门禁是 `skills/dsh-qa/scripts/preset-conformance.mjs`：其 `--self-test` 用**已安装**的 schema
+- 对应门禁是 `skills/dsh-qa/scripts/preset-conformance.ts`：其 `--self-test` 用**已安装**的 schema
   校验 preset、bundle patch 与 QA overlay 中的每一个 `@deepseek-ai/*` 行（包含未知键，`!!js` 节点会被
   实体化），并锁定与已安装 `standard` 预设的行 id 一致；真实运行会在隔离的 `DSH_HOME`/`HOME` 中启动 web
   profile，并通过网关以 `agentPreset: "mpd"` 创建会话 —— `session/create` 会挂载该预设的 standing 组合，
@@ -413,16 +413,16 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 
 ## 7. Web client 接线（微妙之处）
 
-`packages/mpd-bundle-plugin/client.js`（由 `scripts/build-mpd-client.mjs` 生成）是一个
+`packages/mpd-bundle-plugin/client.js`（由 `scripts/build-mpd-client.ts` 生成）是一个
 脚本：
 
 1. 被保留的 agent-teams `lib/client.js` **逐字**内嵌 —— 它自注册
    `@nanmicoder/dsh-agent-teams`。它严格作为**视图库**使用：
-   `scripts/patch-agent-teams-client.mjs` 通过一个固定的导出桥接（export bridge）把它的视图
+   `scripts/patch-agent-teams-client.ts` 通过一个固定的导出桥接（export bridge）把它的视图
    （`TeamSection`、历史卡片）、监控 store、zh/en 词典与 CSS 增量导出，
-   `scripts/vendor-agent-teams.mjs` 在每次刷新后重新施加该桥接；采纳的 `apply(ctx)`
+   `scripts/vendor-agent-teams.ts` 在每次刷新后重新施加该桥接；采纳的 `apply(ctx)`
    **永不被调用** —— 正是它注册了已删除的那些界面；
-2. 一个从同一份 vendored 主体保留下来（`src/team-page.js`）的
+2. 一个从同一份 vendored 主体保留下来（`src/team-page.ts`）的
    `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` 条目。它的**宿主半边**是已退役
    `agent-teams` 插件的路由
    （`/plugins/dsh-agent-teams/{state,halt,plan,assets}`），而现在已经没有任何已挂载的行提供它们 ——
@@ -448,7 +448,7 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 模式 —— `ctx.inject(['betterSidebar'], cb)`（正是 better-sidebar 用来接它异步挂载的
 `remote.session` 的同一个调用）—— 它会等待提供者、在提供者重挂载后重跑，并且**不会**把本条目
 挂成 `pending`：没有该侧边栏的 profile 只是永远不触发回调。
-`packages/mpd-bundle-plugin/test/client-harness.mjs` 现在**默认**建模这个竞态（侧边栏服务在
+`packages/mpd-bundle-plugin/test/client-harness.ts` 现在**默认**建模这个竞态（侧边栏服务在
 `apply()` 之后才发布），因此一旦有人改回探测，测试会立刻失败。
 
 **两个 mpd 界面都由侧边栏承载；团队面板则来自官方插件**：`WorkmateLibraryView` 由
@@ -461,7 +461,7 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 的情形。**Agent Teams 面板**是另一回事，完全不依赖该侧边栏：它是官方
 `@deepseek-ai/dsh-experimental-client-ui-agent-team` 客户端插件，由本 bundle 自己的
 `mpd-ui-agent-team` 行挂载，注册一个会话头部动作，渲染 Lead 会话的 `agentTeam` 投影
-（名册 + 任务板，只读）。`scripts/build-mpd-client.mjs` 在构建期就强制侧边栏这条规则：只要有
+（名册 + 任务板，只读）。`scripts/build-mpd-client.ts` 在构建期就强制侧边栏这条规则：只要有
 mpd client 源注册了
 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`
 其中之一，构建即失败 —— 那正是被移除的对话内卡片、活动浮窗与 workmate 浮窗/页脚切换按钮。
@@ -496,7 +496,7 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
   （`tuiShortcuts`）、受管对话框（`tuiDialogs`）以及 transcript renderer 的注册（`tuiRenderers`；宿主
   不为 bundle 的 renderer 事件投射任何行）。所有注册都通过 `ctx.effect` 释放。
 - **不做**：完全不写文件系统 —— settings 回写位于 `packages/mpd-config-plugin`（见下），而 TUI 包的
-  零写入属性由它自己的 lane 断言（`tui-settings-bridge.mjs` 的 T7 检查）。它也不主张任何已准入的
+  零写入属性由它自己的 lane 断言（`tui-settings-bridge.ts` 的 T7 检查）。它也不主张任何已准入的
   Component 身份：bundle 级 `dsh-plugin.json` 声明 host facet，而宿主自身的准入对四个默认拒绝的
   decision-event 权限给出 `waiting_authorization`，因此 effect ledger 把这次注册记为 `undeclared`
   （`docs/tui.zh-CN.md` §4 与 §6.1）。
@@ -531,7 +531,7 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
 - **预设层只能靠真实挂载启动来验证。** 某行的 `config` 缺少**必填** key 时该行失败，
   预设 registry 随即拒绝**整个**预设（`agent-preset/invalid: … row(s) did not activate`）；
   而**未知** key 会被 schemastery 静默保留，行照常生效、那个设置却悄悄失效。`agentPresets.list` /
-  `resolve` 两类都看不见；只有 `skills/dsh-qa/scripts/preset-conformance.mjs`（含其反向对照）能看见
+  `resolve` 两类都看不见；只有 `skills/dsh-qa/scripts/preset-conformance.ts`（含其反向对照）能看见
   （§6c）。
 - **插件模块没有热重载。** ESM 在会话开始时缓存模块，所以插件改动在 `dsh` 重启前不可见；会话中途
   应用的改动必须在下次启动时验证。
@@ -567,7 +567,7 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
 - **Composition 列是"组合"证据，不是"加载"证据。** 事实基线的 composition 章节依据的是 patch、两份已
   安装 profile 的 manifest 与会话实时工具列表——它自己的 `dump-config` 运行因文件系统只读而失败——因此
   §4 引用的是存档的 `evidence/tui/composition/20260915T053445Z` 产物。**本文档没有运行隔离
-  `DSH_HOME` 中的挂载启动**；`skills/dsh-qa/scripts/preset-conformance.mjs` 与 `bundle-lifecycle.mjs`
+  `DSH_HOME` 中的挂载启动**；`skills/dsh-qa/scripts/preset-conformance.ts` 与 `bundle-lifecycle.ts`
   仍是能够证明"加载"的关卡。
 - **事实基线以哈希锚定，因而会过期。** 它是在本文档改写期间测量的，所以其行号指向的是改写前的字节——但
   它所报告的问题（§4 表缺少 `mpd-team-watchdog`、`mpd-team-compact` 与 `mpd-tui`；把名册界面说成一个

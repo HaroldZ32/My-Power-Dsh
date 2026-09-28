@@ -30,6 +30,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
  * through the usual node_modules chain (a packed install or a profile that has its own copy).
  */
 function hostUrl(): string {
+  /** This module's own directory, which is `dist/` in a built install. */
   const here = dirname(fileURLToPath(import.meta.url))
   // dist/ -> package -> packages/ -> bundle root
   const bundleRoot = join(here, "..", "..", "..")
@@ -38,17 +39,23 @@ function hostUrl(): string {
 
 /** Everything the host exports, re-exported so a loader row can mount THIS module in its place. */
 export interface SidebarHost {
+  /** The host's declared plugin name, mirrored by this facade. */
   name?: string
+  /** The host's declared service dependencies, restated on the facade below. */
   inject?: unknown
+  /** The host's cordis apply, called as `(ctx, config)` by the loader. */
   apply?: (...args: unknown[]) => unknown
+  /** The host's schemastery config type, when the package exports one. */
   Config?: unknown
 }
 
+/** The imported host module, memoized so a second load reuses it. */
 let cached: SidebarHost | undefined
 
 /** The host module, imported once. Throws with the path it tried, so a failure names the subject. */
 export async function loadSidebarHost(): Promise<SidebarHost> {
   if (cached !== undefined) return cached
+  /** The resolved file URL of the host entry, named in the failure message below. */
   const url = hostUrl()
   try {
     cached = (await import(url)) as SidebarHost
@@ -80,7 +87,9 @@ export const name = "mpd-better-sidebar-host"
  */
 export const inject: string[] = ["webServer", "sessions", "webRuntime", "tools"]
 
+/** Import the host and delegate one cordis apply to it; THROWS when it exports no apply. */
 export async function apply(ctx: unknown, config: unknown): Promise<void> {
+  /** The host module, imported once through the memoizing loader. */
   const host = await loadSidebarHost()
   if (typeof host.apply !== "function") throw new Error("mpd-better-sidebar-host: the sidebar host exports no apply()")
   await (host.apply as (a: unknown, b: unknown) => unknown)(ctx, config)

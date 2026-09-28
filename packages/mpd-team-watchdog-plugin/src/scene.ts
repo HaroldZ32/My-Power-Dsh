@@ -37,36 +37,55 @@ export const SCENE_SCHEMA_VERSION = 1
 
 /** The hold as it appears inside a scene (the durable sidecar's identity fields). */
 export interface SceneHold {
+  /** The durable hold's id. */
   id: string
+  /** Epoch ms at which the hold was raised. */
   since: number
+  /** The recorded reason for the hold. */
   cause: string
+  /** The task whose silence raised the hold, when known. */
   taskId: string | null
+  /** That task's attempt id at escalation time, when known. */
   attemptId: string | null
 }
 
 /** One task row of the scene. */
 export interface SceneTask {
+  /** The OFFICIAL task id. */
   id: string
+  /** The board status verbatim at snapshot time. */
   status: string
+  /** The owning member's name, or null when the task is unowned. */
   assignee: string | null
+  /** The official board revision (the generation counter), or null. */
   attempt: number | null
+  /** That revision rendered as the generation token, or null. */
   attemptId: string | null
+  /** Newest heartbeat stamp for this task+attempt, or null when never stamped. */
   lastSeen: number | null
+  /** Consecutive WARN observations recorded for this task+attempt. */
   streak: number
 }
 
 /** One member row of the scene. */
 export interface SceneMember {
+  /** The member's Session id, i.e. the identity the roster carries. */
   id: string
+  /** The member's display name. */
   name: string
+  /** The live status verbatim, or null when the readout states none. */
   status: string | null
+  /** Always null: no adapter seam exposes a per-member unread count. */
   unread: number | null
+  /** The member's newest non-terminal task id, or null when it owns none. */
   currentTask: string | null
+  /** Newest heartbeat stamp of any kind for this member, or null. */
   lastSeen: number | null
 }
 
 /** One incident row carried inside a scene. */
 export interface SceneIncident {
+  /** The durable incident's id. */
   id: string
   /**
    * The durable incident vocabulary (r6 widens it): a scene is written for a WARN or an
@@ -74,18 +93,27 @@ export interface SceneIncident {
    * WARN-class `never-started` and `tool-expired` records.
    */
   kind: IncidentKind
+  /** Epoch ms at which the incident was recorded. */
   at: number
+  /** The task the incident is about, when it names one. */
   taskId: string | null
+  /** That task's attempt id, when the incident names one. */
   attemptId: string | null
+  /** The immutable scene path of the incident, when one was written. */
   scene: string | null
 }
 
 /** The complete scene document. */
 export interface Scene {
+  /** The frozen AC-5 schema version this document was written with. */
   schemaVersion: number
+  /** Epoch ms at which the scene was taken. */
   at: number
+  /** Which ladder rung produced this scene. */
   reason: "warn" | "escalate"
+  /** The frozen cause object: the predicate kind and the silence window in ms. */
   cause: { kind: "silence"; ms: number }
+  /** The team's identity and pause state at snapshot time. */
   team: {
     id: string
     name: string
@@ -94,22 +122,33 @@ export interface Scene {
     haltedAt: number | null
     hold: SceneHold | null
   }
+  /** Every board task, one row per task. */
   tasks: SceneTask[]
+  /** Every roster member, one row per non-Lead member. */
   members: SceneMember[]
+  /** The watchdog's own read watermark per reader, never the team mailbox. */
   mailbox: Record<string, number>
+  /** Durable assignee-to-generation-token map of every non-terminal task. */
   parkedAttempts: Record<string, string>
+  /** The team's recent incident history, oldest first. */
   incidents: SceneIncident[]
 }
 
 /** Everything `buildScene` needs; assembled by the tick, injectable in tests. */
 export interface SceneInput {
+  /** The projected team record the scene describes. */
   team: TeamRecord
+  /** Which ladder rung produced this scene. */
   reason: "warn" | "escalate"
+  /** Epoch ms at which the scene is taken; also the file-name clock. */
   at: number
+  /** The silence window that triggered the rung, in ms. */
   silenceMs: number
+  /** The durable hold in force at snapshot time, or null when none. */
   hold: HoldRecord | null
   /** Survivor: the watchdog's OWN read watermark per reader (never the team mailbox). */
   mailbox: Record<string, number>
+  /** The team's recent incidents to embed in the scene. */
   incidents: SceneIncident[]
   /** Streak counts by `taskId\0attemptId`. */
   streaks: Record<string, number>
@@ -125,6 +164,7 @@ export interface SceneInput {
 
 /** The heartbeats' newest stamp among the ones attributed to one task. */
 function newestForTask(stamps: readonly HeartbeatStamp[], taskId: string, attemptId: string | null, teamId?: string): number | null {
+  // Newest matching stamp time, in ms epoch.
   let newest: number | null = null
   for (const stamp of stamps) {
     if (stamp.taskId !== taskId) continue
@@ -140,6 +180,7 @@ function newestForTask(stamps: readonly HeartbeatStamp[], taskId: string, attemp
 
 /** The newest stamp of any kind for one member key. */
 function newestOverall(stamps: readonly HeartbeatStamp[]): number | null {
+  // Newest stamp time seen, in ms epoch.
   let newest: number | null = null
   for (const stamp of stamps) if (newest === null || stamp.at >= newest) newest = stamp.at
   return newest
@@ -147,7 +188,9 @@ function newestOverall(stamps: readonly HeartbeatStamp[]): number | null {
 
 /** Build the AC-5 scene document from the current observations. */
 export function buildScene(input: SceneInput): Scene {
+  // The projected record every row below is derived from.
   const { team } = input
+  // The task rows, each carrying its own newest stamp and recorded streak.
   const tasks: SceneTask[] = team.tasks.map((task: TeamTask) => ({
     id: task.id,
     status: task.status,
@@ -159,9 +202,13 @@ export function buildScene(input: SceneInput): Scene {
     // the key because task ids are per-team (w11/W11-1).
     streak: input.streaks[team.id + "\u0000" + task.id + "\u0000" + (task.attemptId ?? "")] ?? 0,
   }))
+  // The member rows, each with its stamps and its newest non-terminal task.
   const members: SceneMember[] = team.members.map((member) => {
+    // The member's heartbeat file key, i.e. the sanitized member name.
     const key = safeSegment(member.name)
+    // This member's stamps, from the injected reader.
     const stamps = input.heartbeat(key)
+    // The member's non-terminal tasks, whose newest id becomes `currentTask`.
     const owned = team.tasks.filter((task) => task.assignee === member.name && !TERMINAL_STATUSES.includes(task.status))
     return {
       id: member.id,
@@ -172,10 +219,12 @@ export function buildScene(input: SceneInput): Scene {
       lastSeen: newestOverall(stamps),
     }
   })
+  // The durable assignee-to-generation map the scheduler treats as advisory.
   const parkedAttempts: Record<string, string> = {}
   for (const task of team.tasks) {
     if (TERMINAL_STATUSES.includes(task.status)) continue
     if (task.assignee === undefined || task.attemptId === undefined) continue
+    // The roster row for that assignee, so the map keys on the member id when known.
     const member = team.members.find((entry) => entry.name === task.assignee)
     parkedAttempts[member?.id ?? task.assignee] = task.attemptId
   }
@@ -216,12 +265,15 @@ export function isoBasic(at: number): string {
 
 /** The outcome of writing a scene; `ok:false` is loud and never fatal. */
 export interface SceneWriteResult {
+  /** Whether the immutable scene file and its pointer both landed. */
   ok: boolean
   /** The immutable per-incident scene file (absent when the write failed). */
   path: string | null
   /** The `latest.json` pointer (absent when the write failed). */
   latestPath: string | null
+  /** Size of the written scene document in bytes. */
   bytes: number
+  /** `Error#message` of the first failed write; absent on success. */
   error?: string
 }
 
@@ -240,9 +292,13 @@ export function writeScene(
   scene: Scene,
   at: number,
 ): SceneWriteResult {
+  // The team's scene directory, which holds every immutable scene.
   const dir = sceneDir(workspace, stateDir, teamId)
+  // File-name stem: the ISO basic timestamp plus the rung that produced the scene.
   const base = isoBasic(at) + "-" + scene.reason
+  // The immutable scene path, bumped below when a same-second file already exists.
   let path = join(dir, base + ".json")
+  // Collision counter for two scenes written inside the same second.
   let suffix = 1
   try {
     while (existsSync(path)) {
@@ -253,11 +309,14 @@ export function writeScene(
   } catch {
     // an unreadable directory surfaces on the write below
   }
+  // The serialized document, written byte-identically to both destinations.
   const text = JSON.stringify(scene, null, 2) + "\n"
+  // The immutable file's write outcome; a failure is reported, never thrown.
   const written = writeFileAtomic(path, text)
   if (written.error !== undefined) {
     return { ok: false, path: null, latestPath: null, bytes: 0, error: written.error }
   }
+  // The `latest.json` pointer write; only this failing still leaves the scene valid.
   const latest = writeFileAtomic(join(dir, "latest.json"), text)
   if (latest.error !== undefined) {
     // The immutable file landed; only the pointer failed. Still loud.
@@ -273,8 +332,10 @@ export function writeScene(
  * @returns the parsed scene, or undefined when it is absent/unreadable.
  */
 export function readScene(path: string): Scene | undefined {
+  // The file to read: the given `.json` path, or the directory's `latest.json`.
   const file = path.endsWith(".json") ? path : join(path, "latest.json")
   try {
+    // The parsed document, cast because a scene file on disk is untrusted input.
     const parsed = JSON.parse(readFileSync(file, "utf8")) as Scene
     if (parsed === null || typeof parsed !== "object") return undefined
     return parsed

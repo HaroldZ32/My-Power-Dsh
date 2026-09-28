@@ -9,15 +9,23 @@ import { fileURLToPath } from "node:url"
 
 import { apply } from "../src/index"
 
+// Repository root: this test file lives at <root>/packages/mpd-bootstrap-plugin/test/, so four levels up from its own URL.
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+// The shipped corpus the row serves BY REFERENCE; the provider cases read the real thing, not a fixture.
 const realCorpus = join(repoRoot, "skills")
 
+/** The slice of the provider contract these cases drive — `name`, `list()` and `get()` — so a registration is provable without restating the harness shape. */
 type Provider = { name: string; list: () => Promise<any[]>; get: (candidate: any) => Promise<any> }
 
+/** Apply the row against a fake ctx and return what it registered: the provider, the warnings it routed to the logger, and its `fs/observed` listeners. */
 function harness(config: Record<string, unknown> = {}): { provider: Provider; warnings: string[]; observed: Array<(...args: any[]) => void> } {
+  // Set by the fake registry below when the row registers its provider.
   let provider: Provider | undefined
+  // Messages the row sent through ctx.logger.warn (skipped or invalid corpus entries).
   const warnings: string[] = []
+  // Listeners the row subscribed through ctx.on for the fs/observed invalidation.
   const observed: Array<(...args: any[]) => void> = []
+  // Minimal ctx: the skills registry seam, a logger, and the event bus the row subscribes on.
   const ctx = {
     skills: {
       registerProvider: (create: (control: { invalidate: () => void }) => Provider) => {
@@ -27,14 +35,18 @@ function harness(config: Record<string, unknown> = {}): { provider: Provider; wa
     logger: { warn: (message: string) => { warnings.push(message) } },
     on: (event: string, fn: (...args: any[]) => void) => { if (event === "fs/observed") observed.push(fn) },
   }
+  // The cleanup stays OFF unless a case asks for it, so a provider case can never touch a home.
   apply(ctx as any, { skipLegacyCleanup: true, ...config })
   if (provider === undefined) throw new Error("apply registered no provider")
   return { provider, warnings, observed }
 }
 
+/** Materialize a fixture corpus under the OS temp dir: `files` maps a corpus-relative path to its body, and the returned root is what the row is pointed at. */
 function tempCorpus(files: Record<string, string>): string {
+  // Fresh temp root per call, so no fixture can see another case's files.
   const root = mkdtempSync(join(tmpdir(), "mpd-corpus-"))
   for (const [rel, body] of Object.entries(files)) {
+    // Absolute path of one fixture file to create, parents included.
     const target = join(root, rel)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, body)
@@ -42,10 +54,14 @@ function tempCorpus(files: Record<string, string>): string {
   return root
 }
 
-const skillFile = (frontmatter: string, body = "# Skill\n\nDo the thing.\n") => `---\n${frontmatter}\n---\n\n${body}`
+/** Build a SKILL.md body from a frontmatter block; the default body keeps the cases that only care about frontmatter short. */
+const skillFile = (frontmatter: string, body: string = "# Skill\n\nDo the thing.\n"): string => `---\n${frontmatter}\n---\n\n${body}`
 
+// Sandbox homes created by this file, drained in afterEach so no case leaves a temp home behind (the real ~/.dsh is never touched).
 const homes: string[] = []
+/** Create a throwaway home and register it for cleanup; callers point DSH_HOME at it before applying the row. */
 function sandboxHome(): string {
+  // The temp directory standing in for $DSH_HOME in this case.
   const home = mkdtempSync(join(tmpdir(), "mpd-home-"))
   homes.push(home)
   return home
@@ -57,13 +73,16 @@ afterEach(() => {
 
 describe("bundle skill corpus provider", () => {
   test("serves every shipped skill as a bundled-rank candidate", async () => {
+    // The provider the row registered into the fake registry.
     const { provider } = harness()
     expect(provider.name).toBe("mpd-bundle")
+    // Candidates reported for the real corpus; the assertion is a FLOOR, so adding a skill cannot redden it.
     const candidates = await provider.list()
     // 18 = the shipped corpus AFTER the RTL skill trees were extracted out of
     // this repository (they are no longer served by this bundle) and the
     // cross-agent session-finder skill was removed by the DSH-only cleanup.
     expect(candidates.length).toBeGreaterThanOrEqual(18)
+    // Candidate names, sorted, so the expectations do not depend on readdir order.
     const names = candidates.map((candidate) => candidate.name).sort()
     for (const expected of ["ast-grep", "dsh-qa", "svn-master"]) {
       expect(names).toContain(expected)
@@ -81,10 +100,14 @@ describe("bundle skill corpus provider", () => {
   })
 
   test("get() loads the skill body and keeps the resource base", async () => {
+    // Independent provider for this case: each harness() call wires a fresh registry.
     const { provider } = harness()
+    // The corpus candidates to pick dsh-qa out of.
     const candidates = await provider.list()
+    // The dsh-qa candidate, whose directory resource base get() must preserve.
     const target = candidates.find((candidate) => candidate.name === "dsh-qa")
     expect(target).toBeDefined()
+    // Definition loaded from the locator get() was handed.
     const definition = await provider.get(target)
     expect(definition.name).toBe("dsh-qa")
     expect(definition.source).toBe("bundled")
@@ -93,6 +116,7 @@ describe("bundle skill corpus provider", () => {
   })
 
   test("frontmatter subset: quoted, folded, nested metadata and invocation policy", async () => {
+    // Fixture corpus covering the subset: quoting, folding, nested metadata, both invocation flags, a rejected name, a missing description, a legacy key and a non-markdown file.
     const root = tempCorpus({
       "quoted/SKILL.md": skillFile('name: quoted\ndescription: "a: b, \\"quoted\\" value"\nmetadata:\n  short-description: short one'),
       "folded/SKILL.md": skillFile("name: folded\ndescription: >-\n  first line\n  second line"),
@@ -104,8 +128,11 @@ describe("bundle skill corpus provider", () => {
       "legacy/SKILL.md": skillFile("name: legacy\ndescription: legacy key\ndisableModelInvocation: true"),
       "notes.txt": "ignored\n",
     })
+    // Provider over the fixture corpus, plus the warnings raised for its rejected entries.
     const { provider, warnings } = harness({ skillsDir: root })
+    // Every candidate the fixture corpus yields.
     const candidates = await provider.list()
+    // Candidates keyed by name; the rejected entries must be absent from the keys.
     const byName = new Map(candidates.map((candidate) => [candidate.name, candidate]))
     expect([...byName.keys()].sort()).toEqual(["flat-skill", "folded", "no-model", "quoted", "single"])
     expect(byName.get("quoted")?.description).toBe('a: b, "quoted" value')
@@ -121,15 +148,19 @@ describe("bundle skill corpus provider", () => {
   })
 
   test("registers an fs/observed invalidator scoped to the corpus", () => {
+    // The fs/observed listeners the row registered: exactly one is expected.
     const { observed } = harness()
     expect(observed.length).toBe(1)
+    // Counts invalidation calls, so a read or an out-of-corpus path can be proven NOT to invalidate.
     let invalidated = 0
+    // Second ctx whose invalidator counts instead of doing nothing.
     const ctx = {
       skills: { registerProvider: (create: (control: { invalidate: () => void }) => Provider) => create({ invalidate: () => { invalidated += 1 } }) },
       logger: { warn: () => {} },
       on: (event: string, fn: (...args: any[]) => void) => { if (event === "fs/observed") observed.push(fn) },
     }
     apply(ctx as any, { skipLegacyCleanup: true })
+    // The listener the apply() above registered (the last one observed).
     const listener = observed[observed.length - 1]
     listener({ displayPath: join(realCorpus, "dsh-qa", "SKILL.md") }, undefined, { name: "edit" })
     expect(invalidated).toBe(1)
@@ -141,7 +172,9 @@ describe("bundle skill corpus provider", () => {
 
 describe("legacy home-copy migration", () => {
   test("removes only stamped bundle copies and leaves user content alone", () => {
+    // Sandbox home for this case; DSH_HOME is pointed at it and restored in finally.
     const home = sandboxHome()
+    // Saved DSH_HOME value, restored in finally so the mutation cannot leak into another test.
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = home
     try {
@@ -168,7 +201,9 @@ describe("legacy home-copy migration", () => {
   })
 
   test("never touches an unstamped home (legacy installer copies survive)", () => {
+    // Sandbox home for this case; the row must read it and change nothing here.
     const home = sandboxHome()
+    // Saved DSH_HOME value, restored in finally so the unstamped state cannot leak into another test.
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = home
     try {

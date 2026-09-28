@@ -25,11 +25,25 @@ import { errorMessage as message, isRecord } from "../../mpd-dsh-adapter-plugin/
 
 /** Runtime config consumed lazily from mpdConfig (`extensions.*`). */
 export interface ExtensionConfig {
+  /** Ids force-enabled by `extensions.enable[]`; a `disable[]` match still wins over it (see {@link effectiveEnabled}). */
   enable: string[]
+  /** Ids force-disabled by `extensions.disable[]`, the highest-precedence switch in {@link effectiveEnabled}. */
   disable: string[]
+  /**
+   * MCP bridge policy: whether declared servers may connect at all, plus the two budgets (ms)
+   * used where an item left `connectTimeoutMs`/`toolCallTimeoutMs` at the contract default — an
+   * explicit per-item value wins, so a declared `10000` is indistinguishable from silence
+   * (`resolveTimeouts`, `mcp.ts`).
+   */
   mcp: { enabled: boolean; connectTimeoutMs: number; toolCallTimeoutMs: number }
 }
 
+/**
+ * The defaults a missing or failing `mpdConfig` degrades to (README, "Configuration"):
+ * nothing force-enabled or force-disabled, the MCP bridge on, and the contract's own
+ * 10 s connect / 60 s tool-call budgets read from `MPD_EXT_CONTRACT` rather than restated.
+ * `extensions.*` is PROCESS-level in v1 and is read lazily per use, never per session.
+ */
 export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   enable: [],
   disable: [],
@@ -40,41 +54,72 @@ export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   },
 }
 
+/** A validated `contributes.skills` item (`{ root, rank? }`, EXTENSIONS-FOR-AGENTS §2) with its defaults applied. */
 export interface NormalizedSkillsItem {
+  /** Extension-root-relative directory holding one `<name>/SKILL.md` per skill; the frontmatter `name` is the identity, not the directory. */
   root: string
+  /** Serving rank, lower wins inside a layer (100 project-dsh … 600 bundled); default 300, the `custom` tier. */
   rank: number
 }
 
+/** A validated `contributes.flows` item (`{ dir, rank? }`, EXTENSIONS-FOR-AGENTS §2) with its defaults applied. */
 export interface NormalizedFlowsItem {
+  /** Extension-root-relative directory whose every `*.json` file is one flow document. */
   dir: string
+  /** Serving rank under the same ladder as a skill; lower wins, default 300 (the `custom` tier). */
   rank: number
 }
 
+/** A validated `contributes.mcp` item (`{ serverName, transport, command, args?, env?, cwd?, timeouts? }`) with every optional field defaulted. */
 export interface NormalizedMcpItem {
+  /** Public server name matching `^[A-Za-z0-9_-]{1,32}$`; it prefixes every published tool name (`mcp__<serverName>__<tool>`). */
   serverName: string
+  /** The only transport v1 accepts; `http`/`sse` are refused per item. */
   transport: "stdio"
+  /** Executable spawned at apply — never lazily, so a hanging server is bounded by `connectTimeoutMs`. */
   command: string
+  /** Spawn arguments; `[]` when the item omits `args`. */
   args: string[]
+  /** Extra child environment entries on top of the SDK's safe inherit list; `{}` when the item omits `env`. */
   env: Record<string, string>
+  /** Extension-root-relative working directory of the child process; defaults to `"."`. */
   cwd: string
+  /** Per-tool-call budget in ms; defaults to the contract's 60 s, which the runtime bridge may re-bound per call. */
   toolCallTimeoutMs: number
+  /** Connect budget in ms for the apply-time spawn; defaults to the contract's 10 s. */
   connectTimeoutMs: number
 }
 
+/** A validated `contributes.roles` item (`{ name, description?, readonly?, persona, provider?, model? }`); a partial route never reaches this type. */
 export interface NormalizedRolesItem {
+  /** Display name the roster exposes; a collision with the base roster or another extension refuses the role, not the extension. */
   name: string
+  /** Role description the roster shows; defaults to `""` when the item omits it. */
   description: string
+  /** Read-only flag; `true` makes `mpd_role_spawn` pass the seven-name write deny list as `toolFilter.deny`. Defaults to `false`. */
   readonly: boolean
+  /** Extension-root-relative persona file, resolved against the extension root and read as the role's persona text. */
   persona: string
+  /** Model provider of the optional route; present only together with `model`. */
   provider?: string
+  /** Model id of the optional route; present only together with `provider`. */
   model?: string
 }
 
+/**
+ * A descriptor after {@link validateDescriptor}: only the contract's keys survive, so
+ * `origin`/`plane` — registry metadata, never author input — cannot appear here.
+ */
 export interface NormalizedDescriptor {
+  /** Contract version, always `MPD_EXT_CONTRACT.apiVersion` (1); any other value rejects the whole descriptor. */
   apiVersion: number
+  /** Extension id matching `^[a-z0-9][a-z0-9-]{0,63}$`; every plane is keyed on it and the first claimant wins. */
   id: string
+  /** Author description; `""` when the manifest omits it. */
   description: string
+  /** Descriptor-level liveness default; config `disable[]`/`enable[]` override it (see {@link effectiveEnabled}). */
   enabled: boolean
+  /** The validated contributions, one array per kind; a kind the manifest omits stays empty. */
   contributes: {
     skills: NormalizedSkillsItem[]
     flows: NormalizedFlowsItem[]
@@ -83,10 +128,15 @@ export interface NormalizedDescriptor {
   }
 }
 
+/** One declared MCP server as `mpd_ext_show` reports it: live state, published tools, and a stderr tail after a failure. */
 export interface McpServerRecord {
+  /** Name the manifest declared, which is also the `mcp__<serverName>__<tool>` prefix of every published tool. */
   serverName: string
+  /** Live bridge state; produced as `McpServerState` in `mcp.ts` (`connecting`/`connected`/`unavailable`/`failed`/`disabled`). */
   state: string
+  /** Public tool names this server currently publishes; empty until it connects. */
   tools: string[]
+  /** Bounded tail of the child's stderr, present only after the server failed. */
   stderrTail?: string
 }
 
@@ -96,6 +146,7 @@ export interface RoleCandidate {
   index: number
   /** `contributes.roles[<index>]` — the item label every surface reports. */
   item: string
+  /** The declared role name, compared by the roster through the same collapse as {@link roleNameKey}. */
   name: string
   /** Absolute persona path (the extension root is applied here). */
   persona: string
@@ -109,17 +160,28 @@ export interface RoleCandidate {
   reason?: string
 }
 
+/**
+ * One loaded extension: the registry metadata around it, the validated descriptor,
+ * and every surface the tools report — errors, pending kinds, resolved roots, live names.
+ */
 export interface ExtensionEntry {
+  /** Id this entry is keyed on; two planes declaring it shadow, and the first claimant wins. */
   id: string
+  /** How the descriptor arrived: `plugin` (a code-plane `register()`) or `directory` (an `mpd-ext.json`). */
   origin: MpdExtensionOrigin
+  /** Lifecycle plane: `project` is re-read per call, `user`/`bundle` are discovered once at apply. */
   plane: MpdExtensionPlane
+  /** Absolute extension root every asset reference resolved against; `""` for a registration without assets. */
   root: string
+  /** Where the descriptor came from — the manifest path, or `"register()"`. */
   source: string
   /** Process-unique skill-provider name this extension's candidates carry. */
   providerName: string
+  /** The validated descriptor this entry was built from. */
   descriptor: NormalizedDescriptor
   /** Descriptor-level default; config can override it (see effectiveEnabled). */
   enabled: boolean
+  /** Per-item problems, one line each — including `unknown key` and every refusal this plane re-derives on `view`. */
   errors: MpdExtLoadError[]
   /**
    * Declared contributions that are NOT live right now, each with the one reason
@@ -130,40 +192,75 @@ export interface ExtensionEntry {
    * "pending" for a live contribution was a measured false report (t14/F3).
    */
   pending: MpdExtLoadError[]
+  /**
+   * The asset paths this entry actually resolved, per kind. `roles` holds every locally
+   * usable persona: this field is about ASSETS, not liveness, so it is not re-derived per view.
+   */
   resolvedRoots: { root: string; skills: string[]; flows: string[]; roles: string[] }
+  /** How many items of each kind are LIVE — an mcp or roles item a plane refused is not counted. */
   contributions: { skills: number; flows: number; mcp: number; roles: number }
+  /** Names of the loaded `SKILL.md` documents, in load order — flow ids live in `flows`, and the collision pass reads the two `*Entries` arrays instead. */
   skills: string[]
+  /** Ids of the flow documents this entry loaded; a flow is served as a skill candidate too. */
   flows: string[]
   /** Names the ROSTER currently exposes (never a refused one). Re-derived by `view`. */
   roles: string[]
   /** Every declared role with this plane's local decision (input to `annotateRoleSurfaces`). */
   roleCandidates: RoleCandidate[]
+  /** Loaded skill documents — the `contributes.skills` half of the skill-name collision input. */
   skillEntries: SkillDocumentEntry[]
+  /** Loaded flow documents as skill candidates — the `contributes.flows` half of it. */
   flowEntries: SkillDocumentEntry[]
+  /** The parsed flows themselves, read by `mpd_flow_list` / `mpd_flow_show`. */
   flowDocs: MpdFlow[]
+  /** Live server records, filled by the runtime bridge as each declared server connects. */
   mcp: McpServerRecord[]
 }
 
+/**
+ * An extension refused WHOLESALE (EXTENSIONS-FOR-AGENTS §8): nothing about the
+ * descriptor was interpreted, so it has no `ExtensionEntry` and contributes nothing.
+ */
 export interface RejectedExtension {
+  /** Declared id when it is a string, otherwise the discovery fallback (the directory name). */
   id: string
+  /** Plane the manifest was found in, kept so the report can name where it came from. */
   plane: MpdExtensionPlane
+  /** `directory` for a manifest, `plugin` for a code-plane registration. */
   origin: MpdExtensionOrigin
+  /** Absolute extension root, recorded even though no asset was read from it. */
   root: string
+  /** Manifest path (or `"register()"`) the refusal is attributed to. */
   source: string
+  /** The fatal lines that caused the refusal: bad `apiVersion`, bad `id`, unreadable or invalid JSON. */
   errors: MpdExtLoadError[]
 }
 
+/**
+ * Two extensions declared the SAME id: the first claimant is kept and the loser is
+ * recorded here, never dropped silently (EXTENSIONS-FOR-AGENTS §4, "Equal ids
+ * resolve project → user → bundle (first wins)").
+ */
 export interface ShadowRecord {
+  /** The contested id; both halves below describe a claimant of it. */
   id: string
+  /** The claimant that won — plane and root, so a report can say what is actually live. */
   kept: { plane: MpdExtensionPlane; root: string }
+  /** The claimant that lost the id and is therefore not registered at all. */
   shadowed: { plane: MpdExtensionPlane; root: string }
 }
 
+/** The outcome of scanning ONE plane's directory: what loaded, what was refused, and whether the scan finished. */
 export interface DiscoveryResult {
+  /** The plane this directory belongs to (project / user / bundle). */
   plane: MpdExtensionPlane
+  /** The directory scanned; `""` when the plane has no configured root. */
   dir: string
+  /** Extensions that loaded, in directory order. */
   entries: ExtensionEntry[]
+  /** Manifests refused wholesale while scanning this plane. */
   rejected: RejectedExtension[]
+  /** Scan-complete flag: false only while discovery is still in flight, so an empty list is never read as an unread plane. */
   done: boolean
 }
 
@@ -183,7 +280,14 @@ export function isRelativeAssetPath(value: unknown): value is string {
   return !value.split(/[\\/]+/).includes("..")
 }
 
+/**
+ * RULE 0's implementation: every key outside the frozen `allowed` list is refused per
+ * item — `unknown key "<k>"` reported on `<item>.<k>` — instead of being silently kept.
+ * This repository has measured schemastery accepting a renamed key and quietly losing
+ * the capability it configured; this validator must not repeat that (README, "The contract").
+ */
 function unknownKeyErrors(value: Record<string, unknown>, allowed: readonly string[], item: string): MpdExtLoadError[] {
+  /** One line per unrecognized key, labelled with the item path that key sits on. */
   const errors: MpdExtLoadError[] = []
   for (const key of Object.keys(value)) {
     if (!allowed.includes(key)) errors.push({ item: `${item}.${key}`, reason: `unknown key "${key}"` })
@@ -203,7 +307,7 @@ function unknownKeyErrors(value: Record<string, unknown>, allowed: readonly stri
 //
 // `roleNameKey` / `extensionRoleId` mirror the roster's exported functions rather
 // than importing them: importing that module would pull the cordis adapter into
-// this pure registry, which the dev CLI (`scripts/mpd-ext.mjs validate`) imports
+// this pure registry, which the dev CLI (`scripts/mpd-ext.ts validate`) imports
 // with no host at all. Their behavioural parity is asserted against the roster's
 // own exports in test/core.test.ts — never by this comment.
 
@@ -220,6 +324,7 @@ export function roleNameKey(name: string): string {
 
 /** Namespaced stable id of an extension-contributed role (`ext-<extension>-<slug>`). */
 export function extensionRoleId(extensionId: string, name: string): string {
+  /** The name collapsed to a dash-joined slug with no leading or trailing dash; empty for a punctuation-only name. */
   const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
   return "ext-" + extensionId + "-" + (slug || "role")
 }
@@ -278,15 +383,21 @@ function readRolePersona(path: string): string {
  *   "descriptor `enabled` only" (the pre-fix behaviour, kept for direct callers).
  */
 export function annotateRoleSurfaces(entries: ExtensionEntry[], isEnabled?: (entry: ExtensionEntry) => boolean): void {
+  /** Collapsed name key -> the claimant that owns it; pre-seeded with the base roster, which always wins. */
   const owner = new Map<string, string>()
   for (const role of ROLES) owner.set(roleNameKey(role.name), "the base roster")
   for (const entry of entries) {
+    /** The `refused:` notes this call derives for this entry; they replace its previous ones. */
     const notes: MpdExtLoadError[] = []
+    /** Names this entry owns once the pass is done, in declaration order — the live role surface. */
     const usable: string[] = []
+    /** Whether the entry exposes anything: the caller's effective predicate, or descriptor `enabled` when absent. */
     const live = isEnabled === undefined ? entry.enabled !== false : isEnabled(entry)
     if (live) {
       for (const candidate of entry.roleCandidates) {
+        /** The collapsed name key the roster would compare this candidate under. */
         const key = roleNameKey(candidate.name)
+        /** Who already claimed that key, or undefined while it is still free. */
         const takenBy = owner.get(key)
         if (takenBy !== undefined) {
           notes.push({
@@ -320,6 +431,11 @@ export function annotateRoleSurfaces(entries: ExtensionEntry[], isEnabled?: (ent
   }
 }
 
+/**
+ * The timeout predicate: a present `toolCallTimeoutMs` / `connectTimeoutMs` must be a
+ * finite number strictly greater than zero, so `0`, `NaN` and the string `"10000"` are
+ * refused per item instead of reaching the bridge as a nonsensical budget.
+ */
 function positiveFinite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0
 }
@@ -369,19 +485,28 @@ function claimItem(entry: SkillDocumentEntry): string {
  *   no longer steals a name from one that really serves it.
  */
 export function annotateSkillSurfaces(entries: ExtensionEntry[], isEnabled?: (entry: ExtensionEntry) => boolean): void {
+  /** Whether an entry is live: the caller's effective predicate when given, else descriptor `enabled` alone. */
   const live = (entry: ExtensionEntry): boolean => (isEnabled === undefined ? entry.enabled !== false : isEnabled(entry))
+  /**
+   * Skill name -> the lowest-ranked live claimant of it; that is the candidate the harness serves.
+   * On a rank TIE the first claimant in view order is kept, which is as close as this plane can get
+   * to the harness's own "registration order, then local order" tie-break (it cannot see either).
+   */
   const winner = new Map<string, { rank: number; entry: ExtensionEntry }>()
   for (const entry of entries) {
     if (!live(entry)) continue
     for (const claim of skillClaims(entry)) {
+      /** The claimant recorded for this name so far, if any. */
       const current = winner.get(claim.document.name)
       if (current === undefined || claim.rank < current.rank) winner.set(claim.document.name, { rank: claim.rank, entry })
     }
   }
   for (const entry of entries) {
+    /** The `skill surface:` notes this call derives for this entry, replacing its previous ones. */
     const notes: MpdExtLoadError[] = []
     if (live(entry)) {
       for (const claim of skillClaims(entry)) {
+        /** The winner recorded for this name — the extension whose candidate the harness keeps. */
         const holder = winner.get(claim.document.name)
         if (holder === undefined || holder.entry.id === entry.id) continue
         notes.push({
@@ -410,14 +535,25 @@ export function annotateSkillSurfaces(entries: ExtensionEntry[], isEnabled?: (en
 
 // ── descriptor validation ───────────────────────────────────────────────────
 
+/** What {@link validateDescriptor} made of one input: the descriptor, its per-item errors, and whether it is fatal. */
 export interface DescriptorValidation {
+  /** Present only when no fatal error was found — i.e. absent exactly when `rejected` is true. */
   descriptor?: NormalizedDescriptor
+  /** Per-item problems, including the fatal ones when the descriptor was rejected wholesale. */
   errors: MpdExtLoadError[]
   /** True when the descriptor cannot be interpreted at all (no id / bad apiVersion). */
   rejected: boolean
 }
 
+/**
+ * Validate one `contributes.skills` item (`{ root, rank? }`, EXTENSIONS-FOR-AGENTS §2):
+ * an unknown key, a root that is not a non-empty extension-root-relative directory, or a
+ * non-finite `rank` refuses the ITEM while the rest of the descriptor still loads.
+ * `rank` defaults to `MPD_EXT_CONTRACT.defaultRank` (300, the `custom` tier) and the
+ * success path returns the normalized item; any error at all returns no value.
+ */
 function validateSkillsItem(raw: unknown, item: string): { value?: NormalizedSkillsItem; errors: MpdExtLoadError[] } {
+  /** One line per refused aspect, each labelled with its own `<item>.<key>` path. */
   const errors: MpdExtLoadError[] = []
   if (!isRecord(raw)) return { errors: [{ item, reason: "skills item must be an object { root, rank? }" }] }
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.skillsItemKeys, item))
@@ -434,7 +570,13 @@ function validateSkillsItem(raw: unknown, item: string): { value?: NormalizedSki
   }
 }
 
+/**
+ * Validate one `contributes.flows` item (`{ dir, rank? }`, EXTENSIONS-FOR-AGENTS §2): the
+ * same shape rules as a skills item, with `dir` naming the extension-root-relative
+ * directory read for `*.json` flow documents. Refuses the ITEM only — never the extension.
+ */
 function validateFlowsItem(raw: unknown, item: string): { value?: NormalizedFlowsItem; errors: MpdExtLoadError[] } {
+  /** One line per refused aspect, each labelled with its own `<item>.<key>` path. */
   const errors: MpdExtLoadError[] = []
   if (!isRecord(raw)) return { errors: [{ item, reason: "flows item must be an object { dir, rank? }" }] }
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.flowsItemKeys, item))
@@ -451,7 +593,17 @@ function validateFlowsItem(raw: unknown, item: string): { value?: NormalizedFlow
   }
 }
 
+/**
+ * Validate one `contributes.mcp` item (`{ serverName, transport, command, args?, env?,
+ * cwd?, connectTimeoutMs?, toolCallTimeoutMs? }`, EXTENSIONS-FOR-AGENTS §2). Refused per
+ * item: an unknown key; a `serverName` outside `^[A-Za-z0-9_-]{1,32}$`; a `transport`
+ * that is not exactly `"stdio"` (http/sse are v1 non-goals); an empty `command`; `args`
+ * or `env` of the wrong shape; an absolute or `..`-escaping `cwd`; a timeout that is not
+ * positive and finite. The success path applies every default (`args: []`, `env: {}`,
+ * `cwd: "."`, the contract's 10 s connect / 60 s tool-call budgets).
+ */
 function validateMcpItem(raw: unknown, item: string): { value?: NormalizedMcpItem; errors: MpdExtLoadError[] } {
+  /** One line per refused aspect, each labelled with its own `<item>.<key>` path. */
   const errors: MpdExtLoadError[] = []
   if (!isRecord(raw)) return { errors: [{ item, reason: "mcp item must be an object" }] }
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.mcpItemKeys, item))
@@ -488,7 +640,17 @@ function validateMcpItem(raw: unknown, item: string): { value?: NormalizedMcpIte
   }
 }
 
+/**
+ * Validate one `contributes.roles` item (`{ name, description?, readonly?, persona,
+ * provider?, model? }`, EXTENSIONS-FOR-AGENTS §2). Refused per item: an unknown key; an
+ * empty `name`; a non-string `description`; a non-boolean `readonly`; a `persona` that is
+ * not an extension-root-relative file; a PARTIAL `provider`/`model` route. The success
+ * path defaults `description` to `""` and `readonly` to `false`, and carries the route
+ * only when both halves are strings. Name/persona collisions are NOT decided here — see
+ * `buildExtension` and {@link annotateRoleSurfaces}, which have the roster's rules.
+ */
 function validateRolesItem(raw: unknown, item: string): { value?: NormalizedRolesItem; errors: MpdExtLoadError[] } {
+  /** One line per refused aspect, each labelled with its own `<item>.<key>` path. */
   const errors: MpdExtLoadError[] = []
   if (!isRecord(raw)) return { errors: [{ item, reason: "roles item must be an object" }] }
   errors.push(...unknownKeyErrors(raw, MPD_EXT_CONTRACT.rolesItemKeys, item))
@@ -524,12 +686,15 @@ function validateRolesItem(raw: unknown, item: string): { value?: NormalizedRole
  */
 export function validateDescriptor(input: unknown): DescriptorValidation {
   if (!isRecord(input)) return { errors: [{ item: "descriptor", reason: "descriptor must be a JSON object" }], rejected: true }
+  /** Everything refused so far; a per-item line does NOT stop the remaining items from being validated. */
   const errors: MpdExtLoadError[] = []
   errors.push(...unknownKeyErrors(input, MPD_EXT_CONTRACT.descriptorKeys, "descriptor"))
+  /** The wholesale refusals (`apiVersion`, `id`); a non-empty list means `rejected: true`. */
   const fatal: MpdExtLoadError[] = []
   if (input.apiVersion !== MPD_EXT_CONTRACT.apiVersion) {
     fatal.push({ item: "apiVersion", reason: `apiVersion must equal ${MPD_EXT_CONTRACT.apiVersion} (got ${JSON.stringify(input.apiVersion ?? null)})` })
   }
+  /** The id as declared, or `""` so the grammar test refuses a missing one with the documented line. */
   const id = typeof input.id === "string" ? input.id : ""
   if (!new RegExp(MPD_EXT_CONTRACT.idPattern).test(id)) {
     fatal.push({ item: "id", reason: `id is required and must match ${MPD_EXT_CONTRACT.idPattern}` })
@@ -543,12 +708,14 @@ export function validateDescriptor(input: unknown): DescriptorValidation {
   if (input.enabled !== undefined && typeof input.enabled !== "boolean") {
     errors.push({ item: "enabled", reason: "enabled must be a boolean when present" })
   }
+  /** Contributions collected per kind: only items that validated are appended, in declaration order. */
   const contributes: NormalizedDescriptor["contributes"] = { skills: [], flows: [], mcp: [], roles: [] }
   if (input.contributes !== undefined) {
     if (!isRecord(input.contributes)) {
       errors.push({ item: "contributes", reason: "contributes must be an object when present" })
     } else {
       errors.push(...unknownKeyErrors(input.contributes, MPD_EXT_CONTRACT.contributesKeys, "contributes"))
+      /** The four kind validators in contract order; each one reports its own item path. */
       const kinds: Array<[keyof NormalizedDescriptor["contributes"], (raw: unknown, item: string) => { value?: unknown; errors: MpdExtLoadError[] }]> = [
         ["skills", validateSkillsItem],
         ["flows", validateFlowsItem],
@@ -556,6 +723,7 @@ export function validateDescriptor(input: unknown): DescriptorValidation {
         ["roles", validateRolesItem],
       ]
       for (const [kind, validateItem] of kinds) {
+        /** The declared array for this kind; `undefined` means the manifest omits the kind entirely. */
         const raw = input.contributes[kind]
         if (raw === undefined) continue
         if (!Array.isArray(raw)) {
@@ -563,6 +731,7 @@ export function validateDescriptor(input: unknown): DescriptorValidation {
           continue
         }
         raw.forEach((item, index) => {
+          /** This item's verdict: a normalized value and/or the lines that refused it. */
           const result = validateItem(item, `contributes.${kind}[${index}]`)
           errors.push(...result.errors)
           if (result.value !== undefined) (contributes[kind] as unknown[]).push(result.value)
@@ -585,9 +754,13 @@ export function validateDescriptor(input: unknown): DescriptorValidation {
 
 // ── per-extension loading ───────────────────────────────────────────────────
 
+/** Everything {@link buildExtension} needs: the raw descriptor plus the registry metadata wrapped around it. */
 export interface BuildExtensionOptions {
+  /** The parsed manifest (or the object passed to `register()`); validated, never trusted. */
   input: unknown
+  /** Plane the caller found this extension in; `project` is what triggers the host-kind refusals. */
   plane: MpdExtensionPlane
+  /** `plugin` for a code-plane registration, `directory` for a manifest on disk. */
   origin: MpdExtensionOrigin
   /** Absolute extension root; "" for a code-plane registration without assets. */
   root: string
@@ -599,17 +772,30 @@ export interface BuildExtensionOptions {
   providerName: string
 }
 
+/** The verdict on one descriptor: a loaded `entry`, or the `rejected` record that replaced it — never both. */
 export interface BuildExtensionResult {
+  /** The loaded extension, present when descriptor validation and asset resolution both succeeded. */
   entry?: ExtensionEntry
+  /** The wholesale refusal, present instead of `entry` when the descriptor was fatal or unreadable. */
   rejected?: RejectedExtension
 }
 
+/**
+ * Read ONE skills root: every immediate subdirectory holding a `SKILL.md` becomes a
+ * candidate (a subdirectory without one is skipped silently, EXTENSIONS-FOR-AGENTS §5),
+ * with `document.resourceBase` and `locator` pointing back at that directory so the
+ * harness can resolve a skill's relative resources. An unreadable root or an unreadable
+ * `SKILL.md` is a per-item error, never a throw — one bad skill does not lose the root.
+ */
 function enumerateSkillEntries(
   directory: string,
   options: { source: string; rank: number; itemLabel: string },
 ): { entries: SkillDocumentEntry[]; errors: MpdExtLoadError[] } {
+  /** Candidates resolved so far, in sorted directory order. */
   const entries: SkillDocumentEntry[] = []
+  /** One line per unreadable root or refused document, never fatal to the extension. */
   const errors: MpdExtLoadError[] = []
+  /** Immediate subdirectory names, sorted so two hosts read the same root in the same order. */
   let dirs: string[]
   try {
     dirs = readdirSync(directory, { withFileTypes: true })
@@ -621,9 +807,12 @@ function enumerateSkillEntries(
     return { entries, errors }
   }
   for (const name of dirs) {
+    /** `<skills root>/<dir>/SKILL.md` — the only file that makes a directory a skill. */
     const skillPath = join(directory, name, "SKILL.md")
     if (!existsSync(skillPath)) continue
+    /** Item path this document is reported under (`contributes.skills[0]/<dir>`). */
     const item = `${options.itemLabel}/${name}`
+    /** The frontmatter verdict for that file: a `document`, or the line that refused it. */
     const parsed = readSkillDocument(skillPath)
     if (parsed.document === undefined) {
       errors.push({ item, reason: parsed.error ?? "unreadable SKILL.md" })
@@ -648,6 +837,7 @@ function enumerateSkillEntries(
  * under its root, and record what could not be loaded. Never throws.
  */
 export function buildExtension(options: BuildExtensionOptions): BuildExtensionResult {
+  /** The validator's verdict on the raw descriptor; a fatal one short-circuits to a rejected record. */
   const validation = validateDescriptor(options.input)
   if (validation.rejected || validation.descriptor === undefined) {
     return {
@@ -661,15 +851,31 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
       },
     }
   }
+  /** The accepted descriptor; every asset below is resolved from it. */
   const descriptor = validation.descriptor
+  /** Per-item lines, seeded with the validator's own non-fatal ones and appended to as assets fail. */
   const errors = [...validation.errors]
+  /** Declared-but-not-live lines; the MCP placeholders the runtime bridge later replaces. */
   const pending: MpdExtLoadError[] = []
+  /** Skill candidates resolved from the `contributes.skills` roots. */
   const skillEntries: SkillDocumentEntry[] = []
+  /** Flow documents as skill candidates, resolved from the `contributes.flows` directories. */
   const flowEntries: SkillDocumentEntry[] = []
+  /** The parsed flows themselves, served by `mpd_flow_list` / `mpd_flow_show`. */
   const flowDocs: MpdFlow[] = []
+  /** Every asset path that resolved, per kind; the `roles` half is appended to at the end. */
   const resolvedRoots = { root: options.root, skills: [] as string[], flows: [] as string[] }
+  /** A per-call (project) manifest may contribute skills and flows only (EXTENSIONS-FOR-AGENTS §4). */
   const projectOnly = options.plane === "project"
 
+  /**
+   * Refuse one host-wide kind on a PROJECT-plane manifest: record
+   * `contributes.<kind>[<index>]` with the contract's exact reason — "project-level
+   * extensions may contribute skills and flows only: tool and provider registration is
+   * process-global and cannot be scoped to a session" — and return true so the caller
+   * skips the item. Always false for a user/bundle-plane entry. The reason lives in
+   * `MPD_EXT_CONTRACT.projectRejectionReason` and is refused per item, never wholesale.
+   */
   const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {
     if (!projectOnly) return false
     errors.push({
@@ -683,9 +889,12 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
     errors.push({ item: "contributes.skills", reason: "an extension root is required to resolve skills assets (pass { root } to register())" })
   } else {
     descriptor.contributes.skills.forEach((item, index) => {
+      /** Descriptor path every line about this item is labelled with. */
       const label = `contributes.skills[${index}]`
+      /** `<extension root>/<item.root>`, recorded before the read so an unreadable root still counts as resolved. */
       const directory = resolve(options.root, item.root)
       resolvedRoots.skills.push(directory)
+      /** This root's candidates and its own error lines. */
       const loaded = enumerateSkillEntries(directory, { source: options.source, rank: item.rank, itemLabel: label })
       skillEntries.push(...loaded.entries)
       errors.push(...loaded.errors)
@@ -696,9 +905,12 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
     errors.push({ item: "contributes.flows", reason: "an extension root is required to resolve flows assets (pass { root } to register())" })
   } else {
     descriptor.contributes.flows.forEach((item, index) => {
+      /** Descriptor path every line about this item is labelled with. */
       const label = `contributes.flows[${index}]`
+      /** `<extension root>/<item.dir>`, recorded before the read so an unreadable directory still counts as resolved. */
       const directory = resolve(options.root, item.dir)
       resolvedRoots.flows.push(directory)
+      /** This directory's flows, candidates and its own error lines. */
       const loaded = loadFlows(directory, {
         rank: item.rank,
         source: options.source,
@@ -711,8 +923,10 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
     })
   }
 
+  /** Every declared role with this plane's LOCAL decision; the whole-view pass re-reads it on each `view`. */
   const roleCandidates: RoleCandidate[] = []
   descriptor.contributes.roles.forEach((item, index) => {
+    /** Descriptor path of this role item (`contributes.roles[<index>]`). */
     const label = `contributes.roles[${index}]`
     // The path the ROSTER reports too: with no root it resolves the declared
     // relative reference and cannot read it.
@@ -742,6 +956,7 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
       refuse(roleNameCollisionReason(descriptor.id, item.name, label, "the base roster"))
       return
     }
+    /** Namespaced stable id the roster would expose this role under (`ext-<extension-id>-<slug>`). */
     const id = extensionRoleId(descriptor.id, item.name)
     if (ROLE_BY_ID[id] !== undefined) {
       refuse(roleIdCollisionReason(id))
@@ -778,7 +993,9 @@ export function buildExtension(options: BuildExtensionOptions): BuildExtensionRe
   // roles items are rejected above, so they expose nothing (the descriptor itself
   // stays visible in mpd_ext_show, with the per-item reasons).
   const mcpCount = projectOnly ? 0 : descriptor.contributes.mcp.length
+  /** Roles this plane can admit ALONE: base-roster name/id collisions and unreadable personas already removed. */
   const usableRoles = roleCandidates.filter((candidate) => candidate.usable)
+  /** Live role names, in declaration order; `view()` replaces this with the roster's own whole-view answer. */
   const roles = usableRoles.map((candidate) => candidate.name)
   // `resolvedRoots` is about ASSETS (which references resolved), not about liveness:
   // it keeps every locally usable persona, while `roles` is re-derived per view by
@@ -825,16 +1042,28 @@ export function effectiveEnabled(entry: ExtensionEntry, config: ExtensionConfig)
 
 // ── registry ────────────────────────────────────────────────────────────────
 
+/**
+ * The process-wide registry: the apply-time entries keyed by id (first wins), the shadow
+ * records and wholesale refusals they produced, and {@link MpdExtensionRegistry.view},
+ * which merges the per-call project plane in FRONT of them and re-derives both
+ * cross-extension surfaces (role names, skill names) on every call.
+ */
 export class MpdExtensionRegistry {
+  /** Registered entries in registration order — the order `view` iterates them. */
   private entries: ExtensionEntry[] = []
+  /** Id -> entry; the ONE place the first-wins rule is decided. */
   private byId = new Map<string, ExtensionEntry>()
+  /** Every id collision seen so far, reported by `mpd_ext_list` and never fatal. */
   private shadowRecords: ShadowRecord[] = []
+  /** Extensions refused wholesale, reported alongside the loaded ones. */
   private rejectedRecords: RejectedExtension[] = []
 
   /** Register one built entry; first id wins and the shadowed duplicate is recorded. */
   add(entry: ExtensionEntry): { ok: boolean; shadowed?: ShadowRecord } {
+    /** The entry already holding this id, if any — its presence makes this call a shadowing. */
     const kept = this.byId.get(entry.id)
     if (kept !== undefined) {
+      /** The collision, phrased so a report can name both claimants and their planes. */
       const record: ShadowRecord = {
         id: entry.id,
         kept: { plane: kept.plane, root: kept.root },
@@ -848,10 +1077,17 @@ export class MpdExtensionRegistry {
     return { ok: true }
   }
 
+  /** Record an extension refused wholesale, keeping it out of the id map entirely. */
   addRejected(record: RejectedExtension): void {
     this.rejectedRecords.push(record)
   }
 
+  /**
+   * Register the outcome of one {@link buildExtension} call: a loaded entry is added
+   * (first id wins) and returned; a rejection is recorded and `undefined` returned. A
+   * result carrying NEITHER is recorded as a fallback rejection under `fallback.fallbackId`,
+   * so no attempt can disappear silently.
+   */
   apply(result: BuildExtensionResult, fallback: { plane: MpdExtensionPlane; origin: MpdExtensionOrigin; root: string; source: string; fallbackId: string }): ExtensionEntry | undefined {
     if (result.entry !== undefined) {
       this.add(result.entry)
@@ -862,18 +1098,22 @@ export class MpdExtensionRegistry {
     return undefined
   }
 
+  /** The apply-time entry for an id (the project plane is merged only by `view`), or undefined when nothing claims it. */
   get(id: string): ExtensionEntry | undefined {
     return this.byId.get(id)
   }
 
+  /** A COPY of every apply-time entry, in registration order. */
   all(): ExtensionEntry[] {
     return [...this.entries]
   }
 
+  /** A COPY of every id collision where the later claimant was not registered. */
   shadowed(): ShadowRecord[] {
     return [...this.shadowRecords]
   }
 
+  /** A COPY of every wholesale refusal, for the tools' report. */
   rejected(): RejectedExtension[] {
     return [...this.rejectedRecords]
   }
@@ -893,10 +1133,13 @@ export class MpdExtensionRegistry {
     shadowed: ShadowRecord[]
     rejected: RejectedExtension[]
   } {
+    /** The merged set: project entries first (they win), then apply-time entries not already seen. */
     const seen = new Map<string, ExtensionEntry>()
     for (const entry of project.entries) seen.set(entry.id, entry)
+    /** The apply-time collisions plus the ones this project plane causes. */
     const shadowed = [...this.shadowRecords]
     for (const entry of this.entries) {
+      /** The project-plane entry holding this id, when the project plane shadows this one. */
       const kept = seen.get(entry.id)
       if (kept !== undefined) {
         shadowed.push({ id: entry.id, kept: { plane: kept.plane, root: kept.root }, shadowed: { plane: entry.plane, root: entry.root } })

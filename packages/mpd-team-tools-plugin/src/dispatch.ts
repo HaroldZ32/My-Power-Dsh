@@ -18,26 +18,39 @@
 
 /** One shared task, as the board reports it. */
 export interface DispatchTask {
+  /** Board task id; the ledger is keyed by exactly this value. */
   id: string
+  /** The task's one-line title, echoed into the dispatch message and every skip reason. */
   subject: string
+  /** Official board status; `completed` is the only value this pass reads as done. */
   status: string
+  /** Whether the board considers the task dispatchable; `false` or absent skips it, it never refuses the pass. */
   ready: boolean
+  /** Ids of the tasks still blocking this one, listed in the skip reason. */
   blockedBy?: readonly string[]
+  /** Display name the board credits, when it credits one — informational, never the pairing key. */
   ownerName?: string
 }
 
 /** One team member, as the roster reports it. */
 export interface DispatchMember {
+  /** The member's session id, which is what a pairing actually records. */
   id: string
+  /** The member's display name, carried into the pairing so a reader recognises it. */
   name: string
+  /** Roster status; only `inactive` makes a member a dispatch candidate. */
   status: string
 }
 
 /** One recorded pairing: which member is working which task, since when. */
 export interface DispatchAssignment {
+  /** The dispatched task's id — also the ledger key that makes it claimed. */
   taskId: string
+  /** Session id of the member that owns the task, which is what makes that member busy. */
   memberId: string
+  /** The owning member's display name, so a later skip reason can name it. */
   memberName: string
+  /** ISO instant the pairing was recorded; for ordering and diagnostics, never a timeout. */
   assignedAt: string
 }
 
@@ -46,6 +59,7 @@ export type DispatchLedger = Record<string, DispatchAssignment>
 
 /** What one pass decided, and why it decided nothing for the rest. */
 export interface DispatchPlan {
+  /** The pairings this pass decided, in board order. */
   pairs: Array<{ taskId: string; subject: string; memberId: string; memberName: string }>
   /** One line per task that was NOT paired, naming the task and the reason. */
   skipped: Array<{ taskId: string; subject: string; reason: string }>
@@ -83,15 +97,21 @@ export function planDispatch(input: {
   if (input.hold !== undefined && input.hold !== "") {
     return { pairs: [], skipped: [], halted: input.hold }
   }
+  /** Member ids already holding a task, so one pass never double-books a member. */
   const busy = new Set(
     Object.values(input.ledger)
       .filter((entry) => entry.taskId !== "" && entry.memberId !== "")
       .map((entry) => entry.memberId),
   )
+  /** Task ids the ledger already records, so a second pass cannot re-dispatch a task. */
   const claimed = new Set(Object.keys(input.ledger))
+  /** Roster members that are idle and unbooked — the pool this pass draws from. */
   const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id))
+  /** The decision being built; every considered task lands in one of its two lists. */
   const plan: DispatchPlan = { pairs: [], skipped: [] }
+  /** The still-unpaired candidates, shrinking as the pass consumes them. */
   let available = [...candidates]
+  /** Effective per-pass pair limit; absent or non-positive means unlimited. */
   const cap = input.limit === undefined || input.limit <= 0 ? Number.POSITIVE_INFINITY : input.limit
 
   for (const task of input.tasks) {
@@ -116,6 +136,7 @@ export function planDispatch(input: {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" })
       continue
     }
+    /** The next free candidate, taken in roster order so a pass is deterministic. */
     const member = available[0]
     available = available.slice(1)
     plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: member.id, memberName: member.name })
@@ -138,6 +159,7 @@ export function assign(ledger: DispatchLedger, pair: { taskId: string; memberId:
  */
 export function release(ledger: DispatchLedger, taskId: string): { ledger: DispatchLedger; released: boolean } {
   if (ledger[taskId] === undefined) return { ledger, released: false }
+  /** A copy, so releasing never mutates the caller's own ledger. */
   const next = { ...ledger }
   delete next[taskId]
   return { ledger: next, released: true }
@@ -153,10 +175,14 @@ export function release(ledger: DispatchLedger, taskId: string): { ledger: Dispa
  * @returns the pruned ledger and the ids it forgot.
  */
 export function reconcile(ledger: DispatchLedger, tasks: readonly DispatchTask[]): { ledger: DispatchLedger; forgotten: string[] } {
+  /** The board indexed by task id, so the prune costs one lookup per ledger entry. */
   const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** The pruned ledger; only live, non-terminal tasks survive. */
   const next: DispatchLedger = {}
+  /** Task ids dropped from the ledger, reported so a caller can log the loss. */
   const forgotten: string[] = []
   for (const [taskId, entry] of Object.entries(ledger)) {
+    /** The board's current record for this entry; absent means the task no longer exists. */
     const task = byId.get(taskId)
     if (task === undefined || task.status === "completed") {
       forgotten.push(taskId)

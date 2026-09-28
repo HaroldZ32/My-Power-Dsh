@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="my-power-dsh">
+  <!-- Bundle icon: a rounded tile carrying the mpd monogram and a power glyph. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b6cff"/>
+      <stop offset="1" stop-color="#00c2a8"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#tile)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M34 88V44l16 22 16-22v44"/>
+    <path d="M86 44v20a14 14 0 0 0 14 14"/>
+    <path d="M86 88V66"/>
+  </g>
+  <circle cx="86" cy="56" r="5" fill="#ffffff"/>
+</svg>

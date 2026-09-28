@@ -55,7 +55,7 @@ Both intent paths ALSO read **`references/full-workflow.md`** for the shared mec
 As soon as `<slug>` and intent are known, before recording draft state, RUN:
 
 ```
-node "<skill-root>/scripts/scaffold-plan.mjs" <slug> [--clear|--unclear] --draft-only [--review-required]
+node "<skill-root>/scripts/scaffold-plan.ts" <slug> [--clear|--unclear] --draft-only [--review-required]
 ```
 
 (Replace `<skill-root>` with this skill's own directory; `bun` is accepted.) This creates only `.mpd/drafts/<slug>.md`, the compaction-safe resume point; it does not create a plan before approval. Include `--review-required` when an explicit modifier requires review or the classified route is non-Trivial UNCLEAR, so the first durable write contains the complete pending review request. After approval, rerun without `--draft-only` to create `.mpd/plans/<slug>.md`, then **APPEND** task batches into `## Todos` - never rewrite script-emitted headers.

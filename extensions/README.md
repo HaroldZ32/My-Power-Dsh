@@ -33,7 +33,7 @@ silent.
 ## The shipped example
 
 `mpd-ext-example` declares all four contribution kinds and ships a working,
-dependency-free stdio MCP server ([`server.mjs`](./mpd-ext-example/server.mjs)).
+dependency-free stdio MCP server ([`server.ts`](./mpd-ext-example/server.ts)).
 It is shipped with `"enabled": false`, so a fresh install starts nothing.
 
 To watch the whole path end to end, copy it somewhere writable, flip
@@ -59,10 +59,10 @@ The developer CLI shares **one** validator with the runtime, so a manifest that
 `validate` accepts is a manifest the loader accepts:
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # exits 0, per-item errors otherwise
-bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/ext  # manifest + skill + flow + role
-bun scripts/mpd-ext.mjs list                                  # what this host would discover
-bun scripts/mpd-ext.mjs --self-test                           # the CLI's own checks
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # exits 0, per-item errors otherwise
+bun scripts/mpd-ext.ts scaffold my-extension --dir /tmp/ext  # manifest + skill + flow + role
+bun scripts/mpd-ext.ts list                                  # what this host would discover
+bun scripts/mpd-ext.ts --self-test                           # the CLI's own checks
 ```
 
 `validate` exits `1` and prints one line per item when anything is wrong, so it is

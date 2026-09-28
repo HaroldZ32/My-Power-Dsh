@@ -1,24 +1,38 @@
-# docker/docker-compose.yml — ONE service, and it mounts no host harness state.
+# docker/docker-compose.yml — TWO services on ONE image, and neither mounts host harness state.
 #
-# THE ISOLATION RULE THIS FILE ENFORCES (AGENTS.md §7, task lane D): the only host path this service
-# touches is the evidence mount ${MPD_DOCKER_OUT}. There is deliberately NO bind of $HOME, ~/.dsh,
-# ~/.mpd, ~/.agents, the docker socket or the repository: the repository travels into the image as a
-# COPY of the build context (filtered by docker/Dockerfile.dockerignore), so a container bug can never
-# read or write the operator's harness home — which is what makes the entrypoint's isolation assertion
-# meaningful instead of decorative. `node scripts/docker-e2e.mjs --self-test` asserts this statically.
+# THE ISOLATION RULE THIS FILE ENFORCES (AGENTS.md §7, task lane D): the only host path these
+# services touch is the evidence mount ${MPD_DOCKER_OUT}. There is deliberately NO bind of $HOME,
+# ~/.dsh, ~/.mpd, ~/.agents, the docker socket or the repository: the repository travels into the
+# image as a COPY of the build context (filtered by docker/Dockerfile.dockerignore), so a container
+# bug can never read or write the operator's harness home — which is what makes the entrypoint's
+# isolation assertion meaningful instead of decorative. `node scripts/docker-e2e.ts --self-test`
+# asserts this statically.
+#
+# THE TWO SERVICES ANSWER TWO DIFFERENT QUESTIONS, and the difference is the whole point:
+#   · `mpd-client`   — can a checkout be installed by the client flow (`dsh plugin --profile web add
+#                      <path>`), after `bun install` and a from-source rebuild of every dist entry?
+#   · `mpd-oneclick` — can the PUBLISHED package be installed by a person who never clones it
+#                      (`dsh plugin --profile web add <git spec>`), with NO build step at all, and
+#                      does the installed tree carry every path its rows name and nothing the
+#                      `files` allowlist excludes? This is the user-facing one-command path
+#                      (`github:HaroldZ32/My-Power-Dsh`), reproduced locally against a scratch git
+#                      repository the entrypoint builds from the same build context, so the evidence
+#                      needs no network round trip to GitHub to be real.
 #
 # The build context is the REPOSITORY ROOT, and NOTHING is staged inside the repository: an earlier
 # driver shape copied the tree into docker/src as the context, and that in-repo copy was picked up by
 # `bun test`'s globs and by every tree-walking gate (measured 2026-09-27).
 #
-# SANCTIONED ONE COMMAND:
-#     node scripts/docker-e2e.mjs
-# It builds this image, runs this service and lands the evidence under
-# evidence/docker/client-install/<UTC stamp>/.
+# SANCTIONED ONE COMMAND (source lane) and its one-click twin:
+#     node scripts/docker-e2e.ts
+#     node scripts/docker-e2e.ts --mode oneclick
+# It builds this image, runs the chosen service and lands the evidence under
+# evidence/docker/<lane>/<UTC stamp>/.
 #
 # RAW COMPOSE (the same stack, by hand):
 #     docker compose -f docker/docker-compose.yml build
 #     docker compose -f docker/docker-compose.yml run --rm mpd-client
+#     MPD_E2E_INSTALL_MODE=oneclick docker compose -f docker/docker-compose.yml run --rm mpd-oneclick
 # A directory outside the repository cannot be written by the sandboxed docker CLI, so if the build
 # fails with `mkdir <home>/.docker/buildx: read-only file system`, point BUILDX_CONFIG at a writable
 # directory; the driver does exactly that by itself.
@@ -36,4 +50,25 @@ services:
     volumes:
       # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
       # `docker compose run` usable by hand and writes ./docker/out.
+      - ${MPD_DOCKER_OUT:-./out}:/out
+
+  # The one-command user install: same image, same entrypoint, a different INSTALL MODE. The
+  # entrypoint builds a scratch git repository from the build context inside the container and
+  # installs THAT, so pnpm's git-hosted resolver — the code path a `github:` spec takes — filters the
+  # package through the manifest's `files` allowlist exactly as it would for a real user.
+  mpd-oneclick:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: mpd-docker-e2e:local
+    init: false
+    tty: false
+    environment:
+      MPD_E2E_INSTALL_MODE: oneclick
+      # The spec under test. `git+file:///opt/oneclick.git` is the local stand-in for
+      # `github:HaroldZ32/My-Power-Dsh`; set MPD_ONECLICK_SPEC to the GitHub spec to run the very
+      # same assertions against the published repository.
+      MPD_E2E_INSTALL_SPEC: ${MPD_ONECLICK_SPEC:-git+file:///opt/oneclick.git}
+      MPD_E2E_OUT: /out
+    volumes:
       - ${MPD_DOCKER_OUT:-./out}:/out

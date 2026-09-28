@@ -1,6 +1,6 @@
 # Plan D — Decouple the bundle from its checkout location (one-plugin install)
 
-Status: **COMPLETE (2026-08-27)** — staged bundle builds (`scripts/pack-mpd.mjs`), relocation QA PASS (evidence/plan-d/relocate: install -> compose (0 dev-path leaks) -> live headless -> 11/11 presets auto-copied by mpd-bootstrap). Install from a checkout: `dsh plugin --profile web add .`.
+Status: **COMPLETE (2026-08-27)** — staged bundle builds (`scripts/pack-mpd.ts`), relocation QA PASS (evidence/plan-d/relocate: install -> compose (0 dev-path leaks) -> live headless -> 11/11 presets auto-copied by mpd-bootstrap). Install from a checkout: `dsh plugin --profile web add .`.
 Goal: the repo must be installable ANYWHERE and MOVABLE, through ONE `dsh plugin add`
 command (the same flow dsh-agent-teams and the web third-party bundles use), with zero
 absolute paths tied to any fixed checkout.
@@ -10,7 +10,7 @@ absolute paths tied to any fixed checkout.
 | # | File / surface | Coupling | Fix
 |---|---|---|---|
 | 1 | `packages/mpd-bundle/cordis.patch.yml` | absolute dev paths for every mpd plugin row, MCP `args`/`env`, skill dirs, `.toolchain` binaries | rewrite with node-resolvable `name:` for plugin rows + `!!js baseUrl`-relative paths for `args`/`env`/dirs (mechanism verified, see 2) |
-| 2 | `scripts/install-profile.mjs` | writes absolute paths into the user's home patch; preset copy step; two-step install | superseded by the bundle package + a bootstrap plugin (preset auto-copy); kept only as a dev-QA helper |
+| 2 | `scripts/install-profile.ts` | writes absolute paths into the user's home patch; preset copy step; two-step install | superseded by the bundle package + a bootstrap plugin (preset auto-copy); kept only as a dev-QA helper |
 | 3 | `tests/overlays/*.yml` | QA-only absolute paths | make them template/env-generated, or keep QA-only with a note (they never ship) |
 | 4 | `mpd-codegraph-plugin` / `mpd-comment-checker-plugin` | binary fallback derived from the plugin's dist location (repo-relative) | package-relative via `createRequire(import.meta.url)` (plugin code CAN require) + env override first + binaries ship inside the package |
 | 5 | `.toolchain/` provisioning | installer-time npm install into the repo | binaries ship inside the package (`toolchain/`), or installed as optionalDependencies; native bins wrapped by tiny JS shims so patch rows stay path-stable |
@@ -60,14 +60,14 @@ absolute paths tied to any fixed checkout.
   - from Gitee: `dsh plugin --profile web add <gitee-url>` (pnpm git; private repo needs
     git credentials — document; local-path install avoids this),
   - (optional future) npm publish `@mpd-dsh/mpd` → `dsh plugin --profile web add @mpd-dsh/mpd`.
-- `scripts/install-profile.mjs`: deprecated for users; retained for dev QA only (AGENTS/README note).
+- `scripts/install-profile.ts`: deprecated for users; retained for dev QA only (AGENTS/README note).
 
 ## 4. Steps
 
 P1. Immediate fixes (independent): codegraph skip-home guard + rebuild; verify preset fixes
     committed; `llm-pi-ai` disabled-by-default in bundle patch.
 P2. Package layout: root package.json (exports/files/dsh.bundle), build/pack script
-    (`scripts/pack-mpd.mjs`) that assembles dists + toolchain shims into the published tree.
+    (`scripts/pack-mpd.ts`) that assembles dists + toolchain shims into the published tree.
 P3. Rewrite `cordis.patch.yml` with baseUrl/name patterns (no absolute paths anywhere).
 P4. Bootstrap plugin (preset copy) + package-relative binary resolution in codegraph/comment-checker
     plugins + native-bin shims (sg/codegraph/comment-checker).

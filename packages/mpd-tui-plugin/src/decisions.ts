@@ -38,14 +38,21 @@ export const DECISION_EVENTS: readonly { event: string; permission: string }[] =
 /** Registration order used for the mediated subscription (`order` is required, control-free). */
 export const DECISION_ORDER = "mpd-tui"
 
+/** What one intercept point's mediated registration produced. */
 export interface DecisionAttempt {
+  /** The intercept point id, e.g. `tui/input`. */
   event: string
+  /** The per-event verdict; `confirmed` needs both a grant and a disposer. */
   state: "confirmed" | "requested" | "refused"
+  /** Why the verdict came out as it did; absent when the host gave no reason. */
   reason?: string
 }
 
+/** The seam handle: the aggregate outcome plus the per-event verdicts. */
 export interface DecisionSeam {
+  /** The aggregate result, as the boot diagnostic reports it. */
   outcome(): SeamOutcome
+  /** The per-event verdicts, in registration order. */
   attempts(): readonly DecisionAttempt[]
 }
 
@@ -56,20 +63,25 @@ export interface DecisionSeam {
  * @returns the seam handle; `attempts()` carries the per-event verdict.
  */
 export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): DecisionSeam {
+  /** Per-event verdicts, filled as the loop walks the intercept points. */
   const attempts: DecisionAttempt[] = []
+  /** The aggregate result, rewritten once every intercept point was attempted. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiPluginHost was not injected" }
 
   onService(ctx, "tuiPluginHost", (scoped, service) => {
+    /** The probed service as the mediated host surface, before `subscribeDecision` is trusted. */
     const host = service as TuiPluginHostLike
     if (typeof host?.subscribeDecision !== "function") {
       outcome = { state: "refused", detail: "tuiPluginHost.subscribeDecision is missing" }
       return
     }
+    /** Handles of the subscriptions that may be called confirmed; owned for cleanup. */
     const disposers: Disposer[] = []
     for (const { event, permission } of DECISION_EVENTS) {
       // The grant facade is the honest authorization state; undefined when the
       // host does not expose it (then nothing may be reported as confirmed).
       let granted: boolean | undefined
+      /** The caller-safe grant facade, the only honest authorization source here. */
       const facade = host.grants
       if (facade !== undefined && typeof facade.allows === "function") {
         try {
@@ -79,6 +91,7 @@ export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): Decisio
         }
       }
       try {
+        /** The host's handle; a no-op when the grant is missing, so it is never called as a probe. */
         const disposer = host.subscribeDecision(scoped, event, () => undefined, { scope: event, order: DECISION_ORDER })
         if (typeof disposer !== "function") {
           attempts.push({ event, state: "refused", reason: "subscribeDecision returned no disposer" })
@@ -97,6 +110,7 @@ export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): Decisio
           effectOn(scoped, () => release(), `mpd-tui decision ${event} (refused)`)
           attempts.push({ event, state: "refused", reason: `no grant for ${permission}@${event}` })
         } else {
+          /** This subscription's handle; owned for cleanup although its state is unknown. */
           const release = disposer
           effectOn(scoped, () => release(), `mpd-tui decision ${event} (unconfirmed)`)
           attempts.push({ event, state: "requested", reason: "grant state not queryable in this composition" })
@@ -106,8 +120,11 @@ export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): Decisio
       }
     }
 
+    /** The intercept points that both a grant and a disposer backed. */
     const confirmed = attempts.filter((attempt) => attempt.state === "confirmed")
+    /** The intercept points the host refused, with the reason it gave. */
     const refused = attempts.filter((attempt) => attempt.state === "refused")
+    /** The refusal quoted in the aggregate detail; falls back to the first attempt. */
     const first = refused[0] ?? attempts[0]
     outcome =
       confirmed.length > 0
@@ -133,6 +150,7 @@ export function attemptDecisionEvents(ctx: PluginContextLike, log: Log): Decisio
 
 /** One short, sanitized reason string for the record (never a stack trace). */
 function shortReason(error: unknown): string {
+  /** The error's message, or its string form when it is not an Error. */
   const message = error instanceof Error ? error.message : String(error)
   return message.replace(/\s+/gu, " ").trim().slice(0, 160)
 }

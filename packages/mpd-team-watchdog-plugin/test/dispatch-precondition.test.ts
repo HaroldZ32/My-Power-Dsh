@@ -18,10 +18,10 @@
 // `never-started` (a CLAIMED task whose owner never stamped) must therefore still be spent only on
 // an OWNED task, and a board of unowned tasks must stay completely silent.
 import { describe, expect, test } from "bun:test"
-import { WatchdogEngine } from "../src/engine"
+import { WatchdogEngine, type TickResult } from "../src/engine"
 import { candidateFor } from "../src/machine"
 import { appendHeartbeat } from "../src/store"
-import { readIncidents } from "../src/sidecars"
+import { readIncidents, type IncidentRecord } from "../src/sidecars"
 import { pluginCtx, sandbox, testConfig, writeTeam, type TeamFixture } from "./support"
 
 /** The 12 task ids of the staged plan that reproduced the flood. */
@@ -36,6 +36,7 @@ const STAGED_TASK_IDS = ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "
  * @param revisions - per-task board revision; default 1.
  */
 function planFixture(claimed: string[], revisions: Record<string, number> = {}): TeamFixture {
+  // The claimed ids, as a set the fixture spreads over the task rows.
   const owned = new Set(claimed)
   return {
     id: "mpd-default",
@@ -61,7 +62,7 @@ async function tick(
   record: TeamFixture,
   now: number,
   stamps: Array<{ memberKey: string; taskId: string; attemptId: string | null; teamId: string | null; at: number }> = [],
-) {
+): Promise<{ result: TickResult; incidents: IncidentRecord[]; lines: string[]; holds: string[] }> {
   writeTeam(box, record)
   for (const stamp of stamps) {
     appendHeartbeat(box.workspace, box.stateDir, stamp.memberKey, {
@@ -76,12 +77,15 @@ async function tick(
       workspace: box.workspace,
     })
   }
+  // The plugin context stub, whose adapter the engine is driven with.
   const plugin = pluginCtx(box.workspace)
+  // The engine under test, with the fast deterministic config.
   const engine = new WatchdogEngine(
     plugin.__stub.adapter,
     plugin,
     testConfig({ stateDir: box.stateDir, deadTeamGraceMs: 0 }),
   )
+  // The tick's own result: decisions, scene paths and held team ids.
   const result = await engine.tickOnce(now)
   return {
     result,
@@ -93,8 +97,10 @@ async function tick(
 
 describe("a staged plan is never a dispatch problem", () => {
   test("12 UNOWNED pending tasks (a plan nothing was dispatched into): NO record, NO console line, NO hold", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // What the tick left on disk and in the console.
       const observed = await tick(box, planFixture([]), 1_789_530_153_225)
       expect(observed.incidents).toEqual([])
       expect(observed.lines).toEqual([])
@@ -107,8 +113,10 @@ describe("a staged plan is never a dispatch problem", () => {
   })
 
   test("CONTROL: the same 12 tasks once CLAIMED still report every never-started task", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
+      // What the control tick left on disk and in the console.
       const observed = await tick(box, planFixture(STAGED_TASK_IDS), 1_789_530_153_225)
       // The rule stays falsifiable: a member that was HANDED a task and never stamped is
       // still reported, once per task, with no hold and no escalation.
@@ -126,6 +134,7 @@ describe("a staged plan is never a dispatch problem", () => {
   })
 
   test("a task whose work came from an EARLIER revision stays observable — and only that task does", async () => {
+    // An isolated workspace for this case.
     const box = sandbox()
     try {
       // t1 is CLAIMED at board revision 2, i.e. its generation token is "2"; the hand-written
@@ -147,6 +156,7 @@ describe("a staged plan is never a dispatch problem", () => {
 })
 
 describe("candidateFor applies the precondition", () => {
+  // Three board rows: un-dispatched, attempt-tokened, and ownership-dispatched.
   const tasks = [
     { id: "t1", status: "pending", assignee: "Planner" },
     { id: "t2", status: "pending", assignee: "Planner", attemptId: "att-t2" },
@@ -154,6 +164,7 @@ describe("candidateFor applies the precondition", () => {
   ]
 
   test("an un-dispatched task is not a candidate; a dispatched one is", () => {
+    // The candidates the dispatch precondition admits from those rows.
     const candidates = candidateFor({ id: "mpd-default", tasks }, () => [], (assignee) => assignee)
     expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t2", "t3"])
     expect(candidates[0].attemptId).toBe("att-t2")
@@ -163,6 +174,7 @@ describe("candidateFor applies the precondition", () => {
   })
 
   test("a stamp for the task keeps it observable even without a live attempt", () => {
+    // The candidates when a stamp, and not ownership, marks the first task as worked.
     const candidates = candidateFor({ id: "mpd-default", tasks }, (key) =>
       key === "Planner" ? [{ kind: "turn-start", at: 5, member: "Planner", memberKey: "Planner", teamId: "mpd-default", taskId: "t1", attemptId: null, turnId: "Planner#1", workspace: "/w" }] : [],
     (assignee) => assignee)
@@ -171,6 +183,7 @@ describe("candidateFor applies the precondition", () => {
   })
 
   test("an EARLIER generation's stamp still proves the task was worked on; another TEAM's does not", () => {
+    // Candidates when the only stamp names an earlier attempt of this same team.
     const ownGeneration = candidateFor({ id: "mpd-default", tasks }, (key) =>
       key === "Planner" ? [{ kind: "turn-start", at: 5, member: "Planner", memberKey: "Planner", teamId: "mpd-default", taskId: "t1", attemptId: "att-t1-1", turnId: "Planner#1", workspace: "/w" }] : [],
     (assignee) => assignee)
@@ -179,6 +192,7 @@ describe("candidateFor applies the precondition", () => {
     expect(ownGeneration.map((candidate) => candidate.taskId)).toEqual(["t1", "t2", "t3"])
     expect(ownGeneration[0].everStampedForTask).toBe(false)
 
+    // Candidates when that stamp belongs to another team instead.
     const foreignTeam = candidateFor({ id: "mpd-default", tasks }, (key) =>
       key === "Planner" ? [{ kind: "turn-start", at: 5, member: "Planner", memberKey: "Planner", teamId: "other-team", taskId: "t1", attemptId: null, turnId: "Planner#1", workspace: "/w" }] : [],
     (assignee) => assignee)

@@ -11,7 +11,7 @@ repository is English-only (see Language Policy).
   translation, and every bilingual doc carries its language switch link directly under the title
   (`[中文](./<name>.zh-CN.md)` from the English file, `[English](./<name>.md)` from the Chinese one).
   A change to one updates BOTH in the same commit.
-- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`, which ships
+- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.ts`, which ships
   `--self-test` with a negative control) enforces the pair, the switch link, the heading tree, real
   CJK content and the RESOLUTION of relative link targets across the band it discovers — every `*.md`
   under `docs/` at any depth, `extensions/**/README.md`, `templates/**/README.md`,
@@ -53,7 +53,7 @@ scripts and docs still resolves. The full register is `agent-references/index.md
 | File | Holds | Open it when |
 |---|---|---|
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
-| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.mjs`, `scripts/vendor-agent-teams.mjs`, or an `mpd-delta` region |
+| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.ts`, `scripts/vendor-agent-teams.ts`, or an `mpd-delta` region |
 
 ---
 
@@ -96,7 +96,7 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   `lib/client.js` is still the 0.1.14 client build), it still lives at
   `packages/mpd-agent-teams-plugin`, and `LICENSE-NOTICES.md` remains its authoritative provenance
   record — but **no loader row mounts it any more**, so `agent_teams_*` tools, that plugin's
-  `.mpd/team` record and its Web activity panel are NOT part of a shipped session. Harness 0.1.7-rc.2
+  `<workspace>/.mpd/team` record and its Web activity panel are NOT part of a shipped session. Harness 0.1.7-rc.2
   shipped an official Agent Teams plugin, and this bundle adopted it (see the roster bullet above and
   `docs/plan-0.1.7-adaptation.md`). Its `lib/` stays mediated through `mpd-dsh-adapter` except the
   counted `setup(childCtx, child)` residual that §6 names, which is why the code is retained rather
@@ -162,7 +162,7 @@ mpd-dsh/
 ├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
 │                                 #   inline plugin list). The retired directory form is gone.
 ├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
-│                                 #   + lib/repo.mjs: the shared primitives every script imports
+│                                 #   + lib/repo.ts: the shared primitives every script imports
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
 │                                 #   mpd-skills-plugin was removed (its row is gone from the patch)
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
@@ -215,22 +215,24 @@ specification.
 
 | Gate | Command | When |
 |---|---|---|
-| Vendor | `node scripts/verify-vendor.mjs`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.mjs` (dry-run by default, `--check` asserts, `--write` applies; the helper REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
-| Dist freshness | `node scripts/verify-dist-fresh.mjs` (deterministic rebuild-and-diff: every `packages/*/src` entry is rebuilt twice into a temp dir and compared byte-for-byte with its committed `dist/`; unmatched `dist/` files are printed in a loud NOT COVERED section, never silently skipped; `--self-test` seeds a mismatch; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
-| Row/parity | `bun run verify:rows` (`scripts/verify-rows-parity.mjs`) **and** `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | any bundle-patch / preset / overlay / row change |
-| Pack closure | `node scripts/verify-pack-closure.mjs` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
+| Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; the helper REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
+| Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff: every `packages/*/src` entry is rebuilt twice into a temp dir and compared byte-for-byte with its committed `dist/`; unmatched `dist/` files are printed in a loud NOT COVERED section, never silently skipped; `--self-test` seeds a mismatch; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
+| Row/parity | `bun run verify:rows` (`scripts/verify-rows-parity.ts`) **and** `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
+| Pack closure | `node scripts/verify-pack-closure.ts` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
 | Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
-| QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
-| Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
-| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.mjs`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
-| Manual paths | `node scripts/verify-manual-paths.mjs` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
-| Extension CLI | `bun scripts/mpd-ext.mjs --self-test` + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
-| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
-| Composition only | `node scripts/dump-config.mjs --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
+| QA real cases | `node skills/dsh-qa/scripts/<case>.ts` | runtime-behavior changes |
+| Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
+| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
+| **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): the TWO install-time rules — **no `cordis`** in `dependencies` / `peerDependencies` / `optionalDependencies` (by NAME; the optional field is NOT an exemption) and no `preinstall` / `install` / `postinstall` / `prepare` script NAME — plus the packaging contract a one-command install rests on: declared patch files exist, every row module path resolves, the `files` allowlist admits every runtime path, `evidence/` stays out, and **npm's own `npm pack --dry-run` list carries them**. `--self-test`: five mutants with clean controls | every manifest/patch/row/file-layout change, and EVERY release sweep |
+| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in the source set (`packages/*/{src,test,self-fix-tests}`, `scripts/`, `skills/*/scripts/`, `docker/`, `tests/`, `templates/`, `extensions/`) has a precise comment above it, and that every NAMED function writes down its parameter and return types. `--self-test`: six arms | any source edit, and EVERY release sweep |
+| Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
+| Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
+| Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
 
 **The pack-closure bound (T-91), stated once so a reader of the table is not misled:** a green
-`node scripts/verify-pack-closure.mjs` certifies COMPLETENESS plus the BYTE IDENTITY of every file
+`node scripts/verify-pack-closure.ts` certifies COMPLETENESS plus the BYTE IDENTITY of every file
 whose source did not move; **freshness is not what the exit code says** — it is read from the
 `expected-after-pack` list, i.e. the files the pack was supposed to ABSORB being GONE from that list at
 the re-pack (T-26's discriminator: TIMESTAMP ORDER, not a blanket freshness claim; `--pack-stamp <t>`
@@ -247,7 +249,7 @@ and `evidence/workmate/rename-delete-core/20260910T132303Z-mount/mount-proof.res
 the note that no `--dump-config` result is cited as load evidence. **`--dump-config` proves
 COMPOSITION ONLY — never a plugin load.** Use it to check that rows/presets are composed and that an
 id-targeted patch landed, never as a health signal for plugin code. Every instruction that sends a reader
-to the flag goes through the repo wrapper `node scripts/dump-config.mjs` (T-31), which prints that warning
+to the flag goes through the repo wrapper `node scripts/dump-config.ts` (T-31), which prints that warning
 in the run's own output; only passages that CONTRAST the flag keep the raw spelling on purpose.
 
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
@@ -341,7 +343,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `installModelSelection(childCtx, …)` hand-off into a VENDORED `_deps/dsh-agent` helper, and the legacy
   `hostChild ?? childCtx.agent` read — because on a legacy Alpha.2 host a `childCtx` is not guaranteed to
   be `child.ctx`, so re-resolving it through `agentScope(agent)` could change that path.
-  `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs` asserts exactly those 5
+  `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts` asserts exactly those 5
   lines (plus the two `whenIdle` Class-B sites), so a NEW use reddens instead of hiding.
 - **Five further residuals stay NAMED**, so the closure is never read as unconditional: (R1)
   adapter-mediated registrations (`tools.register`, `commands.register`, `systemPrompt.section`,
@@ -350,7 +352,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   T-21); (R2) the retired-member delivery guard still PATCHES the object `subagentRuntime()` returns —
   delivery policy stays in the plugin, the adapter owns the RESOLUTION only; (R3) `lib/client.js` (the
   browser bundle) is OUT OF SCOPE — a browser bundle cannot reach the adapter, and its export bridge is
-  already guarded by `scripts/patch-agent-teams-client.mjs`; (R4) `liveAgent`/`liveAgents`/`onEvent`
+  already guarded by `scripts/patch-agent-teams-client.ts`; (R4) `liveAgent`/`liveAgents`/`onEvent`
   swallow-and-degrade where the raw ctx would throw — the adapter's never-crash contract, deliberate,
   not a parity violation; (R5) the count sentence in `agent-references/agent-teams-deltas.md` keeps its
   exact wording (the docs gate's regex is FIXED, so re-wording reddens `verify:docs`) while only its
@@ -363,7 +365,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   D13/D14/D21/D22 class) do **not** self-heal after a human re-materialize — the applier REFUSES loudly,
   file byte-untouched (it refuses to heal a file that still carries an upstream declaration a region
   would re-define), and the remedy is to restore the region or re-author it plus `--write-registry`.
-  `scripts/vendor-agent-teams.mjs` does **not** re-copy that tree — it rewrites bare import specifiers in
+  `scripts/vendor-agent-teams.ts` does **not** re-copy that tree — it rewrites bare import specifiers in
   place, its `rmSync`/`cpSync` work inside `_deps/`, and it asserts that OUR `lib/index.js` survives — so
   `lib/` survives a vendor run untouched, and the residual risk is a human re-vendor, which is exactly
   what the applier makes loud (wave-2 t15 measured its limit: a line-keyed anchor can still land a region
@@ -410,12 +412,26 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `HOME=<sandbox>` so tests never touch the real home; (3) **`mpd-codegraph`** keeps its project index in
   `.codegraph/` under the workspace (the upstream-mirrored second state root, gitignored — see
   `packages/mpd-codegraph-plugin/README.md`).
+- **TypeScript is the only source language, run directly by Node — binding.** Every file this
+  repository owns is `.ts` and runs as `node <file>.ts` (type stripping; `engines.node` states the
+  floor). Four rules: **erasable syntax only** (no `enum`, `namespace`, parameter properties or
+  decorators); **every relative specifier carries the explicit `.ts` extension**; `import type` for
+  type-only imports; no `tsconfig`-`paths` mapping. `packages/*/src` differs in FORM only (`bun build`
+  → `dist/*.js`, extensionless specifiers). Four trees stay JavaScript ON PURPOSE: `packages/*/dist/**`
+  + `skills/visual-qa/scripts/visual-qa.mjs` (build products), `packages/mpd-agent-teams-plugin/lib/**`
+  + `_deps/**` (adopted bytes + delta registry), `skills/ultimate-browsing/engine/templates/*.js` and
+  `tests/golden/fixtures/*.js` (fixture DATA).
+- **Every declaration is documented and every named function is fully typed — binding, enforced by
+  §4's `verify:comments`.** A comment states the contract, unit, invariant or reason — never a
+  restatement of the name; a local inside a function body counts as a declaration. Types are precise:
+  `unknown` plus narrowing instead of `any`, an existing interface/type reused instead of a structural
+  clone, and a cast only where narrowing is impossible, with a comment saying why.
 - **Build — from the REPO ROOT, with path-qualified args**: `bun build
   packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`
   (a multi-entry package repeats it per entry, e.g. `packages/mpd-ext-plugin/src/sdk.ts` →
   `packages/mpd-ext-plugin/dist/sdk.js`). The canonical form matters: `bun build` writes every bundled
   module's path RELATIVE TO CWD into the artifact's path comments, and
-  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes — so a build run from a PACKAGE directory
+  `node scripts/verify-dist-fresh.ts` reproduces THESE bytes — so a build run from a PACKAGE directory
   is flagged STALE even though it looks sanctioned. Three packages used to carry exactly that shape in
   their own `build` scripts (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); T-67 moved
   them to the canonical form above, which now begins with `cd "$(git rev-parse --show-toplevel)"`. Zero
@@ -423,7 +439,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 - **Load/test**: the committed patch names rows as `@mpd-dsh/mpd/packages/...`, which resolve in BOTH
   install layouts (the repo root IS `@mpd-dsh/mpd`, so a checkout install resolves them through the
   link; the packed package through its own name). QA boots it straight from a checkout through the
-  dev-flavor rewrite (`devPatch()` in `skills/dsh-qa/scripts/preset-register.mjs`: rename rows to
+  dev-flavor rewrite (`devPatch()` in `skills/dsh-qa/scripts/preset-register.ts`: rename rows to
   checkout-absolute paths, rewrite the preset-root expression, pin MCP binaries via `MPD_DSH_*` env)
   because a QA sandbox has no installed profile. Do NOT keep a bundle row in a QA overlay while it is
   already in the bundle — the loader rejects duplicate entry ids.
@@ -444,7 +460,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   (`dsh.workspaceRoot(exec)` in ours, the session cwd outranking `DSH_WORKSPACE_ROOT`;
   `agent.session.header.cwd ?? process.cwd()` in the adopted plugin), so every dsh spawn and every
   `session/create` payload carries an explicit sandbox cwd (`sandboxWorkspace(sandbox)` from
-  `skills/dsh-qa/scripts/lib/workspace-isolation.mjs`) and each live case asserts that no
+  `skills/dsh-qa/scripts/lib/workspace-isolation.ts`) and each live case asserts that no
   `<DSH_HOME>/sessions/<projectKey(realCwd)>` key exists (`assertSessionsSandboxed`). Without it an
   "isolated" boot writes real `<repo>/.mpd/team/mpd-default-*` records — exactly the records the
   `mpd_workmate_rename/delete` in-use gate scans — plus
@@ -458,7 +474,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   BEHAVIOUR (a tool registered, a route answering, a schema accepted) needs a boot that MOUNTS the rows
   in an isolated `DSH_HOME` with registration instrumentation, or a real tool call.
 - **A live case proves a tool call from the HARNESS's session log, never from the model's prose**
-  (`skills/dsh-qa/scripts/lib/session-evidence.mjs`: `readSessionEvents` / `findToolCall` /
+  (`skills/dsh-qa/scripts/lib/session-evidence.ts`: `readSessionEvents` / `findToolCall` /
   `recordedToolNames`). The store is `<DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/` and — the trap
   — a CONCATENATED-ZSTD-FRAME container: one `zstdDecompressSync` returns the header frame ONLY, so a
   naive reader sees zero events and reports "no tool call" (a real artifact: 10 frames, 1 vs 25
@@ -513,7 +529,16 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 ### Primary flow: ONE command, no extra step
 
-- **`cd <repo> && dsh plugin --profile web add .`** is the whole install. The repo root
+- **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
+  `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` (or `… add @mpd-dsh/mpd` once it is on
+  the registry). The harness hands the spec to pnpm in `<DSH_HOME>/profiles/<profile>/`; pnpm packs it
+  through the manifest's **`files` allowlist**, then `reconcile` reads the installed package's
+  `dsh.bundle.patch` files, validates that they load, and appends the package name to
+  `dsh.profile.bundles` — that pair is what makes the mount travel through `cordis.patch.yml` + the
+  profile mechanism and NOTHING else. Proof: `verify-plugin-manifest --pack` plus the `mpd-oneclick`
+  compose service on a bare `ubuntu:24.04` (`node scripts/docker-e2e.ts --mode oneclick`). The
+  allowlist keeps the download small: 100.9 MB without it, 7.6 MB / 1134 files with it.
+- **`cd <repo> && dsh plugin --profile web add .`** is the whole install from a CHECKOUT. The repo root
   IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
   `dsh.bundle.patch` (an ARRAY: `./packages/mpd-bundle/cordis.patch.yml` then
   `./presets/mpd.patch.yml`), `dsh.client`
@@ -521,6 +546,13 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `./skills/*`, `./presets/*`, and the `client` subpath
   `packages/mpd-bundle-plugin/client.js`) and the toolchain `optionalDependencies`.
   `dsh plugin remove @mpd-dsh/mpd` is the matching one-command uninstall.
+- **The published dependency closure is BUILD-SCRIPT-FREE on purpose**: pnpm 11 hard-exits on
+  unapproved dependency build scripts (`ERR_PNPM_IGNORED_BUILDS`) and the CLI `dsh plugin add` has no
+  approval channel (`plugin_manager`'s `approvedBuilds` is the Web/MCP path only). So
+  `dsh-better-sidebar` is an optional PEER + a `devDependency` (its `node-pty` postinstall is the
+  offending script; its row's mount guard disables it when absent), and `@ast-grep/cli` +
+  `@code-yeongyu/comment-checker` left `optionalDependencies` — their launchers resolve from
+  `PATH`/`.toolchain`. The `mpd-oneclick` service keeps this honest.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile
   directory), so the same patch works for a checkout install (`<profile>/node_modules/@mpd-dsh/mpd`
   → the repo) and for a packed install. The three official Agent Teams packages are declared
@@ -529,7 +561,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   and the skill corpus are SERVED by reference (the `preset-mpd` row → the inline plugin list,
   `mpd-bootstrap` → `<bundle>/skills`) — no home copy, so uninstall leaves no residue.
   Only user data stays: the workmate library under `~/.mpd/workmate`.
-- **`node scripts/pack-mpd.mjs` (alias `npm run pack`) is the RELEASE step, not an install
+- **`node scripts/pack-mpd.ts` (alias `npm run pack`) is the RELEASE step, not an install
   step.** It assembles the relocatable `dist/mpd-package/` for publishing / tarball
   installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
   dists (incl. the combined web client), the retired vendored agent-teams main code, `skills/` +
@@ -543,9 +575,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   restart dsh — a `link:` install reads the checkout directly. Re-pack only when the
   distribution artifact must be refreshed, and bump `package.json` version for releases.
 
-### Dev/QA flow (legacy): `scripts/install-profile.mjs`
+### Dev/QA flow (legacy): `scripts/install-profile.ts`
 
-- `node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]`.
+- `node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]`.
   Default is `--dry-run`: print, never write. `--dsh-home` enables isolated QA installs.
 - What it writes: profile manifest (base + web-app/headless), home `cordis.patch.yml` with absolute
   paths (existing rows id-targeted, new rows via `insert:`), presets → `$DSH_HOME/.agent-presets/`,
@@ -582,11 +614,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 1. From dev: `git checkout -b release/vX.Y.Z`; bump version (package.json + changelog note).
 2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single
-   `node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step` re-pin when
+   `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when
    `skills/**` changed), `bun test`,
    `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
-   `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test`,
-   `node scripts/verify-dist-fresh.mjs`, `node scripts/verify-pack-closure.mjs` (freshness read from
+   `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`,
+   `node scripts/verify-dist-fresh.ts`, `node scripts/verify-pack-closure.ts` (freshness read from
    the `expected-after-pack` list at the re-pack, never from its exit code — §4's bound), plus the
    real smoke cases (`dual-track-smoke`, `mcp-call`).
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME
@@ -615,15 +647,15 @@ behaviour or deliberate design that we do not fight; each is now "known, with a 
 and the detail lives in `agent-references/troubleshooting.md`:
 
 - **T-21 — no plugin-module hot reload.** ESM caches a module at session start, so an edit is invisible
-  until `dsh` restarts. Ask instead of guessing: `node scripts/mpd-bg.mjs reload-check <module-path>`
+  until `dsh` restarts. Ask instead of guessing: `node scripts/mpd-bg.ts reload-check <module-path>`
   → `RESTART-REQUIRED` / `FRESH` / `NO-LIVE-SESSION`.
 - **T-23 — fresh `/tmp` per bash call + `bwrap --die-with-parent`.** Long work MUST be a managed
   background job (the bash tool's `run_in_background`), never `nohup`; start it through
-  `node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd>` so the output lands in a file.
+  `node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd>` so the output lands in a file.
 - **T-24 — MCP children inherit fds.** Never pipe a long-lived `dsh`: `mpd-bg run` always hands the
-  child a FILE as stdout+stderr, and `node scripts/mpd-bg.mjs probe <pidfile>` is a kernel-only
+  child a FILE as stdout+stderr, and `node scripts/mpd-bg.ts probe <pidfile>` is a kernel-only
   liveness check that cannot self-match a pattern.
-- **T-26 — the file sandbox is workspace-write.** `node scripts/mpd-bg.mjs check-write <path>` answers
+- **T-26 — the file sandbox is workspace-write.** `node scripts/mpd-bg.ts check-write <path>` answers
   before a write is attempted; cross-area work needs a declared extra-write root.
 - **T-43 — the workmate library lives under `HOME`.** QA/verification MUST boot with `HOME=<sandbox>`;
   the plugin refuses a mutation that would write the REAL `~/.mpd/workmate` (`403 real-home-refused`)
@@ -633,7 +665,7 @@ and the detail lives in `agent-references/troubleshooting.md`:
 - **T-55 — cite code by SYMBOL, never by line number** (a line pointer rots: one drifted from off-by-3
   to off-by-15 before a review caught it).
 
-All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus the two sandbox cases in
+All seven are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two sandbox cases in
 `evidence/platform/harness-close/`.
 
 ---

@@ -19,7 +19,9 @@ import { readJsonc, surgicalEdit, type JsoncEditFailure } from "./jsonc-edit"
 
 /** One leaf to write, expressed as a decoded key path plus its value. */
 export interface BridgeLeaf {
+  /** Decoded key path from the settings root down to this leaf, one segment per level. */
   readonly path: readonly string[]
+  /** The value exactly as the settings document holds it; arrays and objects are written whole. */
   readonly value: unknown
 }
 
@@ -39,11 +41,16 @@ export type RefusalReason =
   | "conflict"
   | "unsupported-shape"
 
+/** How ONE root's write attempt ended; `written` and `created` are the only outcomes that changed bytes. */
 export type RootOutcome = "written" | "unchanged" | "created" | "denied" | "conflict" | "unparsable" | "refused"
 
+/** One root's attempt: which root and file it targeted, how it ended, and (when refused) why. */
 export interface RootResult {
+  /** The live session workspace root this attempt belongs to, as it was resolved at event time. */
   readonly root: string
+  /** Absolute path of the file the attempt targeted — the root's `.mpd/mpd.jsonc`, or the row override. */
   readonly file: string
+  /** How the attempt ended; `denied`, `conflict`, `unparsable` and `refused` all leave the file untouched. */
   readonly outcome: RootOutcome
   /** Named edit failure (refuse-first) or the errno code. */
   readonly reason?: string
@@ -56,6 +63,7 @@ export interface RootResult {
   readonly notes?: readonly { reason: string; detail: string; lines?: readonly number[] }[]
 }
 
+/** What one write-back did: the files it changed, a per-root outcome each, and why nothing was attempted. */
 export interface BridgeReport {
   /** Files that actually changed on disk. */
   readonly writtenTo: readonly string[]
@@ -84,6 +92,7 @@ export interface BridgeOptions {
   readonly hooks?: { readonly beforeCas?: (file: string) => void }
 }
 
+/** Row-config defaults: write-back ON, with three compare-and-swap retries before a conflict is reported. */
 export const DEFAULT_BRIDGE_OPTIONS: BridgeOptions = { writeBack: true, retries: 3 }
 
 /** Header written when the bridge creates a missing target file (design §B.2/E10). */
@@ -107,7 +116,9 @@ export type TargetDecision =
   | { readonly kind: "write"; readonly targets: readonly { root: string; file: string }[] }
   | { readonly kind: "refuse"; readonly reason: RefusalReason; readonly candidates: readonly string[] }
 
+/** Decide the write target from the live roots; `projectFile` overrides the path only for a SINGLE root. */
 export function resolveTargets(roots: readonly string[], projectFile?: string): TargetDecision {
+  // Non-string and empty roots are dropped and duplicates collapsed: only DISTINCT live workspaces decide.
   const distinct = [...new Set(roots.filter((root) => typeof root === "string" && root.length > 0))]
   if (distinct.length === 0) return { kind: "refuse", reason: "no-live-session", candidates: [] }
   if (distinct.length > 1) return { kind: "refuse", reason: "ambiguous-multi-root", candidates: distinct }
@@ -119,6 +130,7 @@ export function sectionLeaves(section: unknown, prefix: readonly string[] = []):
   if (section === null || typeof section !== "object" || Array.isArray(section)) {
     return prefix.length === 0 ? [] : [{ path: prefix, value: section }]
   }
+  // Leaves collected here; a nested object recurses into itself and is never a leaf value.
   const out: BridgeLeaf[] = []
   for (const [key, value] of Object.entries(section as Record<string, unknown>)) {
     if (value !== null && typeof value === "object" && !Array.isArray(value)) out.push(...sectionLeaves(value, [...prefix, key]))
@@ -134,23 +146,32 @@ export function sectionLeaves(section: unknown, prefix: readonly string[] = []):
  * value and rewrites nothing (design §1.2/D-2: the file is the authority on reset).
  */
 export function changedLeaves(prev: unknown, next: unknown): { written: BridgeLeaf[]; removed: BridgeLeaf[] } {
+  // Path identity of a leaf: the joined segments, used as the map/set key below so depths never collide.
   const key = (leaf: BridgeLeaf): string => leaf.path.join("\u0000")
+  // The PREVIOUS section's values by identity, so a change is detected by value, not by key presence.
   const before = new Map(sectionLeaves(prev).map((leaf) => [key(leaf), leaf.value]))
+  // The leaves the settings document now declares, in document order.
   const after = sectionLeaves(next)
+  // Leaves added or changed relative to `prev`, kept in the caller's own order.
   const written: BridgeLeaf[] = []
   for (const leaf of after) {
     if (!before.has(key(leaf)) || JSON.stringify(before.get(key(leaf))) !== JSON.stringify(leaf.value)) written.push(leaf)
   }
+  // Identities still present after the edit; a previous leaf missing here was REMOVED.
   const afterKeys = new Set(after.map(key))
+  // Removed leaves are reported but never written: on a reset the file stays the authority (design §1.2/D-2).
   const removed = sectionLeaves(prev).filter((leaf) => !afterKeys.has(key(leaf)))
   return { written, removed }
 }
 
 /** The distinct target files for a set of live roots (design §A.1: never a guessed root). */
 export function targetFiles(roots: readonly string[], projectFile?: string): { root: string; file: string }[] {
+  // Files already emitted, so two roots resolving to the same file yield ONE entry.
   const seen = new Set<string>()
+  // One entry per distinct target file, in the order the roots were given.
   const out: { root: string; file: string }[] = []
   for (const root of roots) {
+    // The row override applies to a SINGLE root only; several roots always resolve per root, never guessed.
     const file = projectFile !== undefined && roots.length === 1 ? projectFile : join(root, ".mpd", "mpd.jsonc")
     if (seen.has(file)) continue
     seen.add(file)
@@ -159,7 +180,9 @@ export function targetFiles(roots: readonly string[], projectFile?: string): { r
   return out
 }
 
+/** The POSIX errno code carried by a caught value, or undefined when it carries none. */
 function errnoOf(error: unknown): string | undefined {
+  // Read defensively: a thrown value need not be an object at all.
   const code = (error as { code?: unknown } | undefined)?.code
   return typeof code === "string" ? code : undefined
 }
@@ -167,7 +190,9 @@ function errnoOf(error: unknown): string | undefined {
 /** Whether a file can be written at all (used to report `denied` without touching it). */
 export function isWritableFile(file: string): { ok: true } | { ok: false; reason: string; detail: string } {
   try {
+    // stat also proves existence; a MISSING file is answered by the catch below, never here.
     const info = statSync(file)
+    // Permission bits of the existing target, tested for ANY write bit (0o222) just below.
     const mode = info.mode
     // 0o222 = any write bit; root can still write a 0444 file, but a read-only
     // target must be REPORTED as denied rather than silently written (design E11).
@@ -203,16 +228,23 @@ export function writeBackLeaves(
   if (leaves.length === 0) return { writtenTo: [], results: [], skipped: "no-changes", applies: "restart" }
   if (targets.length === 0) return { writtenTo: [], results: [], skipped: "no-live-session", applies: "restart" }
 
+  // Per-root outcomes, appended in target order; one root's failure never hides another's success.
   const results: RootResult[] = []
+  // Files whose bytes actually changed, in the order they were written.
   const writtenTo: string[] = []
   for (const target of targets) {
+    // Compare-and-swap attempts already spent on THIS root; a conflicting re-read reruns the loop.
     let attempt = 0
+    // Whether this root reached a final outcome; the retry loop runs until it is true.
     let settled = false
     while (!settled && attempt <= options.retries) {
       attempt += 1
+      // Re-read per attempt: the target may be created or deleted between CAS retries.
       const existed = existsSync(target.file)
+      // The bytes the CAS compares against: the file's content, or a fresh header plus an empty object.
       let raw: string
       if (existed) {
+        // Refuse-first: a target with no write bit is REPORTED as denied without a single write.
         const writable = isWritableFile(target.file)
         if (!writable.ok) {
           // §B.2/E11 names the STATUS `denied` and §10.3 names the REASON `read-only`; both
@@ -228,6 +260,7 @@ export function writeBackLeaves(
           settled = true
           break
         }
+        // Unparsable input is never repaired: the root is reported and left byte-untouched.
         const parsed = readJsonc(raw)
         if (parsed.ok !== true) {
           results.push({ root: target.root, file: target.file, outcome: "unparsable", reason: "unparsable", detail: parsed.detail ?? "the file is not valid JSONC" })
@@ -240,9 +273,12 @@ export function writeBackLeaves(
 
       // Apply every leaf to the in-memory text; the FIRST refusal aborts this root.
       let text = raw
+      // The first leaf the editor could not prove; undefined means every leaf applied in memory.
       let refused: { reason: JsoncEditFailure; detail?: string } | undefined
+      // Proven-but-notable facts (a duplicated key: the LAST occurrence won), carried out for a warning.
       const notes: { reason: string; detail: string; lines?: readonly number[] }[] = []
       for (const leaf of leaves) {
+        // In-memory edit only: the file itself is written at most once, after every leaf is applied.
         const edited = surgicalEdit(text, leaf.path, leaf.value, { insert: true })
         if (edited.ok !== true) {
           refused = { reason: edited.reason, detail: edited.detail }
@@ -270,6 +306,7 @@ export function writeBackLeaves(
       }
       // Compare-and-swap: the bytes must still be what we read (design §B.2/E8).
       if (existed) {
+        // Re-read just before the rename; anything other than `raw` means another writer landed.
         let current: string | undefined
         try {
           current = readFileSync(target.file, "utf8")
@@ -295,6 +332,7 @@ export function writeBackLeaves(
         } catch {
           // best effort
         }
+        // The errno of the failed temp write or rename decides `denied` vs `refused` just below.
         const code = errnoOf(error)
         results.push({
           root: target.root,
@@ -316,8 +354,10 @@ export function writeBackLeaves(
 
 /** Flatten a settings user section into leaves (only the paths the section declares). */
 export function leavesFromSection(section: unknown, paths: readonly (readonly string[])[]): BridgeLeaf[] {
+  // One leaf per requested path the section actually declares; a missing path contributes nothing.
   const leaves: BridgeLeaf[] = []
   for (const path of paths) {
+    // Walked down the path; undefined means the section stops declaring it somewhere.
     let cursor: unknown = section
     for (const segment of path) {
       if (cursor === null || typeof cursor !== "object" || Array.isArray(cursor)) {

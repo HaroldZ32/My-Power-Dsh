@@ -133,8 +133,8 @@ so the original repo's git status stays completely clean, while the new repo has
 **Tasks**
 1. git init + first commit; README / PLAN / LICENSE-NOTICES / VENDOR_LOCK (SUL-1.0 compliance notice).
 2. **Gate docs**: write this repo's AGENTS.md, codifying §5's test/QA gates into rules (aligned with the gate spirit of upstream's root AGENTS.md).
-3. Generate VENDOR_LOCK.json: upstream commit sha + find/wc verification values; write scripts/verify-vendor.mjs.
-4. Root scripts mirror upstream: typecheck (tsgo --noEmit per package), test (bun test), test:fast, test:qa; bootstrap.mjs reproducibly builds the bundle.
+3. Generate VENDOR_LOCK.json: upstream commit sha + find/wc verification values; write scripts/verify-vendor.ts.
+4. Root scripts mirror upstream: typecheck (tsgo --noEmit per package), test (bun test), test:fast, test:qa; bootstrap.ts reproducibly builds the bundle.
 5. **dsh-qa skill skeleton**: skills/dsh-qa/ (structure aligned with the upstream host QA skills: SKILL.md + scripts/*.mjs all with --self-test + references/ domain reference), first version only includes the "bundle mount assertion" case.
 
 **Acceptance**: ① original repo git status shows no change; ② new repo first commit done; ③ bootstrap runs in a clean directory;
@@ -331,6 +331,6 @@ Supplementary rules:
 
 1. git init + first commit for this repo (PLAN/README/LICENSE-NOTICES/VENDOR_LOCK/AGENTS.md skeleton);
 2. Confirm .mpd/port/mpd-dsh is not tracked by the original repo (git status clean);
-3. Write VENDOR_LOCK.json + scripts/verify-vendor.mjs and run it;
+3. Write VENDOR_LOCK.json + scripts/verify-vendor.ts and run it;
 4. Create the skills/dsh-qa skeleton (SKILL.md + one mount assertion script with --self-test);
 5. After delivery, wait for user confirmation → enter P1 (create profile, mount DeepSeek official adapter, headless smoke).

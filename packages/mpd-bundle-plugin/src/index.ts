@@ -12,14 +12,19 @@
 // is soft-probed and effect-owned, so a webless profile keeps this plugin a pure marker.
 import { registerWatchdogRoutes, WATCHDOG_WEB_READER, DEFAULT_TEAM_STATE_DIR } from "./watchdog-web.js"
 
+/** The loader entry id the bundle patch's self-registration row names. */
 export const name = "@mpd-dsh/mpd"
+/** No declared dependencies: every seam below is soft-probed, so a webless profile keeps this a pure marker. */
 export const inject: string[] = []
 
 /** The adapter's agentless workspace resolver, probed PER REQUEST (this row's order is not ours). */
 function workspaceResolver(ctx: any): { workspaceRootsAll: () => string[]; workspaceRoot: () => string } {
+  /** Every live session workspace, with an env/cwd fallback when the adapter cannot answer. */
   const rootsAll = (): string[] => {
     try {
+      /** The adapter's agentless resolver, read per request because this row's order is not ours. */
       const adapter = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined
+      /** What the resolver answered; anything that is not a non-empty string array falls through. */
       const roots = typeof adapter?.workspaceRootsAll === "function" ? adapter.workspaceRootsAll() : undefined
       if (Array.isArray(roots) && roots.length > 0) {
         return roots.filter((root: unknown) => typeof root === "string" && root !== "")
@@ -27,12 +32,16 @@ function workspaceResolver(ctx: any): { workspaceRootsAll: () => string[]; works
     } catch {
       // a broken resolver must not take the route down: fall through to the env
     }
+    /** The workspace override from the environment, or "" so the cwd fallback below is explicit. */
     const fromEnv = typeof process.env.DSH_WORKSPACE_ROOT === "string" ? process.env.DSH_WORKSPACE_ROOT : ""
     return [fromEnv !== "" ? fromEnv : process.cwd()]
   }
+  /** The one root a writer-side route should use. */
   const root = (): string => {
     try {
+      /** The adapter's single-root resolver, probed afresh for this request. */
       const adapter = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined
+      /** What it answered; only a non-empty string is accepted, anything else falls through. */
       const one = typeof adapter?.workspaceRoot === "function" ? adapter.workspaceRoot() : undefined
       if (typeof one === "string" && one !== "") return one
     } catch {
@@ -47,7 +56,9 @@ function workspaceResolver(ctx: any): { workspaceRootsAll: () => string[]; works
 function stateDirResolver(ctx: any): () => string {
   return () => {
     try {
+      /** The runtime config service, when the composition mounted one. */
       const config = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined
+      /** The configured state dir, accepted only as a non-blank string. */
       const value = typeof config?.get === "function" ? config.get("team.stateDir") : undefined
       if (typeof value === "string" && value.trim() !== "") return value.trim()
     } catch {
@@ -87,9 +98,15 @@ function webServerOf(dsh: any, ctx: any): any {
 
 import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
+/**
+ * Register the watchdog routes when a web server exists, and re-register them on every later bind.
+ *
+ * @param ctx - the row context; the adapter and the two resolvers are read from it, never cached.
+ */
 function apply(ctx: any): void {
   // The adapter, resolved the way every other mpd row resolves it (AGENTS.md §6).
   const dsh: any = resolveDshAdapter(ctx)
+  /** Whether the routes are already bound, so a later rebind cannot register them twice. */
   let registered = false
   /**
    * Bind the watchdog routes to the web server; retried until one answers.
@@ -99,9 +116,12 @@ function apply(ctx: any): void {
     if (registered) return true
     // No web server (headless, CLI) and no effect seam both keep this a marker plugin.
     if (typeof ctx?.effect !== "function") return false
+    /** The server for this attempt; absent or non-registering keeps this plugin a pure marker. */
     const webServer = webServerOf(dsh, ctx)
     if (webServer === undefined || typeof webServer.register !== "function") return false
+    /** The workspace resolver this registration hands the routes; it is read freshly per request. */
     const workspace = workspaceResolver(ctx)
+    /** What the registration reported, i.e. which of the two routes this server accepted. */
     const result = registerWatchdogRoutes(webServer, {
       roots: () => workspace.workspaceRootsAll(),
       stateDir: stateDirResolver(ctx),

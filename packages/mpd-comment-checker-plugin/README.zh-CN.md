@@ -25,7 +25,7 @@ Vendored 解析器：上游项目 `packages/comment-checker-core`（base 8c57e46
 optionalDependency（约 51MB）。在插件 config 中设置 `autoCheck: true` 以启用
 post-edit 钩子（默认关闭）。
 
-当该 optionalDependency 缺失（本地 checkout）时，可用 `node scripts/install-profile.mjs
+当该 optionalDependency 缺失（本地 checkout）时，可用 `node scripts/install-profile.ts
 --with-comment-checker`（或 `npm install --prefix .toolchain --no-save
 @code-yeongyu/comment-checker@0.8.0`）把同一个 pinned 二进制装进仓库本地 toolchain；
 插件随后会回退到

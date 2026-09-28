@@ -30,9 +30,11 @@ export const COMMAND_CHILDREN: readonly { name: string; description: string; des
  * @returns the seam handle.
  */
 export function registerCommandTrees(ctx: PluginContextLike, log: Log): { outcome(): SeamOutcome } {
+  /** The seam result, rewritten when the provider is requested or refused. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiCommandTrees was not injected" }
 
   onService(ctx, "tuiCommandTrees", (_scoped, service) => {
+    /** The probed service as the tree provider it must be, before `register` is trusted. */
     const trees = service as TuiCommandTreesLike
     if (typeof trees?.register !== "function") {
       outcome = { state: "refused", detail: "tuiCommandTrees.register is missing" }

@@ -91,7 +91,7 @@ profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**�
 都记录在证据中）、**离线钩子测试台（offline hook harness）**在注册被**调用**时记录下的该栏描述符——id、
 order、label、locale、无 `children`、其字段与 TUI 描述符的一致性、以及模块行为——渲染、以正确的路径/值/
 revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读——以及经由宿主自身带认证的 settings API 完成的
-**端到端写入路径**（`web-settings-bridge.mjs` W1–W13）。
+**端到端写入路径**（`web-settings-bridge.ts` W1–W13）。
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
@@ -256,7 +256,7 @@ L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被�
 
 **证据级别：** `Observed` —— 沙箱内两次真实启动（ok: true），见
 `evidence/mpd-bridge/implementation/20260915T080138Z/`；另有通道
-`skills/dsh-qa/scripts/tui-settings-bridge.mjs` 与复审 PASS
+`skills/dsh-qa/scripts/tui-settings-bridge.ts` 与复审 PASS
 `evidence/mpd-bridge/review/REREVIEW-t49.md`。打通之前的版本
 （`packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563fd0e3b20…`）携带的是旧的界面文本
 （`mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`）；该文本与"已命名的后续

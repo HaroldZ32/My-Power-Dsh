@@ -14,23 +14,31 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { bundleRootOf, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
+/** The cordis row id this plugin registers under; the bundle patch mounts it as `mpd-comment-checker`. */
 export const name = "mpd-comment-checker"
+/** Cordis service ids this row waits for; the tool seam is its only hard requirement. */
 export const inject = ["tools"]
 
+/** The slice of the cordis context this row uses: the tool seam plus the optional config service. */
 type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }
+/** Row config, overridable per key by the `mpdConfig` runtime layer (mpd.jsonc wins). */
 type Config = { autoCheck?: boolean; binary?: string; timeoutMs?: number; maxMessageChars?: number }
 
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
 function mergedConfig(ctx: Ctx, config: Config): Config {
+  /** The mpdConfig service when a config plugin is composed; absent leaves the row config authoritative. */
   const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
   if (!svc?.get) return config
-  const v = (k: string) => svc.get(k)
+  /** Reads one `mpd.jsonc` leaf through the config service, keyed by its dotted path. */
+  const v = (k: string): unknown => svc.get(k)
+  // Every leaf below is asserted to the type its own `typeof` guard just proved: `unknown` cannot be
+  // narrowed across the `v(...)` call boundary, and the config service declares no value type.
   return {
     ...config,
-    autoCheck: typeof v("commentChecker.autoCheck") === "boolean" ? v("commentChecker.autoCheck") : config.autoCheck,
-    binary: typeof v("commentChecker.bin") === "string" ? v("commentChecker.bin") : config.binary,
-    timeoutMs: typeof v("commentChecker.timeoutMs") === "number" ? v("commentChecker.timeoutMs") : config.timeoutMs,
-    maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? v("commentChecker.maxMessageChars") : config.maxMessageChars,
+    autoCheck: typeof v("commentChecker.autoCheck") === "boolean" ? (v("commentChecker.autoCheck") as boolean) : config.autoCheck,
+    binary: typeof v("commentChecker.bin") === "string" ? (v("commentChecker.bin") as string) : config.binary,
+    timeoutMs: typeof v("commentChecker.timeoutMs") === "number" ? (v("commentChecker.timeoutMs") as number) : config.timeoutMs,
+    maxMessageChars: typeof v("commentChecker.maxMessageChars") === "number" ? (v("commentChecker.maxMessageChars") as number) : config.maxMessageChars,
   }
 }
 
@@ -39,27 +47,48 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
 // <root>/packages/mpd-comment-checker-plugin/{src,dist}/index.ts|js in both install layouts.
 const repoRoot = (): string => bundleRootOf(import.meta.url)
 
+/**
+ * The `<platform>-<arch>` directory name the detector binary ships under.
+ * @returns the platform key, e.g. `linux-x64`.
+ */
 function platformKey(): string {
+  /** The arch spelling; every arch keeps node's own name, x64 included. */
   const arch = process.arch === "x64" ? "x64" : process.arch
   return process.platform + "-" + arch
 }
 
+/**
+ * Resolves the detector from the installed optional dependency of the bundle package.
+ * @returns the vendored binary path, or null when the package is not installed.
+ */
 function dependencyBinary(): string | null {
   // @code-yeongyu/comment-checker installed as a (optional) dependency of the
   // enclosing @mpd-dsh/mpd package -> sibling node_modules parent-walk finds it.
   try {
+    /** A require bound to this module, so package resolution starts at the plugin. */
     const req = createRequire(import.meta.url)
+    /** The dependency's package.json, the anchor of its `vendor/` directory. */
     const p = req.resolve("@code-yeongyu/comment-checker/package.json")
     return join(dirname(p), "vendor", platformKey(), "comment-checker")
   } catch { return null }
 }
 
+/**
+ * Resolves the detector binary in the documented order: an explicit `config.binary`, then
+ * `MPD_DSH_COMMENT_CHECKER_BIN`, then the installed optional dependency, then the repo-local
+ * dev-toolchain copies. Every candidate must exist on disk.
+ * @param config - the effective config, whose `binary` override wins over every other source.
+ * @returns the binary path, or null when no candidate exists (the callers fail open).
+ */
 export function resolveBinary(config: Config): string | null {
   if (config.binary && existsSync(resolve(config.binary))) return resolve(config.binary)
+  /** The operator's explicit override, second in the resolution order. */
   const env = process.env.MPD_DSH_COMMENT_CHECKER_BIN
   if (env && existsSync(env)) return env
+  /** The binary of the installed optional dependency, third in the resolution order. */
   const dep = dependencyBinary()
   if (dep && existsSync(dep)) return dep
+  /** Repo-local dev-toolchain copies, the last resort for a checkout without the dependency. */
   const candidates = [
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", platformKey(), "comment-checker"),
     join(repoRoot(), ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "bin", "comment-checker")
@@ -82,9 +111,18 @@ function hookInputFor(path: string, content: string, root?: string): any {
   }
 }
 
+/**
+ * Runs the detector on one PostToolUse payload, which travels on the child's stdin.
+ * @param binary - the resolved binary to execute.
+ * @param hookInput - the payload the binary parses.
+ * @param timeoutMs - wall-clock bound for the child, in milliseconds.
+ * @returns whether comments were found, with the binary's message; a spawn failure throws.
+ */
 function runCheck(binary: string, hookInput: any, timeoutMs: number): { hasComments: boolean; message: string } {
+  /** The child's exit status and captured output; `error` is set when the spawn itself failed. */
   const r = spawnSync(binary, ["check"], { input: JSON.stringify(hookInput), encoding: "utf8", timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 })
   if (r.error) throw new Error("mpd-comment-checker: spawn failed: " + String(r.error.message ?? r.error))
+  /** The binary's message: stderr first, stdout appended. */
   const stderr = (r.stderr ?? "") + (r.stdout ?? "")
   if (r.status === 0) return { hasComments: false, message: "" }
   if (r.status === 2) return { hasComments: true, message: stderr }
@@ -93,11 +131,19 @@ function runCheck(binary: string, hookInput: any, timeoutMs: number): { hasComme
 
 export { hookInputFor, runCheck }
 
+/**
+ * Registers the `mpd_comment_check` tool and, only when `autoCheck` is true, the post-execute hook.
+ * @param ctx - the cordis context; every harness seam is reached through the shared adapter.
+ * @param config - the row config, merged with the mpdConfig layer per key.
+ */
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
   const dsh: any = resolveDshAdapter(ctx)
+  /** The effective config: the row config with every mpd.jsonc override applied. */
   const cfg = mergedConfig(ctx, config)
+  /** Per-run wall-clock bound, in milliseconds; 30000 when unset. */
   const timeoutMs = cfg.timeoutMs ?? 30000
+  /** Cap on the retained detection message, in characters; 12000 when unset. */
   const maxMessageChars = cfg.maxMessageChars ?? 12000
 
   dsh.registerTool({
@@ -106,15 +152,21 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: { files: { type: "array", items: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path"], additionalProperties: false } } }, required: ["files"] },
     output: { schema: { type: "object", properties: { binary: { type: "string" }, results: { type: "array", items: { type: "object" } } }, required: ["binary", "results"] }, render: (_a: unknown, v: any) => textBlock("comment-check binary=" + v.binary + "\n" + v.results.map((x: any) => (x.hasComments ? "DETECTED " + x.path + ": " + x.message.slice(0, maxMessageChars) : "clean " + x.path)).join("\n")) },
     execute: async (args: any, exec: any) => {
+      /** The resolved detector binary; the call fails loudly when none is installed. */
       const binary = resolveBinary(cfg)
       if (!binary) throw new Error("mpd-comment-checker: binary not found — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN")
+      /** The requested files, or none when the argument was malformed. */
       const files = Array.isArray(args?.files) ? args.files : []
+      /** One result record per requested file, in request order. */
       const results = []
       for (const f of files) {
+        /** The file's path, as the caller spelled it. */
         const path = String(f.path)
+        /** The content to scan: the caller's string, else the file on disk, else empty. */
         const content = typeof f.content === "string" ? f.content : (existsSync(path) ? readFileSync(path, "utf8") : "")
         if (!content) { results.push({ path, hasComments: false, message: "no content to check" }); continue }
         try {
+          /** The detector's verdict for this file. */
           const res = runCheck(binary, hookInputFor(path, content, dsh.workspaceRoot(exec)), timeoutMs)
           if (!res.hasComments && res.message) results.push({ path, hasComments: false, message: res.message })
           else results.push({ path, ...res })
@@ -127,19 +179,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   if (cfg.autoCheck === true) {
     dsh.onPostToolExecute(async (exec: any, result: any, out: any) => {
       if (out.kind !== "accept") return out
+      /** Whether the finished call is one that writes content; `str_replace_editor` is the legacy name. */
       const isEdit = exec.name === "edit" || exec.name === "str_replace_editor" || exec.name === "write"
       if (!isEdit) return out
+      /** The path the edit targeted, under either argument spelling. */
       const fp = exec.arguments?.file_path ?? exec.arguments?.path
       if (typeof fp !== "string") return out
+      /** The resolved detector binary; absent leaves the decision untouched. */
       const binary = resolveBinary(cfg)
       if (!binary) return out
+      /** The edited file's content; an unreadable file leaves the decision untouched. */
       let content = ""
       try { content = readFileSync(fp, "utf8") } catch { return out }
       if (!content) return out
+      /** The detector's verdict on the edited file. */
       const res = runCheck(binary, hookInputFor(fp, content, dsh.workspaceRoot(exec)), timeoutMs)
       if (!res.hasComments) return out
+      /** The text appended to the tool result when comments were found. */
       const hint = "[mpd-comment-checker] comments/docstrings detected in " + fp + ":\n" + res.message.slice(0, maxMessageChars)
+      /** The decision's content in whichever shape the harness produced it. */
       const c = out.content ?? result?.content
+      /** The decision's existing text, blocks flattened, so the hint appends rather than replaces. */
       const text = typeof c === "string" ? c : (Array.isArray(c) ? c.map((b: any) => (b && b.type === "text" ? b.text : "")).join("\n") : "")
       return { ...out, content: [{ type: "text", text: (text ? text + "\n\n" : "") + hint }] }
     })

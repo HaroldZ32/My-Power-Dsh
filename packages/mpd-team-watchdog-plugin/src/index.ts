@@ -116,21 +116,29 @@ export const Config: Schemastery<Config> = z.object({
 
 /** What `apply` reports (also the handle tests drive). */
 export interface ApplyReport {
+  /** Whether the row installed its engine (false when it degraded to inert). */
   applied: boolean
+  /** The live engine handle, or null when construction failed. */
   engine: WatchdogEngine | null
+  /** The knobs the engine resolved at apply time. */
   knobs: ResolvedKnobs
+  /** Cadence of the installed tick timer in ms; 0 when no timer runs. */
   intervalMs: number
+  /** How many disposer callbacks `install()` registered. */
   disposers: number
   /** The service id the w7 gates resolve, or null when `ctx.provide` is unavailable. */
   holdService: string | null
   /** How many durable holds the registry loaded at apply. */
   hydratedHolds: number
+  /** `Error#message` of the degradation; absent on a clean apply. */
   error?: string
 }
 
 /** Apply the documented defaults to a (possibly partial) config. */
 export function resolveConfig(config: Config = {}): EngineConfig {
+  // Coerce a config flag: only a real boolean is accepted, anything else takes the fallback.
   const bool = (value: boolean | undefined, fallback: boolean): boolean => (typeof value === "boolean" ? value : fallback)
+  // Coerce a numeric knob: a finite value at or above `min` wins, anything else falls back.
   const num = (value: number | undefined, fallback: number, min: number): number =>
     typeof value === "number" && Number.isFinite(value) && value >= min ? value : fallback
   return {
@@ -171,8 +179,11 @@ function warn(prefix: string, text: string): void {
  * @returns what was installed (never throws).
  */
 export function apply(ctx: unknown, config: Config = {}): ApplyReport {
+  // The loader hands `apply` an untyped ctx, so the engine's own context shape is asserted here.
   const context = (ctx ?? {}) as EngineContext
+  // The row config with every documented default applied.
   const resolved = resolveConfig(config)
+  // The adapter seam: the mounted `mpdDsh` when present, else a row-private one.
   let dsh: DshAdapter
   try {
     // `ctx.get(id, false)` is the SOFT probe: it answers undefined instead of
@@ -186,8 +197,10 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
 
   // The synchronous hold reader the w7 gates consult (plan AMENDMENT 2, A2-1, option (b)).
   const registry = new HoldRegistry(resolved.stateDir)
+  // Durable holds loaded from disk at apply; stays 0 when hydration degrades.
   let hydratedHolds = 0
   try {
+    // Every workspace root whose holds this apply should hydrate from.
     const roots = new Set<string>()
     try {
       for (const root of dsh.workspaceRootsAll() ?? []) roots.add(root)
@@ -204,6 +217,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
     warn(resolved.logPrefix, "hold hydration at apply failed (the file fallback still answers): " + message(error))
   }
 
+  // The engine handle, assigned once construction succeeds; the catch below returns inert.
   let engine: WatchdogEngine
   try {
     engine = new WatchdogEngine(dsh, context, resolved, registry)
@@ -212,8 +226,10 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
     return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds, error: message(error) }
   }
 
+  // The published hold-service id, or null when `ctx.provide` is unavailable.
   let holdService: string | null = null
   try {
+    // The ctx's `provide` seam, read defensively because a minimal test ctx may lack it.
     const provide = (context as { provide?: (id: string, value: unknown) => unknown }).provide
     if (typeof provide === "function") {
       // `mpdWatchdog` is the ONE seam w7 needs: a synchronous, non-throwing answer.
@@ -242,6 +258,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
     warn(resolved.logPrefix, "publishing the " + HOLD_SERVICE + " service failed: " + message(error))
   }
 
+  // Teardown callbacks the engine registered; `cleanup` invokes each exactly once.
   let disposers: (() => void)[] = []
   try {
     // The status tool reports WHICH predicate is running (§4) — a diagnostics provider,
@@ -261,7 +278,9 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
   // Exactly ONE interval owns the cadence; a live knob change replaces it, never
   // adds a second one. `unref` keeps a pending watchdog from holding the host open.
   let timer: ReturnType<typeof setInterval> | undefined
+  // Cadence the running interval was started with, used to detect a live knob change.
   let intervalMs = engine.getKnobs().tickIntervalMs
+  // Clear the single cadence interval, tolerating an already-cleared handle.
   const stopTimer = (): void => {
     if (timer !== undefined) {
       try {
@@ -272,6 +291,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
       timer = undefined
     }
   }
+  // Replace the cadence interval with one at `next` ms, so two never run at once.
   const startTimer = (next: number): void => {
     stopTimer()
     intervalMs = next
@@ -291,6 +311,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
   if (engine.getKnobs().enabled) startTimer(intervalMs)
   else warn(resolved.logPrefix, "disabled by configuration — no heartbeat tick will run")
 
+  // Dispose the whole row: stop the tick, run every disposer, stop the engine.
   const cleanup = (): void => {
     stopTimer()
     for (const dispose of disposers) {
@@ -308,6 +329,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
     warn(resolved.logPrefix, "ctx.effect unavailable (" + message(error) + ") — the tick will not be cleaned up on dispose")
   }
 
+  // Knob problems the resolver recorded, each reported once on stderr below.
   const issues = engine.getKnobs().issues
   for (const issue of issues) warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback))
   // The boot log line a mount lane greps: proof the row APPLIED (not merely composed).

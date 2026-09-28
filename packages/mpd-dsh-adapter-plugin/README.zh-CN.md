@@ -88,7 +88,7 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 按成员路由在一次性咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`）上仍可机械生效，因为它们
 自行传入 `agentOptions`。
 
-### D6 静态闸门（`test/no-direct-team-access.test.mjs`）
+### D6 静态闸门（`test/no-direct-team-access.test.ts`）
 
 该静态闸门扫描 `packages/mpd-*/src/**/*.ts`（本包除外）中的字面标识符 `agentTeams` 与
 `startContinuable`，失败时指出文件与行号；它先剥离注释（"绝不要碰 `ctx.agentTeams`" 这类说明
@@ -96,8 +96,8 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 跳过：
 
 ```bash
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs            # 扫描
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs --self-test # 反向对照
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts            # 扫描
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-test # 反向对照
 ```
 
 它同时是一个 `bun test` 用例，因此 `bun test packages/mpd-dsh-adapter-plugin` 也会运行它。

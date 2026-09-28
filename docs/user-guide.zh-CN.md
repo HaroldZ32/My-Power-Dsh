@@ -43,7 +43,7 @@ cd <repo> && dsh plugin --profile dsh-tui add .
 
 同一个 bundle 会以**第三层 patch** 的身份装进终端界面，叠在 TUI 包之上：安装后
 `dsh.profile.bundles` 为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
-`node scripts/dump-config.mjs --profile dsh-tui`（仓库包装器，会在自身输出里打印
+`node scripts/dump-config.ts --profile dsh-tui`（仓库包装器，会在自身输出里打印
 「仅组合」警告）会把我们的行显示在独立的一层里
 （`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`），并把 `mpd` preset 作为会话默认。
 用 `dsh-tui` 启动器（别名 `dst`）启动：
@@ -61,7 +61,7 @@ dsh-tui --help     # update | doctor | version | help；其余参数原样转发
 ### 打包产物（发布 / 分发）
 
 ```bash
-node scripts/pack-mpd.mjs                          # -> dist/mpd-package/（可迁移）
+node scripts/pack-mpd.ts                          # -> dist/mpd-package/（可迁移）
 dsh plugin --profile web add dist/mpd-package
 dsh plugin --profile dsh-tui add dist/mpd-package
 # 或者从任何已发布位置
@@ -73,9 +73,9 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 `docs/` 文档集 + 按需查阅的 `agent-references/`（故障排查表与采纳插件的 delta 登记册）+
 合并后的 web 客户端 + 打包形态的 patch），不依赖检出目录。自 2026-09-17 的打包变更起，
 该产物同样**面向作者**：扩展 CLI、脚手架模板与全部指南都随包交付，因此已安装的 bundle 可以直接
-`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`，其中的 `docs/` 也可就地阅读。
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>`，其中的 `docs/` 也可就地阅读。
 发布、制作 tarball 或验证可迁移性时才需要它；本地安装从不需要。产物必须携带什么不再靠信任：
-`node scripts/verify-pack-closure.mjs` 会在已声明的资产缺失、`docs/`+`templates/` 与源目录逐文件不符、
+`node scripts/verify-pack-closure.ts` 会在已声明的资产缺失、`docs/`+`templates/` 与源目录逐文件不符、
 或打包 manifest 的 `files` 列表与磁盘内容不一致时大声失败。
 
 ### 卸载（一条命令，无残留）
@@ -94,14 +94,14 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 （`~/.mpd/workmate`）与各工作区的 `.mpd/` 状态。
 
 从 `<= 0.2.6` 的 bundle（会把 presets + skills 复制进 `$DSH_HOME`）升级：`>= 0.3.0` 的首次启动
-会自行删除那些带版本戳的副本。由历史遗留的 `scripts/install-profile.mjs` 流程留下的无戳副本不会
+会自行删除那些带版本戳的副本。由历史遗留的 `scripts/install-profile.ts` 流程留下的无戳副本不会
 被触碰 —— 如果你用过那个流程，请手工删除。
 
 ### 历史安装器（仅开发/QA）
 
 ```bash
-node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]
-node scripts/install-profile.mjs            # --dry-run 只打印计划，不写任何东西
+node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]
+node scripts/install-profile.ts            # --dry-run 只打印计划，不写任何东西
 ```
 
 绝不要在 QA 场景中对真实 home 运行这个历史安装器（`--dsh-home` 就是为隔离 QA 准备的）。
@@ -468,8 +468,8 @@ flows 就可以放在工作区级），然后重启 `dsh`。没有 reload 工具
 `mpd_flow_show` 用于查看所贡献的 flow。在信任一个目录之前先校验它：
 
 ```bash
-bun scripts/mpd-ext.mjs validate <dir>     # 退出码 1，并逐条打印问题
-bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨架开始
+bun scripts/mpd-ext.ts validate <dir>     # 退出码 1，并逐条打印问题
+bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨架开始
 ```
 
 **诚实的边界。**
@@ -510,7 +510,7 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **工作区级扩展的 `mcp`/`roles` 条目被拒绝** → 符合预期：只有主机级根
   （`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
   清单中去掉不支持的种类。
-- 侧边栏缺少 Workmates 标签页 → 重新构建随包客户端（`node scripts/build-mpd-client.mjs`，然后
+- 侧边栏缺少 Workmates 标签页 → 重新构建随包客户端（`node scripts/build-mpd-client.ts`，然后
   刷新页面），并确认 profile 中存在侧边栏宿主。bundle 会自行安装它（已声明依赖 +
   `mpd-better-sidebar` 行）；如果 profile 中缺少 `dsh-better-sidebar`，说明安装时没有把该依赖
   落到本地 —— 在检出目录执行 `bun install`（或
@@ -690,9 +690,9 @@ mpd_flow_show { "id": "<flow id>" }
 ```
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example    # 退出码 1 + 每个问题一行
-bun scripts/mpd-ext.mjs list
-bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp --with-mcp
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example    # 退出码 1 + 每个问题一行
+bun scripts/mpd-ext.ts list
+bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 ```
 
 ### 13.9 团队回路（Lead 与成员）

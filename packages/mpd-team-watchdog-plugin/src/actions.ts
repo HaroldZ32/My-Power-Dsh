@@ -22,15 +22,22 @@ import { listTeamIds, readTeam } from "./team.js"
 
 /** The tool names this package registers (also the internal-seam names w7 calls). */
 export const HOLD_TOOL = "session-watchdog-hold"
+/** Tool name that clears a team's preserving hold; a team that is not held is a no-op. */
 export const RESUME_TOOL = "session-watchdog-resume"
+/** Tool name of the read-only diagnostics view over the whole watchdog store. */
 export const STATUS_TOOL = "session-watchdog-status"
 
 /** Arguments accepted by {@link HOLD_TOOL}. */
 export interface HoldArgs {
+  /** The team to hold; an empty id is refused instead of holding anything. */
   team_id?: string
+  /** The task whose silence caused the hold, when the escalation names one. */
   task_id?: string
+  /** That task's attempt id at the moment of escalation. */
   attempt_id?: string
+  /** Why the hold was raised; defaults to `silence`. */
   cause?: string
+  /** Epoch ms of the scene written for this escalation; 0 when none was written. */
   scene_at?: number
   /**
    * T-17: the bound after which this hold releases itself (`hold-auto-released`, cause `ttl`).
@@ -42,12 +49,18 @@ export interface HoldArgs {
 
 /** Arguments accepted by {@link RESUME_TOOL}. */
 export interface ResumeArgs {
+  /** The team whose hold to clear; an empty id is refused. */
   team_id?: string
 }
 
 /**
  * Persist the hold for one team.
  *
+ * @param workspace - the workspace root resolved for this call.
+ * @param stateDir - the team state directory (default `.mpd/team`).
+ * @param args - the tool arguments naming the team, task and cause.
+ * @param registry - the synchronous reader to publish into when the record lands.
+ * @param defaultTtlMs - TTL applied when `args.ttl_ms` is omitted; 0 means no TTL.
  * @returns `{applied:true, hold}` only after the record is on disk; a persistence
  * failure returns `{applied:false, error}` so no caller can announce a pause that
  * did not happen (design §7).
@@ -57,11 +70,14 @@ export function applyHold(
   stateDir: string,
   args: HoldArgs,
   registry?: HoldRegistry,
-  defaultTtlMs = 0,
+  defaultTtlMs: number = 0,
 ): { applied: boolean; hold?: HoldRecord; error?: string; path: string; changed?: boolean } {
+  // The requested team id, trimmed; an empty value is refused below.
   const teamId = String(args.team_id ?? "").trim()
   if (teamId === "") return { applied: false, error: "team_id is required", path: holdPath(workspace, stateDir, "") }
+  // The team's hold as it stands on disk, so a re-persist keeps its identity and its bounds.
   const existing = readHold(workspace, stateDir, teamId)
+  // The record to persist: fresh identity and timestamps for a new hold, the old ones otherwise.
   const hold: HoldRecord = {
     id: existing?.id ?? randomUUID(),
     teamId,
@@ -77,6 +93,7 @@ export function applyHold(
         ? args.ttl_ms
         : existing?.ttlMs ?? defaultTtlMs,
   }
+  // The persistence outcome; nothing is published or announced until it succeeded.
   const written = writeHold(workspace, stateDir, hold)
   if (!written.ok) return { applied: false, error: written.error, path: written.path }
   // The durable record landed: publish it to the synchronous reader the gates use.
@@ -87,6 +104,10 @@ export function applyHold(
 /**
  * Clear the hold for one team.
  *
+ * @param workspace - the workspace root resolved for this call.
+ * @param stateDir - the team state directory (default `.mpd/team`).
+ * @param args - the tool arguments naming the team.
+ * @param registry - the synchronous reader to free once the clear is verified on disk.
  * A team that is not held is a NO-OP, not an error (AC-8): the action is safe to
  * call twice and safe to call on a team the watchdog never touched.
  */
@@ -96,11 +117,15 @@ export function applyResume(
   args: ResumeArgs,
   registry?: HoldRegistry,
 ): { resumed: boolean; reason?: string; hold?: HoldRecord; path: string } {
+  // The requested team id, trimmed; an empty value is refused below.
   const teamId = String(args.team_id ?? "").trim()
   if (teamId === "") return { resumed: false, reason: "team_id is required", path: holdPath(workspace, stateDir, "") }
+  // The hold on disk, if any; an unheld team returns the not-held no-op below.
   const hold = readHold(workspace, stateDir, teamId)
   if (hold === undefined) return { resumed: false, reason: "not-held", path: holdPath(workspace, stateDir, teamId) }
+  // The removal outcome, whose path is reported even when nothing was removed.
   const cleared = clearHold(workspace, stateDir, teamId)
+  // Read-back after the removal: a hold that survived a failed unlink is still in force.
   const stillHeld = readHold(workspace, stateDir, teamId)
   if (stillHeld !== undefined) {
     return { resumed: false, reason: "hold could not be cleared", hold, path: cleared.path }
@@ -125,10 +150,15 @@ export type PredicateSourceProvider = () => { source: "channel" | "heartbeat"; r
  * status view can show a file edit that took effect LIVE instead of implying a restart.
  */
 export interface KnobDivergenceView {
+  /** One row per knob: the live value, the file's value when it states one, and the flags. */
   readings: Array<{ knob: string; live: number | boolean | string; file?: number | boolean | string; differs: boolean; restartRequired: boolean }>
+  /** Names of the knobs whose live and file values differ. */
   divergent: string[]
+  /** Whether a file value is waiting for the next boot to take effect. */
   restartRequired: boolean
+  /** The `.mpd/mpd.jsonc` the reading was taken from, when one was found. */
   file: string | null
+  /** Whether that config file existed at all. */
   fileFound: boolean
   /** T-18: whether the running values came from the workspace file layer (live, no restart). */
   fileApplied: boolean
@@ -138,7 +168,9 @@ export interface KnobDivergenceView {
 
 /** The live providers `apply` hands the status surface. Each is read at CALL time. */
 export interface WatchdogSurfaces {
+  /** Live provider of the active predicate source, read at every call. */
   predicate?: PredicateSourceProvider
+  /** Live provider of the per-knob live-vs-file reading. */
   knobs?: () => KnobDivergenceView
   /** T-17: the resolved `holdTtlMs` a hold created without an explicit `ttl_ms` inherits. */
   holdTtlMs?: () => number
@@ -151,6 +183,7 @@ export function registerWatchdogActions(
   registry?: HoldRegistry,
   surfaces: WatchdogSurfaces = {},
 ): void {
+  // The predicate provider captured once; it is read on every status call.
   const predicateSource = surfaces.predicate
   dsh.registerTool({
     name: HOLD_TOOL,
@@ -176,6 +209,7 @@ export function registerWatchdogActions(
     output: {
       schema: { type: "object", properties: { applied: { type: "boolean" }, hold: { type: "object" }, error: { type: "string" } } },
       render: (_args: unknown, raw: unknown) => {
+        // The tool result as the renderer reads it; the adapter hands `raw` in as unknown.
         const value = (raw ?? {}) as { applied: boolean; hold?: HoldRecord; error?: string }
         return value.applied
           ? [{ type: "text", text: "watchdog hold applied for " + String(value.hold?.teamId) + " (since " + String(value.hold?.since) + ")" }]
@@ -183,7 +217,9 @@ export function registerWatchdogActions(
       },
     },
     execute: (args: HoldArgs, exec: unknown) => {
+      // The calling session's workspace root, resolved per call; `exec` is opaque to this tool.
       const workspace = dsh.workspaceRoot(exec as never)
+      // TTL applied when the call omits `ttl_ms`; 0 means no TTL if the provider fails.
       let fallbackTtl = 0
       try {
         fallbackTtl = surfaces.holdTtlMs?.() ?? 0
@@ -207,6 +243,7 @@ export function registerWatchdogActions(
     output: {
       schema: { type: "object", properties: { resumed: { type: "boolean" }, reason: { type: "string" }, hold: { type: "object" } } },
       render: (_args: unknown, raw: unknown) => {
+        // The tool result as the renderer reads it; the adapter hands `raw` in as unknown.
         const value = (raw ?? {}) as { resumed: boolean; reason?: string }
         return value.resumed
           ? [{ type: "text", text: "watchdog hold cleared" }]
@@ -214,6 +251,7 @@ export function registerWatchdogActions(
       },
     },
     execute: (args: ResumeArgs, exec: unknown) => {
+      // The calling session's workspace root for this resume.
       const workspace = dsh.workspaceRoot(exec as never)
       return applyResume(workspace, stateDir, args ?? {}, registry)
     },
@@ -240,12 +278,15 @@ export function registerWatchdogActions(
         },
       },
       render: (_args: unknown, raw: unknown) => {
+        // The tool result as the renderer reads it; the adapter hands `raw` in as unknown.
         const value = (raw ?? {}) as {
           teams: Array<{ teamId: string; held: boolean; halt: { halted: boolean; haltedAt: number | null }; pause: { paused: boolean; mechanism: string; implementation: string } }>
           predicate?: { source: string; reason: string }
           knobs?: KnobDivergenceView
         }
+        // The report lines, assembled in the order the status text prints them.
         const lines: string[] = []
+        // The predicate reading, absent when the engine published none.
         const predicate = value.predicate
         lines.push(
           predicate === undefined
@@ -272,6 +313,7 @@ export function registerWatchdogActions(
         // nothing else. `halted` is reported as `false` (the field kept so a consumer's shape does
         // not change) and the renderer no longer names an external mechanism that does not exist.
         for (const team of value.teams) {
+          // The team's one pause state: the watchdog's own preserving hold.
           const pause = team.pause
           if (pause?.paused === true) {
             lines.push(team.teamId + ": PAUSED — the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)")
@@ -281,7 +323,9 @@ export function registerWatchdogActions(
       },
     },
     execute: (args: { team_id?: string }, exec: unknown) => {
+      // The calling session's workspace root for this status read.
       const workspace = dsh.workspaceRoot(exec as never)
+      // The team ids to report: the requested one, or every live team when it is omitted.
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
       return {
         workspace,
@@ -296,12 +340,15 @@ export function registerWatchdogActions(
           watermark: watermarkPath(workspace, stateDir),
         },
         teams: ids.map((teamId) => {
+          // The durable hold for this team, if any.
           const hold = readHold(workspace, stateDir, teamId)
+          // The live OFFICIAL readout for this team, when one of its sessions is live.
           const team = readTeam(dsh, teamId)
           // 0.1.7: ONE pause state, and the watchdog's own preserving hold IS it — the official
           // service exposes no halt on any seam this plugin may call, so `halted` is always false
           // and the field survives only so a consumer's payload shape is unchanged.
           const held = hold !== undefined
+          // The payload's single pause state, derived from the durable hold.
           const pause = {
             paused: held,
             mechanism: "watchdog-hold",
@@ -320,6 +367,7 @@ export function registerWatchdogActions(
             heartbeatKeys: listHeartbeatKeys(workspace, stateDir),
             heartbeatTails: Object.fromEntries(
               listHeartbeatKeys(workspace, stateDir).map((key) => {
+                // This member's stamps, folded into a count plus the newest one for the tail row.
                 const stamps = readHeartbeats(workspace, stateDir, key)
                 return [key, { count: stamps.length, newest: newestOverall(stamps) ?? null }]
               }),

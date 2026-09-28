@@ -9,7 +9,7 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { IncidentRecord } from "../../mpd-team-watchdog-plugin/src/sidecars"
+import type { HoldRecord, IncidentRecord } from "../../mpd-team-watchdog-plugin/src/sidecars"
 import { appendIncident, clearHold, readWatermarks, writeHold } from "../../mpd-team-watchdog-plugin/src/sidecars"
 import { HoldRegistry } from "../../mpd-team-watchdog-plugin/src/holds"
 import { DEFAULT_STATE_DIR, watermarkPath } from "../../mpd-team-watchdog-plugin/src/paths"
@@ -29,33 +29,52 @@ import {
   watchdogNotice,
 } from "../src/watchdog"
 
+/** The fakes and the real hold store one arm works against. */
 interface Harness {
+  /** The context double, in which services are reachable only through `inject`. */
   ctx: Record<string, any>
+  /** Every contribution the status double received. */
   statusSet: { key: string; text: string }[]
+  /** Every request the dialog double was asked to show. */
   dialogRequests: { title: string; options: { id: string; label: string }[]; timeoutMs?: number }[]
+  /** Warning lines the logger double received. */
   warnings: string[]
+  /** Sets the choice the next dialog request answers with. */
   answer: (choice: string | undefined) => void
+  /** The temp workspace the real hold store is rooted at. */
   workspace: string
+  /** The watchdog package's own hold registry over that workspace. */
   registry: HoldRegistry
+  /** Removes the temp workspace this arm owns. */
   cleanup: () => void
 }
 
+/** Builds one arm's fakes plus a REAL hold store over a temp workspace. */
 function harness(options: { withDialogs?: boolean; withService?: boolean } = {}): Harness {
+  /** The temp workspace this arm owns. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-tui-watchdog-"))
+  /** Contributions the status double collects. */
   const statusSet: Harness["statusSet"] = []
+  /** Requests the dialog double collects. */
   const dialogRequests: Harness["dialogRequests"] = []
+  /** Warning lines the logger double collects. */
   const warnings: string[] = []
+  /** The choice the next dialog request answers with. */
   let nextChoice: string | undefined
+  /** The real hold registry, reading and writing that temp workspace. */
   const registry = new HoldRegistry(DEFAULT_STATE_DIR, workspace)
+  /** The `mpdWatchdog` service double, backed by that registry. */
   const service = {
     heldTeams: (ws?: string) => registry.heldTeams(ws ?? workspace),
     unread: (reader: string, ws?: string) => registry.unread(reader, ws ?? workspace),
     acknowledge: (reader: string, upTo: number, ws?: string) => registry.acknowledge(reader, upTo, ws ?? workspace),
     view: (reader: string, ws?: string) => registry.view(reader, ws ?? workspace),
   }
+  /** The services this composition exposes; `inject` gates on them. */
   const services: Record<string, any> = {
     tuiStatus: {
-      set(key: string, text: unknown) {
+      /** Records one contribution and returns the host's no-op disposer. */
+      set(key: string, text: unknown): () => void {
         statusSet.push({ key, text: String(text) })
         return () => {}
       },
@@ -72,6 +91,7 @@ function harness(options: { withDialogs?: boolean; withService?: boolean } = {})
     }
   }
   if (options.withService !== false) services[WATCHDOG_SERVICE] = service
+  /** Builds the context double: inject-free invisibility plus the two seams. */
   const build = (): Record<string, any> => ({
     get: () => undefined, // inject-free invisibility
     effect: (callback: () => () => void) => {
@@ -84,6 +104,7 @@ function harness(options: { withDialogs?: boolean; withService?: boolean } = {})
       debug: () => {},
     },
     inject: (dependencies: readonly string[], callback: (scoped: Record<string, any>) => void) => {
+      /** The injected scope, carrying the same services as properties. */
       const scoped = { get: (id: string) => services[id], ...services }
       if (dependencies.every((id) => services[id] !== undefined)) callback(scoped)
       return {}
@@ -103,6 +124,7 @@ function harness(options: { withDialogs?: boolean; withService?: boolean } = {})
   }
 }
 
+/** One incident record at the given timestamp, with optional overrides. */
 const incident = (at: number, overrides: Partial<IncidentRecord> = {}): IncidentRecord => ({
   id: `inc-${String(at)}`,
   teamId: "mpd-default-1",
@@ -117,7 +139,12 @@ const incident = (at: number, overrides: Partial<IncidentRecord> = {}): Incident
   ...overrides,
 })
 
-const hold = (teamId: string, since: number) => ({
+/**
+ * The hold fixture this arm writes. `ttlMs: 0` is the value the reader gives a hold persisted
+ * before T-17 introduced the field (0 = no TTL), so these arms keep exercising the never-expire
+ * path their notices and acknowledgements depend on.
+ */
+const hold = (teamId: string, since: number): HoldRecord => ({
   id: `hold-${teamId}`,
   teamId,
   since,
@@ -125,21 +152,27 @@ const hold = (teamId: string, since: number) => ({
   taskId: "t1",
   attemptId: null,
   sceneAt: since,
+  ttlMs: 0,
 })
 
 describe("watchdog front door — notice composition", () => {
   test("the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed", () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       writeHold(h.workspace, DEFAULT_STATE_DIR, hold("mpd-default-1", 1000))
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
+      /** A silent logger: this arm asserts the published text and the bytes, not logs. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** The front door under test. */
       const door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+      /** The status seam, publishing the composed notice. */
       const status = registerStatus(h.ctx, log, () => h.workspace, () => h.workspace, 0, () =>
         composeNotices(undefined, door.notice()),
       )
       expect(door.available()).toBe(true)
 
+      /** The contribution published while the team is held and an incident is unread. */
       const first = h.statusSet.at(-1)
       expect(first?.key).toBe(STATUS_KEY)
       expect(first?.text).toContain("watchdog: held mpd-default-1")
@@ -151,6 +184,7 @@ describe("watchdog front door — notice composition", () => {
       // Resume the team: the live half of the notice must vanish on the next publish...
       clearHold(h.workspace, DEFAULT_STATE_DIR, "mpd-default-1")
       status.refresh()
+      /** The contribution after the hold was cleared: the live half must be gone. */
       const second = h.statusSet.at(-1)
       expect(second?.text).not.toContain("held mpd-default-1")
       expect(second?.text).toContain("1 unread incident")
@@ -158,6 +192,7 @@ describe("watchdog front door — notice composition", () => {
       // ...and the replay half too, once it is acknowledged (through the service).
       expect(door.acknowledge(1000).ok).toBe(true)
       status.refresh()
+      /** The contribution after the acknowledge: no watchdog text at all. */
       const third = h.statusSet.at(-1)
       expect(third?.text).not.toContain("watchdog:")
       expect(third?.text).toBe(String(first?.text).replace(/ · watchdog:.*$/, ""))
@@ -181,6 +216,7 @@ describe("watchdog front door — notice composition", () => {
   })
 
   test("heldTeams reads the durable hold index through the service, not a cache", () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       expect(heldTeams(h.ctx ? h.registry : undefined, h.workspace)).toEqual([])
@@ -199,12 +235,16 @@ describe("watchdog front door — notice composition", () => {
 
 describe("watchdog front door — dialog and acknowledge", () => {
   test("the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark", async () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(2000))
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** How many times the post-acknowledge hook ran. */
       let acknowledged = 0
+      /** The front door under test. */
       const door = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -214,16 +254,19 @@ describe("watchdog front door — dialog and acknowledge", () => {
         replayOnAttach: false,
       })
 
+      /** Path of the per-reader watermark sidecar. */
       const watermarkFile = watermarkPath(h.workspace, DEFAULT_STATE_DIR)
       expect(existsSync(watermarkFile)).toBe(false)
       expect(readWatermarks(h.workspace, DEFAULT_STATE_DIR)).toEqual({})
 
       h.answer(ACKNOWLEDGE_OPTION)
+      /** The option the user chose. */
       const choice = await door.offer()
       expect(choice).toBe(ACKNOWLEDGE_OPTION)
 
       // The request the host was asked to show: the notice text plus both options.
       expect(h.dialogRequests).toHaveLength(1)
+      /** The one request the host was asked to show. */
       const request = h.dialogRequests[0]
       expect(request.title).toContain("watchdog: 2 unread incidents")
       expect(request.options.map((option) => option.id)).toEqual([ACKNOWLEDGE_OPTION, "later"])
@@ -240,10 +283,13 @@ describe("watchdog front door — dialog and acknowledge", () => {
   })
 
   test("a second start does not surface an acknowledged incident (the replay is watermark-driven)", async () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** The front door of the first start. */
       const first = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -255,6 +301,7 @@ describe("watchdog front door — dialog and acknowledge", () => {
 
       // A SECOND start: a fresh front door over the same workspace. Nothing unread, no dialog.
       h.dialogRequests.length = 0
+      /** The front door of a SECOND start over the same workspace. */
       const second = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -269,10 +316,13 @@ describe("watchdog front door — dialog and acknowledge", () => {
   })
 
   test("choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN", async () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** The front door under test. */
       const door = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -282,6 +332,7 @@ describe("watchdog front door — dialog and acknowledge", () => {
       expect(await door.offer()).toBe("later")
       expect(existsSync(watermarkPath(h.workspace, DEFAULT_STATE_DIR))).toBe(false)
       expect(readWatermarks(h.workspace, DEFAULT_STATE_DIR)).toEqual({})
+      /** A fresh front door over the same workspace, i.e. a restart. */
       const restarted = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -295,9 +346,11 @@ describe("watchdog front door — dialog and acknowledge", () => {
   })
 
   test("the attach-time replay runs once, when BOTH the service and the dialog seam are composed", async () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       h.answer("later")
       attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
@@ -311,9 +364,12 @@ describe("watchdog front door — dialog and acknowledge", () => {
   })
 
   test("no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog)", async () => {
+    /** This arm's fakes, with no dialog service composed. */
     const h = harness({ withDialogs: false })
     try {
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** The front door under test. */
       const door = attachWatchdogFrontDoor(h.ctx, log, {
         workspaceRoot: () => h.workspace,
         dialogs: createDialogs(h.ctx, log),
@@ -328,11 +384,14 @@ describe("watchdog front door — dialog and acknowledge", () => {
   })
 
   test("readWatchdogView is a live read through the service (and empty without one)", () => {
+    /** This arm's fakes and its real hold store. */
     const h = harness()
     try {
+      /** A minimal service exposing only `view`, the optional member form. */
       const service = { view: (reader: string, ws?: string) => h.registry.view(reader, ws ?? h.workspace) }
       expect(readWatchdogView(service, "mpd-tui", h.workspace)).toEqual({ holds: [], unread: [] })
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(7))
+      /** The view that service returns. */
       const view = readWatchdogView(service, "mpd-tui", h.workspace)
       expect(view.unread.map((record) => record.at)).toEqual([7])
       expect(readWatchdogView(undefined, "mpd-tui", h.workspace)).toEqual(EMPTY_WATCHDOG_VIEW)
@@ -347,11 +406,15 @@ describe("watchdog front door — dialog and acknowledge", () => {
 
 describe("watchdog front door — the absent-service path", () => {
   test("with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw", async () => {
+    /** This arm's fakes, with no `mpdWatchdog` service composed. */
     const h = harness({ withService: false })
     try {
       appendIncident(h.workspace, DEFAULT_STATE_DIR, incident(1000))
+      /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
+      /** Whether the attach threw, which it must never do. */
       let threw = false
+      /** The front door, when the attach returned one at all. */
       let door: ReturnType<typeof attachWatchdogFrontDoor> | undefined
       try {
         door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })

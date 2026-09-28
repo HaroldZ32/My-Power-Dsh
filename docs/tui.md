@@ -103,7 +103,7 @@ locale, no `children` — recorded by the **offline hook harness** when the regi
 card's field parity with the TUI descriptor in its own test suite, the module's behaviour — render,
 scope write with the right path/value/revision, refusal of an invalid draft, and read-only rendering
 with its reason — in the same harness, and the **write path end to end** through the host's own
-authenticated settings API (`web-settings-bridge.mjs` W1–W13).
+authenticated settings API (`web-settings-bridge.ts` W1–W13).
 
 **Evidence level — NOT witnessed here:** a **real browser render** (the host dispatching this key in a
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
@@ -298,7 +298,7 @@ sentence on this page promises a live-refreshed base.
 
 **Evidence level:** `Observed` — two real boots in the sandbox (ok: true) at
 `evidence/mpd-bridge/implementation/20260915T080138Z/`, plus the lane
-`skills/dsh-qa/scripts/tui-settings-bridge.mjs` and the re-review PASS at
+`skills/dsh-qa/scripts/tui-settings-bridge.ts` and the re-review PASS at
 `evidence/mpd-bridge/review/REREVIEW-t49.md`. The PRE-bridge revision
 (`packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563fd0e3b20…`) carried the old on-screen text
 (`mpd.jsonc <key> — not bridged: a save here does not rewrite .mpd/mpd.jsonc`); that text and the

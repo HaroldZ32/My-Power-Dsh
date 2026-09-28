@@ -10,8 +10,10 @@
 # evidence mount — and what the copy contains is decided by docker/Dockerfile.dockerignore, which
 # BuildKit applies to `docker/Dockerfile` builds.
 #
-# The measurement apparatus (entrypoint.sh, probe.mjs, lib/) is baked at /opt/mpd-e2e, NOT taken from
-# the tree under test: a repository copy can supply its own plugins, never its own verdict.
+# The measurement apparatus (entrypoint.sh, probe.ts, lib/) is baked at /opt/mpd-e2e, NOT taken from
+# the tree under test: a repository copy can supply its own plugins, never its own verdict. The
+# apparatus is TypeScript and is executed by the Node 24 the entrypoint installs, so the image needs
+# no build step of its own.
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,7 +24,7 @@ ENV MPD_E2E_APP=/opt/mpd
 ENV MPD_E2E_WORK=/work
 ENV MPD_E2E_OUT=/out
 ENV MPD_E2E_LIB=/opt/mpd-e2e/lib
-ENV MPD_E2E_PROBE=/opt/mpd-e2e/probe.mjs
+ENV MPD_E2E_PROBE=/opt/mpd-e2e/probe.ts
 ENV MPD_E2E_TOOLCHAIN=/opt/toolchain
 
 # The repository under test, filtered by docker/Dockerfile.dockerignore (no .git, no node_modules, no
@@ -30,17 +32,17 @@ ENV MPD_E2E_TOOLCHAIN=/opt/toolchain
 # filtering held.
 COPY . /src/
 COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
-COPY docker/probe.mjs /opt/mpd-e2e/probe.mjs
+COPY docker/probe.ts /opt/mpd-e2e/probe.ts
 COPY docker/lib/ /opt/mpd-e2e/lib/
 # The TUI lane is apparatus too: it records its own verdicts from OUTSIDE the tree under test.
 COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
 # The UI-VIEW stack (docker/ui/) reuses this image but holds the Web GUI and the TUI
 # open instead of driving a verdict, so it swaps only the entrypoint.
 COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
-COPY docker/ui/capture.mjs /opt/mpd-e2e/capture.mjs
+COPY docker/ui/capture.ts /opt/mpd-e2e/capture.ts
 COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
 RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh \
- && chmod 0755 /opt/mpd-e2e/capture.mjs /opt/mpd-e2e/run-capture.sh \
+ && chmod 0755 /opt/mpd-e2e/capture.ts /opt/mpd-e2e/run-capture.sh \
  && mkdir -p /work /out /data /src
 
 WORKDIR /work

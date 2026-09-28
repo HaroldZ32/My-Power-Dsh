@@ -7,7 +7,9 @@ import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { inject, name } from "../src/index"
 
+/** The bundle root, three levels above `<pkg>/test/`. */
 const bundleRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+/** The host entry a checkout install puts under the bundle's own node_modules. */
 const hostEntry = join(bundleRoot, "node_modules", "dsh-better-sidebar", "lib", "index.js")
 
 describe("the sidebar host contract", () => {
@@ -17,6 +19,7 @@ describe("the sidebar host contract", () => {
       expect(inject.length).toBeGreaterThan(0)
       return
     }
+    /** The shipped host module, whose declared inject list must match the shim's. */
     const host = (await import(pathToFileURL(hostEntry).href)) as { inject?: unknown; name?: unknown }
     expect(Array.isArray(host.inject)).toBe(true)
     expect([...(host.inject as string[])].sort()).toEqual([...inject].sort())

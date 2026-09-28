@@ -10,30 +10,100 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { apply } from "../src/index.ts"
+import type { DshPostDecision, DshPostResult, DshTextBlock, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
+/** This package's root: the test file sits in `<root>/test/`, so two dirname steps land there. */
 const PLUGIN_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
-type Registered = { name: string; parameters?: any; output?: { schema?: any } }
+/** One tool registration as the fake ctx captured it: the adapter's own normalized tool descriptor. */
+type Registered = DshToolDef
 
-function mount(): { tools: Registered[]; listeners: any[]; byName: (n: string) => Registered | undefined } {
+/** What the guard answers: the downstream decision, carrying a warning text block once it fires. */
+type GuardDecision = Omit<DshPostDecision, "content"> & {
+  /** The replacement content, present only when the guard fired for this call. */
+  content?: DshTextBlock[]
+}
+
+/** The captured `tools/post-execute` guard, in the shape the adapter's waterfall invokes it. */
+type GuardListener = (exec: DshToolExec, result: DshPostResult, next: () => Promise<DshPostDecision>) => Promise<GuardDecision>
+
+/** What `mount` hands an arm: the registrations, the captured guard listeners and a name lookup. */
+type MountedTools = {
+  /** Every tool definition the plugin registered, in registration order. */
+  tools: Registered[]
+  /** The captured `tools/post-execute` listeners, in registration order. */
+  listeners: GuardListener[]
+  /** Resolve a registration by tool name; `undefined` when the plugin registered no such tool. */
+  byName: (n: string) => Registered | undefined
+}
+
+/** `mpd_hashline_read`'s answer: the LINE#HASH view plus the number of source lines it covers. */
+type ReadResult = {
+  /** How many lines the view has; an empty file reports zero. */
+  lines: number
+  /** The `LINE#HASH|content` view whose anchors the edit arms pass back. */
+  view: string
+}
+
+/** `mpd_hashline_edit`'s answer: the post-edit line count and the no-op tally. */
+type EditResult = {
+  /** How many lines the file has once the edits were applied. */
+  lines: number
+  /** How many edits matched an already-identical line and therefore changed nothing. */
+  noopEdits: number
+}
+
+/** `mpd_hashline_format`'s answer: the session-absolute path now under the discipline. */
+type FormatResult = {
+  /** The session-resolved absolute path that was written to the registry. */
+  path: string
+}
+
+/** A registered hashline tool handle whose result the arm states, since the adapter types it `unknown`. */
+type HashlineTool<Result> = Omit<DshToolDef, "execute"> & {
+  /** Run the tool body; `exec` stays optional because the read/edit arms need no session. */
+  execute(args: Record<string, unknown>, exec?: DshToolExec): Promise<Result>
+}
+
+/** The `lines` leaf of the edit tool's parameter schema: the shape that used to be a type ARRAY. */
+type LinesLeaf = {
+  /** The rejected single-type spelling; absent in the accepted schema, or the assertion could not fail. */
+  type?: string
+  /** The accepted union spelling, one branch per shape `lines` may take. */
+  oneOf?: Array<{ type: string; items?: { type: string } }>
+}
+
+/** The edit registration, its parameter schema declared down to the `lines` leaf read below. */
+type EditRegistration = Omit<Registered, "parameters"> & {
+  /** The declared parameter schema; `properties.edits.items.properties.lines` is the leaf under test. */
+  parameters: { properties: { edits: { items: { properties: { lines: LinesLeaf } } } } }
+}
+
+/** Install the plugin on a fake ctx and hand back the registrations plus the captured guard. */
+function mount(): MountedTools {
+  // Every tool the plugin registered, in registration order.
   const tools: Registered[] = []
-  const listeners: any[] = []
-  const ctx: any = {
+  // Captured `tools/post-execute` listeners, so a case can drive the guard directly.
+  const listeners: GuardListener[] = []
+  // Minimal host ctx: `get` answers 'no service', so the row config stays authoritative.
+  const ctx: Parameters<typeof apply>[0] = {
     get: () => undefined,
     tools: { register: (d: Registered) => { tools.push(d); return () => {} } },
     // The post-execute guard registers through this seam; capturing the listener keeps apply() pure
     // while letting a case drive the guard exactly as the harness waterfall does.
-    on: (event: string, listener: any) => { if (event === "tools/post-execute") listeners.push(listener) },
+    on: (event: string, listener: GuardListener) => { if (event === "tools/post-execute") listeners.push(listener) },
   }
   apply(ctx, {})
   return { tools, listeners, byName: (n) => tools.find((t) => t.name === n) }
 }
 
+/** The `LINE#HASH` anchors of a hashline view, in file order. */
 function anchorsOf(view: string): string[] {
   return view.split("\n").filter((l) => l.includes("|")).map((l) => l.slice(0, l.indexOf("|")))
 }
 
 test("no registered hashline schema uses a type ARRAY (parameters or output)", () => {
+  // The registered tools; their names and order are part of the row's contract.
   const { tools } = mount()
   expect(tools.map((t) => t.name)).toEqual([
     "mpd_hashline_read",
@@ -50,23 +120,34 @@ test("no registered hashline schema uses a type ARRAY (parameters or output)", (
 })
 
 test("edit.lines is a oneOf union of the string and array-of-string shapes", () => {
+  // Fresh mount: this case inspects only the declared parameter schema.
   const { byName } = mount()
-  const lines = (byName("mpd_hashline_edit") as any).parameters.properties.edits.items.properties.lines
+  // The `lines` leaf of the edit tool's single edit shape, the one that used to be a type array; it is
+  // cast because the descriptor leaves `parameters` an opaque JSON-Schema object.
+  const lines = (byName("mpd_hashline_edit") as EditRegistration).parameters.properties.edits.items.properties.lines
   expect(lines.type).toBeUndefined()
   expect(lines.oneOf).toEqual([{ type: "string" }, { type: "array", items: { type: "string" } }])
 })
 
 test("read then edit works with lines as a single string AND as an array of strings", async () => {
+  // Fresh mount for the read-then-edit round trip, driving each accepted `lines` shape.
   const { byName } = mount()
-  const read = byName("mpd_hashline_read") as any
-  const edit = byName("mpd_hashline_edit") as any
+  // Read tool handle, driven with an absolute path so the case needs no session; the cast states its
+  // declared output, which the adapter types `unknown`.
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  // Edit tool handle, the writer under test, cast under the same `unknown`-result contract.
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  // Throwaway directory for the sample file.
   const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-schema-"))
+  // Sample file whose content and line count every assertion below reads back.
   const file = join(dir, "sample.txt")
   try {
     writeFileSync(file, "alpha\nbeta\ngamma\n")
 
+    // First view: three source lines plus the empty line the trailing newline produces.
     const first = await read.execute({ path: file })
     expect(first.lines).toBe(4)
+    // Anchors of the first view; a1[1] is the anchor of line 2 ('beta').
     const a1 = anchorsOf(first.view)
 
     // lines as a single STRING
@@ -76,7 +157,9 @@ test("read then edit works with lines as a single string AND as an array of stri
 
     // lines as an ARRAY of strings (one anchored replace expanding into two lines)
     const second = await read.execute({ path: file })
+    // Anchors AFTER the first edit: same line numbers, a fresh hash where the text changed.
     const a2 = anchorsOf(second.view)
+    // The array form of `lines`, expanding one anchored replace into two lines.
     const arrayEdit = await edit.execute({ path: file, edits: [{ op: "replace", pos: a2[2], lines: ["GAMMA-1", "GAMMA-2"] }] })
     expect(arrayEdit.noopEdits).toBe(0)
     expect(readFileSync(file, "utf8")).toBe("alpha\nBETA\nGAMMA-1\nGAMMA-2\n")
@@ -91,7 +174,9 @@ test("read then edit works with lines as a single string AND as an array of stri
 })
 
 test("the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix", () => {
+  // Source of the plugin entry, scanned for the rejected union spelling.
   const src = readFileSync(join(PLUGIN_ROOT, "src", "index.ts"), "utf8")
+  // Built artifact, which must carry the REBUILT bytes rather than the pre-fix ones.
   const dist = readFileSync(join(PLUGIN_ROOT, "dist", "index.js"), "utf8")
   for (const [what, text] of [["src", src], ["dist", dist]] as const) {
     expect({ what, hasTypeArray: /type:\s*\[/.test(text) }).toEqual({ what, hasTypeArray: false })
@@ -105,14 +190,24 @@ test("the committed src AND dist carry no array-typed schema form, and the dist 
 // while the plain edit/write tools report the path as the model wrote it — often RELATIVE. Resolving
 // that with process.cwd() makes the membership test miss and the guard silently no-ops.
 test("the guard resolves a RELATIVE file_path against the session workspace, not process.cwd()", async () => {
+  // Mount whose captured post-execute listener drives the guard as the waterfall does.
   const { byName, listeners } = mount()
-  const format = byName("mpd_hashline_format") as any
+  // Registration tool handle: the one that writes the session-keyed registry, cast under the same
+  // `unknown`-result contract as the read and edit handles above.
+  const format = byName("mpd_hashline_format") as HashlineTool<FormatResult>
+  // Workspace of the session under test; it keys the registry.
   const sessionWs = mkdtempSync(join(tmpdir(), "mpd-hashline-ws-"))
+  // A second workspace, proving the guard is session-scoped rather than global.
   const otherWs = mkdtempSync(join(tmpdir(), "mpd-hashline-other-"))
+  // Exec carrying the session header the adapter reads the workspace from.
   const sessionExec = { agent: { session: { header: { cwd: sessionWs } } } }
+  // Exec of the other session, used for the miss case.
   const otherExec = { agent: { session: { header: { cwd: otherWs } } } }
+  // The single post-execute listener the plugin registered.
   const guard = listeners[0]
-  const driveGuard = (exec: any, filePath: unknown) =>
+  // Drive the guard once with a plain `edit` call, exactly as the harness waterfall would; only the
+  // session-bearing agent is read off the exec, so the parameter states just that much.
+  const driveGuard = (exec: { agent: unknown }, filePath: unknown): ReturnType<typeof guard> =>
     guard({ name: "edit", arguments: { file_path: filePath }, agent: exec.agent }, {}, async () => ({ kind: "accept" }))
   try {
     // The session must differ from the process cwd, or the case proves nothing.
@@ -122,6 +217,7 @@ test("the guard resolves a RELATIVE file_path against the session workspace, not
     // register with a RELATIVE path THROUGH the session: the registry stores the session absolute path
     const formatted = await format.execute({ path: "sample.txt" }, sessionExec)
     expect(formatted.path).toBe(join(sessionWs, "sample.txt"))
+    // Registry file the format tool wrote, under the SESSION's workspace rather than the process cwd.
     const registry = JSON.parse(readFileSync(join(sessionWs, ".mpd", "hashline-files.json"), "utf8"))
     expect(registry).toEqual([join(sessionWs, "sample.txt")])
 

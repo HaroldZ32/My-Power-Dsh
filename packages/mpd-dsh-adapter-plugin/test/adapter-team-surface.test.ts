@@ -5,7 +5,7 @@
 // (`ctx.agentTeams`) is therefore a NEW harness seam, and it goes through this adapter
 // like every other one: no mpd plugin may read `ctx.agentTeams` or
 // `ctx.subagents.startContinuable` directly (the companion gate
-// `no-direct-team-access.test.mjs` enforces exactly that over `packages/mpd-*/src`).
+// `no-direct-team-access.test.ts` enforces exactly that over `packages/mpd-*/src`).
 //
 // What is asserted here:
 //   * every frozen method exists under its frozen name and arity, and one capability flag
@@ -49,6 +49,7 @@ const FROZEN_TEAM_SURFACE: ReadonlyArray<readonly [string, number]> = [
 /** One capability flag per new seam of the team plane. */
 const FROZEN_TEAM_FLAGS = ["team", "teamTasks", "teamMessages", "subagentsProviderRegister"] as const
 
+/** One recorded call: the seam name, the receiver it was called on, and the forwarded arguments. */
 type Call = { seam: string; receiver: unknown; args: unknown[] }
 
 /**
@@ -59,11 +60,42 @@ type Call = { seam: string; receiver: unknown; args: unknown[] }
  * with a MARKER value, so an adapter that loses `this` or rewrites a request is caught by
  * identity rather than passing as an "it ran" test.
  */
-function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } = {}) {
+function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } = {}): {
+  /** The ctx handed to the adapter: a service lookup over the three doubles. */
+  ctx: { get(serviceName: string): unknown }
+  /** Every call the double recorded, in order. */
+  calls: Call[]
+  /** The recording team service. */
+  agentTeams: Record<string, unknown>
+  /** The live-session registry double. */
+  agents: { list(): unknown[] }
+  /** The subagent provider registry double. */
+  subagents: Record<string, unknown>
+  /** The Lead Agent row the registry serves. */
+  leadAgent: { id: string; status: string }
+  /** A second Agent that is NOT on the team. */
+  otherAgent: { id: string; status: string }
+  /** The projected teammate row the service answers with. */
+  memberRow: DshTeamMemberView
+  /** The projected Lead row in the roster. */
+  leadRow: DshTeamMemberView
+  /** The projected task row on the board. */
+  taskRow: DshTeamTaskView
+  /** The raw durable-answer shape the message seam returns. */
+  messageResult: { messageId: string; status: string }
+  /** The raw spawn answer shape. */
+  spawnResult: { member: DshTeamMemberView }
+  /** The registry disposer a provider registration must return. */
+  providerDispose: () => void
+} {
+  /** Every call the double observed, in the order the adapter made them. */
   const calls: Call[] = []
+  /** Push one call onto the log, keeping the receiver and the forwarded arguments. */
   const record = (seam: string, receiver: unknown, ...args: unknown[]): void => { calls.push({ seam, receiver, args }) }
 
+  /** The Lead Agent row the double's registry serves. */
   const leadAgent = { id: "session-lead", status: "running" }
+  /** A second Agent that is NOT a member of the team. */
   const otherAgent = { id: "session-other", status: "inactive" }
   // The rows are annotated with the ADAPTER's declared types, so the fixture itself is
   // checked against the contract it is used to test (a drift reddens under `tsc`).
@@ -78,7 +110,9 @@ function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } =
     model: "deepseek-v4-flash",
     diagnostics: ["one"],
   }
+  /** The projected Lead row the roster read answers with. */
   const leadRow: DshTeamMemberView = { id: "session-lead", name: "lead", role: "lead", status: "running", diagnostics: [] }
+  /** The projected task row the board read answers with. */
   const taskRow: DshTeamTaskView = {
     id: "task-1",
     revision: 3,
@@ -91,69 +125,90 @@ function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } =
     ready: false,
     writeScopeWarnings: ["overlaps task-0"],
   }
+  /** The raw membership answer, overridable per test. */
   const membership = options.membership === undefined
     ? { root: leadAgent, id: "team-1", role: "lead", name: "lead" }
     : options.membership
+  /** The raw durable-answer shape the message seam returns. */
   const messageResult = { messageId: "message-1", status: "queued" }
+  /** The raw spawn answer shape, carrying a projected member row. */
   const spawnResult = { member: memberRow }
+  /** The raw interrupt answer, carrying a pre-cancellation status. */
   const interruptResult = { previousStatus: "running" }
+  /** The raw wait answer, whose flag reports a timeout. */
   const waitResult = { timedOut: true }
 
+  /** The recording team service: every method logs its receiver and answers a marker. */
   const agentTeams = {
     marker: "agent-teams-service",
-    tryMembership(this: unknown, agent: unknown) {
+    /** Record the identity read and answer the fixture membership, or undefined for a non-member. */
+    tryMembership(this: unknown, agent: unknown): unknown {
       record("tryMembership", this, agent)
       // A non-member answers undefined — the shape `tryMembership` has on the real host.
       return agent === otherAgent ? undefined : membership
     },
-    listMembers(this: unknown, agent: unknown) {
+    /** Record the roster read and answer the two fixture rows. */
+    listMembers(this: unknown, agent: unknown): unknown[] {
       record("listMembers", this, agent)
       return [leadRow, memberRow]
     },
-    listTasks(this: unknown, agent: unknown) {
+    /** Record the board read and answer the one fixture task. */
+    listTasks(this: unknown, agent: unknown): unknown[] {
       record("listTasks", this, agent)
       return [taskRow]
     },
-    createTask(this: unknown, caller: unknown, request: unknown) {
+    /** Record the creation and answer the fixture task as a promise. */
+    createTask(this: unknown, caller: unknown, request: unknown): Promise<DshTeamTaskView> {
       record("createTask", this, caller, request)
       return Promise.resolve(taskRow)
     },
-    getTask(this: unknown, caller: unknown, id: unknown) {
+    /** Record the read and answer the fixture task synchronously, as the host does. */
+    getTask(this: unknown, caller: unknown, id: unknown): DshTeamTaskView {
       record("getTask", this, caller, id)
       return taskRow
     },
-    updateTask(this: unknown, caller: unknown, request: unknown) {
+    /** Record the transition and answer a bumped revision. */
+    updateTask(this: unknown, caller: unknown, request: unknown): Promise<DshTeamTaskView> {
       record("updateTask", this, caller, request)
       return Promise.resolve({ ...taskRow, revision: 4 })
     },
-    sendMessage(this: unknown, caller: unknown, request: unknown) {
+    /** Record the send and answer the durable message result. */
+    sendMessage(this: unknown, caller: unknown, request: unknown): Promise<{ messageId: string; status: string }> {
       record("sendMessage", this, caller, request)
       return Promise.resolve(messageResult)
     },
-    spawnTeammate(this: unknown, caller: unknown, request: unknown) {
+    /** Record the spawn and answer the member row. */
+    spawnTeammate(this: unknown, caller: unknown, request: unknown): Promise<{ member: DshTeamMemberView }> {
       record("spawnTeammate", this, caller, request)
       return Promise.resolve(spawnResult)
     },
-    interrupt(this: unknown, caller: unknown, targetName: unknown) {
+    /** Record the interrupt and answer the status sampled before it. */
+    interrupt(this: unknown, caller: unknown, targetName: unknown): { previousStatus: string } {
       record("interrupt", this, caller, targetName)
       return interruptResult
     },
-    waitForChange(this: unknown, caller: unknown, timeoutMs: unknown, signal: unknown) {
+    /** Record the wait with all three arguments and answer the timeout result. */
+    waitForChange(this: unknown, caller: unknown, timeoutMs: unknown, signal: unknown): Promise<{ timedOut: boolean }> {
       record("waitForChange", this, caller, timeoutMs, signal)
       return Promise.resolve(waitResult)
     },
   }
 
-  const providerDispose = () => { /* the registry's own disposer */ }
+  /** The registry's own disposer, returned so identity can be asserted. */
+  const providerDispose = (): void => { /* the registry's own disposer */ }
+  /** The subagent provider registry double. */
   const subagents = {
     marker: "subagents-service",
-    registerProvider(this: unknown, provider: unknown) {
+    /** Record the provider registration and hand back the registry disposer. */
+    registerProvider(this: unknown, provider: unknown): () => void {
       record("subagents.registerProvider", this, provider)
       return providerDispose
     },
   }
+  /** The live-session registry double, overridable per test. */
   const agents = { list: () => options.liveAgents ?? [leadAgent] }
 
+  /** The ctx handed to the adapter: service lookup over the three doubles. */
   const ctx = {
     get: (serviceName: string) => ({ agentTeams, agents, subagents } as Record<string, unknown>)[serviceName],
   }
@@ -181,6 +236,7 @@ const hostileHarness = { get: () => { throw new Error("no services here") } }
 
 describe("team surface: the frozen names, arity and capability flags", () => {
   test("every method exists under its frozen name with its declared arity", () => {
+    /** The adapter viewed as a plain record so its methods can be indexed by name. */
     const adapter = createDshAdapter(teamHarness().ctx) as unknown as Record<string, unknown>
     for (const [method, arity] of FROZEN_TEAM_SURFACE) {
       expect(typeof adapter[method]).toBe("function")
@@ -189,15 +245,19 @@ describe("team surface: the frozen names, arity and capability flags", () => {
   })
 
   test("the four new capability flags are truthful on a full harness and false on an absent one", () => {
+    /** The capability flags viewed as a record, for the same reason. */
     const caps = createDshAdapter(teamHarness().ctx).capabilities() as unknown as Record<string, unknown>
     for (const flag of FROZEN_TEAM_FLAGS) expect(caps[flag]).toBe(true)
 
+    /** The capability flags of a harness with no team service at all. */
     const absent = createDshAdapter(absentHarness).capabilities() as unknown as Record<string, unknown>
     for (const flag of FROZEN_TEAM_FLAGS) expect(absent[flag]).toBe(false)
   })
 
   test("team needs identity AND roster; a half-present service reads false", () => {
+    /** A service carrying the identity read but NOT the roster read. */
     const onlyMembership = { get: (name: string) => (name === "agentTeams" ? { tryMembership: () => undefined } : undefined) }
+    /** A service carrying the roster read but NOT the identity read. */
     const onlyRoster = { get: (name: string) => (name === "agentTeams" ? { listMembers: () => [] } : undefined) }
     expect(createDshAdapter(onlyMembership).capabilities().team).toBe(false)
     expect(createDshAdapter(onlyRoster).capabilities().team).toBe(false)
@@ -205,7 +265,8 @@ describe("team surface: the frozen names, arity and capability flags", () => {
   })
 
   test("teamTasks needs ALL FOUR task seams, teamMessages BOTH message seams", () => {
-    const withTaskMethods = (methods: string[]) => ({
+    /** Build a ctx whose team service exposes exactly the named methods. */
+    const withTaskMethods = (methods: string[]): { get: (name: string) => Record<string, unknown> | undefined } => ({
       get: (name: string) => (name === "agentTeams" ? Object.fromEntries(methods.map((method) => [method, () => undefined])) : undefined),
     })
     expect(createDshAdapter(withTaskMethods(["createTask", "getTask", "listTasks"])).capabilities().teamTasks).toBe(false)
@@ -217,7 +278,9 @@ describe("team surface: the frozen names, arity and capability flags", () => {
   })
 
   test("subagentsProviderRegister tracks registerProvider alone (the READ half keeps its own flag)", () => {
+    /** A subagent service with ONLY the provider-registration half. */
     const writeOnly = { get: (name: string) => (name === "subagents" ? { registerProvider: () => () => {} } : undefined) }
+    /** A subagent service with ONLY the provider-catalogue half. */
     const readOnly = { get: (name: string) => (name === "subagents" ? { getProvider: () => ({}), list: () => [] } : undefined) }
     expect(createDshAdapter(writeOnly).capabilities().subagentsProviderRegister).toBe(true)
     expect(createDshAdapter(writeOnly).capabilities().subagentsProvider).toBe(false)
@@ -228,15 +291,20 @@ describe("team surface: the frozen names, arity and capability flags", () => {
 
 describe("teamService / teamMembership: the contained identity reads", () => {
   test("teamService hands back the SAME service object, receiver untouched", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
     expect(adapter.teamService()).toBe(full.agentTeams)
     expect(Object.is(adapter.teamService(), full.agentTeams)).toBe(true)
   })
 
   test("teamMembership forwards the Agent by identity and projects the three declared keys", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The projected identity, asserted key by key below. */
     const membership = adapter.teamMembership(full.leadAgent)
     // The caller Agent reached the service unchanged, on the service as receiver.
     expect(full.calls).toHaveLength(1)
@@ -250,10 +318,13 @@ describe("teamService / teamMembership: the contained identity reads", () => {
   })
 
   test("a non-member answers undefined, and an unknown role is a MISS rather than a fabricated one", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
     expect(adapter.teamMembership(full.otherAgent)).toBeUndefined()
 
+    /** An adapter over a service that answers an UNKNOWN role. */
     const odd = createDshAdapter(teamHarness({ membership: { id: "team-1", role: "observer", name: "x" } }).ctx)
     expect(odd.teamMembership({ id: "a" })).toBeUndefined()
 
@@ -263,6 +334,7 @@ describe("teamService / teamMembership: the contained identity reads", () => {
   })
 
   test("teamMembership NEVER throws — a hostile service is a miss, not a failure", () => {
+    /** A harness whose identity read throws. */
     const thrower = {
       get: (name: string) => (name === "agentTeams" ? { tryMembership: () => { throw new Error("stale identity") } } : undefined),
     }
@@ -274,8 +346,11 @@ describe("teamService / teamMembership: the contained identity reads", () => {
 
 describe("the roster and board reads: caller forwarded, rows projected", () => {
   test("teamListMembers forwards the Agent by identity and normalizes every row", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The projected roster rows. */
     const members = adapter.teamListMembers(full.leadAgent)
 
     expect(full.calls[0]).toMatchObject({ seam: "listMembers", receiver: full.agentTeams })
@@ -298,6 +373,7 @@ describe("the roster and board reads: caller forwarded, rows projected", () => {
   })
 
   test("a malformed row cannot leak an undeclared value", () => {
+    /** A harness whose roster row carries malformed values. */
     const weird = {
       get: (name: string) => (name === "agentTeams"
         ? {
@@ -305,13 +381,17 @@ describe("the roster and board reads: caller forwarded, rows projected", () => {
         }
         : undefined),
     }
+    /** The single projected row, which must carry only declared values. */
     const [row] = createDshAdapter(weird).teamListMembers({ id: "a" })
     expect(row).toEqual({ id: "7", name: "", role: "teammate", status: "inactive", diagnostics: ["ok"] })
   })
 
   test("teamListTasks forwards the Agent by identity and projects the task row", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The projected board rows. */
     const tasks = adapter.teamListTasks(full.leadAgent)
 
     expect(full.calls[0]).toMatchObject({ seam: "listTasks", receiver: full.agentTeams })
@@ -331,11 +411,13 @@ describe("the roster and board reads: caller forwarded, rows projected", () => {
   })
 
   test("an unknown task status degrades to the safe non-terminal value; a non-array answer is []", () => {
+    /** A harness whose task row carries malformed values. */
     const weird = {
       get: (name: string) => (name === "agentTeams"
         ? { listTasks: () => [{ id: "t", revision: "3", subject: "s", description: "d", status: "archived", blockedBy: [1, "b"], writeScopes: null, ready: "yes", writeScopeWarnings: undefined }] }
         : undefined),
     }
+    /** The single projected row, normalized field by field. */
     const [row] = createDshAdapter(weird).teamListTasks({ id: "a" })
     expect(row).toEqual({
       id: "t",
@@ -349,6 +431,7 @@ describe("the roster and board reads: caller forwarded, rows projected", () => {
       writeScopeWarnings: [],
     })
 
+    /** A harness whose board read answers a non-array. */
     const notArray = { get: (name: string) => (name === "agentTeams" ? { listTasks: () => "nope" } : undefined) }
     expect(createDshAdapter(notArray).teamListTasks({ id: "a" })).toEqual([])
   })
@@ -356,10 +439,15 @@ describe("the roster and board reads: caller forwarded, rows projected", () => {
 
 describe("the mutation calls: caller AND request forwarded by identity", () => {
   test("teamCreateTask forwards both objects unchanged and projects the created row", async () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The request object that must reach the service by identity. */
     const request = { subject: "s", description: "d", blockedBy: ["task-0"], writeScopes: ["packages/x"], extraHostField: true }
+    /** The projected row the service answered. */
     const created = await adapter.teamCreateTask(caller, request)
 
     expect(full.calls[0]).toMatchObject({ seam: "createTask", receiver: full.agentTeams })
@@ -382,9 +470,13 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamGetTask forwards caller and id verbatim, and its reply is projected", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The projected task read back by id. */
     const task = adapter.teamGetTask(caller, "task-1")
 
     expect(full.calls[0]).toMatchObject({ seam: "getTask", receiver: full.agentTeams })
@@ -394,6 +486,7 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamGetTask propagates the host's OWN rejection (it never invents a view)", () => {
+    /** A harness whose task read throws the host's own error. */
     const throwing = {
       get: (name: string) => (name === "agentTeams" ? { getTask: () => { throw new Error("team task not found") } } : undefined),
     }
@@ -401,10 +494,15 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamUpdateTask forwards the request by identity and returns the committed revision", async () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The compare-and-set request that must reach the service by identity. */
     const request = { taskId: "task-1", expectedRevision: 3, action: "complete" as const }
+    /** The row carrying the committed revision. */
     const updated = await adapter.teamUpdateTask(caller, request)
 
     expect(full.calls[0]).toMatchObject({ seam: "updateTask", receiver: full.agentTeams })
@@ -414,10 +512,15 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamSendMessage forwards the request by identity and normalizes the durable answer", async () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The peer message that must reach the service by identity. */
     const request = { target: "researcher", content: [{ type: "text", text: "hi" }] }
+    /** The normalized durable answer. */
     const sent = await adapter.teamSendMessage(caller, request)
 
     expect(full.calls[0]).toMatchObject({ seam: "sendMessage", receiver: full.agentTeams })
@@ -427,6 +530,7 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("a rejected message promise stays a rejection for the caller", async () => {
+    /** A harness whose send rejects with a mailbox error. */
     const rejecting = {
       get: (name: string) => (name === "agentTeams" ? { sendMessage: () => Promise.reject(new Error("mailbox full")) } : undefined),
     }
@@ -435,10 +539,15 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamSpawnTeammate forwards the request by identity and projects the member row", async () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The spawn request that must reach the service by identity. */
     const request = { name: "researcher", description: "d", prompt: [{ type: "text", text: "go" }], context: "fresh" as const, provider: "spawn" }
+    /** The projected spawn answer. */
     const spawned = await adapter.teamSpawnTeammate(caller, request)
 
     expect(full.calls[0]).toMatchObject({ seam: "spawnTeammate", receiver: full.agentTeams })
@@ -448,9 +557,13 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamInterrupt forwards the caller and the target name, answering the sampled status", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The status the host sampled before cancellation. */
     const result = adapter.teamInterrupt(caller, "researcher")
 
     expect(full.calls[0]).toMatchObject({ seam: "interrupt", receiver: full.agentTeams })
@@ -460,10 +573,15 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
   })
 
   test("teamWaitForChange forwards caller, timeout AND signal verbatim", async () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The authority Agent passed to the call. */
     const caller = { id: "lead-agent" }
+    /** The cancellation signal for the WAIT only. */
     const controller = new AbortController()
+    /** The normalized wait answer. */
     const waited = await adapter.teamWaitForChange(caller, 30_000, controller.signal)
 
     expect(full.calls[0]).toMatchObject({ seam: "waitForChange", receiver: full.agentTeams })
@@ -477,9 +595,13 @@ describe("the mutation calls: caller AND request forwarded by identity", () => {
 
 describe("registerSubagentProvider: the disposal-returning registration seam", () => {
   test("forwards the provider VERBATIM and passes the registry's disposer back", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The provider object, which must reach the registry verbatim. */
     const provider = { name: "mpd-provider", spawn: () => ({}) }
+    /** The disposer the registry returned, asserted by identity. */
     const dispose = adapter.registerSubagentProvider(provider)
 
     expect(full.calls[0]).toMatchObject({ seam: "subagents.registerProvider", receiver: full.subagents })
@@ -489,7 +611,9 @@ describe("registerSubagentProvider: the disposal-returning registration seam", (
   })
 
   test("a non-callable registry answer degrades to a no-op disposer, never a leak", () => {
+    /** A harness whose provider registry answers a non-callable. */
     const stub = { get: (name: string) => (name === "subagents" ? { registerProvider: () => 42 } : undefined) }
+    /** The degraded disposer, which must be callable and harmless. */
     const dispose = createDshAdapter(stub).registerSubagentProvider({})
     expect(typeof dispose).toBe("function")
     expect(() => dispose()).not.toThrow()
@@ -498,8 +622,11 @@ describe("registerSubagentProvider: the disposal-returning registration seam", (
 
 describe("teamLiveTeams: the contained fold over the live registry", () => {
   test("reports one entry per live LEAD agent, with its roster and board", () => {
+    /** The full recording double. */
     const full = teamHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(full.ctx)
+    /** The teams the fold reported. */
     const teams = adapter.teamLiveTeams()
 
     expect(teams).toHaveLength(1)
@@ -511,6 +638,7 @@ describe("teamLiveTeams: the contained fold over the live registry", () => {
   })
 
   test("non-Lead agents are skipped and a membership read that throws is contained", () => {
+    /** A registry mixing a throwing member, a bystander and a Lead. */
     const mixed = {
       get: (name: string) => (name === "agentTeams"
         ? {
@@ -526,11 +654,13 @@ describe("teamLiveTeams: the contained fold over the live registry", () => {
           ? { list: () => [{ id: "session-boom" }, { id: "session-bystander" }, { id: "session-lead" }] }
           : undefined),
     }
+    /** The fold, which must contain the Lead alone. */
     const teams = createDshAdapter(mixed).teamLiveTeams()
     expect(teams.map((team) => team.leadSessionId)).toEqual(["session-lead"])
   })
 
   test("a failing roster read yields [] for THAT entry instead of taking the fold down", () => {
+    /** A service whose roster read throws and whose board read answers a non-array. */
     const partial = {
       get: (name: string) => (name === "agentTeams"
         ? {
@@ -542,12 +672,14 @@ describe("teamLiveTeams: the contained fold over the live registry", () => {
           ? { list: () => [{ id: "session-lead" }] }
           : undefined),
     }
+    /** The single folded team, whose failed reads must be empty arrays. */
     const [team] = createDshAdapter(partial).teamLiveTeams()
     expect(team).toMatchObject({ teamId: "team-1", leadSessionId: "session-lead", members: [], tasks: [] })
   })
 
   test("[] when the service OR the agent registry is absent", () => {
     expect(createDshAdapter(absentHarness).teamLiveTeams()).toEqual([])
+    /** A composition with a team service but NO agent registry. */
     const teamOnly = { get: (name: string) => (name === "agentTeams" ? { tryMembership: () => ({ id: "t", role: "lead" }) } : undefined) }
     expect(createDshAdapter(teamOnly).teamLiveTeams()).toEqual([])
   })
@@ -556,6 +688,7 @@ describe("teamLiveTeams: the contained fold over the live registry", () => {
 describe("the degrade table: an absent team service NEVER crashes and always says why", () => {
   test("nothing on this surface throws at construct or probe time", () => {
     for (const harness of [absentHarness, hostileHarness, {}, null]) {
+      /** The adapter under test, which must construct even over an empty or null ctx. */
       const adapter = createDshAdapter(harness)
       expect(adapter.capabilities().team).toBe(false)
       expect(adapter.capabilities().teamTasks).toBe(false)
@@ -568,7 +701,9 @@ describe("the degrade table: an absent team service NEVER crashes and always say
   })
 
   test("each method degrades exactly as declared, naming what could not happen", async () => {
+    /** The adapter over a harness with no team service. */
     const adapter = createDshAdapter(absentHarness)
+    /** The authority Agent passed to every throwing call. */
     const caller = { id: "agent-1" }
     // The contained family: `undefined` / `[]`, never a throw.
     expect(adapter.teamService()).toBeUndefined()
@@ -590,6 +725,7 @@ describe("the degrade table: an absent team service NEVER crashes and always say
       ["registerSubagentProvider", () => adapter.registerSubagentProvider({}), /harness service "subagents" is unavailable — cannot register a subagent provider$/],
     ]
     for (const [method, invoke, expected] of cases) {
+      /** The error the call threw, or undefined when it degraded silently. */
       let thrown: unknown
       try {
         await invoke()
@@ -597,6 +733,7 @@ describe("the degrade table: an absent team service NEVER crashes and always say
         thrown = error
       }
       expect(thrown, method + " must throw rather than degrade silently").toBeInstanceOf(Error)
+      /** The thrown message, checked for the prefix, the operation and the service name. */
       const text = (thrown as Error).message
       expect(text.startsWith("mpd-dsh-adapter: "), method + " must carry the adapter's prefix").toBe(true)
       expect(text, method + " must name the failed operation").toMatch(expected)
@@ -605,7 +742,9 @@ describe("the degrade table: an absent team service NEVER crashes and always say
   })
 
   test("a service that is present but lacks ONE method names that method, not the service", async () => {
+    /** A service carrying only the identity read. */
     const partial = { get: (name: string) => (name === "agentTeams" ? { tryMembership: () => undefined } : undefined) }
+    /** The adapter under test. */
     const adapter = createDshAdapter(partial)
     expect(() => adapter.teamListMembers({ id: "a" })).toThrow(/the harness agentTeams service exposes no listMembers\(\)/)
     expect(() => adapter.teamListTasks({ id: "a" })).toThrow(/the harness agentTeams service exposes no listTasks\(\)/)

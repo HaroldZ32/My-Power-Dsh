@@ -8,7 +8,7 @@ serverName `git_bash`，stdio）包装。
 
 ## 功能
 
-- `dist/cli.js`（由 `scripts/build-mcp.mjs` 离线构建）将 MCP 桥接到 Windows 上的原生
+- `dist/cli.js`（由 `scripts/build-mcp.ts` 离线构建）将 MCP 桥接到 Windows 上的原生
   Git Bash。
 - **按设计仅限 Windows**（上游原始内容：`run` 仅在原生 Windows 上可用）；bundle row
   默认携带 `disabled: true`，因此非 Windows 部署不受影响。

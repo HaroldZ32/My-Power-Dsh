@@ -14,12 +14,13 @@ import { ChannelFold } from "../src/channel"
 import { WatchdogMachine, WATCHDOG_DEFAULTS, readKnobs, streakKey, type SilenceCandidate } from "../src/machine"
 
 /** A recorded `session/event` of one kind. */
-function event(type: string, data: Record<string, unknown> = {}, time = 1_000): Record<string, unknown> {
+function event(type: string, data: Record<string, unknown> = {}, time: number = 1_000): Record<string, unknown> {
   return { type, seq: 1, time, data }
 }
 
 /** Fold a whole recorded list for one session. */
 function foldAll(sessionId: string, events: readonly Record<string, unknown>[]): ChannelFold {
+  // The fold the whole list is replayed into.
   const fold = new ChannelFold()
   for (const entry of events) fold.apply(sessionId, entry)
   return fold
@@ -44,7 +45,9 @@ function candidate(overrides: Partial<SilenceCandidate> = {}): SilenceCandidate 
 
 describe("§1 — the four states, folded from the record stream", () => {
   test("an open step with no committed answer is OUTSTANDING, and it carries the clock", () => {
+    // The fold of the minimal OUTSTANDING sequence.
     const fold = foldAll("s1", [event("turn/start", { turn: 1 }, 1_000), event("step/start", { turn: 1, step: 1 }, 1_000)])
+    // Its conclusion for the session.
     const view = fold.view("s1")
     expect(view?.state).toBe("OUTSTANDING")
     expect(view?.outstandingSince).toBe(1_000)
@@ -52,7 +55,9 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("NEGATIVE CONTROL: the same list WITH its step/end is no longer OUTSTANDING", () => {
+    // The sequence WITHOUT the step/end event: the negative control.
     const without = [event("turn/start", { turn: 1 }, 1_000), event("step/start", { turn: 1, step: 1 }, 1_000)]
+    // The same sequence with its completion event added.
     const withEnd = [...without, event("step/end", { turn: 1, step: 1 }, 1_400)]
     expect(foldAll("s1", without).view("s1")?.state).toBe("OUTSTANDING")
     // A completed step inside a turn that has not closed is ALIVE — never OUTSTANDING, and
@@ -61,12 +66,14 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("an answered step with an unmatched tool/call is IN-FLIGHT", () => {
+    // The fold of an answered step whose tool call has no result yet.
     const fold = foldAll("s1", [
       event("turn/start", { turn: 1 }, 1_000),
       event("step/start", { turn: 1, step: 1 }, 1_000),
       event("assistant/message", { turn: 1, step: 1, message: {} }, 2_000),
       event("tool/call", { turn: 1, step: 1, callId: "c1", name: "bash" }, 2_100),
     ])
+    // Its conclusion for the session.
     const view = fold.view("s1")
     expect(view?.state).toBe("IN-FLIGHT")
     expect(view?.inFlightSince).toBe(2_100)
@@ -74,27 +81,33 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("NEGATIVE CONTROL: dropping the answer makes it OUTSTANDING; adding the result makes it ALIVE", () => {
+    // The answered step with one tool call left open.
     const answered = [
       event("turn/start", { turn: 1 }, 1_000),
       event("step/start", { turn: 1, step: 1 }, 1_000),
       event("assistant/message", { turn: 1, step: 1, message: {} }, 2_000),
       event("tool/call", { turn: 1, step: 1, callId: "c1", name: "bash" }, 2_100),
     ]
+    // The same list with the assistant answer removed.
     const unanswered = answered.filter((entry) => entry.type !== "assistant/message")
     expect(foldAll("s1", unanswered).view("s1")?.state).toBe("OUTSTANDING")
+    // That list with the tool result added, which closes the call.
     const completed = [...answered, event("tool/result", { turn: 1, step: 1, message: { content: [{ toolCallId: "c1" }] } }, 2_200)]
     expect(foldAll("s1", completed).view("s1")?.state).toBe("ALIVE")
     expect(foldAll("s1", completed).view("s1")?.inFlightSince).toBeNull()
   })
 
   test("a turn that has not closed is ALIVE, and a CLOSED turn is PARKED", () => {
+    // A fold whose only event opens a turn.
     const open = foldAll("s1", [event("turn/start", { turn: 1 }, 1_000)])
     expect(open.view("s1")?.state).toBe("ALIVE")
+    // A fold whose turn is explicitly ended.
     const closed = foldAll("s1", [event("turn/start", { turn: 1 }, 1_000), event("turn/end", { turn: 1, reason: { kind: "completed" } }, 9_000_000)])
     expect(closed.view("s1")?.state).toBe("PARKED")
   })
 
   test("a completed step stays ALIVE forever: 24 h of age changes nothing", () => {
+    // A fold of a completed step inside an open turn.
     const fold = foldAll("s1", [
       event("turn/start", { turn: 1 }, 1_000),
       event("step/start", { turn: 1, step: 1 }, 1_000),
@@ -102,6 +115,7 @@ describe("§1 — the four states, folded from the record stream", () => {
       event("step/end", { turn: 1, step: 1 }, 2_100),
     ])
     for (const now of [2_200, 86_400_000, 7 * 86_400_000]) {
+      // The (unchanged) conclusion at this age.
       const view = fold.view("s1")
       expect(view?.state).toBe("ALIVE")
       expect(view?.outstandingSince).toBeNull()
@@ -110,6 +124,7 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("the assistant-stream START frame is the §2 enrichment: OUTSTANDING flips to ALIVE", () => {
+    // A fold of an open, unanswered step.
     const fold = foldAll("s1", [event("turn/start", { turn: 1 }, 1_000), event("step/start", { turn: 1, step: 1 }, 1_000)])
     expect(fold.view("s1")?.state).toBe("OUTSTANDING")
     expect(fold.noteStreamFrame("s1", { type: "start", turn: 1, step: 1 })).toBe(true)
@@ -121,6 +136,7 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("NO CHANNEL EVIDENCE is not PARKED: it is null (the §4 degradation seam)", () => {
+    // An empty fold, which knows no session at all.
     const fold = new ChannelFold()
     expect(fold.view("s1")).toBeNull()
     expect(fold.has("s1")).toBe(false)
@@ -130,12 +146,15 @@ describe("§1 — the four states, folded from the record stream", () => {
   })
 
   test("an unknown (extension) event type changes no verdict", () => {
+    // The minimal OUTSTANDING sequence.
     const base = [event("turn/start", { turn: 1 }, 1_000), event("step/start", { turn: 1, step: 1 }, 1_000)]
+    // That sequence plus an unrecognized extension event.
     const withUnknown = [...base, event("mpd/something-new", { turn: 1, step: 1, payload: 42 }, 1_100)]
     expect(foldAll("s1", withUnknown).view("s1")?.state).toBe("OUTSTANDING")
   })
 
   test("the answer may be an `assistant/attempt` (a plugin-merged extension type)", () => {
+    // A fold whose step is committed by an `assistant/attempt` event.
     const fold = foldAll("s1", [
       event("turn/start", { turn: 1 }, 1_000),
       event("step/start", { turn: 1, step: 1 }, 1_000),
@@ -148,7 +167,9 @@ describe("§1 — the four states, folded from the record stream", () => {
 describe("§3 — the ladder and the §4 degradation, per channel verdict", () => {
   test("PARKED and ALIVE never warn, however long the watchdog looks", () => {
     for (const state of ["PARKED", "ALIVE"] as const) {
+      // A machine with no prior observations.
       const machine = new WatchdogMachine()
+      // One observation per tick, over eight silence windows.
       const verdicts = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => machine.observe([candidate({ channelState: state })], 1_000 + n * 600_000, WATCHDOG_DEFAULTS))
       expect(verdicts.flat()).toEqual([])
       expect(machine.snapshot().escalated).toEqual([])
@@ -156,16 +177,20 @@ describe("§3 — the ladder and the §4 degradation, per channel verdict", () =
   })
 
   test("OUTSTANDING warns only after warnSilenceMs SINCE THE REQUEST BECAME OUTSTANDING", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
     // 599 s of an outstanding request: below the frozen bound, no report at all.
     expect(machine.observe([candidate({ channelState: "OUTSTANDING", outstandingSince: 1_000 })], 1_000 + 599_999, WATCHDOG_DEFAULTS)).toEqual([])
+    // The observation past the bound, which must warn.
     const warned = machine.observe([candidate({ channelState: "OUTSTANDING", outstandingSince: 1_000 })], 1_000 + 600_001, WATCHDOG_DEFAULTS)
     expect(warned.map((d) => d.type)).toEqual(["warn"])
     expect(warned[0]).toMatchObject({ cause: "silence-channel", state: "OUTSTANDING", streak: 1 })
   })
 
   test("the frozen ladder: six consecutive OUTSTANDING observations after the first warn", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // The six verdicts, the last of which must escalate.
     const verdicts = Array.from({ length: 6 }, (_, index) =>
       machine.observe([candidate({ channelState: "OUTSTANDING", outstandingSince: 1_000 })], 1_000 + 600_001 + index, WATCHDOG_DEFAULTS).map((d) => d.type),
     )
@@ -176,7 +201,9 @@ describe("§3 — the ladder and the §4 degradation, per channel verdict", () =
   })
 
   test("an OUTSTANDING request that becomes ALIVE resets the streak (no stale escalation)", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // The streak key the assertions read.
     const key = streakKey("team-a", "t1", "att-1")
     for (let index = 0; index < 4; index += 1) machine.observe([candidate({ channelState: "OUTSTANDING", outstandingSince: 1_000 })], 1_000 + 600_001 + index, WATCHDOG_DEFAULTS)
     expect(machine.snapshot().streaks[key]).toBe(4)
@@ -185,8 +212,11 @@ describe("§3 — the ladder and the §4 degradation, per channel verdict", () =
   })
 
   test("IN-FLIGHT past toolInFlightMaxMs is reported ONCE and never held", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // An IN-FLIGHT candidate whose call started at 5 s.
     const inFlight = candidate({ channelState: "IN-FLIGHT", channelInFlightSince: 5_000 })
+    // The first observation past the in-flight bound.
     const first = machine.observe([inFlight], 5_000 + WATCHDOG_DEFAULTS.toolInFlightMaxMs + 1, WATCHDOG_DEFAULTS)
     expect(first.map((d) => d.type)).toEqual(["tool-expired"])
     expect(first[0]).toMatchObject({ since: 5_000, tool: null })
@@ -195,8 +225,11 @@ describe("§3 — the ladder and the §4 degradation, per channel verdict", () =
   })
 
   test("§4: with NO channel evidence the heartbeat rule WARNs exactly once and never escalates", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // A candidate with no channel evidence, i.e. the §4 fallback.
     const blind = candidate({ channelState: null, heartbeatFallback: true })
+    // The first observation past the bound, which warns exactly once.
     const first = machine.observe([blind], 1_000 + 600_001, WATCHDOG_DEFAULTS)
     expect(first.map((d) => d.type)).toEqual(["warn"])
     expect(first[0]).toMatchObject({ cause: "silence-heartbeat", state: null, streak: 1 })
@@ -210,13 +243,16 @@ describe("§3 — the ladder and the §4 degradation, per channel verdict", () =
   })
 
   test("§1 rule 5: a candidate that never stamped is never-started, never a warn", () => {
+    // A machine with no prior observations.
     const machine = new WatchdogMachine()
+    // The single decision a never-stamped candidate produces.
     const decisions = machine.observe([candidate({ lastSeen: null, lastKind: null, everStampedForTask: false })], 9_999_999, WATCHDOG_DEFAULTS)
     expect(decisions.map((d) => d.type)).toEqual(["never-started"])
     expect(machine.hasEscalated("team-a", "t1", "att-1")).toBe(false)
   })
 
   test("the frozen §3 defaults are exactly the contract's table", () => {
+    // The knobs resolved from no namespace value and no environment overrides.
     const resolved = readKnobs(undefined, {})
     expect({
       warnSilenceMs: resolved.warnSilenceMs,

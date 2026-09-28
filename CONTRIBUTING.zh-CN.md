@@ -86,18 +86,18 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 ```
 
 多入口的包对每个入口重复这条命令。必须用这种规范写法：`bun build` 会把模块相对于当前工作目录的路径
-写进产物，而 `node scripts/verify-dist-fresh.mjs` 复现的正是这些字节 —— 在包目录里执行的构建会被
+写进产物，而 `node scripts/verify-dist-fresh.ts` 复现的正是这些字节 —— 在包目录里执行的构建会被
 判定为 STALE。
 
 其他构建入口：
 
 ```bash
-node scripts/build-mcp.mjs          # MCP 服务器，离线使用仓库内源码
-node scripts/build-mpd-client.mjs   # 合并后的 web 客户端，改动 agent-teams 客户端之后执行
-node scripts/pack-mpd.mjs           # 仅发布用：生成可迁移的 dist/mpd-package/ 产物
+node scripts/build-mcp.ts          # MCP 服务器，离线使用仓库内源码
+node scripts/build-mpd-client.ts   # 合并后的 web 客户端，改动 agent-teams 客户端之后执行
+node scripts/pack-mpd.ts           # 仅发布用：生成可迁移的 dist/mpd-package/ 产物
 ```
 
-新增插件包还必须加入 `scripts/pack-mpd.mjs` 的 `PLUGIN_PKGS` 允许清单，否则打包安装会漏掉它，并在
+新增插件包还必须加入 `scripts/pack-mpd.ts` 的 `PLUGIN_PKGS` 允许清单，否则打包安装会漏掉它，并在
 启动时以 `ERR_MODULE_NOT_FOUND` 失败。
 
 ## 测试
@@ -120,14 +120,16 @@ bun run test:qa:all          # 真实/联调通道（真实 DSH 启动，和/或
 | 关卡 | 命令 |
 |---|---|
 | 快速汇总（静态关卡） | `bun run verify:gates` |
+| **插件清单（常驻）** | `bun run verify:manifest` —— `dependencies`/`peerDependencies`/`optionalDependencies` 中不得出现 `cordis`，scripts 不得含 `preinstall`/`install`/`postinstall`/`prepare`，且每一行引用的路径都在 npm 自己的打包清单内 |
+| **声明的注释（常驻）** | `bun run verify:comments` —— 源码集合中每个声明都有精确注释，每个具名函数都写明参数与返回类型 |
 | vendor 基线与资产指纹 | `bun run verify:vendor` |
-| `dist/` 新鲜度（确定性重建并比对） | `node scripts/verify-dist-fresh.mjs` |
-| 行一致性与 preset 一致性 | `bun run verify:rows` 与 `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` |
+| `dist/` 新鲜度（确定性重建并比对） | `node scripts/verify-dist-fresh.ts` |
+| 行一致性与 preset 一致性 | `bun run verify:rows` 与 `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` |
 | 文档成对、标题树、链接目标 | `bun run verify:docs` |
-| 打包产物闭包 | `node scripts/verify-pack-closure.mjs` |
-| 安装器（dry-run） | `node scripts/install-profile.mjs --dry-run` |
-| 扩展 CLI | `bun scripts/mpd-ext.mjs --self-test` 与 `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` |
-| 启动检查（挂载） | 在隔离的 `DSH_HOME` + 沙箱 `HOME` 中真实启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` 或 `node skills/dsh-qa/scripts/preset-conformance.mjs` |
+| 打包产物闭包 | `node scripts/verify-pack-closure.ts` |
+| 安装器（dry-run） | `node scripts/install-profile.ts --dry-run` |
+| 扩展 CLI | `bun scripts/mpd-ext.ts --self-test` 与 `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` |
+| 启动检查（挂载） | 在隔离的 `DSH_HOME` + 沙箱 `HOME` 中真实启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.ts` 或 `node skills/dsh-qa/scripts/preset-conformance.ts` |
 
 有两条规则让这些关卡真正有意义：
 
@@ -160,7 +162,7 @@ QA 绝不触碰真实的 `~/.dsh` 与真实的 `~/.mpd/workmate`：
 - **同一个工作树只有一个写者。** 如果多个人（或多个智能体）共用一个检出目录，其中只能有一个执行
   `commit`/`checkout`/`merge`/`reset`；其他人只改文件、跑关卡。
 - **`skills/**` 每一波只有一个写者。** 任何 `skills/**` 改动都会让 `VENDOR_LOCK.json` 里的语料指纹
-  失效，而唯一那次重新固定（`node scripts/repin-vendor.mjs --write
+  失效，而唯一那次重新固定（`node scripts/repin-vendor.ts --write
   --i-know-this-is-the-captains-step`）必须与让它失效的那次改动落在同一次提交里。
 
 ## 文档规则
@@ -198,6 +200,23 @@ evidence/<domain>/<slug>/<timestamp>/output.log
   中心；README 的常见问题一节覆盖了安装与配置上的常见故障。
 
 本项目不随包提供任何凭据，你的报告、补丁与证据里也不应该有。
+
+## 发布到 npm
+
+本包已处于发布就绪状态：`package.json` 声明了 npm 打包所依据的 `files` 白名单、`publishConfig`
+访问级别、repository/homepage/bugs 元数据与 `engines.node` 下限；并且**没有** `cordis` 依赖，也**没有**
+`preinstall`/`install`/`postinstall`/`prepare` 脚本 —— 因此安装过程不会执行包内代码。用户所需的一切
+（构建产物 `packages/*/dist`、bundle 补丁、preset 补丁、技能语料、扩展根目录与 MCP 启动器）都在白名单内，
+冻结的 `evidence/` 树不在其中。
+
+```bash
+npm publish --dry-run     # 走完整条发布路径，只是不上传
+npm publish --access public
+```
+
+`npm publish --dry-run` 会打印 tarball 摘要（名称、版本、文件数、压缩后体积）并在上传前停止，因此它是
+评审时应当运行的检查。`node scripts/verify-plugin-manifest.ts --pack` 从另一侧断言同一性质：npm 自己的
+打包清单包含插件行引用的每一条路径。
 
 ## 提交 pull request
 

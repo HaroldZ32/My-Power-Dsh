@@ -101,11 +101,14 @@ function knobHint(key: string, semantics?: string): string {
 
 /** The leaf names of one slot knob, in the schema's path order (`teamModels.<slot>.<leaf>`). */
 const TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"] as const
+/** The three leaf names of a team-model slot, in schema path order. */
 type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
 
 /** One rendered option: the RAW id the settings document stores, plus its display label. */
 export interface SettingsOption {
+  /** The raw id the settings document stores, never a display name. */
   value: string
+  /** The option's display label; the id itself when the catalog carries no name. */
   label: string
 }
 
@@ -117,15 +120,21 @@ export type SlotOptionSource = "live" | "declared"
 
 /** The three derived option lists the twelve slot knobs are registered with, plus their source. */
 export interface TeamModelOptionLists {
+  /** Provider options: the catalog's provider ids, else the declared list. */
   provider: SettingsOption[]
+  /** Model options: the union of the catalog's model ids, else the declared list. */
   model: SettingsOption[]
+  /** Effort options: the union of the catalog's effort ids, else the declared list. */
   reasoningEffort: SettingsOption[]
+  /** Which branch produced each leaf's list, recorded because the A4 evidence needs the branch. */
   source: Record<TeamModelLeaf, SlotOptionSource>
 }
 
 /** First occurrence of each id wins, so the display order stays the catalog's own order. */
 function dedupeOptions(pairs: readonly SettingsOption[]): SettingsOption[] {
+  /** Ids already accepted, so the first occurrence (the catalog's own order) wins. */
   const seen = new Set<string>()
+  /** The deduplicated options, in first-seen order. */
   const out: SettingsOption[] = []
   for (const pair of pairs) {
     if (pair.value.length === 0 || seen.has(pair.value)) continue
@@ -162,18 +171,24 @@ function optionLabel(name: unknown, id: string): string {
  * catalog object can never stop the section from registering.
  */
 export function teamModelOptionLists(catalog: DshLlmCatalog | undefined): TeamModelOptionLists {
+  /** Provider ids collected from the live catalog. */
   const providers: SettingsOption[] = []
+  /** Model ids collected across every provider. */
   const models: SettingsOption[] = []
+  /** Effort ids collected across every model. */
   const efforts: SettingsOption[] = []
   if (catalog !== undefined && catalog.degraded !== true) {
+    /** The catalog's provider list, empty when that field is not an array. */
     const rawProviders = Array.isArray(catalog.providers) ? catalog.providers : []
     for (const provider of rawProviders) {
       if (typeof provider?.id !== "string" || provider.id.length === 0) continue
       providers.push({ value: provider.id, label: optionLabel(provider.name, provider.id) })
+      /** This provider's model list, empty when that field is not an array. */
       const rawModels = Array.isArray(provider.models) ? provider.models : []
       for (const model of rawModels) {
         if (typeof model?.id !== "string" || model.id.length === 0) continue
         models.push({ value: model.id, label: optionLabel(model.name, model.id) })
+        /** This model's effort list, empty when that field is not an array. */
         const rawEfforts = Array.isArray(model.efforts) ? model.efforts : []
         for (const effort of rawEfforts) {
           if (typeof effort?.id !== "string" || effort.id.length === 0) continue
@@ -182,7 +197,9 @@ export function teamModelOptionLists(catalog: DshLlmCatalog | undefined): TeamMo
       }
     }
   }
+  /** The deduplicated live lists, one per leaf. */
   const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) }
+  /** The leaf's live list when it has one, else the declared fallback, so no list stays empty. */
   const pick = (leaf: TeamModelLeaf): SettingsOption[] => (live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf))
   return {
     provider: pick("provider"),
@@ -199,6 +216,7 @@ export function teamModelOptionLists(catalog: DshLlmCatalog | undefined): TeamMo
 /** The slot leaf a knob path addresses, or undefined for one of the other thirteen knobs. */
 function slotLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
   if (path[0] !== "teamModels") return undefined
+  /** The path's leaf segment, matched against the three known names. */
   const leaf = path[2]
   return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf)
 }
@@ -211,6 +229,7 @@ function slotLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
 function isServed(provider: SettingsProviderLike): boolean {
   try {
     if (typeof provider.describe === "function") {
+      /** The provider's own namespace listing, when it can enumerate them. */
       const described = provider.describe()
       if (Array.isArray(described) && described.some((entry) => String((entry as { ns?: unknown })?.ns ?? "") === SETTINGS_NS)) return true
     }
@@ -261,7 +280,9 @@ export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.m
  */
 export function settingsFields(lists: TeamModelOptionLists): readonly TuiSettingsFieldLike[] {
   return SETTINGS_KNOBS.map((knob) => {
+    /** The slot leaf this knob addresses, undefined for the thirteen non-slot knobs. */
     const leaf = slotLeafOf(knob.path)
+    /** The knob's declared field, before any slot options are applied. */
     const field = declaredField(knob)
     return leaf === undefined ? field : { ...field, options: lists[leaf] }
   })
@@ -283,6 +304,7 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
 /** The one-sentence disclosure BOTH front doors state once, above their rows. */
 export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
 
+/** The declared section shape: cloned per registration, with the slot options replaced by the catalog projection. */
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   // THE SECTION IS KEYED BY THE ENTRY, not by the namespace.
   //
@@ -311,6 +333,7 @@ export const SETTINGS_SECTION: TuiSettingsSectionLike = {
  */
 function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Promise<DshLlmCatalog> } {
   try {
+    /** The mounted adapter, when this row can read it. */
     const mounted = serviceOf<{ llmCatalog?: () => Promise<DshLlmCatalog> }>(ctx, "mpdDsh")
     if (mounted !== undefined) return mounted
   } catch {
@@ -334,11 +357,14 @@ export function registerSettingsSection(
   log: Log,
   adapterOverride?: { llmCatalog?: () => Promise<DshLlmCatalog> },
 ): { outcome(): SeamOutcome } {
+  /** The namespace registration result, folded into the section outcome. */
   let namespace: SeamOutcome = { state: "absent", detail: "settings was not injected" }
+  /** The section registration result, the outcome the caller reads. */
   let section: SeamOutcome = { state: "absent", detail: "tuiSettingsSections was not injected" }
   // ONE register call per section, whatever the activation path does: the host throws
   // `TUI settings section "mpd" is already registered` on a second one.
   let registrationStarted = false
+  /** The adapter whose `llmCatalog()` supplies the slot options. */
   const catalogReader = adapterOverride ?? resolveCatalogReader(ctx)
 
   // 1) Namespace: a GUARDED FALLBACK (design §10.1). `mpd-config-plugin` owns the registration,
@@ -347,6 +373,7 @@ export function registerSettingsSection(
   //    (`dsh-settings` `register()` throws `settings namespace "<ns>" is already registered`), so
   //    the probe below is the guard that keeps the two owners from colliding.
   onService(ctx, "settings", (_scoped, service) => {
+    /** The probed service as the settings provider, before `register` is trusted. */
     const provider = service as SettingsProviderLike
     if (typeof provider?.register !== "function") {
       namespace = { state: "refused", detail: "settings.register is missing" }
@@ -386,6 +413,7 @@ export function registerSettingsSection(
   //    late-registration seam ("a plugin (un)loading mid-session changes the list") and the
   //    screen re-reads the section list on every change event.
   onService(ctx, "tuiSettingsSections", (_scoped, service) => {
+    /** The probed service as the section registry, before `register` is trusted. */
     const sections = service as TuiSettingsSectionsLike
     if (typeof sections?.register !== "function") {
       section = { state: "refused", detail: "tuiSettingsSections.register is missing" }
@@ -414,6 +442,7 @@ export function registerSettingsSection(
    */
   async function readCatalogThenRegister(sections: TuiSettingsSectionsLike): Promise<void> {
     try {
+      /** The catalog this registration is based on; undefined means the declared fallback. */
       let catalog: DshLlmCatalog | undefined
       try {
         catalog = await catalogReader.llmCatalog?.()

@@ -9,7 +9,7 @@ Bundle 资产供给（provisioning），采用“引用”而非“复制”：�
 - 通过文件位置解析包根目录（不做包名解析——该插件必须能在任何安装布局下工作，包括 `link:` 检出与整体搬迁）。
 - 经由 `mpd-dsh-adapter` 以 `<pkg-root>/skills` 为根注册技能 provider（`name: mpd-bundle`、`source: bundled`、`rank: 600 = BUNDLED_SKILL_RANK`）：目录型技能（`<name>/SKILL.md`）与平铺 `*.md` 文件，frontmatter 由**共享**解析器 `packages/mpd-ext-plugin/src/skill-frontmatter.ts` 在进程内解析（扩展的 skill 面通过同一个模块读取同一种文件格式——见该包 README）。因此语料库“恰好在该 bundle 安装期间可见”，行卸载即消失——没有版本戳，也不会留下过期副本。
 - `mpd` preset 采用同一规则：bundle patch 把 `agent-presets` 名册的根指向 `<pkg-root>/presets`（见 `packages/mpd-bundle/cordis.patch.yml`）。
-- 迁移旧安装：bundle `<= 0.2.6` 写入 `$DSH_HOME/skills` 与 `$DSH_HOME/.agent-presets` 的“带版本戳副本”，会在首次启动 `>= 0.3.0` 时被移除。版本戳文件即归属证明——没有版本戳的内容（例如旧版 `scripts/install-profile.mjs` 流程写入的副本）与用户自建的 skills/presets 永不删除。
+- 迁移旧安装：bundle `<= 0.2.6` 写入 `$DSH_HOME/skills` 与 `$DSH_HOME/.agent-presets` 的“带版本戳副本”，会在首次启动 `>= 0.3.0` 时被移除。版本戳文件即归属证明——没有版本戳的内容（例如旧版 `scripts/install-profile.ts` 流程写入的副本）与用户自建的 skills/presets 永不删除。
 - 语料库内被模型用 `write`/`edit` 修改后，下次读取目录时重新解析（`fs/observed` 失效通知）。
 
 ## 配置

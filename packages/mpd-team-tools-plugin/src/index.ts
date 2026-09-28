@@ -62,6 +62,7 @@ import {
   type StagedTask,
 } from "./plan-store"
 
+/** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-team-tools"
 // INJECT: the TOOLS and COMMANDS seams (both resolved through the adapter, never on the raw
 // ctx — the D6 gate polices that) and NOT the team plane itself: `ctx.agentTeams` is reached
@@ -77,6 +78,7 @@ const dispatchPath = (workspace: string): string => join(workspace, ".mpd", "tea
 /** Read the ledger; a missing or unreadable file is an empty ledger, never a crash. */
 function readLedger(workspace: string): DispatchLedger {
   try {
+    /** The parsed ledger, accepted only when it is a plain object; anything else reads as empty. */
     const raw = JSON.parse(readFileSync(dispatchPath(workspace), "utf8")) as DispatchLedger
     return raw !== null && typeof raw === "object" ? raw : {}
   } catch {
@@ -93,6 +95,7 @@ function writeLedger(workspace: string, ledger: DispatchLedger): void {
 /** The rendered one-line summary of a staged plan. */
 function describePlan(plan: StagedPlan | undefined): string {
   if (plan === undefined) return "no staged plan"
+  /** The plan's lifecycle word, derived in approval-before-discard order so it cannot be both. */
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged"
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`
 }
@@ -102,28 +105,37 @@ function describePlan(plan: StagedPlan | undefined): string {
  * standalone instance otherwise (unit tests, or a composition that mounts this plugin alone).
  */
 function adapterFor(ctx: any): DshAdapter {
+  /** The mounted adapter service, when this composition has one. */
   const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined
   return (mounted as DshAdapter | undefined) ?? createDshAdapter(ctx)
 }
 
 /** The calling session's id, or `"workspace"` when the surface has no session (a web route). */
 function sessionIdOf(exec: DshToolExec | undefined): string {
+  /** The calling agent, read defensively: a route-driven call may carry no session at all. */
   const agent = exec?.agent as any
+  /** Candidate session id, trying the session, then the flattened field, then the agent id. */
   const id = agent?.session?.id ?? agent?.sessionId ?? agent?.id
   return typeof id === "string" && id !== "" ? id : "workspace"
 }
 
+/** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
 export function apply(ctx: any): void {
+  /** The adapter facade — the only contact surface this row has with the harness seams. */
   const dsh = adapterFor(ctx)
+  /** Registration disposers, run together on row disposal and counted in the boot line below. */
   const disposers: Array<() => void> = []
+  /** The clock seam: one place to substitute in a test, and the reason every store takes a `Date`. */
   const now = (): Date => new Date()
 
   /** Resolve the workspace + session for one call. */
-  const where = (exec: DshToolExec | undefined) => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) })
+  const where = (exec: DshToolExec | undefined): { workspace: string; sessionId: string } => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) })
 
   /** Read the staged plan for a call, or fail with a sentence the captain can act on. */
   const requirePlan = (exec: DshToolExec | undefined): { workspace: string; sessionId: string; plan: StagedPlan } => {
+    /** The call's workspace and session, resolved once so the plan lookup and the write agree. */
     const { workspace, sessionId } = where(exec)
+    /** The session's staged plan, or undefined when nothing is staged yet. */
     const plan = readPlan(workspace, sessionId)
     if (plan === undefined) throw new Error("no team is staged in this session — call agent_teams_create first")
     if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`)
@@ -173,10 +185,13 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
+      /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
+      /** The call's workspace and session; every branch below stays inside them. */
       const { workspace, sessionId } = where(exec)
 
       if (action === "status") {
+        /** Read one official seam defensively: a status call must answer even when a service is absent. */
         const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
         return {
           plan: readPlan(workspace, sessionId) ?? null,
@@ -188,6 +203,7 @@ export function apply(ctx: any): void {
       }
 
       if (action === "create") {
+        /** The plan already staged here, whose approval state decides whether this create may replace it. */
         const existing = readPlan(workspace, sessionId)
         if (existing?.approvedAt !== undefined && args?.replace !== true) {
           throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
@@ -200,8 +216,11 @@ export function apply(ctx: any): void {
       }
 
       if (action === "add_member") {
+        /** The staged, not-yet-approved plan this call appends to. */
         const { plan } = requirePlan(exec)
+        /** The raw member argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.member ?? {}) as Record<string, unknown>
+        /** The plan with the member appended (trimmed and duplicate-checked by the store). */
         const next = addMember(plan, {
           name: String(raw.name ?? ""),
           description: String(raw.description ?? ""),
@@ -213,8 +232,11 @@ export function apply(ctx: any): void {
       }
 
       if (action === "create_task") {
+        /** The staged, not-yet-approved plan this call appends to. */
         const { plan } = requirePlan(exec)
+        /** The raw task argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.task ?? {}) as Record<string, unknown>
+        /** The plan with the task appended (trimmed by the store). */
         const next = addTask(plan, {
           subject: String(raw.subject ?? ""),
           description: String(raw.description ?? ""),
@@ -227,10 +249,12 @@ export function apply(ctx: any): void {
       }
 
       if (action === "edit") {
+        /** The plan being edited, or undefined when the session has nothing staged. */
         const plan = readPlan(workspace, sessionId)
         if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
         if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) return { plan }
         if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
+        /** The replacement plan, assembled immutably so a rejected edit leaves the stored one untouched. */
         const next: StagedPlan = {
           ...plan,
           ...(args?.description === undefined ? {} : { description: String(args.description) }),
@@ -259,30 +283,38 @@ export function apply(ctx: any): void {
       }
 
       if (action === "delete") {
+        /** The plan to archive, or undefined when there is nothing to archive. */
         const plan = readPlan(workspace, sessionId)
         if (plan === undefined) return {}
         return { archivedTo: archivePlan(workspace, plan) }
       }
 
       if (action === "approve") {
+        /** The plan being approved; it must exist and must not already be approved. */
         const plan = readPlan(workspace, sessionId)
         if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
         if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved`)
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
         }
+        /** What approval actually created, recorded onto the plan so a reader can reconcile plan with reality. */
         const created: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> } = { members: [], tasks: [] }
+        /** Created board id per task SUBJECT, so a `blocked_by` written as a subject resolves to a real id. */
         const bySubject = new Map<string, string>()
+        /** Spawned session id per member NAME, so an `owner` written as a name resolves to a real id. */
         const idByName = new Map<string, string>()
+        /** The first failure's description; set means approval stopped rather than half-build the team. */
         let stoppedAt: string | undefined
         for (const member of plan.members) {
           try {
+            /** The official spawn result, whose id is read from whichever field this harness version fills. */
             const spawned = await dsh.teamSpawnTeammate(exec.agent, {
               name: member.name,
               description: member.description === "" ? member.name : member.description,
               prompt: member.prompt,
               ...(exec.signal === undefined ? {} : { signal: exec.signal }),
             })
+            /** The new member's session id, or the empty string when the harness reported none. */
             const id = String((spawned as any)?.id ?? (spawned as any)?.sessionId ?? (spawned as any)?.member?.id ?? "")
             created.members.push({ name: member.name, id })
             if (id !== "") idByName.set(member.name, id)
@@ -294,7 +326,9 @@ export function apply(ctx: any): void {
         if (stoppedAt === undefined) {
           for (const task of plan.tasks) {
             try {
+              /** Blocker references resolved to board ids, a raw value left alone when nothing matches it. */
               const resolved = (task.blockedBy ?? []).map((reference) => bySubject.get(reference) ?? reference)
+              /** The created board task, whose id and revision the owner reassignment below needs. */
               const view = await dsh.teamCreateTask(exec.agent, {
                 subject: task.subject,
                 description: task.description,
@@ -303,6 +337,7 @@ export function apply(ctx: any): void {
               })
               bySubject.set(task.subject, view.id)
               created.tasks.push({ subject: task.subject, id: view.id })
+              /** The owner's session id, present only when the plan named a member this pass actually spawned. */
               const ownerId = task.owner === undefined ? undefined : idByName.get(task.owner)
               if (ownerId !== undefined) {
                 await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerId })
@@ -313,6 +348,7 @@ export function apply(ctx: any): void {
             }
           }
         }
+        /** The plan marked approved, carrying what was created. */
         const approved: StagedPlan = { ...plan, approvedAt: now().toISOString(), created }
         writePlan(workspace, approved)
         return { plan: approved, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
@@ -347,10 +383,13 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
+      /** The call's workspace, which is where contracts and the ledger live. */
       const { workspace } = where(exec)
+      /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
 
       if (action === "release") {
+        /** The pruned ledger and whether a pairing was actually there to free. */
         const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
         if (released) writeLedger(workspace, ledger)
         return { released }
@@ -358,13 +397,16 @@ export function apply(ctx: any): void {
 
       if (action === "contract") {
         if (args?.task_id === undefined) return { contracts: listContracts(workspace) }
+        /** The frozen contract for the requested task, or undefined when it was never claimed here. */
         const contract = readContract(workspace, String(args.task_id))
         if (contract === undefined) throw new Error(`no contract for task "${String(args.task_id)}" — it has never been claimed through this tool`)
         return { contract }
       }
 
       if (action === "claim") {
+        /** The official task as it stands NOW — the source of every value the contract freezes. */
         const view = dsh.teamGetTask(exec.agent, String(args?.task_id ?? ""))
+        /** The contract for this attempt, written before the board is told about the claim. */
         const contract = claimContract(workspace, {
           id: view.id,
           subject: view.subject,
@@ -373,6 +415,7 @@ export function apply(ctx: any): void {
           writeScopes: view.writeScopes,
           revision: view.revision,
         }, String(args?.claimant ?? sessionIdOf(exec)), now())
+        /** The board's task after the claim; a refused claim falls back to the view so a contract still answers. */
         const task = await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "claim" }).catch(() => view)
         return { contract, task }
       }
@@ -407,16 +450,21 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
+      /** The call's workspace, where the dispatch ledger lives. */
       const { workspace } = where(exec)
+      /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
 
       if (action === "release") {
+        /** The pruned ledger and whether a pairing was actually there to free. */
         const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
         if (released) writeLedger(workspace, ledger)
         return { released }
       }
 
+      /** The workspace hold, if any; its reason refuses the WHOLE pass inside `planDispatch`. */
       const hold = readHold(workspace)
+      /** The board projected into the dispatch task shape. */
       const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
         id: task.id,
         subject: task.subject,
@@ -425,9 +473,11 @@ export function apply(ctx: any): void {
         blockedBy: task.blockedBy,
         ...(task.ownerName === undefined ? {} : { ownerName: task.ownerName }),
       }))
+      /** The roster projected into the dispatch member shape. */
       const members = dsh.teamListMembers(exec.agent).map((member) => ({ id: member.id, name: member.name, status: member.status }))
       // PRUNE FIRST: a task deleted or completed out of band must not keep its member busy forever.
       const pruned = reconcile(readLedger(workspace), tasks)
+      /** The pure decision for this pass: the pairs to dispatch and a reason for every task left out. */
       const plan = planDispatch({
         tasks,
         members,
@@ -439,10 +489,14 @@ export function apply(ctx: any): void {
         if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
         return { ...plan, forgotten: pruned.forgotten }
       }
+      /** The ledger as it will be written: pruned first, then extended by each accepted pairing. */
       let ledger = pruned.ledger
+      /** The pairs the transport actually accepted, which are the ones recorded. */
       const sent: typeof plan.pairs = []
+      /** The plan's skips plus any pairing whose message failed, so nothing is dropped silently. */
       const skipped = [...plan.skipped]
       for (const pair of plan.pairs) {
+        /** The board's own record for this pair, used for the acceptance text. */
         const task = tasks.find((candidate) => candidate.id === pair.taskId)
         try {
           await dsh.teamSendMessage(exec.agent, {
@@ -497,17 +551,24 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
+      /** The call's workspace, where the mailbox log lives. */
       const { workspace } = where(exec)
+      /** The caller's id, used when the payload carries no session of its own. */
       const caller = sessionIdOf(exec)
+      /** The raw calling agent, read for the display name the official payload carries. */
       const self = exec.agent as any
+      /** The live roster, or an empty list: a mailbox call must answer even with no team plane. */
       const roster = (() => { try { return dsh.teamListMembers(exec.agent) } catch { return [] } })()
-      const resolve = (name: string) => roster.find((member) => member.id === name || member.name === name)
+      /** Resolve a member by name OR by id, because a captain addresses people by name. */
+      const resolve = (name: string): ReturnType<DshAdapter["teamListMembers"]>[number] | undefined => roster.find((member) => member.id === name || member.name === name)
 
       if (args?.action === "send") {
+        /** The addressed member, or undefined — in which case the refusal names the whole roster. */
         const target = resolve(String(args?.to ?? ""))
         if (target === undefined) {
           return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` }
         }
+        /** The store's verdict: the recorded message, or the refusal and its reason. */
         const result = sendMail(workspace, {
           fromId: self?.session?.id ?? caller,
           fromName: self?.session?.header?.title ?? caller,
@@ -541,8 +602,11 @@ export function apply(ctx: any): void {
         return { summary: summarise(readMailbox(workspace)) }
       }
 
+      /** The folded mailbox, read once so the unread/undelivered/total counts agree. */
       const state = readMailbox(workspace)
+      /** The member whose inbox was asked for, when the call named one. */
       const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
+      /** The inbox owner: the named member, else the caller's own session. */
       const memberId = wanted?.id ?? self?.session?.id ?? caller
       return {
         messages: unreadMessages(state, memberId).map((message) => ({
@@ -579,6 +643,7 @@ export function apply(ctx: any): void {
         text(value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
     },
     execute: async (args: any, exec: DshToolExec) => {
+      /** The call's workspace, where the hold record lives. */
       const { workspace } = where(exec)
       if (String(args?.action ?? "") === "resume") return { resumed: clearHold(workspace) }
       if (String(args?.action ?? "") !== "halt") throw new Error(`agent_teams_control: unknown action "${String(args?.action ?? "")}" (halt | resume)`)
@@ -592,12 +657,16 @@ export function apply(ctx: any): void {
     description: "Stage a team for the current goal: /agent-teams <what the team is for>",
     input: { hint: "what the team is for" },
     handler: async (invocation: any) => {
+      /** The command's workspace: a command has no tool exec, so it resolves from the process view. */
       const workspace = dsh.workspaceRoot()
+      /** The invoking session, so the plan is staged where that session will approve it. */
       const sessionId = sessionIdOf({ agent: invocation?.agent } as DshToolExec)
+      /** The command's argument, trimmed; empty means the user gets usage instead of a plan. */
       const goal = String(invocation?.rawInput ?? "").trim()
       if (goal === "") {
         return { kind: "message", text: "Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_approve." }
       }
+      /** The staged plan, awaiting approval — which the reply says explicitly. */
       const plan = stagePlan(workspace, sessionId, { name: goal.slice(0, 60), description: goal, approval: "required" }, now())
       return {
         kind: "message",
@@ -611,7 +680,9 @@ export function apply(ctx: any): void {
   const root = (() => { try { return dsh.workspaceRoot() } catch { return "" } })()
   if (root !== "") {
     try {
+      /** The staging directory whose file count is the boot line's "staged" number. */
       const staging = join(root, ".mpd", "team", "staging")
+      /** How many sessions currently have a staged plan in this workspace. */
       const pending = existsSync(staging) ? readdirSync(staging).filter((file) => file.endsWith(".json")).length : 0
       // The count is DERIVED from the registrations this apply() made: a literal here said "10" while
       // the plane had grown to 12, which is exactly the kind of boot line a reader trusts and should

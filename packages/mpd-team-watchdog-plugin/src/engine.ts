@@ -41,11 +41,17 @@ import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resol
 
 /** Fully-resolved engine configuration (no optional key left). */
 export interface EngineConfig {
+  /** Team state directory, relative to the workspace. */
   stateDir: string
+  /** The kill switch; a disabled engine records and holds nothing. */
   enabled: boolean
+  /** OUTSTANDING age in ms that triggers the first WARN. */
   warnSilenceMs: number
+  /** Tick cadence in ms, below `warnSilenceMs` by construction. */
   tickIntervalMs: number
+  /** Consecutive OUTSTANDING observations for one task+attempt before ESCALATE. */
   warnStreakToEscalate: number
+  /** What ESCALATE does: persist a hold (`pause`) or only record it. */
   actionOnEscalate: "pause" | "warn-only"
   /** How long the live team readout stays cached between reads (0 disables). */
   teamCacheMs: number
@@ -69,23 +75,37 @@ export interface EngineConfig {
   holdTtlMs: number
   /** Print skipped-team reasons to the console as well as the debug channel. */
   verboseSkips: boolean
+  /** Prefix of every console and logger line this engine writes. */
   logPrefix: string
 }
 
 /** Engine counters; every one is evidence for AC-15's fail-safe claims. */
 export interface EngineStats {
+  /** Tick bodies entered, including skipped and failed ones. */
   ticks: number
+  /** Ticks that threw and were contained. */
   tickErrors: number
+  /** Ticks skipped because the previous one was still running. */
   tickSkips: number
+  /** Heartbeat stamps that reached disk. */
   heartbeatWrites: number
+  /** Heartbeat stamps an unwritable location refused. */
   heartbeatFailures: number
+  /** Heartbeat files rotated by the turn-end rule. */
   rotations: number
+  /** Scene documents written. */
   scenes: number
+  /** Scene writes that failed, each reported loudly and never fatal. */
   sceneFailures: number
+  /** Preserving holds persisted through the pause action. */
   holdsApplied: number
+  /** Hold attempts that did not land; no pause is announced for those. */
   holdsFailed: number
+  /** Incident records appended durably. */
   incidents: number
+  /** Incident appends that failed. */
   incidentFailures: number
+  /** `never-started` observations recorded. */
   neverStarted: number
   /** Teams a tick skipped because they cannot dispatch (r4). */
   skippedTeams: number
@@ -107,6 +127,7 @@ export interface EngineStats {
   holdsAutoReleased: number
   /** T-17: auto-release attempts that could not clear the hold (reported, never silent). */
   holdsAutoReleaseFailures: number
+  /** `Error#message` of the newest contained failure, or null. */
   lastError: string | null
 }
 
@@ -120,6 +141,7 @@ export interface PredicateStatus {
   enrichment: boolean
   /** Fold counters: events consumed and sessions known. */
   events: number
+  /** How many member sessions the fold currently knows. */
   sessions: number
   /** The current state per known session id. */
   states: Record<string, ChannelState>
@@ -129,16 +151,23 @@ export interface PredicateStatus {
 
 /** The result of one tick. */
 export interface TickResult {
+  /** WARN and ESCALATE decisions this tick produced (the report-only kinds are not decisions). */
   decisions: Decision[]
+  /** Paths of the scene files this tick wrote. */
   scenes: string[]
+  /** Team ids this tick put under a preserving hold. */
   holds: string[]
+  /** Why the tick did nothing, when it did nothing. */
   skipped?: string
 }
 
 /** The engine's context dependency: events, cleanup and an optional logger. */
 export interface EngineContext {
+  /** Subscribe to a harness event through the adapter's verbatim bridge. */
   on?: (event: string, handler: (...args: any[]) => unknown) => unknown
+  /** Register a cleanup callback the host runs when the row is disposed. */
   effect?: (callback: () => unknown) => unknown
+  /** Optional host logger; the console carries every line regardless. */
   logger?: { warn?: (text: string) => void; info?: (text: string) => void }
   [key: string]: unknown
 }
@@ -146,6 +175,7 @@ export interface EngineContext {
 /** A settings namespace read through the adapter, never a direct service call. */
 function readNamespaceValue(dsh: DshAdapter): { value: unknown; error: string | null } {
   try {
+    // The `mpd` settings reader, absent when that service is not mounted.
     const reader = dsh.settingsReader("mpd")
     return { value: reader?.get(), error: null }
   } catch (error) {
@@ -164,7 +194,9 @@ function readNamespaceKnobs(
   env: Record<string, string | undefined>,
   defaults: WatchdogKnobs,
 ): ResolvedKnobs {
+  // The namespace read and its error; exactly one of the two carries meaning.
   const { value, error } = readNamespaceValue(dsh)
+  // The knobs read from the namespace value, before the read error is folded in.
   const base = readKnobs(value, env, defaults)
   if (error === null) return base
   return { ...base, issues: [...base.issues, namespaceReadIssue(error)] }
@@ -173,6 +205,7 @@ function readNamespaceKnobs(
 /** Unwrap the value a harness tool call returns. */
 function toolValue(raw: unknown): Record<string, unknown> | undefined {
   if (raw === null || typeof raw !== "object") return undefined
+  // The `value` field a harness tool result wraps, when it carries one.
   const candidate = (raw as { value?: unknown }).value
   if (candidate !== null && typeof candidate === "object") return candidate as Record<string, unknown>
   return raw as Record<string, unknown>
@@ -187,11 +220,15 @@ function toolValue(raw: unknown): Record<string, unknown> | undefined {
  */
 function sessionIdOf(value: unknown): string | null {
   if (value === null || typeof value !== "object") return null
+  // The payload as a record, so id and session can be probed safely.
   const record = value as Record<string, unknown>
+  // The payload's own id, which a Session object carries directly.
   const direct = record.id
   if (typeof direct === "string" && direct !== "") return direct
+  // The nested session an agent payload wraps.
   const session = record.session
   if (session !== null && typeof session === "object") {
+    // The nested session's id, when it states one.
     const id = (session as Record<string, unknown>).id
     if (typeof id === "string" && id !== "") return id
   }
@@ -228,6 +265,7 @@ export function subscribe(
   handler: (...args: any[]) => unknown,
 ): () => void {
   try {
+    // The handler wrapped so a throw becomes a report instead of a bus error.
     const wrapped = (...args: any[]): unknown => {
       try {
         return handler(...args)
@@ -236,9 +274,11 @@ export function subscribe(
         return undefined
       }
     }
+    // The subscription handle the adapter returned, of either supported shape.
     const disposer = dsh.onEvent(event, wrapped)
     if (typeof disposer === "function") return disposer as () => void
     if (disposer !== undefined && typeof (disposer as { dispose?: unknown }).dispose === "function") {
+      // The handle read as an object exposing a `dispose()` method.
       const target = disposer as { dispose: () => void }
       return () => target.dispose()
     }
@@ -256,16 +296,27 @@ export function subscribe(
  * single tick interval and clears it through `ctx.effect`.
  */
 export class WatchdogEngine {
+  /** The adapter: the ONE harness contact surface this engine uses. */
   private readonly dsh: DshAdapter
+  /** The cordis plugin context: events, cleanup and the optional logger. */
   private readonly ctx: EngineContext
+  /** The resolved engine configuration, i.e. the knobs' defaults layer. */
   private readonly config: EngineConfig
+  /** The WARN/ESCALATE ladder; one per engine. */
   private readonly machine = new WatchdogMachine()
+  /** The synchronous hold reader, when the row published one. */
   private readonly registry: HoldRegistry | undefined
+  /** Workspace roots seen so far, taught by stamps and by reads. */
   private readonly roots = new Set<string>()
+  /** Live team readout per workspace key, bounded by `teamCacheMs`. */
   private readonly teamCache = new Map<string, { at: number; teams: TeamRecord[] }>()
+  /** The knobs the process is running with, refreshed on every tick. */
   private knobs: ResolvedKnobs
+  /** Whether a tick body is running, which makes the next one skip. */
   private ticking = false
+  /** Set by `stop()`; a stopped engine still answers reads. */
   private stopped = false
+  /** Monotonic turn counter, used to give every turn its own id. */
   private turnSeq = 0
   /**
    * THE FOUR-STATE CHANNEL FOLD (contract §1): the process's single fold, fed by the
@@ -278,6 +329,7 @@ export class WatchdogEngine {
   private enrichment = false
   /** The predicate source actually running, and why (named in the status view, §4). */
   private predicateSource: "channel" | "heartbeat" = "heartbeat"
+  /** Why the running predicate source is what it is, in one line. */
   private predicateReason = "not installed yet"
   /** Whether the once-per-process §4 fallback announcement was made. */
   private fallbackAnnounced = false
@@ -303,9 +355,11 @@ export class WatchdogEngine {
   private layersSeen = false
   /** The layer the running values came from, and the file that supplied them when it is `file`. */
   private liveLayer: "namespace" | "file" = "namespace"
+  /** The `.mpd/mpd.jsonc` that supplied the running knobs, when the file layer won. */
   private liveFile: string | null = null
   /** Set by `apply` so a live cadence change can rebuild the single timer. */
   onKnobsChanged: ((knobs: ResolvedKnobs) => void) | undefined
+  /** The engine counters, exposed through `getStats()`. */
   private readonly stats: EngineStats = {
     ticks: 0,
     tickErrors: 0,
@@ -367,6 +421,7 @@ export class WatchdogEngine {
    * output names the active predicate source"). A diagnostics read, never a decision input.
    */
   predicateStatus(): PredicateStatus {
+    // The fold's own counters and its per-session state map.
     const snapshot = this.fold.snapshot()
     return {
       source: this.predicateSource,
@@ -386,6 +441,7 @@ export class WatchdogEngine {
 
   /** Every workspace root the engine will tick over. */
   knownRoots(): string[] {
+    // The union of remembered, live and fallback roots, as a local copy.
     const roots = new Set(this.roots)
     try {
       for (const root of this.dsh.workspaceRootsAll() ?? []) roots.add(root)
@@ -420,12 +476,18 @@ export class WatchdogEngine {
    * being dropped on the next tick when neither layer moved again.
    */
   refreshKnobs(env: Record<string, string | undefined> = process.env): ResolvedKnobs {
+    // The namespace read split into the two names the layer logic uses.
     const { value: namespaceValue, error } = readNamespaceValue(this.dsh)
+    // Stable digest of the namespace's `watchdog` section; null when it states none.
     const namespaceDigest = sectionDigest(watchdogSectionOf(namespaceValue))
+    // The workspace config file read: found flag, path and raw section.
     const file = readWatchdogSection(this.workspaceOf(undefined))
+    // Digest of that file's section, or null when the file states none.
     const fileDigest = file.found ? sectionDigest(file.section) : null
     if (this.layersSeen) {
+      // Whether the settings layer moved since the last observation.
       const namespaceChanged = namespaceDigest !== this.layerDigests.namespace
+      // Whether the workspace file layer moved since the last observation.
       const fileChanged = fileDigest !== this.layerDigests.file
       if (fileChanged && !namespaceChanged) {
         this.liveLayer = "file"
@@ -441,7 +503,9 @@ export class WatchdogEngine {
     }
     this.layerDigests.namespace = namespaceDigest
     this.layerDigests.file = fileDigest
+    // The namespace value, with the file layer overlaid when the file is the live layer.
     const base = this.liveLayer === "file" && fileDigest !== null ? overlayWatchdogSection(namespaceValue, file.section) : namespaceValue
+    // The knobs read from that base value.
     const resolved = readKnobs(base, env, this.knobDefaults())
     this.knobs = error === null ? resolved : { ...resolved, issues: [...resolved.issues, namespaceReadIssue(error)] }
     return this.knobs
@@ -495,13 +559,17 @@ export class WatchdogEngine {
    * a missing seam into a silent watchdog, the one failure mode this wave exists to remove.
    */
   private liveIds(): { known: boolean; ids: Set<string> } {
+    // The live agent ids this process's registry reports.
     const ids = new Set<string>()
+    // Whether the registry demonstrably knows agents: the capability is present and non-empty.
     let known = false
     try {
+      // The adapter's capability flags, probed defensively.
       const capabilities = (this.dsh as { capabilities?: () => { agents?: boolean } }).capabilities?.()
       known = capabilities?.agents === true
       if (known) {
         for (const agent of this.dsh.liveAgents() ?? []) {
+          // The live agent's id, when it carries a string one.
           const id = (agent as { id?: unknown } | undefined)?.id
           if (typeof id === "string" && id !== "") ids.add(id)
         }
@@ -527,6 +595,7 @@ export class WatchdogEngine {
     return this.stopped
   }
 
+  /** Remember a workspace root so later ticks observe it. */
   private remember(workspace: string): void {
     if (typeof workspace === "string" && workspace !== "") this.roots.add(workspace)
   }
@@ -542,10 +611,13 @@ export class WatchdogEngine {
    * The workspace is still part of the cache key: the readout itself is process-wide, but a
    * per-workspace entry keeps the tick's accounting (and `invalidate()`) exactly as they were.
    */
-  private teams(workspace: string, now = Date.now()): TeamRecord[] {
+  private teams(workspace: string, now: number = Date.now()): TeamRecord[] {
+    // The cache key: workspace and state directory, so two rows never share an entry.
     const key = workspace + "\u0000" + this.config.stateDir
+    // The cached readout for this workspace, when one is still fresh.
     const cached = this.teamCache.get(key)
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs) return cached.teams
+    // The live readout from the adapter, cached below for `teamCacheMs`.
     const teams = readTeams(this.dsh)
     this.teamCache.set(key, { at: now, teams })
     return teams
@@ -565,16 +637,24 @@ export class WatchdogEngine {
    * @returns the stamp written; a failed write is counted and never thrown.
    */
   stamp(kind: HeartbeatKind, agent: unknown, extra: { tool?: string; callId?: string; ok?: boolean } = {}): HeartbeatStamp {
+    // The agent's identity facts, read from whatever shape the caller passed.
     const ids = agentIds(agent)
+    // The workspace root, resolved from the agent's own cwd when it has one.
     const workspace = this.workspaceOf(ids.cwd !== undefined ? agent : undefined)
     this.remember(workspace)
+    // The live team this agent belongs to, when one resolves.
     const team = teamOf(this.teams(workspace), agent)
+    // The agent's role inside that team: member, captain, or unattached.
     const identity = resolveIdentity(team, agent)
     if (kind === "turn-start") this.turnSeq += 1
+    // The heartbeat file key: the member name, else a per-session key.
     const memberKey =
       identity.member ?? "session-" + (ids.sessionId.slice(0, 8) || ids.agentId.slice(0, 8) || "unknown")
+    // The task the member currently owns, when both the team and the member resolve.
     const task = team !== undefined && identity.member !== null ? currentTask(team, identity.member) : undefined
+    // The stamp's clock, read once so no two fields of one record can disagree.
     const at = Date.now()
+    // The record that will be appended to the member's heartbeat file.
     const stamp: HeartbeatStamp = {
       kind,
       at,
@@ -589,6 +669,7 @@ export class WatchdogEngine {
       ...(extra.ok === undefined ? {} : { ok: extra.ok }),
       workspace,
     }
+    // The append outcome; a failure is counted and reported, never thrown.
     const written = appendHeartbeat(workspace, this.config.stateDir, memberKey, stamp)
     if (written.ok) {
       this.stats.heartbeatWrites += 1
@@ -603,7 +684,9 @@ export class WatchdogEngine {
 
   /** Subscribe every heartbeat writer, the POST hook and the settings re-read. */
   install(): (() => void)[] {
+    // Teardown callbacks for every subscription this install made.
     const disposers: (() => void)[] = []
+    // Unwrap the live agent a harness payload carries.
     const agentOf = (payload: unknown): unknown => (payload as { agent?: unknown } | undefined)?.agent
     if (typeof this.dsh.onEvent === "function") {
       // `agent/pre-step` IS A CORDIS WATERFALL, and a waterfall listener's return value
@@ -653,7 +736,9 @@ export class WatchdogEngine {
       )
       disposers.push(
         subscribe(this.dsh, "agent/turn-stopping", (payload: unknown) => {
+          // The turn-end stamp, whose workspace and member key drive the rotation.
           const stamp = this.stamp("turn-end", agentOf(payload) ?? payload)
+          // The rotation outcome; only a real change is counted.
           const rotated = rotateHeartbeats(stamp.workspace, this.config.stateDir, stamp.memberKey, this.config.keepGenerations)
           if (rotated.rotated) this.stats.rotations += 1
         }),
@@ -668,10 +753,13 @@ export class WatchdogEngine {
     // unlike `agent/pre-step`, whose waterfall semantics cost us the 2026-09-16 incident.
     // The fold is incremental and per session; the tick reads it, nothing else does.
     if (typeof this.dsh.onEvent === "function") {
+      // The subscription handle for the `session/event` firehose.
       const offSession = this.dsh.onEvent("session/event", (session: unknown, event: unknown) => {
         try {
+          // The session the event belongs to; an unreadable id drops the event.
           const sessionId = sessionIdOf(session)
           if (sessionId === null) return
+          // The fold's conclusion after this event, or null when it had nothing to read.
           const view = this.fold.apply(sessionId, event)
           if (view === null) return
           this.stats.channelEvents += 1
@@ -697,9 +785,12 @@ export class WatchdogEngine {
     // yet. Absent, the fold still works and §1 rule 3's asymmetry applies — stated in the
     // README and in AGENTS.md, never hidden here.
     if (typeof this.dsh.onEvent === "function") {
+      // The subscription handle for the enrichment stream, when the adapter has the seam.
       const offStream = this.dsh.onEvent("agent/assistant-stream", (payload: unknown) => {
         try {
+          // The payload as a record, since the stream frame arrives wrapped.
           const record = payload !== null && typeof payload === "object" ? (payload as Record<string, unknown>) : {}
+          // The session of the agent the streaming frame belongs to.
           const sessionId = sessionIdOf(record.agent)
           if (sessionId === null) return
           if (this.fold.noteStreamFrame(sessionId, record.frame ?? payload)) this.stats.streamFrames += 1
@@ -719,7 +810,9 @@ export class WatchdogEngine {
     // the PRE half is the `tool-start` stamp installed above from the observe-only
     // `tools/pre-execute` hook, and the two are matched by `callId`).
     const post = this.dsh.onPostToolExecute((exec) => {
+      // The tool's name, when the harness states one.
       const name = typeof exec?.name === "string" ? exec.name : undefined
+      // The harness call id, of unknown type until checked.
       const rawCallId = (exec as { callId?: unknown } | undefined)?.callId
       this.stamp("tool", exec?.agent, {
         ...(name === undefined ? {} : { tool: name }),
@@ -740,12 +833,15 @@ export class WatchdogEngine {
     // event bus, degrades to a warning here and the pre-r6 behaviour (POST-only stamps),
     // never a failed row.
     if (typeof this.dsh.onPreToolExecute === "function") {
+      // The subscription handle for the observe-only PRE hook.
       const pre = this.dsh.onPreToolExecute((exec, decision) => {
         // A DENIED call is never dispatched, so there is nothing to hold open. `allow` and
         // `ask` both continue (an approved `ask` dispatches, and a denied one still gets a
         // POST stamp through the harness's post-result path, which clears the entry).
         if (decision !== undefined && decision.kind === "deny") return
+        // The tool's name, when the harness states one.
         const name = typeof exec?.name === "string" ? exec.name : undefined
+        // The harness call id, of unknown type until checked.
         const rawCallId = (exec as { callId?: unknown } | undefined)?.callId
         this.stamp("tool-start", exec?.agent, {
           ...(name === undefined ? {} : { tool: name }),
@@ -761,6 +857,7 @@ export class WatchdogEngine {
       disposers.push(
         this.dsh.onSettingsDocumentUpdated("mpd", () => {
           try {
+            // The knobs after the re-read, logged and handed to the timer rebuild.
             const next = this.refreshKnobs()
             this.info(
               "knobs re-read (enabled=" + next.enabled + ", warnSilenceMs=" + next.warnSilenceMs + ", tickIntervalMs=" + next.tickIntervalMs + ", warnStreakToEscalate=" + next.warnStreakToEscalate + ", actionOnEscalate=" + next.actionOnEscalate + ")",
@@ -791,8 +888,11 @@ export class WatchdogEngine {
     }
     this.ticking = true
     this.stats.ticks += 1
+    // The WARN/ESCALATE decisions of this tick.
     const decisions: Decision[] = []
+    // Scene paths written during this tick.
     const scenes: string[] = []
+    // Team ids put under a preserving hold during this tick.
     const holds: string[] = []
     try {
       // Re-read the knobs on EVERY tick, not only on settings/document-updated. The
@@ -854,6 +954,7 @@ export class WatchdogEngine {
               continue
             }
             decisions.push(decision)
+            // What acting on the decision produced: a scene path and/or a hold.
             const outcome = await this.act(workspace, team, decision, now)
             if (outcome.scene !== null) scenes.push(outcome.scene)
             if (outcome.held) holds.push(team.id)
@@ -896,14 +997,19 @@ export class WatchdogEngine {
    * @returns whether to tick it, and why not.
    */
   private liveness(team: TeamRecord, now: number): { tickable: boolean; reason: string } {
+    // The team spelled for the debug line, with its phase and task count.
     const desc = "team " + team.id + " (phase " + (team.phase ?? "?") + ", " + team.tasks.length + " task(s))"
+    // Whether the registry demonstrably knows live agents.
     let agentsKnown = false
+    // The live agent ids this process reports.
     const live = new Set<string>()
     try {
+      // The adapter's capability flags, probed defensively.
       const capabilities = (this.dsh as { capabilities?: () => { agents?: boolean } }).capabilities?.()
       agentsKnown = capabilities?.agents === true
       if (agentsKnown) {
         for (const agent of this.dsh.liveAgents() ?? []) {
+          // The live agent's id, when it carries a string one.
           const id = (agent as { id?: unknown } | undefined)?.id
           if (typeof id === "string" && id !== "") live.add(id)
         }
@@ -914,6 +1020,7 @@ export class WatchdogEngine {
     if (agentsKnown && live.size > 0) {
       if (team.captainSessionId !== undefined && live.has(team.captainSessionId))
         return { tickable: true, reason: desc + " has a LIVE captain session" }
+      // The first roster member that is live, if any.
       const member = team.members.find((entry) => entry.id !== "" && live.has(entry.id))
       if (member !== undefined) return { tickable: true, reason: desc + " has the LIVE member " + member.name }
       return {
@@ -927,10 +1034,12 @@ export class WatchdogEngine {
     // `team.activityAt` is ALWAYS null under the official readout, so this branch is the normal
     // path: a team whose registry answers nothing is ticked, which is the fail-safe reading.
     const configured = this.config.deadTeamGraceMs
+    // The dead-team bound in ms; a non-finite value reads as 0, i.e. tick everything.
     const grace = typeof configured === "number" && Number.isFinite(configured) ? configured : 0
     if (grace <= 0 || team.activityAt === null) {
       return { tickable: true, reason: desc + " ticked: the live readout is the only source and the agent registry answered nothing (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms)" }
     }
+    // How long ago the team's newest activity was, in ms.
     const age = now - team.activityAt
     if (age <= grace) return { tickable: true, reason: desc + " activity " + age + "ms ago is within the " + grace + "ms grace window" }
     return {
@@ -956,6 +1065,7 @@ export class WatchdogEngine {
    * A hold that cannot be cleared is COUNTED and reported, never silently retried forever.
    */
   private async autoReleaseHolds(workspace: string, now: number): Promise<void> {
+    // Team ids with a hold: the registry first, the disk index second.
     let held: string[] = []
     try {
       held = this.registry?.heldTeams(workspace) ?? []
@@ -967,11 +1077,15 @@ export class WatchdogEngine {
     // must still release an expired hold, or a stale pause would outlive every reader.
     if (held.length === 0) held = heldTeamIds(workspace, this.config.stateDir)
     if (held.length === 0) return
+    // Every stamp in the store, read once and only when the activity path needs it.
     let stampsByTeam: HeartbeatStamp[] | null = null
     for (const teamId of held) {
+      // The durable hold being considered for release.
       const hold = readHold(workspace, this.config.stateDir, teamId)
       if (hold === undefined) continue
+      // How long the hold has existed, in ms.
       const age = now - hold.since
+      // Which auto-release path fired, or null to keep the hold.
       let release: "ttl" | "activity" | null = null
       if (hold.ttlMs > 0 && age >= hold.ttlMs) release = "ttl"
       else {
@@ -979,6 +1093,7 @@ export class WatchdogEngine {
         if (stampsByTeam.some((stamp) => stamp.teamId === teamId && Number.isFinite(stamp.at) && stamp.at > hold.since)) release = "activity"
       }
       if (release === null) continue
+      // The resume outcome; a failure leaves the hold in force and is reported.
       const resumed = applyResume(workspace, this.config.stateDir, { team_id: teamId }, this.registry)
       if (!resumed.resumed) {
         this.stats.holdsAutoReleaseFailures += 1
@@ -986,6 +1101,7 @@ export class WatchdogEngine {
         continue
       }
       this.stats.holdsAutoReleased += 1
+      // The durable `hold-auto-released` record for this release.
       const incident: IncidentRecord = {
         id: teamId + "#hold-auto-released#" + release + "#" + now,
         teamId,
@@ -998,6 +1114,7 @@ export class WatchdogEngine {
         hold: "not-requested",
         acknowledgedBy: [],
       }
+      // The append outcome of that record.
       const logged = appendIncident(workspace, this.config.stateDir, incident)
       if (logged.ok) this.stats.incidents += 1
       else {
@@ -1018,6 +1135,7 @@ export class WatchdogEngine {
 
   /** Every heartbeat stamp this workspace's store holds, in one pass (T-17's activity path). */
   private teamStamps(workspace: string): HeartbeatStamp[] {
+    // Every stamp of the store, concatenated across member files.
     const out: HeartbeatStamp[] = []
     for (const key of listHeartbeatKeys(workspace, this.config.stateDir)) {
       for (const stamp of readHeartbeats(workspace, this.config.stateDir, key)) out.push(stamp)
@@ -1036,14 +1154,20 @@ export class WatchdogEngine {
    * and when it fires, the bound it states is real.
    */
   private noteKnobDivergence(): void {
+    // The workspace whose config file supplies the file layer.
     const workspace = this.workspaceOf(undefined)
+    // The config read: whether it exists, where, and its raw watchdog section.
     const { found, path, section } = readWatchdogSection(workspace)
+    // One live-versus-file reading per knob.
     const readings = knobReadings(this.knobs, section)
+    // Names of the knobs whose file value the running process is not using.
     const divergent = readings.filter((reading) => reading.differs).map((reading) => reading.knob)
+    // Whether the running values came from this exact file.
     const fileApplied = this.liveLayer === "file" && this.liveFile === path
     this.knobView = { readings, divergent, restartRequired: divergent.length > 0, file: path, fileFound: found, fileApplied, liveLayer: this.liveLayer }
     if (divergent.length === 0 || this.divergenceAnnounced) return
     this.divergenceAnnounced = true
+    // The divergent knobs rendered for the one warning line.
     const detail = readings
       .filter((reading) => reading.differs)
       .map((reading) => reading.knob + ": live=" + String(reading.live) + " file=" + String(reading.file))
@@ -1072,6 +1196,7 @@ export class WatchdogEngine {
   /** A skipped team is SILENT to the user: debug channel only, console only when asked for. */
   private skipNote(team: TeamRecord, reason: string): void {
     try {
+      // The host logger's debug channel, when it exposes one.
       const logger = this.ctx.logger as { debug?: (text: string) => void } | undefined
       if (typeof logger?.debug === "function") logger.debug("[mpd-team-watchdog] skipping " + reason)
     } catch {
@@ -1097,10 +1222,14 @@ export class WatchdogEngine {
    * `heartbeatFallback`, which is §4's report-only degradation.
    */
   private candidates(workspace: string, team: TeamRecord): SilenceCandidate[] {
+    // Per-member stamp cache, so one candidate set reads each file once.
     const cache = new Map<string, HeartbeatStamp[]>()
+    // Read one member's stamps, memoized for this candidate set.
     const stampsOf = (memberKey: string): readonly HeartbeatStamp[] => {
+      // The memoized stamps for this member key, when it was already read.
       const cached = cache.get(memberKey)
       if (cached !== undefined) return cached
+      // The member's stamps, read once and cached below.
       const stamps = readHeartbeats(workspace, this.config.stateDir, memberKey)
       cache.set(memberKey, stamps)
       return stamps
@@ -1108,11 +1237,13 @@ export class WatchdogEngine {
     // T-16 (§6): the projection carries the record's own generation floor, so a stamp from a
     // PREVIOUS generation of this team can never make a task silent (and therefore never hold).
     const base = candidateFor({ id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt }, stampsOf, (assignee) => assignee)
+    // The live agent ids, which decide §1's detached-session PARKED row.
     const live = this.liveIds()
     // T-20 (§8): a member whose ONLY open tasks wait on unfinished dependencies has nothing
     // claimable — it is PARKED, not silent, and the silence rule is suppressed for it. Derived
     // from the record alone; no new member-facing wait tool exists.
     const blockedOf = new Map<string, { blocked: boolean; waiting: string[] }>()
+    // Member name to Session id, which is how the fold is addressed per member.
     const memberSessions = new Map<string, string>()
     for (const member of team.members) if (member.id !== "" && member.name !== "") memberSessions.set(member.name, member.id)
     // §1's PARKED row ("member session not attached") may only be applied by a registry that
@@ -1140,16 +1271,19 @@ export class WatchdogEngine {
           heartbeatFallback: false,
         }
       }
+      // The owner's session id, or null when the record cannot name one.
       const sessionId = candidate.assignee === CAPTAIN_KEY ? team.captainSessionId ?? null : memberSessions.get(candidate.assignee) ?? null
       if (sessionId === null) {
         this.noteFallback("team " + team.id + " carries no session id for task owner " + candidate.assignee)
         return { ...candidate, channelState: null, heartbeatFallback: true }
       }
+      // The fold's conclusion for that session, or null with no fold data.
       const view = this.fold.view(sessionId)
       if (view === null) {
         this.noteFallback("no session/event fold data for member " + candidate.assignee + " (session " + sessionId + ")")
         return { ...candidate, channelState: null, heartbeatFallback: true }
       }
+      // The fold's state, narrowed to PARKED when the session is not attached.
       const channelState: ChannelState =
         registryKnowsTeam && view.state !== "PARKED" && !live.ids.has(sessionId) ? "PARKED" : view.state
       if (channelState !== view.state) this.stats.channelDetached += 1
@@ -1171,6 +1305,7 @@ export class WatchdogEngine {
     decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
     now: number,
   ): Promise<{ scene: string | null; held: boolean }> {
+    // The team's hold as it stands on disk, before this decision acts.
     const alreadyHeld = readHold(workspace, this.config.stateDir, team.id)
 
     // The hold is persisted BEFORE the scene so the escalation scene can carry the
@@ -1178,9 +1313,12 @@ export class WatchdogEngine {
     // scene write still happens even when the hold could not be persisted, and the
     // incident then says `not-applied` rather than claiming a pause (design §7).
     let holdState: IncidentRecord["hold"] = alreadyHeld === undefined ? "not-requested" : "applied"
+    // Whether the team is under a preserving hold after this decision.
     let held = alreadyHeld !== undefined
+    // The hold the scene should carry, if any.
     let holdForScene = alreadyHeld ?? null
     if (decision.type === "escalate" && alreadyHeld === undefined && this.knobs.actionOnEscalate === "pause") {
+      // The hold action's outcome, through the tool seam or the direct write.
       const applied = await this.performHold(workspace, team.id, decision, now)
       holdState = applied.applied ? "applied" : "not-applied"
       held = applied.applied
@@ -1192,9 +1330,11 @@ export class WatchdogEngine {
       }
     }
 
+    // The team's incident history, embedded in the scene.
     const incidents: SceneIncident[] = readIncidents(workspace, this.config.stateDir)
       .filter((record) => record.teamId === team.id)
       .map((record) => ({ id: record.id, kind: record.kind, at: record.at, taskId: record.taskId, attemptId: record.attemptId, scene: record.scene }))
+    // The scene document built for this decision.
     const scene = buildScene({
       team,
       reason: decision.type,
@@ -1213,6 +1353,7 @@ export class WatchdogEngine {
     // §7 idempotence: a team already held gets NO second scene and NO second hold.
     let scenePath: string | null = null
     if (alreadyHeld === undefined) {
+      // The scene write outcome; a failure is reported but does not stop the hold.
       const written = writeScene(workspace, this.config.stateDir, team.id, scene, now)
       if (written.ok) {
         this.stats.scenes += 1
@@ -1226,6 +1367,7 @@ export class WatchdogEngine {
       }
     }
 
+    // The durable incident record for this decision.
     const incident: IncidentRecord = {
       id: decision.taskId + "@" + decision.attemptId + "#" + now,
       teamId: team.id,
@@ -1238,6 +1380,7 @@ export class WatchdogEngine {
       hold: holdState,
       acknowledgedBy: [],
     }
+    // The append outcome of that incident record.
     const logged = appendIncident(workspace, this.config.stateDir, incident)
     if (logged.ok) this.stats.incidents += 1
     else {
@@ -1283,6 +1426,7 @@ export class WatchdogEngine {
     now: number,
   ): Promise<void> {
     this.stats.neverStarted += 1
+    // The durable `never-started` record for this observation.
     const incident: IncidentRecord = {
       id: decision.taskId + "@" + decision.attemptId + "#never-started#" + now,
       teamId: team.id,
@@ -1295,6 +1439,7 @@ export class WatchdogEngine {
       hold: "not-requested",
       acknowledgedBy: [],
     }
+    // The append outcome of that record.
     const logged = appendIncident(workspace, this.config.stateDir, incident)
     if (logged.ok) this.stats.incidents += 1
     else {
@@ -1332,6 +1477,7 @@ export class WatchdogEngine {
     now: number,
   ): Promise<void> {
     this.stats.toolExpired += 1
+    // The durable `tool-expired` record for this observation.
     const incident: IncidentRecord = {
       id: decision.taskId + "@" + decision.attemptId + "#tool-expired#" + now,
       teamId: team.id,
@@ -1348,6 +1494,7 @@ export class WatchdogEngine {
       hold: "not-requested",
       acknowledgedBy: [],
     }
+    // The append outcome of that record.
     const logged = appendIncident(workspace, this.config.stateDir, incident)
     if (logged.ok) this.stats.incidents += 1
     else {
@@ -1372,6 +1519,7 @@ export class WatchdogEngine {
     decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
     now: number,
   ): Promise<{ applied: boolean; via: string; error?: string }> {
+    // The hold arguments, carrying the resolved TTL snapshot.
     const args = {
       team_id: teamId,
       task_id: decision.taskId,
@@ -1383,8 +1531,10 @@ export class WatchdogEngine {
       ttl_ms: this.knobs.holdTtlMs,
     }
     try {
+      // The internal tool runtime, which prefers the tool seam over a direct write.
       const runtime = this.dsh.toolRuntime()
       if (runtime !== undefined && typeof runtime.execute === "function") {
+        // The hold action's result value, when the seam answered with one.
         const value = toolValue(await runtime.execute({ name: HOLD_TOOL, arguments: args }))
         if (value !== undefined && value.applied === true) return { applied: true, via: "tool-seam" }
         if (value !== undefined && value.applied === false) {
@@ -1394,20 +1544,25 @@ export class WatchdogEngine {
     } catch (error) {
       this.warn("the hold action was unreachable through the tool seam (" + message(error) + ") — falling back to a direct write")
     }
+    // The direct-write fallback, used when the tool seam is unreachable.
     const direct = applyHold(workspace, this.config.stateDir, args, this.registry)
     if (direct.applied) return { applied: true, via: "direct" }
     return { applied: false, via: "direct", error: direct.error }
   }
 
+  /** Report a warning through the host logger and the console. */
   private warn(text: string): void {
     this.emit("warn", text)
   }
 
+  /** Report an informational line through both channels. */
   private info(text: string): void {
     this.emit("info", text)
   }
 
+  /** Write one prefixed line to the host logger and the console, swallowing a closed stream. */
   private emit(level: "warn" | "info", text: string): void {
+    // The prefixed line both destinations receive.
     const line = "[" + this.config.logPrefix + "] " + text
     try {
       if (level === "warn" && typeof this.ctx.logger?.warn === "function") this.ctx.logger.warn(line)

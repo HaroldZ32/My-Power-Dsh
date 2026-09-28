@@ -2,14 +2,15 @@
 // mpd LSP overlay — drift-guard anchor: mpd-lsp-overlay-v1
 // ============================================================================
 // Patched copy of upstream lsp-core src/lsp/server-definitions.ts. This file REPLACES
-// the upstream file during the offline build (scripts/build-mcp.mjs applies it
+// the upstream file during the offline build (scripts/build-mcp.ts applies it
 // over the freshly-copied lsp-core source), so it must stay a superset of the
 // upstream baseline: keep every upstream export and entry intact. If the upstream
 // file drifts (new export shape), the build fails loudly via the baselineExport
-// check in build-mcp.mjs — re-sync this overlay from the upstream file.
+// check in build-mcp.ts — re-sync this overlay from the upstream file.
 
 import type { LspServerConfig } from "./types.js";
 
+/** The install hint shown per server id when the requested language server is missing. */
 export const LSP_INSTALL_HINTS: Record<string, string> = {
 	typescript: "npm install -g typescript-language-server typescript",
 	deno: "Install Deno from https://deno.land",
@@ -59,6 +60,7 @@ export const LSP_INSTALL_HINTS: Record<string, string> = {
 		"Install: dotnet tool install -g roslyn-language-server --prerelease (requires v5.8.0+). See https://github.com/dotnet/razor",
 };
 
+/** Language servers this package can start without an install step, keyed by server id. */
 export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
 	typescript: {
 		command: ["typescript-language-server", "--stdio"],
@@ -161,6 +163,7 @@ export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
 	},
 };
 
+/** Servers the overlay may install on demand, with the exact command it runs to do so. */
 export const AUTO_INSTALLABLE_SERVERS: Record<string, string[]> = {
 	typescript: ["npm", "install", "-g", "typescript-language-server", "typescript"],
 	vue: ["npm", "install", "-g", "@vue/language-server"],

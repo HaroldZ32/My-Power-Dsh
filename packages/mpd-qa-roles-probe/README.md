@@ -33,9 +33,9 @@ a preset record, so a resolver that returned them would be inventing them.
 
 ## Usage
 
-Used by `skills/dsh-qa/scripts/bundle-lifecycle.mjs` (the boot sub-assertions
-`probePass` / `presetProbeOk`), `skills/dsh-qa/scripts/preset-register.mjs` and
-`skills/dsh-qa/scripts/relocate-smoke.mjs`. Building:
+Used by `skills/dsh-qa/scripts/bundle-lifecycle.ts` (the boot sub-assertions
+`probePass` / `presetProbeOk`), `skills/dsh-qa/scripts/preset-register.ts` and
+`skills/dsh-qa/scripts/relocate-smoke.ts`. Building:
 
 ```bash
 bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js

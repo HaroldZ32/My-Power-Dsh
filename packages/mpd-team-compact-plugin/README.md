@@ -69,7 +69,7 @@ compacted.
 
 ## Gates
 
-- `bun test packages/mpd-team-compact-plugin` — the offline unit suite (`test/compaction.test.mjs`).
+- `bun test packages/mpd-team-compact-plugin` — the offline unit suite (`test/compaction.test.ts`).
 - `bun run typecheck`.
 - Boot check: the row must really APPLY (a mount proof, never `--dump-config` — AGENTS.md §4).
 

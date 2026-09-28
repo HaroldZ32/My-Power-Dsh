@@ -32,9 +32,17 @@ export const TRANSCRIPT_TYPES: readonly string[] = [
   BOARD_OPENED_EVENT,
 ]
 
+/**
+ * Projects selected payload fields into `key=value` transcript parts.
+ * @param payload - the untrusted event payload.
+ * @param keys - the field names to project, in display order.
+ * @returns one part per field that renders; a field that does not is dropped.
+ */
 function bullet(payload: unknown, keys: readonly string[]): string[] {
+  /** The rendered `key=value` parts, in key order. */
   const parts: string[] = []
   for (const key of keys) {
+    /** This field's sanitized text, undefined when it is missing or not a scalar. */
     const value = field(payload, key, 120)
     if (value !== undefined && value !== "") parts.push(`${key}=${value}`)
   }
@@ -99,11 +107,14 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
     ],
   }),
   [BOARD_OPENED_EVENT]: (payload) => {
+    /** Which board view was opened; `board` when the payload does not say. */
     const view = field(payload, "view", 120) ?? "board"
+    /** How the board was opened (command or shortcut); `?` when the payload does not say. */
     const via = field(payload, "via", 20) ?? "?"
     // `new Date(NaN).toISOString()` throws: a number payload field is still
     // untrusted input, so only a finite timestamp is rendered.
     const stamp = (payload as { at?: unknown } | null)?.at
+    /** The event's ISO timestamp, rendered only when the payload carries a finite number. */
     const at = typeof stamp === "number" && Number.isFinite(stamp) ? new Date(stamp).toISOString() : undefined
     return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] }
   },
@@ -116,26 +127,34 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
  * @returns the seam handle.
  */
 export function registerRenderers(ctx: PluginContextLike, log: Log): { outcome(): SeamOutcome } {
+  /** The seam result, rewritten as registrations are requested or refused. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiRenderers was not injected" }
 
   onService(ctx, "tuiRenderers", (scoped, service) => {
+    /** The probed service as the renderer registry, before `register` is trusted. */
     const renderers = service as TuiRenderersLike
     if (typeof renderers?.register !== "function") {
       outcome = { state: "refused", detail: "tuiRenderers.register is missing" }
       return
     }
+    /** Registrations the host did not throw on; a returned disposer is all it gives back. */
     let requested = 0
+    /** Registrations that threw, the other half of the outcome's explanation. */
     let threw = 0
     for (const type of TRANSCRIPT_TYPES) {
+      /** The renderer for this event type; types without one are skipped. */
       const render = TRANSCRIPT_RENDERERS[type]
       if (render === undefined) continue
       try {
+        /** The host's handle for this registration; a no-op when the host refused it (see below). */
         const disposer = renderers.register(
           type,
           (payload: unknown) => {
             try {
+              /** The renderer's raw result, undefined when it declines to render this payload. */
               const result = render(payload)
               if (result === undefined) return undefined
+              /** The sanitized row title; an unusable title is dropped rather than rendered. */
               const title = scalarText(result.title, 120)
               return { ...(title === undefined ? {} : { title }), lines: scalarLines(result.lines, 100, 400) }
             } catch {

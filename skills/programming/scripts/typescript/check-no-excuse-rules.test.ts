@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { spawnSync } from "node:child_process"
+import { spawnSync, type SpawnSyncReturns } from "node:child_process"
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
@@ -9,16 +9,24 @@ import { dirname, join } from "node:path"
 // caller project (cwd), not from the script's own location, so it works when
 // executed from an installed `~/.codex/...` skill cache.
 
+/** Absolute path of the script under test. */
 const scriptSource = join(import.meta.dir, "check-no-excuse-rules.ts")
+/** Require rooted at this test file, used to locate the repository's own typescript install. */
 const repoRequire = createRequire(import.meta.url)
+/** Directory of the repository's typescript package, symlinked into the fake caller project. */
 const typescriptPackageDir = dirname(repoRequire.resolve("typescript/package.json"))
 
+/** Root of the temporary tree holding the fake skill cache and the two caller projects. */
 let tempRoot = ""
+/** Copy of the script under test inside the fake skill cache. */
 let cachedScript = ""
+/** Caller project that provides typescript in its own node_modules. */
 let callerDir = ""
+/** Caller project with no typescript at all, used for the resolution-failure case. */
 let callerWithoutTypescriptDir = ""
 
-function runNoExcuse(cwd: string, target: string) {
+/** Run the cached copy of the script against one target file inside `cwd`; utf8 encoding makes the captured stdout and stderr strings. */
+function runNoExcuse(cwd: string, target: string): SpawnSyncReturns<string> {
 	return spawnSync(process.execPath, ["--no-install", cachedScript, target], {
 		cwd,
 		encoding: "utf8",
@@ -31,6 +39,7 @@ describe("#given the no-excuse script is executed from an installed ~/.codex-sty
 		// given a cache copy of the script outside any project, and two caller projects:
 		// one providing node_modules/typescript, one without typescript at all
 		tempRoot = mkdtempSync(join(tmpdir(), "no-excuse-cache-repro-"))
+		/** Directory of the fake installed skill cache, outside any project. */
 		const cacheDir = join(tempRoot, ".codex", "skills", "programming", "scripts", "typescript")
 		mkdirSync(cacheDir, { recursive: true })
 		cachedScript = join(cacheDir, "check-no-excuse-rules.ts")

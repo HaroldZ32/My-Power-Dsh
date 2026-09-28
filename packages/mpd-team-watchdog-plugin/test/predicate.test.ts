@@ -27,7 +27,7 @@ function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => u
 const FROZEN = { warnSilenceMs: 600_000, warnStreakToEscalate: 6, actionOnEscalate: "pause" as const }
 
 /** One recorded `session/event`. */
-const ev = (type: string, data: Record<string, unknown> = {}, time = 0): Record<string, unknown> => ({ type, seq: 1, time, data })
+const ev = (type: string, data: Record<string, unknown> = {}, time: number = 0): Record<string, unknown> => ({ type, seq: 1, time, data })
 
 /** The team every row uses: one member (`a1`), one in-progress task they own. */
 function team(box: Sandbox): void {
@@ -39,9 +39,12 @@ function team(box: Sandbox): void {
 }
 
 /** Mount the engine on the stub adapter and return everything the assertions need. */
-function mount(box: Sandbox, overrides: Partial<Parameters<typeof testConfig>[0]> = {}) {
+function mount(box: Sandbox, overrides: Partial<Parameters<typeof testConfig>[0]> = {}): { stub: StubAdapter; engine: WatchdogEngine; dispose: () => void } {
+  // The stub adapter the engine is mounted on.
   const stub: StubAdapter = stubAdapter({ workspace: box.workspace })
+  // The engine under test, with the frozen ladder applied.
   const engine = new WatchdogEngine(stub.adapter, stubCtx(stub.adapter), testConfig({ stateDir: box.stateDir, ...FROZEN, ...overrides }))
+  // Teardown callbacks for every subscription the engine installed.
   const disposers = engine.install()
   return { stub, engine, dispose: () => { for (const off of disposers) off() } }
 }
@@ -51,9 +54,13 @@ const holdFile = (box: Sandbox): string => join(box.workspace, box.stateDir, "wa
 
 /** Every file under the watchdog root, for the "wrote nothing at all" assertions. */
 function watchdogFiles(box: Sandbox): string[] {
+  // The watchdog root under the sandbox's own workspace.
   const root = join(box.workspace, box.stateDir, "watchdog")
+  // Every file path found under that root.
   const out: string[] = []
+  // Recursively collect the files below one directory.
   const walk = (dir: string): void => {
+    // Directory entries; an unreadable directory contributes nothing.
     let entries: string[]
     try {
       entries = readdirSync(dir)
@@ -61,6 +68,7 @@ function watchdogFiles(box: Sandbox): string[] {
       return
     }
     for (const entry of entries) {
+      // Full path of this entry.
       const path = join(dir, entry)
       try {
         if (readdirSync(path).length >= 0) walk(path)
@@ -75,8 +83,10 @@ function watchdogFiles(box: Sandbox): string[] {
 
 /** A stale stamp of a PREVIOUS generation: written by hand, `at` a day old, no attemptId. */
 function staleStamp(box: Sandbox, at: number): HeartbeatStamp {
+  // The heartbeat directory the hand-written stamp goes into.
   const dir = join(box.workspace, box.stateDir, "watchdog", "heartbeat")
   mkdirSync(dir, { recursive: true })
+  // A completed step stamp of a previous generation, with no attempt id.
   const stamp: HeartbeatStamp = {
     kind: "step",
     at,
@@ -94,12 +104,16 @@ function staleStamp(box: Sandbox, at: number): HeartbeatStamp {
 
 describe("§9 row (a) — a long streaming answer is ALIVE, never a wedge", () => {
   test("12 simulated minutes of an uncommitted streaming answer: NO warn, NO hold, NO write", async () => {
+    // An isolated workspace for this row.
     const box = sandbox()
     try {
       team(box)
+      // The mounted engine plus the stub it is driven through.
       const { stub, engine, dispose } = mount(box)
       try {
+        // The stamp just written, whose time is the request's clock.
         const started = engine.stamp("step", agent("a1", box.workspace)).at
+        // The same time read back from disk, asserted equal below.
         const t0 = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
         expect(started).toBe(t0)
         // The member opened a step, asked the model, and the model is STREAMING: the §2
@@ -107,6 +121,7 @@ describe("§9 row (a) — a long streaming answer is ALIVE, never a wedge", () =
         stub.emit("session/event", { id: "a1" }, ev("turn/start", { turn: 1 }, t0))
         stub.emit("session/event", { id: "a1" }, ev("step/start", { turn: 1, step: 1 }, t0))
         stub.emit("agent/assistant-stream", { agent: agent("a1", box.workspace), frame: { type: "start", turn: 1, step: 1, revision: 1 } })
+        // The watchdog tree before the tick, compared again after it.
         const before = watchdogFiles(box)
 
         // 12 minutes later — well past the 600 s bound that WOULD have fired on silence.
@@ -130,12 +145,15 @@ describe("§9 row (a) — a long streaming answer is ALIVE, never a wedge", () =
   })
 
   test("the same 12 minutes WITHOUT the enrichment stays OUTSTANDING (§1 rule 3's stated asymmetry)", async () => {
+    // An isolated workspace for this row.
     const box = sandbox()
     try {
       team(box)
+      // The mounted engine plus the stub it is driven through.
       const { stub, engine, dispose } = mount(box)
       try {
         engine.stamp("step", agent("a1", box.workspace))
+        // The step stamp's time, which is the clock the fold sees.
         const t0 = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
         stub.emit("session/event", { id: "a1" }, ev("turn/start", { turn: 1 }, t0))
         stub.emit("session/event", { id: "a1" }, ev("step/start", { turn: 1, step: 1 }, t0))
@@ -143,6 +161,7 @@ describe("§9 row (a) — a long streaming answer is ALIVE, never a wedge", () =
         // The honest bound: with no first-token signal the state is OUTSTANDING, and the
         // 600 s bound is what protects a genuinely unanswered request.
         expect((await engine.tickOnce(t0 + 599_999)).decisions).toEqual([])
+        // The tick past the bound, which must produce the single WARN.
         const warned = await engine.tickOnce(t0 + 600_001)
         expect(warned.decisions.map((d) => d.type)).toEqual(["warn"])
         expect(warned.holds).toEqual([])
@@ -157,10 +176,13 @@ describe("§9 row (a) — a long streaming answer is ALIVE, never a wedge", () =
 
 describe("§9 row (b) — a member between turns is PARKED, not silent", () => {
   test("a closed turn with a STALE previous-generation stamp: NO warn, NO hold, and PARKED is named", async () => {
+    // An isolated workspace for this row.
     const box = sandbox()
     try {
       team(box)
+      // A day-old stamp of a previous generation, whose silence must not warn.
       const stale = staleStamp(box, Date.now() - 86_400_000)
+      // The mounted engine plus the stub it is driven through.
       const { stub, engine, dispose } = mount(box)
       try {
         // The turn ran and ended: the member is waiting to be re-dispatched (T-20's
@@ -170,6 +192,7 @@ describe("§9 row (b) — a member between turns is PARKED, not silent", () => {
         stub.emit("session/event", { id: "a1" }, ev("assistant/message", { turn: 1, step: 1, message: {} }, stale.at + 1_000))
         stub.emit("session/event", { id: "a1" }, ev("step/end", { turn: 1, step: 1 }, stale.at + 2_000))
         stub.emit("session/event", { id: "a1" }, ev("turn/end", { turn: 1, reason: { kind: "completed" } }, stale.at + 3_000))
+        // The watchdog tree before the tick, compared again after it.
         const before = watchdogFiles(box)
 
         // A day of silence on a stale generation: the pre-redesign machine held this team.
@@ -190,18 +213,22 @@ describe("§9 row (b) — a member between turns is PARKED, not silent", () => {
 
 describe("§9 row (d) — an OUTSTANDING request: the frozen ladder, end to end", () => {
   test("first WARN only after 600 s, then ESCALATE on the sixth observation, and the hold lands", async () => {
+    // An isolated workspace for this row.
     const box = sandbox()
     try {
       team(box)
+      // The mounted engine plus the stub it is driven through.
       const { stub, engine, dispose } = mount(box)
       try {
         engine.stamp("step", agent("a1", box.workspace))
+        // The step stamp's time, which is the OUTSTANDING clock.
         const t0 = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
         // An open step and NO assistant answer: the one state that may warn.
         stub.emit("session/event", { id: "a1" }, ev("turn/start", { turn: 1 }, t0))
         stub.emit("session/event", { id: "a1" }, ev("step/start", { turn: 1, step: 1 }, t0))
 
         expect((await engine.tickOnce(t0 + 599_999)).decisions).toEqual([])
+        // The first tick past the bound: the ladder's first WARN.
         const warn = await engine.tickOnce(t0 + 600_001)
         expect(warn.decisions.map((d) => d.type)).toEqual(["warn"])
         expect(warn.decisions[0]).toMatchObject({ cause: "silence-channel", state: "OUTSTANDING", streak: 1 })
@@ -211,6 +238,7 @@ describe("§9 row (d) — an OUTSTANDING request: the frozen ladder, end to end"
         for (let index = 2; index <= 5; index += 1) {
           expect((await engine.tickOnce(t0 + 600_000 + index)).decisions.map((d) => d.type)).toEqual(["warn"])
         }
+        // The sixth observation, which escalates and persists the hold.
         const escalate = await engine.tickOnce(t0 + 600_006)
         expect(escalate.decisions.map((d) => d.type)).toEqual(["escalate"])
         expect(escalate.holds).toEqual(["team-a"])
@@ -229,19 +257,24 @@ describe("§9 row (d) — an OUTSTANDING request: the frozen ladder, end to end"
 
 describe("§4 degradation — the heartbeat fallback reports once and never pauses", () => {
   test("no channel evidence at all: ONE warn (cause silence-heartbeat), no hold, source named", async () => {
+    // An isolated workspace for this row.
     const box = sandbox()
     try {
       team(box)
+      // The mounted engine, whose §4 fallback is the subject here.
       const { engine, dispose } = mount(box)
       try {
         engine.stamp("step", agent("a1", box.workspace))
+        // The step stamp's time, which is the fallback's clock.
         const t0 = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
+        // The first tick past the bound, which reports the fallback once.
         const first = await engine.tickOnce(t0 + 600_001)
         expect(first.decisions.map((d) => d.type)).toEqual(["warn"])
         expect(first.decisions[0]).toMatchObject({ cause: "silence-heartbeat", state: null })
         expect(first.holds).toEqual([])
         // Ten more ticks and 1.5 h of silence: no second report, NO escalate, NO hold.
         for (let index = 1; index <= 10; index += 1) {
+          // A further tick inside the long silence, which must stay silent.
           const tick = await engine.tickOnce(t0 + 600_001 + index * 600_000)
           expect(tick.decisions).toEqual([])
           expect(tick.holds).toEqual([])

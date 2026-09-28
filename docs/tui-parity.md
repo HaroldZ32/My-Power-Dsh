@@ -96,10 +96,10 @@ a measured Web artifact). `—` means there is no TUI surface to name.
 | `activity-panel/member-artwork (assets route)` | `lib/index.js:492` (`/plugins/dsh-agent-teams/assets`) | not-applicable | — | — | terminal scenes render text |
 | `plan-route HTTP semantics (405/409/404, no-store)` | `lib/index.js:325-332,364-370` | not-applicable | — | — | the TUI does not go over HTTP; the equivalent refusals are the in-scene error lines (§4.5) and the unattached-captain refusal (§6.2) |
 | `activity-panel/stop-team` (halt) | `lib/index.js:276` (the halt route); `lib/client.js:292,2360` | absent | — | — | measured: no halt control exists in any TUI scene; the TUI's mutation set is frozen to approve/discard (§3.2, §4) and §7.2 forbids writes |
-| `team-watchdog/banner` (holds, unread incidents, acknowledge) | `packages/mpd-bundle-plugin/src/watchdog-web.ts:26-27`; `src/team-page.js:558-584` | present (hold row + replay dialog) | `mpd-tui-board`: the `team-hold held (…)` row (`src/state.ts:306`) and the acknowledge dialog for replayed incidents (`src/watchdog.ts:24-30,93`) | E3, E4 (`02-mpd-status.pane.txt`) | measured: the row is omitted — never rendered as "not held" — when `mpdWatchdog` is absent (§7.8) |
-| `workmate-library/tab` (listing) | `packages/mpd-bundle-plugin/src/web-client.js` (the workmate-tab factory) | present (reduced: listing only) | `/mpd workmates` (the `/mpd` command handler in `src/commands.ts`) | E4 (`14-workmate-dialog.pane.txt`) | measured: the listing is the whole TUI surface (`state.workmates.count/names`) |
-| `workmate-library/mutations` (init/rename/delete/archive) | `src/web-client.js` (the same factory) | absent | — | — | measured: the TUI exposes no write path to the library, which is HOME-scoped (`~/.mpd/workmate`, AGENTS.md §6 State exception); the Web tab is the only mutation door |
-| `settings-section` (Settings → MPD, the 25 knobs) | `packages/mpd-bundle-plugin/src/settings-card.js` (`FIELDS` / `readCatalog` / `optionsFor` / `optionElements`) | present | `/settings` — the mpd section via the `tuiSettingsSections` seam (`src/settings.ts`) | E3, E4 (`15-settings.pane.txt`) | measured: the section discloses the bridge to `<workspace>/.mpd/mpd.jsonc` and its restart caveat in-section (docs/tui.md §6.2); the twelve `teamModels` leaves are catalog-derived selections with the declared lists as fallback |
+| `team-watchdog/banner` (holds, unread incidents, acknowledge) | `packages/mpd-bundle-plugin/src/watchdog-web.ts:26-27`; `src/team-page.ts:558-584` | present (hold row + replay dialog) | `mpd-tui-board`: the `team-hold held (…)` row (`src/state.ts:306`) and the acknowledge dialog for replayed incidents (`src/watchdog.ts:24-30,93`) | E3, E4 (`02-mpd-status.pane.txt`) | measured: the row is omitted — never rendered as "not held" — when `mpdWatchdog` is absent (§7.8) |
+| `workmate-library/tab` (listing) | `packages/mpd-bundle-plugin/src/web-client.ts` (the workmate-tab factory) | present (reduced: listing only) | `/mpd workmates` (the `/mpd` command handler in `src/commands.ts`) | E4 (`14-workmate-dialog.pane.txt`) | measured: the listing is the whole TUI surface (`state.workmates.count/names`) |
+| `workmate-library/mutations` (init/rename/delete/archive) | `src/web-client.ts` (the same factory) | absent | — | — | measured: the TUI exposes no write path to the library, which is HOME-scoped (`~/.mpd/workmate`, AGENTS.md §6 State exception); the Web tab is the only mutation door |
+| `settings-section` (Settings → MPD, the 25 knobs) | `packages/mpd-bundle-plugin/src/settings-card.ts` (`FIELDS` / `readCatalog` / `optionsFor` / `optionElements`) | present | `/settings` — the mpd section via the `tuiSettingsSections` seam (`src/settings.ts`) | E3, E4 (`15-settings.pane.txt`) | measured: the section discloses the bridge to `<workspace>/.mpd/mpd.jsonc` and its restart caveat in-section (docs/tui.md §6.2); the twelve `teamModels` leaves are catalog-derived selections with the declared lists as fallback |
 
 ## 3. Why each `absent` or `not-applicable` row stays
 
@@ -181,7 +181,7 @@ the discrepancy and its cause.
 
 **D3 — the lane's accepted verdict run described stale lane bytes (severity medium; measured, then
 RESOLVED inside the same wave).** t3's attempt-1 verdict run recorded the digest of the lane that
-measured it, `skills/dsh-qa/scripts/tui-team-surface.mjs` → `21a9eb5c14a30410…`. The file on disk
+measured it, `skills/dsh-qa/scripts/tui-team-surface.ts` → `21a9eb5c14a30410…`. The file on disk
 hashed to `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`, and its mtime
 (14:16:22 UTC) was LATER than t3's own last update (14:14:56 UTC). The corpus fingerprint recomputed
 on the live tree was therefore `303e1631…`, **not** the treeSha that attempt-1's report asked the
@@ -195,7 +195,7 @@ from `VENDOR_LOCK.json` `assets.skills` on 2026-09-16: `fileCount 319` / `treeSh
 `node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs`, which recomputes
 the corpus with `verify-vendor`'s own algorithm and prints the pin beside it (currently
 `drift: false`). `verify-vendor` reports PASS and the QA self-test sweep (incl.
-`agent-teams-messaging.mjs --self-test`) agrees on the same bytes, and t3 was RETRIED
+`agent-teams-messaging.ts --self-test`) agrees on the same bytes, and t3 was RETRIED
 (attempt 2, accepted run `…14-19-18.574Z`) green on the current lane bytes. What survives is the rule,
 not a defect: a lane digest in a verdict run binds that verdict to the bytes which measured it, and a later edit invalidates the
 binding. Evidence: `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`,
@@ -264,7 +264,7 @@ session any more.** What a current session can open is `/mpd team`, `/mpd board`
   gates measured one revision and its lanes another. Pass 2 (`second-pass/`, same directory) re-ran
   the whole set on the settled revision with a start/end digest check, and the claims on this page
   rest on that pass. Readings there: `typecheck` PASS, `bun run verify:docs` PASS (37 pairs),
-  `bun run test:qa` PASS, `node scripts/patch-agent-teams-fixes.mjs --check` PASS,
+  `bun run test:qa` PASS, `node scripts/patch-agent-teams-fixes.ts --check` PASS,
   `verify-vendor` PASS after the captain's re-pin, `bun test packages` two readings (below), and the
   lanes: `tui-mount`/`tui-panels` exit 0 (prerequisite-absent skip, the lanes' own convention),
   `tui-admission`, `tui-spec-conformance`, `tui-settings-bridge`, `tui-distribution` and
@@ -288,7 +288,7 @@ session any more.** What a current session can open is `/mpd team`, `/mpd board`
   (`second-pass/raw/fingerprint-asserted.log`). The value t3's attempt-1 report asked the captain to
   pin was a DIFFERENT, stale treeSha (see deviation D3, which also says where that value is
   recorded); acting on it would have left `verify-vendor` RED — as it stands, `verify-vendor` reports
-  PASS and `bun run test:qa` (which includes `agent-teams-messaging.mjs --self-test`) agrees on the
+  PASS and `bun run test:qa` (which includes `agent-teams-messaging.ts --self-test`) agrees on the
   same bytes. The reading remains valid only if no further `skills/**` edit lands before
   the commit; a later edit supersedes it, and the captain re-measures at commit time regardless.
 - **The two in-repo test readings** are recorded TOGETHER, never singly. On the settled revision

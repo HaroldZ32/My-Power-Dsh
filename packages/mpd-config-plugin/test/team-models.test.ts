@@ -26,6 +26,7 @@ import {
   teamModelSlotImpact,
 } from "../src/settings-schema"
 
+// Sandbox directories created by the tests, removed in `afterEach` so a failure cannot leak temp state.
 const temps: string[] = []
 afterEach(() => {
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true })
@@ -35,9 +36,12 @@ afterEach(() => {
 
 /** A sandbox workspace (`<dir>/ws`) plus an isolated user-home layer dir. */
 function sandbox(): { root: string; file: string; home: string } {
+  // One unique temp parent per call, so no two tests can ever share a config file.
   const dir = mkdtempSync(join(tmpdir(), "mpd-team-models-"))
   temps.push(dir)
+  // The workspace the config layer is pointed at through `DSH_WORKSPACE_ROOT`.
   const root = join(dir, "ws")
+  // The isolated `DSH_HOME`, so layer L1 resolves inside the sandbox and never the real home.
   const home = join(dir, "home")
   mkdirSync(join(root, ".mpd"), { recursive: true })
   mkdirSync(home, { recursive: true })
@@ -48,13 +52,17 @@ function sandbox(): { root: string; file: string; home: string } {
 function mount(root: string, home: string): { service: any; tools: any[] } {
   process.env.DSH_HOME = home
   process.env.DSH_WORKSPACE_ROOT = root
+  // Every tool the row registers during this mount, so the real `mpd_config_get` execute can be called.
   const tools: any[] = []
+  // The `mpdConfig` service value, assigned by the stub ctx `provide` while `apply` runs.
   let service: any = null
   apply({ tools: { register: (t: any) => tools.push(t) }, provide: (_n: string, v: any) => { service = v } } as any, {})
   return { service, tools }
 }
 
+// The three leaves of every slot, in the order the twelve declared rows must follow.
 const SLOT_LEAVES = ["provider", "model", "reasoningEffort"] as const
+// Member class per slot, as the README slot table declares it: a hint names its own members and no others.
 const KNOWN_CLASSES: Record<string, readonly string[]> = {
   slot1: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"],
   slot2: ["Researcher", "Explorer", "Plan Reviewer"],
@@ -73,11 +81,13 @@ describe("A1 — the schema carries the four slots with the frozen literal defau
   })
 
   test("the schema resolves those defaults when a config supplies nothing", () => {
+    // Schema resolved from an EMPTY config: these defaults are what an unconfigured workspace gets.
     const resolved: any = (SettingsSchema as any)({})
     expect(resolved.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
   })
 
   test("the schema merges a partial block over the per-slot defaults", () => {
+    // Schema resolved from a PARTIAL block: the declared leaf is overridden, its slot-mates keep the defaults.
     const resolved: any = (SettingsSchema as any)({ teamModels: { slot2: { model: "deepseek-v4-pro" } } })
     expect(resolved.teamModels.slot2).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
     expect(resolved.teamModels.slot1).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
@@ -87,6 +97,7 @@ describe("A1 — the schema carries the four slots with the frozen literal defau
 })
 
 describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
+  // The twelve teamModels rows of the ONE declaration, which every A3 assertion below is about.
   const slotKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")
 
   test("exactly twelve new rows, after the original thirteen", () => {
@@ -117,6 +128,7 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
     expect([...TEAM_MODEL_FALLBACK_OPTIONS.model]).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     expect([...TEAM_MODEL_FALLBACK_OPTIONS.reasoningEffort]).toEqual(["off", "low", "high", "max"])
     for (const knob of slotKnobs) {
+      // The leaf this row sets, used to look up the fallback option list the row must mirror.
       const leaf = String(knob.path[2]) as keyof typeof TEAM_MODEL_FALLBACK_OPTIONS
       expect(knob.kind).toBe("select")
       expect([...(knob.options ?? [])]).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS[leaf]])
@@ -168,7 +180,9 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
     // The nine knobs carry their OWN sentence per leaf, in both languages, and the composed hint
     // LEADS with the English one.
     for (const knob of slotKnobs) {
+      // Slot this row belongs to, narrowed to the four names the copy generators accept.
       const slot = String(knob.path[1]) as "slot1" | "slot2" | "slot3" | "slot4"
+      // Leaf this row sets, narrowed to the three declared leaves for the sentence lookup.
       const leaf = String(knob.path[2]) as "provider" | "model" | "reasoningEffort"
       expect(knob.semantics).toBe(teamModelLeafSentence(slot, leaf, "en"))
       expect(knob.semanticsZh).toBe(teamModelLeafSentence(slot, leaf, "zh"))
@@ -189,6 +203,7 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
     // carries its sentence and its key; the SURFACE states the disclosure once.
     expect(knobHint("a.b")).toBe("mpd.jsonc a.b")
     for (const knob of slotKnobs) {
+      // The composed hint, read as text so a missing hint fails the assertion instead of the loop.
       const hint = String(knob.hint ?? "")
       expect(hint).toContain(`mpd.jsonc teamModels.${knob.path[1]}.${knob.path[2]}`)
       // The row must NOT repeat the surface's disclosure.
@@ -206,12 +221,15 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
 })
 
 describe("A3b — the vision slot carries its own copy, verbatim, in both languages", () => {
+  // The three slot-4 rows: the vision member copy, which must match its sentences verbatim.
   const slot4 = SETTINGS_KNOBS.filter((knob) => knob.path[1] === "slot4")
+  // The exact English sentences slot 4 must carry, in provider/model/reasoningEffort order.
   const VISION_SENTENCES_EN = [
     "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
     "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
     "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
   ]
+  // The same three sentences in Chinese; a translation drift reddens here instead of shipping silently.
   const VISION_SENTENCES_ZH = [
     "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
     "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
@@ -245,7 +263,9 @@ describe("A3b — the vision slot carries its own copy, verbatim, in both langua
 
 describe("A2 — the resolved config carries the slots, with defaults, on the READ path", () => {
   test("no teamModels anywhere: the service answers with the four complete defaults", () => {
+    // Fresh workspace and home with no config file, so all twelve leaves must come from the defaults.
     const { root, home } = sandbox()
+    // The mounted config service, whose reads are the subject of every assertion below.
     const { service } = mount(root, home)
     expect(service.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
     expect(service.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
@@ -258,8 +278,10 @@ describe("A2 — the resolved config carries the slots, with defaults, on the RE
   })
 
   test("a file that sets only slot2.model merges over ITS defaults and leaves slot1/slot3 untouched", () => {
+    // Sandbox whose project file this test writes the partial slot2 block into.
     const { root, file, home } = sandbox()
     writeFileSync(file, '{ "teamModels": { "slot2": { "model": "deepseek-v4-pro" } } }')
+    // Mounted AFTER the write, so the apply-time load sees the block.
     const { service } = mount(root, home)
     expect(service.get("teamModels.slot2")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
     expect(service.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
@@ -267,23 +289,30 @@ describe("A2 — the resolved config carries the slots, with defaults, on the RE
   })
 
   test("project .mpd/mpd.jsonc outranks the user $DSH_HOME/mpd.jsonc layer, per leaf", () => {
+    // Sandbox for the precedence case: the SAME slot1 leaf is declared in both file layers.
     const { root, file, home } = sandbox()
     writeFileSync(join(home, "mpd.jsonc"), '{ "teamModels": { "slot1": { "provider": "user-provider", "model": "user-model" } } }')
     writeFileSync(file, '{ "teamModels": { "slot1": { "model": "project-model" } } }')
+    // Mounted once both files exist; the per-leaf winner is what the reads must show.
     const { service } = mount(root, home)
     // project wins the leaf it declares; the user value survives underneath for the leaf it does not
     expect(service.get("teamModels.slot1")).toEqual({ provider: "user-provider", model: "project-model", reasoningEffort: "max" })
   })
 
   test("materialisation is a pure READ-path projection: no mutation of the raw config", () => {
+    // Sandbox holding one raw config file, whose bytes must be unchanged when the test ends.
     const { root, file, home } = sandbox()
+    // The exact bytes written to the project file, re-read at the end to prove no default leaked to disk.
     const original = '{ "ulw": { "maxRounds": 3 } }'
     writeFileSync(file, original)
+    // A raw merged config with no teamModels at all: the input of the materialiser.
     const raw = { ulw: { maxRounds: 3 } }
+    // The materialised projection: a NEW object, which is why the raw input above stays untouched.
     const resolved = withTeamModelsDefaults(raw)
     expect(raw).toEqual({ ulw: { maxRounds: 3 } }) // the input object is untouched
     expect(resolved.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
     expect(resolved.ulw).toEqual({ maxRounds: 3 })
+    // The service read is the second half of the claim: the projection happens on the read path too.
     const { service } = mount(root, home)
     expect(service.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
     // a read never writes: the workspace file is byte-identical, so no default can leak into it
@@ -291,12 +320,17 @@ describe("A2 — the resolved config carries the slots, with defaults, on the RE
   })
 
   test("the mpd_config_get payload carries the slots verbatim (no key), and by key", async () => {
+    // Sandbox for the tool surface; the payload is read through the registered tool, not the service.
     const { root, home } = sandbox()
+    // Registered tools, where the real `mpd_config_get` row is looked up by name.
     const { tools } = mount(root, home)
+    // The registered get tool; a missing row would make every later call throw.
     const get = tools.find((tool) => tool.name === "mpd_config_get")
+    // Key-less read: its payload must carry the materialised slots verbatim.
     const noKey = await get.execute({})
     expect(noKey.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
     expect(JSON.parse(JSON.stringify(noKey))).toEqual(noKey) // host lossless round-trip
+    // Single-slot read: the payload carries both the value and the whole materialised config.
     const byKey = await get.execute({ key: "teamModels.slot3" })
     expect(byKey.value).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
     expect(byKey.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)

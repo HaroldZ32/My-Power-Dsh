@@ -1,0 +1,137 @@
+{
+  "wave": "javascript-to-typescript-conversion",
+  "request": "Convert this repository into a fully regular DeepSeek Harness (cordis) plugin: every JavaScript source becomes TypeScript with precise type annotations and a precise comment on every declaration.",
+  "settledReadMoment": "2026-09-28T16:50:54Z",
+  "harness": {
+    "dshVersion": "0.1.7-rc.2",
+    "node": "24.19.0 (native type stripping; engines.node >= 22.18)",
+    "mountPath": "cordis.patch.yml + ~/.dsh/profiles/<profile>/ only — the plugin is an independent package referenced BY the profile; DSH itself is never modified"
+  },
+  "census": {
+    "typescriptFilesInWaveScope": 345,
+    "javascriptFilesRemainingInWaveScope": 1,
+    "javascriptRemainingWhy": "skills/visual-qa/scripts/visual-qa.mjs is a generated build product (its generator is TypeScript)",
+    "gitWorkingTree": { "untracked": 172, "deleted": 159, "modified": 288 },
+    "converted": "155 .mjs + 3 .js deleted; 162 new .ts; 185 modified .ts",
+    "javascriptKeptOnPurpose": [
+      "packages/*/dist/** (bun build output)",
+      "skills/visual-qa/scripts/visual-qa.mjs (generated)",
+      "packages/mpd-agent-teams-plugin/lib/** + _deps/** (adopted upstream MIT bytes + delta registry)",
+      "skills/ultimate-browsing/engine/templates/*.js and tests/golden/fixtures/*.js (fixture DATA)"
+    ]
+  },
+  "standingUserMandatedQa": {
+    "rule1_noCordisDependency": {
+      "checked": ["dependencies", "peerDependencies", "optionalDependencies"],
+      "fieldIsNotAnExemption": true,
+      "command": "node scripts/verify-plugin-manifest.ts --pack",
+      "verdict": "PASS — no `cordis` in any dependency field"
+    },
+    "rule2_noLifecycleScriptNames": {
+      "bannedNames": ["preinstall", "install", "postinstall", "prepare"],
+      "command": "node scripts/verify-plugin-manifest.ts --pack",
+      "verdict": "PASS — none of the 18 declared scripts carries a banned lifecycle name"
+    },
+    "gateSelfTests": {
+      "pluginManifest": "5 mutant arms with clean controls",
+      "commentCoverage": "6 arms",
+      "both": "PASS"
+    }
+  },
+  "endgameSequence": {
+    "runner": ".qa-tmp/endgame.sh",
+    "stepsExit0": 17,
+    "stepsFailed": 0,
+    "steps": [
+      { "step": "01-sweep", "what": "reference sweep .mjs -> .ts across the doc band and code comments", "verdict": "PASS" },
+      { "step": "01b-sweep-idempotent", "what": "the same sweep again must rewrite nothing", "verdict": "PASS (idempotent)" },
+      { "step": "02-manual-paths", "what": "node scripts/verify-manual-paths.ts", "verdict": "PASS resolved=125 unresolved=0" },
+      { "step": "03-citations", "what": "node scripts/check-citations.ts", "verdict": "PASS 13/13 checks, 245 citations resolved, 0 rot-flagged" },
+      { "step": "04-rebuild", "what": "docker/lib/rebuild.ts — every packages/*/src entry rebuilt with the canonical repo-root command", "verdict": "OK" },
+      { "step": "05-dist-fresh", "what": "node scripts/verify-dist-fresh.ts", "verdict": "PASS 23/23 targets fresh (each rebuilt twice, byte-identical); 7 NOT COVERED files all named and explained" },
+      { "step": "06-repin", "what": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step (the wave's SINGLE re-pin)", "verdict": "skills.treeSha 32aa91c52de3d6f5ee91d3af27d61e270a8e91649fb0bc501f28e7e82e2a6d7b -> 9a105446d5734ec326878022aa0fb660e0766a3ff909aa1b8127dec103f29509" },
+      { "step": "07-vendor", "what": "node scripts/verify-vendor.ts", "verdict": "PASS" },
+      { "step": "08-typecheck", "what": "tsgo --noEmit (root config, now covering packages/*/self-fix-tests too)", "verdict": "PASS 0 diagnostics" },
+      { "step": "09-bun-test", "what": "bun test packages", "verdict": "PASS 1248 pass / 0 fail, 12143 expect() calls, 116 files" },
+      { "step": "10-qa-selftests", "what": "bun run test:qa (every script's --self-test)", "verdict": "PASS all self-tests passed" },
+      { "step": "11-plugin-manifest", "what": "node scripts/verify-plugin-manifest.ts --pack", "verdict": "PASS — npm pack lists 1134 files, 0 required paths absent" },
+      { "step": "12-comment-coverage", "what": "node scripts/verify-comment-coverage.ts", "verdict": "PASS — 349 files scanned, 27202 declarations inspected, 0 violations" },
+      { "step": "13-rows", "what": "bun run verify:rows", "verdict": "PASS 33 row ids match the 2-file bundle patch layer" },
+      { "step": "14-docs", "what": "bun run verify:docs", "verdict": "PASS pairs=41 failed=0 violations=0 links=419 dead=0" },
+      { "step": "15-pack-closure", "what": "node scripts/verify-pack-closure.ts after a re-pack", "verdict": "PASS 1201 files compared, 1201 identical, 0 drift, 0 expected-after-pack" },
+      { "step": "16-gates-aggregate", "what": "bun run verify:gates (7 members)", "verdict": "PASS 7/7" }
+    ]
+  },
+  "otherSuites": {
+    "adoptedAgentTeamsSelfFixTests": "151 pass / 0 fail (was 95/5 at wave start — the five baseline errors were missing `.mjs` driver paths)",
+    "bundlePluginTests": "101 pass / 0 fail (was 13 pass / 13 fail at wave start)",
+    "adoptedDeltaRegistry": "node scripts/patch-agent-teams-fixes.ts --check -> 151 mpd delta regions across 13 adopted files, already applied"
+  },
+  "installContract": {
+    "oneCommandFromGitHub": "dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh",
+    "oneCommandFromCheckout": "cd <repo> && dsh plugin --profile web add .",
+    "uninstall": "dsh plugin remove @mpd-dsh/mpd",
+    "publishReady": "npm publish --dry-run passes: @mpd-dsh/mpd 0.11.1, 7.6 MB packed / 23.0 MB unpacked / 1134 files; npm registry publication awaits the maintainer's token",
+    "buildScriptFreeClosure": {
+      "why": "pnpm 11 hard-exits with ERR_PNPM_IGNORED_BUILDS on unapproved dependency build scripts, and the CLI `dsh plugin add` has no approval channel",
+      "measures": [
+        "dsh-better-sidebar moved to optional peerDependency + devDependency (its node-pty postinstall was the trigger)",
+        "the two binary-resolving optional dependencies removed from the published closure"
+      ]
+    }
+  },
+  "realMachineVerification": {
+    "why": "the user required the final step to be a real Docker run (Ubuntu 24.04) rather than a local claim",
+    "driver": "node scripts/docker-e2e.ts --mode source | --mode oneclick",
+    "lanes": [
+      {
+        "lane": "source — checkout install (`dsh plugin --profile web add .`) on a bare ubuntu:24.04",
+        "result": "ok=true, passed=42, failed=0, null=1",
+        "nullReason": "boot.llmTurn — a live LLM turn needs provider credentials and the container stages none (AGENTS.md §10); the mount assertions are the credential-free maximum",
+        "evidence": "evidence/docker/client-install/2026-09-28T17-01-54Z"
+      },
+      {
+        "lane": "oneclick — PUBLISHED package install (`dsh plugin --profile web add <packed spec>`) on a bare ubuntu:24.04",
+        "result": "ok=true, passed=44, failed=0, null=3",
+        "nullReasons": [
+          "build.bunInstall — not applicable: the published package carries its own dependencies and the install materializes them",
+          "build.dists — not applicable: the published package ships its built dist entries; the mount below judges them",
+          "boot.llmTurn — credentials, as above"
+        ],
+        "evidence": "evidence/docker/client-install-oneclick/2026-09-28T16-57-01Z"
+      }
+    ],
+    "whatTheLanesAssert": "the package installs with ONE command, reconciles into the profile's dsh.profile.bundles through cordis.patch.yml, mounts every mpd row, registers the tools, boots the real TUI on a real PTY, records agentPreset=mpd in the harness's own session store, and produces no fatal apply/module/preset signature",
+    "frozenTree": "the definitive endgame re-run and the source lane re-run both happened AFTER the last write; the lane-J file hash was re-read at efd24efa6ca20135ec5699aae489baedd2f370ab8a0a5d6513551183752fb44f before the re-run"
+  },
+  "finalFreeze": {
+    "finalEndgameRun": "2026-09-28T17:0x UTC — all 17 steps exit 0 on the frozen tree",
+    "headline": {
+      "bunTest": "1248 pass / 0 fail (116 files, 12143 expect() calls)",
+      "adoptedSelfFixTests": "151 pass / 0 fail",
+      "bundlePluginTests": "101 pass / 0 fail",
+      "typecheck": "0 diagnostics",
+      "commentGate": "349 files, 27202 declarations, 0 violations",
+      "manifestGate": "PASS — npm pack lists 1134 files, 0 required paths absent",
+      "distFresh": "23/23 targets byte-identical (each rebuilt twice)",
+      "packClosure": "1201 files compared, 1201 identical, 0 drift",
+      "docs": "pairs=41 failed=0 violations=0 links=419 dead=0",
+      "citations": "13/13 checks, 245 citations resolved, 0 rot-flagged",
+      "vendor": "PASS after the wave's single re-pin",
+      "gatesAggregate": "PASS 7/7"
+    }
+  },
+  "evidenceArtifacts": {
+    "gateLogs": ".qa-tmp/endgame/*.log (17 steps, one log each)",
+    "laneReports": ".qa-tmp/reports/lane-{a,b,c,d,e,f1..f7,g,h,j}.md",
+    "dockerLanes": "evidence/docker/client-install/<stamp>/ and evidence/docker/client-install-oneclick/<stamp>/"
+  },
+  "knownUnfixedFindings": [
+    "packages/mpd-config-plugin README's precedence table omits the L4 row-config layer",
+    "config write-back ignores the `config.projectFile` override",
+    "`agent_teams_*` error strings still name retired tool names (a real behaviour defect in the retired plugin; it is not mounted)",
+    "skills/lsp-setup/scripts/verify-lsp.ts points at an upstream `packages/lsp-tools-mcp/` path that does not exist in this repository",
+    "packages/mpd-modelchain-plugin/README.md documents upstream role ids rather than the functional names",
+    "packages/mpd-agent-teams-plugin/lib/types/*.d.ts are stale against the delta-patched vendored tree, so consumers use per-import @ts-expect-error TS7016 rather than an ambient shim"
+  ]
+}

@@ -14,7 +14,7 @@
 
 ## 用法
 
-由 `skills/dsh-qa/scripts/bundle-lifecycle.mjs`（启动子断言 `probePass` / `presetProbeOk`）、`skills/dsh-qa/scripts/preset-register.mjs` 与 `skills/dsh-qa/scripts/relocate-smoke.mjs` 使用。构建：
+由 `skills/dsh-qa/scripts/bundle-lifecycle.ts`（启动子断言 `probePass` / `presetProbeOk`）、`skills/dsh-qa/scripts/preset-register.ts` 与 `skills/dsh-qa/scripts/relocate-smoke.ts` 使用。构建：
 
 ```bash
 bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js

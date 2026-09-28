@@ -2,7 +2,7 @@
   "name": "@mpd-dsh/agent-teams",
   "version": "0.1.16-rc.3-mpd",
   "private": true,
-  "description": "Adopted @nanmicoder/dsh-agent-teams (0.1.14 body, MIT) as a first-class main-code package, with the audited 0.1.16-rc.3 upstream deltas backported: the Harness subagent boundary (host FIFO queue delivery, sync member setup, retired-member guard), agent-scoped capabilities (member instructions + captain-tool denial), tool-names, authenticated web routes, member turn-failure handling, and the durability fixes (settled team locks, blank optional task fields, captain claim guard). Server runtime closure vendored under _deps/ (see scripts/vendor-agent-teams.mjs); the browser bundle is loaded by the web app via the mpd bundle's ./client export.",
+  "description": "Adopted @nanmicoder/dsh-agent-teams (0.1.14 body, MIT) as a first-class main-code package, with the audited 0.1.16-rc.3 upstream deltas backported: the Harness subagent boundary (host FIFO queue delivery, sync member setup, retired-member guard), agent-scoped capabilities (member instructions + captain-tool denial), tool-names, authenticated web routes, member turn-failure handling, and the durability fixes (settled team locks, blank optional task fields, captain claim guard). Server runtime closure vendored under _deps/ (see scripts/vendor-agent-teams.ts); the browser bundle is loaded by the web app via the mpd bundle's ./client export.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

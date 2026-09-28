@@ -16,10 +16,13 @@ import { effectOn, onService } from "./host.js"
 
 /** What a shortcut handler needs from the rest of the plugin. */
 export interface ShortcutActions {
+  /** Opens the board; false when the scene seam is absent in this composition. */
   openBoard(via: "shortcut"): boolean
   /** Open the team-workflow surface (frozen §5.3: best-effort, the command is the guarantee). */
   openTeam(): boolean
+  /** Republishes the status line now; a no-op before that seam is active. */
   refreshStatus(): void
+  /** Opens the mediated workmate picker; a no-op without a dialog seam. */
   pickWorkmate(): void
 }
 
@@ -39,17 +42,21 @@ export const SHORTCUT_BINDINGS: readonly { combo: string; description: string; a
  * @returns the seam handle.
  */
 export function registerShortcuts(ctx: PluginContextLike, log: Log, actions: ShortcutActions): { outcome(): SeamOutcome } {
+  /** The seam result, rewritten as bindings are requested and read back. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiShortcuts was not injected" }
 
   onService(ctx, "tuiShortcuts", (scoped, service) => {
+    /** The probed service as the shortcut registry, before `register` is trusted. */
     const shortcuts = service as TuiShortcutsLike
     if (typeof shortcuts?.register !== "function") {
       outcome = { state: "refused", detail: "tuiShortcuts.register is missing" }
       return
     }
+    /** Handles for the combos the host did not throw on; owned for cleanup only. */
     const disposers: Disposer[] = []
     for (const binding of SHORTCUT_BINDINGS) {
       try {
+        /** The host's handle for this combo; a no-op when the combo was refused. */
         const disposer = shortcuts.register(
           binding.combo,
           {
@@ -70,6 +77,7 @@ export function registerShortcuts(ctx: PluginContextLike, log: Log, actions: Sho
         )
         // Owned for cleanup only; NOT proof of registration.
         if (typeof disposer === "function") {
+          /** This binding's handle, captured so the effect closure owns the right one. */
           const release = disposer
           disposers.push(release)
           effectOn(scoped, () => release(), `mpd-tui shortcut ${binding.combo}`)
@@ -92,6 +100,7 @@ export function registerShortcuts(ctx: PluginContextLike, log: Log, actions: Sho
       outcome = { state: "requested", detail: `${disposers.length} binding(s) requested; the host exposes no list() read-back` }
       return
     }
+    /** The combos the host's own `list()` read-back shows as ours. */
     const confirmed = SHORTCUT_BINDINGS.filter((binding) => listed?.some((entry) => entry.description === binding.description)).map(
       (binding) => binding.combo,
     )

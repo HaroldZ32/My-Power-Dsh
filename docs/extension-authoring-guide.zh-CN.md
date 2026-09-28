@@ -39,7 +39,7 @@
 
 这条限制不是装饰。在本 harness 中，注册工具或技能提供者是**进程级全局**的，所以"每会话"的 MCP
 服务器或名册角色无法被诚实地表达。项目平面清单如果声明 `mcp` 或 `roles`，会被**逐项**拒绝并给出
-明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:673-680`）——拒绝是响亮的、会指出具体条目，
+明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`）——拒绝是响亮的、会指出具体条目，
 而同一个清单里的技能与流程照常加载。
 
 请在写清单**之前**读这条规则，而不是在第一次被拒之后：这是最常见的选错平面错误，而拒绝只在发现
@@ -63,7 +63,7 @@
    它就能读你的用户能读的任何文件，包括凭证文件。白名单阻止的是**环境变量**层面的意外泄漏，它不是
    沙箱。
 2. **作者声明的密钥就是真实密钥。** 你写进清单 `env` 的任何内容，在磁盘上的清单里都是可读的。
-   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:640`），所以
+   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:760`），所以
    会话日志里的工具结果不会泄漏它们——但文件本身没有加密，你写下来的值就是你要负责的值。
 3. **文件系统信任。** 安装一个扩展就意味着执行一个你或别人提供的 stdio 服务器。这里没有签名、没有
    沙箱命名空间、没有 seccomp 配置、没有能力裁剪。
@@ -87,7 +87,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 | `skills` | 项目 | **每次调用**，从调用会话的工作区解析 | 不需要 |
 | `flows` | 项目 | **每次调用** | 不需要 |
 | `skills`、`flows` | user、bundle | 在 **apply** 时发现 | 需要 |
-| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1043`） | 需要 |
+| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`） | 需要 |
 | `roles` | user、bundle | 声明在 apply 时被发现；角色本身由名册平面**每次调用**解析，并重新读取 persona 文本（`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`） | 新增或改名需要；只改 persona 正文不需要 |
 
 三个值得记住的推论：
@@ -95,7 +95,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 - 项目平面里的"每次调用"类型，是唯一表现得像活文件的组合：改完技能或流程，下一次调用就能用，无需
   重启。
 - MCP 服务器失败不会拖垮启动。它进入 `unavailable` 或 `failed` 状态，并带一段有界的子进程 stderr
-  尾部（`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:43`），其他扩展照常激活；下一次启动会重试它。
+  尾部（`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:48`），其他扩展照常激活；下一次启动会重试它。
 - `.mpd/mpd.jsonc` 中的 `extensions.enable` / `extensions.disable` 是**进程级**的，不是按会话的
   开关；而且它们只过滤"被提供"的内容，从不为注册把关，所以被禁用的扩展不会破坏别的东西。
 
@@ -106,7 +106,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 
 ```bash
 # A. 脚手架：拷贝模板并改写 id 与所有派生名
-bun scripts/mpd-ext.mjs scaffold my-extension --dir ~/.mpd/extensions
+bun scripts/mpd-ext.ts scaffold my-extension --dir ~/.mpd/extensions
 # ... 加上 --with-mcp 得到四种类型的拷贝（技能 + 流程 + 角色 + stdio MCP 服务器）；
 #     不加则是一个三种类型的扩展。
 
@@ -115,17 +115,17 @@ cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
 
 上面两条命令都假定你在检出目录里。若用的是已安装（打包）的 bundle，同一个 CLI 就在包内——在 profile <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-目录下运行 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs <command>`——而 §7 精确说明了这样的产物
+目录下运行 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>`——而 §7 精确说明了这样的产物
 携带什么、以及仍存在哪一条边界。
 
 然后走每个扩展都要走的同样五步：
 
 ```bash
 # 1. 校验——用的是运行时同一个校验器，退出码 0 意味着"本宿主会加载它"
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/my-extension
+bun scripts/mpd-ext.ts validate ~/.mpd/extensions/my-extension
 
 # 2. 看看本宿主按平面会发现什么（含 bundle 平面）
-bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.ts list
 
 # 3. 编辑清单：写上真实的 id、描述与内容，然后把 "enabled" 设为 true
 #    （拷贝出来的扩展之所以默认禁用，是因为**模板**里写的是 "enabled": false——运行时默认值正好
@@ -145,11 +145,11 @@ bun scripts/mpd-ext.mjs list
 名字，而不是想当然。
 
 两个能省掉一轮排错的细节：清单里的 `skills.root` 与 `flows.dir` 相对于扩展根，且不允许逃逸出根；
-stdio 服务器的 `command` 是 `node`、`args` 是 `["server.mjs"]`、`cwd` 是 `"."`——工作目录就是扩展
+stdio 服务器的 `command` 是 `node`、`args` 是 `["server.ts"]`、`cwd` 是 `"."`——工作目录就是扩展
 根，所以服务器能找到自己的清单。你完全不需要宿主就能冒烟测试这个服务器：
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/extensions/my-extension/server.mjs
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/extensions/my-extension/server.ts
 ```
 
 如果你要写的是**项目平面**扩展，同一套流程适用，只有两处不同：根是
@@ -165,16 +165,16 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/ext
 bun test packages/mpd-ext-plugin
 
 # 开发者 CLI，含它自己的离线自检（只在临时目录里操作）
-bun scripts/mpd-ext.mjs --self-test
+bun scripts/mpd-ext.ts --self-test
 
 # 真实 lane：在沙箱化的 DSH_HOME + HOME + 会话 cwd 中真正挂载 dsh
-bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-template.mjs
+bun skills/dsh-qa/scripts/extension-lifecycle.ts --no-skip
+bun skills/dsh-qa/scripts/extension-mcp-bridge.ts --no-skip
+bun skills/dsh-qa/scripts/extension-template.ts
 ```
 
 中间两条端到端驱动随包示例——发现、项目平面的按调用解析、桥接、隔离断言——第三条把模板脚手架出来，
-并对拷贝做一次真实挂载验证。`skills/dsh-qa/scripts/extension-isolation.mjs` 是这些 lane 共同 import
+并对拷贝做一次真实挂载验证。`skills/dsh-qa/scripts/extension-isolation.ts` 是这些 lane 共同 import
 的证明辅助模块；它**不是** case 通道，它唯一的离线证明是自己的 `--self-test`。
 
 关于证据有一条铁律：`dsh --profile <p> --dump-config` 只组合行、不执行任何代码，因此它**永远**不能
@@ -197,17 +197,17 @@ bun skills/dsh-qa/scripts/extension-template.mjs
 采纳插件的 delta 登记册与其索引），以及一个**已编译的校验器入口**：
 <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 （`packages/mpd-ext-plugin/dist/validator.js`，打包时由已交付的 bundle 生成）；当 TypeScript 源码不存在时，
-`scripts/mpd-ext.mjs` 会回退到它（T-51）。在刚打包出的 `dist/mpd-package/` 内实测：
+`scripts/mpd-ext.ts` 会回退到它（T-51）。在刚打包出的 `dist/mpd-package/` 内实测：
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # 退出 0
-bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/demo # 退出 0 —— 复制打包进来的模板
-node scripts/mpd-ext.mjs --self-test                          # 退出 0 —— 已编译入口不需要 TS 加载器
-bun scripts/mpd-ext.mjs --validator                           # 本次运行实际加载了哪个校验器、来自哪里
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # 退出 0
+bun scripts/mpd-ext.ts scaffold my-extension --dir /tmp/demo # 退出 0 —— 复制打包进来的模板
+node scripts/mpd-ext.ts --self-test                          # 退出 0 —— 已编译入口不需要 TS 加载器
+bun scripts/mpd-ext.ts --validator                           # 本次运行实际加载了哪个校验器、来自哪里
 ```
 
 已安装的 bundle 带有同一个 CLI：在 profile 目录下运行 <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`。诚实的边界：检出目录中的运行从 `src`
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>`。诚实的边界：检出目录中的运行从 `src`
 校验（规则是活的、无需构建步骤），因此**源码**改动在产物内要等下一次 `npm run pack` 才可见——判断打包 CLI
 之前请先重新打包。
 
@@ -219,7 +219,7 @@ v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`
 
 | 你看到的现象 | 最可能的原因 | 怎么办 |
 |---|---|---|
-| `mpd_ext_list` 能看到扩展，但缺了一种类型并带一条逐项错误 | 清单声明的类型缺少对应资产，或任意位置出现未知键 | 运行 `bun scripts/mpd-ext.mjs validate <dir>`：它会逐项打印原因 |
+| `mpd_ext_list` 能看到扩展，但缺了一种类型并带一条逐项错误 | 清单声明的类型缺少对应资产，或任意位置出现未知键 | 运行 `bun scripts/mpd-ext.ts validate <dir>`：它会逐项打印原因 |
 | 项目平面扩展被拒绝，并给出平面相关的原因 | 它声明了 `mcp` 或 `roles`，这两种是宿主级类型 | 移到 `~/.mpd/extensions/`，或去掉该类型（§2） |
 | 扩展能加载，但技能没有出现在目录里 | 名字输给了 rank 更高的提供者，或 frontmatter 的 `name` 与目录名不一致 | `mpd_ext_list` 会对照 harness 目录逐个报告 `served` / `notServed` |
 | MCP 工具缺失 | 服务器处于 `unavailable` 或 `failed` | `mpd_ext_show` 会打印状态与有界的 stderr 尾部；检查 `command`、`args`、`cwd` 与声明的 `env` |

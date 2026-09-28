@@ -18,6 +18,7 @@ import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 /** The status key (conventions: the plugin id, `mpd-tui`, or `mpd-tui:<sub>`). */
 export const STATUS_KEY = "mpd-tui"
 
+/** The status-line seam handle: the measured outcome plus the manual refresh path. */
 export interface StatusSeam {
   /** The measured outcome of this seam (never "registered" without a read-back). */
   outcome(): SeamOutcome
@@ -45,20 +46,28 @@ export function registerStatus(
   bridgeNotice?: () => string | undefined,
   teamViews?: () => readonly DshTeamView[],
 ): StatusSeam {
+  /** The seam result, rewritten when the host accepts the contribution. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiStatus was not injected" }
-  let refresh: () => void = () => {}
+  /** Publishes the line on demand; a no-op until the seam is active. */
+  let refresh: () => void = (): void => {}
 
   onService(ctx, "tuiStatus", (scoped, service) => {
+    /** The probed service as the status surface, before `set` is trusted. */
     const status = service as TuiStatusLike
     if (typeof status?.set !== "function") {
       outcome = { state: "refused", detail: "tuiStatus.set is missing" }
       return
     }
+    /** The host's handle for the current contribution, replaced on every publish. */
     let disposer: Disposer | undefined
+    /** The cadence timer, absent in the manual (`intervalMs` 0) mode. */
     let timer: ReturnType<typeof setInterval> | undefined
+    /** The text last handed to the host, so an identical line is not republished. */
     let published: string | undefined
+    /** Recomputes the line and publishes it only when it changed. */
     const publish = (): void => {
       try {
+        /** The rendered status text, built from a fresh board read. */
         const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), bridgeNotice?.())
         // Only publish a CHANGED line: the host records every set() as a
         // `replace status` ledger effect, so a fixed-cadence republish would

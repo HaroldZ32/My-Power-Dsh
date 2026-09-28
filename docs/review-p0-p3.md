@@ -53,7 +53,7 @@ Can proceed to P4; before P4, read the two leftover items in §5.
 | F3 | MEDIUM | verify-vendor only checks file count, not content (tampered skill content could pass) | ✅ Fixed: added sha256 (per file) + treeSha (directory, sorted relpath + per-file sha256 aggregate) double block; negative test tampering FAILs |
 | F4 | MEDIUM | git-bash platform gating used a !!js ternary, dump rendered abnormally ('[object Object]'), runtime semantics unprovable | ✅ Fixed: changed to deterministic disabled: true + comment (set false to enable on Windows deployment) |
 | F5 | MINOR | dual-track/skill-load/mcp-call lack explicit isolation assertions (mount-assert has them) | ✅ Fixed: three scripts add DSH_HOME points-to-sandbox assertions |
-| F6 | MINOR | build-mcp.mjs hardcodes bun cache version entries (js-yaml@4.3.1 etc.), may be missing on other machines | ⏳ P4: change to discover by package-name prefix + manifest validation |
+| F6 | MINOR | build-mcp.ts hardcodes bun cache version entries (js-yaml@4.3.1 etc.), may be missing on other machines | ⏳ P4: change to discover by package-name prefix + manifest validation |
 | F7 | MINOR | absolute paths inside the bundle patch (env vars can override), production profile deployment must move with the repo | ⏳ P4: self-developed plugin takes over path resolution (D7 established direction) |
 | F8 | INFO | this machine lacks environment prerequisites: ast-grep(sg), codegraph binary, per-language LSP servers → tools return classified errors and install hints by design | 📋 recorded in docs/decisions.md D3a; full functionality requires installing per the hints |
 

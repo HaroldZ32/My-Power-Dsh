@@ -1,0 +1,62 @@
+name: gates
+
+# The repository's static gates, run on every push and pull request against the integration and
+# release lines. They are the fast, offline half of AGENTS.md §4: no dsh boot, no credentials, no
+# network and no plugin execution — exactly the checks a reviewer can reproduce on a fresh clone.
+#
+# WHY NODE 24 AND NOT 20: every gate is a TypeScript entry point (`scripts/*.ts`) executed directly
+# by Node's type stripping, which is on by default from Node 22.18 on. The package's own `engines`
+# field states the same floor; a runner below it cannot start the checkers at all.
+#
+# WHAT EACH STEP PROVES (`bun run verify:gates` is the aggregate over all of them):
+#   * vendor            — the pinned upstream baseline's item counts and fingerprints;
+#   * dist-fresh        — every committed `packages/*/dist` entry is the byte-identical rebuild of
+#                         its source, and every `dist/` file is covered by a source entry;
+#   * rows-parity       — the bundle patch and the preset patch agree with the row ids they target;
+#   * docs-parity       — the bilingual documentation band: EN + `*.zh-CN.md` twins, switch links,
+#                         identical heading trees, real CJK content and resolvable link targets;
+#   * preset-conformance— the `mpd` preset's row set and every row config against the INSTALLED
+#                         harness;
+#   * plugin-manifest   — the TWO install-time rules (no `cordis` in dependencies /
+#                         peerDependencies / optionalDependencies; no preinstall / install /
+#                         postinstall / prepare script name) plus the packaging contract that makes
+#                         `dsh plugin --profile <p> add <spec>` work without a checkout;
+#   * comment-coverage  — every declaration in the TypeScript source set carries a precise comment
+#                         and every named function spells out its parameter and return types.
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Static gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - name: Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)
+        run: bun install --frozen-lockfile
+
+      - name: Static gate aggregate
+        run: bun run verify:gates
+
+      - name: Plugin manifest install-time rules and packaging contract
+        run: node scripts/verify-plugin-manifest.ts
+
+      - name: Declaration comments and explicit signatures
+        run: node scripts/verify-comment-coverage.ts

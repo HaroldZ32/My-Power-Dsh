@@ -99,7 +99,7 @@ is carried as explicit guidance inside the spawn prompt. Per-member routing stil
 mechanically on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
 `agentOptions` themselves.
 
-### The D6 gate (`test/no-direct-team-access.test.mjs`)
+### The D6 gate (`test/no-direct-team-access.test.ts`)
 
 A static gate scans `packages/mpd-*/src/**/*.ts`, except this package, for the literal
 identifiers `agentTeams` and `startContinuable`, fails naming file + line, strips comments first
@@ -107,8 +107,8 @@ identifiers `agentTeams` and `startContinuable`, fails naming file + line, strip
 OUTSIDE the `*.ts` band in a loud `NOT COVERED` section instead of silently skipping them:
 
 ```bash
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs            # scan
-node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs --self-test # negative control
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts            # scan
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-test # negative control
 ```
 
 It is also a `bun test` case, so `bun test packages/mpd-dsh-adapter-plugin` runs it too.

@@ -72,5 +72,5 @@ Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queue
 
 | 上游增量 | 暂不采纳的原因 | 采纳所需工作 |
 | --- | --- | --- |
-| 浏览器 bundle 0.1.14 → 0.1.16-rc.3（`lib/client.js`） | 出货 client 是 npm 预构建产物；其增量是 client-runtime → `store`/`ui-chat`/`ui-conversation` 的导入适配，以及成员模型徽章的位置/样式调整，属 UI 打磨而非功能缺失 | 用 rc.3 构建替换 `lib/client.js`(+`.map`)，重跑 `scripts/patch-agent-teams-client.mjs`（导出桥），重钉 `test/export-bridge.test.mjs` 的 class map，并重新验证侧边栏页面一致性与 `web-client-adapt`/`agent-teams-sidebar` QA |
+| 浏览器 bundle 0.1.14 → 0.1.16-rc.3（`lib/client.js`） | 出货 client 是 npm 预构建产物；其增量是 client-runtime → `store`/`ui-chat`/`ui-conversation` 的导入适配，以及成员模型徽章的位置/样式调整，属 UI 打磨而非功能缺失 | 用 rc.3 构建替换 `lib/client.js`(+`.map`)，重跑 `scripts/patch-agent-teams-client.ts`（导出桥），重钉 `test/export-bridge.test.ts` 的 class map，并重新验证侧边栏页面一致性与 `web-client-adapt`/`agent-teams-sidebar` QA |
 | 精简固定团队指令（#138） | 本仓的 usage 文本带有 MPD 专属规则（roster profile、workmate backing、Web 审批控制消息），上游的精简核心协议没有这些；改写会改变每个会话的系统提示 | 按上游精简协议重写 `usageSectionText` 并保留 MPD 规则，然后重跑能力/提示相关 QA |

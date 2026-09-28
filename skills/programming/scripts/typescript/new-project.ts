@@ -22,6 +22,7 @@ import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
+/** Parsed CLI arguments: `values.path` is the parent directory and `positionals[0]` the project name. */
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   options: {
@@ -44,7 +45,9 @@ Options:
   process.exit(positionals.length === 0 ? 2 : 0);
 }
 
+/** Project directory name, taken from the first positional argument. */
 const name = positionals[0]!;
+/** Absolute path of the directory to create: the resolved parent joined with the project name. */
 const root = resolve(values.path!, name);
 
 if (existsSync(root)) {

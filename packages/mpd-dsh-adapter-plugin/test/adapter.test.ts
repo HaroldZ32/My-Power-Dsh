@@ -6,20 +6,76 @@ import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
+// The two vendored `_deps/**` JS modules ship NO type declarations, and that tree is outside this
+// lane's write scope, so the imports are the one place a directive is the honest tool: the module
+// resolves to `any`, and every shape this file relies on is declared at its own use site (the
+// `Context` waterfall calls below and the message comparison against `userMessage`). A LOCAL
+// `.d.ts` is impossible here (it would have to live in the vendored tree) and a `declare module`
+// block would be an augmentation trick. `@ts-expect-error` (not `@ts-ignore`) so a future vendored
+// type declaration turns this into a loud "unused directive" instead of a silent suppression.
+/** The vendored cordis module, used as the REAL waterfall dispatcher in the last describe block. */
+// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
 import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+/** The vendored host message constructor, compared field by field against this adapter's own. */
+// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
 import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.js"
 import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
-function fakeHarness(overrides: Record<string, unknown> = {}) {
+/** A recording double of the FULL harness: ten services, the event bus and provide(). */
+function fakeHarness(overrides: Record<string, unknown> = {}): {
+  /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
+  ctx: {
+    get(serviceName: string): unknown
+    on(event: string, listener: (...args: unknown[]) => unknown): () => void
+    provide(serviceName: string, value: unknown): void
+    [key: string]: unknown
+  }
+  /** Definitions the tools registry received, in the adapter's normalized shape. */
+  registered: Array<{
+    name: string
+    description: string
+    parameters: { type: string; properties: Record<string, Record<string, unknown>> }
+    output: { schema: unknown; render: (args: unknown, value: unknown) => unknown }
+    execute: (args?: unknown, exec?: unknown) => unknown
+  }>
+  /** Guards the tools registry received. */
+  guards: Array<(exec: unknown) => string | undefined>
+  /** Post-execute listeners the event bus received. */
+  listeners: Array<(exec: unknown, result: unknown, next: () => Promise<unknown>) => Promise<{ kind: string; content?: unknown }>>
+  /** Pre-execute listeners the event bus received. */
+  preListeners: Array<(exec: unknown, next?: () => Promise<unknown>) => Promise<unknown>>
+  /** Services `provide()` was called with, keyed by name. */
+  provided: Record<string, unknown>
+  /** Spawn calls, as `{mode, spec}` pairs. */
+  started: Array<{ mode: string; spec: Record<string, unknown> }>
+  /** Executions the tool runtime received; `agent` is present only when the caller sent one. */
+  executed: Array<{ name: string; callId?: string; arguments?: unknown; agent?: { session: { header: { cwd: string } } } }>
+  /** Command definitions the command registry received. */
+  commandsRegistered: Array<{ name: string; description: string; input?: unknown; handler: (invocation?: { rawInput?: string }) => unknown }>
+  /** The disposers that registry returned, in the same order. */
+  commandDisposers: Array<() => void>
+  /** Messages pushed through the sample agent's followup. */
+  submitted: unknown[]
+} {
+  /** Definitions the tools registry received. */
   const registered: any[] = []
+  /** Guards the tools registry received. */
   const guards: any[] = []
+  /** Post-execute listeners the event bus received. */
   const listeners: any[] = []
+  /** Pre-execute listeners the event bus received. */
   const preListeners: any[] = []
+  /** Services `provide()` was called with, keyed by name. */
   const provided: Record<string, unknown> = {}
+  /** Spawn calls, as `{mode, spec}` pairs. */
   const started: Array<{ mode: string; spec: any }> = []
+  /** Executions the tool runtime received. */
   const executed: any[] = []
+  /** Command definitions the command registry received. */
   const commandsRegistered: any[] = []
+  /** The disposers that registry returned, in the same order. */
   const commandDisposers: Array<() => void> = []
+  /** The recording tools service: registry, guard registry and an executing runtime. */
   const tools = {
     register: (definition: any) => { registered.push(definition); return () => { registered.pop() } },
     guard: (guard: any) => { guards.push(guard); return () => { guards.pop() } },
@@ -31,6 +87,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
       return { value: { echo: exec.arguments } }
     },
   }
+  /** The recording subagent service: spawn plus the provider and delivery seams. */
   const subagents = {
     start: async (mode: string, spec: any) => {
       started.push({ mode, spec })
@@ -46,7 +103,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     interrupt: (targetSessionId: string, authority: any) => { void targetSessionId; void authority },
     // additive (0.1.7/adaptation D6): the provider REGISTRATION seam. A full harness
     // exposes it, so the shared fixture carries it too (behaviour is covered by
-    // test/adapter-team-surface.test.ts and test/no-direct-team-access.test.mjs).
+    // test/adapter-team-surface.test.ts and test/no-direct-team-access.test.ts).
     registerProvider: (provider: any) => { provided.subagentProvider = provider; return () => { delete provided.subagentProvider } },
   }
   // additive (0.1.7/adaptation D6): the OFFICIAL Agent Teams service
@@ -65,6 +122,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     interrupt: () => ({ previousStatus: "running" }),
     waitForChange: async () => ({ timedOut: false }),
   }
+  /** The recording skills service: provider registration, catalogue and body load. */
   const skills = {
     registerProvider: (provider: any) => { provided.skills = provider; return () => { delete provided.skills } },
     list: async () => [{ name: "svn-master", source: "bundled" }],
@@ -76,6 +134,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   // `path`/`trust` fields stay declared for a host build that still sends them, which the
   // second arm below covers.
   const agentPresets = { resolve: async (id: string) => ({ id }) }
+  /** The host-plane compaction engine, a different object from the agent's own. */
   const compaction = { compactNow: async (agent: any) => ({ agent }) }
   // MEASURED host contract (dsh-commands/lib/index.js `register()`): the registry
   // returns the exact effect disposer that unregisters the definition, which the
@@ -83,7 +142,9 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   const commands = {
     register: (definition: any) => {
       commandsRegistered.push(definition)
-      const dispose = () => {
+      /** Remove this definition again, mirroring the registry's effect teardown. */
+      const dispose = (): void => {
+        /** Index of the definition to remove, or -1 when it is already gone. */
         const at = commandsRegistered.indexOf(definition)
         if (at >= 0) commandsRegistered.splice(at, 1)
       }
@@ -112,6 +173,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   // The sample agent carries its OWN scoped ctx: on a real harness the agent-scoped compaction
   // service is a different object from the host-plane one, so capabilities() reports two seams.
   const submitted: any[] = []
+  /** The one live Agent: its own scoped ctx, the turn verbs and the inbox. */
   const sampleAgent = {
     id: "sample-agent",
     // The scoped context now also carries the per-agent seam members the agentScope
@@ -137,7 +199,9 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     steer: (_message: any) => {},
     inject: (_message: any) => {},
   }
+  /** The live-session registry: one agent, reachable by list and by get. */
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
+  /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   const ctx = {
     get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
@@ -153,13 +217,17 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
 
 describe("capabilities", () => {
   test("reports every seam of a full harness", () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
+    /** The capability flags of the full harness, every one of which must read true. */
     const caps = createDshAdapter(ctx).capabilities()
     expect(Object.values(caps).every((value) => value === true)).toBe(true)
   })
 
   test("reports absent seams without throwing", () => {
+    /** An adapter over a harness with no service at all. */
     const adapter = createDshAdapter({ get: () => undefined })
+    /** Its flags, which must read false without a throw. */
     const caps = adapter.capabilities()
     expect(caps.tools).toBe(false)
     expect(caps.subagentsSpawn).toBe(false)
@@ -171,9 +239,10 @@ describe("capabilities", () => {
 
 describe("llm catalog plane", () => {
   // A ctx whose ONLY service is the model registry (the seam reads nothing else).
-  const llmOnlyCtx = (llm: unknown) => ({ get: (name: string) => (name === "llm" ? llm : undefined) })
+  const llmOnlyCtx = (llm: unknown): { get: (name: string) => unknown } => ({ get: (name: string) => (name === "llm" ? llm : undefined) })
 
   test("projects providers, models and reasoning from the live registry", async () => {
+    /** A registry whose second provider has no models and whose first has two. */
     const llm = {
       listProviders: () => [
         { id: "deepseek-official", name: "DeepSeek Official" },
@@ -194,6 +263,7 @@ describe("llm catalog plane", () => {
           }
         : { provider: providerId, id: modelId, name: modelId }),
     }
+    /** The projected catalog, asserted whole. */
     const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
     expect(catalog).toEqual({
       providers: [
@@ -221,17 +291,22 @@ describe("llm catalog plane", () => {
   })
 
   test("the fake full harness satisfies the seam", async () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
     expect(adapter.capabilities().llmCatalog).toBe(true)
+    /** The catalog the fixture's registry must satisfy. */
     const catalog = await adapter.llmCatalog()
     expect(catalog.degraded).toBe(false)
     expect(catalog.providers[0].models[0].defaultEffort).toBe("high")
   })
 
   test("a missing llm service degrades and warns exactly once", async () => {
+    /** The console.warn spy, restored in the finally block. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
+      /** An adapter over a harness with no llm service. */
       const adapter = createDshAdapter({ get: () => undefined })
       expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
       // Second read: same degrade, but the warn-once line is NOT repeated.
@@ -245,9 +320,12 @@ describe("llm catalog plane", () => {
   })
 
   test("a partial seam degrades, names the missing method, and reports capabilities false", async () => {
+    /** The console.warn spy, restored in the finally block. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
+      /** A registry missing resolveModelInfo. */
       const partial = { listProviders: () => [], listModels: async () => [] }
+      /** The adapter over that partial seam. */
       const adapter = createDshAdapter(llmOnlyCtx(partial))
       expect(adapter.capabilities().llmCatalog).toBe(false)
       expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
@@ -259,6 +337,7 @@ describe("llm catalog plane", () => {
   })
 
   test("a rejecting provider is skipped and the rest of the catalog survives", async () => {
+    /** A registry whose first provider rejects and whose second answers. */
     const llm = {
       listProviders: () => [{ id: "broken", name: "Broken" }, { id: "ok", name: "OK" }],
       listModels: async (providerId: string) => {
@@ -267,12 +346,14 @@ describe("llm catalog plane", () => {
       },
       resolveModelInfo: async (providerId: string, modelId: string) => ({ provider: providerId, id: modelId, name: modelId }),
     }
+    /** The surviving catalog, degraded but not empty. */
     const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
     expect(catalog.degraded).toBe(true)
     expect(catalog.providers).toEqual([{ id: "ok", name: "OK", models: [{ id: "m1", name: "M1", efforts: [] }] }])
   })
 
   test("a model whose resolveModelInfo rejects is skipped, not fatal", async () => {
+    /** A registry whose listModels includes one unresolvable model. */
     const llm = {
       listProviders: () => [{ id: "p", name: "P" }],
       listModels: async () => [{ id: "bad", name: "Bad" }, { id: "good", name: "Good" }],
@@ -281,12 +362,14 @@ describe("llm catalog plane", () => {
         return { id: modelId, name: modelId }
       },
     }
+    /** The catalog with the bad model skipped. */
     const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
     expect(catalog.degraded).toBe(true)
     expect(catalog.providers).toEqual([{ id: "p", name: "P", models: [{ id: "good", name: "Good", efforts: [] }] }])
   })
 
   test("a throwing listProviders degrades instead of rejecting", async () => {
+    /** A registry whose listProviders throws. */
     const llm = {
       listProviders: () => { throw new Error("registry down") },
       listModels: async () => [],
@@ -296,13 +379,17 @@ describe("llm catalog plane", () => {
   })
 
   test("a non-array listProviders answer degrades instead of throwing", async () => {
+    /** A registry whose listProviders answers a non-array. */
     const llm = { listProviders: () => undefined, listModels: async () => [], resolveModelInfo: async () => ({}) }
     await expect(createDshAdapter(llmOnlyCtx(llm)).llmCatalog()).resolves.toEqual({ providers: [], degraded: true })
   })
 
   test("the lazy facade proxies the seam to the mounted adapter", async () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
+    /** The lazy facade over the full fixture. */
     const lazy = createLazyDshAdapter(ctx, { label: "mpd-test", warn: () => {} })
+    /** The catalog read through the facade. */
     const catalog = await lazy.llmCatalog()
     expect(catalog.degraded).toBe(false)
     expect(catalog.providers).toHaveLength(1)
@@ -311,14 +398,18 @@ describe("llm catalog plane", () => {
 
 describe("tool plane", () => {
   test("registerTool normalizes schema, render and the (args, exec) call shape", async () => {
+    /** The fixture's ctx and the definitions its registry collected. */
     const { ctx, registered } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** The registration's disposer, which must remove the definition again. */
     const dispose = adapter.registerTool({
       name: "mpd_demo",
       description: "demo",
       execute: async (args: any, exec: any) => ({ args, hasExec: exec !== undefined }),
     })
     expect(registered).toHaveLength(1)
+    /** The definition the registry received, in the adapter's normalized shape. */
     const definition = registered[0]
     expect(definition.parameters).toEqual({ type: "object", properties: {} })
     expect(definition.output.schema).toEqual({ type: "object", properties: {} })
@@ -331,8 +422,10 @@ describe("tool plane", () => {
   })
 
   test("registerTool keeps a caller-supplied schema and render", () => {
+    /** The fixture's ctx and the definitions its registry collected. */
     const { ctx, registered } = fakeHarness()
-    const render = () => [{ type: "text", text: "custom" }]
+    /** The caller's renderer, which must survive by identity. */
+    const render = (): Array<{ type: string; text: string }> => [{ type: "text", text: "custom" }]
     createDshAdapter(ctx).registerTool({ name: "mpd_demo", description: "d", parameters: { type: "object", properties: { a: { type: "string" } } }, output: { schema: { type: "object" }, render }, execute: () => ({}) })
     expect(registered[0].parameters.properties.a).toEqual({ type: "string" })
     expect(registered[0].output.render).toBe(render)
@@ -341,14 +434,18 @@ describe("tool plane", () => {
   test("services resolve through ctx.get OR a plain ctx property", () => {
     // Cordis exposes both; unit test doubles often provide only one.
     const tools = { register: () => () => {}, guard: () => () => {}, get: () => undefined, execute: async () => ({ value: 1 }) }
+    /** An adapter resolving tools from the ctx PROPERTY form. */
     const viaProperty = createDshAdapter({ tools })
     expect(viaProperty.capabilities().toolsRegister).toBe(true)
+    /** An adapter resolving tools from the ctx.get form. */
     const viaGet = createDshAdapter({ get: (name: string) => (name === "tools" ? tools : undefined) })
     expect(viaGet.capabilities().toolsRegister).toBe(true)
   })
 
   test("registerTools registers every definition and disposes them together", () => {
+    /** The fixture's ctx and the definitions its registry collected. */
     const { ctx, registered } = fakeHarness()
+    /** The combined disposer for both definitions. */
     const dispose = createDshAdapter(ctx).registerTools([
       { name: "mpd_a", description: "a", execute: () => ({}) },
       { name: "mpd_b", description: "b", execute: () => ({}) },
@@ -359,11 +456,13 @@ describe("tool plane", () => {
   })
 
   test("registerTool without a tools service fails with an actionable error", () => {
+    /** An adapter over a harness with no tools service. */
     const adapter = createDshAdapter({ get: () => undefined })
     expect(() => adapter.registerTool({ name: "mpd_demo", description: "d", execute: () => ({}) })).toThrow(/harness service "tools" is unavailable/)
   })
 
   test("guardTool passes the exec through and installs on the tools service", () => {
+    /** The fixture's ctx and the guards its registry collected. */
     const { ctx, guards } = fakeHarness()
     createDshAdapter(ctx).guardTool((exec) => (exec.name === "write" ? "denied" : undefined))
     expect(guards).toHaveLength(1)
@@ -373,14 +472,19 @@ describe("tool plane", () => {
   })
 
   test("onPostToolExecute owns next() and passes the downstream decision through", async () => {
+    /** The fixture's ctx and the post-execute listeners it collected. */
     const { ctx, listeners } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** One line per post-execute observation, asserted in order. */
     const seen: string[] = []
     adapter.onPostToolExecute((exec, result, downstream) => {
       seen.push(String(exec.name) + ":" + String(result.isError) + ":" + downstream.kind)
       return undefined
     })
+    /** How many times the wrapper delegated to next(). */
     let nextCalls = 0
+    /** The decision the wrapper returned to the harness. */
     const passed = await listeners[0]({ name: "bash" }, { isError: false }, async () => { nextCalls += 1; return { kind: "accept", content: "original" } })
     expect(nextCalls).toBe(1)
     expect(passed).toEqual({ kind: "accept", content: "original" })
@@ -388,26 +492,34 @@ describe("tool plane", () => {
   })
 
   test("onPostToolExecute lets a listener replace the decision", async () => {
+    /** The fixture's ctx and the post-execute listeners it collected. */
     const { ctx, listeners } = fakeHarness()
     createDshAdapter(ctx).onPostToolExecute((_exec, _result, downstream) => ({ ...downstream, content: [{ type: "text", text: "trimmed" }] }))
+    /** The replaced decision the wrapper returned. */
     const decided = await listeners[0]({ name: "bash" }, {}, async () => ({ kind: "accept", content: "long" }))
     expect(decided.content).toEqual([{ type: "text", text: "trimmed" }])
   })
 
   test("onPostToolExecute is a no-op when the harness has no event bus", () => {
+    /** The no-op disposer of a harness without an event bus. */
     const dispose = createDshAdapter({ get: () => undefined }).onPostToolExecute(() => undefined)
     expect(typeof dispose).toBe("function")
     expect(dispose()).toBeUndefined()
   })
 
   test("onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through", async () => {
+    /** The fixture's ctx and the pre-execute listeners it collected. */
     const { ctx, preListeners } = fakeHarness()
+    /** One line per pre-execute observation, asserted in order. */
     const seen: string[] = []
     createDshAdapter(ctx).onPreToolExecute((exec, decision) => {
       seen.push(String(exec.name) + ":" + String(decision?.kind))
     })
+    /** How many times the wrapper delegated to next(). */
     let nextCalls = 0
+    /** The gate decision the harness's own chain produced. */
     const gate = { kind: "allow" as const }
+    /** What the wrapper returned for that gate. */
     const passed = await preListeners[0]({ name: "bash", callId: "call-1" }, async () => { nextCalls += 1; return gate })
     expect(nextCalls).toBe(1)
     // BY REFERENCE: the observer cannot build a different decision, because it never
@@ -420,16 +532,19 @@ describe("tool plane", () => {
     // (1) A DENY from a downstream listener must stay a DENY.
     const denyBox = fakeHarness()
     createDshAdapter(denyBox.ctx).onPreToolExecute(() => { throw new Error("observer exploded") })
+    /** A downstream DENY that must survive the observer. */
     const deny = { kind: "deny" as const, reason: "read-only member" }
     expect(await denyBox.preListeners[0]({ name: "write" }, async () => deny)).toBe(deny)
     // (2) A listener that RETURNS a decision cannot install it: the wrapper discards it.
     const returnBox = fakeHarness()
     createDshAdapter(returnBox.ctx).onPreToolExecute((() => ({ kind: "deny", reason: "observer opinion" })) as any)
+    /** A downstream ALLOW that must survive an observer's own opinion. */
     const allow = { kind: "allow" as const }
     expect(await returnBox.preListeners[0]({ name: "read" }, async () => allow)).toBe(allow)
     // (3) `next` absent (a harness that dispatches the event without a chain): still no throw,
     // no invented decision — the observer runs and nothing is fabricated for the caller.
     const noNext = fakeHarness()
+    /** Every decision the observer was handed. */
     const observed: unknown[] = []
     createDshAdapter(noNext.ctx).onPreToolExecute((_exec, decision) => { observed.push(decision) })
     expect(await noNext.preListeners[0]({ name: "read" }, undefined)).toBeUndefined()
@@ -437,9 +552,13 @@ describe("tool plane", () => {
   })
 
   test("onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed", async () => {
+    /** The fixture's ctx and the pre-execute listeners it collected. */
     const { ctx, preListeners } = fakeHarness()
+    /** The live execution object the harness would dispatch. */
     const live: any = { name: "bash", callId: "call-live-1", arguments: { command: "rm -rf /" } }
+    /** The frozen copy the observer received. */
     let received: any = null
+    /** Whether the observer's write attempt threw, as a frozen copy makes it. */
     let mutationThrew = false
     createDshAdapter(ctx).onPreToolExecute((exec) => {
       received = exec
@@ -450,6 +569,7 @@ describe("tool plane", () => {
         mutationThrew = true
       }
     })
+    /** The gate decision the harness's own chain produced. */
     const gate = { kind: "allow" as const }
     expect(await preListeners[0](live, async () => gate)).toBe(gate)
     // The observer saw a copy that is not the harness's object, and its writes could not land.
@@ -463,7 +583,9 @@ describe("tool plane", () => {
   })
 
   test("onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam", () => {
+    /** An adapter over a harness with no event bus. */
     const absent = createDshAdapter({ get: () => undefined })
+    /** The no-op disposer that seam must return. */
     const dispose = absent.onPreToolExecute(() => {})
     expect(typeof dispose).toBe("function")
     expect(dispose()).toBeUndefined()
@@ -472,10 +594,13 @@ describe("tool plane", () => {
   })
 
   test("hasTool + toolRuntime expose internal tool calls without raw ctx access", async () => {
+    /** The fixture's ctx and the executions its runtime recorded. */
     const { ctx, executed } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
     expect(adapter.hasTool("mcp__wave_mcp__prepare_session")).toBe(true)
     expect(adapter.hasTool("nope")).toBe(false)
+    /** The structural view of the tool runtime. */
     const runtime = adapter.toolRuntime()
     expect(runtime.get("mcp__wave_mcp__prepare_session")).toBeDefined()
     await runtime.execute({ name: "mcp__wave_mcp__prepare_session", arguments: { out_dir: "/x" } })
@@ -484,18 +609,24 @@ describe("tool plane", () => {
   })
 
   test("executeTool normalizes success, tool error, thrown error and a missing runtime", async () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
     expect(await adapter.executeTool({ name: "ok", arguments: { a: 1 } })).toMatchObject({ ok: true, isError: false, value: { echo: { a: 1 } } })
     expect(await adapter.executeTool({ name: "fails" })).toMatchObject({ ok: false, isError: true, error: "denied" })
     expect(await adapter.executeTool({ name: "boom" })).toMatchObject({ ok: false, isError: true, error: "tool exploded" })
+    /** An adapter over a harness with no tool runtime. */
     const bare = createDshAdapter({ get: () => undefined })
     expect(await bare.executeTool({ name: "x" })).toMatchObject({ ok: false, isError: true })
   })
 
   test("executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given", async () => {
+    /** The fixture's ctx and the executions its runtime recorded. */
     const { ctx, executed } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** The calling Agent that must arrive as exec.agent. */
     const liveAgent = { id: "captain-session", session: { header: { cwd: "/ws" } } }
     await adapter.executeTool({ name: "agent_teams_approve", arguments: { confirmation: "approve t" }, agent: liveAgent })
     await adapter.executeTool({ name: "agent_teams_approve", arguments: { confirmation: "approve t" } })
@@ -503,7 +634,8 @@ describe("tool plane", () => {
     expect(executed).toHaveLength(3)
     // Identity, not a copy: the adopted write tools read exec.agent.session.header.cwd.
     expect(executed[0].agent).toBe(liveAgent)
-    expect(executed[0].agent.session.header.cwd).toBe("/ws")
+    // `agent` is declared optional (a call may omit it), and the line above pins that THIS one carried it.
+    expect(executed[0].agent!.session.header.cwd).toBe("/ws")
     // Absent stays absent: every pre-existing caller keeps its exact meaning.
     expect("agent" in executed[1]).toBe(false)
     expect(executed[2].agent).toBe(liveAgent)
@@ -512,7 +644,9 @@ describe("tool plane", () => {
 
 describe("agent plane", () => {
   test("spawnAgent normalizes prompt, flat route and the result shape", async () => {
+    /** The fixture's ctx and the spawn calls it recorded. */
     const { ctx, started } = fakeHarness()
+    /** The normalized spawn answer. */
     const result = await createDshAdapter(ctx).spawnAgent({
       label: "role-oracle-1",
       prompt: "do the thing",
@@ -534,7 +668,9 @@ describe("agent plane", () => {
   })
 
   test("spawnAgent accepts pre-built prompt blocks and agentOptions", async () => {
+    /** The fixture's ctx and the spawn calls it recorded. */
     const { ctx, started } = fakeHarness()
+    /** Pre-built prompt blocks, which must reach the spawn by identity. */
     const blocks = textBlock("block prompt")
     await createDshAdapter(ctx).spawnAgent({ label: "l", prompt: blocks, agentOptions: { provider: "p", model: "m" } })
     expect(started[0].spec.prompt).toBe(blocks)
@@ -542,6 +678,7 @@ describe("agent plane", () => {
   })
 
   test("spawnAgent tolerates a harness that returns no result", async () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
     ctx.get = ((serviceName: string) => (serviceName === "subagents" ? { start: async () => ({}) } : undefined)) as any
     expect(await createDshAdapter(ctx).spawnAgent({ label: "l", prompt: "p" })).toEqual({ output: "", structured: undefined, stopReason: null })
@@ -554,8 +691,11 @@ describe("agent plane", () => {
 
 describe("skill + preset plane", () => {
   test("skill provider registration, catalog read and body load", async () => {
+    /** The fixture's ctx and the services provide() received. */
     const { ctx, provided } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** The provider object that must reach the registry verbatim. */
     const provider = { name: "mpd-bundle", list: async () => [], get: async () => undefined }
     adapter.registerSkillProvider(provider)
     expect(provided.skills).toBe(provider)
@@ -564,12 +704,14 @@ describe("skill + preset plane", () => {
   })
 
   test("skill calls without a skills service fail with actionable errors", async () => {
+    /** An adapter over a harness with no skills service. */
     const adapter = createDshAdapter({ get: () => undefined })
     expect(() => adapter.registerSkillProvider({})).toThrow(/harness service "skills" is unavailable/)
     await expect(adapter.listSkills()).rejects.toThrow(/harness service "skills" is unavailable/)
   })
 
   test("resolvePreset returns a normalized preset record", async () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
     // The row model: the definition is keyed by `config.id` and there is no path.
     expect(await createDshAdapter(ctx).resolvePreset("mpd")).toEqual({ id: "mpd" })
@@ -577,6 +719,7 @@ describe("skill + preset plane", () => {
   })
 
   test("resolvePreset still normalizes the OPTIONAL path/trust a host build may send", async () => {
+    /** A host build that still sends path/trust with the preset row. */
     const legacy = {
       get: (serviceName: string) => (serviceName === "agentPresets"
         ? { resolve: async (id: string) => ({ id, path: "/bundle/presets/" + id, trust: "system" }) }
@@ -591,9 +734,13 @@ describe("skill + preset plane", () => {
 
 describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", () => {
   test("registerCommand passes the definition through and hands back the host's own disposer", async () => {
+    /** The fixture's ctx plus its command registry and the disposers it returned. */
     const { ctx, commandsRegistered, commandDisposers } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
-    const handler = async (invocation: { rawInput?: string }) => ({ kind: "success", text: "ran " + String(invocation.rawInput ?? "") })
+    /** The command handler, which must receive a stable invocation shape. */
+    const handler = async (invocation: { rawInput?: string }): Promise<{ kind: string; text: string }> => ({ kind: "success", text: "ran " + String(invocation.rawInput ?? "") })
+    /** The registration's disposer, asserted by identity below. */
     const dispose = adapter.registerCommand({
       name: "ulw",
       description: "run one ULW loop on an objective",
@@ -618,6 +765,7 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
     // A test double (and any registry that forgets to return its effect disposer) can
     // answer with anything — e.g. the codegraph stub returns Array.push()'s number.
     const adapter = createDshAdapter({ get: (serviceName: string) => (serviceName === "commands" ? { register: () => 42 } : undefined) })
+    /** The disposer, assigned inside the assertion callback below. */
     let dispose: (() => void) | undefined
     expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
     expect(typeof dispose).toBe("function")
@@ -625,10 +773,13 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
   })
 
   test("an absent seam is a no-op disposer plus two false capability flags, never a throw", () => {
+    /** An adapter over a harness with no command registry. */
     const adapter = createDshAdapter({ get: () => undefined })
+    /** Its flags, which must both read false. */
     const caps = adapter.capabilities()
     expect(caps.commands).toBe(false)
     expect(caps.commandsRegister).toBe(false)
+    /** The no-op disposer, assigned inside the assertion callback below. */
     let dispose: (() => void) | undefined
     expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
     expect(typeof dispose).toBe("function")
@@ -636,19 +787,24 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
   })
 
   test("apply() never throws when the composition has no command registry", () => {
+    /** The services provide() received, asserted after apply(). */
     const provided: Record<string, unknown> = {}
+    /** A minimal ctx: no services, but a provide() the row writes through. */
     const ctx = { get: () => undefined, provide: (serviceName: string, value: unknown) => { provided[serviceName] = value } }
     expect(() => apply(ctx)).not.toThrow()
     // The row still provides its adapter, and that adapter's command seam is a no-op
     // in this composition rather than a failure.
     const mounted = provided[SERVICE_NAME] as ReturnType<typeof createDshAdapter>
     expect(mounted).toBeDefined()
+    /** The mounted adapter's command seam, a no-op in this composition. */
     const dispose = mounted.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) })
     expect(() => dispose()).not.toThrow()
   })
 
   test("capabilities() reports a present registry, and distinguishes one without register()", () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
+    /** The flags of a harness whose command registry is usable. */
     const present = createDshAdapter(ctx).capabilities()
     expect(present.commands).toBe(true)
     expect(present.commandsRegister).toBe(true)
@@ -661,6 +817,7 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
 
 describe("message plane (user-role session injection)", () => {
   test("userMessage builds the host's message contract, frozen at every level", () => {
+    /** The message built by this adapter's own constructor. */
     const message = userMessage({ text: "run /ulw ship the wave" })
     expect(message.role).toBe("user")
     expect(message.content).toEqual([{ type: "text", text: "run /ulw ship the wave" }])
@@ -674,25 +831,33 @@ describe("message plane (user-role session injection)", () => {
   })
 
   test("a producer tag wins over the default kind, and every call mints a fresh id", () => {
+    /** A message whose producer tag must win over the default kind. */
     const injected = userMessage({ text: "directive", source: { kind: "mpd-ulw", reason: "activation-directive" } })
     expect(injected.source).toEqual({ kind: "mpd-ulw", reason: "activation-directive" })
     expect(userMessage({ text: "a" }).id).not.toBe(userMessage({ text: "a" }).id)
   })
 
   test("the field set matches the vendored host constructor, and only the identity differs", () => {
+    /** The text and producer tag shared by both constructors. */
     const input = { text: "same text", source: { kind: "plugin", plugin: "mpd-ulw" } }
+    /** This adapter's message. */
     const mine = userMessage(input)
+    /** The vendored host constructor's message, compared field by field. */
     const reference = createUserMessage({ content: [{ type: "text", text: input.text }], source: input.source })
     expect(Object.keys(mine).sort()).toEqual(Object.keys(reference).sort())
+    /** This adapter's id, excluded from the field comparison. */
     const { id: _mine, ...mineRest } = mine
+    /** The host's id, excluded from the field comparison. */
     const { id: _reference, ...referenceRest } = reference
     expect(mineRest).toEqual(referenceRest)
     expect(typeof mine.id).toBe("string")
   })
 
   test("the adapter surface exposes it, and the source imports no host package by bare specifier", () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
     expect(createDshAdapter(ctx).userMessage({ text: "x" }).role).toBe("user")
+    /** The adapter source, grepped for a bare host-package import. */
     const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8")
     expect(source).not.toMatch(/(?:from|import)\s*\(?\s*["']@deepseek-ai\//u)
   })
@@ -700,18 +865,24 @@ describe("message plane (user-role session injection)", () => {
 
 describe("turn plane (the submission surface a command handler needs)", () => {
   test("a registered command handler submits through its invocation, and the host's invocation is not mutated", async () => {
+    /** The fixture's ctx, its command registry and the submitted messages. */
     const { ctx, commandsRegistered, submitted } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** The invoking Agent whose followup receives the submission. */
     const agent = { id: "invoking-agent", followup: (message: unknown) => { submitted.push(message) } }
+    /** The user-role directive the handler submits. */
     const directive = userMessage({ text: "run the ULW loop", source: { kind: "plugin", plugin: "mpd-ulw" } })
     adapter.registerCommand({
       name: "ulw",
       description: "start one ULW run",
       handler: (invocation) => {
+        /** Whether the submission reached the agent's turn seam. */
         const reached = invocation.submit?.(directive) ?? false
         return { kind: reached ? "success" : "error", text: reached ? "started" : "no turn seam" }
       },
     })
+    /** The host's own invocation object, which must not be mutated. */
     const hostInvocation = { rawInput: " ship it", agent }
     expect(await commandsRegistered[0].handler(hostInvocation)).toEqual({ kind: "success", text: "started" })
     expect(submitted).toEqual([directive])
@@ -721,8 +892,11 @@ describe("turn plane (the submission surface a command handler needs)", () => {
   })
 
   test("submitUserTurn reaches the agent's followup, and every absent or broken surface is a safe no-op", () => {
+    /** The fixture's ctx and the messages its sample agent received. */
     const { ctx, submitted } = fakeHarness()
+    /** The adapter under test. */
     const adapter = createDshAdapter(ctx)
+    /** The directive submitted through every path below. */
     const message = userMessage({ text: "directive" })
     expect(adapter.submitUserTurn({ id: "live", followup: (input: unknown) => { submitted.push(input) } }, message)).toBe(true)
     expect(submitted).toEqual([message])
@@ -735,6 +909,7 @@ describe("turn plane (the submission surface a command handler needs)", () => {
   })
 
   test("capabilities().turnSubmit is truthful for a present and an absent agent surface", () => {
+    /** The full fixture's ctx. */
     const { ctx } = fakeHarness()
     expect(createDshAdapter(ctx).capabilities().turnSubmit).toBe(true)
     // A live agent whose surface has no followup, and no registry at all.
@@ -748,6 +923,7 @@ describe("turn plane (the submission surface a command handler needs)", () => {
 
 describe("row entry", () => {
   test("apply provides the mpdDsh service", () => {
+    /** The fixture's ctx and the services provide() received. */
     const { ctx, provided } = fakeHarness()
     apply(ctx)
     expect(provided[SERVICE_NAME]).toBeDefined()
@@ -765,19 +941,31 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   // MEASURED host order inside one synchronous write(): bumpRevision
   // (settings/document-updated) THEN commit (settings/updated(ns,next,prev,source))
   // — @deepseek-ai/dsh-settings/lib/index.js:466-467 and :497-498.
-  function settingsHarness(settings: any) {
+  function settingsHarness(settings: Record<string, unknown>): {
+    /** The ctx handed to the adapter: a settings service plus the host event bus. */
+    ctx: { get(serviceName: string): unknown; on(event: string, listener: (...args: unknown[]) => unknown): () => void }
+    /** Fire one event at every listener registered for it, over a snapshot. */
+    emit(event: string, ...args: unknown[]): void
+    /** Replay the host's own write order: document-updated first, then updated. */
+    write(ns: string, revision: number, source: string | undefined, next?: unknown, prev?: unknown): void
+  } {
+    /** Listeners per event name, as a set so a duplicate registration collapses. */
     const handlers = new Map<string, Set<(...args: any[]) => unknown>>()
+    /** The ctx handed to the adapter: a settings service plus the event bus. */
     const ctx = {
       get: (serviceName: string) => (serviceName === "settings" ? settings : undefined),
       on: (event: string, listener: (...args: any[]) => unknown) => {
+        /** The listener set for this event, created on first use. */
         const set = handlers.get(event) ?? new Set()
         set.add(listener)
         handlers.set(event, set)
         return () => { set.delete(listener) }
       },
     }
-    const emit = (event: string, ...args: any[]) => { for (const listener of [...(handlers.get(event) ?? [])]) listener(...args) }
-    const write = (ns: string, revision: number, source: string | undefined, next: unknown = {}, prev: unknown = {}) => {
+    /** Fire one event at every listener registered for it, over a snapshot. */
+    const emit = (event: string, ...args: any[]): void => { for (const listener of [...(handlers.get(event) ?? [])]) listener(...args) }
+    /** Replay the host's own write order: document-updated first, then updated. */
+    const write = (ns: string, revision: number, source: string | undefined, next: unknown = {}, prev: unknown = {}): void => {
       emit("settings/document-updated", ns, revision)
       emit("settings/updated", ns, next, prev, source)
     }
@@ -785,7 +973,9 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   }
 
   test("the source of the SAME change is delivered, not the previous one's", async () => {
+    /** The settings fixture's ctx and its write driver. */
     const { ctx, write } = settingsHarness({})
+    /** Every `(revision, source)` pair the listener received. */
     const seen: Array<[number | undefined, string | undefined]> = []
     createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
     write("mpd", 1, "provider")
@@ -796,7 +986,9 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   })
 
   test("a raw-section change whose RESOLVED value did not change reports source undefined", async () => {
+    /** The settings fixture's ctx and its emit driver. */
     const { ctx, emit } = settingsHarness({})
+    /** Every `(revision, source)` pair the listener received. */
     const seen: Array<[number | undefined, string | undefined]> = []
     createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
     emit("settings/document-updated", "mpd", 7)
@@ -805,8 +997,11 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   })
 
   test("another namespace is ignored, and the disposer stops delivery", async () => {
+    /** The settings fixture's ctx and its write driver. */
     const { ctx, write } = settingsHarness({})
+    /** Every pair the listener received, which must stay empty here. */
     const seen: unknown[] = []
+    /** The subscription's disposer, exercised below. */
     const off = createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", (revision, source) => { seen.push([revision, source]) })
     write("other", 1, "update")
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -818,6 +1013,7 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   })
 
   test("a throwing listener never escapes into the host's emit", async () => {
+    /** The settings fixture's ctx and its write driver. */
     const { ctx, write } = settingsHarness({})
     createDshAdapter(ctx).onSettingsDocumentUpdated("mpd", () => { throw new Error("bridge exploded") })
     expect(() => write("mpd", 1, "update")).not.toThrow()
@@ -825,11 +1021,15 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   })
 
   test("settingsReader describes the namespace and degrades when it is absent", () => {
+    /** The descriptor row the service reports for the namespace. */
     const described = { ns: "mpd", value: { ulw: { maxRounds: 6 } }, revision: 4, user: { ulw: { maxRounds: 6 } }, base: {}, applies: "restart" }
+    /** A harness whose settings service serves AND describes the namespace. */
     const full = settingsHarness({ get: (ns: string) => (ns === "mpd" ? { ulw: { maxRounds: 6 } } : undefined), describe: () => [described] })
+    /** The reader over that namespace. */
     const reader = createDshAdapter(full.ctx).settingsReader("mpd")
     expect(reader?.get()).toEqual({ ulw: { maxRounds: 6 } })
     expect(reader?.describe()).toEqual({ value: described.value, revision: 4, user: described.user, base: {}, applies: "restart" })
+    /** A reader over a harness that knows nothing about the namespace. */
     const absent = createDshAdapter(settingsHarness({}).ctx).settingsReader("mpd")
     expect(absent?.get()).toBeUndefined()
     expect(absent?.describe()).toBeUndefined()
@@ -837,10 +1037,22 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   })
 
   test("settingsMutate writes through the service with the revision fence", async () => {
+    /** Every mutate call, as `{ns, ops, revision}`. */
     const calls: any[] = []
+    /** A settings service that records writes and rejects the `boom` op. */
     const settings = {
-      mutate: async (ns: string, ops: any, revision?: number) => { calls.push({ ns, ops, revision }); if (ops[0].path[0] === "boom") { const conflict = new Error("settings conflict for \"mpd\""); conflict.name = "SettingsConflictError"; throw conflict } },
+      /** Record the write, and reject the `boom` op the way the host rejects a stale revision. */
+      mutate: async (ns: string, ops: any, revision?: number): Promise<void> => {
+        calls.push({ ns, ops, revision })
+        if (ops[0].path[0] === "boom") {
+          /** The revision-conflict error the host raises on a stale revision. */
+          const conflict = new Error("settings conflict for \"mpd\"")
+          conflict.name = "SettingsConflictError"
+          throw conflict
+        }
+      },
     }
+    /** The adapter under test. */
     const adapter = createDshAdapter(settingsHarness(settings).ctx)
     expect(await adapter.settingsMutate("mpd", [{ op: "unset", path: ["ulw", "maxRounds"] }], 4)).toEqual({ ok: true })
     expect(calls[0]).toEqual({ ns: "mpd", ops: [{ op: "unset", path: ["ulw", "maxRounds"] }], revision: 4 })
@@ -850,9 +1062,11 @@ describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
 })
 
 describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here)", () => {
-  const agent = (cwd: string | undefined) => ({ id: "a-" + String(Math.random()), ctx: {}, session: { header: cwd === undefined ? {} : { cwd } } })
+  /** Build one live-agent row whose session carries the given cwd. */
+  const agent = (cwd: string | undefined): { id: string; ctx: Record<string, unknown>; session: { header: { cwd?: string } } } => ({ id: "a-" + String(Math.random()), ctx: {}, session: { header: cwd === undefined ? {} : { cwd } } })
 
   test("duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is []", () => {
+    /** The registry the adapter folds: duplicates, a relative path and a bare row. */
     const agents = {
       list: () => [
         agent("/ws/one"),
@@ -862,6 +1076,7 @@ describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, meas
         agent(undefined),          // a session with no cwd cannot be a candidate
       ],
     }
+    /** The deduplicated, resolved roots, in registration order. */
     const roots = createDshAdapter({ get: (n: string) => (n === "agents" ? agents : undefined) }).workspaceRootsAll()
     // The adapter RESOLVES each cwd, so the expectation is the resolver's own answer on this
     // platform (win32 turns "/ws/one" into "C:\ws\one"); a POSIX literal would pin the separator.
@@ -885,17 +1100,37 @@ describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, meas
 // have. A NEGATIVE CONTROL re-enacts the veto shape, so the assertion is falsifiable.
 describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call)", () => {
   /** Run one dispatch through the real waterfall and a REAL child process tool body. */
-  async function dispatch(install: (adapter: ReturnType<typeof createDshAdapter>) => void, ms: number) {
+  async function dispatch(install: (adapter: ReturnType<typeof createDshAdapter>) => void, ms: number): Promise<{
+    /** The gate the real waterfall resolved for this dispatch. */
+    gate: { kind: string }
+    /** The child process outcome, or null when the gate did not allow the call. */
+    result: { status: number | null; stdout: string; stderr: string; pid: boolean } | null
+    /** Wall-clock milliseconds the child really took (absent on the non-allowed path). */
+    elapsed?: number
+    /** Epoch milliseconds at which the tool body started (absent on the non-allowed path). */
+    started?: number
+    /** The post-execute decision's kind (absent on the non-allowed path). */
+    accepted?: string
+    /** The post-execute value, defaulting to the child result. */
+    value?: unknown
+  }> {
+    /** A real vendored cordis Context: the dispatcher under test. */
     const ctx = new Context()
+    /** The adapter over that real context. */
     const adapter = createDshAdapter(ctx as any)
     install(adapter)
+    /** The execution the waterfall dispatches. */
     const exec = { name: "bash", callId: "call-real-1", arguments: { command: "sleep " + ms + "ms" } }
+    /** The gate the real waterfall resolved. */
     const gate = await ctx.waterfall(ctx, "tools/pre-execute", exec, () => Promise.resolve({ kind: "allow" as const }))
     if (gate.kind !== "allow") return { gate, result: null }
     // The tool body: a GENUINE child process that really takes `ms` wall-clock milliseconds.
     const started = Date.now()
+    /** The genuine child process that burns the wall clock. */
     const child = spawnSync(process.execPath, ["-e", "setTimeout(() => {}, " + ms + ")"], { encoding: "utf8" })
+    /** Wall-clock milliseconds the child really took. */
     const elapsed = Date.now() - started
+    /** The child's outcome, in the shape the post-execute step receives. */
     const result = { status: child.status, stdout: child.stdout, stderr: child.stderr, pid: child.pid !== undefined }
     // The harness's post-execute waterfall, driven the same way.
     const decision = await ctx.waterfall(ctx, "tools/post-execute", exec, result, () => Promise.resolve({ kind: "accept" as const }))
@@ -903,9 +1138,13 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
   }
 
   test("a REAL tool call returns the same result with and without the hook, and the gate is unchanged", async () => {
+    /** The same call with no observer installed. */
     const without = await dispatch(() => {}, 250)
+    /** What the observer saw, or null when it never ran. */
     let observed: { kind: string | undefined; execName: string | undefined } | null = null
+    /** Epoch milliseconds at which the observer ran. */
     let stampedAt = 0
+    /** The same call with the observe-only hook installed. */
     const with1 = await dispatch((adapter) => {
       adapter.onPreToolExecute((exec, decision) => {
         stampedAt = Date.now()
@@ -921,16 +1160,21 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
     // The command is REAL (it really burned the wall clock it was told to), and the observer
     // ran BEFORE it: that is the whole point of a pre-dispatch stamp.
     expect(with1.elapsed).toBeGreaterThanOrEqual(200)
-    expect(stampedAt).toBeLessThanOrEqual(with1.started)
+    // Only the gate-allowing branch reaches here, so the timestamp IS present; the compiler cannot
+    // see that through expect(), and the assertion above pins the call's real wall-clock cost.
+    expect(stampedAt).toBeLessThanOrEqual(with1.started!)
     expect(observed).not.toBeNull()
     expect((observed as any).kind).toBe("allow")
     expect((observed as any).execName).toBe("bash")
   })
 
   test("a downstream DENY still denies: the observer cannot upgrade a blocked call", async () => {
+    /** A real cordis Context for the deny path. */
     const ctx = new Context()
+    /** Every gate kind the observer saw. */
     const seen: string[] = []
     createDshAdapter(ctx as any).onPreToolExecute((_exec, decision) => { seen.push(String(decision?.kind)) })
+    /** The DENY the real waterfall must return unchanged. */
     const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "write" }, () => Promise.resolve({ kind: "deny" as const, reason: "scope" }))
     expect(gate).toEqual({ kind: "deny", reason: "scope" })
     expect(seen).toEqual(["deny"])
@@ -941,12 +1185,14 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
     // adapter's wrapper exists to prevent, and it proves the cordis semantics above are real.
     const ctx = new Context()
     ctx.on("tools/pre-execute", (() => ({ kind: "allow", hijacked: true })) as any)
+    /** The gate the vetoing listener installed. */
     const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
     expect(gate).toEqual({ kind: "allow", hijacked: true })
     // …while the ADAPTER's own hook, registered on the same event, passes the harness's
     // decision through untouched.
     const clean = new Context()
     createDshAdapter(clean as any).onPreToolExecute(() => {})
+    /** The gate the ADAPTER's hook passes through untouched. */
     const passed = await clean.waterfall(clean, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
     expect(passed).toEqual({ kind: "allow" })
   })
@@ -958,11 +1204,22 @@ describe("lazy mpdDsh resolution (T-50)", () => {
    * `get(name, true)` answers only for an ACTIVE provider, `get(name, false)` sees the
    * registration regardless of fiber state (measured in the real-cordis test below).
    */
-  function pendingCtx() {
+  function pendingCtx(): {
+    /** A ctx whose `get` mirrors the vendored cordis strict/non-strict semantics. */
+    ctx: { get(name: string, strict?: boolean): unknown }
+    /** The service the provider will register when it activates. */
+    mounted: unknown
+    /** The provider's activation state and the strict-read counter. */
+    state: { active: boolean; provided: boolean; strictReads: number }
+  } {
+    /** The service the provider will register. */
     const mounted = { marker: "mounted", capabilities: () => ({ probe: "mounted" }) } as any
+    /** The provider's activation state and the strict-read counter. */
     const state = { active: false, provided: true, strictReads: 0 }
+    /** A ctx whose `get` mirrors the vendored cordis strict/non-strict semantics. */
     const ctx = {
-      get(name: string, strict = true) {
+      /** Answer the registered service, but only to a STRICT read once it is ACTIVE. */
+      get(name: string, strict: boolean = true): unknown {
         if (name !== SERVICE_NAME) return undefined
         if (!state.provided) return undefined
         if (strict) {
@@ -976,8 +1233,11 @@ describe("lazy mpdDsh resolution (T-50)", () => {
   }
 
   test("a transient miss is served temporarily, warned honestly, and is NOT cached for the session", () => {
+    /** The pending fixture's ctx and its mutable activation state. */
     const { ctx, state } = pendingCtx()
+    /** The warning lines the facade emitted. */
     const lines: string[] = []
+    /** The lazy facade under test. */
     const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
     // First use lands inside the window: the temporary adapter answers, so the mounted marker is absent.
     expect((dsh as any).marker).toBeUndefined()
@@ -994,15 +1254,19 @@ describe("lazy mpdDsh resolution (T-50)", () => {
   })
 
   test("a strict success is cached; a miss is retried on every use", () => {
+    /** The pending fixture's ctx and its mutable activation state. */
     const { ctx, state } = pendingCtx()
+    /** The lazy facade under test. */
     const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: () => {} })
     dsh.capabilities()
+    /** Strict reads after the first miss, compared below. */
     const afterFirstMiss = state.strictReads
     dsh.capabilities()
     // A miss must NOT pin the fallback: the next use probes again (this is the whole fix).
     expect(state.strictReads).toBeGreaterThan(afterFirstMiss)
     state.active = true
     dsh.capabilities()
+    /** Strict reads after the resolution succeeded. */
     const afterResolve = state.strictReads
     dsh.capabilities()
     dsh.capabilities()
@@ -1011,19 +1275,27 @@ describe("lazy mpdDsh resolution (T-50)", () => {
   })
 
   test("a clean boot never warns and reports the mounted identity", () => {
+    /** The pending fixture's ctx and its mutable activation state. */
     const { ctx, state } = pendingCtx()
     state.active = true
+    /** The warning lines the facade emitted. */
     const lines: string[] = []
+    /** The lazy facade under test. */
     const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
-    expect(dsh.capabilities()).toEqual({ probe: "mounted" })
+    // The proxied fixture answers a MARKER object, not a real capability set; `as unknown` states
+    // that deliberately instead of pretending the marker is a DshCapabilities value.
+    expect(dsh.capabilities() as unknown).toEqual({ probe: "mounted" })
     expect(lines).toEqual([])
     expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_MOUNTED)
   })
 
   test("a provably absent provider keeps the row-order hint — and only that case does", () => {
+    /** The pending fixture's ctx and its mutable activation state. */
     const { ctx, state } = pendingCtx()
     state.provided = false
+    /** The warning lines the facade emitted. */
     const lines: string[] = []
+    /** The lazy facade under test. */
     const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
     dsh.capabilities()
     expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_FALLBACK)
@@ -1038,18 +1310,25 @@ describe("lazy mpdDsh resolution (T-50)", () => {
     // already sees the value — the old eager resolution cached that transient `undefined` as a private
     // adapter for the whole session and blamed the ROW ORDER.
     const root = new Context()
+    /** The warning lines the facade emitted. */
     const lines: string[] = []
+    /** The provider row that will provide the shared service. */
     const provider = root.plugin({
       name: "t50-provider",
-      apply(inner: any) {
+      /** Provide the shared service from inside this row's own apply. */
+      apply(inner: any): void {
         inner.provide(SERVICE_NAME, { marker: "mounted" })
       },
     } as any)
+    /** The facade built inside the sibling-apply window. */
     let facade: ReturnType<typeof createLazyDshAdapter> | undefined
+    /** What the facade answered while the provider was not ACTIVE. */
     let markerDuringApply: unknown
+    /** The sibling row that builds the facade during its own apply. */
     const consumer = root.plugin({
       name: "t50-consumer",
-      apply(inner: any) {
+      /** Build the facade from the sibling's ctx, inside the concurrent-apply window. */
+      apply(inner: any): void {
         expect((provider as any).state).not.toBe(2)
         facade = createLazyDshAdapter(inner, { label: "mpd-cordis-test", warn: (line) => lines.push(line) })
         markerDuringApply = (facade as any).marker

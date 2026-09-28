@@ -163,7 +163,7 @@ fi
 
 # ── 5. what the harness RECORDED, not what the pane said ──────────────────────
 # The session store is proof of which preset the TUI actually ran; the pane is narration.
-PROBE="$TUI_DIR/store-probe.mjs"
+PROBE="$TUI_DIR/store-probe.ts"
 cat > "$PROBE" <<'PROBE_EOF'
 // Which preset did the TUI session ACTUALLY run? Read from the harness's own store, never
 // from the pane: the record is ground truth, the pane is narration (AGENTS.md §7).
@@ -174,7 +174,7 @@ import { pathToFileURL } from "node:url"
 const [appDir, dshHome] = process.argv.slice(2)
 const out = (value) => { console.log(JSON.stringify(value)); process.exit(0) }
 try {
-  const lib = await import(pathToFileURL(join(appDir, "skills", "dsh-qa", "scripts", "lib", "session-evidence.mjs")).href)
+  const lib = await import(pathToFileURL(join(appDir, "skills", "dsh-qa", "scripts", "lib", "session-evidence.ts")).href)
   const root = join(dshHome, "sessions")
   if (!existsSync(root)) out({ found: false, reason: "no session store at " + root })
   let newest = null

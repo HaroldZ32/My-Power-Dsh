@@ -44,4 +44,4 @@ for _ in $(seq 1 90); do sleep 2; grep -q "token=" /data/web.log 2>/dev/null && 
 TOKEN=$(grep -o "token=[A-Za-z0-9_-]*" /data/web.log | head -1 | cut -d= -f2)
 echo "token-len=${#TOKEN}"
 [ "${#TOKEN}" -eq 0 ] && { echo "NO TOKEN — boot log:"; tail -12 /data/web.log; exit 1; }
-cd /data && node /data/capture.mjs --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws
+cd /data && node /data/capture.ts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws

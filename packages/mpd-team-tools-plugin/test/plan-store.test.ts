@@ -22,18 +22,23 @@ import {
   stagePlan,
   teamRoot,
   writePlan,
+  type StagedMember,
 } from "../src/plan-store"
 
+/** Per-test sandbox workspace, recreated by the hooks below so no state leaks between arms. */
 let sandbox = ""
+/** The frozen clock every stored timestamp in this file is derived from. */
 const NOW = new Date("2026-09-27T10:00:00.000Z")
 
 beforeEach(() => { sandbox = mkdtempSync(join(tmpdir(), "mpd-team-tools-")) })
 afterEach(() => { rmSync(sandbox, { recursive: true, force: true }) })
 
-const member = (name: string) => ({ name, description: name + " does the thing", prompt: "You are " + name })
+/** A minimal staged member: the store requires a name and a non-empty prompt. */
+const member = (name: string): StagedMember => ({ name, description: name + " does the thing", prompt: "You are " + name })
 
 describe("the staged plan", () => {
   test("a fresh stage writes a plan under .mpd/team/staging and nothing else", () => {
+    /** The freshly staged plan, which must carry no approval yet. */
     const plan = stagePlan(sandbox, "session-1", { name: "wave", description: "ship it", approval: "required" }, NOW)
     expect(plan.planId).toBe("plan-20260927100000")
     expect(plan.approvedAt).toBeUndefined()
@@ -45,6 +50,7 @@ describe("the staged plan", () => {
   })
 
   test("members and tasks append, and a duplicate member name refuses", () => {
+    /** The plan being appended to; every add returns a NEW plan. */
     let plan = stagePlan(sandbox, "session-1", { name: "wave", description: "", approval: "required" }, NOW)
     plan = addMember(plan, member("architect"))
     expect(() => addMember(plan, member("architect"))).toThrow(/already staged/)
@@ -55,23 +61,29 @@ describe("the staged plan", () => {
   })
 
   test("a plan survives a reload: what is on disk is what a later call reads", () => {
+    /** The plan built by chaining both appends, then written to disk. */
     const staged = addTask(addMember(stagePlan(sandbox, "session-1", { name: "wave", description: "d", approval: "required" }, NOW), member("lead")), { subject: "t1", description: "first" })
     writePlan(sandbox, staged)
+    /** The plan read back from disk — the reload is what this arm is about. */
     const reloaded = readPlan(sandbox, "session-1")
     expect(reloaded?.members.map((m) => m.name)).toEqual(["lead"])
     expect(reloaded?.tasks.map((t) => t.subject)).toEqual(["t1"])
   })
 
   test("staging again REPLACES an unapproved plan and archives it — the old plan is still readable", () => {
+    /** The first plan, which a second stage must archive rather than lose. */
     const first = stagePlan(sandbox, "session-1", { name: "one", description: "", approval: "required" }, NOW)
+    /** The replacement plan, whose id must differ from the first's. */
     const second = stagePlan(sandbox, "session-1", { name: "two", description: "", approval: "required" }, new Date("2026-09-27T11:00:00.000Z"))
     expect(readPlan(sandbox, "session-1")?.name).toBe("two")
     expect(second.planId).not.toBe(first.planId)
+    /** The archived bytes of the FIRST plan, which must still be readable. */
     const archived = readFileSync(join(archivePathFor(sandbox, first.planId), "plan.json"), "utf8")
     expect(JSON.parse(archived).name).toBe("one")
   })
 
   test("an APPROVED plan is not replaced by a plain stage — approval is the boundary", () => {
+    /** The plan that will be marked approved before the replace path runs. */
     const plan = stagePlan(sandbox, "session-1", { name: "one", description: "", approval: "required" }, NOW)
     writePlan(sandbox, { ...plan, approvedAt: NOW.toISOString() })
     // The tool layer owns the refusal; the STORE's job is that the approved plan is not silently
@@ -90,6 +102,7 @@ describe("the staged plan", () => {
   })
 
   test("a corrupt staging file reads as absent instead of throwing", () => {
+    /** The staging directory, created by hand so a corrupt file can be planted. */
     const dir = join(teamRoot(sandbox), "staging")
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, "session-1.json"), "{ this is not json")
@@ -98,9 +111,11 @@ describe("the staged plan", () => {
 })
 
 describe("task contracts and attempts", () => {
-  const task = (revision: number) => ({ id: "t4", subject: "wire the gate", description: "acceptance", blockedBy: ["t3"], writeScopes: ["src/**"], revision })
+  /** A board task carrying a revision, to prove an attempt cannot be confused with one. */
+  const task = (revision: number): Parameters<typeof claimContract>[1] => ({ id: "t4", subject: "wire the gate", description: "acceptance", blockedBy: ["t3"], writeScopes: ["src/**"], revision })
 
   test("the first claim is attempt 1 and freezes what the task said", () => {
+    /** The contract frozen by the first claim. */
     const contract = claimContract(sandbox, task(3), "senior-1", NOW)
     expect(contract.attempt).toBe(1)
     expect(contract.revision).toBe(3)
@@ -115,6 +130,7 @@ describe("task contracts and attempts", () => {
     const second = claimContract(sandbox, task(9), "b", new Date("2026-09-27T10:05:00.000Z"))
     expect(second.attempt).toBe(2)
     expect(second.revision).toBe(9)
+    /** A third claim after the revision went BACKWARDS, which must still raise the attempt. */
     const third = claimContract(sandbox, task(4), "c", new Date("2026-09-27T10:10:00.000Z"))
     // A revision that went BACKWARDS (a rebase, a re-created task) still cannot reset the attempt.
     expect(third.attempt).toBe(3)
@@ -138,6 +154,7 @@ describe("the halt", () => {
   test("a halt records who and why, and resuming reports whether one was there", () => {
     expect(readHold(sandbox)).toBeUndefined()
     expect(clearHold(sandbox)).toBe(false)
+    /** The hold record written by `placeHold`. */
     const hold = placeHold(sandbox, "waiting for the user", "captain", NOW)
     expect(hold.reason).toBe("waiting for the user")
     expect(readHold(sandbox)?.heldBy).toBe("captain")

@@ -10,11 +10,23 @@ import { apply as applyTui } from "../src/index"
 import { apply as applyConfig } from "../../mpd-config-plugin/src/index"
 
 /** A settings provider double with the host's duplicate guard and the reads a probe needs. */
-function settingsDouble() {
-  const registrations: Array<{ ns: string; options?: any }> = []
-  let section: any = undefined
+function settingsDouble(): {
+  host: {
+    register(ns: string, _schema: unknown, options?: { base?: unknown; applies?: unknown }): unknown
+    describe(): unknown
+    get(ns: string): unknown
+  }
+  registrations: Array<{ ns: string; options?: { base?: unknown; applies?: unknown } }>
+  setSection(next: unknown): void
+} {
+  /** One accepted registration, in host order. */
+  const registrations: Array<{ ns: string; options?: { base?: unknown; applies?: unknown } }> = []
+  /** The value the registered namespace serves; these arms never set one. */
+  let section: unknown = undefined
+  /** The provider surface the plugin probes and registers through. */
   const host = {
-    register(ns: string, _schema: unknown, options?: any) {
+    /** Registers one namespace under the host's duplicate guard; the handle mirrors the host's own. */
+    register(ns: string, _schema: unknown, options?: { base?: unknown; applies?: unknown }): { get(): unknown; watch(): () => void; update(): Promise<void>; replace(): Promise<void> } {
       if (registrations.some((entry) => entry.ns === ns)) throw new Error(`settings namespace "${ns}" is already registered`)
       registrations.push({ ns, options })
       return { get: () => section, watch: () => () => {}, update: async () => {}, replace: async () => {} }
@@ -22,25 +34,31 @@ function settingsDouble() {
     describe: () => registrations.map((entry) => ({ ns: entry.ns, value: section, user: section, base: entry.options?.base, revision: 0, applies: entry.options?.applies })),
     get: (ns: string) => (registrations.some((entry) => entry.ns === ns) ? section : undefined),
   }
-  return { host, registrations, setSection: (next: any) => { section = next } }
+  return { host, registrations, setSection: (next: unknown) => { section = next } }
 }
 
 /** A ctx whose injected services are fixed, with the two seams each package needs. */
-function contextFor(services: Record<string, unknown>) {
+function contextFor(services: Record<string, unknown>): { ctx: Record<string, unknown>; warnings: string[]; infos: string[]; cleanups: Array<() => void> } {
+  /** Warning lines a row emitted, in call order. */
   const warnings: string[] = []
+  /** Info lines a row emitted, in call order. */
   const infos: string[] = []
+  /** Cleanups a row handed to `ctx.effect`. */
   const cleanups: Array<() => void> = []
+  /** Builds one context object, so no arm can leak state into another. */
   const build = (): Record<string, any> => ({
     // A real cordis context exposes mounted services through `get`; the measured "inject-free probe
     // sees nothing" behaviour is modelled by the SCOPED object only for services a fiber did not
     // declare, which is not what this test is about.
     get: (name: string) => services[name],
     inject: (deps: readonly string[], callback: (scoped: Record<string, any>) => void) => {
+      /** The injected scope: mounted services as properties and through `get`. */
       const scoped: Record<string, any> = { get: (name: string) => services[name], ...services }
       if (deps.every((dep) => services[dep] !== undefined || dep === "mpdDsh")) callback(scoped)
       return {}
     },
     effect: (callback: () => any) => {
+      /** The cleanup this effect returned, when it returned one. */
       const cleanup = callback()
       if (typeof cleanup === "function") cleanups.push(cleanup)
       return {}
@@ -53,6 +71,7 @@ function contextFor(services: Record<string, unknown>) {
 
 describe("exactly ONE successful registration per composition (design §10.1)", () => {
   test("mpd-config present: it registers, the TUI skips its fallback and says so", () => {
+    /** The provider both plugins register against in this arm. */
     const settings = settingsDouble()
     // the config plugin needs the adapter seam surface too
     const configCtx = contextFor({
@@ -62,7 +81,7 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
         settingsReader: () => undefined,
         onSettingsDocumentUpdated: () => () => {},
         settingsMutate: async () => ({ ok: true }),
-        settingsRegister: (ns: string, schema: unknown, options?: any) => {
+        settingsRegister: (ns: string, schema: unknown, options?: { base?: unknown; applies?: unknown }) => {
           try {
             settings.host.register(ns, schema, options)
             return { ok: true }
@@ -77,6 +96,7 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
     })
     applyConfig(configCtx.ctx as never)
 
+    /** The TUI row's context: the settings service plus the section registry. */
     const tuiCtx = contextFor({ settings: settings.host, tuiSettingsSections: { register: () => () => {} } })
     applyTui(tuiCtx.ctx as never)
 
@@ -88,6 +108,7 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
   })
 
   test("mpd-config present but its registration still pending: the fallback still yields (deterministic owner check)", () => {
+    /** The provider of this arm's own composition. */
     const settings = settingsDouble()
     // the config plugin's service exists, the namespace is NOT served yet: the fallback must wait
     // for the owner instead of racing it (that race was measured in a real boot)
@@ -98,7 +119,9 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
   })
 
   test("mpd-config absent: the TUI's fallback registers the namespace (the composition still works)", () => {
+    /** The provider of this arm's own composition. */
     const settings = settingsDouble()
+    /** The TUI row's context, with no config plugin in the composition. */
     const tuiCtx = contextFor({ settings: settings.host, tuiSettingsSections: { register: () => () => {} } })
     applyTui(tuiCtx.ctx as never)
     expect(settings.registrations).toHaveLength(1)
@@ -110,8 +133,10 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
     // TUI FIRST — the reverse order must also be safe (the config plugin's registration then wins
     // nothing: it fails loud, reports it, and the TUI-owned namespace keeps serving).
     const settings = settingsDouble()
+    /** The TUI row's context, applied FIRST in this arm. */
     const tuiCtx = contextFor({ settings: settings.host, tuiSettingsSections: { register: () => () => {} } })
     applyTui(tuiCtx.ctx as never)
+    /** The config row's context, applied second. */
     const configCtx = contextFor({
       settings: settings.host,
       mpdDsh: {
@@ -119,7 +144,7 @@ describe("exactly ONE successful registration per composition (design §10.1)", 
         settingsReader: () => undefined,
         onSettingsDocumentUpdated: () => () => {},
         settingsMutate: async () => ({ ok: true }),
-        settingsRegister: (ns: string, schema: unknown, options?: any) => {
+        settingsRegister: (ns: string, schema: unknown, options?: { base?: unknown; applies?: unknown }) => {
           try {
             settings.host.register(ns, schema, options)
             return { ok: true }

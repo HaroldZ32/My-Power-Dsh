@@ -46,10 +46,10 @@ exemption), so this fork-owned note lives here next to the tests.
    defect); `lib/tools.js` registers the read-only `agent_teams_task_contract`
    so a RUNNING task's contract is readable. Deltas are bracketed by
    `//#region mpd-delta <id>` markers, registered in `lib/mpd-deltas.js`, and
-   re-applied/verified by `scripts/patch-agent-teams-fixes.mjs` (invoked from
-   `scripts/vendor-agent-teams.mjs`); `scope-glob-and-contract.test.mjs` pins
+   re-applied/verified by `scripts/patch-agent-teams-fixes.ts` (invoked from
+   `scripts/vendor-agent-teams.ts`); `scope-glob-and-contract.test.ts` pins
    both the behaviour and the guard's refusal when a delta is dropped (see also
-   `test/task-contract-tool.test.mjs` for the tool-level read path).
+   `test/task-contract-tool.test.ts` for the tool-level read path).
 7. **Order-dependent region healing + marker prefix ambiguity** (wave-3 `t2`) —
    the registry no longer addresses a region by a LINE key (`anchor` /
    `anchorOccurrence` / `anchorMarker`); each entry carries the CONTEXT PAIR
@@ -63,10 +63,10 @@ exemption), so this fork-owned note lives here next to the tests.
    `repair-scope-fields`, `task-contract` ⊂ `task-contract-render`) can no
    longer misdiagnose a partially stripped region as a `half-open marker pair`,
    and a partially stripped region is re-bracketed in place (byte-faithful)
-   instead of being duplicated. `registry-context-heal.test.mjs` holds the
+   instead of being duplicated. `registry-context-heal.test.ts` holds the
    permanent byte-fidelity assertion for BOTH adopted files, the
    insertion-history cases and one fixture per colliding pair;
-   `test/update-task-diagnostics.test.mjs` pins the two
+   `test/update-task-diagnostics.test.ts` pins the two
    `agent_teams_update_task` diagnostics (an omitted `attempt_id` reports it as
    REQUIRED instead of claiming stale ownership; `status` is a REQUIRED
    parameter so an oversized payload can no longer silently drop it).

@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test"
 import { Buffer } from "node:buffer"
 
-import { decodePng } from "./png-decode"
-import { encodeRgbaPng, solidRgba } from "./png-synth"
+import { decodePng } from "./png-decode.ts"
+import { encodeRgbaPng, solidRgba } from "./png-synth.ts"
 
 describe("decodePng", () => {
 	test("#given an encoded RGBA image #when decoded #then dimensions and first pixel round-trip", () => {
 		// given
 		const png = encodeRgbaPng(3, 2, solidRgba(3, 2, [10, 20, 30, 255]))
 		// when
+		/** The decoded 3x2 image. */
 		const decoded = decodePng(png)
 		// then
 		expect(decoded.width).toBe(3)
@@ -20,6 +21,7 @@ describe("decodePng", () => {
 		// given
 		const png = encodeRgbaPng(2, 2, solidRgba(2, 2, [0, 0, 0, 255]))
 		// when
+		/** The decoded fully opaque image. */
 		const decoded = decodePng(png)
 		// then
 		expect(decoded.hasAlphaChannel).toBe(true)
@@ -30,6 +32,7 @@ describe("decodePng", () => {
 		// given
 		const png = encodeRgbaPng(2, 2, solidRgba(2, 2, [255, 255, 255, 128]))
 		// when
+		/** The decoded image whose alpha channel is 128 everywhere. */
 		const decoded = decodePng(png)
 		// then
 		expect(decoded.hasTransparentPixels).toBe(true)

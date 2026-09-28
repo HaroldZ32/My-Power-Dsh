@@ -31,6 +31,7 @@ export type HeartbeatKind = "step" | "tool-start" | "tool" | "turn-start" | "tur
 
 /** One heartbeat stamp, one JSON object per line on disk. */
 export interface HeartbeatStamp {
+  /** Which heartbeat moment this stamp records. */
   kind: HeartbeatKind
   /** Epoch ms at which the stamp was taken. */
   at: number
@@ -58,8 +59,11 @@ export interface HeartbeatStamp {
 
 /** A write attempt's outcome; never a throw. */
 export interface HeartbeatWriteResult {
+  /** True when the stamp bytes reached the file. */
   ok: boolean
+  /** Absolute heartbeat file the write targeted. */
   path: string
+  /** `Error#message` of the failure; absent on success. */
   error?: string
 }
 
@@ -78,6 +82,7 @@ export function appendHeartbeat(
   memberKey: string,
   stamp: HeartbeatStamp,
 ): HeartbeatWriteResult {
+  // Absolute path of this member's heartbeat file for the current call.
   const path = heartbeatPath(workspace, stateDir, memberKey)
   try {
     mkdirSync(dirname(path), { recursive: true })
@@ -100,18 +105,23 @@ export function appendHeartbeat(
  * @returns the parsed stamps in file order (`[]` when the file is absent).
  */
 export function readHeartbeats(workspace: string, stateDir: string, memberKey: string): HeartbeatStamp[] {
+  // Absolute path of the file this read targets; an absent file is not an error.
   const path = heartbeatPath(workspace, stateDir, memberKey)
+  // Raw file text; the catch below returns the empty reading when it is unreadable.
   let text: string
   try {
     text = readFileSync(path, "utf8")
   } catch {
     return []
   }
+  // Accepted stamps in file order; malformed or torn lines are skipped, never fatal.
   const stamps: HeartbeatStamp[] = []
   for (const line of text.split("\n")) {
+    // The line without surrounding whitespace; blank lines carry no stamp.
     const trimmed = line.trim()
     if (trimmed === "") continue
     try {
+      // The line's JSON, cast because the JSONL on disk is untrusted and only `at` is shape-checked.
       const parsed = JSON.parse(trimmed) as HeartbeatStamp
       if (parsed !== null && typeof parsed === "object" && typeof parsed.at === "number") stamps.push(parsed)
     } catch {
@@ -123,7 +133,9 @@ export function readHeartbeats(workspace: string, stateDir: string, memberKey: s
 
 /** Every heartbeat file key present for a workspace (sorted, stable). */
 export function listHeartbeatKeys(workspace: string, stateDir: string): string[] {
+  // Directory holding every member's heartbeat file for this workspace.
   const dir = heartbeatDir(workspace, stateDir)
+  // Directory entries; an absent directory degrades to the empty key list below.
   let entries: string[]
   try {
     entries = readdirSync(dir)
@@ -146,6 +158,7 @@ export function newestForTask(
   attemptId: string | null,
 ): HeartbeatStamp | undefined {
   if (taskId === null) return undefined
+  // Best stamp for the requested task+attempt so far, compared by `at`.
   let newest: HeartbeatStamp | undefined
   for (const stamp of stamps) {
     if (stamp.taskId !== taskId) continue
@@ -157,6 +170,7 @@ export function newestForTask(
 
 /** The newest stamp of ANY kind, or undefined for a member with no heartbeat. */
 export function newestOverall(stamps: readonly HeartbeatStamp[]): HeartbeatStamp | undefined {
+  // Latest stamp seen so far, of any kind, compared by `at`.
   let newest: HeartbeatStamp | undefined
   for (const stamp of stamps) {
     if (newest === undefined || stamp.at >= newest.at) newest = stamp
@@ -180,13 +194,16 @@ export function rotateHeartbeats(
   memberKey: string,
   keep: number = DEFAULT_KEEP_GENERATIONS,
 ): { rotated: boolean; before: number; after: number; path: string } {
+  // Absolute path of the heartbeat file to rotate.
   const path = heartbeatPath(workspace, stateDir, memberKey)
+  // Raw file text; an unreadable file leaves rotation as a no-op below.
   let text: string
   try {
     text = readFileSync(path, "utf8")
   } catch {
     return { rotated: false, before: 0, after: 0, path }
   }
+  // Non-blank lines in file order; rotation counts generations over exactly these.
   const lines = text.split("\n").filter((line) => line.trim() !== "")
   // PER-TEAM rotation (r2). The file is keyed by MEMBER NAME per workspace, so same-named members
   // of DIFFERENT teams share it. A global "keep the last N generations" rule then lets one team's
@@ -196,25 +213,33 @@ export function rotateHeartbeats(
   // stamp with no team forms its own group (it cannot be attributed).
   const teamOfLine = (line: string): string => {
     try {
+      // The line's JSON, cast because a JSONL heartbeat line is untrusted on-disk data.
       const parsed = JSON.parse(line) as HeartbeatStamp
+      // The team id the line claims, when it parsed and carried one.
       const team = parsed?.teamId
       return team === undefined || team === null || team === "" ? "\u0000no-team" : String(team)
     } catch {
       return "\u0000unparseable"
     }
   }
+  // Line indices grouped by owning team, so the retention bound is applied per team.
   const groups = new Map<string, number[]>()
   for (let index = 0; index < lines.length; index += 1) {
+    // Group key of this line: a team id, or a sentinel for no-team/unparseable.
     const key = teamOfLine(lines[index])
+    // The group's index list, created on first sight of this key.
     const bucket = groups.get(key)
     if (bucket === undefined) groups.set(key, [index])
     else bucket.push(index)
   }
+  // Indices of the lines that fall outside the per-team retention bound.
   const dropped = new Set<number>()
   for (const indices of groups.values()) {
+    // Indices of this group's `turn-start` lines, each one a generation boundary.
     const starts: number[] = []
     for (const index of indices) {
       try {
+        // The line's JSON, cast with the same untrusted-JSONL reasoning as above.
         const parsed = JSON.parse(lines[index]) as HeartbeatStamp
         if (parsed?.kind === "turn-start") starts.push(index)
       } catch {
@@ -222,10 +247,12 @@ export function rotateHeartbeats(
       }
     }
     if (starts.length <= keep) continue
+    // First line of the oldest surviving generation; every earlier line is dropped.
     const cut = starts[starts.length - keep]
     for (const index of indices) if (index < cut) dropped.add(index)
   }
   if (dropped.size === 0) return { rotated: false, before: lines.length, after: lines.length, path }
+  // The surviving lines, kept in their original file order.
   const kept = lines.filter((_line, index) => !dropped.has(index))
   try {
     writeFileSync(path, kept.join("\n") + "\n", "utf8")
@@ -243,6 +270,7 @@ export function rotateHeartbeats(
 export function writeFileAtomic(path: string, text: string): { changed: boolean; path: string; error?: string } {
   try {
     if (existsSync(path)) {
+      // The file's current bytes, or undefined when it could not be read at all.
       let current: string | undefined
       try {
         current = readFileSync(path, "utf8")
@@ -252,6 +280,7 @@ export function writeFileAtomic(path: string, text: string): { changed: boolean;
       if (current === text) return { changed: false, path }
     }
     mkdirSync(dirname(path), { recursive: true })
+    // Sibling temp file in the same directory, so the rename stays on one filesystem.
     const temp = join(dirname(path), "." + basename(path) + ".tmp-" + process.pid)
     writeFileSync(temp, text, "utf8")
     renameSync(temp, path)

@@ -9,7 +9,7 @@ package — or a plain directory on disk — contributes **skills**, **flows**, 
 
 This guide is written for the plugin author who wants to add an authoring flow, a HarmonyOS
 porting procedure, a skill pack or an MCP server. Every sample below was taken from the shipped
-code (`packages/mpd-ext-plugin`, `extensions/mpd-ext-example`, `scripts/mpd-ext.mjs`) and every
+code (`packages/mpd-ext-plugin`, `extensions/mpd-ext-example`, `scripts/mpd-ext.ts`) and every
 command was run as printed — see [§12](#12-how-the-samples-in-this-guide-are-verified).
 
 ---
@@ -87,7 +87,7 @@ this harness, and the extension row may legitimately be absent.
 │   └── change-triage-flow.json
 ├── personas/             # { "roles": [{ "persona": "personas/…" }] }
 │   └── code-reviewer.md
-└── server.mjs            # { "mcp": [{ "command": "node", "args": ["server.mjs"] }] }
+└── server.ts            # { "mcp": [{ "command": "node", "args": ["server.ts"] }] }
 ```
 
 The manifest file name is `mpd-ext.json` (`MPD_EXT_CONTRACT.manifestFile`), and the JSON must parse
@@ -314,7 +314,7 @@ Manifest item (`extensions/mpd-ext-example/mpd-ext.json`):
       "serverName": "lint-mcp",
       "transport": "stdio",
       "command": "node",
-      "args": ["server.mjs"],
+      "args": ["server.ts"],
       "cwd": ".",
       "env": {},
       "connectTimeoutMs": 10000,
@@ -326,8 +326,8 @@ Manifest item (`extensions/mpd-ext-example/mpd-ext.json`):
 
 The server must speak newline-delimited JSON-RPC 2.0 on stdio (`initialize`, `tools/list`,
 `tools/call`; `notifications/tools/list_changed` is honoured). The shipped
-`extensions/mpd-ext-example/server.mjs` is a complete, dependency-free example, and
-`scripts/mpd-ext.mjs scaffold <name> --with-mcp` writes an equivalent one.
+`extensions/mpd-ext-example/server.ts` is a complete, dependency-free example, and
+`scripts/mpd-ext.ts scaffold <name> --with-mcp` writes an equivalent one.
 
 Two details authors get wrong:
 
@@ -421,19 +421,19 @@ required because the CLI imports the TypeScript contract sources directly):
 # 1. scaffold a minimal, loadable extension straight into a discovery root.
 #    The user plane is the right root for all four kinds; the project plane
 #    (<workspace>/.mpd/extensions) accepts skills + flows only.
-bun scripts/mpd-ext.mjs scaffold demo-ext --dir ~/.mpd/extensions
+bun scripts/mpd-ext.ts scaffold demo-ext --dir ~/.mpd/extensions
 # [mpd-ext] scaffolded "demo-ext" at /home/<you>/.mpd/extensions/demo-ext
 #   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
-#   next: bun scripts/mpd-ext.mjs validate /home/<you>/.mpd/extensions/demo-ext
+#   next: bun scripts/mpd-ext.ts validate /home/<you>/.mpd/extensions/demo-ext
 
 # 2. validate it with the SAME validator the runtime uses (exit 0 = loadable).
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/demo-ext
+bun scripts/mpd-ext.ts validate ~/.mpd/extensions/demo-ext
 # [mpd-ext] validate /home/<you>/.mpd/extensions/demo-ext (plane=user)
 #   extension "demo-ext": loadable
 # [mpd-ext] ok
 
 # 3. see what this host would discover, plane by plane (bundle plane included).
-bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.ts list
 
 # 4. edit the manifest: write your real content and set "enabled": true
 #    (a scaffolded extension starts disabled on purpose).
@@ -456,7 +456,7 @@ config list overrides the manifest).
 The CLI validates its own behaviour too:
 
 ```sh
-bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list, temp dirs only
+bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list, temp dirs only
 ```
 
 One note about `validate`'s output: it prints a `pending` line for every declared MCP server,
@@ -543,14 +543,14 @@ Every manifest, asset and command above is taken from, and checked against, the 
 
 ```sh
 # the shipped reference extension validates, exit 0 (all four kinds)
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
 
 # the workflow of §8, end to end (scaffold -> validate -> enable -> list)
-SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.mjs scaffold demo-ext --dir $SB/.mpd/extensions
-HOME=$SB bun scripts/mpd-ext.mjs validate $SB/.mpd/extensions/demo-ext
+SB=$(mktemp -d); HOME=$SB bun scripts/mpd-ext.ts scaffold demo-ext --dir $SB/.mpd/extensions
+HOME=$SB bun scripts/mpd-ext.ts validate $SB/.mpd/extensions/demo-ext
 
 # the CLI's own checks (temp dirs only)
-bun scripts/mpd-ext.mjs --self-test
+bun scripts/mpd-ext.ts --self-test
 
 # the contract constants this guide quotes
 grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/mpd-ext-plugin/src/sdk.ts

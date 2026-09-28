@@ -27,7 +27,7 @@ optionalDependency (~51MB). Set `autoCheck: true` in the plugin config to enable
 post-edit hook (off by default).
 
 When that optional dependency is absent (a local checkout), provision the same pinned
-binary into the repo-local toolchain with `node scripts/install-profile.mjs
+binary into the repo-local toolchain with `node scripts/install-profile.ts
 --with-comment-checker` (or `npm install --prefix .toolchain --no-save
 @code-yeongyu/comment-checker@0.8.0`); the plugin then falls back to
 `.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/<platform>/comment-checker`.

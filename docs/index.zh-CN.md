@@ -117,7 +117,7 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 - [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) —— bundle 自带的发现根目录。
 - [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example) —— 默认禁用的参考扩展：一个
   skill、一个 flow、一个 role，以及一个可用的零依赖 stdio MCP 服务器。
-- [`../scripts/mpd-ext.mjs`](../scripts/mpd-ext.mjs) —— 开发者 CLI
+- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts) —— 开发者 CLI
   （`validate` / `scaffold` / `list` / `--self-test`）。
 
 ## 过程记录

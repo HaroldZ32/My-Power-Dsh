@@ -90,18 +90,18 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 ```
 
 A multi-entry package repeats that command per entry. The canonical form matters: `bun build` writes
-module paths relative to the working directory into the artifact, and `node scripts/verify-dist-fresh.mjs`
+module paths relative to the working directory into the artifact, and `node scripts/verify-dist-fresh.ts`
 reproduces those exact bytes — a build run from inside a package directory is reported STALE.
 
 Other build entry points:
 
 ```bash
-node scripts/build-mcp.mjs          # MCP servers, offline from in-repo sources
-node scripts/build-mpd-client.mjs   # the combined web client, after agent-teams client changes
-node scripts/pack-mpd.mjs           # RELEASE only: the relocatable dist/mpd-package/ artifact
+node scripts/build-mcp.ts          # MCP servers, offline from in-repo sources
+node scripts/build-mpd-client.ts   # the combined web client, after agent-teams client changes
+node scripts/pack-mpd.ts           # RELEASE only: the relocatable dist/mpd-package/ artifact
 ```
 
-A new plugin package must also be added to the `PLUGIN_PKGS` allowlist in `scripts/pack-mpd.mjs`, or a
+A new plugin package must also be added to the `PLUGIN_PKGS` allowlist in `scripts/pack-mpd.ts`, or a
 packed install ships without it and dies at boot with `ERR_MODULE_NOT_FOUND`.
 
 ## Tests
@@ -124,14 +124,16 @@ request, and run the specific gate below when your change touches its subject:
 | Gate | Command |
 |---|---|
 | Fast aggregate (static gates) | `bun run verify:gates` |
+| **Plugin manifest (STANDING)** | `bun run verify:manifest` — no `cordis` in `dependencies`/`peerDependencies`/`optionalDependencies`, no `preinstall`/`install`/`postinstall`/`prepare` script, and every path a row names is inside npm's own packlist |
+| **Declaration comments (STANDING)** | `bun run verify:comments` — every declaration in the source set carries a precise comment and every named function spells out its parameter and return types |
 | Vendor baseline and asset fingerprints | `bun run verify:vendor` |
-| `dist/` freshness (deterministic rebuild-and-diff) | `node scripts/verify-dist-fresh.mjs` |
-| Bundle rows and preset parity | `bun run verify:rows` and `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` |
+| `dist/` freshness (deterministic rebuild-and-diff) | `node scripts/verify-dist-fresh.ts` |
+| Bundle rows and preset parity | `bun run verify:rows` and `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` |
 | Documentation pairs, heading tree, link targets | `bun run verify:docs` |
-| Packed artifact closure | `node scripts/verify-pack-closure.mjs` |
-| Installer (dry run) | `node scripts/install-profile.mjs --dry-run` |
-| Extension CLI | `bun scripts/mpd-ext.mjs --self-test` and `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` |
-| Boot check (mount) | a real boot in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` or `node skills/dsh-qa/scripts/preset-conformance.mjs` |
+| Packed artifact closure | `node scripts/verify-pack-closure.ts` |
+| Installer (dry run) | `node scripts/install-profile.ts --dry-run` |
+| Extension CLI | `bun scripts/mpd-ext.ts --self-test` and `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` |
+| Boot check (mount) | a real boot in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` or `node skills/dsh-qa/scripts/preset-conformance.ts` |
 
 Two rules keep the gates meaningful:
 
@@ -166,7 +168,7 @@ QA never touches the real `~/.dsh` or the real `~/.mpd/workmate`:
 - **One writer per working tree.** If several people (or agents) share a checkout, exactly one of them
   runs `commit`/`checkout`/`merge`/`reset`; everyone else edits files and runs gates.
 - **`skills/**` has one writer per wave.** Every `skills/**` edit invalidates the corpus fingerprint
-  in `VENDOR_LOCK.json`, and the single re-pin (`node scripts/repin-vendor.mjs --write
+  in `VENDOR_LOCK.json`, and the single re-pin (`node scripts/repin-vendor.ts --write
   --i-know-this-is-the-captains-step`) lands in the same commit as the change that invalidated it.
 
 ## Documentation rules
@@ -207,6 +209,25 @@ Evidence logs must never contain credentials, tokens or private data.
   README's FAQ covers the common install and configuration problems.
 
 This project does not ship credentials, and neither should your report, your patch or your evidence.
+
+## Publishing to npm
+
+The package is publish-ready: `package.json` declares the `files` allowlist npm packs through, a
+`publishConfig` access level, the repository/homepage/bugs metadata and an `engines.node` floor, and
+it declares **no** `cordis` dependency and **no** `preinstall`/`install`/`postinstall`/`prepare`
+script — so an install never executes code from the package. Everything a user needs (the built
+`packages/*/dist`, the bundle patch, the preset patch, the skill corpus, the extension root and the
+MCP launchers) is inside the allowlist; the frozen `evidence/` tree is not.
+
+```bash
+npm publish --dry-run     # the whole publish path, minus the upload
+npm publish --access public
+```
+
+`npm publish --dry-run` prints the tarball summary (name, version, file count, packed size) and stops
+before the upload, so it is the check to run in a review. `node scripts/verify-plugin-manifest.ts
+--pack` asserts the same property from the other side: npm's own packlist carries every path a plugin
+row names.
 
 ## Submitting a pull request
 

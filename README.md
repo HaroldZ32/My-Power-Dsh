@@ -7,7 +7,7 @@
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.1.7--rc.2-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-web%20%7C%20dsh--tui-informational.svg)](./docs/tui.md)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
-[![Docs parity](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml)
+[![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
 [![Docs](https://img.shields.io/badge/docs-EN%20%2B%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success.svg)](./docs/index.md)
 
 **my-power-dsh** is a plugin bundle for the **DeepSeek Harness (DSH)**. One install turns a plain
@@ -78,12 +78,43 @@ one command and uninstalls with one command that leaves no residue.
 - **git**, for a source install: the primary flow clones this repository and installs from the
   checkout.
 - Optional, for the code-intelligence servers: the toolchain the bundle can install
-  (`node scripts/install-mcp.mjs`) or your own binaries, pointed at with the documented environment
+  (`node scripts/install-mcp.ts`) or your own binaries, pointed at with the documented environment
   variables (`MPD_DSH_AST_GREP_SG_PATH`, `MPD_CODEGRAPH_BIN`, …).
 
 ## Installation
 
-### Clone the repository
+### One command, no clone (recommended)
+
+The bundle is an ordinary package: the profile pulls it, packs it through the manifest's `files`
+allowlist and mounts it from its own `cordis.patch.yml` layers. Nothing is cloned and nothing is
+built on your machine.
+
+```bash
+dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh
+```
+
+Then restart `dsh` and start a session on the **MPD (Main Working Agent)** preset:
+
+```bash
+dsh web            # boot (or restart) the web profile — same as: dsh --profile web
+```
+
+Requirements: **Node.js ≥ 22.18** and `pnpm` on `PATH` — `dsh plugin` delegates the install to pnpm,
+and the bundle executes TypeScript directly through Node's type stripping. The package declares no
+`cordis` dependency and no `preinstall`/`install`/`postinstall`/`prepare` script, so installing it
+runs no code from the package.
+
+To remove it again:
+
+```bash
+dsh plugin --profile web remove @mpd-dsh/mpd
+```
+
+### Work from a checkout
+
+Cloning is the path for contributors, for a pinned revision, and for the DSH-TUI edition's checkout
+flow. The rest of this section uses the checkout; every command is identical if you installed the
+published package.
 
 ```bash
 git clone https://github.com/HaroldZ32/My-Power-Dsh.git
@@ -99,6 +130,7 @@ bun install
 The bundle declares four runtime dependencies — `dsh-better-sidebar` (the community sidebar bundle
 that hosts the Workmates tab) and the three official Agent Teams packages that provide team mode (see
 *What the install mounts*) — so a checkout install materializes the repository's dependencies first.
+A published-package install needs none of this: pnpm resolves those dependencies itself.
 
 If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it), install the
 sidebar without build scripts — only the sidebar's terminal panel degrades:
@@ -120,7 +152,7 @@ path-qualified arguments:
 bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
 ```
 
-A multi-entry package repeats that command per entry. `node scripts/verify-dist-fresh.mjs` rebuilds
+A multi-entry package repeats that command per entry. `node scripts/verify-dist-fresh.ts` rebuilds
 every `packages/*/src` entry and compares it byte-for-byte with the committed `dist/`, so a source
 change and its rebuild belong in the same commit. `bun run typecheck` (root) and `bun test packages`
 are the other two commands you will use most; the full gate list is in
@@ -176,7 +208,7 @@ For a published package or a tarball, assemble the relocatable bundle first and 
 whichever profile you run:
 
 ```bash
-node scripts/pack-mpd.mjs                       # -> dist/mpd-package/ (relocatable)
+node scripts/pack-mpd.ts                       # -> dist/mpd-package/ (relocatable)
 dsh plugin --profile web add dist/mpd-package
 dsh plugin --profile dsh-tui add dist/mpd-package
 ```
@@ -202,7 +234,7 @@ Every plugin below is declared by this bundle's two patch files — `packages/mp
 bundle id-targets*) — and is mounted by the one `dsh plugin add` above. `package.json` lists both as
 the array `dsh.bundle.patch`. The main patch carries **29 `- id:` entries in two kinds**: **28 rows
 this bundle INSERTS** (grouped below) and **1 host row it id-TARGETS (replace, not insert)**.
-`node scripts/verify-rows-parity.mjs` keeps these row ids in step with the installer.
+`node scripts/verify-rows-parity.ts` keeps these row ids in step with the installer.
 
 **Bundle host plugins — 18 inserted rows**
 
@@ -596,9 +628,9 @@ mpd_flow_show { "id": "…" }
 The extension developer CLI ships with the bundle:
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # exit 0 when valid, 1 with per-item errors
-bun scripts/mpd-ext.mjs scaffold <dir>                        # start from templates/mpd-extension/
-bun scripts/mpd-ext.mjs list                                  # what this host discovered
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # exit 0 when valid, 1 with per-item errors
+bun scripts/mpd-ext.ts scaffold <dir>                        # start from templates/mpd-extension/
+bun scripts/mpd-ext.ts list                                  # what this host discovered
 ```
 
 ## Specialists: the roster

@@ -46,7 +46,7 @@ the directory goes in** (§2) and **when the host re-reads it** (§4).
 The restriction is not cosmetic. Registering a tool or a skill provider is **process-global** in this
 harness, so a per-session MCP server or roster role cannot be represented honestly. A project-plane
 manifest that declares `mcp` or `roles` is refused **per item** with a stated reason
-(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:673-680`) — the refusal is loud, it names the item, and the
+(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`) — the refusal is loud, it names the item, and the
 skills and flows in the same manifest still load.
 
 Read the rule before writing the manifest rather than after the first refusal: it is the single most
@@ -72,7 +72,7 @@ decision nobody wrote down is indistinguishable from an oversight:
    stops accidental *environment* leakage; it is not a sandbox.
 2. **Author-declared secrets are real secrets.** Anything you write into a manifest `env` block is
    readable in the manifest on disk. `mpd_ext_show` redacts the **values** (keys stay visible,
-   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:640`) so a tool result in a session log cannot leak
+   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:760`) so a tool result in a session log cannot leak
    them — but the file itself is not encrypted, and a value you wrote down is a value you own.
 3. **Filesystem trust.** Installing an extension means executing a stdio server that you or someone
    else provided. There is no signature, no sandbox namespace, no seccomp profile and no capability
@@ -101,7 +101,7 @@ plane.
 | `skills` | project | **per call**, from the calling session's workspace | no |
 | `flows` | project | **per call** | no |
 | `skills`, `flows` | user, bundle | discovered at **apply** | yes |
-| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1043`) | yes |
+| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`) | yes |
 | `roles` | user, bundle | the declaration is discovered at apply; the role itself is resolved **per call** by the roster plane, which re-reads the persona text (`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`) | yes for adding or renaming a role; editing only the persona body does not need one |
 
 Three consequences worth carrying in your head:
@@ -109,7 +109,7 @@ Three consequences worth carrying in your head:
 - A per-call kind in the project plane is the only combination that behaves like a live file: edit
   the skill or flow, use it in the next call, no restart.
 - An MCP server that fails does not fail the boot. It lands in `unavailable` or `failed` with a
-  bounded child-stderr tail (`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:43`), and every other extension
+  bounded child-stderr tail (`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:48`), and every other extension
   still activates. The next boot retries it.
 - `extensions.enable` / `extensions.disable` in `.mpd/mpd.jsonc` are **process-level**, not a
   per-session switch, and they only filter what is served — they never gate registration, so a
@@ -122,7 +122,7 @@ with a placeholder id that the scaffold rewrites. Two ways in, same result:
 
 ```bash
 # A. scaffold: copies the template and rewrites the id and every derived name
-bun scripts/mpd-ext.mjs scaffold my-extension --dir ~/.mpd/extensions
+bun scripts/mpd-ext.ts scaffold my-extension --dir ~/.mpd/extensions
 # ... add --with-mcp to keep the four-kind copy (skill + flow + role + stdio MCP server);
 #     without it the copy is a three-kind extension.
 
@@ -131,17 +131,17 @@ cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
 
 Both commands assume a checkout. From an installed (packed) bundle the same CLI lives inside the <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-package — `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs <command>` from the profile directory —
+package — `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>` from the profile directory —
 and §7 says exactly what such an artifact carries and which bound still applies.
 
 Then walk the same five steps every extension goes through:
 
 ```bash
 # 1. validate — the SAME validator the runtime uses, so exit 0 means "this host would load it"
-bun scripts/mpd-ext.mjs validate ~/.mpd/extensions/my-extension
+bun scripts/mpd-ext.ts validate ~/.mpd/extensions/my-extension
 
 # 2. see what this host would discover, plane by plane (the bundle plane included)
-bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.ts list
 
 # 3. edit the manifest: write your real id, description and content, then set "enabled": true
 #    (the copy starts disabled because the TEMPLATE ships "enabled": false — the runtime default is
@@ -164,11 +164,11 @@ rather than assuming it.
 
 Two details that save a debugging round: the manifest's `skills.root` and `flows.dir` are relative to
 the extension root and may not escape it, and the stdio server's `command` is `node` with
-`args: ["server.mjs"]` and `cwd: "."` — the working directory is the extension root, so the server
+`args: ["server.ts"]` and `cwd: "."` — the working directory is the extension root, so the server
 finds its own manifest. You can smoke the server with no host at all:
 
 ```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/extensions/my-extension/server.mjs
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/extensions/my-extension/server.ts
 ```
 
 If you are writing a **project-plane** extension instead, the same walkthrough applies with two
@@ -185,17 +185,17 @@ a checkout:
 bun test packages/mpd-ext-plugin
 
 # the developer CLI, including its offline self-test (temp directories only)
-bun scripts/mpd-ext.mjs --self-test
+bun scripts/mpd-ext.ts --self-test
 
 # the real lanes: a mounted dsh in a sandboxed DSH_HOME + HOME + session cwd
-bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip
-bun skills/dsh-qa/scripts/extension-template.mjs
+bun skills/dsh-qa/scripts/extension-lifecycle.ts --no-skip
+bun skills/dsh-qa/scripts/extension-mcp-bridge.ts --no-skip
+bun skills/dsh-qa/scripts/extension-template.ts
 ```
 
 The middle two drive the shipped example end to end — discovery, the per-call project plane, the
 bridge, the isolation assertions — and the third scaffolds the template and verifies a real mount of
-the copy. `skills/dsh-qa/scripts/extension-isolation.mjs` is the shared proof helper those lanes
+the copy. `skills/dsh-qa/scripts/extension-isolation.ts` is the shared proof helper those lanes
 import; it is **not** a case lane, and its only offline proof is its own `--self-test`.
 
 One rule about evidence: `dsh --profile <p> --dump-config` composes rows and executes nothing, so it
@@ -221,18 +221,18 @@ with its EN + `*.zh-CN.md` pairs (T-36/T-45), the on-demand `agent-references/`
 (`troubleshooting.md` — the symptom → cause/fix table — plus the adopted-plugin delta registry and
 its index), and a **compiled validator entry** <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 (`packages/mpd-ext-plugin/dist/validator.js`, generated at pack time from the shipped bundle) that
-`scripts/mpd-ext.mjs` falls back to when the TypeScript sources are absent (T-51). Measured from
+`scripts/mpd-ext.ts` falls back to when the TypeScript sources are absent (T-51). Measured from
 inside a freshly packed `dist/mpd-package/`:
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # exit 0
-bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/demo # exit 0 — copies the packed template
-node scripts/mpd-ext.mjs --self-test                          # exit 0 — the compiled entry needs no TS loader
-bun scripts/mpd-ext.mjs --validator                           # which validator this run loaded, from where
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # exit 0
+bun scripts/mpd-ext.ts scaffold my-extension --dir /tmp/demo # exit 0 — copies the packed template
+node scripts/mpd-ext.ts --self-test                          # exit 0 — the compiled entry needs no TS loader
+bun scripts/mpd-ext.ts --validator                           # which validator this run loaded, from where
 ```
 
 An installed bundle carries the same CLI: from the profile directory, <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`. The honest bound: a checkout run
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>`. The honest bound: a checkout run
 validates from `src` (live rules, no build step), so a **source** edit is not visible inside an
 artifact until the next `npm run pack` — re-pack before judging a packed CLI.
 
@@ -245,7 +245,7 @@ spawns it by name with the official `spawn_teammate` tool).
 
 | What you see | Most likely cause | What to do |
 |---|---|---|
-| `mpd_ext_list` shows the extension, but a kind is missing and there is a per-item error | the manifest declares a kind whose asset is absent, or an unknown key anywhere | run `bun scripts/mpd-ext.mjs validate <dir>`: it prints one line per item with the reason |
+| `mpd_ext_list` shows the extension, but a kind is missing and there is a per-item error | the manifest declares a kind whose asset is absent, or an unknown key anywhere | run `bun scripts/mpd-ext.ts validate <dir>`: it prints one line per item with the reason |
 | your project-plane extension is refused with a plane message | it declares `mcp` or `roles`, which are host-wide kinds | move it to `~/.mpd/extensions/`, or drop that kind (§2) |
 | the skill does not appear in the catalog although the extension loads | the name lost to a higher-ranked provider, or the frontmatter `name` does not match the directory | `mpd_ext_list` reports `served` / `notServed` per claimed name, checked against the harness catalog |
 | an MCP tool is missing | the server is `unavailable` or `failed` | `mpd_ext_show` prints the state and a bounded stderr tail; check `command`, `args`, `cwd` and the declared `env` |

@@ -23,7 +23,7 @@ the bundle installs its skills and removing the bundle removes them.
 - Migrates legacy installs: the version-stamped copies that bundle `<= 0.2.6` wrote
   into `$DSH_HOME/skills` and `$DSH_HOME/.agent-presets` are removed on the first boot
   of `>= 0.3.0`. The stamp file is the ownership proof — unstamped content (for example
-  copies made by the legacy `scripts/install-profile.mjs` flow) and user-authored
+  copies made by the legacy `scripts/install-profile.ts` flow) and user-authored
   skills/presets are never touched.
 - Re-reads an edited skill on the next catalog read (`fs/observed` invalidation for
   model-facing `write`/`edit` inside the corpus).

@@ -7,7 +7,7 @@
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.1.7--rc.2-4B32C3.svg)](#鸣谢)
 [![平台](https://img.shields.io/badge/platforms-web%20%7C%20dsh--tui-informational.svg)](./docs/tui.zh-CN.md)
 [![运行时](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
-[![文档校验](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/docs-parity.yml)
+[![质量门](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
 [![文档](https://img.shields.io/badge/docs-EN%20%2B%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success.svg)](./docs/index.zh-CN.md)
 
 **my-power-dsh** 是 **DeepSeek Harness（DSH）** 的插件 bundle。一次安装，就能把一套朴素的 DSH
@@ -73,12 +73,40 @@
   `PATH` 上，供仓库脚本使用（`bun` 用来跑测试与扩展 CLI）。
 - **git**：源码安装需要它 —— 主要流程就是克隆本仓库并从检出目录安装。
 - 可选项：若要使用代码智能相关服务器，可用 bundle 提供的工具链安装
-  （`node scripts/install-mcp.mjs`），也可以用自己的二进制文件，并通过文档中给出的环境变量指向它
+  （`node scripts/install-mcp.ts`），也可以用自己的二进制文件，并通过文档中给出的环境变量指向它
   （`MPD_DSH_AST_GREP_SG_PATH`、`MPD_CODEGRAPH_BIN` 等）。
 
 ## 安装
 
-### 克隆仓库
+### 一条命令，无需克隆（推荐）
+
+本 bundle 就是一个普通包：profile 拉取它，按清单里的 `files` 白名单打包，再用它自带的
+`cordis.patch.yml` 各层完成挂载。你的机器上不需要克隆，也不需要构建。
+
+```bash
+dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh
+```
+
+随后重启 `dsh`，在会话里选择 **MPD（Main Working Agent）** preset：
+
+```bash
+dsh web            # 启动（或重启）web profile —— 等同于：dsh --profile web
+```
+
+前置条件：**Node.js ≥ 22.18**，并且 `pnpm` 在 `PATH` 上 —— `dsh plugin` 会把安装交给 pnpm，而本
+bundle 直接依靠 Node 的类型擦除执行 TypeScript。包内**没有** `cordis` 依赖，也没有
+`preinstall`/`install`/`postinstall`/`prepare` 脚本，因此安装过程不会执行包内的任何代码。
+
+卸载：
+
+```bash
+dsh plugin --profile web remove @mpd-dsh/mpd
+```
+
+### 从检出目录开始
+
+克隆是贡献者、需要固定版本、以及 DSH-TUI 版检出流程的路径。本节余下内容以检出为准；如果你装的是
+已发布的包，命令完全一致。
 
 ```bash
 git clone https://github.com/HaroldZ32/My-Power-Dsh.git
@@ -113,7 +141,7 @@ bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
 bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
 ```
 
-多入口的包对每个入口重复这条命令。`node scripts/verify-dist-fresh.mjs` 会重建每一个
+多入口的包对每个入口重复这条命令。`node scripts/verify-dist-fresh.ts` 会重建每一个
 `packages/*/src` 入口并与已提交的 `dist/` 逐字节比较，所以源码改动与它的重建属于同一次提交。
 另外两条最常用的命令是 `bun run typecheck`（根目录）与 `bun test packages`；完整关卡清单见
 [`CONTRIBUTING.zh-CN.md`](./CONTRIBUTING.zh-CN.md)。
@@ -165,7 +193,7 @@ dsh-tui --help     # update | doctor | version | help；其余参数原样转发
 如果要使用已发布包或 tarball，先组装出可迁移的 bundle，再把该产物加入你实际使用的那个 profile：
 
 ```bash
-node scripts/pack-mpd.mjs                       # -> dist/mpd-package/（可迁移）
+node scripts/pack-mpd.ts                       # -> dist/mpd-package/（可迁移）
 dsh plugin --profile web add dist/mpd-package
 dsh plugin --profile dsh-tui add dist/mpd-package
 ```
@@ -190,7 +218,7 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 *本 bundle id 定向的宿主行*）—— 并被上面那一条 `dsh plugin add` 一次性挂载。`package.json` 把
 这两个文件列为数组 `dsh.bundle.patch`。主 patch 一共写了 **29 个 `- id:` 条目，分两种**：**本
 bundle 插入（insert）的 28 行**（分组如下）与**它 id 定向（id-target，即 replace，不是 insert）的
-1 个宿主行**。`node scripts/verify-rows-parity.mjs` 让这些行 id 与安装脚本保持一致。
+1 个宿主行**。`node scripts/verify-rows-parity.ts` 让这些行 id 与安装脚本保持一致。
 
 **Bundle 宿主插件 —— 18 个 insert 行**
 
@@ -560,9 +588,9 @@ mpd_flow_show { "id": "…" }
 扩展开发者 CLI 随包提供：
 
 ```bash
-bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # 合法时退出 0，否则逐项报错并退出 1
-bun scripts/mpd-ext.mjs scaffold <dir>                        # 从 templates/mpd-extension/ 起步
-bun scripts/mpd-ext.mjs list                                  # 本宿主发现了什么
+bun scripts/mpd-ext.ts validate extensions/mpd-ext-example   # 合法时退出 0，否则逐项报错并退出 1
+bun scripts/mpd-ext.ts scaffold <dir>                        # 从 templates/mpd-extension/ 起步
+bun scripts/mpd-ext.ts list                                  # 本宿主发现了什么
 ```
 
 ## 专家名册

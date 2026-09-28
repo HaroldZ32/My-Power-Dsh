@@ -78,8 +78,11 @@ export const PLAN_MUTATION_UNAVAILABLE =
  * from a failed call.
  */
 export interface PlanActionOutcome {
+  /** Whether the call succeeded; the scene never reports success from a failed call. */
   ok: boolean
+  /** The tool's structured value when it returned one; its shape is not contractual. */
   value?: unknown
+  /** The tool's own error text, which can be model-authored and is sanitized at the render boundary. */
   error?: string
 }
 
@@ -91,7 +94,9 @@ export interface PlanActionOutcome {
 export interface PlanActions {
   /** Whether this composition can perform the mutations at all (never true on the 0.1.7 plane). */
   available(): boolean
+  /** Approves a staged plan once the user typed the exact phrase; never fabricates success. */
   approve(input: { teamId: string; confirmation: string; captainSessionId?: string }): Promise<PlanActionOutcome>
+  /** Archives a staged plan; the scene arms it with a second Ctrl+D inside the frozen window. */
   discard(input: { captainSessionId?: string }): Promise<PlanActionOutcome>
 }
 
@@ -110,7 +115,9 @@ interface SceneNav {
   planFromTeam: boolean
 }
 
+/** The scene seam handle: the measured outcome plus the three open paths. */
 export interface SceneSeam {
+  /** The registration result, as the boot diagnostic reports it. */
   outcome(): SeamOutcome
   /** Open the board; false when the seam is absent or the id is unknown to the host. */
   open(): boolean
@@ -122,6 +129,7 @@ export interface SceneSeam {
   openPlan(options?: { teamId?: string; returnToTeam?: boolean }): boolean
 }
 
+/** A no-op store subscription, so the hook order stays stable without a channel. */
 function noopSubscribe(): () => void {
   return () => {}
 }
@@ -139,6 +147,7 @@ function noopSubscribe(): () => void {
  * @returns the sanitized, clamped row; never throws.
  */
 export function safeLine(value: unknown): string {
+  /** The candidate as text: a string as-is, anything else through `String`, nullish as empty. */
   const raw = typeof value === "string" ? value : String(value ?? "")
   return clampCells(stripControl(raw), SCENE_ROW_MAX_CELLS)
 }
@@ -162,12 +171,14 @@ function usableKit(React: unknown, ui: any): boolean {
 /** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
 function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[]): TeamWorkflow | undefined {
   try {
+    /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
     try {
       holdIds = holds() ?? []
     } catch {
       holdIds = []
     }
+    /** The live team views for this workspace; empty when that read fails. */
     let views: readonly DshTeamView[] = []
     try {
       views = teamViews?.() ?? []
@@ -188,14 +199,19 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
  */
 function measureTerminal(ui: any): { size: string; window: number } {
   if (typeof ui?.useTerminalSize !== "function") return { size: "", window: 20 }
+  /** The measured column count, `?` until the host hook answers. */
   let columns: unknown = "?"
+  /** The measured row count, `?` until the host hook answers. */
   let rows: unknown = "?"
+  /** The host hook's own measurement object, when it returned one. */
   const measured = ui.useTerminalSize()
   if (measured !== undefined && measured !== null) {
     columns = measured.columns ?? "?"
     rows = measured.rows ?? "?"
   }
+  /** The row count as a number; NaN when the host measured none. */
   const terminalRows = Number(rows)
+  /** The `<columns>x<rows>` size label of the scene title; empty when unmeasured. */
   const size = `${String(columns)}x${String(rows)}`
   // The scene owns its chrome (title, meta, notice, footer), so the body window is
   // what is left. A sensible minimum keeps it usable before the first measurement.
@@ -220,8 +236,11 @@ function createBoardComponent(
   teamViews?: () => readonly DshTeamView[],
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
+    /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
+    /** The host's ui kit (Box, Text, useInput, useTerminalSize). */
     const ui = props?.ui
+    /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) {
       // The host kit is the hard contract; without it, render nothing rather
@@ -229,6 +248,7 @@ function createBoardComponent(
       return null
     }
 
+    /** Reads the board rows, degrading to one explicit line when the read fails. */
     const read = (): string[] => {
       try {
         return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds())
@@ -237,14 +257,18 @@ function createBoardComponent(
       }
     }
 
+    /** The board rows as host state; the initial read happens in the effect below. */
     const state = React.useState([] as string[])
+    /** The current rows, the value this render draws. */
     const rows = state[0] as string[]
+    /** Replaces the rows: the initial read, the refresh key and the timer all use it. */
     const setRows = state[1] as (next: string[]) => void
 
     React.useEffect(() => {
       // Initial read is deferred to the effect: the render path stays free of
       // synchronous I/O (scene red line).
       setRows(read())
+      /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
         timer = setInterval(() => setRows(read()), BOARD_REFRESH_MS)
@@ -277,8 +301,11 @@ function createBoardComponent(
     // Live session observer: the row count only. `useSyncExternalStore` is
     // always called with stable fallbacks so the hook order never changes.
     const channel = props?.channel
+    /** Subscribes to the session channel's changes, or a no-op when there is no channel. */
     const subscribe = typeof channel?.subscribe === "function" ? (listener: () => void) => channel.subscribe(listener) : noopSubscribe
+    /** Reads the channel's version so a transcript change re-renders; 0 without a channel. */
     const getSnapshot = typeof channel?.version === "number" ? () => channel.version as number : () => 0
+    /** Transcript rows the channel reports; 0 when it cannot answer. */
     let sessionRows = 0
     if (typeof React.useSyncExternalStore === "function") {
       try {
@@ -292,9 +319,12 @@ function createBoardComponent(
     // Host terminal-size hook (conventions §b): the scene adapts instead of
     // assuming a geometry. Always called, with a safe fallback shape.
     const measured = measureTerminal(ui)
+    /** The measured terminal size label, empty when the host could not measure. */
     const size = measured.size
 
+    /** The title row: the line count plus the measured size. */
     const header = `MPD board — ${rows.length} line(s)${size === "" ? "" : ` · ${size}`}`
+    /** The elements handed to the host's Box, in render order. */
     const children: unknown[] = [
       // Title/counts chrome (the host draws NO chrome for a scene).
       React.createElement(ui.Text, { key: "title", bold: true }, safeLine(header)),
@@ -332,13 +362,19 @@ function createTeamComponent(
   teamViews?: () => readonly DshTeamView[],
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
+    /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
+    /** The host's ui kit (Box, Text, useInput, useTerminalSize). */
     const ui = props?.ui
+    /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
 
+    /** Reads the workflow, its subject line and the staged flag, degrading to one explicit row. */
     const read = (): { rows: string[]; subject: string; staged: boolean; teamId?: string } => {
+      /** The projection this read produced; undefined means unreadable. */
       let workflow: TeamWorkflow | undefined
+      /** The workspace root, read for the unreadable-state message. */
       let root = ""
       try {
         root = workspaceRoot()
@@ -351,6 +387,7 @@ function createTeamComponent(
         workflow = undefined
       }
       if (workflow === undefined) return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false }
+      /** The title's subject: the team name, or the explicit none. */
       const subject = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`
       return {
         rows: teamWorkflowLines(workflow),
@@ -360,23 +397,37 @@ function createTeamComponent(
       }
     }
 
+    /** The workflow rows as host state. */
     const rowsState = React.useState([] as string[])
+    /** The current rows, the value this render draws. */
     const rows = rowsState[0] as string[]
+    /** Replaces the rows on every read. */
     const setRows = rowsState[1] as (next: string[]) => void
+    /** The title subject as host state. */
     const subjectState = React.useState("MPD team")
+    /** The current subject, drawn in the title row. */
     const subject = subjectState[0] as string
+    /** Replaces the subject on every read. */
     const setSubject = subjectState[1] as (next: string) => void
+    /** The transient notice line as host state. */
     const noticeState = React.useState("")
+    /** The current notice, empty when there is nothing to say. */
     const notice = noticeState[0] as string
+    /** Sets the notice, e.g. when the plan surface is unavailable. */
     const setNotice = noticeState[1] as (next: string) => void
+    /** The scroll offset as host state. */
     const scrollState = React.useState(0)
+    /** The current offset, in rows. */
     const scroll = scrollState[0] as number
+    /** Moves the offset; `r` and `p` reset it to 0. */
     const setScroll = scrollState[1] as (next: number) => void
     // The last read's facts, so a key handler answers "is this team staged?" without a
     // second read and without reading state from a stale render closure.
     const latestRef = React.useRef?.(undefined as { staged: boolean; teamId?: string } | undefined)
 
+    /** Re-reads the workflow and publishes its rows, subject and staged flag. */
     const refresh = (): void => {
+      /** The freshly read snapshot, published field by field below. */
       const snapshot = read()
       setRows(snapshot.rows)
       setSubject(snapshot.subject)
@@ -386,6 +437,7 @@ function createTeamComponent(
     React.useEffect(() => {
       // The initial read is deferred to the effect: the render path stays free of I/O.
       refresh()
+      /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
         timer = setInterval(() => refresh(), BOARD_REFRESH_MS)
@@ -415,6 +467,7 @@ function createTeamComponent(
           nav.planFromTeam = false
           openScene(BOARD_SCENE_ID)
         } else if (input === "a") {
+          /** Whether the last read saw a staged team, which is what the `a` key needs. */
           const staged = latestRef?.current?.staged === true
           if (!staged) {
             setNotice("plan approval needs a staged team")
@@ -430,9 +483,12 @@ function createTeamComponent(
 
     // The window is computed from the host's own terminal size (never assumed).
     const measured = measureTerminal(ui)
+    /** The rows inside the body window. */
     const visible = rows.slice(scroll, scroll + measured.window)
+    /** The measured terminal size label. */
     const size = measured.size
 
+    /** The elements handed to the host's Box, in render order. */
     const children: unknown[] = [
       React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${subject}${size === "" ? "" : ` · ${size}`}`)),
       React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${rows.length} line(s) · scroll ${scroll}`)),
@@ -458,8 +514,11 @@ function createTeamComponent(
  * @returns the appended rows.
  */
 export function planActionLines(workflow: TeamWorkflow | undefined, echo: string, armed: boolean, message: string): string[] {
+  /** The team the action block addresses; undefined without a record. */
   const team = workflow?.team
+  /** The exact phrase the user must type to approve this team. */
   const phrase = team === undefined ? "" : approvalPhrase(team.id)
+  /** The action-block rows, in render order. */
   const rows: string[] = []
   rows.push("")
   rows.push(`approval needs the exact team id typed below, then Ctrl+X`)
@@ -495,34 +554,57 @@ function createPlanComponent(
   actions: PlanActions,
   teamViews?: () => readonly DshTeamView[],): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
+    /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
+    /** The host's ui kit (Box, Text, useInput, useTerminalSize). */
     const ui = props?.ui
+    /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
 
     // The mount-time navigation target: plain in-memory state, no I/O in the render path.
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }))
+    /** The navigation target captured at mount: which team, and where Esc returns. */
     const target = targetState[0] as { teamId?: string; fromTeam: boolean }
 
+    /** The workflow projection as host state. */
     const viewState = React.useState(undefined as TeamWorkflow | undefined)
+    /** The current projection; undefined while the first read is pending. */
     const view = viewState[0] as TeamWorkflow | undefined
+    /** Replaces the projection after every read, including the post-call re-read. */
     const setView = viewState[1] as (next: TeamWorkflow | undefined) => void
+    /** The consent echo as host state; it starts empty on every entry. */
     const echoState = React.useState("")
+    /** What the user has typed so far, compared against the required phrase. */
     const echo = echoState[0] as string
+    /** Appends a keystroke, deletes one, or clears the echo after a settled call. */
     const setEcho = echoState[1] as (next: string) => void
+    /** The single-flight flag as host state. */
     const busyState = React.useState(false)
+    /** Whether a call is in flight; every key is ignored while it is true. */
     const busy = busyState[0] as boolean
+    /** Sets the single-flight flag around a call. */
     const setBusy = busyState[1] as (next: boolean) => void
+    /** The last settled tool-result line as host state. */
     const messageState = React.useState("")
+    /** The current message; empty when no call has settled yet. */
     const message = messageState[0] as string
+    /** Reports a refusal, a working state or a settled verdict. */
     const setMessage = messageState[1] as (next: string) => void
+    /** The discard arm's timestamp as host state. */
     const armedState = React.useState(0)
+    /** When the arm was set; 0 means disarmed. */
     const armedAt = armedState[0] as number
+    /** Arms on the first Ctrl+D and disarms on expiry, any other key, or a discard. */
     const setArmedAt = armedState[1] as (next: number) => void
+    /** The scroll offset as host state. */
     const scrollState = React.useState(0)
+    /** The current offset, in rows. */
     const scroll = scrollState[0] as number
+    /** Moves the offset; refresh resets it to 0. */
     const setScroll = scrollState[1] as (next: number) => void
 
+    /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
       setView(readWorkflow(workspaceRoot, holds, teamViews))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
@@ -534,6 +616,7 @@ function createPlanComponent(
     React.useEffect(() => {
       // Initial read in the effect (never in the render path).
       refresh()
+      /** The periodic re-read timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
         timer = setInterval(() => {
@@ -558,6 +641,7 @@ function createPlanComponent(
     // The discard arm expires on its own after the frozen 10 s window.
     React.useEffect(() => {
       if (armedAt === 0) return undefined
+      /** The arm-expiry timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setTimeout> | undefined
       try {
         timer = setTimeout(() => setArmedAt(0), DISCARD_WINDOW_MS)
@@ -575,7 +659,9 @@ function createPlanComponent(
       }
     }, [armedAt])
 
+    /** The team this render addresses; undefined without a record. */
     const team = view?.team
+    /** The exact approval phrase of that team. */
     const phrase = team === undefined ? "" : approvalPhrase(team.id)
     // The precondition the Web itself enforces before it renders the editor
     // (`client.js:2437`): a STAGED team with a plan. Outside it the scene is a
@@ -593,6 +679,7 @@ function createPlanComponent(
       }
     }
 
+    /** Runs the approval once the echo matched; single-flight, and re-reads the record after. */
     const runApprove = async (): Promise<void> => {
       if (team === undefined) return
       // Barrier 2: the chord is inert unless the echo is EXACTLY the required phrase.
@@ -607,16 +694,22 @@ function createPlanComponent(
       setBusy(true)
       setMessage("working…")
       try {
+        /** The executor's verdict for this approval. */
         const result = await actions.approve({
           teamId: team.id,
           confirmation: echo,
           ...(team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
         })
         if (result.ok) {
+          /** The tool's structured value, read field by field below. */
           const value = result.value as { status?: unknown; team_id?: unknown; members?: unknown; tasks?: unknown } | undefined
+          /** The approved team's id, from the tool or from the projection. */
           const id = typeof value?.team_id === "string" ? value.team_id : team.id
+          /** The team's status after approval; `running` when the tool did not say. */
           const status = typeof value?.status === "string" ? value.status : "running"
+          /** Member count after approval, from the tool or from the projection. */
           const memberCount = typeof value?.members === "number" ? value.members : (view?.members.length ?? 0)
+          /** Task count after approval, from the tool or from the projection. */
           const taskCount = typeof value?.tasks === "number" ? value.tasks : (view?.tasks.length ?? 0)
           setMessage(`approved: ${id} ${status} · members ${memberCount} · tasks ${taskCount}`)
           // Frozen §4.5: the echo is consumed by a SUCCESSFUL approval. A refusal keeps it
@@ -635,7 +728,9 @@ function createPlanComponent(
       }
     }
 
+    /** Arms on the first Ctrl+D and discards on a second press inside the frozen window. */
     const runDiscard = async (): Promise<void> => {
+      /** The current time, compared against the arm's timestamp. */
       const now = Date.now()
       if (armedAt === 0 || now - armedAt > DISCARD_WINDOW_MS) {
         // First press only ARMS (frozen §4.3): nothing is sent.
@@ -651,6 +746,7 @@ function createPlanComponent(
       setBusy(true)
       setMessage("working…")
       try {
+        /** The executor's verdict for this discard. */
         const result = await actions.discard(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId })
         setMessage(result.ok ? "discarded: team archived" : `discard failed: ${result.error ?? "the tool refused the call"}`)
         // Same rule as approve (§4.5): only a SUCCESSFUL call consumes the consent echo.
@@ -739,8 +835,11 @@ function createPlanComponent(
     }
     if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message)) body.push(row)
 
+    /** The terminal measurement, taken once per render. */
     const measured = measureTerminal(ui)
+    /** The body rows inside the window. */
     const visible = body.slice(scroll, scroll + measured.window)
+    /** The measured terminal size label. */
     const size = measured.size
 
     // t3's F1: a COMMITTED mutation must be confirmed ON SCREEN even though the record
@@ -751,13 +850,16 @@ function createPlanComponent(
     // with NO settled outcome the precondition-failure rendering is byte-identical to
     // before (which is what the lane's malformed/non-staged/absent arms assert).
     const settled = message !== ""
+    /** Whether this render must show a settled verdict instead of the precondition failure. */
     const verdict = !usable && settled
 
+    /** The title row: the surface name, the team and the busy marker. */
     const title = !usable
       ? verdict
         ? `MPD plan approval — ${team?.name ?? "(none)"}`
         : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}`
       : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`
+    /** The elements handed to the host's Box, in render order. */
     const children: unknown[] = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))]
     if (!usable) {
       if (verdict) {
@@ -806,16 +908,21 @@ export function registerScene(
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
   teamViews?: () => readonly DshTeamView[],
 ): SceneSeam {
+  /** The seam result, rewritten when the three scenes are registered. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiScenes was not injected" }
+  /** The registered scene service, undefined until the deferred activation runs. */
   let scenes: TuiScenesLike | undefined
+  /** Navigation shared by the three components, mutated only by their own handlers. */
   const nav: SceneNav = { planFromTeam: false }
 
+  /** Opens a registered scene by id, reporting a refusal instead of throwing. */
   const openScene = (id: string): boolean => {
     if (scenes === undefined) {
       log.debug(`scene open(${id}) skipped: tuiScenes was not injected`)
       return false
     }
     try {
+      /** The host's answer; anything but `true` is reported as a refusal. */
       const opened = scenes.open(id)
       if (opened !== true) log.debug(`scene open(${id}) returned ${String(opened)}`)
       return opened === true
@@ -826,6 +933,7 @@ export function registerScene(
   }
 
   onService(ctx, "tuiScenes", (scoped, service) => {
+    /** The probed service as the scene registry, before `register` is trusted. */
     const runtime = service as TuiScenesLike
     if (typeof runtime?.register !== "function") {
       outcome = { state: "refused", detail: "tuiScenes.register is missing" }
@@ -846,6 +954,7 @@ export function registerScene(
     }
   })
 
+  /** Opens the board scene; the shortcut and command paths both land here. */
   const open = (): boolean => openScene(BOARD_SCENE_ID)
 
   return {

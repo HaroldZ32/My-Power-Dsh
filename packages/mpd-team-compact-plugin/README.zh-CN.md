@@ -56,7 +56,7 @@
 
 ## 关卡
 
-- `bun test packages/mpd-team-compact-plugin` —— 离线单测（`test/compaction.test.mjs`）。
+- `bun test packages/mpd-team-compact-plugin` —— 离线单测（`test/compaction.test.ts`）。
 - `bun run typecheck`。
 - 启动检查：该行必须真正 **apply**（需要挂载证明，绝不能只看 `--dump-config` —— AGENTS.md §4）。
 

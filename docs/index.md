@@ -124,7 +124,7 @@ repository.
 - [`../extensions/README.md`](../extensions/README.md) — the bundle-shipped discovery root.
 - [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example) — the disabled reference
   extension: a skill, a flow, a role and a working dependency-free stdio MCP server.
-- [`../scripts/mpd-ext.mjs`](../scripts/mpd-ext.mjs) — the developer CLI
+- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts) — the developer CLI
   (`validate` / `scaffold` / `list` / `--self-test`).
 
 ## Process records

@@ -4,14 +4,21 @@
 // runs standalone in any user project. Mirror command/extensions when that file
 // changes.
 
+/** One builtin language server: how to detect its language, how to launch it, and how to install it. */
 export interface LanguageServer {
+	/** Reference language name, matching `references/<language>/README.md`. */
 	readonly language: string
+	/** Server id written into the LSP client config files. */
 	readonly serverId: string
+	/** Server argv; the first element is the executable this skill probes on PATH. */
 	readonly command: readonly string[]
+	/** Lower-case file extensions that select this server. */
 	readonly extensions: readonly string[]
+	/** Per-OS install command or link shown when the executable is missing. */
 	readonly installHint: string
 }
 
+/** The builtin server table, one row per reference language: a hand-maintained snapshot of the primary builtin server per language. */
 export const LANGUAGES: readonly LanguageServer[] = [
 	{
 		language: "typescript",
@@ -169,6 +176,7 @@ export const LANGUAGES: readonly LanguageServer[] = [
 	},
 ] as const
 
+/** Project-relative LSP config files probed for a server reference, in reporting order. */
 export const PROJECT_CONFIG_FILES: readonly string[] = [
 	".codex/lsp-client.json",
 	".opencode/lsp.json",

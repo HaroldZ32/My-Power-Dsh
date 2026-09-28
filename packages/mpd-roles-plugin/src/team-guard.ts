@@ -21,10 +21,13 @@ import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** One roster entry as the guard needs it (the roster's own fields, structurally). */
 export interface GuardRosterMember {
+  /** The member's MODEL-FACING display name — the only spelling a Lead addresses it by. */
   name: string
+  /** True for the members the read-only discipline protects. */
   readonly: boolean
 }
 
+/** What installing the team-path guard needs: the deny list, the roster and a degradation reporter. */
 export interface ReadonlyGuardOptions {
   /** The write-capable tool names the roster denies (the SAME list the one-shot path uses). */
   deny: readonly string[]
@@ -34,6 +37,7 @@ export interface ReadonlyGuardOptions {
   warn: (line: string) => void
 }
 
+/** The install outcome, REPORTED rather than thrown so a missing seam never aborts the row. */
 export interface ReadonlyGuardInstall {
   /** True when the guard reached the harness tool registry. */
   installed: boolean
@@ -63,9 +67,11 @@ export function normalizeTeamMemberKey(name: string): string {
 
 /** Normalised key → the roster's own display name, for every READ-ONLY member. */
 export function readonlyMemberKeys(members: readonly GuardRosterMember[]): Map<string, string> {
+  /** Normalised key to display name, accumulated for every read-only member. */
   const keys = new Map<string, string>()
   for (const member of members) {
     if (member?.readonly !== true) continue
+    /** This member's normalised key; an empty one addresses nothing and is skipped. */
     const key = normalizeTeamMemberKey(member.name)
     if (key !== "") keys.set(key, member.name)
   }
@@ -86,10 +92,13 @@ export function readonlyMemberForTeamName(
   name: string,
   readonlyKeys: ReadonlyMap<string, string>,
 ): string | undefined {
+  /** The caller's normalised name. */
   const key = normalizeTeamMemberKey(name)
   if (key === "") return undefined
+  /** The display name when the caller's name IS a read-only member. */
   const exact = readonlyKeys.get(key)
   if (exact !== undefined) return exact
+  /** The name with one trailing numeric suffix removed — the second accepted spelling. */
   const withoutSuffix = key.replace(/-\d+$/, "")
   if (withoutSuffix === key || withoutSuffix === "") return undefined
   return readonlyKeys.get(withoutSuffix)
@@ -112,11 +121,14 @@ export function readonlyGuardDecision(
   },
 ): string | undefined {
   try {
+    /** The tool being invoked; a name outside the deny list passes through immediately. */
     const toolName = String((exec as { name?: unknown } | undefined)?.name ?? "")
     if (!options.deny.has(toolName)) return undefined
+    /** The caller's team membership: the Lead, a teammate, or an agent with no team at all. */
     const membership = options.membershipOf((exec as { agent?: unknown } | undefined)?.agent)
     // The Lead leads, a worker member writes, a non-team agent is somebody else's business.
     if (membership === undefined || membership === null || membership.role !== "teammate") return undefined
+    /** The read-only member this caller's name addresses, if any. */
     const member = readonlyMemberForTeamName(String(membership.name ?? ""), options.readonlyKeys)
     if (member === undefined) return undefined
     return "roster read-only discipline: teammate \"" + String(membership.name) + "\" is the READ-ONLY roster member "
@@ -137,6 +149,7 @@ export function installReadonlyGuard(
   dsh: Pick<DshAdapter, "capabilities" | "guardTool" | "teamMembership">,
   options: ReadonlyGuardOptions,
 ): ReadonlyGuardInstall {
+  /** Normalised key to display name for every read-only member, or an empty map. */
   const readonlyKeys = readonlyMemberKeys(options.members)
   if (readonlyKeys.size === 0) {
     options.warn("no read-only roster member is declared — the team-path read-only guard is NOT installed")
@@ -148,7 +161,9 @@ export function installReadonlyGuard(
         + "(read-only teammates would keep write access; the one-shot path is unaffected)")
       return { installed: false, reason: "no-guard-seam" }
     }
+    /** The deny list as a set, so the per-call decision costs one lookup. */
     const deny = new Set(options.deny)
+    /** The registry's disposer, returned so the row can release the guard. */
     const dispose = dsh.guardTool((exec) => readonlyGuardDecision(exec, {
       deny,
       readonlyKeys,

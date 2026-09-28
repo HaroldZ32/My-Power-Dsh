@@ -63,11 +63,11 @@ evidence/**/sandbox
 evidence/**/scratch-artifact*/
 evidence/**/scratch-control*/
 
-# The SAME class under the name the dsh-qa lane actually writes it. `extension-lifecycle.mjs` stages a
+# The SAME class under the name the dsh-qa lane actually writes it. `extension-lifecycle.ts` stages a
 # full packed tree at `<evidence>/scratch-pack/mpd-package` (`const scratchRoot = join(outDir,
 # "scratch-pack")`) so its packed arm can exercise the artifact without touching the canonical
 # `dist/mpd-package`; the lane's own evidence is `result.json` + `output.log` + `raw/`, and the pack is
-# one command away (`node scripts/pack-mpd.mjs --out <dir>`). Measured 2026-09-27: three lane runs added
+# one command away (`node scripts/pack-mpd.ts --out <dir>`). Measured 2026-09-27: three lane runs added
 # 3 copies at 14 MB / ~1,220 files each — 42 MB and ~3,700 files carrying no information the lane's own
 # report does not. FORWARD-ONLY, exactly like the `raw/final/` rule below: 3,576 scratch-pack paths from
 # earlier waves are ALREADY tracked and they STAY, because removing them post-merge would mutate the

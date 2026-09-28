@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState, statusLine } from "../src/state"
 import { cellWidth, clampCells, scalarLines, scalarText } from "../src/sanitize"
 import { TRANSCRIPT_RENDERERS, TRANSCRIPT_TYPES } from "../src/renderers"
@@ -12,6 +13,7 @@ import { appendBoardOpened } from "../src/commands"
 import { BOARD_OPENED_EVENT, candidateAnchors, registerInto } from "../src/registration"
 import { createLog } from "../src/log"
 
+/** Every temp root this file created, removed in `afterEach`. */
 const temporary: string[] = []
 
 /**
@@ -19,7 +21,7 @@ const temporary: string[] = []
  * map holds the views a fixture registers, so the arms below drive the projection the production
  * wiring drives (`liveTeamViews` returns exactly these on a host).
  */
-const FIXTURE_VIEWS = new Map<string, unknown[]>()
+const FIXTURE_VIEWS = new Map<string, DshTeamView[]>()
 
 /** One official team view from the fixture's own vocabulary. */
 function viewOf(record: {
@@ -27,7 +29,7 @@ function viewOf(record: {
   members?: Array<{ name?: string; status?: string }>
   tasks?: Array<{ id?: string; status?: string }>
   captainSessionId?: string
-}): Record<string, unknown> {
+}): DshTeamView {
   return {
     teamId: record.id,
     leadName: "lead",
@@ -37,8 +39,10 @@ function viewOf(record: {
       ...(record.members ?? []).map((member, index) => ({
         id: "m" + index,
         name: String(member.name ?? "m" + index),
-        role: "teammate",
-        status: member.status ?? "inactive",
+        role: "teammate" as const,
+        // The fixture's raw record carries any status string; a view declares the four lifecycle
+        // values the projection folds, so the two vocabularies meet exactly here.
+        status: (member.status ?? "inactive") as DshTeamView["members"][number]["status"],
         diagnostics: [],
       })),
     ],
@@ -47,7 +51,9 @@ function viewOf(record: {
       revision: 1,
       subject: String(task.id ?? "t" + index),
       description: "",
-      status: String(task.status ?? "pending"),
+      // Same meeting point as the roster above: the record speaks raw strings, the view the four
+      // official task values, and `String(...)` keeps feeding the projection the same value.
+      status: String(task.status ?? "pending") as DshTeamView["tasks"][number]["status"],
       blockedBy: [],
       writeScopes: [],
       ready: true,
@@ -56,10 +62,14 @@ function viewOf(record: {
   }
 }
 
+/** Creates one isolated workspace/home pair plus the fixture views the projection reads. */
 function fixture(): { workspace: string; home: string } {
+  /** The temp root this fixture owns, registered for cleanup. */
   const root = mkdtempSync(join(tmpdir(), "mpd-tui-state-"))
   temporary.push(root)
+  /** The workspace half: every workspace-local state file lives under it. */
   const workspace = join(root, "workspace")
+  /** The home half: the durable workmate library lives under it. */
   const home = join(root, "home")
   mkdirSync(join(workspace, ".mpd", "team", "alpha"), { recursive: true })
   mkdirSync(join(workspace, ".mpd", "team", "beta"), { recursive: true })
@@ -133,7 +143,9 @@ afterEach(() => {
 
 describe("state projection", () => {
   test("reads the newest team record, the task ledger, boulder, plans and workmates", () => {
+    /** This arm's own isolated workspace and home. */
     const { workspace, home } = fixture()
+    /** The projection under test. */
     const state = readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? [])
     expect(state.team?.id).toBe("beta")
     expect(state.team?.members).toBe(2)
@@ -155,8 +167,10 @@ describe("state projection", () => {
   })
 
   test("a missing state tree degrades to empty sections without throwing", () => {
+    /** The temp root of this arm. */
     const root = mkdtempSync(join(tmpdir(), "mpd-tui-empty-"))
     temporary.push(root)
+    /** The projection of a state tree that does not exist. */
     const state = readBoardState(join(root, "nope"), join(root, "nohome"))
     expect(state.team).toBeUndefined()
     expect(state.boulder).toBeUndefined()
@@ -167,20 +181,25 @@ describe("state projection", () => {
   })
 
   test("a team READOUT that throws is reported as a note, not as a crash", () => {
+    /** This arm's own isolated workspace and home. */
     const { workspace, home } = fixture()
     // The retired record file is not a source any more: a corrupt one changes nothing (the views
     // are the truth). What CAN break is the adapter seam itself, so a throwing readout — which the
     // caller resolves OUTSIDE this projection — is modelled as "no views at all".
     writeFileSync(join(workspace, ".mpd", "team", "alpha", "team.json"), "{ not json")
+    /** The projection while the adapter seam still returns the fixture views. */
     const clean = readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? [])
     expect(clean.team?.id).toBe("beta")
+    /** The projection when the adapter seam yields no views at all. */
     const noSeam = readBoardState(workspace, home, [])
     expect(noSeam.team).toBeUndefined()
     expect(noSeam.problems).toEqual([])
   })
 
   test("the status line is one bounded line", () => {
+    /** This arm's own isolated workspace and home. */
     const { workspace, home } = fixture()
+    /** The rendered one-line status contribution. */
     const line = statusLine(readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? []))
     // 0.1.7: the team has no NAME on the official plane — the readout names the Lead pseudo-row
     // `lead`, and the counts are the board's own (7 tasks, 1 completed).
@@ -218,6 +237,7 @@ describe("sanitizer", () => {
   })
 
   test("scalarLines bounds the line count and per-line width", () => {
+    /** The bounded line list. */
     const lines = scalarLines(Array.from({ length: 500 }, () => "x".repeat(900)), 5, 10)
     expect(lines).toHaveLength(5)
     expect(lines.every((line) => line.length <= 10)).toBe(true)
@@ -230,6 +250,7 @@ describe("transcript renderers", () => {
     for (const type of TRANSCRIPT_TYPES) {
       expect(typeof TRANSCRIPT_RENDERERS[type]).toBe("function")
     }
+    /** The rendered row for a team-created event. */
     const created = TRANSCRIPT_RENDERERS["agent-teams/team-created"]({
       teamId: "mpd-default",
       captainSessionId: "session-1",
@@ -240,18 +261,22 @@ describe("transcript renderers", () => {
     expect(created?.lines).toContain("MPD Default")
     expect(created?.lines.join(" ")).toContain("mpd-default")
 
+    /** The rendered row for a task-updated event. */
     const updated = TRANSCRIPT_RENDERERS["agent-teams/task-updated"]({ taskId: "t4", status: "completed", output: "done" })
     expect(updated?.lines[0]).toBe("t4 -> completed")
 
+    /** The rendered row for this plugin's own board-opened event. */
     const board = TRANSCRIPT_RENDERERS[BOARD_OPENED_EVENT]({ view: "board", via: "command", at: 0 })
     expect(board?.title).toBe("mpd board")
     expect(board?.lines[0]).toContain("opened via command")
   })
 
   test("renderers never throw and always emit strings, whatever the payload", () => {
+    /** Payload shapes every renderer must survive without throwing. */
     const garbage: unknown[] = [undefined, null, 0, "", "text", [], {}, { a: { b: 1 } }, { at: Number.NaN }]
     for (const type of TRANSCRIPT_TYPES) {
       for (const payload of garbage) {
+        /** This renderer's answer, undefined when it declines the payload. */
         const result = TRANSCRIPT_RENDERERS[type](payload)
         if (result === undefined) continue
         expect(result.lines.every((line) => typeof line === "string")).toBe(true)
@@ -260,6 +285,7 @@ describe("transcript renderers", () => {
   })
 
   test("renderer output is clamped (a huge payload cannot flood the transcript)", () => {
+    /** The rendered row for a 5000-character message payload. */
     const huge = TRANSCRIPT_RENDERERS["agent-teams/message-sent"]({ from: "a", to: "b", content: "z".repeat(5000) })
     expect(huge?.lines.length).toBeLessThanOrEqual(13)
     for (const line of huge?.lines ?? []) expect(line.length).toBeLessThanOrEqual(400)
@@ -268,6 +294,7 @@ describe("transcript renderers", () => {
 
 describe("log-only event registration", () => {
   test("registerInto reports and mutates truthfully", () => {
+    /** The known-type set a session package validates its log against. */
     const set = new Set<string>()
     expect(registerInto({ KNOWN_SESSION_EVENT_TYPES: set }, BOARD_OPENED_EVENT)).toBe(true)
     expect(set.has(BOARD_OPENED_EVENT)).toBe(true)
@@ -277,6 +304,7 @@ describe("log-only event registration", () => {
   })
 
   test("candidateAnchors is deduplicated and never empty", () => {
+    /** The candidate anchors resolved for an unreadable home. */
     const anchors = candidateAnchors({ DSH_HOME: "/nonexistent-dsh-home" }, "/nonexistent-home")
     expect(anchors.length).toBeGreaterThan(0)
     expect(new Set(anchors).size).toBe(anchors.length)
@@ -286,8 +314,11 @@ describe("log-only event registration", () => {
   })
 
   test("appendBoardOpened refuses to write an unregistered type", () => {
+    /** Every append the session double received. */
     const appends: unknown[] = []
+    /** A session double that records appends instead of writing them. */
     const session = { append: (type: string, data: unknown) => appends.push({ type, data }) }
+    /** A silent logger: this arm asserts the return value, not the log. */
     const log = createLog(undefined, "mpd-tui-test", {})
     expect(appendBoardOpened(session, false, "command", "board", log)).toBe(false)
     expect(appends).toHaveLength(0)
@@ -297,11 +328,14 @@ describe("log-only event registration", () => {
   })
 
   test("a throwing session.append is contained", () => {
+    /** A session double whose `append` always fails. */
     const session = {
-      append() {
+      /** Models a session whose log is already closed. */
+      append(): never {
         throw new Error("session closed")
       },
     }
+    /** A silent logger for this arm. */
     const log = createLog(undefined, "mpd-tui-test", {})
     expect(appendBoardOpened(session, true, "shortcut", "board", log)).toBe(false)
   })
@@ -315,7 +349,9 @@ describe("logging", () => {
     expect(() => log.debug("quiet by default")).not.toThrow()
     expect(() => log.info("info")).not.toThrow()
     expect(() => log.warn("warn")).not.toThrow()
+    /** The lines the host logger received. */
     const seen: string[] = []
+    /** A log object backed by a host logger. */
     const withLogger = createLog({ info: (m: string) => seen.push(m) }, "tag", {})
     withLogger.info("hello")
     expect(seen).toEqual(["[tag] hello"])

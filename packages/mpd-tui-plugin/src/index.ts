@@ -117,17 +117,29 @@ export const Config: Schemastery<Config> = z.object({
 
 /** A config with every key resolved (nothing optional left). */
 export interface ResolvedConfig {
+  /** Whether the keyed status contribution is published at all. */
   statusLine: boolean
+  /** Refresh cadence in milliseconds; 0 keeps the line manual. */
   statusIntervalMs: number
+  /** Whether the log-only session events get transcript renderers. */
   renderers: boolean
+  /** Whether the `/settings` section and the `mpd` namespace are declared. */
   settingsSection: boolean
+  /** Whether the board, team and plan scenes are registered. */
   scene: boolean
+  /** Whether the `/mpd` completion provider is registered. */
   commandTrees: boolean
+  /** Whether the `/mpd` command itself is registered. */
   commands: boolean
+  /** Whether the keyboard bindings are registered. */
   shortcuts: boolean
+  /** Whether the mediated dialog facade is enabled. */
   dialogs: boolean
+  /** Whether the log-only board-opened record may be appended. */
   sessionEvents: boolean
+  /** Whether the mediated decision-event registration is attempted. */
   decisionEvents: boolean
+  /** The `[tag]` prefix of every diagnostic this row emits. */
   logPrefix: string
 }
 
@@ -137,7 +149,9 @@ export interface ResolvedConfig {
  * @returns the resolved config with no optional key left.
  */
 export function resolveConfig(config: Config = {}): ResolvedConfig {
+  /** Coerces one optional boolean to the documented default. */
   const bool = (value: boolean | undefined, fallback: boolean): boolean => (typeof value === "boolean" ? value : fallback)
+  /** Whether the configured cadence is a usable, non-negative finite number. */
   const valid = typeof config.statusIntervalMs === "number" && Number.isFinite(config.statusIntervalMs) && config.statusIntervalMs >= 0
   return {
     statusLine: bool(config.statusLine, true),
@@ -167,6 +181,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
  */
 function resolveAdapter(ctx: PluginContextLike): ReturnType<typeof createDshAdapter> {
   try {
+    /** The adapter instance another row mounted, when the probe can read it. */
     const mounted = serviceOf<ReturnType<typeof createDshAdapter>>(ctx, "mpdDsh")
     if (mounted !== undefined) return mounted
   } catch {
@@ -187,6 +202,7 @@ function resolveAdapter(ctx: PluginContextLike): ReturnType<typeof createDshAdap
  * @returns the per-call workspace resolver.
  */
 export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<typeof createDshAdapter>): () => string {
+  /** The adapter this resolver reads, undefined until one is supplied or created. */
   let resolved = adapter
   if (resolved === undefined) {
     try {
@@ -197,6 +213,7 @@ export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<t
   }
   return () => {
     try {
+      /** The union of live session workspaces; empty when no session is live. */
       const roots = resolved?.workspaceRootsAll() ?? []
       if (roots.length > 0) return roots[0]
     } catch {
@@ -243,6 +260,7 @@ export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, 
 
 /** The user's home directory — the workmate library lives under it by design. */
 function homeDir(): string {
+  /** The `HOME` environment value, preferred over the platform call for testability. */
   const env = process.env.HOME
   if (typeof env === "string" && env.length > 0) return env
   try {
@@ -267,10 +285,15 @@ export interface ApplyReport {
  * @returns the per-seam outcome report (also logged).
  */
 export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport {
+  /** The config with every key resolved, so nothing optional is left below. */
   const resolved = resolveConfig(config)
+  /** The prefixed diagnostic sink, backed by `ctx.logger` when the context has one. */
   const log: Log = createLog(ctx?.logger, resolved.logPrefix)
+  /** The one adapter every harness seam of this row goes through. */
   const adapter = resolveAdapter(ctx)
+  /** The per-call workspace resolver (the calling session's workspace, never the process cwd). */
   const workspaceRoot = workspaceResolver(ctx, adapter)
+  /** The per-call home resolver; the workmate library lives under it by design. */
   const home = (): string => homeDir()
   // The OFFICIAL team readout for the CURRENT workspace, resolved per call through the adapter
   // (never cached: one host serves many sessions with different workspaces). Every team surface —
@@ -282,7 +305,9 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // to a reachable dsh-session copy (iron rule 2).
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false
 
+  /** One entry per seam, in wiring order, for the aggregate diagnostic and the tests. */
   const outcomes: { id: string; outcome: SeamOutcome }[] = []
+  /** Appends one seam's outcome to the report. */
   const record = (id: string, outcome: SeamOutcome): void => {
     outcomes.push({ id, outcome })
   }
@@ -293,8 +318,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // is another plugin's service, so it is reached with the deferred inject form (a one-shot
   // probe cannot see it, and a declared dependency would park this entry).
   let configHandle: { states?: () => { writeback?: { skipped?: string } | null } } | undefined
+  /** The settings-bridge notice for the status line, when a save could not be written. */
   const bridgeRead = (): string | undefined => {
     try {
+      /** The write-back's skip reason, as the config layer recorded it. */
       const skipped = configHandle?.states?.()?.writeback?.skipped
       // Both refusal reasons are surfaced, each with its own sentence: a settings-only save must
       // never read as a lost one (captain's ruling 1).
@@ -314,15 +341,18 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // It is built BEFORE the status seam so the FIRST publish already carries it; the acknowledge
   // callback reaches the status handle through a mutable reference (the seam is created below).
   const dialogs = createDialogs(ctx, log)
+  /** The status handle; mutable because the watchdog acknowledges through it. */
   let status: { outcome(): SeamOutcome; refresh(): void } = {
     outcome: () => ({ state: "absent" as const, detail: "not wired yet" }),
     refresh: () => {},
   }
+  /** The watchdog front door, attached before the status seam so its notice is published first. */
   const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, log, {
     workspaceRoot,
     dialogs,
     onAcknowledged: () => status.refresh(),
   })
+  /** The status line's notice: the bridge notice and the watchdog notice, composed. */
   const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
 
   status = resolved.statusLine
@@ -340,8 +370,11 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openTeam: () => false,
         openPlan: () => false,
       }
+  /** The renderer seam result, or a config-disabled stub. */
   const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+  /** The settings-section seam result, or a config-disabled stub. */
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+  /** The command-tree seam result, or a config-disabled stub. */
   const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
 
   // ── supporting surfaces ──────────────────────────────────────────────────
@@ -356,6 +389,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
       })
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
 
+  /** The command seam result, or a config-disabled stub. */
   const commands = resolved.commands
     ? registerCommands(ctx, log, {
         openBoard: () => scene.open(),
@@ -363,6 +397,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openPlan: () => scene.openPlan(),
         statusText: () => boardSummary(workspaceRoot, home, teamViews),
         workmatesText: () => {
+          /** The board projection the workmate text is rendered from. */
           const state = readBoardState(workspaceRoot(), home(), teamViews())
           return state.workmates.count === 0
             ? "mpd workmates: none"
@@ -413,6 +448,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
  */
 async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): Promise<string | undefined> {
   if (!dialogs.available()) return undefined
+  /** The user's pick; undefined when the picker was cancelled or unavailable. */
   const choice = await dialogs.select("mpd", [
     { id: "board", label: "Board", description: "team, tasks, boulder, plans, workmates" },
     { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
@@ -436,11 +472,13 @@ async function pickWorkmate(
   scene: ReturnType<typeof registerScene>,
   teamViews: () => readonly DshTeamView[],
 ): Promise<void> {
+  /** The workmate display names read from the durable library. */
   const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names
   if (!dialogs.available() || names.length === 0) {
     scene.open()
     return
   }
+  /** The picked workmate's key; undefined when the picker was cancelled. */
   const id = await dialogs.select(
     "mpd workmates",
     names.slice(0, 50).map((entry) => ({ id: entry, label: entry })),

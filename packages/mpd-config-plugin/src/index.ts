@@ -24,10 +24,19 @@ import {
   type RefusalReason,
 } from "./bridge"
 
+/** The cordis plugin name; the loader addresses this row and its settings entry by it. */
 export const name = "mpd-config"
+/** The one service this row consumes; every other seam rides the adapter resolved at apply(). */
 export const inject = ["tools"]
 
+/**
+ * The cordis context as this row uses it: the tool registrar plus the service/provider seams.
+ * Declared structurally rather than imported, so the plugin stays runnable in unit tests
+ * without a mounted cordis runtime; every member beyond `tools` is probed before use.
+ */
 type Ctx = { tools: any; provide: (name: string, value: any, check?: any) => void; get?: (serviceName: string) => any; logger?: any; [k: string]: any }
+/** The row config: this plugin's wiring keys plus every `mpd.jsonc` knob the row schema declares. */
+/** Param typing detail: the two file-path keys are the only routing knobs declared here. */
 type Config = {
   projectFile?: string
   userFile?: string
@@ -49,10 +58,14 @@ const MARKER_PATH: readonly string[] = ["bridge", "migratedRevision"]
 
 // --- minimal JSONC parser (comments + trailing commas; string-aware) ---
 function stripJsonc(src: string): string {
+  // Scanned output, built one character at a time so string contents survive untouched.
   let out = ""
+  // True while the scan is inside a JSON string, where `//` and `/*` are literal characters.
   let inString = false
+  // Read cursor over the whole source; advanced by 1, or by 2 when a unit is consumed.
   let i = 0
   while (i < src.length) {
+    // The character at the cursor; the branch below decides what the scan does with it.
     const ch = src[i]
     if (inString) {
       out += ch
@@ -83,24 +96,38 @@ function stripJsonc(src: string): string {
   return out
 }
 
+/**
+ * Parse JSONC into the value it denotes: comments and trailing commas are removed first, then
+ * the remaining text is handed to the platform parser.
+ *
+ * The value is deliberately UNTYPED (a JSON document may hold anything) — callers narrow it
+ * through {@link isPlainObject} rather than trusting a shape.
+ */
 function parseJsonc(src: string): any {
   return JSON.parse(stripJsonc(src))
 }
 
+/** Whether the value is a non-null, non-array object — the only shape the merge walks into. */
 function isPlainObject(v: any): boolean {
   return v !== null && typeof v === "object" && !Array.isArray(v)
 }
 
+/** Keys the merge refuses to copy, so a hostile file cannot reach the prototype chain. */
 const RESERVED_KEYS = new Set(["__proto__", "prototype", "constructor"])
 
 // prototype-pollution safe deep merge (project wins)
 function deepMerge(base: any, over: any): any {
+  // The merge result, keyed in first-seen order; never an alias of `base` or `over`.
   const out: any = {}
+  // Base keys, or none when `base` is not a plain object.
   const bkeys = isPlainObject(base) ? Object.keys(base) : []
+  // Overlay keys, or none when `over` is not a plain object.
   const okeys = isPlainObject(over) ? Object.keys(over) : []
   for (const key of new Set([...bkeys, ...okeys])) {
     if (RESERVED_KEYS.has(key)) continue
+    // The base value at this key; undefined when absent, so `over` alone can win.
     const bv = isPlainObject(base) ? base[key] : undefined
+    // The overlay value at this key; undefined falls back to the base value.
     const ov = isPlainObject(over) ? over[key] : undefined
     if (isPlainObject(bv) && isPlainObject(ov)) out[key] = deepMerge(bv, ov)
     else if (isPlainObject(bv) && ov === undefined) out[key] = deepMerge(bv, {})
@@ -112,7 +139,9 @@ function deepMerge(base: any, over: any): any {
 /** The marker subtree must never become runtime config (it is bookkeeping, not a knob). */
 function withoutMarker(section: any): any {
   if (!isPlainObject(section) || !isPlainObject(section.bridge)) return section
+  // A SHALLOW copy of the section, so the caller's object is never mutated by the delete below.
   const rest: any = { ...section }
+  // A shallow copy of the marker subtree, from which the bookkeeping leaf is removed.
   const bridge: any = { ...section.bridge }
   delete bridge.migratedRevision
   if (Object.keys(bridge).length === 0) delete rest.bridge
@@ -139,8 +168,11 @@ function withoutMarker(section: any): any {
  * plugin's own wiring, not knobs, and merging them into the effective config would be nonsense.
  */
 const ROUTING_KEYS = ["projectFile", "userFile", "writeBack", "settingsBridge"]
+/** The knobs carried by the row config, with this plugin's own routing keys stripped out. */
 function rowKnobLayer(config: Config): Record<string, unknown> {
+  // The row config read as a plain record: the schema-derived knobs are not in `Config`.
   const source = config as unknown as Record<string, unknown>
+  // The knob layer, filled with every non-routing key whose value is actually defined.
   const layer: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(source)) {
     if (ROUTING_KEYS.includes(key)) continue
@@ -150,19 +182,42 @@ function rowKnobLayer(config: Config): Record<string, unknown> {
   return layer
 }
 
+/**
+ * Resolve the config for ONE workspace root by deep-merging every layer for it, lowest
+ * precedence first, and report which files actually contributed.
+ *
+ * The chain, in the order this function applies it: the schema defaults (implicit, they are
+ * whatever the caller's schema fills in) < L1 the USER file < L2 the PROJECT file < L3 the
+ * settings user section < L4 the row config. A later layer always wins, so the row config —
+ * which is what the harness settings form actually edits — outranks a file the user may not
+ * remember writing.
+ *
+ * `settingsSection` is taken RAW and with the in-namespace marker stripped, never as a
+ * resolved value: re-applying a resolved section's base and defaults would treat them as
+ * explicitly set. The returned `files` list names only the layers that EXIST, which is what
+ * the status surface and the reload tool report.
+ */
 function loadConfig(config: Config, root: string, settingsSection?: unknown): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
+  // DSH home for the user layer: the env override first, else the per-user default.
   const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
+  // User layer file: an explicit row override wins, else `<DSH_HOME>/mpd.jsonc`.
   const userFile = config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc")
+  // Project layer file: an explicit row override wins, else `<root>/.mpd/mpd.jsonc`.
   const projectFile = config.projectFile ? resolve(config.projectFile) : join(root, ".mpd", "mpd.jsonc")
+  // Layer order: user first, then project — `deepMerge` lets the LATER layer win.
   const files = [userFile, projectFile]
+  // The merged result, accumulated layer by layer; starts empty (schema defaults apply later).
   let merged: any = {}
+  // Per-file parse failures, named by path; reported through `states()` and the reload tool.
   const errors: string[] = []
   for (const f of files) {
     if (!existsSync(f)) continue
     try { merged = deepMerge(merged, parseJsonc(readFileSync(f, "utf8"))) }
     catch (e: any) { errors.push(f + ": " + String(e?.message ?? e)) }
   }
+  // L3 verbatim, with the in-namespace marker stripped — never the RESOLVED section.
   const section = withoutMarker(settingsSection)
+  // Whether L3 carried anything at all: an empty section applies nothing and is not a layer.
   const settingsApplied = isPlainObject(section) && Object.keys(section).length > 0
   if (settingsApplied) merged = deepMerge(merged, section)
   // L4: the ROW CONFIG, i.e. what the settings form edits. It sits ON TOP of the file layers for the
@@ -189,8 +244,11 @@ export { stripJsonc, parseJsonc, deepMerge, loadConfig }
  * `teamModels` key into the file.
  */
 export function withTeamModelsDefaults(config: any): any {
+  // The config as a plain record, so the guards below never trip on a primitive input.
   const raw = isPlainObject(config) ? config : {}
+  // The file-declared slot block, or none; an absent block means `all defaults`.
   const declared = isPlainObject(raw.teamModels) ? raw.teamModels : {}
+  // The materialised slot map: a NEW object returned to the caller, never written back.
   const teamModels: any = {}
   for (const slot of TEAM_MODEL_SLOTS) {
     // Slot-level merge: a file that sets only `slot2.model` keeps the other two slot2 leaves and
@@ -232,6 +290,13 @@ export const Config = markVolatile(z.object({
 // export alone, `settings.describe()` listed 18 harness entries and `mpd-config` was ABSENT).
 ;(apply as unknown as { Config?: unknown }).Config = Config
 
+/**
+ * Register the `mpdConfig` service, the two config tools and the settings bridge, in that
+ * order: the service is what other mpd plugins inject, and the bridge only augments it.
+ *
+ * Every seam is probed first — a missing one degrades this row with a warning, because it
+ * must never take the whole plugin tree down (see `degraded` on the bridge state).
+ */
 export function apply(ctx: Ctx, config: Config = {}): void {
   // FLAG THE SCHEMA AT APPLY TIME, not at module init. A schemastery node's `meta` is not yet the
   // object the loader will later read while the module is still evaluating (measured: the same
@@ -285,8 +350,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     recorded: new Map<string, unknown>(),
   }
 
+  /** Map a leaf path to one map key: the NUL join cannot collide with a real dot-path segment. */
   const pathKey = (path: readonly string[]): string => path.join("\u0000")
-  const isMarker: (path: readonly string[]) => boolean = (path) => path[0] === MARKER_PATH[0]
+  /** Whether a leaf belongs to the marker subtree, which is bookkeeping rather than a knob. */
+  const isMarker: (path: readonly string[]) => boolean = (path: readonly string[]): boolean => path[0] === MARKER_PATH[0]
 
   /** `settingsBridge.writeBack` (default ON) + the env lever of design §10.2. */
   const bridgeOptions = (): BridgeOptions => ({
@@ -294,6 +361,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     retries: DEFAULT_BRIDGE_OPTIONS.retries,
   })
 
+  /** The write target for a root: the row override wins, else that root's own project file. */
   const projectFileFor = (root: string): string => (config.projectFile ? resolve(config.projectFile) : join(root, ".mpd", "mpd.jsonc"))
 
   /**
@@ -303,6 +371,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * `resolveTargets` alone.
    */
   const readRoot = (): string => {
+    // Every live session root; exactly one is unambiguous, several are not ours to guess.
     const roots = dsh.workspaceRootsAll()
     return roots.length === 1 ? roots[0] : dsh.workspaceRoot()
   }
@@ -324,6 +393,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       bridge.degraded = "adapter has no settingsReader seam (rebuild packages/mpd-dsh-adapter-plugin/dist)"
       return undefined
     }
+    // The namespace reader, or undefined while the namespace is not served.
     const reader = dsh.settingsReader(SETTINGS_NS)
     if (reader === undefined) {
       bridge.serviceReady = false
@@ -332,6 +402,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       return undefined
     }
     bridge.serviceReady = true
+    // The reader's snapshot: revision plus the raw user section this layer treats as L3.
     const described = reader.describe()
     if (described === undefined) {
       bridge.served = false
@@ -344,6 +415,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return described.user
   }
 
+  // The resolved config for the LAST root read, refreshed by every reload and watcher tick.
   let state = loadConfig(config, dsh.workspaceRoot(), readSection())
 
   /** Re-read every layer for ONE workspace root (used by the tools and by the file watcher). */
@@ -363,9 +435,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return reloadAt(dsh.workspaceRoot(exec))
   }
 
+  /** One diagnostic line per write-back, carrying the per-target result and the revision fence. */
   const reportLine = (report: BridgeReport & { source?: string; revision?: number }, note?: string): string =>
     `[mpd-config] settings bridge${note ? " " + note : ""}: ` + JSON.stringify({ writtenTo: report.writtenTo, skipped: report.skipped ?? null, candidates: report.candidates ?? [], results: report.results, applies: report.applies, source: report.source ?? null, revision: report.revision ?? null })
 
+  /** Explain a skipped write-back, naming the reason and the candidate roots it saw. */
   const warnRefusal = (reason: RefusalReason, candidates: readonly string[]): void => {
     if (reason === "no-live-session") {
       warn(`[mpd-config] settings bridge: saved to settings — not yet written to any .mpd/mpd.jsonc (no live session). Start a session in the intended workspace to persist it.`)
@@ -389,19 +463,26 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    */
   const reconcile = (root: string): void => {
     if (bridge.recorded.size === 0) return
+    // The project file of the root being reconciled; without one there is nothing to compare.
     const file = projectFileFor(root)
     if (!existsSync(file)) return
+    // The file's leaves, or nothing when the file is absent or unparsable (nothing to clear).
     let leaves: BridgeLeaf[]
     try {
       leaves = sectionLeaves(parseJsonc(readFileSync(file, "utf8")))
     } catch {
       return
     }
+    // What the file holds now, keyed by encoded path; the marker leaf is not a config value.
     const onDisk = new Map(leaves.filter((leaf) => !isMarker(leaf.path)).map((leaf) => [pathKey(leaf.path), leaf.value]))
+    // L3 as last read: only a leaf present HERE can be an override left over from a file edit.
     const section = bridge.section
+    // Encoded paths of the L3 leaves, so membership is one lookup per recorded leaf.
     const sectionKeys = new Set(sectionLeaves(section).map((leaf) => pathKey(leaf.path)))
+    // Dot-path arrays to unset, in the order the recorded leaves were walked.
     const unsetPaths: string[][] = []
     for (const [key, recorded] of [...bridge.recorded]) {
+      // The file value now: differs from the recorded one exactly when the file moved.
       const current = onDisk.get(key)
       if (JSON.stringify(current) === JSON.stringify(recorded)) continue
       bridge.recorded.set(key, current)
@@ -425,6 +506,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       })
   }
 
+  /** Record the file's current leaves as the baseline a later edit is compared against. */
   const rememberFileValues = (file: string): void => {
     try {
       for (const leaf of sectionLeaves(parseJsonc(readFileSync(file, "utf8")))) {
@@ -442,22 +524,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** The write-back itself: decide the target, refuse loudly, write per root, report. */
   const writeBack = (leaves: readonly BridgeLeaf[], source: string | undefined, revision: number | undefined): void => {
     if (leaves.length === 0) return
+    // Resolved write-back options for THIS call, so one decision governs the whole path.
     const options = bridgeOptions()
     if (!options.writeBack) {
+      // The report for a disabled write-back: nothing written, and the edit still took effect.
       const disabled: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: "disabled", applies: "restart", source, revision, at: new Date().toISOString() }
       bridge.report = disabled
       warnRefusal("disabled", [])
       warn(reportLine(disabled, "DISABLED"))
       return
     }
+    // Who the file write targets — exactly one live root, or a refusal naming why not.
     const decision = resolveTargets(dsh.workspaceRootsAll())
     if (decision.kind === "refuse") {
+      // The report for a refusal: no target was written, and every candidate is named.
       const refused: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "restart", source, revision, at: new Date().toISOString() }
       bridge.report = refused
       warnRefusal(decision.reason, decision.candidates)
       warn(reportLine(refused, decision.reason))
       return
     }
+    // The per-target write result; the loops below turn it into diagnostics and watchers.
     const report = writeBackLeaves(decision.targets, leaves, options)
     bridge.report = { ...report, source, revision, at: new Date().toISOString() }
     for (const target of decision.targets) if (report.writtenTo.includes(target.file)) rememberFileValues(target.file)
@@ -478,14 +565,26 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // A file watcher is the ONLY way a fresh `<workspace>/.mpd/mpd.jsonc` edit is observed
   // (the settings service knows nothing about the file), so the D-2 clearing rule needs one.
   const watchers = new Map<string, () => void>()
+  /**
+   * Watch one root's project file and reload on change, at most once per quiet period.
+   *
+   * One watcher per file: a second call for the same file returns immediately, so a write-back
+   * that re-targets the same root never stacks listeners. A watch that cannot be established at
+   * all degrades to reconciliation on the next reload instead of failing this row.
+   */
   function watchRoot(root: string): void {
+    // The project file this root watches; one watcher per file, so a re-run is a no-op.
     const file = projectFileFor(root)
     if (watchers.has(file)) return
     try {
+      // The file's directory; watching it covers an atomic rename over the file itself.
       const dir = dirname(file)
       if (!existsSync(dir)) return
+      // The file name: events for any other name are not this file's edit.
       const name = basename(file)
+      // Debounce handle; a burst of writes collapses into one reload.
       let timer: ReturnType<typeof setTimeout> | undefined
+      // The fs listener: filters by name, then reloads once the writer has gone quiet.
       const listener = (_event: string, changed: unknown): void => {
         if (changed !== null && changed !== undefined && String(changed) !== name) return
         if (timer !== undefined) clearTimeout(timer)
@@ -494,6 +593,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         }, 150)
         if (typeof (timer as { unref?: () => void }).unref === "function") (timer as { unref: () => void }).unref()
       }
+      // The underlying fs watcher, owned by the disposer stored in `watchers`.
       const watcher = watch(dir, listener)
       watchers.set(file, () => {
         if (timer !== undefined) clearTimeout(timer)
@@ -519,12 +619,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       bridge.migration = "not-attempted-adapter-seam-absent"
       return
     }
+    // The namespace reader for the migration; absent while the namespace is not served.
     const reader = dsh.settingsReader(SETTINGS_NS)
+    // The snapshot whose user section is migrated and whose revision is the marker fence.
     const described = reader?.describe()
     if (described === undefined) {
       bridge.migration = "not-served"
       return
     }
+    // The settings leaves a file write would establish, marker leaf excluded.
     const leaves = changedLeaves({}, withoutMarker(described.user)).written.filter((leaf) => !isMarker(leaf.path))
     if (leaves.length === 0) {
       bridge.migration = "nothing-to-migrate"
@@ -539,6 +642,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       bridge.migration = "already-migrated"
       return
     }
+    // Same refusal contract as the write-back: one live root, or the migration is deferred.
     const decision = resolveTargets(dsh.workspaceRootsAll())
     if (decision.kind === "refuse") {
       bridge.migration = decision.reason === "no-live-session" ? "deferred-no-workspace" : `deferred-${decision.reason}`
@@ -546,11 +650,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       else warnRefusal(decision.reason, decision.candidates)
       return
     }
+    // The migration write, through the SAME refuse-first writer the live write-back uses.
     const report = writeBackLeaves(decision.targets, leaves, bridgeOptions())
     if (report.skipped !== undefined) {
       bridge.migration = `deferred-${report.skipped}`
       return
     }
+    // The first target that did not land, if any: a partial migration is reported, not hidden.
     const bad = report.results.find((result) => result.outcome !== "written" && result.outcome !== "created" && result.outcome !== "unchanged")
     if (bad !== undefined) {
       bridge.migration = "writeback-failed"
@@ -562,7 +668,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       bridge.migration = "migrated-no-marker"
       return
     }
+    // The revision the marker write is fenced on, read once so both uses agree.
     const revision = described.revision
+    // The marker value: the provider bumps the revision by one per raw-section change.
     const markerValue = revision + 1
     void dsh.settingsMutate(SETTINGS_NS, [{ op: "set", path: [...MARKER_PATH], value: markerValue }], revision).then((result: MutateResult) => {
       if (result.ok) {
@@ -580,7 +688,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // so the row keeps serving config (and says so in `states()`) instead of throwing.
     bridge.degraded = bridge.degraded ?? "adapter has no onSettingsDocumentUpdated seam"
   } else dsh.onSettingsDocumentUpdated(SETTINGS_NS, (revision: number | undefined, source: string | undefined) => {
+    // L3 as of BEFORE this event: the diff below is what the event actually changed.
     const previous = bridge.section
+    // L3 as of now; also the section the config is re-resolved against.
     const next = readSection()
     state = loadConfig(config, readRoot(), next)
     // The bridge's OWN namespace writes need no guard here: the marker leaf is filtered
@@ -623,6 +733,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * RESOLVED value and the config layer's own reads are unaffected.
    */
   const baseForNamespace = (): { base: unknown; reason: string; candidates?: readonly string[] } => {
+    // The live session roots whose cardinality picks the base — zero, one, or ambiguous.
     const roots = dsh.workspaceRootsAll()
     if (roots.length === 1) return { base: loadConfig(config, roots[0]).config, reason: "one-live-root" }
     if (roots.length === 0) return { base: loadConfig(config, readRoot()).config, reason: "mount-time-root" }
@@ -633,11 +744,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** Set once the harness answers that the namespace model is gone; the legacy paths then stay quiet. */
   let settingsModelRetired = false
 
+  /** Register the namespace on its FILE-DERIVED base; a refused registration is loud, not fatal. */
   const registerNamespace = (base: unknown): void => {
     if (typeof dsh.settingsRegister !== "function") {
       bridge.degraded = "adapter has no settingsRegister seam (rebuild packages/mpd-dsh-adapter-plugin/dist)"
       return
     }
+    // The host's verdict: `ok:false` means the namespace model is retired in this harness.
     const result = dsh.settingsRegister(SETTINGS_NS, SettingsSchema, { base, applies: "restart" })
     if (result.ok !== true) {
       bridge.namespaceRegistration = result.error
@@ -667,6 +780,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // fallback owned the namespace WITHOUT the file-derived base. The callback below is parked on the
   // adapter's deferred inject, so `mpd-config` (mounted earlier) wins the race it is meant to win.
   const registerWithFileBase = (): void => {
+    // The base decision, recomputed here because the settings provider mounts after this row.
     const decision = baseForNamespace()
     bridge.baseReason = decision.reason
     if (decision.candidates !== undefined) bridge.baseCandidates = decision.candidates
@@ -721,6 +835,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // schema defaults, so a sandbox workspace with no `teamModels` block still shows the four
       // complete slots this tool reports (A2's observable artifact).
       const resolved = withTeamModelsDefaults(state.config)
+      // The dot-path argument, or undefined for a whole-config read.
       const key = args?.key ? String(args.key) : undefined
       // `value` is a raw JSON value: an undefined field is dropped by JSON
       // serialization, which breaks the host's lossless round-trip check
@@ -736,6 +851,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { files: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["files", "errors"] }, render: (_a: unknown, v: any) => textBlock("mpd config reloaded: " + v.files.join(", ") + (v.errors.length ? " ERRORS: " + v.errors.join("; ") : "")) },
     execute: async (_args: any, exec: any) => {
+      // The freshly resolved config, returned beside the file/error state consumers assert on.
       const cfg = reload(exec)
       return { files: state.files, errors: state.errors, config: cfg }
     }
