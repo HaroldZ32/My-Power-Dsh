@@ -284,15 +284,33 @@ function requiredPathsOf(patches: readonly string[], referenced: ReadonlySet<str
  * `package.json` alone, the distribution descriptor went stale, and `bun run test:qa` reddened only
  * later inside a QA case. A release step nobody can forget is a rule this gate can check.
  */
-const VERSION_CARRIERS: readonly string[] = ["dsh-plugin.json", "dsh-distribution.json"]
+const VERSION_CARRIERS: ReadonlyArray<{ readonly file: string; readonly path: readonly string[] }> = [
+  // The DSH plugin descriptor carries it at the root.
+  { file: "dsh-plugin.json", path: ["version"] },
+  // The distribution descriptor carries it INSIDE `distribution` — measured 2026-09-28: a bulk edit
+  // wrote the root key instead, the earlier root-first reader accepted it, and the TUI distribution
+  // case failed later with `distribution.version must match package.json`. The path is explicit now,
+  // and a version anywhere ELSE in the document is a finding of its own.
+  { file: "dsh-distribution.json", path: ["distribution", "version"] },
+]
 
 /**
- * Assert both shipping descriptors carry the manifest's version.
+ * Read a dotted path out of a parsed JSON document.
  *
- * @param manifest - The parsed root manifest.
- * @param violations - Collector every finding is appended to.
- * @returns One result per carrier, plus the summary result.
+ * @param doc - The parsed document.
+ * @param path - The key path to walk, in order.
+ * @returns The string at that path, or undefined when any step is missing or not an object.
  */
+function readPath(doc: unknown, path: readonly string[]): string | undefined {
+  /** The value as it is walked down the path. */
+  let current: unknown = doc
+  for (const key of path) {
+    if (typeof current !== "object" || current === null) return undefined
+    current = (current as Record<string, unknown>)[key]
+  }
+  return typeof current === "string" ? current : undefined
+}
+
 function checkVersionCoherence(manifest: Record<string, unknown>, violations: Violation[]): CheckResult[] {
   /** The manifest's own version, the value every carrier must reproduce. */
   const version = typeof manifest.version === "string" ? manifest.version : "(missing)"
@@ -300,19 +318,29 @@ function checkVersionCoherence(manifest: Record<string, unknown>, violations: Vi
   const results: CheckResult[] = []
   for (const carrier of VERSION_CARRIERS) {
     /** The parsed carrier document, or undefined when it is absent/unreadable. */
-    const doc = readJsonFile(join(repoRoot, carrier))
-    /** The version the carrier declares, wherever its schema puts it (root or `distribution`). */
-    const declared = doc === undefined
-      ? undefined
-      : typeof doc.version === "string"
-        ? doc.version
-        : typeof doc.distribution === "object" && doc.distribution !== null && typeof (doc.distribution as Record<string, unknown>).version === "string"
-          ? String((doc.distribution as Record<string, unknown>).version)
-          : undefined
-    /** True when the carrier reproduces the manifest version. */
-    const ok = declared === version
-    if (!ok) violations.push({ file: carrier, rule: "version-coherence", detail: `declares ${String(declared)}, package.json says ${version}` })
-    results.push({ id: `version:${carrier}`, ok, detail: ok ? `carries ${version}` : `declares ${String(declared)} — must match package.json (${version})` })
+    const doc = readJsonFile(join(repoRoot, carrier.file))
+    /** The version at the carrier's DECLARED path. */
+    const declared = doc === undefined ? undefined : readPath(doc, carrier.path)
+    /** A version at the ROOT of a carrier whose path says it lives deeper (or the reverse). */
+    const stray = carrier.path.length > 1 && doc !== undefined && typeof (doc as Record<string, unknown>).version === "string"
+      ? String((doc as Record<string, unknown>).version)
+      : undefined
+    /** True when the carrier reproduces the manifest version at the declared path and nowhere else. */
+    const ok = declared === version && stray === undefined
+    if (!ok) {
+      violations.push({
+        file: carrier.file,
+        rule: "version-coherence",
+        detail: stray === undefined
+          ? `declares ${String(declared)} at ${carrier.path.join(".")}, package.json says ${version}`
+          : `carries a stray root \`version\` (${stray}) — this descriptor's version lives at ${carrier.path.join(".")}`,
+      })
+    }
+    results.push({
+      id: `version:${carrier.file}`,
+      ok,
+      detail: ok ? `${carrier.path.join(".")} = ${version}` : `must be ${version} at ${carrier.path.join(".")}${stray === undefined ? "" : `, with no stray root version`}`,
+    })
   }
   return results
 }
