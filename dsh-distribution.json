@@ -3,7 +3,7 @@
   "kind": "DistributionDescriptor",
   "distribution": {
     "id": "urn:dsh:distribution:mpd:my-power-dsh",
-    "version": "0.11.5"
+    "version": "0.11.6"
   },
   "displayName": "my-power-dsh — DSH plugin bundle (web edition + dsh-tui edition)",
   "protocols": [
@@ -19,46 +19,46 @@
           },
           {
             "id": "host-tui",
-            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.11.5"
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.11.6"
           },
           {
             "id": "bundle",
-            "ref": "urn:dsh:distribution:mpd:my-power-dsh@0.11.5",
+            "ref": "urn:dsh:distribution:mpd:my-power-dsh@0.11.6",
             "dependsOn": [
               "host-base"
             ]
           },
           {
             "id": "plugins",
-            "ref": "urn:dsh:component:mpd:plugins@0.11.5",
+            "ref": "urn:dsh:component:mpd:plugins@0.11.6",
             "dependsOn": [
               "bundle"
             ]
           },
           {
             "id": "mcp-servers",
-            "ref": "urn:dsh:component:mpd:mcp-servers@0.11.5",
+            "ref": "urn:dsh:component:mpd:mcp-servers@0.11.6",
             "dependsOn": [
               "bundle"
             ]
           },
           {
             "id": "skills-corpus",
-            "ref": "urn:dsh:component:mpd:skills-corpus@0.11.5",
+            "ref": "urn:dsh:component:mpd:skills-corpus@0.11.6",
             "dependsOn": [
               "bundle"
             ]
           },
           {
             "id": "web-client",
-            "ref": "urn:dsh:component:mpd:web-client@0.11.5",
+            "ref": "urn:dsh:component:mpd:web-client@0.11.6",
             "dependsOn": [
               "bundle"
             ]
           },
           {
             "id": "tui-edition",
-            "ref": "urn:dsh:component:mpd:tui-edition@0.11.5",
+            "ref": "urn:dsh:component:mpd:tui-edition@0.11.6",
             "dependsOn": [
               "bundle",
               "host-tui"
