@@ -14,6 +14,22 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.11.5 — the release version lives in three files, and the gate knows it
+
+**Fixed.**
+
+- **Both shipping descriptors carry the manifest's version again.** `dsh-plugin.json` (the DSH plugin
+  descriptor) and `dsh-distribution.json` (the distribution descriptor the TUI case asserts against)
+  were still pinned at `0.11.1` after the v0.11.2–v0.11.4 bumps, so `bun run test:qa` reddened inside
+  `tui-distribution.ts` on a release that was otherwise complete — the coupling was real and undocumented.
+
+**Added.**
+
+- **`verify-plugin-manifest` now checks version coherence** — one result per carrier, with the
+  descriptor's own key path (`version` or `distribution.version`) — plus a sixth `--self-test` arm whose
+  control is the real manifest, so bumping `package.json` alone is red in EVERY gate sweep instead of
+  three steps later inside a QA case.
+
 ## v0.11.4 — the live-install lane judges the command it actually runs
 
 **Fixed.**

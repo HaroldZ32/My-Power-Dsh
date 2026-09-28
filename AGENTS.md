@@ -225,8 +225,8 @@ specification.
 | QA real cases | `node skills/dsh-qa/scripts/<case>.ts` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
 | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
-| **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): the TWO install-time rules — **no `cordis`** in `dependencies` / `peerDependencies` / `optionalDependencies` (by NAME; the optional field is NOT an exemption) and no `preinstall` / `install` / `postinstall` / `prepare` script NAME — plus the packaging contract a one-command install rests on: declared patch files exist, every row module path resolves, the `files` allowlist admits every runtime path, `evidence/` stays out, and **npm's own `npm pack --dry-run` list carries them**. `--self-test`: five mutants with clean controls | every manifest/patch/row/file-layout change, and EVERY release sweep |
-| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in the source set (`packages/*/{src,test,self-fix-tests}`, `scripts/`, `skills/*/scripts/`, `docker/`, `tests/`, `templates/`, `extensions/`) has a precise comment above it, and that every NAMED function writes down its parameter and return types. `--self-test`: six arms | any source edit, and EVERY release sweep |
+| **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): the TWO install-time rules — **no `cordis`** in `dependencies` / `peerDependencies` / `optionalDependencies` (by NAME; the optional field is NOT an exemption) and no `preinstall` / `install` / `postinstall` / `prepare` script NAME — the VERSION-COHERENCE rule (`dsh-plugin.json` + `dsh-distribution.json` must carry `package.json`'s version) — plus the packaging contract a one-command install rests on: declared patch files exist, every row module path resolves, the `files` allowlist admits every runtime path, `evidence/` stays out, and **npm's own `npm pack --dry-run` list carries them**. `--self-test`: six arms with clean controls | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
+| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in the source set (`packages/*/{src,test,self-fix-tests}`, `scripts/`, `skills/*/scripts/`, `docker/`, `tests/`, `templates/`, `extensions/`) has a precise comment above it, and that every NAMED function writes down its parameter and return types | any source edit, and EVERY release sweep |
 | Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
@@ -528,9 +528,9 @@ Docker lane hold this line.
   through the manifest's **`files` allowlist**, then `reconcile` reads the installed package's
   `dsh.bundle.patch` files, validates that they load, and appends the package name to
   `dsh.profile.bundles` — that pair is what makes the mount travel through `cordis.patch.yml` + the
-  profile mechanism and NOTHING else. Proof: `verify-plugin-manifest --pack` plus the `mpd-oneclick`
-  compose service on a bare `ubuntu:24.04` (`node scripts/docker-e2e.ts --mode oneclick`). The
-  allowlist keeps the download small: 100.9 MB without it, 7.6 MB / 1134 files with it.
+  profile mechanism and NOTHING else. Proof: the live lane (`node scripts/docker-e2e.ts --mode
+  oneclick --spec github:HaroldZ32/My-Power-Dsh`) on a bare `ubuntu:24.04`. The allowlist keeps the
+  download small: 100.9 MB without it, 7.6 MB / 1134 files with it.
 - **A plain `github:<owner>/<repo>` spec resolves the repository's DEFAULT BRANCH.** Measured
   2026-09-28: it served `master` while the wave sat on `dev`, so the install ran OLD code and failed on a
   dependency that branch still declared. An installable wave is RELEASED to the default branch (§11); a
@@ -560,9 +560,9 @@ Docker lane hold this line.
   Only user data stays: the workmate library under `~/.mpd/workmate`.
 - **`node scripts/pack-mpd.ts` (alias `npm run pack`) is the RELEASE step, not an install step.** It
   assembles the relocatable `dist/mpd-package/` (tarball installs: `dsh plugin --profile web add
-  dist/mpd-package`): the built dists, `skills/` + `presets/`, `extensions/`, `templates/`, the `docs/`
-  pairs, `agent-references/` and `scripts/`, declared in `files`; it refuses to ship a missing `dist/`.
-  A checkout install never needs it.
+  dist/mpd-package`) from the built dists, `skills/` + `presets/`, `extensions/`, `templates/`, the
+  `docs/` pairs, `agent-references/` and `scripts/`, declared in `files`; a checkout install never
+  needs it.
 - **After a code change:** rebuild the touched package's `dist/` (`bun build …`) and
   restart dsh — a `link:` install reads the checkout directly. Re-pack only when the
   distribution artifact must be refreshed, and bump `package.json` version for releases.
@@ -604,7 +604,7 @@ Docker lane hold this line.
 
 ## 11. Release Process
 
-1. From dev: `git checkout -b release/vX.Y.Z`; bump version (package.json + changelog note).
+1. From dev: `git checkout -b release/vX.Y.Z`; bump the version in ALL THREE carriers — `package.json`, `dsh-plugin.json`, `dsh-distribution.json` (`verify:manifest` reddens on any mismatch) — plus the changelog note.
 2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when
    `skills/**` changed), `bun test`,
