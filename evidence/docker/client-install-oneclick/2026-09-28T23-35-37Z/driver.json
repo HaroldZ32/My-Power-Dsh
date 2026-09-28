@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-09-28T23:35:37.088Z",
+  "finishedAt": "2026-09-28T23:38:56.193Z",
+  "docker": "Docker version 29.8.1, build 4a63305",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 293,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-HVTqZW",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/dshProj/my-power-dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh mpd-oneclick",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=43 failed=1 null=3 FAILED=[install.profileDep] NULL=[build.bunInstall,build.dists,boot.llmTurn]",
+  "exitCode": 1
+}

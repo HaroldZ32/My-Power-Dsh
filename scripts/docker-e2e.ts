@@ -514,6 +514,10 @@ function selfTest(): void {
   // 8. entrypoint obligations
   /** The container entrypoint script, asserted for its install/boot obligations. */
   const entrypoint = readFileSync(join(DOCKER_DIR, "entrypoint.sh"), "utf8")
+  // The LIVE lane drives `github:<owner>/<repo>`, the shorthand the README prints, so the entrypoint's
+  // profile-dependency assertion must accept that shape (measured 2026-09-28: the install itself
+  // succeeded and the assertion alone failed the run).
+  check("entrypoint accepts the github: shorthand as a git dependency shape", entrypoint.includes("oneclick:github:*"))
   check("entrypoint is strict bash", entrypoint.includes("set -euo pipefail"))
   check("entrypoint performs the real client install", entrypoint.includes("dsh plugin --profile web add ."))
   check("entrypoint installs the harness at a pin", /npm i -g "@deepseek-ai\/dsh@\$DSH_VERSION"/.test(entrypoint))

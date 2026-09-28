@@ -484,7 +484,10 @@ case "$INSTALL_MODE:$INSTALL_DEP" in
       record install.profileDep false "the bundle layer or a box bundle is missing from dsh.profile.bundles" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
     fi
     ;;
-  oneclick:git+*|oneclick:git:*)
+  oneclick:git+*|oneclick:git:*|oneclick:github:*)
+    # `github:<owner>/<repo>` is the SHORTHAND the README tells a user to type, and it is pinned here
+    # because the live lane drives exactly that string; `git+…` is the explicit URL form pnpm rewrites
+    # it into. Both are the published-package path, neither is a checkout link.
     if [ "$BUNDLE_LAYER_OK" -eq 1 ]; then
       record install.profileDep true "the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles" "dep=$INSTALL_DEP bundles=$INSTALL_BUNDLES"
     else
