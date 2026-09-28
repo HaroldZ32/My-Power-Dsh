@@ -167,6 +167,23 @@ interface DockerReady {
   readonly compose: string
 }
 
+/** How the machine's Docker answers the rootless question. */
+type DockerModeState = "rootless" | "rootful" | "unusable"
+
+/** The daemon-mode probe: which of the three states this machine is in, and the evidence for it. */
+interface DockerModeProbe {
+  /** The state the probe measured. */
+  readonly state: DockerModeState
+  /** The raw evidence (`docker info` output, or the failure it produced), quoted in every verdict. */
+  readonly detail: string
+}
+
+/** What this run should do about Docker, decided from the probe and the caller's flags. */
+type DockerDecision =
+  | { readonly action: "run"; readonly modeLine: string }
+  | { readonly action: "skip"; readonly notice: string }
+  | { readonly action: "fail"; readonly reason: string }
+
 /** Either a resolved docker toolchain or the precise reason it is unusable. */
 type DockerResolution = DockerMissing | DockerReady
 
@@ -286,6 +303,66 @@ export function resolveDocker(env: NodeJS.ProcessEnv = process.env): DockerResol
   const compose = spawnSync(found, ["compose", "version"], { encoding: "utf8" })
   if (compose.status !== 0) return { ok: false, reason: "the docker compose plugin is not available (`docker compose version` failed)" }
   return { ok: true, docker: found, version: String(version.stdout ?? "").trim(), compose: String(compose.stdout ?? "").trim() }
+}
+
+/**
+ * Ask the daemon whether it runs rootless.
+ *
+ * WHY THIS MATTERS: this lane is the LAST step of the verification flow and it must be honest about
+ * the environment it ran in — a rootless daemon proves the whole install/mount path works without
+ * root, while a rootful one proves less. It must also never turn an absent Docker into a broken
+ * wave, so an unusable daemon is reported as its own state instead of an exception.
+ *
+ * @param dockerPath - Absolute path of the docker binary resolveDocker found.
+ * @returns The measured state plus the evidence (the `SecurityOptions` list, or the failure text).
+ */
+export function probeDockerMode(dockerPath: string): DockerModeProbe {
+  // `docker info` succeeds without elevated privileges only when the CURRENT USER may talk to the
+  // daemon (rootless mode, or membership in the docker group); a socket EACCES is exactly the "no
+  // usable Docker here" case the flow skips on.
+  /** The daemon query: SecurityOptions carries `name=rootless` on a rootless daemon. */
+  const info = spawnSync(dockerPath, ["info", "--format", "{{json .SecurityOptions}}"], { encoding: "utf8", timeout: 30_000 })
+  if (info.status !== 0) {
+    /** stderr when the CLI produced one, else the signal/status, so the notice names the real cause. */
+    const failure = String(info.stderr ?? "").trim() || `docker info exited ${String(info.status)}${info.signal === null ? "" : ` (signal ${info.signal})`}`
+    return { state: "unusable", detail: failure }
+  }
+  /** The SecurityOptions JSON array as text; the key is matched inside it, never parsed positionally. */
+  const options = String(info.stdout ?? "").trim()
+  return { state: options.includes("rootless") ? "rootless" : "rootful", detail: options }
+}
+
+/**
+ * Decide what Docker means for this run — PURE, so `--self-test` exercises every arm without Docker.
+ *
+ * THE POLICY (user-set): the Docker lane is part of the verification flow and runs as its LAST step;
+ * a machine with no ROOTLESS Docker prints a notice and SKIPS the step instead of failing the wave.
+ * `--allow-rootful-docker` opts a rootful daemon in explicitly (CI images are usually rootful), and
+ * `--require-docker` turns any skip into a failure for a release run that must not silently lose it.
+ *
+ * @param probe - The measured daemon mode.
+ * @param flags - The caller's two switches.
+ * @returns `run`, `skip` with the notice to print, or `fail` with the reason.
+ */
+export function decideDockerUse(probe: DockerModeProbe, flags: { readonly requireDocker: boolean; readonly allowRootful: boolean }): DockerDecision {
+  if (probe.state === "rootless") return { action: "run", modeLine: `docker mode: ROOTLESS (${probe.detail})` }
+  if (probe.state === "rootful" && flags.allowRootful) return { action: "run", modeLine: `docker mode: ROOTFUL — opted in with --allow-rootful-docker (${probe.detail})` }
+  /** The one sentence that names what was found, shared by the notice and the fatal reason. */
+  const found = probe.state === "rootful"
+    ? `this machine's Docker is ROOTFUL, not rootless (${probe.detail}); pass --allow-rootful-docker to run the lane here anyway`
+    : `no usable Docker daemon for this user (${probe.detail})`
+  if (flags.requireDocker) return { action: "fail", reason: `--require-docker was passed and ${found}` }
+  return {
+    action: "skip",
+    notice: [
+      `[driver] SKIP — the Docker real-machine lane did NOT run: ${found}.`,
+      "[driver] This step is the LAST one in the verification flow and is skipped on purpose, not failed:",
+      "[driver] every static gate, the unit suite and the QA self-tests above still had to pass. Install a",
+      "[driver] rootless Docker (https://docs.docker.com/engine/security/rootless/) and re-run",
+      "[driver] `node scripts/docker-e2e.ts --mode source` / `--mode oneclick`, or pass --require-docker to",
+      "[driver] make this skip fatal for a release sweep.",
+    ].join("\n"),
+  }
 }
 
 /**
@@ -469,6 +546,30 @@ function selfTest(): void {
   const missing = resolveDocker({ PATH: "/nonexistent-bin" })
   check("resolveDocker reports a missing docker precisely", missing.ok === false && missing.reason.includes("no `docker` on PATH"), JSON.stringify(missing))
 
+  // 11b. the rootless/skip policy: every arm of the decision, plus the probe's own parsing.
+  /** The four probes the policy must distinguish, each with the evidence text a real run would print. */
+  const probes = {
+    rootless: { state: "rootless", detail: '[\"name=seccomp,profile=builtin\",\"name=rootless\"]' },
+    rootful: { state: "rootful", detail: '[\"name=seccomp,profile=builtin\"]' },
+    unusable: { state: "unusable", detail: "permission denied while trying to connect to the Docker daemon socket" },
+  } as const
+  /** Default flags: no requirement, no rootful opt-in. */
+  const plain = { requireDocker: false, allowRootful: false }
+  check("a ROOTLESS daemon runs the lane", decideDockerUse(probes.rootless, plain).action === "run")
+  check("a ROOTFUL daemon is SKIPPED with a notice, not failed", decideDockerUse(probes.rootful, plain).action === "skip")
+  check("an unusable daemon is SKIPPED, never thrown", decideDockerUse(probes.unusable, plain).action === "skip")
+  check("--allow-rootful-docker opts a rootful daemon in", decideDockerUse(probes.rootful, { requireDocker: false, allowRootful: true }).action === "run")
+  check("--require-docker turns the skip into a failure", decideDockerUse(probes.unusable, { requireDocker: true, allowRootful: false }).action === "fail")
+  check("--allow-rootful-docker does NOT rescue an unusable daemon", decideDockerUse(probes.unusable, { requireDocker: false, allowRootful: true }).action === "skip")
+  /** The skip notice must name the override and the reason, or a reader cannot act on it. */
+  const skipNotice = decideDockerUse(probes.unusable, plain)
+  check("the skip notice names the cause and the overrides", skipNotice.action === "skip" && skipNotice.notice.includes("rootless") && skipNotice.notice.includes("--require-docker") && skipNotice.notice.includes("permission denied"), JSON.stringify(skipNotice))
+  // The run arm must QUOTE the measured mode, or the evidence cannot say which environment it proved.
+  /** The decision a rootless probe produces under the default flags. */
+  const rootlessRun = decideDockerUse(probes.rootless, plain)
+  check("the rootless run line reports the measured mode", rootlessRun.action === "run" && rootlessRun.modeLine.includes("ROOTLESS") && rootlessRun.modeLine.includes("name=rootless"))
+  check("the probe reads `name=rootless` out of SecurityOptions", probeDockerMode("/nonexistent-docker").state === "unusable")
+
   // 12. NEGATIVE CONTROL for the evidence scrub guard: plant a token-shaped value through the
   //     reporter's own hook and assert the guard FIRES (red verdict, scrubbed artifacts, no shape
   //     left). Without this arm the guard would be an assertion nobody ever saw fail.
@@ -551,7 +652,7 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   if (argv.includes("--self-test")) { selfTest(); return }
   if (argv.includes("--help") || argv.includes("-h")) {
-    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick] [--spec <install-spec>]")
+    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick] [--spec <install-spec>] [--allow-rootful-docker] [--require-docker]")
     return
   }
 
@@ -579,11 +680,22 @@ async function main(): Promise<void> {
   /** The resolved docker toolchain, or the reason it is unusable. */
   const docker = resolveDocker()
   if (!docker.ok) {
-    console.error(`[driver] ${docker.reason}`)
-    process.exitCode = 3
+    // A machine with no docker AT ALL is the same class as a rootful one: notice, skip, keep the wave.
+    /** The skip/fail decision for an absent toolchain, so the two absence shapes read alike. */
+    const absent = decideDockerUse({ state: "unusable", detail: docker.reason }, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+    if (absent.action === "run") { console.error(`[driver] an absent toolchain cannot reach the run arm`); process.exitCode = 3; return }
+    if (absent.action === "fail") { console.error(`[driver] ${absent.reason}`); process.exitCode = 3; return }
+    console.log(absent.notice)
     return
   }
   console.log(`[driver] ${docker.version} / ${docker.compose}`)
+  /** The daemon-mode probe: rootless runs, rootful needs the explicit opt-in, unusable skips. */
+  const modeProbe = probeDockerMode(docker.docker)
+  /** What this run does about the measured mode. */
+  const decision = decideDockerUse(modeProbe, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+  if (decision.action === "fail") { console.error(`[driver] ${decision.reason}`); process.exitCode = 3; return }
+  if (decision.action === "skip") { console.log(decision.notice); return }
+  console.log(`[driver] ${decision.modeLine}`)
 
   /** Child environment carrying the private buildx state dir. */
   const buildx = buildxEnv()

@@ -91,7 +91,8 @@
     "dump-config": "node scripts/dump-config.ts",
     "bootstrap": "node scripts/bootstrap.ts",
     "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.ts --expect \"name: '@deepseek-ai/dsh-llm'\"",
-    "pack": "node scripts/pack-mpd.ts"
+    "pack": "node scripts/pack-mpd.ts",
+    "verify:docker": "node ./scripts/docker-e2e.ts"
   },
   "workspaces": [
     "packages/*"
