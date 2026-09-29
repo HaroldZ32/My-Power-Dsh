@@ -64,7 +64,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.ts
 var exports_lib = {};
 __export(exports_lib, {
   Binary: () => Binary,
@@ -432,7 +432,7 @@ var init_lib = __esm(() => {
   })(Time || (Time = {}));
 });
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
+// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cts
 var require_lib = __commonJS(function(exports, module) {
   var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
