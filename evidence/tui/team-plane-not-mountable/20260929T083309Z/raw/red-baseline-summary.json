@@ -1,0 +1,14 @@
+{
+  "failures": [],
+  "logBytes": 43949,
+  "counts": {
+    "root.effect is unavailable from a plugin activation": 1,
+    "Error:": 1,
+    "pending (waiting for service": 1,
+    "mpd-agent-team": 1,
+    "mpd-tool-agent-team": 1,
+    "mpd-ui-agent-team": 0,
+    "plugin tree failed to load": 0,
+    "duplicate loader entry id": 0
+  }
+}

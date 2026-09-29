@@ -1,0 +1,74 @@
+{
+  "patch": "cordis.patch.yml",
+  "guardExpressionsFound": 2,
+  "guardExpressionsByteIdentical": true,
+  "arms": [
+    {
+      "name": "shipped-expression-1 / dsh-tui composition",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-1 / web composition",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-1 / renamed host row (package name only)",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-1 / host subpath row id only",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-1 / broken loader (guard must fail OPEN)",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-2 / dsh-tui composition",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-2 / web composition",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-2 / renamed host row (package name only)",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-2 / host subpath row id only",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "name": "shipped-expression-2 / broken loader (guard must fail OPEN)",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "name": "negative-control / always-false guard on a dsh-tui composition",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    }
+  ],
+  "ok": true
+}

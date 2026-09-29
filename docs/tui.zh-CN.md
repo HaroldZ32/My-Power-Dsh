@@ -119,6 +119,28 @@ TUI 命令树暴露 `/mpd team` 与 `/mpd plan`
 而为快捷键。`tui-team-surface` 波次记录的限制（依赖残留限制与一个无法定位的契约行标签）仍在
 `docs/tui-parity.zh-CN.md` §4–§5 中保持**未修复** —— 引用本页的状态之前请先读那一页。
 
+**官方 Agent Teams 平面在 TUI 宿主下无法激活，因此本 bundle 不在那里挂载它（2026-09-29 实测：
+harness 0.2.0-rc.1 + `dsh-tui` 0.11.2；见本页 §10 第 11 条）。**
+`@deepseek-ai/dsh-experimental-agent-team` 通过 `ctx.root.sessionProjections.register(...)` 注册它的
+会话投影，而 Cordis 会把服务调用绑定到**调用方**的上下文上，于是该 `register()` 在组合的**根**上下文
+上运行、并在**根 fiber** 上创建副作用。dsh-tui 宿主恰恰拒绝插件激活这么做
+（`root.effect is unavailable from a plugin activation`，
+`lib/types/dsh-adapter/host-access.js`；其 `host-access.d.ts` 写明理由 —— 绑定在根上的副作用会在
+请求它的插件卸载之后继续存活），因此 `TeamService` 的构造函数抛错、`agentTeams` 服务永不激活，
+注入它的工具行在整个运行期间都报告 `pending (waiting for service: agentTeams)`。本 bundle 能设置的
+任何东西都改变不了这一点：该插件的 `Config` 没有投影开关，这次调用是无条件的，而且在任何注册去重
+逻辑之前就抛错 —— 没有任何配置值、挂载顺序或隔离开间能触及它。因此 bundle 补丁在任何挂载了 dsh-tui
+宿主的组合里**禁用只为该服务而存在的两行** —— `mpd-agent-team` 与 `mpd-tool-agent-team` —— 并留下
+一行说明原因；Web/无头平面不受影响（该守卫只读取已组合的条目，在不存在 dsh-tui 宿主行时返回 false，
+所以那里的团队平面与原先完全一致）。
+
+TUI 会话仍然拥有的东西：`/mpd team` 场景、`/mpd plan` 场景与状态行会依据它们能读到的团队状态渲染
+—— 没有 Team 服务时看板为空、状态行显示 `team -`。mpd 的团队**工作流**行是刻意保留挂载的，因为它们
+不是官方服务本身：`agent_teams_plan` / `agent_teams_task` / `agent_teams_mail` / `agent_teams_control`
+中基于文件（`<workspace>/.mpd/team/`）的动作照常可用，而需要服务本身的动作（approve、dispatch、
+队友消息、压缩）会由适配器报出它无法解析的服务名而失败。今天的 TUI 会话无法创建队友 —— 这是能力
+边界，不是配置失误。
+
 ## 4. 准入与分发产物
 
 ### 4.1 `dsh-plugin.json`（宿主自身的准入路径）
@@ -432,6 +454,12 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    disposer；正因如此，本包对该接缝只报 `requested`，从不报 `confirmed`。之后的一次单进程交叉运行复现
    了"全新事件类型会渲染、这个已知类型不会"（同目录 `CORRECTION-renderer-causation.md`），这把原因
    收窄到宿主的拒绝名单捕获顺序，而不是"任何渲染行都无法产生"；处置结论不变。
+11. **TUI 会话无法创建队友。** 官方 Agent Teams 服务在 dsh-tui 宿主下根本无法激活 —— 宿主拒绝该插件
+    自己发起的 `ctx.root.sessionProjections.register(...)` 所创建的根 fiber 副作用，于是
+    `TeamService` 的构造函数在服务存在之前就抛错。机制、测量与仍然可用的部分见 §3.2；本 bundle 因此
+    在那里禁用该平面的两行，而不是挂载一行永远无法启动的插件（`cordis.patch.yml` 的 TUI 平面守卫），
+    证据在 `evidence/tui/team-plane-not-mountable/20260929T083309Z/`。`mpd-tui-team` 场景、计划场景与
+    状态行照常渲染 —— 它们展示的名册为空，`team -` 是诚实的读数，而不是渲染缺陷。
 
 ## 11. 本页的验证状态
 

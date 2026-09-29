@@ -137,6 +137,34 @@ best-effort shortcut to it. The limits the `tui-team-surface` wave recorded (the
 limit and one unlocatable contract row label) stay OPEN in `docs/tui-parity.md` §4–§5 — read that
 page before quoting a status from this one.
 
+**The official Agent Teams plane cannot activate under the TUI host, so this bundle does not mount it
+there (measured 2026-09-29, harness 0.2.0-rc.1 + `dsh-tui` 0.11.2; `docs/tui.md` §10 item 11).**
+`@deepseek-ai/dsh-experimental-agent-team` registers its session projection through
+`ctx.root.sessionProjections.register(...)`, and Cordis binds a service call to the CALLER's context,
+so that `register()` runs on the composition's **root** context and creates its effect on the ROOT
+fiber. The dsh-tui host refuses exactly that capability from a plugin activation
+(`root.effect is unavailable from a plugin activation`,
+`lib/types/dsh-adapter/host-access.js`; its `host-access.d.ts` states the reason — a root-bound effect
+would outlive the plugin that asked for it), so `TeamService`'s constructor throws, the `agentTeams`
+service never activates, and the tool row that injects it reports
+`pending (waiting for service: agentTeams)` for the rest of the run. Nothing this bundle can set
+changes that: the plugin's `Config` carries no projection toggle, the call is unconditional, and it
+throws before any registration could be deduplicated — no config value, mount order or isolation
+realm reaches it. The bundle patch therefore **disables the two rows that exist only to serve that
+service** — `mpd-agent-team` and `mpd-tool-agent-team` — in any composition that mounts the dsh-tui
+host, with one warning line naming the reason; the Web/headless plane is untouched (the guard reads
+the composed entries and returns false when no dsh-tui host row is present, so the team plane there
+is exactly what it was).
+
+What a TUI session still has: the `/mpd team` scene, the `/mpd plan` scene and the status line render
+from the team state they can read — with no Team service the board is empty and the status line reads
+`team -`. The mpd team WORKFLOW rows stay mounted on purpose, because they are not the official
+service: the file-backed actions of `agent_teams_plan` / `agent_teams_task` / `agent_teams_mail` /
+`agent_teams_control` (`<workspace>/.mpd/team/`) keep working, and the actions that need the service
+itself (approve, dispatch, a teammate message, compaction) fail with the adapter naming the service it
+could not resolve. A TUI session cannot spawn a teammate today — that is the limit, not a
+configuration mistake.
+
 ## 4. Admission and distribution artifacts
 
 ### 4.1 `dsh-plugin.json` (the host's own admission path)
@@ -504,6 +532,15 @@ Nothing in this section is a working feature.
    does not (`CORRECTION-renderer-causation.md` in the same evidence directory), which narrows the
    cause to the host's deny-list capture order instead of "no renderer row can be produced"; the
    disposition is unchanged.
+11. **No teammate can be spawned in a TUI session.** The official Agent Teams service cannot activate
+   under the dsh-tui host at all — the host refuses the root-fiber effect the plugin's own
+   `ctx.root.sessionProjections.register(...)` creates, so `TeamService`'s constructor throws before
+   the service exists. §3.2 carries the mechanism, the measurement and what remains available; the
+   bundle disables that plane's two rows there instead of mounting a row that cannot start
+   (`cordis.patch.yml`, the TUI-plane guard) and the evidence is
+   `evidence/tui/team-plane-not-mountable/20260929T083309Z/`. The `mpd-tui-team` scene, the plan
+   scene and the status line still render — the roster they show is empty, and `team -` is the
+   honest reading, not a rendering defect.
 
 ## 11. Verification status of this page
 

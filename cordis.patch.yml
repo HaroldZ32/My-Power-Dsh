@@ -459,9 +459,65 @@
 # This bundle deliberately does NOT: the mpd preset mounts direct delegation as
 # well, exactly as it did before, so a session keeps both the one-shot `subagent`
 # path and the durable team path.
+#
+# ── TUI PLANE: THE OFFICIAL TEAM SERVICE ROWS ARE DISABLED IN A dsh-tui
+#    COMPOSITION (the `disabled` guard on the two rows below) ────────────────
+# MEASURED (2026-09-29, TUI profile, harness 0.2.0-rc.1 + dsh-tui 0.11.2,
+# evidence/tui/team-plane-not-mountable/): with the bundle installed into a
+# `dsh-tui` profile the team service row FAILS TO ACTIVATE —
+#   `mpd-agent-team (@deepseek-ai/dsh-experimental-agent-team): Error:
+#    dsh-tui: root.effect is unavailable from a plugin activation`
+# — and `mpd-tool-agent-team` then reports `pending (waiting for service:
+# agentTeams)` for the rest of the run.
+#
+# WHY IT CANNOT BE FIXED FROM THIS PATCH. `TeamService`'s constructor ends with
+# `ctx.effect(() => { const dispose = ctx.root.sessionProjections.register(...) })`
+# (`@deepseek-ai/dsh-experimental-agent-team` lib/index.js, `TeamService`): the
+# projection is reached through `ctx.root`, and Cordis binds a service call to
+# the CALLER's context, so `register()` runs with the ROOT context and its
+# `this.ctx.effect(...)` creates an effect on the ROOT FIBER. The dsh-tui host
+# wraps exactly that capability and refuses it from any plugin activation:
+# `lib/types/dsh-adapter/host-access.js` rejects `root.effect` when the ambient
+# activation is not the composition root, and the reason is written down in
+# `host-access.d.ts`: "A plugin can read `ctx.root`, but using its root-bound
+# service proxy would attach cleanup to the host fiber and leave the effect
+# alive after the plugin unloads." The refusal is a property of the HOST, not
+# of any row value — the plugin's own `Config` has no projection toggle, the
+# call is unconditional, and it throws before any registration/dedup logic — so
+# no `config`, no mount order and no isolation realm can make that activation
+# succeed. Both `ctx.root`-bound call sites are identical in the 0.1.7-rc.2 copy
+# this bundle pins and in the 0.2.0-rc.1 copy the harness ships, so pinning
+# either version changes nothing.
+#
+# WHAT THIS PATCH DOES: the two rows that exist ONLY to serve that service are
+# disabled in a composition that mounts the dsh-tui host — `mpd-agent-team`
+# (the service itself; the row that throws) and `mpd-tool-agent-team` (its
+# model-facing tools, which would otherwise wait for a service that can never
+# arrive). `mpd-ui-agent-team` stays mounted: it is a Web CLIENT contribution
+# (docs/tui.md NOT-CLAIMED #3), it registers nothing the TUI renders and it
+# breaks nothing — disabling it would be a change beyond this defect.
+#
+# WHAT IS LEFT IN A TUI PLANE (stated so no reader assumes more): the mpd team
+# WORKFLOW rows stay mounted by design — `agent_teams_plan`/`_task`/`_mail`/
+# `_control` keep their file-backed actions (`<workspace>/.mpd/team/`) and read
+# the official roster defensively, so they degrade per action instead of
+# vanishing; actions that need the service itself (approve, dispatch, a
+# teammate message, compaction) fail through the adapter with the service
+# named. The Web/headless plane is untouched: the guard returns false unless a
+# dsh-tui host row is actually composed.
+#
+# THE GUARD RULE (identical shape to the `mpd-better-sidebar` mount guard — a
+# `!!js` row-metadata expression evaluated against the Loader context at every
+# mount decision, order-independent because it reads only DECLARATIONS already
+# composed): disable when any composed entry IS the dsh-tui host — its `name` is
+# `@deepseek-harness-tui/dsh-tui` or one of its subpaths, or its `id` starts
+# with `dsh-tui`. A guard that throws keeps the row ENABLED and says so on one
+# warning line: a false disable would silently remove the team plane from a
+# working Web profile, which is worse than the loud TUI error this fixes.
 - insert:
     - id: mpd-agent-team
       name: '@deepseek-ai/dsh-experimental-agent-team'
+      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
       config:
         maxMembers: 16
         maxTasks: 256
@@ -477,6 +533,10 @@
         baseProvider: spawn
     - id: mpd-tool-agent-team
       name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+      # The SAME expression, byte for byte, as the row above: both rows are
+      # disabled together in a dsh-tui composition, and the warn-once key keeps
+      # that to ONE line whichever row is evaluated first.
+      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
       config:
         # POINT THE OFFICIAL TEAM TOOL AT THE ROSTER PROVIDER: this is the whole redirect. The
         # tool's own `provider` argument is ignored by its implementation, so ROW CONFIG is
