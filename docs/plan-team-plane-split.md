@@ -185,11 +185,50 @@ tracking never fires the handlers and the keyboard path is untouched.
 5. **The scene rewrite dropped the team id** from the header, which `approve <teamId>` needs. Two
    existing arms caught it — the second through the control character it carries.
 
-## 5c. W4–W5 (remaining)
+## 5c. W4 — the adaptive web sidebar (LANDED)
 
-- **W4** one adaptive web sidebar body (better-sidebar first, official right sidebar fallback) for
-  team and workmate, fed by MPD's own host routes (W1.3).
-- **W5** bilingual docs, full gate sweep, evidence, and removal of the now-unneeded TUI-plane guard.
+**The last official coupling in the browser is gone.** The Web team tab read
+`state.projectionsBySession[leadId].values.agentTeam` — the official client projection, and a store
+that is EMPTY in exactly the compositions the split exists for, because a client store can only carry
+what a mounted service projected.
+
+- **`mpd-team-core-plugin/src/team-web.ts`** — `/plugins/mpd-team/state`, registered through the
+  adapter's `webServerOf()` and re-attempted when the web server binds late. `buildTeamState()` is
+  PURE, so the client contract is a value rather than a running handler, and the payload carries what
+  the official board has no column for: `kind`, `attempt`, `round`, `verdict`, and the resolved
+  per-member route. The VISUAL state comes from the same store function the TUI uses.
+- **`mpd-bundle-plugin/src/team-view.ts`** — ONE body both hosts render. They are different extension
+  APIs with different prop shapes, and a view written against either works only there; both can
+  `fetch`, so both read our route.
+- **The preference** (user decision, 2026-09-30): `dsh-better-sidebar` first, the harness's own right
+  sidebar as the fallback, applied at the one moment the answer is knowable — when the official
+  sidebar is ready to accept a registration. Both the team view and the workmate library register
+  there; the workmate one is why this mattered, since `dsh-better-sidebar` is an optional peer a
+  checkout install does not resolve.
+
+### 5c.1 Four defects this wave produced, all fixed
+
+1. **The settings-card splice anchor never matched.** Type stripping replaces a removed annotation
+   with SPACES to keep offsets stable, so `function loadSettingsCard(): SettingsCardModule {` arrives
+   as `function loadSettingsCard()                     {` — 21 spaces — and the anchor demanded
+   exactly one. The splice had been dropped from every rebuild since the TypeScript conversion.
+2. **The splice guards could not fail.** They tested `includes("MPD_SETTINGS_CARD")`, which the source
+   satisfies with its OWN declaration and call site. They now check the declaration.
+3. **Runtime code in the ambient-only zone.** The module is spliced as ONE ARROW EXPRESSION, so
+   anything after the factory's closing brace lands OUTSIDE the module wrapper. `declare` survives
+   that; runtime code does not.
+4. **A preference arm that passed for the wrong reason.** The harness's `locale` double had no `bind`,
+   so `mountHarnessSidebar` returned early in every arm and the official sidebar had never been
+   exercised; and its scoped ctx exposed injected services only through `get`, while cordis reads them
+   as PROPERTIES. Both are modelled faithfully now.
+
+**A syntax error in `client.js` is invisible to every static gate in this repo** — it cost all 60 arms
+that evaluate the served bytes. The evidence therefore records `node --check` on the artifact plus the
+presence of both splices.
+
+## 5d. W5 (remaining)
+
+Bilingual docs, the full gate sweep, and removal of the now-unneeded TUI-plane guard.
 
 ## 6. Acceptance for W1
 
