@@ -14,6 +14,7 @@ import type { Log } from "./log.js"
 import { effectOn, onService } from "./host.js"
 import { readBoardState, statusLine } from "./state.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
 
 /** The status key (conventions: the plugin id, `mpd-tui`, or `mpd-tui:<sub>`). */
 export const STATUS_KEY = "mpd-tui"
@@ -45,6 +46,7 @@ export function registerStatus(
   intervalMs: number,
   bridgeNotice?: () => string | undefined,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
 ): StatusSeam {
   /** The seam result, rewritten when the host accepts the contribution. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiStatus was not injected" }
@@ -68,7 +70,7 @@ export function registerStatus(
     const publish = (): void => {
       try {
         /** The rendered status text, built from a fresh board read. */
-        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), bridgeNotice?.())
+        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.())
         // Only publish a CHANGED line: the host records every set() as a
         // `replace status` ledger effect, so a fixed-cadence republish would
         // churn the ledger (~20 records/minute) for an identical string.

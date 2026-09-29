@@ -2322,6 +2322,42 @@ function readTeam(views, problems) {
     tasks: counts
   };
 }
+function readRecordTeam(record) {
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
+  for (const task of record.tasks.slice(0, MAX_TASKS)) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  return {
+    id: scalarText(record.teamId, 60) ?? "?",
+    name: scalarText(record.name, 80) ?? "?",
+    phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : record.phase,
+    description: scalarText(record.description, 200),
+    members: record.members.length,
+    tasks: counts
+  };
+}
 function readBoulder(root, problems) {
   const path = join(root, ".mpd", "boulder.json");
   let document;
@@ -2383,7 +2419,7 @@ function readWorkmates(home) {
     return { count: 0, names: [] };
   }
 }
-function readBoardState(workspace, home = homedir(), views = []) {
+function readBoardState(workspace, home = homedir(), views = [], records = []) {
   const problems = [];
   const state = {
     workspace,
@@ -2393,7 +2429,8 @@ function readBoardState(workspace, home = homedir(), views = []) {
     problems
   };
   try {
-    state.team = readTeam(views, problems);
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
+    state.team = principal === undefined ? readTeam(views, problems) : readRecordTeam(principal);
   } catch {
     problems.push("team state unreadable");
   }
@@ -2465,7 +2502,7 @@ function boardLines(state, holds = []) {
 
 // packages/mpd-tui-plugin/src/status.ts
 var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews) {
+function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
   let outcome = { state: "absent", detail: "tuiStatus was not injected" };
   let refresh = () => {};
   onService(ctx, "tuiStatus", (scoped, service) => {
@@ -2479,7 +2516,7 @@ function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice,
     let published;
     const publish = () => {
       try {
-        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), bridgeNotice?.());
+        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.());
         if (text === published)
           return;
         published = text;
@@ -3305,6 +3342,110 @@ function readTeamWorkflow(workspace, holds = [], views = []) {
 function approvalPhrase(teamId) {
   return `approve ${teamId}`;
 }
+function mpdTeamRecords(teams, workspace) {
+  try {
+    const list = teams?.list;
+    if (typeof list !== "function" || workspace === "")
+      return [];
+    return list(workspace) ?? [];
+  } catch {
+    return [];
+  }
+}
+function readRecordWorkflow(workspace, holds, record) {
+  const problems = [];
+  const board = record.tasks.slice(0, MAX_TASKS2);
+  const tasks = board.map((task) => ({
+    id: scalarText(task.id, 40) ?? "",
+    subject: scalarText(task.subject, 160) ?? "",
+    kind: scalarText(task.kind, 24),
+    status: scalarText(task.status, 40) ?? "pending",
+    visual: "open",
+    assignee: scalarText(task.owner, 80),
+    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
+    round: typeof task.round === "number" ? task.round : undefined,
+    verdict: scalarText(task.verdict, 40),
+    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
+    failedDependencies: [],
+    depth: 0
+  }));
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
+  }
+  const order = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const members = record.members.map((member) => {
+    const name = scalarText(member.name, 80) ?? "?";
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
+    return {
+      name,
+      role: scalarText(member.role ?? member.description, 120),
+      route: scalarText(member.route, 80),
+      status: scalarText(member.status, 40) ?? "unknown",
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      currentTask: current?.id,
+      unread: null
+    };
+  });
+  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  return {
+    workspace,
+    team: {
+      id: scalarText(record.teamId, 60) ?? "?",
+      name: scalarText(record.name, 80) ?? "?",
+      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
+      description: scalarText(record.description, 200),
+      captainSessionId: scalarText(record.leadSessionId, 80),
+      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
+      staged: record.approvedAt === undefined,
+      runnable: members.length > 0 && tasks.length > 0,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS2)
+  };
+}
 function teamWorkflowLines(workflow) {
   if (workflow.team === undefined)
     return ["team       (none in this workspace)"];
@@ -3442,7 +3583,7 @@ function usableKit(React, ui) {
     return false;
   return typeof ui.Box === "function" && typeof ui.Text === "function";
 }
-function readWorkflow(workspaceRoot, holds, teamViews) {
+function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
   try {
     let holdIds = [];
     try {
@@ -3456,6 +3597,15 @@ function readWorkflow(workspaceRoot, holds, teamViews) {
     } catch {
       views = [];
     }
+    let records = [];
+    try {
+      records = teamRecords?.() ?? [];
+    } catch {
+      records = [];
+    }
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
+    if (principal !== undefined)
+      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
     return readTeamWorkflow(workspaceRoot(), holdIds, views);
   } catch {
     return;
@@ -3475,7 +3625,7 @@ function measureTerminal(ui) {
   const size = `${String(columns)}x${String(rows)}`;
   return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3485,7 +3635,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     }
     const read = () => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds());
+        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds());
       } catch {
         return ["board state unreadable"];
       }
@@ -3547,7 +3697,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3563,7 +3713,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
         root = "?";
       }
       try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews);
+        workflow = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
       } catch {
         workflow = undefined;
       }
@@ -3675,7 +3825,7 @@ function planActionLines(workflow, echo, armed, message) {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, teamViews) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, teamViews, teamRecords) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3703,7 +3853,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews));
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       setEcho("");
       setArmedAt(0);
       setScroll(0);
@@ -3713,7 +3863,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds, teamViews));
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -3790,7 +3940,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       }
     };
     const runDiscard = async () => {
@@ -3816,7 +3966,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -3901,7 +4051,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, teamViews) {
+function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, teamViews, teamRecords) {
   let outcome = { state: "absent", detail: "tuiScenes was not injected" };
   let scenes;
   const nav = { planFromTeam: false };
@@ -3928,9 +4078,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
     scenes = runtime;
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped);
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped);
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped);
+      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped);
+      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped);
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews, teamRecords) }, scoped);
       outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` };
     } catch (error) {
       outcome = { state: "refused", detail: String(error?.message ?? error) };
@@ -3954,9 +4104,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
   };
 }
-function boardSummary(workspaceRoot, home, teamViews) {
+function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []));
+    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []));
   } catch {
     return "mpd: state unreadable";
   }
@@ -4438,6 +4588,11 @@ function apply(ctx, config = {}) {
   const workspaceRoot = workspaceResolver(ctx, adapter);
   const home = () => homeDir();
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
+  let teamsService;
+  onService(ctx, "mpdTeams", (_scoped, service) => {
+    teamsService = service;
+  });
+  const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
   const record = (id, outcome) => {
@@ -4470,8 +4625,8 @@ function apply(ctx, config = {}) {
     onAcknowledged: () => status.refresh()
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
-  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews) : {
+  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
+  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews, teamRecords) : {
     outcome: () => ({ state: "absent", detail: "disabled by config" }),
     open: () => false,
     openScene: () => false,
@@ -4486,16 +4641,16 @@ function apply(ctx, config = {}) {
     openTeam: () => scene.openTeam(),
     refreshStatus: () => status.refresh(),
     pickWorkmate: () => {
-      pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews);
+      pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords);
     }
   }) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
   const commands = resolved.commands ? registerCommands(ctx, log, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
     openPlan: () => scene.openPlan(),
-    statusText: () => boardSummary(workspaceRoot, home, teamViews),
+    statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
-      const state = readBoardState(workspaceRoot(), home(), teamViews());
+      const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
       return state.workmates.count === 0 ? "mpd workmates: none" : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`;
     },
     pickAction: () => pickAction(log, dialogs),
@@ -4538,8 +4693,8 @@ async function pickAction(log, dialogs) {
     log.debug(`/mpd picker chose ${scalarText(choice, 40) ?? "?"}`);
   return choice;
 }
-async function pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews) {
-  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names;
+async function pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords = () => []) {
+  const names = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords()).workmates.names;
   if (!dialogs.available() || names.length === 0) {
     scene.open();
     return;

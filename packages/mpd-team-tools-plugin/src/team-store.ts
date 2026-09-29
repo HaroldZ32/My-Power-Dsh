@@ -583,10 +583,13 @@ export function blockingDependencies(board: readonly TeamTaskRecord[], blockedBy
 /**
  * The visual state a renderer draws for one task.
  *
- * A FAILED blocker blocks just as hard as a pending one — harder, since no later state can clear it
- * — so it renders `blocked` too. (The retired projection treated a failed blocker as "no blocker"
- * and drew the task as ready, which is the one reading a captain must never be given: it invites
- * dispatch of work whose prerequisite can no longer be met.) The summary keeps the two apart.
+ * **OPT-1 (user decision, 2026-09-13) — DO NOT "FIX" THIS.** A FAILED blocker does NOT block its
+ * dependents: they stay `open` and dispatchable, and the failure is reported SEPARATELY (see
+ * {@link blockingDependencies}'s `failed` list and {@link TeamRecordSummary.releasedByFailure}) so a
+ * reader sees it and decides. The reasoning recorded with that decision: a failed dependency must not
+ * pin its dependents forever, and a cancelled one already does not. The retired vendored body carried
+ * the same three-state rule (`dependencyStates`), the Web panel and the TUI project it, and this store
+ * is its third implementation — the three must keep agreeing.
  * @param task - the task to classify.
  * @param board - the tasks its blockers resolve against.
  * @returns the visual state, `blocked` being derived rather than stored.
@@ -596,9 +599,8 @@ export function taskVisual(task: TeamTaskRecord, board: readonly TeamTaskRecord[
   if (task.status === "failed") return "failed"
   if (task.status === "cancelled") return "cancelled"
   if (task.status === "in_progress" || task.status === "claimed") return "running"
-  /** This task's blockers, split into "still waiting" and "can never be met". */
-  const { blocking, failed } = blockingDependencies(board, task.blockedBy)
-  return blocking.length > 0 || failed.length > 0 ? "blocked" : "open"
+  // OPT-1: only the still-UNSATISFIED blockers count here, which is why a failed one is absent.
+  return blockingDependencies(board, task.blockedBy).blocking.length > 0 ? "blocked" : "open"
 }
 
 /**
@@ -687,16 +689,30 @@ export function cycleIds(board: readonly TeamTaskRecord[]): string[] {
 export interface TeamRecordSummary {
   /** Total tasks on the board. */
   total: number
-  /** Tasks whose visual state is `completed`. */
+  /** Tasks whose own state is `completed`. */
   completed: number
   /** Tasks actually running (in progress or claimed). */
   running: number
-  /** Tasks ready to start (nothing blocking them). */
+  /**
+   * Tasks genuinely ready to start: pending, with no unfinished blocker AND no failed one.
+   *
+   * OPT-1 keeps a task behind a FAILED blocker dispatchable, so those tasks are counted in
+   * {@link releasedByFailure} instead of here — the two must never be one number, or "N ready"
+   * would hide that N of them can only start because a prerequisite gave up.
+   */
   ready: number
-  /** Tasks still blocked by an unfinished blocker. */
+  /** Tasks still waiting on an unfinished blocker. */
   blocked: number
-  /** Tasks whose blocker failed, which no later state can unblock. */
+  /** Tasks whose OWN state is `failed` — a failed TASK, which is not the same as a failed blocker. */
   failed: number
+  /**
+   * Tasks OPT-1 releases: pending, with no unfinished blocker, but at least one blocker FAILED.
+   *
+   * These are dispatchable by decision, and a reader must be able to see that they are dispatchable
+   * ONLY because a prerequisite failed — the whole reason OPT-1 reports the failure beside the state
+   * rather than folding it into it.
+   */
+  releasedByFailure: number
   /** Tasks cancelled or otherwise off the board. */
   other: number
   /** Dependency edges across the board. */
@@ -716,18 +732,23 @@ export function summariseTeam(record: TeamRecord): TeamRecordSummary {
   /** The board this summary counts. */
   const board = record.tasks
   /** The counts, accumulated in one pass over the board. */
-  const summary: TeamRecordSummary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) }
+  const summary: TeamRecordSummary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) }
   for (const task of board) {
     /** This task's rendered state. */
     const visual = taskVisual(task, board)
+    /** This task's blockers, split into "still waiting" and "gave up" (OPT-1). */
+    const { blocking, failed } = blockingDependencies(board, task.blockedBy)
     if (visual === "completed") summary.completed += 1
     else if (visual === "running") summary.running += 1
-    else if (visual === "blocked") {
-      // A blocker that FAILED can never unblock, so it is counted apart from "waiting".
-      if (blockingDependencies(board, task.blockedBy).failed.length > 0) summary.failed += 1
-      else summary.blocked += 1
-    } else if (visual === "open") summary.ready += 1
-    else summary.other += 1
+    else if (visual === "blocked") summary.blocked += 1
+    else if (visual === "failed") summary.failed += 1
+    else if (visual === "open") {
+      // OPT-1: a task is still "ready" when a blocker FAILED, because the decision releases it — but
+      // it is counted apart, so "6 ready" can never hide "3 of them are only ready because a
+      // prerequisite failed".
+      if (failed.length > 0 && blocking.length === 0) summary.releasedByFailure += 1
+      else summary.ready += 1
+    } else summary.other += 1
     summary.links += task.blockedBy.filter((id) => board.some((candidate) => candidate.id === id)).length
   }
   return summary
@@ -762,20 +783,16 @@ export function memberProgress(record: TeamRecord, name: string): MemberProgress
 }
 
 /**
- * The tasks ready to be dispatched: pending, unowned or not, and with EVERY blocker closed.
+ * The tasks ready to be dispatched: pending, and with no UNSATISFIED blocker (OPT-1).
  *
- * A blocker that failed is not closed — nothing can close it — so a task behind one is never
- * reported ready here, whatever {@link taskVisual} would draw for it.
+ * A blocker that FAILED does not hold a task back — see {@link taskVisual} for the decision and its
+ * reason. {@link summariseTeam} counts those tasks apart, so "ready" and "ready only because a
+ * prerequisite failed" are never the same number.
  * @param record - the record to read.
  * @returns the dispatchable tasks, in board order.
  */
 export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
-  return record.tasks.filter((task) => {
-    if (task.status !== "pending") return false
-    /** This task's blockers, split as in {@link taskVisual}. */
-    const { blocking, failed } = blockingDependencies(record.tasks, task.blockedBy)
-    return blocking.length === 0 && failed.length === 0
-  })
+  return record.tasks.filter((task) => task.status === "pending" && blockingDependencies(record.tasks, task.blockedBy).blocking.length === 0)
 }
 
 /** The members free to take work: provisioned, and with no task in flight. */

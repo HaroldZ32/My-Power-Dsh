@@ -33,7 +33,8 @@ import { onService } from "./host.js"
 import { boardLines, readBoardState, statusLine } from "./state.js"
 import { clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { approvalPhrase, planProjectionLines, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
 /** Unique, kebab-case scene id. */
@@ -169,7 +170,7 @@ function usableKit(React: unknown, ui: any): boolean {
 }
 
 /** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
-function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[]): TeamWorkflow | undefined {
+function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): TeamWorkflow | undefined {
   try {
     /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
@@ -185,6 +186,18 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
     } catch {
       views = []
     }
+    /** The mpd-owned team records for this workspace; empty when that read fails. */
+    let records: readonly TeamRecord[] = []
+    try {
+      records = teamRecords?.() ?? []
+    } catch {
+      records = []
+    }
+    // THE PRIMARY SOURCE FIRST: the mpd record, whose review fields and lifecycle are real data.
+    // The official readout answers only when this workspace holds no record at all.
+    /** The principal record, which is the newest that has not ended. */
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0]
+    if (principal !== undefined) return readRecordWorkflow(workspaceRoot(), holdIds, principal)
     return readTeamWorkflow(workspaceRoot(), holdIds, views)
   } catch {
     return undefined
@@ -234,6 +247,7 @@ function createBoardComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -251,7 +265,7 @@ function createBoardComponent(
     /** Reads the board rows, degrading to one explicit line when the read fails. */
     const read = (): string[] => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds())
+        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds())
       } catch {
         return ["board state unreadable"]
       }
@@ -360,6 +374,7 @@ function createTeamComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -382,7 +397,7 @@ function createTeamComponent(
         root = "?"
       }
       try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews)
+        workflow = readWorkflow(workspaceRoot, holds, teamViews, teamRecords)
       } catch {
         workflow = undefined
       }
@@ -552,7 +567,8 @@ function createPlanComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   actions: PlanActions,
-  teamViews?: () => readonly DshTeamView[],): unknown {
+  teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
@@ -606,7 +622,7 @@ function createPlanComponent(
 
     /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews))
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
@@ -622,7 +638,7 @@ function createPlanComponent(
         timer = setInterval(() => {
           // The automatic re-read refreshes the FACTS only: the consent echo and the 10 s
           // discard arm are cleared by the explicit `r` key (frozen §4.2 barrier 3 / §4.3).
-          setView(readWorkflow(workspaceRoot, holds, teamViews))
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
         }, BOARD_REFRESH_MS)
       } catch {
         timer = undefined
@@ -724,7 +740,7 @@ function createPlanComponent(
         // Barrier 5: the record is re-read after the call settles, then keys are live again.
         // The echo is NOT cleared here: §4.5 keeps it on every refused outcome.
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       }
     }
 
@@ -755,7 +771,7 @@ function createPlanComponent(
         setMessage(`discard failed: ${String((error as Error)?.message ?? error)}`)
       } finally {
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
       }
     }
 
@@ -907,6 +923,7 @@ export function registerScene(
   holds: () => readonly string[] = () => [],
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
   teamViews?: () => readonly DshTeamView[],
+  teamRecords?: () => readonly TeamRecord[],
 ): SceneSeam {
   /** The seam result, rewritten when the three scenes are registered. */
   let outcome: SeamOutcome = { state: "absent", detail: "tuiScenes was not injected" }
@@ -941,9 +958,9 @@ export function registerScene(
     }
     scenes = runtime
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped)
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped)
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped)
+      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped)
+      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped)
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews, teamRecords) }, scoped)
       // `open(unknownId)` is how the host reports an unregistered scene; calling
       // it here would OPEN a scene, so it is never used as a probe. The host
       // exposes no scene read-back, hence `requested`.
@@ -975,9 +992,9 @@ export function registerScene(
 }
 
 /** The status line the `/mpd status` action prints. */
-export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[]): string {
+export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): string {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []))
+    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []))
   } catch {
     return "mpd: state unreadable"
   }

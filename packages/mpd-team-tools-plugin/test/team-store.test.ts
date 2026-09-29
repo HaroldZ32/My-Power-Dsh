@@ -160,22 +160,36 @@ describe("the derived state", () => {
     expect(derivePhase({ ...settled, endedAt: NOW.toISOString() })).toBe("ended")
   })
 
-  test("`blocked` is DERIVED, and a failed blocker is told apart from a waiting one", () => {
+  test("`blocked` is DERIVED, and OPT-1 releases a task whose blocker FAILED — counted apart", () => {
     /** The seeded record, whose second task waits on the first. */
     const record = seeded()
     expect(taskVisual(record.tasks[1], record.tasks)).toBe("blocked")
-    // Completing the blocker makes the dependent READY rather than blocked.
-    expect(taskVisual(updateTeamTask(record, "T1", { status: "completed" }, LATER).tasks[1], updateTeamTask(record, "T1", { status: "completed" }, LATER).tasks)).toBe("open")
-    // FAILING the blocker is different in kind: no later state unblocks it, and the summary says so.
+    // Completing the blocker makes the dependent READY.
+    /** The board with the blocker closed. */
+    const closed = updateTeamTask(record, "T1", { status: "completed" }, LATER)
+    expect(taskVisual(closed.tasks[1], closed.tasks)).toBe("open")
+    // OPT-1 (USER DECISION 2026-09-13): a FAILED blocker does NOT block. The dependent stays open and
+    // dispatchable, and the failure is reported BESIDE the state so a reader can decide. This arm
+    // exists so a later "fix" that makes a failure block again reddens with the decision attached.
     /** The board with a failed blocker. */
     const broken = updateTeamTask(record, "T1", { status: "failed" }, LATER)
-    expect(taskVisual(broken.tasks[1], broken.tasks)).toBe("blocked")
-    expect(blockingDependencies(broken.tasks, broken.tasks[1].blockedBy).failed).toEqual(["T1"])
-    expect(summariseTeam(broken).failed).toBe(1)
-    expect(summariseTeam(broken).blocked).toBe(0)
-    // A CANCELLED blocker unblocks just like a completed one.
+    expect(taskVisual(broken.tasks[1], broken.tasks)).toBe("open")
+    expect(blockingDependencies(broken.tasks, broken.tasks[1].blockedBy)).toEqual({ blocking: [], failed: ["T1"] })
+    // ...and the SUMMARY keeps it out of the plain `ready` count, so "N ready" can never hide that
+    // some of those are only ready because a prerequisite gave up.
+    /** The summary of the board with a failed blocker. */
+    const summary = summariseTeam(broken)
+    expect(summary.releasedByFailure).toBe(1)
+    expect(summary.ready).toBe(0)
+    expect(summary.blocked).toBe(0)
+    // `failed` counts a failed TASK, which is what T1 now is — not "a task with a failed blocker".
+    expect(summary.failed).toBe(1)
+    // A CANCELLED blocker releases its dependents the same way, and is NOT a failure.
+    /** The board with a cancelled blocker. */
     const cancelled = updateTeamTask(record, "T1", { status: "cancelled" }, LATER)
     expect(taskVisual(cancelled.tasks[1], cancelled.tasks)).toBe("open")
+    expect(summariseTeam(cancelled).releasedByFailure).toBe(0)
+    expect(summariseTeam(cancelled).ready).toBe(1)
   })
 
   test("the graph maths: rank is the longest blocker path, and a cycle is REPORTED not hung on", () => {

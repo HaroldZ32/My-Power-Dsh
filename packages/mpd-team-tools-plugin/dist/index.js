@@ -1592,8 +1592,7 @@ function taskVisual(task, board) {
     return "cancelled";
   if (task.status === "in_progress" || task.status === "claimed")
     return "running";
-  const { blocking, failed } = blockingDependencies(board, task.blockedBy);
-  return blocking.length > 0 || failed.length > 0 ? "blocked" : "open";
+  return blockingDependencies(board, task.blockedBy).blocking.length > 0 ? "blocked" : "open";
 }
 function taskDepths(board) {
   const byId = new Map(board.map((task) => [task.id, task]));
@@ -1651,21 +1650,24 @@ function cycleIds(board) {
 }
 function summariseTeam(record) {
   const board = record.tasks;
-  const summary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) };
+  const summary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) };
   for (const task of board) {
     const visual = taskVisual(task, board);
+    const { blocking, failed } = blockingDependencies(board, task.blockedBy);
     if (visual === "completed")
       summary.completed += 1;
     else if (visual === "running")
       summary.running += 1;
-    else if (visual === "blocked") {
-      if (blockingDependencies(board, task.blockedBy).failed.length > 0)
-        summary.failed += 1;
+    else if (visual === "blocked")
+      summary.blocked += 1;
+    else if (visual === "failed")
+      summary.failed += 1;
+    else if (visual === "open") {
+      if (failed.length > 0 && blocking.length === 0)
+        summary.releasedByFailure += 1;
       else
-        summary.blocked += 1;
-    } else if (visual === "open")
-      summary.ready += 1;
-    else
+        summary.ready += 1;
+    } else
       summary.other += 1;
     summary.links += task.blockedBy.filter((id) => board.some((candidate) => candidate.id === id)).length;
   }

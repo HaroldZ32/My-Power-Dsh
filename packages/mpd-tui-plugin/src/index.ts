@@ -53,7 +53,8 @@ import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
 import { boardSummary, PLAN_MUTATION_UNAVAILABLE, registerScene, type PlanActions } from "./scenes.js"
-import { liveTeamViews } from "./team-state.js"
+import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
+import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
 import { registerShortcuts } from "./shortcuts.js"
@@ -300,6 +301,22 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // the board, the status line, the workflow scene and the plan scene — reads it through this ONE
   // provider, so a missing seam degrades them together (`[]`) instead of one at a time.
   const teamViews = (): readonly DshTeamView[] => liveTeamViews(adapter, workspaceRoot())
+  // ── THE PRIMARY TEAM SOURCE: the mpd-owned record ────────────────────────
+  // `mpdTeams` is another plugin's service, so it is reached with the deferred inject form (a
+  // one-shot probe cannot see it, and a declared dependency would park this entry). It is read PER
+  // CALL and never cached: one host serves many sessions with different workspaces.
+  //
+  // This is the difference that makes the team plane work at all in a `dsh-tui` composition, where
+  // the official service cannot mount (`TeamService` registers through a ROOT-bound proxy and the
+  // dsh-tui host refuses `root.effect` from a plugin activation). With the mpd row present the
+  // scenes read a team that exists; with it absent they fall back to the official readout, so this
+  // package still works mounted alone.
+  let teamsService: MpdTeamsLike | undefined
+  onService(ctx, "mpdTeams", (_scoped: PluginContextLike, service: unknown) => {
+    teamsService = service as MpdTeamsLike
+  })
+  /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
+  const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
 
   // Measured once, at apply: an append is only safe when the event type is known
   // to a reachable dsh-session copy (iron rule 2).
@@ -356,13 +373,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
 
   status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews)
+    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
   // The two team surfaces (frozen §3): registered on the SAME `tuiScenes` seam as the
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews)
+    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews, teamRecords)
     : {
         outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
         open: () => false,
@@ -384,7 +401,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openTeam: () => scene.openTeam(),
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
-          void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews)
+          void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords)
         },
       })
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
@@ -395,10 +412,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
         openPlan: () => scene.openPlan(),
-        statusText: () => boardSummary(workspaceRoot, home, teamViews),
+        statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
-          const state = readBoardState(workspaceRoot(), home(), teamViews())
+          const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords())
           return state.workmates.count === 0
             ? "mpd workmates: none"
             : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`
@@ -471,9 +488,10 @@ async function pickWorkmate(
   home: () => string,
   scene: ReturnType<typeof registerScene>,
   teamViews: () => readonly DshTeamView[],
+  teamRecords: () => readonly TeamRecord[] = () => [],
 ): Promise<void> {
   /** The workmate display names read from the durable library. */
-  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names
+  const names = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords()).workmates.names
   if (!dialogs.available() || names.length === 0) {
     scene.open()
     return
