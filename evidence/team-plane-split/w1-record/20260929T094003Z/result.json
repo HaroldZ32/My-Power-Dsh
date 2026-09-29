@@ -1,0 +1,65 @@
+{
+  "wave": "W1 \u2014 mpd owns the team record",
+  "head": "9f31adf75c268f69073776a2254a6a092a8c9139",
+  "toolchain": {
+    "bun": null,
+    "node": null,
+    "note": "bun 1.4.0 is the manifest's pinned buildToolchain, installed at .toolchain/ and put FIRST on PATH \u2014 verify-dist-fresh measures the tree only with it"
+  },
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages/mpd-team-tools-plugin packages/mpd-workmate-plugin",
+      "exit": 0,
+      "summary": "121 pass, 0 fail, 821 expect() calls"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS \u2014 every declaration carries a precise comment and a full signature"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh (each rebuilt twice, byte-identical)",
+      "before": "4 of 23 not fresh (STALE: 4) \u2014 23 of 23 with the UNPINNED bun on PATH"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "33 row ids match the 2-file bundle patch layer"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "pairs=41 failed=0 violations=0 \u2014 PASS"
+    },
+    "d6-no-direct-team-access": {
+      "cmd": "bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts",
+      "exit": 0,
+      "summary": "2 pass, 0 fail \u2014 no new direct harness-seam access outside the adapter"
+    }
+  },
+  "delivered": [
+    "packages/mpd-team-tools-plugin/src/team-store.ts \u2014 the mpd-owned team record (roster, board, mpd-minted ids, kind/attempt/round/verdict, blockedBy edges, executorRef handles)",
+    "agent_teams_plan approve materialises the record BEFORE spawning and keeps executor handles BESIDE mpd ids",
+    "ctx.mpdTeams published: the read surface that replaces dsh.teamLiveTeams() for every mpd consumer",
+    "busyTeams() reads the mpd-owned layout and respects the lifecycle (endedAt, settled members)",
+    "four dists rebuilt \u2014 verify-dist-fresh green for the first time on this branch"
+  ],
+  "defects_found_and_fixed": [
+    "a FAILED blocker rendered as `open` (dispatchable) in the new store \u2014 taskVisual/readyTasks now treat it as blocked",
+    "readTeamsIndex accepted an ARRAY for `active` (typeof [] === 'object')",
+    "verify-dist-fresh read STALE for 19 packages purely because the pinned bun was not on PATH",
+    "four dists stale since the .js -> .ts vendored rename (path comments only, 8 lines)"
+  ],
+  "open_in_w1": [
+    "W1.3 host routes /plugins/mpd-team/* \u2014 lands WITH its consumer (W4) so no dead endpoint ships",
+    "W1.4 rewire TUI/watchdog/compact readers off dsh.teamLiveTeams() \u2014 the TUI half belongs with W3's scene rewrite",
+    "W1.5b wire the watchdog hold into agent_teams_dispatch \u2014 needs the hold readable per TEAM, not per workspace",
+    "W1.1b rename mpd-team-tools -> mpd-team-core \u2014 deliberately last, so the name does not claim a role the package does not hold yet"
+  ],
+  "not_claimed": [
+    "no live teammate was spawned: the separation is proven by arms against a stub executor and by the real tool path, not by a model call",
+    "W2 (the TeamExecutor seam) is not started, so the OFFICIAL executor is still the only one wired"
+  ]
+}

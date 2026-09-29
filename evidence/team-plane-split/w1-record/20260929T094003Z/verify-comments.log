@@ -1,0 +1,6 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 353 TypeScript file(s) of 353 in the source set; inspected 27560 declaration(s); skipped 12796 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
