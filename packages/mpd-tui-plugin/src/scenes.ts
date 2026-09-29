@@ -31,9 +31,10 @@ import type { PluginContextLike, SeamOutcome, TuiScenePropsLike, TuiScenesLike }
 import type { Log } from "./log.js"
 import { onService } from "./host.js"
 import { boardLines, readBoardState, statusLine } from "./state.js"
-import { clampCells, stripControl } from "./sanitize.js"
+import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import { GRAPH_THEME, hitTest, layoutGraph, type GraphTask } from "./graph.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
@@ -43,6 +44,15 @@ export const BOARD_SCENE_ID = "mpd-tui-board"
 export const TEAM_SCENE_ID = "mpd-tui-team"
 /** The plan-approval scene id (frozen §3.2). */
 export const PLAN_SCENE_ID = "mpd-tui-plan"
+
+/**
+ * The column count assumed before the host has measured one.
+ *
+ * 100 is a deliberate middle: wide enough that the boxed graph is drawn (so an unmeasured first
+ * render already looks like the finished surface), narrow enough that nothing is laid out for a
+ * terminal larger than the one it lands on. The host re-measures on the next render.
+ */
+const FALLBACK_COLS = 100
 
 /** Refresh cadence of the board's own state snapshot. */
 const BOARD_REFRESH_MS = 2000
@@ -210,8 +220,33 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
  * @param ui - the host ui kit.
  * @returns the size label and the number of body rows that fit.
  */
-function measureTerminal(ui: any): { size: string; window: number } {
-  if (typeof ui?.useTerminalSize !== "function") return { size: "", window: 20 }
+/**
+ * Wrap a line on word boundaries to a cell budget.
+ * @param value - the text to wrap.
+ * @param cols - the cells available per line.
+ * @returns the wrapped chunks; a single over-long word is left intact rather than split.
+ */
+function wrapCells(value: string, cols: number): string[] {
+  /** The wrapped chunks. */
+  const out: string[] = []
+  /** The line being assembled. */
+  let line = ""
+  for (const word of value.split(" ")) {
+    /** The line this word would produce. */
+    const next = line === "" ? word : `${line} ${word}`
+    if (cellWidth(next) > cols && line !== "") { out.push(line); line = word } else line = next
+  }
+  if (line !== "") out.push(line)
+  return out
+}
+
+/**
+ * Measure the host's terminal through its own hook, once per render.
+ * @param ui - the host ui kit.
+ * @returns the size label, the column count the graph sizes itself from, and the body row budget.
+ */
+function measureTerminal(ui: any): { size: string; cols: number; window: number } {
+  if (typeof ui?.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS, window: 20 }
   /** The measured column count, `?` until the host hook answers. */
   let columns: unknown = "?"
   /** The measured row count, `?` until the host hook answers. */
@@ -226,9 +261,15 @@ function measureTerminal(ui: any): { size: string; window: number } {
   const terminalRows = Number(rows)
   /** The `<columns>x<rows>` size label of the scene title; empty when unmeasured. */
   const size = `${String(columns)}x${String(rows)}`
+  /** The column count as a number, for the graph's own geometry. */
+  const terminalCols = Number(columns)
   // The scene owns its chrome (title, meta, notice, footer), so the body window is
   // what is left. A sensible minimum keeps it usable before the first measurement.
-  return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 }
+  return {
+    size,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20,
+  }
 }
 
 /**
@@ -385,72 +426,61 @@ function createTeamComponent(
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
 
-    /** Reads the workflow, its subject line and the staged flag, degrading to one explicit row. */
-    const read = (): { rows: string[]; subject: string; staged: boolean; teamId?: string } => {
-      /** The projection this read produced; undefined means unreadable. */
-      let workflow: TeamWorkflow | undefined
-      /** The workspace root, read for the unreadable-state message. */
-      let root = ""
-      try {
-        root = workspaceRoot()
-      } catch {
-        root = "?"
-      }
-      try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews, teamRecords)
-      } catch {
-        workflow = undefined
-      }
-      if (workflow === undefined) return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false }
-      /** The title's subject: the team name, or the explicit none. */
-      const subject = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`
-      return {
-        rows: teamWorkflowLines(workflow),
-        subject,
-        staged: workflow.team?.staged === true,
-        ...(workflow.team?.id === undefined ? {} : { teamId: workflow.team.id }),
-      }
-    }
-
-    /** The workflow rows as host state. */
-    const rowsState = React.useState([] as string[])
-    /** The current rows, the value this render draws. */
-    const rows = rowsState[0] as string[]
-    /** Replaces the rows on every read. */
-    const setRows = rowsState[1] as (next: string[]) => void
-    /** The title subject as host state. */
-    const subjectState = React.useState("MPD team")
-    /** The current subject, drawn in the title row. */
-    const subject = subjectState[0] as string
-    /** Replaces the subject on every read. */
-    const setSubject = subjectState[1] as (next: string) => void
-    /** The transient notice line as host state. */
+    /** The projection this render draws, or undefined before the first successful read. */
+    const workflowState = React.useState(undefined as TeamWorkflow | undefined)
+    /** The projection this render draws, or undefined before the first successful read. */
+    const workflow = workflowState[0] as TeamWorkflow | undefined
+    /** Publishes a freshly read projection. */
+    const setWorkflow = workflowState[1] as (next: TeamWorkflow | undefined) => void
+    /** The transient notice line. */
     const noticeState = React.useState("")
-    /** The current notice, empty when there is nothing to say. */
+    /** The transient notice line, empty when there is nothing to say. */
     const notice = noticeState[0] as string
     /** Sets the notice, e.g. when the plan surface is unavailable. */
     const setNotice = noticeState[1] as (next: string) => void
-    /** The scroll offset as host state. */
+    /** The PINNED task — what a click leaves behind when the pointer moves away. */
+    const pinnedState = React.useState(undefined as string | undefined)
+    /** The PINNED task — what a click leaves behind when the pointer moves away. */
+    const pinned = pinnedState[0] as string | undefined
+    /** Pins a task, or clears the pin with `undefined`. */
+    const setPinned = pinnedState[1] as (next: string | undefined) => void
+    /** The HOVERED task — transient, and it outranks the pin while the pointer is over a node. */
+    const hoverState = React.useState(undefined as string | undefined)
+    /** The HOVERED task — transient, and it outranks the pin while the pointer is over a node. */
+    const hover = hoverState[0] as string | undefined
+    /** Moves the hover, or clears it when the pointer leaves the graph. */
+    const setHover = hoverState[1] as (next: string | undefined) => void
+    /** The scroll offset, in rows. */
     const scrollState = React.useState(0)
-    /** The current offset, in rows. */
+    /** The scroll offset, in rows. */
     const scroll = scrollState[0] as number
-    /** Moves the offset; `r` and `p` reset it to 0. */
+    /** Moves the offset; `r` resets it to 0. */
     const setScroll = scrollState[1] as (next: number) => void
-    // The last read's facts, so a key handler answers "is this team staged?" without a
-    // second read and without reading state from a stale render closure.
+    // The last read's facts, so a key handler answers "is this team staged?" without a second read
+    // and without reading state from a stale render closure.
     const latestRef = React.useRef?.(undefined as { staged: boolean; teamId?: string } | undefined)
+    // The drawn geometry, kept for the POINTER handlers: a click arrives with coordinates and the
+    // handler must resolve them against the very layout that produced the pixels on screen. Reading
+    // it from a ref rather than from the closure is what keeps a pointer event answered against the
+    // CURRENT drawing after a refresh moved the rows.
+    const viewRef = React.useRef?.(undefined as ReturnType<typeof layoutGraph> | undefined)
 
-    /** Re-reads the workflow and publishes its rows, subject and staged flag. */
+    /** Re-read the workflow and publish it. The render path stays free of I/O. */
     const refresh = (): void => {
-      /** The freshly read snapshot, published field by field below. */
-      const snapshot = read()
-      setRows(snapshot.rows)
-      setSubject(snapshot.subject)
-      if (latestRef !== undefined && latestRef !== null) latestRef.current = { staged: snapshot.staged, teamId: snapshot.teamId }
+      /** The freshly read projection; undefined means unreadable. */
+      let next: TeamWorkflow | undefined
+      try {
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords)
+      } catch {
+        next = undefined
+      }
+      setWorkflow(next)
+      if (latestRef !== undefined && latestRef !== null) {
+        latestRef.current = { staged: next?.team?.staged === true, ...(next?.team?.id === undefined ? {} : { teamId: next.team.id }) }
+      }
     }
 
     React.useEffect(() => {
-      // The initial read is deferred to the effect: the render path stays free of I/O.
       refresh()
       /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
@@ -470,24 +500,55 @@ function createTeamComponent(
       }
     }, [])
 
+    /** The board in the graph's own vocabulary. */
+    const graphTasks: GraphTask[] = (workflow?.tasks ?? []).map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      ...(task.kind === undefined ? {} : { kind: task.kind }),
+      visual: task.visual,
+      ...(task.assignee === undefined ? {} : { assignee: task.assignee }),
+      dependencies: task.dependencies,
+      depth: task.depth,
+      ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
+    }))
+    /** HOVER OUTRANKS THE PIN while it lasts: the pointer is the more recent intent. */
+    const focus = hover ?? pinned
+    // The window is computed from the host's own terminal size (never assumed).
+    const measured = measureTerminal(ui)
+    /** The graph's own viewport, inside the scene's one-cell padding. */
+    const graphWidth = Math.max(20, measured.cols - 4)
+    /** The drawing for this render. */
+    const view = layoutGraph(graphTasks, graphWidth, focus)
+    if (viewRef !== undefined && viewRef !== null) viewRef.current = view
+    /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
+    const ordered = view.hits.map((hit) => hit.taskId)
+
+    /** Move the focus by one task in drawing order, wrapping at both ends. */
+    const moveFocus = (delta: number): void => {
+      if (ordered.length === 0) return
+      /** The current position, or -1 when nothing is focused. */
+      const at = focus === undefined ? -1 : ordered.indexOf(focus)
+      /** The next position, wrapped so the ends are reachable from either direction. */
+      const next = at < 0 ? (delta > 0 ? 0 : ordered.length - 1) : (at + delta + ordered.length) % ordered.length
+      setHover(undefined)
+      setPinned(ordered[next])
+    }
+
     if (typeof ui.useInput === "function") {
-      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean } | undefined) => {
+      ui.useInput((input: string, key: { escape?: boolean; upArrow?: boolean; downArrow?: boolean; shift?: boolean } | undefined) => {
+        // `esc` UNPINS rather than closing while something is pinned: the pin is a mode, and a user
+        // who clicked a task must be able to leave that mode without leaving the scene.
+        if (key?.escape === true && pinned !== undefined) { setPinned(undefined); setHover(undefined); return }
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") {
-          setScroll(0)
-          refresh()
-        } else if (key?.upArrow === true || input === "k") setScroll(scroll > 0 ? scroll - 1 : 0)
-        else if (key?.downArrow === true || input === "j") setScroll(scroll + 1)
-        else if (input === "p") {
-          nav.planFromTeam = false
-          openScene(BOARD_SCENE_ID)
-        } else if (input === "a") {
+        else if (input === "r") { setScroll(0); refresh() }
+        else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1))
+        else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(scroll + 1) : moveFocus(1))
+        else if (input === "g") { setScroll(0) }
+        else if (input === "p") { nav.planFromTeam = false; openScene(BOARD_SCENE_ID) }
+        else if (input === "a") {
           /** Whether the last read saw a staged team, which is what the `a` key needs. */
           const staged = latestRef?.current?.staged === true
-          if (!staged) {
-            setNotice("plan approval needs a staged team")
-            return
-          }
+          if (!staged) { setNotice("plan approval needs a staged team"); return }
           setNotice("")
           nav.planFromTeam = true
           nav.planTeamId = latestRef?.current?.teamId
@@ -496,25 +557,93 @@ function createTeamComponent(
       })
     }
 
-    // The window is computed from the host's own terminal size (never assumed).
-    const measured = measureTerminal(ui)
-    /** The rows inside the body window. */
-    const visible = rows.slice(scroll, scroll + measured.window)
-    /** The measured terminal size label. */
-    const size = measured.size
-
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${subject}${size === "" ? "" : ` · ${size}`}`)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${rows.length} line(s) · scroll ${scroll}`)),
-    ]
-    for (let index = 0; index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])))
+    const children: unknown[] = []
+    /** The team head, when there is one. */
+    const head = workflow?.team
+    // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
+    // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
+    // absence the moment this header was rewritten — the second of them through the CONTROL
+    // CHARACTER it carries, which is why the id is the string the render boundary is tested with.
+    children.push(React.createElement(ui.Text, { key: "title", bold: true },
+      safeLine(`MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}${measured.size === "" ? "" : ` · ${measured.size}`}`)))
+    if (workflow === undefined) {
+      children.push(React.createElement(ui.Text, { key: "unreadable" }, safeLine("team state unreadable")))
+    } else if (head === undefined) {
+      // The honest empty state: the workspace really holds no team, and the row says which tool
+      // fills it rather than showing an empty frame.
+      children.push(React.createElement(ui.Text, { key: "none", dimColor: true },
+        safeLine("no team in this workspace — stage one with agent_teams_plan, then approve it")))
+    } else {
+      /** The tally row, in the vocabulary the record uses. */
+      const counts = workflow.counts
+      children.push(React.createElement(ui.Text, { key: "phase" },
+        safeLine(`${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`)))
+      /** The roster, one wrapped line, so the graph gets the room. */
+      const roster = workflow.members.length === 0
+        ? "roster  (no members)"
+        : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ")
+      for (const chunk of wrapCells(roster, graphWidth)) children.push(React.createElement(ui.Text, { key: `roster-${chunk}`, dimColor: true }, safeLine(chunk)))
+      if (workflow.holds.includes(head.id)) children.push(React.createElement(ui.Text, { key: "hold", color: "warning" }, safeLine(`watchdog   HELD (${workflow.holds.join(", ")})`)))
+      /** The graph's own header, which names the focus so the highlight is explainable. */
+      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeLine(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`)))
+      // THE GRAPH BOX OWNS THE POINTER. Its children are exactly the drawn rows, in order, so a
+      // `localRow`/`localCol` from the host's event resolves against the SAME geometry that was
+      // drawn — `hitTest` is a rectangle lookup on the layout, never a second one.
+      /** The rows of the graph that fit the window. */
+      const graphWindow = Math.max(3, measured.window - 4)
+      /** One host element per drawn graph row, each carrying its coloured spans. */
+      const graphRows: unknown[] = []
+      for (let index = scroll; index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
+        /** The spans of this row, each drawn in its own theme colour. */
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text))
+        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans))
+      }
+      children.push(React.createElement(ui.Box, {
+        key: "graph",
+        flexDirection: "column",
+        // Pointer handlers: present on every host, INERT on one without mouse tracking, so the
+        // keyboard path is untouched and nothing has to feature-detect.
+        onMouseEnter: (event: { localRow?: number; localCol?: number } | undefined) => {
+          /** The view this render drew, read back so the handler cannot answer a stale layout. */
+          const drawn = viewRef?.current
+          if (drawn === undefined) return
+          /** The task under the pointer, or none. */
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1))
+          setHover(under)
+        },
+        onMouseLeave: () => setHover(undefined),
+        onClick: (event: { localRow?: number; localCol?: number } | undefined) => {
+          /** The view this render drew. */
+          const drawn = viewRef?.current
+          if (drawn === undefined) return
+          /** The task that was clicked, or none for blank space. */
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1))
+          // Clicking the pinned task again, or blank space, UNPINS — the same gesture that pinned it.
+          setPinned(under === undefined || under === pinned ? undefined : under)
+          setHover(under)
+        },
+        onWheel: (event: { deltaY?: number } | undefined) => {
+          /** The wheel's direction; a positive delta scrolls down, as every terminal reports it. */
+          const delta = Number(event?.deltaY ?? 0)
+          if (delta !== 0) setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)))
+        },
+      }, graphRows))
+      // The detail pane: the focused task's contract, which is what a reader needs after finding it.
+      /** The focused task's row, when there is one. */
+      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus)
+      if (detail !== undefined) {
+        children.push(React.createElement(ui.Text, { key: "detail", bold: true },
+          safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)))
+        children.push(React.createElement(ui.Text, { key: "detail-meta", dimColor: true },
+          safeLine(`${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`)))
+      }
+      for (const problem of workflow.problems) children.push(React.createElement(ui.Text, { key: `problem-${problem}`, color: "warning" }, safeLine(`note       ${problem}`)))
     }
     if (notice !== "") children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)))
-    children.push(
-      React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · ↑/k ↓/j scroll · a plan approval · p board")),
-    )
+    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true },
+      safeLine("esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board")))
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
   }
 }

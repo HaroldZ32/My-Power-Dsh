@@ -396,6 +396,15 @@ interface Kit {
   press(input: string, key?: Record<string, unknown>): void
   /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
+  /** How many times a rendered scene called its own `close` — the scene's exit, counted. */
+  closes: number
+  /**
+   * Fire one POINTER handler on the first element that declares it.
+   * @param handler - the prop name (`onClick`, `onMouseEnter`, `onMouseLeave`, `onWheel`).
+   * @param event - the event the host would pass, in the host's own coordinate space.
+   * @returns whether an element declared that handler.
+   */
+  pointer(handler: string, event?: Record<string, unknown>): boolean
 }
 
 /**
@@ -411,6 +420,8 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
   let index = 0
   /** Effects queued by the current render, run by `flush`. */
   let pending: (() => unknown)[] = []
+  /** The last tree `text` flattened, so a pointer event is fired at the drawing it measured. */
+  let lastTree: unknown
 
   /** The React double: index-keyed hooks, effects deferred to `flush`. */
   const React: Record<string, unknown> = {
@@ -463,6 +474,8 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
     React,
     ui,
     handlers,
+    /** The exit counter, incremented by the props every `render` hands a scene. */
+    closes: 0,
     begin: () => {
       index = 0
       handlers.length = 0
@@ -480,30 +493,54 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       if (handler === undefined) throw new Error("no useInput handler was registered by the scene")
       handler(input, key)
     },
-    text: (tree: unknown): string => {
-      /** The text collected by the walk. */
-      const out: string[] = []
-      /** Appends one node's text, and its children's, to `out`. */
+    pointer: (handler: string, event?: Record<string, unknown>): boolean => {
+      /** Whether an element declaring the handler was found. */
+      let found = false
+      /** Depth-first walk for the first element carrying the prop. */
       const walk = (node: unknown): void => {
-        if (node === null || node === undefined) return
-        if (typeof node === "string") {
-          out.push(node)
-          return
-        }
-        if (typeof node === "number") {
-          out.push(String(node))
-          return
-        }
-        if (Array.isArray(node)) {
-          for (const child of node) walk(child)
-          return
-        }
-        /** This node as an element, the only shape left after the guards. */
+        if (found || node === null || node === undefined) return
+        if (Array.isArray(node)) { for (const child of node) walk(child); return }
+        if (typeof node !== "object") return
+        /** This node as an element. */
         const element = node as Element
-        if (element.props?.children !== undefined) walk(element.props.children)
+        /** The handler this element declares, when it declares one. */
+        const fn = element.props?.[handler]
+        if (typeof fn === "function") { found = true; (fn as (event: unknown) => void)(event); return }
         for (const child of element.children ?? []) walk(child)
       }
-      walk(tree)
+      walk(lastTree)
+      return found
+    },
+    text: (tree: unknown): string => {
+      lastTree = tree
+      // ROW-AWARE FLATTENING. A scene row may now be built from SEVERAL coloured spans, which the
+      // real host renders INLINE inside one <Text>. Joining every span with a newline — which is what
+      // this helper did while a row was always exactly one string — would turn one drawn row into
+      // five, so the walk below joins a row's own spans with nothing and separates only the rows.
+      /** The rendered lines. */
+      const out: string[] = []
+      /** Every character inside one node, spans joined with nothing. */
+      const inline = (node: unknown): string => {
+        if (node === null || node === undefined) return ""
+        if (typeof node === "string") return node
+        if (typeof node === "number") return String(node)
+        if (Array.isArray(node)) return node.map(inline).join("")
+        /** This node as an element, the only shape left after the guards. */
+        const element = node as Element
+        /** The single-child form the Text double accepts, plus the variadic form createElement passes. */
+        return inline(element.props?.children) + inline(element.children ?? [])
+      }
+      /** Walk the tree one ROW at a time: a Box is a column, so each of its children is a line. */
+      const rows = (node: unknown): void => {
+        if (node === null || node === undefined) return
+        if (Array.isArray(node)) { for (const child of node) rows(child); return }
+        if (typeof node === "string" || typeof node === "number") { out.push(String(node)); return }
+        /** This node as an element. */
+        const element = node as Element
+        if (element.type === "Box") { for (const child of element.children ?? []) rows(child); return }
+        out.push(inline(node))
+      }
+      rows(tree)
       return out.join("\n")
     },
   }
@@ -565,8 +602,8 @@ function mountScenes(
 
 /** Render a scene component until its effects settle, and return the rendered text. */
 function render(kit: Kit, component: unknown): string {
-  /** The props the host would pass to a scene. */
-  const props = { React: kit.React, ui: kit.ui, close: () => {}, channel: undefined }
+  /** The props the host would pass to a scene; `close` is COUNTED, so an exit is assertable. */
+  const props = { React: kit.React, ui: kit.ui, close: () => { kit.closes += 1 }, channel: undefined }
   /** The last rendered tree. */
   let tree: unknown
   for (let pass = 0; pass < 5; pass += 1) {
@@ -641,13 +678,23 @@ describe("surface T1 — the team workflow", () => {
     const { kit, components } = mountScenes(workspace)
     /** The rendered team scene. */
     const text = render(kit, components[TEAM_SCENE_ID])
-    expect(text).toContain("MPD team — lead")
-    expect(text).toContain("mpd-fixture-1")
-    // The official plane has no team phase of its own: it is DERIVED from the roster.
-    expect(text).toContain("phase      idle")
-    expect(text).toContain("Architect · architecture review")
-    // `kind`/`attempt`/`round` have no official source, so the row carries what the board has.
-    expect(text).toContain("t2 [-] build it · pending @Architect deps=t1")
+    // THE HEADER: the team's name AND its id, because `approve <teamId>` is an exact phrase.
+    expect(text).toContain("MPD team — lead (mpd-fixture-1)")
+    // The roster, one line, so the graph gets the room; a member carries its own progress.
+    expect(text).toContain("roster")
+    expect(text).toContain("Architect 1/2")
+    // THE GRAPH replaced the indented task list: every task is a BOX carrying its state glyph, its
+    // id, its kind abbreviation and its subject, and the dependency edge is DRAWN rather than
+    // described in a `deps=` suffix.
+    expect(text).toContain("task dependency graph")
+    expect(text).toContain("✓ t1 freeze the contract")
+    expect(text).toContain("○ t2 build it")
+    // The edge between the root and its dependent is real box drawing, and the junction where it
+    // leaves the parent's bottom border is what a flat list could not express.
+    expect(text).toContain("┬")
+    expect(text).toContain("┴")
+    // The counts line is the record's own vocabulary, and the footer names the focus keys.
+    expect(text).toContain("3 task(s)")
     expect(text).toContain("esc/q close")
   })
 
@@ -896,5 +943,186 @@ describe("package invariants", () => {
     expect(mailboxKey("Senior Engineer")).toBe("senior-engineer")
     expect(mailboxKey("captain")).toBe("captain")
     expect(mailboxKey("中文 名")).toBe("中文-名")
+  })
+})
+
+// ── W3: the focus, and the pointer ──────────────────────────────────────────
+//
+// WHAT THESE ARMS ARE FOR. The team scene draws a dependency graph, and a graph is only useful if
+// you can ask it about ONE task. Two input paths answer that question — the keyboard, which is the
+// primary one and must always work, and the pointer, which is additive and inert on a host without
+// mouse tracking — and they must agree about what "the focused task" means.
+describe("the team scene's focus", () => {
+  /** A fixture with a three-task chain, so a focus has something to light. */
+  const chained = (): Record<string, unknown> => ({
+    id: "focus-1",
+    name: "Focus",
+    phase: "running",
+    members: [],
+    tasks: [
+      { id: "a", subject: "root", status: "completed", dependencies: [] },
+      { id: "b", subject: "middle", status: "in_progress", dependencies: ["a"] },
+      { id: "c", subject: "leaf", status: "pending", dependencies: ["b"] },
+    ],
+  })
+
+  test("↑/↓ moves the focus through the drawing, and the ▶ marker moves with it", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    // Nothing is focused on the first render, so no task carries the marker.
+    expect(render(kit, scene)).not.toContain("▶")
+    // The first ↓ focuses the FIRST task in drawing order — rank order, so `a` (a root).
+    expect(pressAndRender(kit, scene, "", { downArrow: true })).toContain("▶ a")
+    // The next walks to the following task, and ↑ walks back.
+    expect(pressAndRender(kit, scene, "", { downArrow: true })).toContain("▶ b")
+    expect(pressAndRender(kit, scene, "", { upArrow: true })).toContain("▶ a")
+    // ↑ from the first wraps to the last, so the ends are reachable from either direction.
+    expect(pressAndRender(kit, scene, "", { upArrow: true })).toContain("▶ c")
+  })
+
+  test("a focused task lights its DEPENDENCIES and names them in the graph header", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    // Walk down to the last task, whose chain is the whole board above it.
+    pressAndRender(kit, scene, "", { downArrow: true })
+    pressAndRender(kit, scene, "", { downArrow: true })
+    /** The scene with the leaf focused. */
+    const text = pressAndRender(kit, scene, "", { downArrow: true })
+    expect(text).toContain("▶ c")
+    // The HEADER names the chain, which is what makes the highlight explainable rather than
+    // decorative: a reader can see WHY those boxes are lit.
+    expect(text).toContain("focus c ⇠ a,b")
+  })
+
+  test("`esc` UNPINS rather than closing, and closes once nothing is pinned", () => {
+    // A pin is a MODE, so leaving it must not also leave the scene — otherwise a user who clicked a
+    // task would lose their place by pressing the key that every other surface closes with.
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit, components and the close log. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    pressAndRender(kit, scene, "", { downArrow: true })
+    expect(kit.closes).toBe(0)
+    // The first Escape clears the pin and does NOT close.
+    expect(pressAndRender(kit, scene, "", { escape: true })).not.toContain("▶")
+    expect(kit.closes).toBe(0)
+    // The second Escape, with nothing pinned, closes as it always did.
+    pressAndRender(kit, scene, "", { escape: true })
+    expect(kit.closes).toBe(1)
+  })
+
+  test("a CLICK pins a task and hovering previews one, without the keyboard", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    // The graph box declares all three pointer handlers; a host without mouse tracking simply never
+    // fires them, which is what makes this additive rather than a second code path.
+    expect(kit.pointer("onMouseEnter", { localRow: 1, localCol: 4 })).toBe(true)
+    /** The scene after the hover, which must light the task under the pointer. */
+    const hovered = render(kit, scene)
+    expect(hovered).toContain("▶ a")
+    // HOVER IS TRANSIENT: leaving the box clears it, so the drawing returns to nothing focused.
+    expect(kit.pointer("onMouseLeave", {})).toBe(true)
+    expect(render(kit, scene)).not.toContain("▶")
+    // A CLICK pins, and the pin SURVIVES the pointer leaving — that is the difference between the
+    // two gestures, and the reason both exist.
+    expect(kit.pointer("onClick", { localRow: 1, localCol: 4 })).toBe(true)
+    expect(render(kit, scene)).toContain("▶ a")
+    kit.pointer("onMouseLeave", {})
+    expect(render(kit, scene)).toContain("▶ a")
+    // Clicking the SAME task again unpins it: the gesture that pinned it releases it. The pointer
+    // is still OVER the node, so the HOVER keeps it lit — which is correct, and why the assertion
+    // moves the pointer away before asking whether anything is focused at all.
+    kit.pointer("onClick", { localRow: 1, localCol: 4 })
+    kit.pointer("onMouseLeave", {})
+    expect(render(kit, scene)).not.toContain("▶")
+  })
+
+  test("a click on BLANK space unpins rather than pinning nothing", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    kit.pointer("onClick", { localRow: 1, localCol: 4 })
+    expect(render(kit, scene)).toContain("▶ a")
+    // A row far below the drawing is blank space, and clicking it clears the pin.
+    kit.pointer("onClick", { localRow: 99, localCol: 4 })
+    expect(render(kit, scene)).not.toContain("▶")
+  })
+
+  test("the wheel scrolls the graph", () => {
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(chained())
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    /** The scene before any scroll. */
+    const before = render(kit, scene)
+    expect(before).toContain("┌")
+    expect(kit.pointer("onWheel", { deltaY: 1 })).toBe(true)
+    // Scrolling moves the WINDOW over the drawing, so the FIRST row leaves the view — asserted on
+    // the graph's own first character, because later rows legitimately still draw a `┌`.
+    /** The scene after one wheel tick down. */
+    const scrolled = render(kit, scene)
+    /** Everything after the graph's header, which is the drawing itself. */
+    const drawingOf = (value: string): string => value.slice(value.indexOf("task dependency graph") + "task dependency graph".length)
+    expect(drawingOf(before).startsWith("┌")).toBe(true)
+    expect(drawingOf(scrolled).startsWith("│")).toBe(true)
+    // Back up, and the first row returns: the offset CLAMPS at zero rather than going negative.
+    kit.pointer("onWheel", { deltaY: -1 })
+    expect(render(kit, scene)).toBe(before)
+  })
+
+  test("a NARROW terminal falls back to the rail rather than clipping the boxes", () => {
+    // The fallback is the reason the graph is safe at any width: `layoutBoxes` refuses rather than
+    // squeezing, so this is a fact about the geometry instead of a guess about the terminal. What
+    // makes boxes impossible is a WIDE RANK in a narrow viewport — a chatty chain fits at any width,
+    // because its widest rank holds one box.
+    /** This arm's fixture workspace: one rank with four parallel tasks. */
+    const workspace = teamFixture({
+      id: "wide-1",
+      name: "Wide",
+      phase: "running",
+      members: [],
+      tasks: [
+        { id: "a", subject: "one", status: "pending", dependencies: [] },
+        { id: "b", subject: "two", status: "pending", dependencies: [] },
+        { id: "c", subject: "three", status: "pending", dependencies: [] },
+        { id: "d", subject: "four", status: "pending", dependencies: [] },
+      ],
+    })
+    /** This arm's kit, narrow enough that four boxes cannot fit. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
+    /** The rendered scene. */
+    const text = render(kit, components[TEAM_SCENE_ID])
+    expect(text).toContain("task dependency graph (rail)")
+    // The rail names every task and draws no box.
+    for (const id of ["a", "b", "c", "d"]) expect(text).toContain(id)
+    expect(text).not.toContain("┌")
+    // The SAME board at a comfortable width draws boxes, so the fallback is a decision about the
+    // geometry and not a property of the fixture.
+    /** This arm's kit at a width the boxes fit. */
+    const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
+    expect(render(wide.kit, wide.components[TEAM_SCENE_ID])).toContain("┌")
   })
 })

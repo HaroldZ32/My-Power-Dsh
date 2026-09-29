@@ -2367,6 +2367,12 @@ function stripControl(value) {
 function collapse(value) {
   return value.replace(/\s+/gu, " ").trim();
 }
+function cellWidth(value) {
+  let width = 0;
+  for (const character of value)
+    width += WIDE.test(character) ? 2 : 1;
+  return width;
+}
 function clampCells(value, maxCells) {
   if (maxCells <= 0)
     return "";
@@ -3595,76 +3601,6 @@ function readRecordWorkflow(workspace, holds, record) {
     problems: problems.slice(0, MAX_PROBLEMS2)
   };
 }
-function teamWorkflowLines(workflow) {
-  if (workflow.team === undefined)
-    return ["team       (none in this workspace)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id})`);
-  lines.push(`phase      ${team.phase}`);
-  if (team.staged && team.planReviewState !== undefined)
-    lines.push(`plan       ${team.planReviewState}`);
-  if (team.captainSessionId !== undefined)
-    lines.push(`captain    ${team.captainSessionId}`);
-  if (team.staged && team.stagedAt !== undefined)
-    lines.push(`staged     ${team.stagedAt}`);
-  if (workflow.holds.includes(team.id))
-    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    let row = `  ${parts.join(" · ")}`;
-    row += ` · ${member.done}/${member.total}`;
-    if (member.currentTask !== undefined)
-      row += ` · ${member.currentTask}`;
-    if (member.unread !== null && member.unread > 0)
-      row += ` · ${member.unread} unread`;
-    lines.push(row);
-  }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.attempt !== undefined)
-      row += ` attempt ${task.attempt}`;
-    if (task.round !== undefined)
-      row += ` r${task.round}`;
-    if (task.verdict !== undefined)
-      row += ` verdict ${task.verdict}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    for (const failed of task.failedDependencies)
-      row += ` failed-dep=${failed}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
-  }
-  lines.push("");
-  const tasks = workflow.counts;
-  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
-  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
-  for (const message of workflow.mail.captainInbox)
-    lines.push(`  ${message.from}: ${message.content}`);
-  if (workflow.problems.length > 0) {
-    lines.push("");
-    for (const problem of workflow.problems)
-      lines.push(`note       ${problem}`);
-  }
-  return lines;
-}
 function planProjectionLines(workflow) {
   if (workflow.team === undefined)
     return ["no staged plan for team (none)"];
@@ -3705,10 +3641,349 @@ function planProjectionLines(workflow) {
   return lines;
 }
 
+// packages/mpd-tui-plugin/src/graph.ts
+var GRAPH_THEME = Object.freeze({
+  completed: "success",
+  running: "activity",
+  failed: "error",
+  blocked: "warning",
+  cancelled: "inactive",
+  open: "subtle",
+  focus: "accentShimmer",
+  dim: "inactive",
+  edge: "promptBorder",
+  chain: "accent",
+  blank: "text"
+});
+var GLYPH = Object.freeze({
+  completed: "✓",
+  running: "◐",
+  failed: "✗",
+  blocked: "○",
+  cancelled: "⊘",
+  open: "○"
+});
+var KIND_ABBREV = Object.freeze({
+  requirement: "REQ",
+  work: "WRK",
+  review: "REV",
+  repair: "FIX",
+  integration: "INT"
+});
+var MIN_NODE_WIDTH = 16;
+var NODE_GAP = 3;
+var MAX_NODE_WIDTH = 34;
+var MAX_BOX_RANKS = 12;
+var UP = 1;
+var DOWN = 2;
+var LEFT = 4;
+var RIGHT = 8;
+var JUNCTION = Object.freeze({
+  0: " ",
+  [UP]: "│",
+  [DOWN]: "│",
+  [UP | DOWN]: "│",
+  [LEFT]: "─",
+  [RIGHT]: "─",
+  [LEFT | RIGHT]: "─",
+  [DOWN | RIGHT]: "┌",
+  [DOWN | LEFT]: "┐",
+  [UP | RIGHT]: "└",
+  [UP | LEFT]: "┘",
+  [UP | DOWN | RIGHT]: "├",
+  [UP | DOWN | LEFT]: "┤",
+  [UP | LEFT | RIGHT]: "┴",
+  [DOWN | LEFT | RIGHT]: "┬",
+  [UP | DOWN | LEFT | RIGHT]: "┼"
+});
+function clampSpans(spans, cols) {
+  const kept = [];
+  let used = 0;
+  for (const span of spans) {
+    if (used >= cols)
+      break;
+    const room = cols - used;
+    if (cellWidth(span.text) <= room) {
+      kept.push(span);
+      used += cellWidth(span.text);
+      continue;
+    }
+    kept.push({ text: clampCells(span.text, room), tone: span.tone });
+    used = cols;
+  }
+  return kept;
+}
+function labelOf(task, focus) {
+  const marker = task.id === focus ? "▶" : GLYPH[task.visual] ?? "?";
+  const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
+  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ");
+}
+function toneOf(task, focus, chain) {
+  if (task.id === focus)
+    return "focus";
+  if (chain === undefined) {
+    const visual = task.visual;
+    return visual === "completed" || visual === "running" || visual === "failed" || visual === "blocked" || visual === "cancelled" ? visual : "open";
+  }
+  return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim";
+}
+function dependencyChain(tasks, id) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const seen = new Set;
+  const stack = [...byId.get(id)?.dependencies ?? []];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (seen.has(current) || !byId.has(current))
+      continue;
+    seen.add(current);
+    for (const next of byId.get(current)?.dependencies ?? [])
+      if (!seen.has(next))
+        stack.push(next);
+  }
+  return seen;
+}
+function ranksOf(tasks) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks) {
+    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0;
+    ranks[rank].push(task);
+  }
+  return ranks;
+}
+function cycleIds2(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const onStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    onStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    onStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function layoutBoxes(tasks, cols, focus) {
+  if (tasks.length === 0) {
+    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] };
+    if (focus !== undefined)
+      empty.focus = focus;
+    return empty;
+  }
+  const ranks = ranksOf(tasks);
+  if (ranks.length > MAX_BOX_RANKS)
+    return;
+  const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
+  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest));
+  if (nodeWidth < MIN_NODE_WIDTH)
+    return;
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
+  const column = new Map;
+  for (const rank of ranks) {
+    const ordered = rank.map((task, index) => {
+      const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id));
+      return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length };
+    }).sort((left, right) => left.key - right.key || left.index - right.index);
+    ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)));
+  }
+  const mask = [];
+  const text = [];
+  const tone = [];
+  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
+  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
+  const grow = (row) => {
+    while (mask.length <= row) {
+      mask.push(new Array(width).fill(0));
+      text.push(new Array(width).fill(null));
+      tone.push(new Array(width).fill(null));
+    }
+  };
+  const link = (row, col, dir, at) => {
+    if (col < 0 || col >= width || row < 0)
+      return;
+    grow(row);
+    mask[row][col] |= dir;
+    const current = toneAt(row, col);
+    if (current === undefined || order.indexOf(at) > order.indexOf(current))
+      tone[row][col] = at;
+  };
+  const label = (row, col, char, at) => {
+    if (col < 0 || col >= width)
+      return;
+    grow(row);
+    text[row][col] = char;
+    tone[row][col] = at;
+  };
+  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
+  const RANK_STRIDE = 6;
+  const hits = [];
+  for (let rank = 0;rank < ranks.length; rank++) {
+    const top = rank * RANK_STRIDE;
+    for (const task of ranks[rank]) {
+      const left = column.get(task.id) ?? 0;
+      const right = left + nodeWidth - 1;
+      const at = toneOf(task, focus, chain);
+      for (let col = left + 1;col < right; col++)
+        link(top, col, LEFT | RIGHT, at);
+      link(top, left, RIGHT | DOWN, at);
+      link(top, right, LEFT | DOWN, at);
+      link(top + 1, left, UP | DOWN, at);
+      link(top + 1, right, UP | DOWN, at);
+      const body = labelOf(task, focus);
+      let cursor = left + 1;
+      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) {
+        label(top + 1, cursor, char, at);
+        cursor += cellWidth(char);
+      }
+      for (let col = left + 1;col < right; col++)
+        link(top + 2, col, LEFT | RIGHT, at);
+      link(top + 2, left, RIGHT | UP, at);
+      link(top + 2, right, LEFT | UP, at);
+      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
+        link(top + 2, centreOf(task.id), DOWN, at);
+      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right });
+    }
+    if (rank + 1 >= ranks.length)
+      break;
+    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5;
+    for (const child of ranks[rank + 1]) {
+      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
+      if (parents.length === 0)
+        continue;
+      const centre = centreOf(child.id);
+      link(top + 6, centre, UP, toneOf(child, focus, chain));
+      link(stubBottom, centre, UP | DOWN, toneOf(child, focus, chain));
+      for (const id of parents) {
+        const from = centreOf(id);
+        const edgeTone = focus === undefined ? "edge" : (id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true) ? "chain" : "dim";
+        link(stubTop, from, UP | DOWN, edgeTone);
+        if (from === centre) {
+          link(bus, from, UP | DOWN, edgeTone);
+          continue;
+        }
+        link(bus, from, UP, edgeTone);
+        link(bus, centre, DOWN, edgeTone);
+        for (let col = Math.min(from, centre) + 1;col < Math.max(from, centre); col++)
+          link(bus, col, LEFT | RIGHT, edgeTone);
+        link(bus, Math.min(from, centre), RIGHT, edgeTone);
+        link(bus, Math.max(from, centre), LEFT, edgeTone);
+      }
+    }
+  }
+  const lines = [];
+  for (let row = 0;row < mask.length; row++) {
+    const cells = [];
+    let run = null;
+    for (let col = 0;col < width; col++) {
+      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
+      const at = toneAt(row, col) ?? "blank";
+      if (run !== null && run.tone === at)
+        run.text += char;
+      else {
+        run = { text: char, tone: at };
+        cells.push(run);
+      }
+    }
+    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
+      cells.pop();
+    lines.push(clampSpans(cells, width));
+  }
+  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
+    lines.pop();
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutRail(tasks, cols, focus) {
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const children = new Map;
+  for (const task of tasks) {
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0];
+    if (parent === undefined)
+      continue;
+    if (!children.has(parent))
+      children.set(parent, []);
+    children.get(parent).push(task);
+  }
+  const drawn = [];
+  const seen = new Set;
+  const walk = (task, prefix, leaf, depth) => {
+    if (seen.has(task.id))
+      return;
+    seen.add(task.id);
+    drawn.push({ task, prefix, leaf, depth });
+    const kids = children.get(task.id) ?? [];
+    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1));
+  };
+  for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0))
+    walk(root, "", true, 0);
+  for (const task of tasks)
+    walk(task, "", true, 0);
+  const lines = [];
+  const hits = [];
+  drawn.forEach((entry, index) => {
+    const at = toneOf(entry.task, focus, chain);
+    const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
+    const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`;
+    const connector = entry.depth === 0 ? "" : `${entry.prefix}${entry.leaf ? "└─" : "├─"} `;
+    const label = labelOf(entry.task, focus);
+    const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
+    const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
+    const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
+    const shown = clampCells(stripControl(label), labelRoom);
+    const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : "";
+    lines.push(clampSpans([
+      { text: connector, tone: at },
+      { text: shown + gap, tone: at },
+      ...useTail ? [{ text: "  " + tail, tone: at }] : []
+    ], cols));
+    hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
+  });
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutGraph(tasks, cols, focus) {
+  const width = Math.max(8, Math.floor(cols));
+  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus);
+}
+function hitTest(view, row, col) {
+  for (const hit of view.hits) {
+    if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd)
+      return hit.taskId;
+  }
+  return;
+}
+
 // packages/mpd-tui-plugin/src/scenes.ts
 var BOARD_SCENE_ID = "mpd-tui-board";
 var TEAM_SCENE_ID = "mpd-tui-team";
 var PLAN_SCENE_ID = "mpd-tui-plan";
+var FALLBACK_COLS = 100;
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
 var SCENE_ROW_MAX_CELLS = 4000;
@@ -3760,9 +4035,24 @@ function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
     return;
   }
 }
+function wrapCells(value, cols) {
+  const out = [];
+  let line = "";
+  for (const word of value.split(" ")) {
+    const next = line === "" ? word : `${line} ${word}`;
+    if (cellWidth(next) > cols && line !== "") {
+      out.push(line);
+      line = word;
+    } else
+      line = next;
+  }
+  if (line !== "")
+    out.push(line);
+  return out;
+}
 function measureTerminal(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", window: 20 };
+    return { size: "", cols: FALLBACK_COLS, window: 20 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -3772,7 +4062,12 @@ function measureTerminal(ui) {
   }
   const terminalRows = Number(rows);
   const size = `${String(columns)}x${String(rows)}`;
-  return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 };
+  const terminalCols = Number(columns);
+  return {
+    size,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
+  };
 }
 function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) {
   return function MpdTuiBoard(props) {
@@ -3853,48 +4148,34 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
-    const read = () => {
-      let workflow;
-      let root = "";
-      try {
-        root = workspaceRoot();
-      } catch {
-        root = "?";
-      }
-      try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
-      } catch {
-        workflow = undefined;
-      }
-      if (workflow === undefined)
-        return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false };
-      const subject2 = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`;
-      return {
-        rows: teamWorkflowLines(workflow),
-        subject: subject2,
-        staged: workflow.team?.staged === true,
-        ...workflow.team?.id === undefined ? {} : { teamId: workflow.team.id }
-      };
-    };
-    const rowsState = React.useState([]);
-    const rows = rowsState[0];
-    const setRows = rowsState[1];
-    const subjectState = React.useState("MPD team");
-    const subject = subjectState[0];
-    const setSubject = subjectState[1];
+    const workflowState = React.useState(undefined);
+    const workflow = workflowState[0];
+    const setWorkflow = workflowState[1];
     const noticeState = React.useState("");
     const notice = noticeState[0];
     const setNotice = noticeState[1];
+    const pinnedState = React.useState(undefined);
+    const pinned = pinnedState[0];
+    const setPinned = pinnedState[1];
+    const hoverState = React.useState(undefined);
+    const hover = hoverState[0];
+    const setHover = hoverState[1];
     const scrollState = React.useState(0);
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const latestRef = React.useRef?.(undefined);
+    const viewRef = React.useRef?.(undefined);
     const refresh = () => {
-      const snapshot = read();
-      setRows(snapshot.rows);
-      setSubject(snapshot.subject);
-      if (latestRef !== undefined && latestRef !== null)
-        latestRef.current = { staged: snapshot.staged, teamId: snapshot.teamId };
+      let next;
+      try {
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
+      } catch {
+        next = undefined;
+      }
+      setWorkflow(next);
+      if (latestRef !== undefined && latestRef !== null) {
+        latestRef.current = { staged: next?.team?.staged === true, ...next?.team?.id === undefined ? {} : { teamId: next.team.id } };
+      }
     };
     React.useEffect(() => {
       refresh();
@@ -3912,18 +4193,50 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         }
       };
     }, []);
+    const graphTasks = (workflow?.tasks ?? []).map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      ...task.kind === undefined ? {} : { kind: task.kind },
+      visual: task.visual,
+      ...task.assignee === undefined ? {} : { assignee: task.assignee },
+      dependencies: task.dependencies,
+      depth: task.depth,
+      ...task.attempt === undefined ? {} : { attempt: task.attempt }
+    }));
+    const focus = hover ?? pinned;
+    const measured = measureTerminal(ui);
+    const graphWidth = Math.max(20, measured.cols - 4);
+    const view = layoutGraph(graphTasks, graphWidth, focus);
+    if (viewRef !== undefined && viewRef !== null)
+      viewRef.current = view;
+    const ordered = view.hits.map((hit) => hit.taskId);
+    const moveFocus = (delta) => {
+      if (ordered.length === 0)
+        return;
+      const at = focus === undefined ? -1 : ordered.indexOf(focus);
+      const next = at < 0 ? delta > 0 ? 0 : ordered.length - 1 : (at + delta + ordered.length) % ordered.length;
+      setHover(undefined);
+      setPinned(ordered[next]);
+    };
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
+        if (key?.escape === true && pinned !== undefined) {
+          setPinned(undefined);
+          setHover(undefined);
+          return;
+        }
         if (key?.escape === true || input === "q")
           close();
         else if (input === "r") {
           setScroll(0);
           refresh();
         } else if (key?.upArrow === true || input === "k")
-          setScroll(scroll > 0 ? scroll - 1 : 0);
+          key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1);
         else if (key?.downArrow === true || input === "j")
-          setScroll(scroll + 1);
-        else if (input === "p") {
+          key?.shift === true ? setScroll(scroll + 1) : moveFocus(1);
+        else if (input === "g") {
+          setScroll(0);
+        } else if (input === "p") {
           nav.planFromTeam = false;
           openScene(BOARD_SCENE_ID);
         } else if (input === "a") {
@@ -3940,19 +4253,65 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         }
       });
     }
-    const measured = measureTerminal(ui);
-    const visible = rows.slice(scroll, scroll + measured.window);
-    const size = measured.size;
-    const children = [
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${subject}${size === "" ? "" : ` · ${size}`}`)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${rows.length} line(s) · scroll ${scroll}`))
-    ];
-    for (let index = 0;index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])));
+    const children = [];
+    const head = workflow?.team;
+    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    if (workflow === undefined) {
+      children.push(React.createElement(ui.Text, { key: "unreadable" }, safeLine("team state unreadable")));
+    } else if (head === undefined) {
+      children.push(React.createElement(ui.Text, { key: "none", dimColor: true }, safeLine("no team in this workspace — stage one with agent_teams_plan, then approve it")));
+    } else {
+      const counts = workflow.counts;
+      children.push(React.createElement(ui.Text, { key: "phase" }, safeLine(`${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`)));
+      const roster = workflow.members.length === 0 ? "roster  (no members)" : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ");
+      for (const chunk of wrapCells(roster, graphWidth))
+        children.push(React.createElement(ui.Text, { key: `roster-${chunk}`, dimColor: true }, safeLine(chunk)));
+      if (workflow.holds.includes(head.id))
+        children.push(React.createElement(ui.Text, { key: "hold", color: "warning" }, safeLine(`watchdog   HELD (${workflow.holds.join(", ")})`)));
+      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeLine(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`)));
+      const graphWindow = Math.max(3, measured.window - 4);
+      const graphRows = [];
+      for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
+      }
+      children.push(React.createElement(ui.Box, {
+        key: "graph",
+        flexDirection: "column",
+        onMouseEnter: (event) => {
+          const drawn = viewRef?.current;
+          if (drawn === undefined)
+            return;
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          setHover(under);
+        },
+        onMouseLeave: () => setHover(undefined),
+        onClick: (event) => {
+          const drawn = viewRef?.current;
+          if (drawn === undefined)
+            return;
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          setPinned(under === undefined || under === pinned ? undefined : under);
+          setHover(under);
+        },
+        onWheel: (event) => {
+          const delta = Number(event?.deltaY ?? 0);
+          if (delta !== 0)
+            setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)));
+        }
+      }, graphRows));
+      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus);
+      if (detail !== undefined) {
+        children.push(React.createElement(ui.Text, { key: "detail", bold: true }, safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)));
+        children.push(React.createElement(ui.Text, { key: "detail-meta", dimColor: true }, safeLine(`${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`)));
+      }
+      for (const problem of workflow.problems)
+        children.push(React.createElement(ui.Text, { key: `problem-${problem}`, color: "warning" }, safeLine(`note       ${problem}`)));
     }
     if (notice !== "")
       children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)));
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · ↑/k ↓/j scroll · a plan approval · p board")));
+    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board")));
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
