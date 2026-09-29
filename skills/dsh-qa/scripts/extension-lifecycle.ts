@@ -373,7 +373,7 @@ async function selfTest(): Promise<void> {
 
   // 1) the bundle really composes the row this case boots.
   /** The bundle patch as text: the mpd-ext row must be declared there. */
-  const patch = readFileSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch does not carry the mpd-ext row")
   check(patch.includes("packages/mpd-ext-plugin/dist/index.js"), "the mpd-ext row does not point at the plugin dist")
   /** The installer source, which must write the same row the bundle patch declares. */

@@ -19,7 +19,7 @@
 import { existsSync, readdirSync, type Dirent } from "node:fs"
 import { join, resolve } from "node:path"
 import { readJson } from "./lib/repo.ts"
-import { archiveTeamDir } from "../packages/mpd-agent-teams-plugin/lib/state.js"
+import { archiveTeamDir } from "../packages/mpd-agent-teams-plugin/lib/state.ts"
 
 /**
  * The `team.json` fields this reclamation classifies. Every field is optional because the

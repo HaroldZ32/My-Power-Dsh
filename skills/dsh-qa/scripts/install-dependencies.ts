@@ -8,7 +8,7 @@
 // runtime `ctx.inject`, so a missing host is SILENT: no page, no error). The fix declares the
 // dependency in the bundle manifest (the harness then materializes it into
 // `<profile>/node_modules` — measured: a symlink through `<profile>/.dsh-module-fallback`) and
-// mounts it with ONE guarded loader row (`mpd-better-sidebar`, packages/mpd-bundle/cordis.patch.yml)
+// mounts it with ONE guarded loader row (`mpd-better-sidebar`, cordis.patch.yml)
 // whose guard is ORDER-INDEPENDENT (it reads declarations, not just the entry list).
 //
 // FIVE COMPOSITIONS, aggregate-free FIRST (that is the user's own composition):
@@ -1089,7 +1089,7 @@ async function runReal(): Promise<void> {
   // The revision anchors: the two composition inputs and this script's own bytes, with the moment.
   const sourceHashes: Record<string, string> = {
     measuredAtUtc: new Date().toISOString(),
-    "packages/mpd-bundle/cordis.patch.yml": sha256(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml")),
+    "cordis.patch.yml": sha256(join(REPO, "cordis.patch.yml")),
     "package.json": sha256(join(REPO, "package.json")),
     ["skills/dsh-qa/scripts/" + SLUG + ".ts"]: sha256(fileURLToPath(import.meta.url)),
   }

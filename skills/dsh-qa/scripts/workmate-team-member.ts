@@ -88,10 +88,10 @@ function selfTest(): void {
   const checks: Array<[string, boolean]> = []
   checks.push(["workmate dist built", existsSync(join(repoRoot, "packages", "mpd-workmate-plugin", "dist", "index.js"))])
   // The adopted plugin's member-persona source, which is what injects the workmate's memory.
-  const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.js"), "utf8")
+  const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.ts"), "utf8")
   checks.push(["memberPersona workmate injection", members.includes("function workmateBacking") && members.includes("mpd_workmate_reflect") && members.includes("11. " + "Durable workmate backing".slice(0, 4)) || members.includes("Durable workmate backing")])
   // The retired adopted plugin's tool table, whose parameter names the live prompt relies on.
-  const tools = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "tools.js"), "utf8")
+  const tools = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "tools.ts"), "utf8")
   checks.push(["agent_teams_create param name", tools.includes("agent_teams_create") && tools.includes("name: { type: 'string', required: true, description: 'Name for the new team")])
   checks.push(["agent_teams_add_member param name", tools.includes("agent_teams_add_member") && tools.includes("Unique member name inside the team")])
   checks.push(["agent_teams_create_task subject", tools.includes("agent_teams_create_task") && tools.includes("Required non-empty title for this task")])

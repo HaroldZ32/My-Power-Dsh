@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "DSH bundle aggregation package: cordis.patch.yml mounts all mpd-dsh plugin entries",
+  "description": "Documentation package for the bundle's host-plane patch layer, which lives at the repository root as cordis.patch.yml (standard cordis bundle layout) and mounts all mpd-dsh plugin entries",
   "scripts": {
     "test": "bun test"
   }

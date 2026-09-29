@@ -32,8 +32,9 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.1.7-rc.2`, then asserts that `dsh --version` prints **exactly** that
-   string.
+5. `npm i -g @deepseek-ai/dsh@0.1.7-rc.2` (the default pin — override it with
+   `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
+   `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
    entry from source with the canonical repo-root command from `AGENTS.md` §6 (`bun build
    packages/<pkg>/src/<entry>.ts --target node --format esm --outfile packages/<pkg>/dist/<entry>.js`).
@@ -81,8 +82,11 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.11.1` (the first dsh-tui release whose
-    peer ranges include `0.1.7-rc.2`), installs THIS bundle into the `dsh-tui` profile as the third
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.11.2` — the first dsh-tui release whose
+    peer ranges accept BOTH harness pins this lane runs (`0.1.7-rc.2` and `0.2.0-rc.1`; `0.11.1` stops
+    at the former, and `dsh plugin --profile dsh-tui add` is then REFUSED on peer ranges). Override it
+    with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
+    into the `dsh-tui` profile as the third
     patch layer, and records eleven assertions: host install, both `plugin add` calls, composition,
     **the TUI's own scoped registry row carrying `default: mpd`**, the `preset-mpd` / `mpd-tui` /
     official-team rows, a real tmux PTY boot reaching the chat screen, no fatal signature, and the

@@ -1,7 +1,7 @@
-import type * as checks from "./checks.js";
-import type { $ZodConfig } from "./core.js";
-import type * as errors from "./errors.js";
-import type * as schemas from "./schemas.js";
+import type * as checks from "./checks.ts";
+import type { $ZodConfig } from "./core.ts";
+import type * as errors from "./errors.ts";
+import type * as schemas from "./schemas.ts";
 export type JSONType = string | number | boolean | null | JSONType[] | {
     [key: string]: JSONType;
 };

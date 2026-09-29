@@ -1,7 +1,7 @@
 // Harness JSON-Schema subset: a local mirror of the validator plus a projector.
 //
 // WHY this file exists: `ctx.tools.register` runs `assertSupportedJsonSchema` on
-// `output.schema` (H/dsh-tools/lib/index.js:2777) and a rejection throws
+// `output.schema` (H/dsh-tools/lib/index.ts:2777) and a rejection throws
 // JsonSchemaError OUT of the registration call, which can take the whole plugin
 // tree down (AGENTS.md §12). An MCP server is a third party: its `inputSchema`
 // and `outputSchema` are foreign data and must never be handed to the harness
@@ -12,13 +12,13 @@
 //   · `parameters` — PROJECT the foreign schema onto the subset and normalize its
 //     ROOT onto an object (a tool call always carries an arguments object, so a
 //     scalar/array/oneOf root is not callable as-is). This harness release does not
-//     validate `parameters` at all (H/dsh-mcp-client/lib/index.js:203-207 passes
+//     validate `parameters` at all (H/dsh-mcp-client/lib/index.ts:203-207 passes
 //     `tool.inputSchema` straight through), so the projection is DEFENSE-IN-DEPTH
 //     against a future harness, not a fix for a live abort.
 //   · `output.schema` — KEEP-OR-DROP THE SCHEMA, NEVER THE TOOL: a schema outside
 //     the subset, or one that would have to be rewritten to fit, is dropped so the
 //     tool still registers without `structuredContent`. That is exactly the harness's
-//     posture (H/dsh-mcp-client/lib/index.js:186-196 `supportedOutputSchema` keeps
+//     posture (H/dsh-mcp-client/lib/index.ts:186-196 `supportedOutputSchema` keeps
 //     the tool and drops the schema to `{}`); the REV4 wording ("drop that tool")
 //     was strictly blunter than the seam it mirrors. A third party's schema is
 //     never rewritten, because a rewritten schema would no longer describe what the
@@ -31,7 +31,7 @@
 // Dependency-free by construction (zero runtime imports): the same module is
 // consumed by the runtime bridge and can be exercised standalone.
 //
-// Measured subset (H/dsh-tools/lib/index.js:33-54, 151-158, 322-326):
+// Measured subset (H/dsh-tools/lib/index.ts:33-54, 151-158, 322-326):
 //   constraint keywords  type, oneOf, properties, required, additionalProperties, items, enum, const
 //   annotation keywords  description, title, default, examples
 //   types                object, array, string, number, integer, boolean, null

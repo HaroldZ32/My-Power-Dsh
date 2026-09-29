@@ -1,8 +1,8 @@
-import type { $ZodCheck, $ZodStringFormats } from "./checks.cjs";
-import { $constructor } from "./core.cjs";
-import type { $ZodType } from "./schemas.cjs";
-import type { StandardSchemaV1 } from "./standard-schema.cjs";
-import * as util from "./util.cjs";
+import type { $ZodCheck, $ZodStringFormats } from "./checks.cts";
+import { $constructor } from "./core.cts";
+import type { $ZodType } from "./schemas.cts";
+import type { StandardSchemaV1 } from "./standard-schema.cts";
+import * as util from "./util.cts";
 export interface $ZodIssueBase {
     readonly code?: string;
     readonly input?: unknown;

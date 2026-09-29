@@ -1,5 +1,5 @@
-import * as core from "../core/index.js";
-import * as schemas from "./schemas.js";
+import * as core from "../core/index.ts";
+import * as schemas from "./schemas.ts";
 export declare function string<T = unknown>(params?: string | core.$ZodStringParams): schemas.ZodMiniString<T>;
 export declare function number<T = unknown>(params?: string | core.$ZodNumberParams): schemas.ZodMiniNumber<T>;
 export declare function boolean<T = unknown>(params?: string | core.$ZodBooleanParams): schemas.ZodMiniBoolean<T>;

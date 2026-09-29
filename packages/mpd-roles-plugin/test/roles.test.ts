@@ -671,7 +671,7 @@ test("extension roles do NOT enter the agent-teams `mpd` profile member list (do
     // The adopted agent-teams `mpd` roster profile is static patch configuration: this plugin
     // publishes no member template, so an extension role is spawnable/workmate-able but can
     // never be staged as a teammate. Pinned against the bundle patch itself.
-    const patch = readFileSync(join(pkgRoot(), "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+    const patch = readFileSync(join(pkgRoot(), "cordis.patch.yml"), "utf8")
     expect(patch).not.toContain("Code Reviewer")
   } finally {
     sandbox.restore()

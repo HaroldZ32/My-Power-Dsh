@@ -46,18 +46,18 @@ interface ChainEntry {
 // name -> { spec, entry } : bare specifier -> vendored subdir + entry file
 /** The vendoring table: bare specifier -> vendored subdir + entry file, in copy order. */
 const CHAIN: Readonly<Record<string, ChainEntry>> = {
-  "@deepseek-ai/cosmokit": { dir: "cosmokit", entry: "lib/index.js" },
-  "@deepseek-ai/schemastery": { dir: "schemastery", entry: "lib/index.mjs" },
-  "@deepseek-ai/cordis": { dir: "cordis", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-scope": { dir: "dsh-scope", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-timeout": { dir: "dsh-timeout", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-llm": { dir: "dsh-llm", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-session": { dir: "dsh-session", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-subagent": { dir: "dsh-subagent", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-tools": { dir: "dsh-tools", entry: "lib/index.js" },
-  "@deepseek-ai/dsh-agent": { dir: "dsh-agent", entry: "lib/index.js" },
-  "zod": { dir: "zod", entry: "index.js", specDir: "zod", whole: true },
-  "@standard-schema/spec": { dir: "standard-schema", entry: "dist/index.js", specDir: "@standard-schema/spec", whole: true }
+  "@deepseek-ai/cosmokit": { dir: "cosmokit", entry: "lib/index.ts" },
+  "@deepseek-ai/schemastery": { dir: "schemastery", entry: "lib/index.ts" },
+  "@deepseek-ai/cordis": { dir: "cordis", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-scope": { dir: "dsh-scope", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-timeout": { dir: "dsh-timeout", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-llm": { dir: "dsh-llm", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-session": { dir: "dsh-session", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-subagent": { dir: "dsh-subagent", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-tools": { dir: "dsh-tools", entry: "lib/index.ts" },
+  "@deepseek-ai/dsh-agent": { dir: "dsh-agent", entry: "lib/index.ts" },
+  "zod": { dir: "zod", entry: "index.ts", specDir: "zod", whole: true },
+  "@standard-schema/spec": { dir: "standard-schema", entry: "dist/index.ts", specDir: "@standard-schema/spec", whole: true }
 }
 
 /**
@@ -187,7 +187,22 @@ interface ClientBridgeReport {
 function main(): void {
   if (!HOST_NM) { console.error("[vendor-agent-teams] FAIL: DSH_HOST_NM must point at the dsh installation's node_modules root (no built-in default; e.g. export DSH_HOST_NM=$(dirname $(dirname $(which dsh))) 2>/dev/null or <nvm>/lib/node_modules/@deepseek-ai/dsh/node_modules)"); process.exit(1) }
   if (!existsSync(HOST_NM)) { console.error("[vendor-agent-teams] FAIL: DSH_HOST_NM not found: " + HOST_NM); process.exit(1) }
-  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "index.js"))) { console.error("[vendor-agent-teams] FAIL: packages/mpd-agent-teams-plugin/lib missing (restore the adopted plugin first)"); process.exit(1) }
+  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "index.ts"))) { console.error("[vendor-agent-teams] FAIL: packages/mpd-agent-teams-plugin/lib missing (restore the adopted plugin first)"); process.exit(1) }
+  // REFUSAL, not a warning. The vendored tree is TypeScript now (`.js` -> `.ts`, a genuine CommonJS
+  // module -> `.cts`, every relative specifier rewritten, `@ts-nocheck` on the adopted body), while
+  // `walk()` below still selects the HOST's `.js` modules and this script has NO rename step — so a
+  // run would re-materialize a JavaScript `_deps` tree and silently discard the conversion. A
+  // re-vendor is therefore a deliberate wave that re-applies the rename and re-pins
+  // `VENDOR_LOCK.json` in the SAME commit (AGENTS.md §9), never a one-command refresh.
+  // The override exists so that wave can run this passthrough ONCE IT HAS the rename step; setting it
+  // before then is exactly the silent loss this guard is here to prevent. Evidence:
+  // `evidence/ts-cordis-conformance/`.
+  if (process.env.MPD_DSH_VENDOR_ALLOW_JS_TREE !== "1") {
+    console.error("[vendor-agent-teams] REFUSED: the vendored tree is TypeScript and this script would re-materialize JavaScript")
+    console.error("[vendor-agent-teams] re-apply the rename (.js -> .ts, .cjs -> .cts, specifiers rewritten, @ts-nocheck added) and re-pin VENDOR_LOCK.json in the same commit")
+    console.error("[vendor-agent-teams] set MPD_DSH_VENDOR_ALLOW_JS_TREE=1 only from a wave that HAS that rename step")
+    process.exit(1)
+  }
   rmSync(DEPS, { recursive: true, force: true })
   mkdirSync(DEPS, { recursive: true })
   for (const [spec, c] of Object.entries(CHAIN)) {

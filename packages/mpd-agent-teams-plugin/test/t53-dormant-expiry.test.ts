@@ -8,14 +8,10 @@ import { expect, test } from "bun:test"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted state module is vendored JavaScript with no declaration file, so its exports arrive
-// untyped instead of re-authoring upstream to type them. The specifier list is kept on ONE line
-// because the TS7016 diagnostic points at the module specifier, which the directive must precede.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { INTERJECTION_TTL_MS, enqueueInterjection, expireInterjectionsEverywhere, readInterjections, readUnreadMailbox } from "../lib/state.js"
-// The adopted session-start module is vendored JavaScript with no declaration file, for the same reason.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installInterjectionExpirySweep, installSessionTeamPolicy } from "../lib/session-start.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { INTERJECTION_TTL_MS, enqueueInterjection, expireInterjectionsEverywhere, readInterjections, readUnreadMailbox } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installInterjectionExpirySweep, installSessionTeamPolicy } from "../lib/session-start.ts"
 
 /** State root every fixture team lives under, relative to the session workspace cwd. */
 const STATE_DIR = join(".mpd", "team")
@@ -191,7 +187,7 @@ test("R1 DORMANT: the SHIPPED session-start hook runs the sweep (and only the se
       on: (name: string, handler: RegisteredListener["handler"]) => listeners.push({ name, handler }),
       logger: { info: (message: unknown) => logs.push(String(message)), warn: () => {}, error: () => {}, debug: () => {} },
     }
-    // The sweep's registration lives in the COMPOSITION ROOT (lib/index.js), not inside
+    // The sweep's registration lives in the COMPOSITION ROOT (lib/index.ts), not inside
     // installSessionTeamPolicy: it is bookkeeping every session needs, so it must not be
     // gated behind the team policy. Installing the sweep directly is therefore the
     // shipped behaviour, and the policy installer is asserted to NOT register it.

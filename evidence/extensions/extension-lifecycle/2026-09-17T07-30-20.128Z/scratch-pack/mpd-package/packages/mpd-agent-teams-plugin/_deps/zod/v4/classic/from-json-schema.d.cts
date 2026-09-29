@@ -1,6 +1,6 @@
-import type * as JSONSchema from "../core/json-schema.cjs";
-import { type $ZodRegistry } from "../core/registries.cjs";
-import type { ZodType } from "./schemas.cjs";
+import type * as JSONSchema from "../core/json-schema.cts";
+import { type $ZodRegistry } from "../core/registries.cts";
+import type { ZodType } from "./schemas.cts";
 type JSONSchemaVersion = "draft-2020-12" | "draft-7" | "draft-4" | "openapi-3.0";
 interface FromJSONSchemaParams {
     defaultTarget?: JSONSchemaVersion;

@@ -161,14 +161,14 @@ mpd-dsh/
 ├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
 │                                 #   (an ARRAY of the bundle patch + the preset patch) + dsh.client
 │                                 #   + exports -> `dsh plugin add .` is the whole install
+├── cordis.patch.yml              # THE host-plane patch layer, at the package ROOT (standard layout)
 ├── tsconfig.json                 # root tsgo config (covers packages/*/src/**/*.ts)
 ├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
 │                                 #   inline plugin list). The retired directory form is gone.
 ├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
 │                                 #   + lib/repo.ts: the shared primitives every script imports
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
-│                                 #   mpd-skills-plugin was removed (its row is gone from the patch)
-│   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
+│                                 #   mpd-skills-plugin was removed; mpd-bundle/ is the layer's README
 │   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
 │   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
 │   ├── mpd-agent-teams-plugin/   # RETIRED vendored dsh-agent-teams body — kept, NOT mounted (§1)
@@ -322,14 +322,14 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
 - **The adopted-plugin exception is CLOSED (2026-09-19), and not overstated.** Its SIX bridged files
   (`lib/{index,capabilities,harness-compat,members,command,tools}.js`) route through the facade
-  `lib/mpd-adapter-ctx.js` — an mpd-OWNED module (name rule `lib/mpd-*.js`, healed byte-faithfully from
+  `lib/mpd-adapter-ctx.ts` — an mpd-OWNED module (name rule `lib/mpd-*.js`, healed byte-faithfully from
   the registry) that resolves the mounted `mpdDsh` lazily behind a warn-once fallback, so the plugin
   still applies with the adapter absent (exactly ONE absent line per instance). Each bridged call sits
   in a bracketed `mpd-delta` region and goes through a capability-flagged adapter method:
   `registerHostTool` (VERBATIM, `Object.is` — `registerTool` cannot serve it), the `subagent*` /
   `agentTurn*` families, `llmListModels` / `llmResolveCallConfig`, `registerPromptSection`, `agentScope`.
   **One bypass is COUNTED, never routed:** the ctx the HOST hands `setup(childCtx, child)` stays DIRECT
-  on its **5 counted lines** in `lib/members.js` (two raw `childCtx.on('agent/error' |
+  on its **5 counted lines** in `lib/members.ts` (two raw `childCtx.on('agent/error' |
   'agent/request-error')` subscriptions, the `installModelSelection(childCtx, …)` hand-off into a
   VENDORED `_deps/dsh-agent` helper, the legacy `hostChild ?? childCtx.agent` read) — on a legacy Alpha.2
   host a `childCtx` need not be `child.ctx`, so re-resolving it could change that path. `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.ts` pins exactly those
@@ -350,9 +350,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   hand-edit an entry; (b) the **REPLACEMENT-shaped** deltas (D13/D14/D21/D22) do **not** self-heal after
   a human re-materialize — the applier REFUSES loudly, file byte-untouched, and the remedy is to restore
   the region or re-author it plus `--write-registry`. `scripts/vendor-agent-teams.ts` never re-copies the
-  tree (it rewrites bare specifiers in place, works inside `_deps/`, and asserts OUR `lib/index.js`
+  tree (it rewrites bare specifiers in place, works inside `_deps/`, and asserts OUR `lib/index.ts`
   survives), so the risk is a human re-vendor — which the applier makes loud (a line-keyed anchor can
-  still land a region one statement late). A hand-dropped `lib/mpd-adapter-ctx.js` heals byte-faithfully.
+  still land a region one statement late). A hand-dropped `lib/mpd-adapter-ctx.ts` heals byte-faithfully.
 
   Everything else — including every future mpd plugin — goes through the adapter.
 - **Tools**: `dsh.registerTool({name, description, parameters, output:{schema, render}, execute})`.
@@ -399,10 +399,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   floor). Four rules: **erasable syntax only** (no `enum`, `namespace`, parameter properties or
   decorators); **every relative specifier carries the explicit `.ts` extension**; `import type` for
   type-only imports; no `tsconfig`-`paths` mapping. `packages/*/src` differs in FORM only (`bun build`
-  → `dist/*.js`, extensionless specifiers). Four trees stay JavaScript ON PURPOSE: `packages/*/dist/**`
-  + `skills/visual-qa/scripts/visual-qa.mjs` (build products), `packages/mpd-agent-teams-plugin/lib/**`
-  + `_deps/**` (adopted bytes + delta registry), `skills/ultimate-browsing/engine/templates/*.js` and
-  `tests/golden/fixtures/*.js` (fixture DATA).
+  → `dist/*.js`, extensionless specifiers), and a genuine CommonJS module is spelled `.cts`. The ONLY
+  JavaScript left is 32 files, for a MEASURED reason: Node refuses to strip types for any path under
+  `node_modules`, and a shipped bundle IS installed there — the list and the failure are in
+  `agent-references/troubleshooting.md` (last row). The converted ADOPTED body carries `@ts-nocheck`
+  and its suite is out of the type program (`tsconfig.json`).
 - **Every declaration is documented and every named function is fully typed — binding, enforced by
   §4's `verify:comments`.** A comment states the contract, unit, invariant or reason — never a
   restatement of the name; a local inside a function body counts as a declaration. Types are precise:
@@ -509,7 +510,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 **A row reaches the harness ONLY through `cordis.patch.yml` + the profile mechanism.** Concretely:
 (a) the deliverable is an INDEPENDENT PACKAGE (`@mpd-dsh/mpd`) whose `dsh.bundle.patch` array names its
-patch layers — this bundle's `packages/mpd-bundle/cordis.patch.yml` (host rows) and
+patch layers — this bundle's `cordis.patch.yml` (host rows) and
 `presets/mpd.patch.yml` (the `mpd` preset as an ordinary row); (b) the profile mechanism is the only
 way in: `dsh plugin --profile <p> add <spec>` installs the package, `reconcile` validates that the patch
 files load and appends the package name to `dsh.profile.bundles`, and the rows resolve from
@@ -537,7 +538,7 @@ Docker lane hold this line.
   dev install must name the ref (`github:<owner>/<repo>#dev`).
 - **`cd <repo> && dsh plugin --profile web add .`** is the whole install from a CHECKOUT. The repo root
   IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
-  `dsh.bundle.patch` (an ARRAY: `./packages/mpd-bundle/cordis.patch.yml` then
+  `dsh.bundle.patch` (an ARRAY: `./cordis.patch.yml` then
   `./presets/mpd.patch.yml`), `dsh.client`
   (`platform: web`), the `exports` map the rows resolve through (`./packages/*`,
   `./skills/*`, `./presets/*`, and the `client` subpath

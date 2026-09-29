@@ -682,7 +682,7 @@ export async function mountRealWatchdog(options: MountWatchdogOptions): Promise<
 }
 
 /**
- * Write the adopted plugin's team record the way its own state.js would (the lane's INPUT).
+ * Write the adopted plugin's team record the way its own state.ts would (the lane's INPUT).
  * @param ws Absolute path of the sandbox workspace.
  * @param team The team record to write.
  * @returns Absolute path of the record that was written.

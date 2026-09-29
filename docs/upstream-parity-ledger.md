@@ -144,7 +144,7 @@ Renaming any of these WAS forbidden at the time; **adding** names was allowed. T
 describe the retired plugin and are kept as the wave's record.
 
 - Slash commands: `/agent-teams`, `/agent-teams-mpd` (from `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  and `profileCommandName('mpd')`, `lib/command.js:3,24-34,95-111`) — **retired with the plugin; no
+  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`) — **retired with the plugin; no
   `/agent-teams` command exists in a shipped session**
 - Tools: the full team-tool set — **retired with the plugin; team work runs on the official
   `spawn_teammate` / `team_*` tools**
@@ -159,8 +159,8 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 
 | Id | File | Region |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
+| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement (RETIRED path; the preset is now `presets/mpd.patch.yml`) |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | the whole `会话启动团队门（强制）` section (same commit as `L4`) |
@@ -170,7 +170,7 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 | `L9` | `AGENTS.md` | the startup-rule section and the delta-table row describing the old behaviour |
 
 The frozen contract's `changeLocations.items` is the authority and enumerates **ten** entries: the
-list above, plus `packages/mpd-agent-teams-plugin/lib/index.js` (config schema + resolved defaults)
+list above, plus `packages/mpd-agent-teams-plugin/lib/index.ts` (config schema + resolved defaults)
 and `packages/mpd-agent-teams-plugin/self-fix-tests/**` (only when lib bodies change under a
 registered `mpd-delta` region). The single EN and ZH bundle READMEs are counted as two entries there.
 
@@ -203,9 +203,10 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Anchor | sha256 |
 |---|---|
 | `evidence/omo-align/requirements/frozen-contract.json` | `09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41` |
-| `packages/mpd-agent-teams-plugin/lib/session-start.js` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
-| `packages/mpd-agent-teams-plugin/lib/state.js` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
+| `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
+| `packages/mpd-agent-teams-plugin/lib/state.ts` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
 | `evidence/omo-parity-rate/raw/prompts.jsonl` | `123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5` |
+| (historical) `packages/mpd-agent-teams-plugin/lib/{session-start,state}.ts` | the two pins above are HISTORICAL, not live: the TypeScript-conversion wave renamed these files `.js` -> `.ts` and gave the adopted body a `@ts-nocheck` first line, so today's bytes differ ON PURPOSE. Current: `session-start.ts` `f6f73d0b4248141bf5c2e8305b0b26a935460fbfd2dc909d552ba39dad82d920`, `state.ts` `f8c0cb5d8945cd73f92f47fdff977ba58ac0ddc6f36142a7c3e4a5b74878fe4d` (`evidence/ts-cordis-conformance/`). |
 
 | Gate | Command | State |
 |---|---|---|

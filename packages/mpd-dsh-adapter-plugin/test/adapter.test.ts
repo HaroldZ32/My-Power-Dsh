@@ -14,11 +14,34 @@ import { resolve } from "node:path"
 // block would be an augmentation trick. `@ts-expect-error` (not `@ts-ignore`) so a future vendored
 // type declaration turns this into a loud "unused directive" instead of a silent suppression.
 /** The vendored cordis module, used as the REAL waterfall dispatcher in the last describe block. */
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
+
+/**
+ * The slice of the real vendored cordis context these arms drive.
+ *
+ * WHY AN ALIAS: `Context` is a real VALUE whose `on` / `waterfall` / `plugin` members are installed
+ * by a Proxy handler (`ReflectService.handler` in the vendored module), so they are absent from the
+ * class's own type even though every runtime instance carries them. Naming the driven slice keeps
+ * each call site checked instead of widening the context to `any`.
+ */
+interface DrivenContext {
+  /** Subscribe to one bus event; the handler is whatever shape the arm registers. */
+  on(event: string, handler: unknown): unknown
+  /** Run one waterfall step as the harness does; the resolved decision always carries its `kind`. */
+  waterfall(...args: unknown[]): Promise<{ kind: string } & Record<string, unknown>>
+  /** Create a plugin fiber from a row definition. */
+  plugin(plugin: unknown, config?: unknown): unknown
+}
+
+/**
+ * Create a real vendored cordis context, typed as the slice these arms drive.
+ * @returns the real context; the alias above names the members its class type omits.
+ */
+const realContext = (): DrivenContext => new Context() as unknown as DrivenContext
 /** The vendored host message constructor, compared field by field against this adapter's own. */
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.ts"
 import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
 /** A recording double of the FULL harness: ten services, the event bus and provide(). */
@@ -136,7 +159,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   const agentPresets = { resolve: async (id: string) => ({ id }) }
   /** The host-plane compaction engine, a different object from the agent's own. */
   const compaction = { compactNow: async (agent: any) => ({ agent }) }
-  // MEASURED host contract (dsh-commands/lib/index.js `register()`): the registry
+  // MEASURED host contract (dsh-commands/lib/index.ts `register()`): the registry
   // returns the exact effect disposer that unregisters the definition, which the
   // adapter must pass through verbatim.
   const commands = {
@@ -940,7 +963,7 @@ describe("row entry", () => {
 describe("settings plane (t34 §2.1 / §1.2, captain ruling 1)", () => {
   // MEASURED host order inside one synchronous write(): bumpRevision
   // (settings/document-updated) THEN commit (settings/updated(ns,next,prev,source))
-  // — @deepseek-ai/dsh-settings/lib/index.js:466-467 and :497-498.
+  // — @deepseek-ai/dsh-settings/lib/index.ts:466-467 and :497-498.
   function settingsHarness(settings: Record<string, unknown>): {
     /** The ctx handed to the adapter: a settings service plus the host event bus. */
     ctx: { get(serviceName: string): unknown; on(event: string, listener: (...args: unknown[]) => unknown): () => void }
@@ -1115,7 +1138,7 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
     value?: unknown
   }> {
     /** A real vendored cordis Context: the dispatcher under test. */
-    const ctx = new Context()
+    const ctx = realContext()
     /** The adapter over that real context. */
     const adapter = createDshAdapter(ctx as any)
     install(adapter)
@@ -1170,7 +1193,7 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
 
   test("a downstream DENY still denies: the observer cannot upgrade a blocked call", async () => {
     /** A real cordis Context for the deny path. */
-    const ctx = new Context()
+    const ctx = realContext()
     /** Every gate kind the observer saw. */
     const seen: string[] = []
     createDshAdapter(ctx as any).onPreToolExecute((_exec, decision) => { seen.push(String(decision?.kind)) })
@@ -1183,14 +1206,14 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
   test("NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate", async () => {
     // The retired `agent/pre-step` shape, re-enacted on `tools/pre-execute`: this is what the
     // adapter's wrapper exists to prevent, and it proves the cordis semantics above are real.
-    const ctx = new Context()
+    const ctx = realContext()
     ctx.on("tools/pre-execute", (() => ({ kind: "allow", hijacked: true })) as any)
     /** The gate the vetoing listener installed. */
     const gate = await ctx.waterfall(ctx, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
     expect(gate).toEqual({ kind: "allow", hijacked: true })
     // …while the ADAPTER's own hook, registered on the same event, passes the harness's
     // decision through untouched.
-    const clean = new Context()
+    const clean = realContext()
     createDshAdapter(clean as any).onPreToolExecute(() => {})
     /** The gate the ADAPTER's hook passes through untouched. */
     const passed = await clean.waterfall(clean, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
@@ -1309,7 +1332,7 @@ describe("lazy mpdDsh resolution (T-50)", () => {
     // siblings concurrently). In that window a strict read answers `undefined` while a non-strict read
     // already sees the value — the old eager resolution cached that transient `undefined` as a private
     // adapter for the whole session and blamed the ROW ORDER.
-    const root = new Context()
+    const root = realContext()
     /** The warning lines the facade emitted. */
     const lines: string[] = []
     /** The provider row that will provide the shared service. */

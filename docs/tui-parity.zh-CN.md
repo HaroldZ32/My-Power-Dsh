@@ -54,27 +54,27 @@
 
 | `web_surface` | `web_evidence` | `tui_status` | `tui_surface` | `tui_evidence` | `reason` |
 |---|---|---|---|---|---|
-| `activity-panel/team-header`（id/名称/阶段） | `packages/mpd-agent-teams-plugin/lib/snapshot.js:87-91`；面板渲染门 `lib/client.js:2437` | present | `mpd-tui-team`：`/mpd team`，或在 `mpd-tui-board` 上按 `a` | E1（A1 注册该场景）、E2 | §3.1 第 1 项 |
-| `activity-panel/plan-review-state` | `lib/snapshot.js:92-93` | present | `mpd-tui-team`（同组行） | E2 | §3.1 第 1 项 |
-| `activity-panel/roster`（状态/模型/进度/当前任务/未读） | `lib/snapshot.js:56-82` | present | `mpd-tui-team` | E2 | §3.1 第 3 项 |
-| `activity-panel/task-dag`（id/kind/状态/负责人/尝试/轮次/判定/依赖/深度） | `lib/snapshot.js:95-118` | present | `mpd-tui-team` | E2（变异 R2 让 6 个测试变红） | §3.1 第 4 项 |
-| `activity-panel/failed-dependency marking` | `lib/snapshot.js:95-118`（`failedDependencies`） | present | `mpd-tui-team`（`failed-dep=`） | E2 | §3.1 第 4 项 |
-| `activity-panel/message-count + captain inbox tail` | `lib/snapshot.js:119-125` | present | `mpd-tui-team`（邮箱尾部） | E2 | §3.1 第 6 项 |
-| `activity-panel/halted flag` | `lib/snapshot.js:94` | absent | — | — | 实测：TUI 改为报告看门狗 **HOLD** —— `packages/mpd-tui-plugin/src/watchdog.ts:24-30,64-83`（见第 22 行）；`halted` 与 hold 是不同的事实（§3.1 第 2 项） |
-| `activity-panel/plan-approval`（批准） | `lib/index.js:325,371-381`；`lib/client.js:1501-1516,1695-1696` | present | `mpd-tui-plan`：`/mpd plan` 或在 `mpd-tui-team` 中按 `a`；逐字输入 `approve <teamId>` 后按 `Ctrl+X` | E1（Arm 1 的 A4–A8；Arm 2 的 H1–H6） | §4.2；真实提交后的判定行自 t8 修复起已渲染（§4，D1） |
-| `activity-panel/plan-discard`（两步） | `lib/client.js:1540-1556,1680-1687,1717` | present（语义缩减） | `mpd-tui-plan`：在 10 秒布置窗口内按两次 `Ctrl+D` | E1（A2 注册该场景） | §4.3；TUI 不再写任何其他东西——Web 的 `lib/tools.js:577` 中「captain 注入 + 取消」那一半在 TUI 没有对应物 |
-| `activity-panel/plan-continue`（请求修改） | `lib/client.js:1518-1538,1705`；`lib/index.js:391` | absent | — | — | NOT-CLAIMED #3 / §4.4 —— `continue` 没有工具界面，因此 TUI 不自行发明一个 |
-| `plan-member-editor`（批准前改 provider/model） | `lib/index.js:407`（`update_member`）；成员选择器 `lib/client.js:2583` | absent | — | — | NOT-CLAIMED #2 —— TUI 界面是只读的 |
-| `plan-task-editor`（主题/负责人/依赖） | `lib/index.js:426`（`update_task`） | absent | — | — | NOT-CLAIMED #2 |
-| `plan-add-task` | `lib/index.js:443`（`add_task`） | absent | — | — | NOT-CLAIMED #2 |
-| `plan-remove-task` | `lib/index.js:458`（`remove_task`） | absent | — | — | NOT-CLAIMED #2 |
-| `plan-pre-approval editing / merge` | `lib/index.js:405-475`（编辑器动作块）；`lib/tools.js:759`（该插件的 edit-plan 工具） | absent | — | — | NOT-CLAIMED #2；契约中该行标签 `merge-autonomous-plan` 在采用的客户端字节里找不到可定位锚点——见偏差 D2。（整个计划批准族已退役 —— 见顶部横幅。） |
-| `activity-panel/archived-teams view (?archived=1)` | `lib/index.js:255-272`；`lib/client.js:360-367` | absent | — | — | 实测：TUI 只读活动状态根目录，并只选取一条最新记录（`packages/mpd-tui-plugin/src/state.ts:107-109`）；归档团队不被投影 |
-| `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.js:121` | not-applicable | — | — | 终端场景没有浮动几何（§7.1） |
-| `activity-panel/localization (t())` | `lib/client/locales.js` | not-applicable | 注入的 `tuiCommandTrees` 携带 `descriptions.zh`（`src/command-trees.ts:18-25`）；场景文案保持英文 | E4（`16-command-completion.pane.txt`） | §5.1 与 §7.1 —— 不声称任何场景文案本地化 |
-| `activity-panel/member-artwork (assets route)` | `lib/index.js:492`（`/plugins/dsh-agent-teams/assets`） | not-applicable | — | — | 终端场景渲染文本 |
-| `plan-route HTTP semantics (405/409/404, no-store)` | `lib/index.js:325-332,364-370` | not-applicable | — | — | TUI 不走 HTTP；等价的拒绝是场景内错误行（§4.5）与「captain 未接入」拒绝（§6.2） |
-| `activity-panel/stop-team`（halt） | `lib/index.js:276`（halt 路由）；`lib/client.js:292,2360` | absent | — | — | 实测：任何 TUI 场景都不存在停止控件；TUI 的变更集冻结为批准/丢弃（§3.2、§4），且 §7.2 禁止写入 |
+| `activity-panel/team-header`（id/名称/阶段） | `packages/mpd-agent-teams-plugin/lib/snapshot.ts:87-91`；面板渲染门 `lib/client.js:2437` | present | `mpd-tui-team`：`/mpd team`，或在 `mpd-tui-board` 上按 `a` | E1（A1 注册该场景）、E2 | §3.1 第 1 项 |
+| `activity-panel/plan-review-state` | `lib/snapshot.ts:92-93` | present | `mpd-tui-team`（同组行） | E2 | §3.1 第 1 项 |
+| `activity-panel/roster`（状态/模型/进度/当前任务/未读） | `lib/snapshot.ts:56-82` | present | `mpd-tui-team` | E2 | §3.1 第 3 项 |
+| `activity-panel/task-dag`（id/kind/状态/负责人/尝试/轮次/判定/依赖/深度） | `lib/snapshot.ts:95-118` | present | `mpd-tui-team` | E2（变异 R2 让 6 个测试变红） | §3.1 第 4 项 |
+| `activity-panel/failed-dependency marking` | `lib/snapshot.ts:95-118`（`failedDependencies`） | present | `mpd-tui-team`（`failed-dep=`） | E2 | §3.1 第 4 项 |
+| `activity-panel/message-count + captain inbox tail` | `lib/snapshot.ts:119-125` | present | `mpd-tui-team`（邮箱尾部） | E2 | §3.1 第 6 项 |
+| `activity-panel/halted flag` | `lib/snapshot.ts:94` | absent | — | — | 实测：TUI 改为报告看门狗 **HOLD** —— `packages/mpd-tui-plugin/src/watchdog.ts:24-30,64-83`（见第 22 行）；`halted` 与 hold 是不同的事实（§3.1 第 2 项） |
+| `activity-panel/plan-approval`（批准） | `lib/index.ts:325,371-381`；`lib/client.js:1501-1516,1695-1696` | present | `mpd-tui-plan`：`/mpd plan` 或在 `mpd-tui-team` 中按 `a`；逐字输入 `approve <teamId>` 后按 `Ctrl+X` | E1（Arm 1 的 A4–A8；Arm 2 的 H1–H6） | §4.2；真实提交后的判定行自 t8 修复起已渲染（§4，D1） |
+| `activity-panel/plan-discard`（两步） | `lib/client.js:1540-1556,1680-1687,1717` | present（语义缩减） | `mpd-tui-plan`：在 10 秒布置窗口内按两次 `Ctrl+D` | E1（A2 注册该场景） | §4.3；TUI 不再写任何其他东西——Web 的 `lib/tools.ts:577` 中「captain 注入 + 取消」那一半在 TUI 没有对应物 |
+| `activity-panel/plan-continue`（请求修改） | `lib/client.js:1518-1538,1705`；`lib/index.ts:391` | absent | — | — | NOT-CLAIMED #3 / §4.4 —— `continue` 没有工具界面，因此 TUI 不自行发明一个 |
+| `plan-member-editor`（批准前改 provider/model） | `lib/index.ts:407`（`update_member`）；成员选择器 `lib/client.js:2583` | absent | — | — | NOT-CLAIMED #2 —— TUI 界面是只读的 |
+| `plan-task-editor`（主题/负责人/依赖） | `lib/index.ts:426`（`update_task`） | absent | — | — | NOT-CLAIMED #2 |
+| `plan-add-task` | `lib/index.ts:443`（`add_task`） | absent | — | — | NOT-CLAIMED #2 |
+| `plan-remove-task` | `lib/index.ts:458`（`remove_task`） | absent | — | — | NOT-CLAIMED #2 |
+| `plan-pre-approval editing / merge` | `lib/index.ts:405-475`（编辑器动作块）；`lib/tools.ts:759`（该插件的 edit-plan 工具） | absent | — | — | NOT-CLAIMED #2；契约中该行标签 `merge-autonomous-plan` 在采用的客户端字节里找不到可定位锚点——见偏差 D2。（整个计划批准族已退役 —— 见顶部横幅。） |
+| `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`；`lib/client.js:360-367` | absent | — | — | 实测：TUI 只读活动状态根目录，并只选取一条最新记录（`packages/mpd-tui-plugin/src/state.ts:107-109`）；归档团队不被投影 |
+| `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.ts:121` | not-applicable | — | — | 终端场景没有浮动几何（§7.1） |
+| `activity-panel/localization (t())` | `lib/client/locales.ts` | not-applicable | 注入的 `tuiCommandTrees` 携带 `descriptions.zh`（`src/command-trees.ts:18-25`）；场景文案保持英文 | E4（`16-command-completion.pane.txt`） | §5.1 与 §7.1 —— 不声称任何场景文案本地化 |
+| `activity-panel/member-artwork (assets route)` | `lib/index.ts:492`（`/plugins/dsh-agent-teams/assets`） | not-applicable | — | — | 终端场景渲染文本 |
+| `plan-route HTTP semantics (405/409/404, no-store)` | `lib/index.ts:325-332,364-370` | not-applicable | — | — | TUI 不走 HTTP；等价的拒绝是场景内错误行（§4.5）与「captain 未接入」拒绝（§6.2） |
+| `activity-panel/stop-team`（halt） | `lib/index.ts:276`（halt 路由）；`lib/client.js:292,2360` | absent | — | — | 实测：任何 TUI 场景都不存在停止控件；TUI 的变更集冻结为批准/丢弃（§3.2、§4），且 §7.2 禁止写入 |
 | `team-watchdog/banner`（hold、未读事件、确认） | `packages/mpd-bundle-plugin/src/watchdog-web.ts:26-27`；`src/team-page.ts:558-584` | present（hold 行 + 重放对话框） | `mpd-tui-board`：`team-hold held (…)` 行（`src/state.ts:306`）以及重放事件时的确认对话框（`src/watchdog.ts:24-30,93`） | E3、E4（`02-mpd-status.pane.txt`） | 实测：当 `mpdWatchdog` 缺席时该行被省略——绝不渲染成「未 hold」（§7.8） |
 | `workmate-library/tab`（列表） | `packages/mpd-bundle-plugin/src/web-client.ts`（workmate Tab factory） | present（缩减为只列清单） | `/mpd workmates`（`src/commands.ts` 中的 `/mpd` 命令处理） | E4（`14-workmate-dialog.pane.txt`） | 实测：TUI 的全部界面就是这份清单（`state.workmates.count/names`） |
 | `workmate-library/mutations`（初始化/改名/删除/归档） | `src/web-client.ts`（同一个 factory） | absent | — | — | 实测：TUI 不暴露任何写入库的路径，而该库位于用户 HOME（`~/.mpd/workmate`，AGENTS.md §6 State 例外）；Web 标签页是唯一的变更入口 |
@@ -100,7 +100,7 @@
 
 **D1 —— 真实提交后批准判定行曾不可见（严重度 medium；先实测为未修复，后由 t8 关闭——这里把**两种状态**都记录下来，因为第一种状态正是本波次发现的东西）。** 契约 §4.5 把成功渲染钉为 `approved: <teamId> running · members <n> · tasks <n>`。在真实宿主上实测（E1 Arm 2 的首次运行）：批准**确实提交**——记录从 `phase: staged → running`、`approvedAt` 被写入、`planReviewState` 被删除，这是只有采用的 `approveStagedTeam` 才会留下的签名——而面板显示的是提交后的空状态，因为调用后的重新读取已看不到 staged 记录。Arm 1（录制替身）**确实**渲染了工具的结构化结果，这正是为什么它是真实宿主的偏差、而不是场景的渲染缺陷。**修复（t8，`repair`，Senior Engineer）：** 已结束但不再可用的记录现在会把运行时产出的消息渲染为第一行正文（`packages/mpd-tui-plugin/src/scenes.ts:731-750`），并重建了该包的 dist。**修复后重新实测：** 本波次自己的通道重跑报告 `arm2.outcome = approved-by-the-adopted-runtime/verdict-visible`、`outcomeLines.approved = "approved: mpd-fixture-1 running · members 2 · tasks 2"`、`findings: []`（`evidence/tui/team-surface-verify/2026-09-16T14-24-22.312Z/result.json`）。首次读数作为这次测量的历史保留在本台账中，而不作为当前状态。
 
-**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；仍未修复）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，命中数为零。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.js:405-475`）与该插件的 edit-plan 工具（`lib/tools.js:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
+**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；仍未修复）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，命中数为零。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.ts:405-475`）与该插件的 edit-plan 工具（`lib/tools.ts:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
 
 **D3 —— 该通道的受认可判定运行描述的是过期的通道字节（严重度 medium；实测后在同一波次内解决）。** t3 第一次尝试的判定运行记录了测量它的通道摘要 `skills/dsh-qa/scripts/tui-team-surface.ts` → `21a9eb5c14a30410…`，而磁盘上的文件摘要是 `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`，其修改时间（UTC 14:16:22）**晚于** t3 自身的最后更新（UTC 14:14:56）。因此在活动树上重新计算的语料库指纹是 `303e1631…`，而**不是** t3 报告要求 captain 固定的 `303e163148af…`。当时记录了两项后果：固定 `303e163148af…` 会让 `verify-vendor` 继续为红；该判定运行已不再描述磁盘上的通道字节。**解决（实测而非假定）：** 采用了本页的独立重算值——captain 把 `VENDOR_LOCK.json` 的 `assets.skills` 重新固定为 `fileCount 319 / treeSha 303e1631…`，与 `skills/**` 变更同处一次提交；`verify-vendor` 现于冻结树上报告 PASS；t3 也按当前通道字节**重试**（第二次尝试）并转绿。留下来的是一条规则而不是缺陷：判定运行中的通道摘要把该判定绑定到测量它的那些字节上，之后的任何改动都会让这个绑定失效。证据：`evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`、`REVISION.json`，以及同目录的 `gates.result.json`（`verifyVendor.exitCode = 0`）。
 
@@ -143,5 +143,5 @@
 
 - **门禁扫描**（原始日志、逐门禁退出码与按摘要钉定的修订版）：`evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/`。**记录了两趟，而第一趟撞上了一次修复**：t8 的判定行修复在 14:22:21 重建了 `packages/mpd-tui-plugin/dist/index.js`，而第一趟正在运行，因此第一趟的早期门禁测的是一个修订版、其通道测的是另一个。第二趟（同目录下的 `second-pass/`）在**已稳定**的修订版上重跑了整套，并做了起始/结束摘要校验，本页的主张以那一趟为准。那里的读数：`typecheck` PASS、`bun run verify:docs` PASS（37 对）、`bun run test:qa` PASS、`node scripts/patch-agent-teams-fixes.ts --check` PASS、`verify-vendor` 在 captain 重新固定后 PASS、`bun test packages` 两个读数（见下），以及各通道：`tui-mount`/`tui-panels` 退出 0（前置条件缺失而跳过，通道自身的约定）、`tui-admission`、`tui-spec-conformance`、`tui-settings-bridge`、`tui-distribution` 与 `tui-team-surface` 全部 PASS。**有一条通道是红的，而且不是本波次造成的**：`web-settings-bridge` 报告 `[card] W2a=FAIL W2b=FAIL`，因为它的断言仍在期待卡片移动**之前**的注册形态（`settings.plugin.item`），而构建产物中的客户端注册的是 `settings.section`——这是 2026-09-16 早些时候设置区块迁移引入的过期通道缺陷，由该通道**自己的**历史运行证明其先于本波次存在（当日 08:03:20 与 07:57:19 两次运行中 W2a/W2b 已是 `false`，最后一次全绿是 2026-09-15T095438Z），且本波次未改动任何 `packages/mpd-bundle-plugin/**` 文件。
 - **双语文档配对** —— 本文件与 `docs/tui-parity.md` 由紧贴标题下方的切换链接互相指向，且标题树一致，由 `bun run verify:docs` 强制：**PASS**（37 对，0 失败）。
-- **供 captain 重新固定的语料库指纹** —— `skills/**` 用 `verify-vendor` 自身的算法**重新计算**（绝不引用他人文字），结果为 **319 个文件 / `303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**，由 `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.mjs` 断言。**这不是 t3 第一次尝试的报告所要求的值**（`319 / 303e163148af…`）——见偏差 D3，它记录了原因与解决方式：captain 就在与 `skills/**` 变更同一次提交中用**本值**重新固定了 `VENDOR_LOCK.json`，`verify-vendor` 随后报告 PASS，t3 也按当前通道字节重试转绿。该读数仅当 captain 提交前不再有 `skills/**` 改动时有效；之后若有改动即被取代，且 captain 在提交时无论如何都会重新测量。
+- **供 captain 重新固定的语料库指纹** —— `skills/**` 用 `verify-vendor` 自身的算法**重新计算**（绝不引用他人文字），结果为 **319 个文件 / `303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**，由 `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.ts` 断言。**这不是 t3 第一次尝试的报告所要求的值**（`319 / 303e163148af…`）——见偏差 D3，它记录了原因与解决方式：captain 就在与 `skills/**` 变更同一次提交中用**本值**重新固定了 `VENDOR_LOCK.json`，`verify-vendor` 随后报告 PASS，t3 也按当前通道字节重试转绿。该读数仅当 captain 提交前不再有 `skills/**` 改动时有效；之后若有改动即被取代，且 captain 在提交时无论如何都会重新测量。
 - **两次仓内测试读数**一并记录，绝不只记其一。在已稳定的修订版上（t8 修复加入用例后共 801 个测试），仓库工作目录下为 **799 通过 / 2 失败**，干净工作目录下为 **801 通过 / 0 失败**；这 2 个失败都在 `packages/mpd-config-plugin/test/settings-wiring.test.ts`（第 352 与 419 行）——正是豁免所指的环境条件性一对，且该包不在本波次触及范围内。再往前一个修订版（797 个测试）上同一对读数为 795/2 与 797/0，也就是 captain 指引中引用的那一对。依据：记录在案的豁免 `evidence/extensions/integration-ledger/20260916T071414Z/delivery-ledger.md` §10（以干净工作目录调用作为替代）。

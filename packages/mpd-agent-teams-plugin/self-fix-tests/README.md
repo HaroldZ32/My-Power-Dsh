@@ -7,14 +7,14 @@ exemption), so this fork-owned note lives here next to the tests.
 
 ## Fixed defect classes
 
-1. **Premature review dispatch** — `validateCreateTask` (`lib/quality-gates.js`)
+1. **Premature review dispatch** — `validateCreateTask` (`lib/quality-gates.ts`)
    auto-wires a review's `reviewedTaskId` (and a repair's `sourceTaskId`) into
    the task's dependency list. A deps-empty review can no longer dispatch
    before its source completes, reject the not-yet-existing implementation, and
    start a false-reject loop. The `agent_teams_create_task` tool consumes the
    gate-normalized dependency list.
 2. **Cancelled-dependency deadlock** — `unsatisfiedDependencies`
-   (`lib/state.js`) treats a `cancelled` dependency as satisfied (failed still
+   (`lib/state.ts`) treats a `cancelled` dependency as satisfied (failed still
    blocks; unknown ids still block). `resolveCancelledDependencyDeadlocks`
    cascades cancellation to pending dependents blocked only by cancelled
    prerequisites, run on every dispatch and after every task cancellation, so
@@ -22,12 +22,12 @@ exemption), so this fork-owned note lives here next to the tests.
    delivery.
 3. **Prompt reason delivery** — follow-up repair/review tasks carry
    `reasonTaskId` (the failed review that rejected the source), and
-   `collectCompletedDependencyOutputs` (`lib/scheduler.js`) appends a labeled
+   `collectCompletedDependencyOutputs` (`lib/scheduler.ts`) appends a labeled
    reason item with the failed review's output and unresolved findings to the
    assignment prompt. The failed review is deliberately NOT a dependency
    ("never depend on a failed review"), yet its reason now always reaches the
    repair agent — without it the repair/review loop churns without converging.
-4. **False-reject loop** — `planQualityFollowUp` (`lib/quality-gates.js`): a
+4. **False-reject loop** — `planQualityFollowUp` (`lib/quality-gates.ts`): a
    `reject` whose reviewed source is not completed (missing / failed /
    cancelled / pending) returns `notifyCaptain` only — no automatic repair, no
    team escalation; `agent_teams_update_task` delivers that notification to the
@@ -37,15 +37,15 @@ exemption), so this fork-owned note lives here next to the tests.
    member's unread captain messages (claimed on dispatch, acknowledged on
    delivery, released on rollback).
 6. **`**` inScope expansion + contract consistency + contract readability**
-   (wave-2 `t4`) — `lib/quality-gates.js` `pathMatchesScope` now expands globs
+   (wave-2 `t4`) — `lib/quality-gates.ts` `pathMatchesScope` now expands globs
    (`**` crosses separators, `*`/`?` stay inside one segment) while every
    wildcard-free declaration keeps the exact/dir-prefix semantics bit-identical;
    `contractContradiction` rejects a create-time contract no path can satisfy
    (`inScope` forbidden by its own `outOfScope`) and `repairScopeFromFindings`
    generates the repair scope so one path can never sit in both lists (the t13
-   defect); `lib/tools.js` registers the read-only `agent_teams_task_contract`
+   defect); `lib/tools.ts` registers the read-only `agent_teams_task_contract`
    so a RUNNING task's contract is readable. Deltas are bracketed by
-   `//#region mpd-delta <id>` markers, registered in `lib/mpd-deltas.js`, and
+   `//#region mpd-delta <id>` markers, registered in `lib/mpd-deltas.ts`, and
    re-applied/verified by `scripts/patch-agent-teams-fixes.ts` (invoked from
    `scripts/vendor-agent-teams.ts`); `scope-glob-and-contract.test.ts` pins
    both the behaviour and the guard's refusal when a delta is dropped (see also

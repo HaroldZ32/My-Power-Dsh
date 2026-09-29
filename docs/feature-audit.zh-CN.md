@@ -55,16 +55,16 @@
 Agent Teams 插件取代（见上文团队模式行与 `docs/plan-0.1.7-adaptation.md`）。
 
 保留版本为 `0.1.16-rc.3-mpd`：**0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
-`lib/harness-compat.js`（在 harness **0.1.5-rc.2+** 上经公开的
+`lib/harness-compat.ts`（在 harness **0.1.5-rc.2+** 上经公开的
 `ctx.subagents.prompt(request, signal)` 可续投递面进行团队投递，Alpha.2 的 `followup` 与
 Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queuePrompt')` 仅作为
 旧世代回退保留；`agent/session-start` 上的同步成员初始化从事件负载中取得 live Agent
 （`setup(agent.ctx, agent)`），而不再读 `childCtx.agent` —— agent 作用域的 Cordis ctx 是代理，
 读取会抛 `cannot get property "agent" without inject`（不存在 `agent` 服务；宿主注入的是复数
 `agents`），且该监听器对队长自身会话同样触发，旧读法会全队中止成员初始化、使 0.1.5 团队模式
-不可用；所有投递面上的退役守卫）、`lib/capabilities.js`
-（按 agent 作用域的成员指令 + 禁用队长专属工具）、`lib/tool-names.js`、
-`lib/web-routes.js`（浏览器鉴权闸门 + 有界 JSON body）、成员回合失败处理
+不可用；所有投递面上的退役守卫）、`lib/capabilities.ts`
+（按 agent 作用域的成员指令 + 禁用队长专属工具）、`lib/tool-names.ts`、
+`lib/web-routes.ts`（浏览器鉴权闸门 + 有界 JSON body）、成员回合失败处理
 （`failMemberOpenAttempt`），以及持久性修复（settled 队伍锁释放、可选任务字段空白归一化、
 队长 `claim_task` 守卫、parked attempt 恢复幂等）。证据：`evidence/agent-teams/scheduler-wakeup-fix/`。
 

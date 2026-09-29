@@ -92,7 +92,7 @@ function selfTest(): void {
   const dist = join(repoRoot, "packages", "mpd-workmate-plugin", "dist", "index.js")
   checks.push(["workmate dist built", existsSync(dist)])
   // The bundle patch, which declares the row that mounts the workmate plugin.
-  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   checks.push(["bundle patch row mpd-workmate", patch.includes("id: mpd-workmate") && patch.includes("@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js")])
   // RETIREMENT (2026-09-27): the workmate guidance used to live in the adopted
   // vendored plugin's roster block inside the bundle patch. That row is GONE, so
@@ -101,7 +101,7 @@ function selfTest(): void {
   // the PRESET must carry the consult/anti-weak-match rule.
   checks.push(["bundle patch no longer carries the retired roster workmate guidance", !patch.includes("never force a weak note match")])
   // The retired adopted plugin's member-persona source, where the injection patch lives.
-  const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.js"), "utf8")
+  const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.ts"), "utf8")
   checks.push(["memberPersona workmate injection", members.includes("function workmateBacking") && members.includes("mpd_workmate_reflect") && members.includes("Durable workmate backing")])
   // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list in
   // the `preset-mpd` row of the manifest's second bundle patch — there is no

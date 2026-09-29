@@ -6,7 +6,7 @@
 // a COMMENT, so the first wording of this very header moved the corpus reading 42 -> 43; the wording was
 // reworked so the row's unit keeps its clean value, and the instance is recorded in the evidence.)
 // Measured before this fix: seeding a COMMENT into
-// `lib/tools.js` turned `tool-boundary-hold-and-contract-seat.test.mjs` RED (the seeded run is kept in
+// `lib/tools.ts` turned `tool-boundary-hold-and-contract-seat.test.mjs` RED (the seeded run is kept in
 // `evidence/agent-teams/wave2b-laneA/20260917T151306Z/red-seed-comment-before.out.txt`).
 //
 // THE RULE, in CODE (the row's first shape): the absence is asserted against the subject's

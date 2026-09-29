@@ -19,7 +19,7 @@ the bundle installs its skills and removing the bundle removes them.
   is therefore visible exactly while the bundle is installed and disappears when the
   row unloads — no version stamp, no stale copy.
 - Serves the `mpd` preset by the SAME rule: the bundle patch points the `agent-presets`
-  roster at `<pkg-root>/presets` (see `packages/mpd-bundle/cordis.patch.yml`).
+  roster at `<pkg-root>/presets` (see `cordis.patch.yml`).
 - Migrates legacy installs: the version-stamped copies that bundle `<= 0.2.6` wrote
   into `$DSH_HOME/skills` and `$DSH_HOME/.agent-presets` are removed on the first boot
   of `>= 0.3.0`. The stamp file is the ownership proof — unstamped content (for example

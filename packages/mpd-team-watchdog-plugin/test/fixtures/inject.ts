@@ -16,10 +16,10 @@
 //
 // WHAT IT DRIVES (nothing is simulated at the layer under test):
 //   * the REAL adopted scheduler — `installTeamScheduler` from
-//     `packages/mpd-agent-teams-plugin/lib/scheduler.js`;
+//     `packages/mpd-agent-teams-plugin/lib/scheduler.ts`;
 //   * the REAL watchdog plugin — its built `dist/index.js` mounted with `apply()`;
 //   * the REAL halt path for the negative control — `haltTeamWork` imported from
-//     `packages/mpd-agent-teams-plugin/lib/tools.js` (the adopted mass-cancel).
+//     `packages/mpd-agent-teams-plugin/lib/tools.ts` (the adopted mass-cancel).
 // Only the HARNESS is stubbed (a ctx with a service store, an agent registry, a logger
 // and a `subagents.prompt` collector) — the shape proven by the w7 driver.
 //
@@ -887,7 +887,7 @@ async function casePausePreservesHaltControl(root: string): Promise<{ ok: boolea
   /** The structured evidence this case returns, one field per asserted reading. */
   const observation = {
     injected: "silence",
-    mechanism: "haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed",
+    mechanism: "haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.ts and CALLED — never stubbed",
     cancelledTasks: result.cancelledTasks,
     alreadyHalted: result.alreadyHalted,
     halted: record.halted === true,

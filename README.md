@@ -229,7 +229,7 @@ state.
 
 ### What the install mounts
 
-Every plugin below is declared by this bundle's two patch files — `packages/mpd-bundle/cordis.patch.yml`
+Every plugin below is declared by this bundle's two patch files — `cordis.patch.yml`
 (everything tabulated below) and `presets/mpd.patch.yml` (the `preset-mpd` row, see *Host row the
 bundle id-targets*) — and is mounted by the one `dsh plugin add` above. `package.json` lists both as
 the array `dsh.bundle.patch`. The main patch carries **29 `- id:` entries in two kinds**: **28 rows

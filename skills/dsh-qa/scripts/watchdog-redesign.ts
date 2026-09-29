@@ -43,7 +43,7 @@
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
-import { dirname, join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { ImmutableOutputError, exitOnRefusal, refuseOverwrite, timestamp } from "./lib/immutable-output.ts"
 import { REPO, captureStdout, finish, say, selfTest, sha256, writeEvidence, type LaneCheck, type LaneResult, type LaneVerdict, type StubEventHandler, type StubToolDefinition, type StdoutCapture } from "./lib/watchdog-lane.ts"
@@ -79,7 +79,7 @@ interface ContractHashes {
   readonly machine: string
   /** `src/engine.ts`'s sha256 on the detached RED commit. */
   readonly engine: string
-  /** The adopted `lib/tools.js` sha256 the RED tree ships. */
+  /** The adopted `lib/tools.ts` sha256 the RED tree (detached `75018a1`) ships — `.js`, not `.ts`. */
   readonly tools: string
 }
 
@@ -198,8 +198,24 @@ interface TreeFingerprints {
   team: string
   /** `dist/index.js`'s digest. */
   dist: string
-  /** The adopted `lib/tools.js` digest. */
+  /** The adopted tools module's digest, in the `.ts`/`.js` spelling that tree ships. */
   tools: string
+}
+
+/**
+ * The adopted plugin's tools module inside one tree, spelled the way THAT tree ships it.
+ * The GREEN tree carries the converted `lib/tools.ts`; the frozen RED worktree (detached
+ * `75018a1`) predates that rename and still ships `lib/tools.ts` — and the contract pins the
+ * bytes of THAT file (`CONTRACT_RED.tools` == sha256 of `75018a1:lib/tools.ts`) — so the
+ * extension is PROBED rather than hardcoded, which keeps ONE path expression correct on both
+ * sides of the contrast.
+ * @param root Absolute path of the tree.
+ * @returns The absolute path of the tools module the tree ships, preferring the converted `.ts`.
+ */
+function adoptedToolsFile(root: string): string {
+  /** The converted spelling the tree under test carries. */
+  const converted: string = join(root, ADOPTED_LIB, "tools.ts")
+  return existsSync(converted) ? converted : join(root, ADOPTED_LIB, "tools.js")
 }
 
 /**
@@ -213,7 +229,7 @@ function fingerprint(root: string): TreeFingerprints {
     channel: fileSha(join(root, PLUGIN, "src", "channel.ts")),
     team: fileSha(join(root, PLUGIN, "src", "team.ts")),
     dist: fileSha(join(root, PLUGIN, "dist", "index.js")),
-    tools: fileSha(join(root, ADOPTED_LIB, "tools.js")),
+    tools: fileSha(adoptedToolsFile(root)),
   }
 }
 
@@ -1060,15 +1076,16 @@ async function runReinjection(tree: LoadedTree, rawRoot: string, workspace: stri
   mkdirSync(join(scratch, "lib"), { recursive: true })
   for (const entry of readdirSync(libDir, { withFileTypes: true })) if (entry.isFile()) cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
   symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
-  // The mutant `tools.js` the deleted guard is re-injected into.
-  const scratchTools = join(scratch, "lib", "tools.js")
+  // The mutant tools module the deleted guard is re-injected into, under the tree's own spelling
+  // (the scratch lib is a flat copy of the tree's lib, so the basename is the same).
+  const scratchTools = join(scratch, "lib", basename(adoptedToolsFile(tree.root)))
   // The mutant's original source text.
   const source = readFileSync(scratchTools, "utf8")
   // The offset of the `update_task` registration the execute body is anchored to.
   const registration = source.indexOf("name: 'agent_teams_update_task'")
   // The offset of the execute body that follows that registration.
   const execute = source.indexOf("async execute(args, exec) {", registration)
-  if (registration < 0 || execute < 0) return { ran: false, rejected: false, error: "the injection anchor was not found in lib/tools.js (registration=" + registration + ", execute=" + execute + ")" }
+  if (registration < 0 || execute < 0) return { ran: false, rejected: false, error: "the injection anchor was not found in lib/tools.ts (registration=" + registration + ", execute=" + execute + ")" }
   // The hold guard the redesign deleted, re-injected verbatim at the tool boundary.
   const guard = "\n            { const __held = watchdogHoldOf(ctx, freshTeamProbeId, workspaceOf(exec.agent)); if (__held !== undefined) throw new Error(`team ${freshTeamProbeId} is held by the team watchdog (hold ${__held.holdId}); the team must be released with the watchdog's own session-watchdog-resume action before any further work`); }"
   // The reader the injected guard resolves the watchdog service through.
@@ -1113,7 +1130,7 @@ interface AgentDouble {
   readonly session: { readonly header: { readonly cwd: string } }
 }
 
-/** The adopted plugin's `lib/tools.js` entry surface, as the row's probe consumes it. */
+/** The adopted plugin's `lib/tools.ts` entry surface, as the row's probe consumes it. */
 interface AdoptedToolsModule {
   /**
    * @param ctx The plugin context the tools register on.
@@ -1288,8 +1305,9 @@ async function runHoldRow(tree: LoadedTree, rawRoot: string): Promise<RowReading
     logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
     get: (name) => (name === "mpdWatchdog" ? watchdog : undefined),
   }
-  // The adopted `lib/tools.js` this tree ships, imported with the tree's own label as the cache key.
-  const toolsPath = join(tree.root, ADOPTED_LIB, "tools.js")
+  // The adopted tools module this tree ships (`.ts` on the working tree, `.js` on the RED one),
+  // imported with the tree's own label as the cache key.
+  const toolsPath = adoptedToolsFile(tree.root)
   // The adopted tools module, imported from the tree's own lib directory.
   const mod = (await import(pathToFileURL(toolsPath).href + "?tree=" + tree.label)) as AdoptedToolsModule
   mod.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
@@ -1333,7 +1351,7 @@ async function runHoldRow(tree: LoadedTree, rawRoot: string): Promise<RowReading
   update.mutated = tasksOnDisk.find((entry) => entry.id === "t2")?.status === "completed"
   claim.mutated = String(tasksOnDisk.find((entry) => entry.id === "t1")?.attemptId ?? "") !== ""
   // The re-injection control: only the fold tree deleted the guard, so only there is it applicable.
-  const reinject = tree.generation === "fold" ? await runReinjection(tree, rawRoot, workspace, captain, member) : { ran: false, rejected: false, error: "not run: the guard is present in this tree's lib/tools.js, so the control is not applicable" }
+  const reinject = tree.generation === "fold" ? await runReinjection(tree, rawRoot, workspace, captain, member) : { ran: false, rejected: false, error: "not run: the guard is present in this tree's lib/tools.ts, so the control is not applicable" }
   return {
     tree: tree.label,
     scenario: "c",
@@ -1342,7 +1360,7 @@ async function runHoldRow(tree: LoadedTree, rawRoot: string): Promise<RowReading
     toolNames: [...tools.keys()].filter((name) => name.includes("claim_task") || name.includes("update_task")),
     update, claim, reinject,
     holdOnDisk: existsSync(join(workspace, STATE_DIR, "watchdog", "hold", teamId + ".json")),
-    holdReads: { total: reads.length, fromTools: reads.filter((read) => read.frame.includes("lib/tools.js") || read.frame.includes("/tools.js")).length, frames: reads.map((read) => read.frame) },
+    holdReads: { total: reads.length, fromTools: reads.filter((read) => read.frame.includes("lib/tools.ts") || read.frame.includes("/tools.js")).length, frames: reads.map((read) => read.frame) },
     guardInToolsSource: readFileSync(toolsPath, "utf8").includes(GUARD_TEXT),
   }
 }

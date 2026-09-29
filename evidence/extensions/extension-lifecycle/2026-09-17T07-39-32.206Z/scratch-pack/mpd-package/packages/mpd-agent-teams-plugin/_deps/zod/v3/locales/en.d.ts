@@ -1,3 +1,3 @@
-import { type ZodErrorMap } from "../ZodError.js";
+import { type ZodErrorMap } from "../ZodError.ts";
 declare const errorMap: ZodErrorMap;
 export default errorMap;

@@ -19,9 +19,8 @@ import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { MPD_DELTA_MARKERS, MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTA_MARKERS, MPD_DELTAS } from "../lib/mpd-deltas.ts"
 
 /** This test file's own directory, which the adopted `lib/` tree is resolved from. */
 const here = dirname(fileURLToPath(import.meta.url))
@@ -30,19 +29,19 @@ const libDir = join(here, "..", "lib")
 
 /** The ten server files of the contract's §2.1 roll-up — snapshot.js is listed so its ZERO is measured. */
 const SERVER_FILES = [
-    "tools.js",
-    "members.js",
-    "scheduler.js",
-    "index.js",
-    "capabilities.js",
-    "command.js",
-    "session-start.js",
-    "harness-compat.js",
-    "snapshot.js",
-    "events.js",
+    "tools.ts",
+    "members.ts",
+    "scheduler.ts",
+    "index.ts",
+    "capabilities.ts",
+    "command.ts",
+    "session-start.ts",
+    "harness-compat.ts",
+    "snapshot.ts",
+    "events.ts",
 ]
 /** The mpd-owned bridge module: the ONE place a raw fallback expression may live. */
-const BRIDGE_FILE = "mpd-adapter-ctx.js"
+const BRIDGE_FILE = "mpd-adapter-ctx.ts"
 
 /** Remove line and block comments while respecting string/template literals. */
 function stripComments(source: string): string {
@@ -198,11 +197,11 @@ const BYPASS_RULES = [
  * trimmed text, T-55: a line number rots) — never by "this line mentions `childCtx`".
  */
 const COUNTED_CHILD_CTX_LINES = [
-    "members.js installContinuableMemberSetup(ctx, (childCtx, hostChild) => {",
-    "members.js const child = hostChild ?? childCtx.agent;",
-    "members.js const disposeFailure = childCtx.on('agent/error', async (payload) => {",
-    "members.js const disposeSelection = installModelSelection(childCtx, selectionRef);",
-    "members.js const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {",
+    "members.ts installContinuableMemberSetup(ctx, (childCtx, hostChild) => {",
+    "members.ts const child = hostChild ?? childCtx.agent;",
+    "members.ts const disposeFailure = childCtx.on('agent/error', async (payload) => {",
+    "members.ts const disposeSelection = installModelSelection(childCtx, selectionRef);",
+    "members.ts const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {",
 ]
 
 /**
@@ -211,8 +210,8 @@ const COUNTED_CHILD_CTX_LINES = [
  * a counted line, and any new line that mentions `childCtx` at all, is reported as a finding.
  */
 const COUNTED_CHILD_CTX_ACCESSES = new Map([
-    ["members.js const disposeFailure = childCtx.on('agent/error', async (payload) => {", "events.on"],
-    ["members.js const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {", "events.on"],
+    ["members.ts const disposeFailure = childCtx.on('agent/error', async (payload) => {", "events.on"],
+    ["members.ts const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {", "events.on"],
 ])
 
 /** A ctx-shaped binding: the plugin's own ctx aliases, never an Agent's scoped ctx. */
@@ -290,7 +289,7 @@ function inventory(): { findings: Finding[]; residuals: string[] } {
                     /** The captured receiver text, empty for the receiver-less rules. */
                     const receiver = rule.receiver === 1 ? (match[1] ?? "") : ""
                     if (rule.facadeExempt !== false && FACADE_RECEIVER.test(receiver)) continue
-                    if (file === "harness-compat.js" && (LADDER_POLICY.test(receiver) || LADDER_CAPTURES.test(receiver))) continue
+                    if (file === "harness-compat.ts" && (LADDER_POLICY.test(receiver) || LADDER_CAPTURES.test(receiver))) continue
                     // The counted access on a counted line IS the residual; anything else is a finding.
                     if (countedSeam !== undefined && rule.seam === countedSeam) continue
                     if (inside(index)) continue
@@ -315,7 +314,7 @@ function scanLineForRules(file: string, line: string): string[] {
             /** The captured receiver text, empty for the receiver-less rules. */
             const receiver = rule.receiver === 1 ? (match[1] ?? "") : ""
             if (rule.facadeExempt !== false && FACADE_RECEIVER.test(receiver)) continue
-            if (file === "harness-compat.js" && (LADDER_POLICY.test(receiver) || LADDER_CAPTURES.test(receiver))) continue
+            if (file === "harness-compat.ts" && (LADDER_POLICY.test(receiver) || LADDER_CAPTURES.test(receiver))) continue
             hits.push(rule.seam)
         }
     }
@@ -347,32 +346,32 @@ test("t23 item 3: the receiver-hiding spellings are CAUGHT — the new rules are
         ["const t = agent.ctx.tools; t.restrict({})", "scoped-ctx.extraction"],
         ["const { restrict } = agent.ctx.tools", "scoped-ctx.destructure"],
     ]
-    for (const [line, seam] of caught) expect(scanLineForRules("scheduler.js", line), line).toContain(seam)
+    for (const [line, seam] of caught) expect(scanLineForRules("scheduler.ts", line), line).toContain(seam)
     // NEGATIVE CONTROLS: a call THROUGH the facade is not an extraction, and a bare alias CALL is
     // invisible to a line-local scanner BY CONSTRUCTION — that is why the EXTRACTION site above is
     // what this guard covers, and why the extraction must live inside a region.
-    expect(scanLineForRules("scheduler.js", "const x = ctx.tools.register(definition)")).toEqual([])
-    expect(scanLineForRules("scheduler.js", "agents.get(id)")).toEqual([])
-    expect(scanLineForRules("scheduler.js", "const captain = ctx.agents.get(sessionId)")).toEqual([])
+    expect(scanLineForRules("scheduler.ts", "const x = ctx.tools.register(definition)")).toEqual([])
+    expect(scanLineForRules("scheduler.ts", "agents.get(id)")).toEqual([])
+    expect(scanLineForRules("scheduler.ts", "const captain = ctx.agents.get(sessionId)")).toEqual([])
     // …and the ladder's OWN receipts stay clean: `runtime.prompt.call(runtime, …)` (D6/R2 policy) and
     // its captured-function sibling inside harness-compat, which is where that policy lives.
-    expect(scanLineForRules("harness-compat.js", "const receipt = await runtime.prompt.call(runtime, { requestId: randomUUID() })")).toEqual([])
-    expect(scanLineForRules("harness-compat.js", "return queue.call(runtime, parent, childId, content, source, signal)")).toEqual([])
-    expect(scanLineForRules("harness-compat.js", "return legacy.call(runtime, parent, childId, content, options)")).toEqual([])
+    expect(scanLineForRules("harness-compat.ts", "const receipt = await runtime.prompt.call(runtime, { requestId: randomUUID() })")).toEqual([])
+    expect(scanLineForRules("harness-compat.ts", "return queue.call(runtime, parent, childId, content, source, signal)")).toEqual([])
+    expect(scanLineForRules("harness-compat.ts", "return legacy.call(runtime, parent, childId, content, options)")).toEqual([])
     // t26 F5: the CAPTURED-function spelling the method-extraction rule anticipates, named exactly.
-    expect(scanLineForRules("harness-compat.js", "return prompt.call(runtime, request, signal)")).toEqual([])
-    expect(scanLineForRules("harness-compat.js", "return send.call(runtime, sender, targetId, content, options)")).toEqual([])
+    expect(scanLineForRules("harness-compat.ts", "return prompt.call(runtime, request, signal)")).toEqual([])
+    expect(scanLineForRules("harness-compat.ts", "return send.call(runtime, sender, targetId, content, options)")).toEqual([])
     // …and the documented pass-through idiom is NOT an extraction (a CALL, not a binding).
-    expect(scanLineForRules("scheduler.js", "const dsh = (typeof ctx.get === \"function\" ? ctx.get(\"mpdDsh\") : undefined) ?? createDshAdapter(ctx)")).toEqual([])
-    expect(scanLineForRules("scheduler.js", "const dsh = ctx.get(\"mpdDsh\")")).toEqual([])
+    expect(scanLineForRules("scheduler.ts", "const dsh = (typeof ctx.get === \"function\" ? ctx.get(\"mpdDsh\") : undefined) ?? createDshAdapter(ctx)")).toEqual([])
+    expect(scanLineForRules("scheduler.ts", "const dsh = ctx.get(\"mpdDsh\")")).toEqual([])
     // The SAME spelling outside harness-compat is a finding — the exemption is module-scoped, not global.
-    expect(scanLineForRules("members.js", "return runtime.prompt.call(runtime, request, signal)")).toEqual(["seam.method-call"])
+    expect(scanLineForRules("members.ts", "return runtime.prompt.call(runtime, request, signal)")).toEqual(["seam.method-call"])
     // …and the CAPTURED form is NOT exempt outside harness-compat either (the exemption is scoped to
     // the module that owns the ladder policy, never to the spelling) — this arm is what proves the
     // LADDER_CAPTURES exemption has a real job rather than suppressing nothing.
-    expect(scanLineForRules("harness-compat.js", "return prompt.call(runtime, request, signal)")).toEqual([])
-    expect(scanLineForRules("members.js", "return prompt.call(runtime, request, signal)")).toEqual(["seam.captured-method-call"])
-    expect(scanLineForRules("members.js", "return legacy.call(runtime, parent, childId, content, options)")).toEqual(["seam.captured-method-call"])
+    expect(scanLineForRules("harness-compat.ts", "return prompt.call(runtime, request, signal)")).toEqual([])
+    expect(scanLineForRules("members.ts", "return prompt.call(runtime, request, signal)")).toEqual(["seam.captured-method-call"])
+    expect(scanLineForRules("members.ts", "return legacy.call(runtime, parent, childId, content, options)")).toEqual(["seam.captured-method-call"])
 })
 
 test("AC15: no adopted server file reaches a harness seam on a receiver the facade cannot cover", () => {
@@ -389,11 +388,11 @@ test("AC15: the host-handed child scope is a COUNTED residual, never an unseen p
     // The assertion is on the MEMBER USE, not on a line number: the class is counted (a new use of
     // the parameter reddens) while an edit above it cannot rot the test (T-55).
     expect(residuals).toEqual([
-        "members.js installContinuableMemberSetup(ctx, (childCtx, hostChild) => {",
-        "members.js const child = hostChild ?? childCtx.agent;",
-        "members.js const disposeFailure = childCtx.on('agent/error', async (payload) => {",
-        "members.js const disposeSelection = installModelSelection(childCtx, selectionRef);",
-        "members.js const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {",
+        "members.ts installContinuableMemberSetup(ctx, (childCtx, hostChild) => {",
+        "members.ts const child = hostChild ?? childCtx.agent;",
+        "members.ts const disposeFailure = childCtx.on('agent/error', async (payload) => {",
+        "members.ts const disposeSelection = installModelSelection(childCtx, selectionRef);",
+        "members.ts const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {",
     ])
 })
 
@@ -408,8 +407,8 @@ test("F2/AC15: the Class-B set is inventoried exactly, so it cannot grow silentl
         for (const line of lines) if (/\.whenIdle\s*\(/.test(line)) whenIdle.push(`${file} ${line.trim()}`)
     }
     expect(whenIdle.sort()).toEqual([
-        "members.js await child.whenIdle();",
-        "tools.js await Promise.race([live.whenIdle(), aborted]);",
+        "members.ts await child.whenIdle();",
+        "tools.ts await Promise.race([live.whenIdle(), aborted]);",
     ])
 })
 
@@ -438,24 +437,24 @@ test("AC15: every region a server file carries is registered, and the six bridge
     // spelling sense — every id below is asserted present, never merely "some region exists").
     /** The frozen region ids each bridged file must carry, per contract §5. */
     const FROZEN_REGIONS = {
-        "index.js": ["mpd-delta adapter-facade-import", "mpd-delta adapter-facade-wiring",
+        "index.ts": ["mpd-delta adapter-facade-import", "mpd-delta adapter-facade-wiring",
             "mpd-delta adapter-steer-approval-notice"],
-        "capabilities.js": ["mpd-delta adapter-agent-scope-import", "mpd-delta adapter-agent-scope"],
-        "harness-compat.js": ["mpd-delta adapter-subagent-runtime-import", "mpd-delta adapter-subagent-runtime-install",
+        "capabilities.ts": ["mpd-delta adapter-agent-scope-import", "mpd-delta adapter-agent-scope"],
+        "harness-compat.ts": ["mpd-delta adapter-subagent-runtime-import", "mpd-delta adapter-subagent-runtime-install",
             "mpd-delta adapter-subagent-runtime-agent-scope", "mpd-delta adapter-subagent-runtime-agent-scope-setup",
             "mpd-delta adapter-subagent-runtime-agent-scope-request", "mpd-delta adapter-subagent-runtime-agent-scope-effect",
             "mpd-delta adapter-subagent-runtime-guard", "mpd-delta adapter-subagent-runtime-agents-lookup"],
-        "members.js": ["mpd-delta adapter-delivery-runtime-import", "mpd-delta adapter-delivery-runtime",
+        "members.ts": ["mpd-delta adapter-delivery-runtime-import", "mpd-delta adapter-delivery-runtime",
             "mpd-delta adapter-steer-captain-report", "mpd-delta adapter-steer-captain-report-caller"],
-        "command.js": ["mpd-delta adapter-command-turn-submit", "mpd-delta adapter-command-turn-submit-profile"],
-        "tools.js": ["mpd-delta adapter-turn-submit", "mpd-delta adapter-cancel-halt", "mpd-delta adapter-cancel-feedback",
+        "command.ts": ["mpd-delta adapter-command-turn-submit", "mpd-delta adapter-command-turn-submit-profile"],
+        "tools.ts": ["mpd-delta adapter-turn-submit", "mpd-delta adapter-cancel-halt", "mpd-delta adapter-cancel-feedback",
             "mpd-delta adapter-cancel-discard", "mpd-delta adapter-subagent-runtime-halt-drain",
             "mpd-delta adapter-steer-send-message-caller", "mpd-delta adapter-inject-staged-discard"],
     }
     for (const file of [...SERVER_FILES, BRIDGE_FILE]) {
         /** The region ids this file carries, in open order. */
         const { ids } = regionSpans(readFileSync(join(libDir, file), "utf8"))
-        for (const id of ids) expect(registered.has(`${file}::${id}`), `${file}: region "${id}" is not in lib/mpd-deltas.js`).toBe(true)
+        for (const id of ids) expect(registered.has(`${file}::${id}`), `${file}: region "${id}" is not in lib/mpd-deltas.ts`).toBe(true)
     }
     for (const [file, required] of Object.entries(FROZEN_REGIONS)) {
         /** The region ids the frozen map requires of this file. */

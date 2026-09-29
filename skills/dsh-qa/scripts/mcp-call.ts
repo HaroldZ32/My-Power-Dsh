@@ -95,7 +95,7 @@ function selfTest(): void {
   // patch rows declare serverName astgrep -> mcp__ast_grep__…), otherwise the case
   // asserts a tool that can never be recorded.
   /** The bundle patch whose `mcp-astgrep` row must declare the server name the tool name derives from. */
-  const patch = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** That row's own chunk of the patch, split on the `- id: ` separators. */
   const row = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-astgrep"))
   if (row === undefined || !row.includes("serverName: ast_grep")) { console.error("[mcp-call self-test] FAIL: the mcp-astgrep row does not declare serverName: ast_grep"); process.exit(1) }
@@ -181,7 +181,7 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
     const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", join(sandbox, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
     if (inst.status !== 0) { console.error("[mcp-call] FAIL: staged install\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
     /** The resolved `dsh` launcher invocation for the arm's prompt, or `null` when none is on PATH. */
-    const runSpec = dshCommand(["--profile", "headless", "--patch", join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), job], env)
+    const runSpec = dshCommand(["--profile", "headless", "--patch", join(repoRoot, "cordis.patch.yml"), job], env)
     /** The arm's headless boot result; a missing launcher is reported instead of thrown. */
     const run: LiveOutcome = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, {
       env, cwd: ws, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]

@@ -4,11 +4,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 // The adopted session-start policy is vendored JavaScript with no declaration file, so the gate,
 // the notices and the policy installer all arrive untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { DEFAULT_TEAM_NAME, STARTUP_NOTICE_MARKER, advisoryNotice, availableTeamId, consumeExplicitFlag, evaluateComplexityGate, instructNotice, installSessionTeamPolicy, policyEnabled, policyQualifies, provisionedNotice, routeDecision, spliceNotice } from "../lib/session-start.js"
-// The vendored LLM helper is JavaScript with no declaration file, so `createMessage` arrives untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { createMessage } from "../_deps/dsh-llm/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { DEFAULT_TEAM_NAME, STARTUP_NOTICE_MARKER, advisoryNotice, availableTeamId, consumeExplicitFlag, evaluateComplexityGate, instructNotice, installSessionTeamPolicy, policyEnabled, policyQualifies, provisionedNotice, routeDecision, spliceNotice } from "../lib/session-start.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { createMessage } from "../_deps/dsh-llm/lib/index.ts"
 
 /** One message the plugin injects or claims: durable id, role, text blocks and provenance. */
 type NoticeMessage = {

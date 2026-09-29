@@ -1,6 +1,6 @@
-import type * as JSONSchema from "../core/json-schema.js";
-import { type $ZodRegistry } from "../core/registries.js";
-import type { ZodType } from "./schemas.js";
+import type * as JSONSchema from "../core/json-schema.ts";
+import { type $ZodRegistry } from "../core/registries.ts";
+import type { ZodType } from "./schemas.ts";
 type JSONSchemaVersion = "draft-2020-12" | "draft-7" | "draft-4" | "openapi-3.0";
 interface FromJSONSchemaParams {
     defaultTarget?: JSONSchemaVersion;

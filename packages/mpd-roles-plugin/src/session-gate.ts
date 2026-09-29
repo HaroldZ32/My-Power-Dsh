@@ -3,7 +3,7 @@
 //
 // The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with four
 // signals, reproduced VERBATIM from the retired implementation
-// (`packages/mpd-agent-teams-plugin/lib/session-start.js`, read as the SPEC — never
+// (`packages/mpd-agent-teams-plugin/lib/session-start.ts`, read as the SPEC — never
 // mounted or imported):
 //   A (hard) `team:` prefix or `!team` anywhere; the marker is CONSUMED from the goal text;
 //   B (soft) >= 4 distinct deliverable verbs;

@@ -1,7 +1,7 @@
 # mpd-bundle
 **中文** | [English](./README.md)
 
-DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及被采纳的 `agent-teams` row（`stateDir: .mpd/team`）。
+本 bundle 的 host 平面 patch 层是 `cordis.patch.yml`，它位于**仓库根目录**（标准 cordis bundle 布局 —— `package.json` 把它声明为 `dsh.bundle.patch` 数组的第一个条目）。它挂载每一个 mpd-dsh plugin row — MCP servers（ast-grep / git-bash / lsp / codegraph + 远程 context7 / grep.app）、B/C 线 plugins（mpd-config 置顶，使 mpdConfig service 对下方 rows 可见；随后是 mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline / boulder / comment-checker / codegraph / memory / workmate）、`mpd-web-compat` 自注册行（`name: '@mpd-dsh/mpd'`——承载 bundle web client 的 loader 条目）、mpd-bootstrap provisioning，以及被采纳的 `agent-teams` row（`stateDir: .mpd/team`）。
 
 波形读取行（`mcp-wave-mcp` / `mcp-traceweave`）**未挂载**：它们包装外部 Python MCP server，在 `cordis.patch.yml:92-123` 中连同安装步骤一起保持注释状态，因此没有这些二进制的机器仍能原样启动。
 
@@ -9,7 +9,7 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 
 ## 会话启动团队门（强制）
 
-会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：上游 team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**咨询式复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.js`），而不是仅靠提示词约束：
+会话启动时**没有团队** —— 团队不是会话的前提条件（对齐上游：上游 team mode 默认关闭）。被采纳的 agent-teams 插件**机械式强制**的是一道**咨询式复杂度门**（`sessionTeamPolicy` 配置，实现见 `packages/mpd-agent-teams-plugin/lib/session-start.ts`），而不是仅靠提示词约束：
 
 - `mode: off`（默认）= 不自动建队、不无条件注入通知；机械门是与 `mode` 解耦的 `autoRoute: true`（默认启用）。
 - 在会话第一步的 pre-step 上，门按 `trigger = 显式标记 OR (matchedSignals >= 1)` 判定：显式标记为 `team:` 前缀或 `!team`（标记会被**消费掉**，不会作为目标文本进入模型）；软信号为 (B) 去重命中 ≥4 个交付动词、(C) 编号/动作动词/子句 ≥3、(D) 该工作区存在 `.mpd/plans/*.md`。

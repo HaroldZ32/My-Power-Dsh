@@ -8,9 +8,8 @@
 //   3. the absent-adapter column executes TODAY'S exact expressions — same receiver, same value,
 //      same throw — while the adapter column routes every seam through the recorded adapter calls.
 import { expect, test } from "bun:test"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { ADAPTER_WITNESS, agentScopeOf, createAgentTeamsCtx, liveAgentOf, subagentRuntimeOf } from "../lib/mpd-adapter-ctx.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { ADAPTER_WITNESS, agentScopeOf, createAgentTeamsCtx, liveAgentOf, subagentRuntimeOf } from "../lib/mpd-adapter-ctx.ts"
 
 // Transcribed from the contract §4 table (NOT imported from the module, or the assertion would be
 // circular): a reworded witness line reddens here.

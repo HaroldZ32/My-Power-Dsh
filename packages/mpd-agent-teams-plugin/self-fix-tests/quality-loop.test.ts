@@ -4,19 +4,12 @@
 // plus the prompt injections (reassignReason + captain guidance digest).
 // Run: bun test packages/mpd-agent-teams-plugin/self-fix-tests
 import { test, expect } from "bun:test"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { validateCreateTask, planQualityFollowUp, hasValidQualityTaskFields } from "../lib/quality-gates.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { unsatisfiedDependencies, resolveCancelledDependencyDeadlocks, dependencyStates } from "../lib/state.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { collectCompletedDependencyOutputs, formatDependencyOutputs, assignmentPrompt } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { validateCreateTask, planQualityFollowUp, hasValidQualityTaskFields } from "../lib/quality-gates.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { unsatisfiedDependencies, resolveCancelledDependencyDeadlocks, dependencyStates } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { collectCompletedDependencyOutputs, formatDependencyOutputs, assignmentPrompt } from "../lib/scheduler.ts"
 
 /** The overridable fields of one task fixture. */
 interface TaskOverrides {

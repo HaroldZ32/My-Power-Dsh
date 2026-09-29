@@ -24,13 +24,13 @@
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
-      "default": "./lib/types/types.js"
+      "default": "./lib/types/types.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json",
     "./surface": {
       "types": "./lib/types/surface.d.ts",
-      "default": "./lib/types/surface.js"
+      "default": "./lib/types/surface.ts"
     }
   },
   "files": [

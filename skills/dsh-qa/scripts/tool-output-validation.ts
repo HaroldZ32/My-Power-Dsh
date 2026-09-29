@@ -61,7 +61,7 @@ interface ProbeSteps {
 /** The offline self-test: bundle rows, both built dist symbol sets and both unit suites. */
 function selfTest(): void {
   // The bundle patch, which must still carry the config and boulder rows.
-  const bundle = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundle = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   for (const id of ["mpd-config", "mpd-boulder"]) {
     if (!bundle.includes(id)) { console.error("[tool-output-validation self-test] FAIL: bundle row " + id); process.exit(1) }
   }

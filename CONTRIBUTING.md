@@ -72,7 +72,7 @@ Only the sidebar's terminal panel degrades.
 | Path | Holds |
 |---|---|
 | `packages/` | one directory per plugin package (`src/`, committed `dist/`, the bilingual `README` pair) |
-| `packages/mpd-bundle/cordis.patch.yml` | the bundle patch: every plugin, MCP and sidebar row |
+| `cordis.patch.yml` | the bundle patch: every plugin, MCP and sidebar row |
 | `presets/mpd.patch.yml` | the `mpd` preset row |
 | `scripts/` | gates, the packer, the installer and the extension CLI |
 | `skills/` | the served skill corpus (including `skills/dsh-qa`) |

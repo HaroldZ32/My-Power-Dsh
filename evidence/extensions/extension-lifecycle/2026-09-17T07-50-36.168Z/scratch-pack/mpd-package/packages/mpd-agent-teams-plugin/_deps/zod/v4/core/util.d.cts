@@ -1,7 +1,7 @@
-import type * as checks from "./checks.cjs";
-import type { $ZodConfig } from "./core.cjs";
-import type * as errors from "./errors.cjs";
-import type * as schemas from "./schemas.cjs";
+import type * as checks from "./checks.cts";
+import type { $ZodConfig } from "./core.cts";
+import type * as errors from "./errors.cts";
+import type * as schemas from "./schemas.cts";
 export type JSONType = string | number | boolean | null | JSONType[] | {
     [key: string]: JSONType;
 };

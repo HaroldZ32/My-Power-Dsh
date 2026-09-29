@@ -210,7 +210,7 @@ function selfTest(): void {
   check(!assertBootFace({ ...good, pane: "no pane" }).ok, "a NEGATIVE CONTROL failed: a pane without the status line must fail")
 
   // True when the bundle patch the mount proof applies is present.
-  const patch = existsSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"))
+  const patch = existsSync(join(REPO, "cordis.patch.yml"))
   check(patch, "the bundle patch is missing")
   // True when the skill document that must list this case is present.
   const skill = existsSync(join(REPO, "skills", "dsh-qa", "SKILL.md"))

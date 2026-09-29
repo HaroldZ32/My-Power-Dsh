@@ -1,4 +1,4 @@
-# QA use: the mpd-codegraph row now lives in packages/mpd-bundle/cordis.patch.yml
+# QA use: the mpd-codegraph row now lives in cordis.patch.yml
 # (kept empty here — a second row with the same id fails the loader with
 # "duplicate loader entry id: mpd-codegraph").
 []

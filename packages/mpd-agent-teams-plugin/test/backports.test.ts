@@ -9,14 +9,12 @@ import { join } from "node:path"
 import { Readable } from "node:stream"
 // The adopted Web-route boundary is vendored JavaScript with no declaration file, so its fence
 // factory, its JSON body reader and its body error class all arrive untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from "../lib/web-routes.js"
-// The adopted quality-gate module is vendored JavaScript with no declaration file.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { normalizeBlankOptionalTaskFields } from "../lib/quality-gates.js"
-// The adopted durable-state module is vendored JavaScript with no declaration file.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { readTeam, teamLockQueueKeys, withTeamLock } from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from "../lib/web-routes.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { normalizeBlankOptionalTaskFields } from "../lib/quality-gates.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { readTeam, teamLockQueueKeys, withTeamLock } from "../lib/state.ts"
 
 /** Real-time delay in milliseconds; one lock waiter must still hold the key when the second arrives. */
 const sleep = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms))

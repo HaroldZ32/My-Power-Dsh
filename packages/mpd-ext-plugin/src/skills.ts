@@ -282,7 +282,7 @@ export interface SkillProviderOptions {
 
 /**
  * The harness's provider-observation shape (`normalizeProviderObservation`,
- * H/dsh-skill/lib/index.js:414-426). It matters which of the two an
+ * H/dsh-skill/lib/index.ts:414-426). It matters which of the two an
  * implementation returns: an ARRAY is read as `{candidates, complete:true}` and
  * the result is then CACHED per `(cwd, scope, revision)`, while `complete:false`
  * is never cached and suppresses publication, so the consumer keeps the last good

@@ -185,7 +185,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // through `dsh.workspaceRoot(invocation)`, so a session whose workspace differs
   // from the dsh process cwd re-runs against its OWN project. The handler returns
   // the harness CommandResult shape (`{kind}`), which dsh-commands validates
-  // (dsh-commands/lib/index.js `normalizeResult`); the older `{success,error}`
+  // (dsh-commands/lib/index.ts `normalizeResult`); the older `{success,error}`
   // shape would have been rejected as "must return a CommandResult".
   dsh.registerCommand({
     name: "mpd-codegraph",

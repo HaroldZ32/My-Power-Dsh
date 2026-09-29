@@ -45,7 +45,7 @@
 
 上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：采纳的
 `agent-teams` 插件。其桥接模块
-`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js`（mpd 自有，命名规则 `lib/mpd-*.js`）在
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts`（mpd 自有，命名规则 `lib/mpd-*.js`）在
 `apply` 顶部只构建一次门面，把六个已桥接的采纳文件都接到这些方法上。每个方法都在一个
 `capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
 标志），因此桥接层按接缝降级，而不是让整棵插件树失败：`toolsRegisterHost`、
@@ -124,7 +124,7 @@ Harness 更新是常态，但“每次更新都改所有调用点”不是。本
 
 **采纳插件的路由（原“边界”，已于 2026-09-19 关闭）：** 采纳的 `agent-teams` 插件
 （`packages/mpd-agent-teams-plugin`）是升级时从上游重新 vendor 的 MIT 主代码，它经由**本适配器**
-接触 Harness 接缝 —— 通过其 mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js` 惰性解析已挂载的
+接触 Harness 接缝 —— 通过其 mpd 自有的桥接模块 `lib/mpd-adapter-ctx.ts` 惰性解析已挂载的
 `mpdDsh`，适配器缺席时 warn-once 回退（每个插件实例一行缺失日志）。本地适配保持不变
 （`registerContinuableSetup` 启动安全守卫、workmate persona 注入、`mpd-delta` 区域）。
 该关闭状态及其残留清单写在 AGENTS.md §6。所有自研 mpd 插件都经由本适配器——TUI 版本也一样：`packages/mpd-tui-plugin` 从这里导入 `createDshAdapter`，并通过已挂载的 `mpdDsh` 服务取得工作区根并集，与其他所有自研行完全一致。

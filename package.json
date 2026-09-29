@@ -37,6 +37,7 @@
     "SECURITY.zh-CN.md",
     "VENDOR_LOCK.json",
     "agent-references/**",
+    "cordis.patch.yml",
     "docs/**",
     "dsh-distribution.json",
     "dsh-plugin.json",
@@ -64,7 +65,7 @@
   "dsh": {
     "bundle": {
       "patch": [
-        "./packages/mpd-bundle/cordis.patch.yml",
+        "./cordis.patch.yml",
         "./presets/mpd.patch.yml"
       ]
     },

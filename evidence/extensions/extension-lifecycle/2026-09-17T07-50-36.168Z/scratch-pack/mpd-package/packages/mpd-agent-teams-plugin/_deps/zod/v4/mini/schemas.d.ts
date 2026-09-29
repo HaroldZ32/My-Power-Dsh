@@ -1,5 +1,5 @@
-import * as core from "../core/index.js";
-import * as util from "../core/util.js";
+import * as core from "../core/index.ts";
+import * as util from "../core/util.ts";
 type SomeType = core.SomeType;
 export interface ZodMiniType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals> {
     type: Internals["def"]["type"];

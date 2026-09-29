@@ -56,7 +56,7 @@ even when it works on the happy path.
    release that reshapes a seam is absorbed there instead of across the tree (§6b). The RETAINED
    (retired-from-composition) upstream `agent-teams` body is not an exception either: its `lib/`
    still reaches those seams through the adapter, behind the mpd-owned bridge
-   `lib/mpd-adapter-ctx.js` (§6b) — which is why that code is kept rather than deleted.
+   `lib/mpd-adapter-ctx.ts` (§6b) — which is why that code is kept rather than deleted.
 3. **Plugin form, config by reference.** Every capability is a Cordis plugin row or a configured
    host plugin instance; no logic lives in profiles or scripts. Assets (the skill corpus, the
    `mpd` preset) are SERVED by the bundle rather than copied into `$DSH_HOME`, so uninstall leaves
@@ -78,7 +78,7 @@ even when it works on the happy path.
 DSH is a Cordis host: plugins are rows in a composition (`cordis.yml` + patch layers),
 services are provided/consumed per scope, and the model route is resolved from the
 session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd`) whose
-`dsh.bundle.patch` array (`packages/mpd-bundle/cordis.patch.yml` then `presets/mpd.patch.yml`)
+`dsh.bundle.patch` array (`cordis.patch.yml` then `presets/mpd.patch.yml`)
 adds rows to any profile it is installed into. It contributes:
 
 - **28 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
@@ -102,7 +102,7 @@ official `spawn_teammate` tool, taking each member's persona text from `mpd_role
 ## 2. Bundle and package structure
 
 **The repo root IS the bundle package.** `package.json` is named `@mpd-dsh/mpd` and
-declares `dsh.bundle.patch` (the ARRAY `["./packages/mpd-bundle/cordis.patch.yml",
+declares `dsh.bundle.patch` (the ARRAY `["./cordis.patch.yml",
 "./presets/mpd.patch.yml"]`), `dsh.client`,
 the `exports` map the rows resolve through and the toolchain `optionalDependencies`, so
 `dsh plugin add .` in the repo root installs the whole unit in ONE command (no pack
@@ -200,7 +200,7 @@ to bare package names.
 
 ## 4. Plugin inventory
 
-**Every row of `packages/mpd-bundle/cordis.patch.yml`, by composition.** The patch layer is
+**Every row of `cordis.patch.yml`, by composition.** The patch layer is
 additive and carries **28 `insert` rows**; the bundle's SECOND patch file
 (`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
 in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.ts` asserts that this
@@ -409,12 +409,12 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
   `packages/mpd-agent-teams-plugin` (MIT) is kept as provenance and no loader row mounts it, but it
   still reaches every harness seam
   through this adapter — except the counted `setup(childCtx, child)` residual that AGENTS.md §6
-  names (five lines in `lib/members.js`, asserted line-by-line, because that host-handed scoped
+  names (five lines in `lib/members.ts`, asserted line-by-line, because that host-handed scoped
   ctx is passed to a vendored `_deps/dsh-agent` helper and a legacy Alpha.2 `childCtx` is not
-  guaranteed to be `child.ctx`). `lib/mpd-adapter-ctx.js` — a NEW mpd-owned module (name rule
+  guaranteed to be `child.ctx`). `lib/mpd-adapter-ctx.ts` — a NEW mpd-owned module (name rule
   `lib/mpd-*.js`, restorable byte-faithfully from the delta registry) — builds the facade once
-  at the top of `apply`, so the SIX bridged adopted files (`lib/index.js`, `lib/capabilities.js`,
-  `lib/harness-compat.js`, `lib/members.js`, `lib/command.js`, `lib/tools.js`) consume the facade
+  at the top of `apply`, so the SIX bridged adopted files (`lib/index.ts`, `lib/capabilities.ts`,
+  `lib/harness-compat.ts`, `lib/members.ts`, `lib/command.ts`, `lib/tools.ts`) consume the facade
   and the remaining adopted server files receive it unchanged. Keeping it adapter-routed is exactly
   why the code is retained rather than deleted: a later wave can delete it without re-deriving the
   D6 analysis. The facade resolves the mounted
@@ -444,7 +444,7 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 `presets/mpd.patch.yml` declares the `mpd` preset as an ordinary **ROW**: an insert of `preset-mpd`
 (`name: '@deepseek-ai/dsh-agent-preset'`, `config.id: mpd`, the child entry list inline under
 `config.plugins`). That child list IS the agent-plane composition every `mpd` session joins, and the
-file is the manifest's SECOND `dsh.bundle.patch` entry; `packages/mpd-bundle/cordis.patch.yml`
+file is the manifest's SECOND `dsh.bundle.patch` entry; `cordis.patch.yml`
 id-targets `agent-preset-registry` to `{ default: mpd }`. Harness **0.1.7-rc.2 replaced the
 directory form**: `@deepseek-ai/dsh-agent-presets` (which served `preset.yml` + `agent.cordis.yml`
 from a preset root) no longer exists, so there is no `<bundle>/presets` preset root and no

@@ -25,7 +25,7 @@ end to end.
 | TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: status line, `/settings` section, full-screen board scene, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
-| TUI composition | `packages/mpd-bundle/cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
+| TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
 | These docs | `docs/tui.md`, `docs/tui.zh-CN.md` | Human-facing description of the above. |
 
 The web edition is untouched: the same bundle still installs into a web profile.

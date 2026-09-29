@@ -10,7 +10,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 ```
 
 本包**故意不包含 `cordis.patch.yml`**：行由 bundle patch
-（`packages/mpd-bundle/cordis.patch.yml`）持有，二次挂载会重复 loader entry id
+（`cordis.patch.yml`）持有，二次挂载会重复 loader entry id
 （loader 会直接拒绝重复项）。
 
 ## 提供的能力

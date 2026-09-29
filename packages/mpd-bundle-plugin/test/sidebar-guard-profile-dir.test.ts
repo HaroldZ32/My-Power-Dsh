@@ -32,7 +32,7 @@ import { pathToFileURL } from "node:url";
 /** Repository root, three directories above this test file. */
 const ROOT = join(import.meta.dirname, "..", "..", "..");
 /** The bundle patch the sidebar row lives in. */
-const PATCH_PATH = join(ROOT, "packages", "mpd-bundle", "cordis.patch.yml");
+const PATCH_PATH = join(ROOT, "cordis.patch.yml");
 /** The patch text every arm scans for the shipped guard. */
 const PATCH = readFileSync(PATCH_PATH, "utf8");
 

@@ -51,10 +51,12 @@ ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
 DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.1.7-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.11.1 is the FIRST dsh-tui release whose peer ranges include
-# 0.1.7-rc.2 (0.10.1 and 0.10.2 stop at 0.1.5-rc.1), so it is the only pin that can
-# boot the TUI against the harness this bundle targets.
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.11.1}"
+# The DSH-TUI host. 0.11.2 is the first dsh-tui release whose peer ranges include BOTH harness pins
+# this lane is expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1` — so ONE default
+# serves the documented target AND the 0.2.0-rc.1 adaptation run. 0.11.1 stops at 0.1.7-rc.2, and a
+# `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.1 harness is then REFUSED on peer ranges,
+# which aborted this lane (measured 2026-09-29, evidence/docker/client-install/2026-09-29T07-07-01Z).
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.11.2}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
@@ -519,7 +521,7 @@ if [ "$INSTALL_MODE" = "oneclick" ]; then
   log ""
   log "----- one-click packaging: what the published package carried -----"
   ONE_CLICK_MISSING=""
-  for rel in packages/mpd-bundle/cordis.patch.yml presets/mpd.patch.yml \
+  for rel in cordis.patch.yml presets/mpd.patch.yml \
              packages/mpd-mcp-astgrep/launch.ts packages/mpd-mcp-codegraph/launch.ts \
              packages/mpd-bundle-plugin/client.js icon.svg locale/en.json \
              dsh-plugin.json skills/dsh-qa/SKILL.md; do
@@ -933,7 +935,7 @@ record boot.llmTurn null \
 
 # ── 14. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {
-  sha256sum "$APP_DIR/package.json" "$APP_DIR/packages/mpd-bundle/cordis.patch.yml" 2>/dev/null || true
+  sha256sum "$APP_DIR/package.json" "$APP_DIR/cordis.patch.yml" 2>/dev/null || true
   [ -f "$APP_DIR/presets/mpd.patch.yml" ] && sha256sum "$APP_DIR/presets/mpd.patch.yml" || true
   find "$APP_DIR/packages" -path '*/dist/index.js' -type f -print0 2>/dev/null | sort -z | xargs -0 -r sha256sum 2>/dev/null | sed "s#$APP_DIR/##" || true
 } > "$HASHES_FILE"

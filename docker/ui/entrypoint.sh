@@ -47,7 +47,7 @@ cd /src || exit 1
 log "bun install + rebuild dists"
 bun install >>"$LOG_DIR/install.log" 2>&1
 for entry in packages/*/src/index.ts packages/mpd-ext-plugin/src/sdk.ts; do
-  case "$entry" in packages/mpd-bundle/*|packages/mpd-agent-teams-plugin/*) continue ;; esac
+  case "$entry" in packages/mpd-agent-teams-plugin/*) continue ;; esac
   out="$(dirname "$entry")/../dist/index.js"
   [ "$(basename "$entry")" = "sdk.ts" ] && out="packages/mpd-ext-plugin/dist/sdk.js"
   bun build "$entry" --target node --format esm --outfile "$out" >>"$LOG_DIR/rebuild.log" 2>&1

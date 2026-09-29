@@ -1,6 +1,6 @@
-import type * as errors from "./errors.js";
-import type * as schemas from "./schemas.js";
-import type { Class } from "./util.js";
+import type * as errors from "./errors.ts";
+import type * as schemas from "./schemas.ts";
+import type { Class } from "./util.ts";
 type ZodTrait = {
     _zod: {
         def: any;

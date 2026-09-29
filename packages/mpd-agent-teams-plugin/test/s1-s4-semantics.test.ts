@@ -18,10 +18,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the live tool
-// registrations cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")
@@ -205,10 +203,8 @@ test("S3: the scheduler's REAL readiness predicate never re-dispatches terminal 
     // Contract: a process restart must resume from persisted state, not re-run finished
     // tasks. That guarantee IS the scheduler's readiness predicate, so the test drives
     // the exported predicate itself instead of re-implementing its filter inline.
-    // The adopted agent-teams body is vendored JavaScript with no declaration file, so this lazy
-    // import of the readiness predicate stays untyped; the directive below is expected here.
-    // @ts-expect-error vendored JavaScript has no declaration file
-    const { isTaskReady } = await import("../lib/scheduler.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { isTaskReady } = await import("../lib/scheduler.ts")
     /** One task per status and dependency shape the readiness predicate must classify. */
     const tasks = [
         { id: "done", status: "completed", dependencies: [] },

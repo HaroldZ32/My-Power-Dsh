@@ -13,11 +13,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 // The adopted capability layer is vendored JavaScript with no declaration file, so the installer
 // and the two prompt constants arrive untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { TEAM_ACTIVATION_PROMPT, TEAM_MEMBER_PROMPT, installTeamCapabilities } from "../lib/capabilities.js"
-// The adopted tool-name table is vendored JavaScript with no declaration file.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { CAPTAIN_TOOL_NAMES } from "../lib/tool-names.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { TEAM_ACTIVATION_PROMPT, TEAM_MEMBER_PROMPT, installTeamCapabilities } from "../lib/capabilities.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { CAPTAIN_TOOL_NAMES } from "../lib/tool-names.ts"
 
 /** Captain-protocol body the fixture returns; the arms assert only where it appears and where not. */
 const CAPTAIN_PROMPT = "captain protocol body"

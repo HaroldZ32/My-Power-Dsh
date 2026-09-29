@@ -31,7 +31,7 @@
 | 会话作用域 | 完整（它拥有行） | 工具/角色没有（注册是进程级的） |
 | 每项保证 | 行存在、重连、分页、schema 回滚、释放 | 逐项校验并逐项拒绝；坏条目不会拖垮其余部分 |
 
-依据：code-read。路径 1 被文档明确写成一等公民且不被取代（`docs/extensions.md:24`）；路径 2 是内建行 `mpd-ext`（`packages/mpd-bundle/cordis.patch.yml:262-263`），提供 `mpdExtensions` 服务（`packages/mpd-ext-plugin/src/index.ts:457`）。
+依据：code-read。路径 1 被文档明确写成一等公民且不被取代（`docs/extensions.md:24`）；路径 2 是内建行 `mpd-ext`（`cordis.patch.yml:262-263`），提供 `mpdExtensions` 服务（`packages/mpd-ext-plugin/src/index.ts:457`）。
 
 **选安装面**：贡献必须新增 profile 行、需要安装期或依赖工作、或以版本化包形式分发给许多用户时。**选扩展接口**：一组声明目录就够用时——某个项目的 skill/flow 集合，或在不动发行包的前提下提供宿主级的 skills、flows、MCP 服务器与 roles。
 
@@ -90,9 +90,9 @@
 - **F2（中，文档）—— 没有唯一的选面判据。** 事实是齐的（`docs/extensions.md:24`、`:208-212`、`:216-223`），但没有任何一处回答“我这个贡献该放哪一面？”。代价是写错面的作者只能在发现阶段收到逐项拒绝。
 - **F3（中）—— 隔离姿态及其残留风险没有文档。** 子进程环境白名单与凭据名剔除都很强，却完全没有描述；被接受的残留（同 OS 用户的磁盘访问、作者声明的 `env` 机密、文件系统信任）也都未写明。
 - **F4（低）—— 重启不对称。** 项目面的 `skills`/`flows` 按调用重读，而 user/bundle 面的 `mcp`/`roles` 需要重启；两个事实都有文档，却从未并列出现过。
-- **F5（低，观感）—— 同一风险、两半注释。** bundle 补丁警告了“第二个 adapter”风险（`packages/mpd-bundle/cordis.patch.yml:244-260`），而行自身的注释（`packages/mpd-ext-plugin/src/index.ts:44-54`）只写了惰性解析。
+- **F5（低，观感）—— 同一风险、两半注释。** bundle 补丁警告了“第二个 adapter”风险（`cordis.patch.yml:244-260`），而行自身的注释（`packages/mpd-ext-plugin/src/index.ts:44-54`）只写了惰性解析。
 - **F6（中）—— 证据新鲜度。** 有八个证据目录早于当前扩展代码（`c239407`）：`mcp-bridge-framing`、`mcp-bridge-gates`、`registered-tool-schemas`、`sanitizer-crosscheck`、`roles-wiring`（×2）、`v0.9.1-defect-fixes`、`extensions-repair/t16-pins-and-plane-guard`、`mpd-ext-repair/roles-report`。在未重跑之前，它们都不能支撑现状断言。
-- **F7（低）—— 一个证据检查器过度声称。** `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs:40-49` 打印“文档引用的片段与随包示例逐字一致”，却只探测了 skill 与 flow 字段，于是给它放行的字节里其实还带着 §5.3/§5.4 的漂移（即下文 D4/D5）。
+- **F7（低）—— 一个证据检查器过度声称。** `evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.ts:40-49` 打印“文档引用的片段与随包示例逐字一致”，却只探测了 skill 与 flow 字段，于是给它放行的字节里其实还带着 §5.3/§5.4 的漂移（即下文 D4/D5）。
 - **F8（低，本波刻意豁免）—— lifecycle lane 仍叙述修复前的预期。** `skills/dsh-qa/scripts/extension-lifecycle.ts:35-42` 仍写着“This wave's expectation is a RED … THE FIX IS t11's”，其打包分支仍返回 `greenOwner: "t11"`（`:386`）。这是刻意豁免而非遗漏：技能语料库每波只有一个写入者，第二次改动 `skills/**` 会强制第二次 `VENDOR_LOCK.json` 重新钉版，而本波只保留一次（AGENTS.md §9/§11）——且这一次已经用在 mcp-bridge schema 分支的修正上（`evidence/extensions/t13-repair/20260916T045324Z/`）。此处记录，供下一波并入其唯一一次重新钉版。
 - **F9（低，同属豁免家族）—— 某一行引用的并不是该分支的判据。** `skills/dsh-qa/SKILL.md:77` 引用 `extension-lifecycle.ts:385` 来支撑“the case exits 0”，但该分支的 `ok` 是 `packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red)`（`extension-lifecycle.ts:377`），在 GREEN 与 RED 两种状态下都为 TRUE——因此退出码 0 并不由打包树是否为 GREEN 决定。属一次单文件跟修 + 本波唯一一次重新钉版。
 - **F10（低）—— 子进程 stderr 片段这一条没有任何 lane 覆盖。** 没有 lane 断言桥的状态报告里的“截断后的子进程 stderr 片段”；两条 lane 里仅有的 `stderr` 引用是 fixture 自己的错误写出（`extension-mcp-bridge.ts:121`）与 CLI 探针的尾部（`extension-lifecycle.ts:135`、`:335`）。该条款目前只有代码与单元测试支撑。
@@ -106,7 +106,7 @@
 - **P1 —— 在指南里补一条选面判据**。路径：`docs/extensions.md` §4 与其 zh-CN 孪生文件。理由：这是贡献者最常犯的错误（F2）；材料都已存在，只差归到一处。工作量：小。
 - **P1 —— 把子进程环境隔离姿态及其已接受的残留写进文档。** 路径：`docs/extensions.md` §5/§10 与 zh-CN 孪生文件。理由：一项已实现的长处目前不可见，而残留（子进程能从磁盘读 `~/.dsh`、作者声明的 `env` 机密、文件系统信任）需要一个明确的接受/拒绝决定。工作量：小到中。
 - **P2 —— 用一句话把两种存活性并列。** 路径：`docs/extensions.md:525` 与 zh-CN 孪生文件。理由：消除 F4 带来的意外感。工作量：小。
-- **P2 —— 让 adapter 挂载风险的两半注释互相引用。** 路径：`packages/mpd-bundle/cordis.patch.yml:244-260`、`packages/mpd-ext-plugin/src/index.ts:44-54`。理由：同一个事实目前被拆在两条注释里。工作量：极小（注释改动，因此属于代码任务）。
+- **P2 —— 让 adapter 挂载风险的两半注释互相引用。** 路径：`cordis.patch.yml:244-260`、`packages/mpd-ext-plugin/src/index.ts:44-54`。理由：同一个事实目前被拆在两条注释里。工作量：极小（注释改动，因此属于代码任务）。
 - **P2 —— 淘汰或重跑过期证据目录**（F6），使证据索引不再包含 `c239407` 之前的断言。路径：`evidence/extensions/**`。理由：读者无法分辨哪些是现状断言、哪些已被取代。工作量：中。
 - **P2 —— 给 R11 一个测试套件归宿**（F11）。路径：`skills/dsh-qa/`（新增一个 case，或在既有 lane 中加一个分支）+ `.mpd/plans/dsh-tui-edition.md`（撤下那段命令式散文）。理由：只活在计划文档里的类级守卫离失传只差一次编辑，而该类已经复发四次（打包器的闭包检查会在每次打包时拦住“被挂载行”那一半，但没有任何 CI 在跑 `PLUGIN_PKGS` 相等性检查）。工作量：小——**但并非零成本：测试套件归宿意味着改动 `skills/dsh-qa/**`，因此必须在同一次改动中对 `VENDOR_LOCK.json` 重新钉版**（与 F8/F9 引用的是同一条“每波只钉一次”的纪律），所以它必须搭上某一波的唯一一次重新钉版。
 
@@ -119,7 +119,7 @@
 - **本波已修复（t17，t18 复核 PASS）**——`docs/extensions.md:531-534` 与 `docs/extensions.zh-CN.md:423` 曾声称被拒的 role 只有名册侧报告，且“让两侧一致属于后续项”。该后续项已关闭：两侧都会报告（`registry.ts:285-326`、`test/core.test.ts:1085-1090`）。该条在修订版 sha256 `541b86fe…`（EN）/ `396eef30…`（zh-CN）时修正；随后 t17 把同一主题扩展到 §6 的拒绝表行（`docs/extensions.md:394`），t18 的 PASS 锚定在由此得到的修订版上（`f860593a…` / `be0a8814…`）。它不是开放项。
 - **本波已修正（t15，t16 复核 PASS；其 T16-F1 措辞问题由 t19 关闭）**——`docs/development.md:112` 与 `docs/development.zh-CN.md:105` 曾把 `extension-isolation` 当作第三条 case 通道。它是两个真实 case 共同引用的共享证据辅助模块，且刻意不是一个 case 行（`skills/dsh-qa/SKILL.md:92`）；它**没有 lane 模式**——不带 `--self-test` 调用时什么都不做并以 0 退出——唯一的离线证明是自身的 `--self-test`。
 - **已修复，而非推迟（t13，t14 复核 PASS）**——两项 `skills/**` 条目，任何文档任务都碰不得，因为技能语料库每波只有一个写入者，且其 `VENDOR_LOCK.json` 的 `treeSha` 是阻塞门（AGENTS.md §9/§11）：`skills/dsh-qa/SKILL.md` 的扩展行不再承诺一条“必须为红”的打包分支，桥 lane 的 `schema` 分支现在断言实际发布的 keep-or-drop 规则。同一次改动携带了本波唯一一次重新钉版（`9e643d07… → 7a48fdad…`）。
-- **仅报告、未修复**——`evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs:40-49`（F7）：它打印的结论比它实际探测的范围更宽。把它扩展到 `mcp`/`role` 片段字段是一次函数级改动，属证据负责人。
+- **仅报告、未修复**——`evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.ts:40-49`（F7）：它打印的结论比它实际探测的范围更宽。把它扩展到 `mcp`/`role` 片段字段是一次函数级改动，属证据负责人。
 
 ## 9. 未验证项 / 开放问题
 
@@ -179,7 +179,7 @@ node scripts/verify-docs-parity.ts
 |---|---|---|---|
 | F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:59-100`）与（`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:593`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 —— 同一个隐患被写成两处半截注释 | **已修复** | （`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:62`）的唯一规范注释，`packages/mpd-roles-plugin/src/index.ts` 改为指向它而不是复述 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
-| F7 —— 一个证据检查器宣称过宽 | **已修复** | 修正后的探测器 `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs`（新目录；`evidence/mpd-ext-debranding/20260915T074904Z/` 按字节保持原样，作为那次窄探测的记录） | `evidence/extensions/debranding-probe/20260916T061807Z/` |
+| F7 —— 一个证据检查器宣称过宽 | **已修复** | 修正后的探测器 `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.ts`（新目录；`evidence/mpd-ext-debranding/20260915T074904Z/` 按字节保持原样，作为那次窄探测的记录） | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 —— R11 这类断言没有测试套件归属 | **已修复** | `scripts/verify-pack-closure.ts`——单独运行、解析打包器真实的列表、并在临时夹具上重放红色——已接入 `package.json` 的 `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
 | F8 —— lifecycle lane 仍在叙述修复前的预期 | **已修复** | `skills/dsh-qa/scripts/extension-lifecycle.ts`：打包分支的叙述改为当前不变量，`greenOwner: "t11"` 已删除 | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/`（真实 lane 运行：`result.json` + `output.log`），并在 `…/t8-skills-pass-summary.json` 汇总 |
 | F9 —— 某一行的引用并不是真正把关该分支的条件 | **已修复** | 分支的 `ok` 现在是纯谓词 `packedStateOk()`（位于 `skills/dsh-qa/scripts/extension-lifecycle.ts`，提示 `:412`、使用点 `:383`），并由 `packedNegativeDriver()`（`:435`）在四棵夹具打包树上证明其可证伪；`skills/dsh-qa/SKILL.md` 改为引用这些锚点，不再写旧的“exits 0 (`:385`)” | `evidence/extensions/extension-lifecycle/2026-09-16T06-31-40.371Z/` —— `steps.packed.negativeControl`：`falsifiable: true`、`packerExitGated: true`，三棵破损夹具树 `ok: false` |

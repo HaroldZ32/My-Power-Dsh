@@ -26,7 +26,7 @@
 // and `@deepseek-ai/dsh-agent-preset-registry` holds only the deployment
 // `default`. This bundle ships those two rows in TWO patch files, declared as an
 // ARRAY by the root manifest's `dsh.bundle.patch`:
-//   packages/mpd-bundle/cordis.patch.yml   id-targets `agent-preset-registry` -> default: mpd
+//   cordis.patch.yml   id-targets `agent-preset-registry` -> default: mpd
 //   presets/mpd.patch.yml                  the `preset-mpd` row + its inline child list
 // Every path below is therefore DERIVED from that one declaration (the same
 // declaration the loader reads), never from a hardcoded file name.
@@ -433,7 +433,7 @@ type SchemaState =
 /**
  * The installed schema of one row-owned package, resolved through its own entry point.
  * @param root The installed harness root whose `node_modules` is read.
- * @param packageName The bare package name whose `lib/index.js` exports a schema.
+ * @param packageName The bare package name whose `lib/index.ts` exports a schema.
  * @param cache The per-run memo, so one package is imported at most once.
  * @returns Whether that package's schema resolved, and the schema itself when it did.
  */
@@ -444,7 +444,7 @@ async function loadSchema(root: string, packageName: string, cache: Map<string, 
   // "unresolved" (no installed package) is a hole in the audit; "schema-free"
   // (a row whose plugin declares no Config at all) is a legitimate answer.
   let state: SchemaState = { kind: "unresolved" }
-  // The package's ESM entry point, the file its `lib/index.js` conventionally is.
+  // The package's ESM entry point, the file its `lib/index.ts` conventionally is.
   const entry = join(root, "node_modules", packageName, "lib", "index.js")
   if (existsSync(entry)) {
     state = { kind: "schema-free" }

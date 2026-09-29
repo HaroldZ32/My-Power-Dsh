@@ -3,7 +3,7 @@
 // channel that asserts THE SHIPPED USER PATH, not only the state primitives.
 //
 // THE F-1 DEFECT CLASS, pinned here so it cannot come back:
-//   The first version of this case imported `lib/state.js` and called
+//   The first version of this case imported `lib/state.ts` and called
 //   `appendMailboxDeduped` / `clearMailboxToWatermark` / `decideInterjection` DIRECTLY.
 //   Every assertion was green while `agent_teams_send_message` — the tool a user
 //   actually calls — still appended a SECOND record for the second identical send and
@@ -36,7 +36,7 @@
 //    team record and drive agent_teams_send_message / agent_teams_mailbox_clear /
 //    agent_teams_interject_* through the real tool + scheduler surface, counting
 //    deliveries on `ctx.subagents.prompt` (the member-queue seam `deliverToMember`
-//    itself uses); a RED arm re-runs the dedup lane against a PRE-FIX tools.js built by
+//    itself uses); a RED arm re-runs the dedup lane against a PRE-FIX tools.ts built by
 //    reverting the recorded t49 regions; `assertSessionsSandboxed` proves no session key
 //    for the real workspace was written. Never touches the real ~/.dsh.
 import { spawnSync } from "node:child_process"
@@ -52,14 +52,14 @@ import type { SessionSandboxVerdict } from "./lib/workspace-isolation.ts"
 
 /** The repository root, derived from this case's own location (`<root>/skills/dsh-qa/scripts/`). */
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-/** The adopted body's `lib/`, whose JavaScript modules every fixture lane loads. */
+/** The adopted body's `lib/`, whose `@ts-nocheck` TypeScript modules every fixture lane loads. */
 const PLUGIN_LIB: string = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib")
-/** The shipped state module the R1 surface lives in (adopted upstream JavaScript, never converted). */
-const STATE_JS: string = join(PLUGIN_LIB, "state.js")
+/** The shipped state module the R1 surface lives in (the adopted upstream body, converted to `.ts`). */
+const STATE_TS: string = join(PLUGIN_LIB, "state.ts")
 /** The shipped scheduler module whose exclusion region the predicate lanes extract. */
-const SCHEDULER_JS: string = join(PLUGIN_LIB, "scheduler.js")
+const SCHEDULER_TS: string = join(PLUGIN_LIB, "scheduler.ts")
 /** The shipped tool layer the RED arm reverts and re-loads from a copied package. */
-const TOOLS_JS: string = join(PLUGIN_LIB, "tools.js")
+const TOOLS_TS: string = join(PLUGIN_LIB, "tools.ts")
 /** The vendor lock whose `skills` fingerprint the self-test pins against the working tree. */
 const LOCK_PATH: string = join(repoRoot, "VENDOR_LOCK.json")
 /** The QA skill document whose case table must carry exactly one row for this case. */
@@ -97,10 +97,10 @@ const CRASH_SIGNATURES: readonly string[] = [
 const LOG: string[] = []
 
 /**
- * The members of the adopted `tools.js` namespace this case applies. The adopted plugin's `lib/` is
- * JavaScript with no declaration file AND every fixture loads it by a COMPUTED specifier (the
- * shipped lib, or a copied pre-fix lib for the RED arm), so this interface is the only declaration
- * TypeScript can be given for that namespace.
+ * The members of the adopted `tools.ts` namespace this case applies. The adopted plugin's `lib/` is
+ * `@ts-nocheck` TypeScript with no declaration file AND every fixture loads it by a COMPUTED
+ * specifier (the shipped lib, or a copied pre-fix lib for the RED arm), so this interface is the
+ * only declaration TypeScript can be given for that namespace.
  */
 interface AdoptedToolsModule {
   /**
@@ -125,7 +125,7 @@ interface AdoptedScheduler {
 }
 
 /**
- * The members of the adopted `scheduler.js` namespace this case applies; see `AdoptedToolsModule`
+ * The members of the adopted `scheduler.ts` namespace this case applies; see `AdoptedToolsModule`
  * for why the declaration has to be written here instead of imported.
  */
 interface AdoptedSchedulerModule {
@@ -138,7 +138,7 @@ interface AdoptedSchedulerModule {
   installTeamScheduler(ctx: FixtureContext, options: { readonly stateDir: string }): AdoptedScheduler
 }
 
-/** One mailbox record as the adopted `state.js` writes it; optional members are absent on some rows. */
+/** One mailbox record as the adopted `state.ts` writes it; optional members are absent on some rows. */
 interface MailboxRecord {
   /** The record's unique id inside its own mailbox file, which every lane asserts on. */
   readonly id: string
@@ -240,7 +240,7 @@ interface InterjectionRequest {
 }
 
 /**
- * The members of the adopted `state.js` namespace this case drives (the R1 message channel); see
+ * The members of the adopted `state.ts` namespace this case drives (the R1 message channel); see
  * `AdoptedToolsModule` for why the declaration has to be written here instead of imported. The index
  * signature exists for the surface check, which looks up export NAMES the case holds as data.
  */
@@ -456,7 +456,7 @@ interface ShippedFixture {
   readonly memberAgent: FixtureAgent
   /** The other participant, used to prove a different sender is not folded. */
   readonly askerAgent: FixtureAgent
-  /** The shipped `state.js` namespace this fixture was planted against. */
+  /** The shipped `state.ts` namespace this fixture was planted against. */
   readonly state: AdoptedStateModule
   /**
    * Invoke one registered tool as if the given agent called it.
@@ -476,7 +476,7 @@ interface ShippedFixture {
 
 /** The knobs `plantFixture` accepts, so the RED arm can plant against a copied pre-fix lib. */
 interface PlantFixtureOptions {
-  /** The `lib/` directory to load `tools.js`/`scheduler.js`/`state.js` from; defaults to the shipped one. */
+  /** The `lib/` directory to load `tools.ts`/`scheduler.ts`/`state.ts` from; defaults to the shipped one. */
   readonly libDir?: string
   /** The team id to plant under; defaults to the primitive lane's team. */
   readonly teamId?: string
@@ -504,7 +504,7 @@ interface VendorLock {
   readonly assets: Record<string, VendorLockAsset>
 }
 
-/** The outcome of consuming one `appendMailboxDeduped(...)` statement out of `tools.js`. */
+/** The outcome of consuming one `appendMailboxDeduped(...)` statement out of `tools.ts`. */
 type ConsumedCall = ConsumedCallAbsent | ConsumedCallUnterminated | ConsumedCallFound
 
 /** The stable head is absent: the shipped member send path lost its dedup wiring (a regression). */
@@ -537,7 +537,7 @@ interface ConsumedCallFound {
 
 /** The pre-fix source plus the byte counts that make the transform auditable in `result.json`. */
 interface RevertedWiring {
-  /** The reverted `tools.js` source. */
+  /** The reverted `tools.ts` source. */
   readonly source: string
   /** The byte size of each reverted piece, so the evidence shows what actually changed. */
   readonly transform: {
@@ -686,7 +686,7 @@ function extractRegion(source: string, marker: string): string | null {
  * Run the scheduler's REAL predicate body (extracted from the shipped source) in an
  * isolated module, so the exclusion is driven by code, not by a re-typed copy. The
  * region references the imported constant `INTERJECTION_KIND`; it is bound here to the
- * value the shipped `state.js` module actually exports, so a silent constant change
+ * value the shipped `state.ts` module actually exports, so a silent constant change
  * cannot keep the predicate "green" against a stale literal.
  * @param predicateSource The extracted region body.
  * @param interjectionKind The `INTERJECTION_KIND` value the shipped module exports.
@@ -771,11 +771,11 @@ async function plantFixture(workspace: string, { libDir = PLUGIN_LIB, teamId = T
   }
 
   /** The shipped tool layer, loaded by a computed specifier so the RED arm can load a copy. */
-  const toolsModule: AdoptedToolsModule = await import(join(libDir, "tools.js"))
+  const toolsModule: AdoptedToolsModule = await import(join(libDir, "tools.ts"))
   /** The shipped scheduler, loaded the same way. */
-  const schedulerModule: AdoptedSchedulerModule = await import(join(libDir, "scheduler.js"))
+  const schedulerModule: AdoptedSchedulerModule = await import(join(libDir, "scheduler.ts"))
   /** The shipped state module the tools and the scheduler both close over. */
-  const stateModule: AdoptedStateModule = await import(join(libDir, "state.js"))
+  const stateModule: AdoptedStateModule = await import(join(libDir, "state.ts"))
   toolsModule.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
   /** The installed scheduler handle every kick goes through. */
   const runtime: AdoptedScheduler = schedulerModule.installTeamScheduler(ctx, { stateDir: STATE_DIR })
@@ -803,10 +803,10 @@ async function plantFixture(workspace: string, { libDir = PLUGIN_LIB, teamId = T
 }
 
 /**
- * Build a PRE-FIX `tools.js`: the `mpd-delta` regions t49 added are reverted to the
+ * Build a PRE-FIX `tools.ts`: the `mpd-delta` regions t49 added are reverted to the
  * recorded pre-repair shape (specimens taken from the commit that introduced them, kept
  * in `evidence/omo-align/qa-shipped-path/…`), while the module keeps importing the
- * current `state.js`. This is the RED arm: the SAME scenario against the shipped path as
+ * current `state.ts`. This is the RED arm: the SAME scenario against the shipped path as
  * it was before the repair, so the positive assertion is provably not tautological.
  * The MEMBER half is addressed by its stable call head (see `MEMBER_CALL_HEAD`): the
  * member path is not region-wrapped, so it cannot be extracted like the two regions and
@@ -828,7 +828,7 @@ const MEMBER_CALL_HEAD: string = "appendMailboxDeduped(stateRoot, fresh.id, reci
  * full-statement literal. Returns `{ from, to, text }` in the source's own coordinates, or a
  * discriminated reason (`absent` = the wiring is GONE; `unterminated` = the statement shape
  * changed in a way this fixture cannot consume).
- * @param source The shipped `tools.js` source.
+ * @param source The shipped `tools.ts` source.
  * @param head The stable call head the statement is anchored by.
  * @returns The consumed statement, or the discriminated reason it could not be consumed.
  */
@@ -847,7 +847,7 @@ function consumeCallStatement(source: string, head: string): ConsumedCall {
 /**
  * Revert the t49 dedup wiring to its recorded pre-fix shape, so the RED arm can run the same
  * scenario against the shipped path as it behaved before the repair.
- * @param source The shipped `tools.js` source.
+ * @param source The shipped `tools.ts` source.
  * @returns The reverted source plus the byte counts of each replaced piece.
  */
 function revertDedupWiring(source: string): RevertedWiring {
@@ -869,10 +869,10 @@ function revertDedupWiring(source: string): RevertedWiring {
   if (memberCall.reason === "absent") {
     // DISCRIMINATION (t54): an ABSENT anchor is not a fixture that needs re-pinning — it means the
     // shipped member send path LOST its dedup wiring, i.e. the capability regressed. Say that.
-    fail("the member send path LOST its dedup wiring: `" + MEMBER_CALL_HEAD + "…` is not present in tools.js, so the shipped member path no longer folds duplicate sends — restore/re-materialize the wiring (the region `send-dedup-wiring` is the captain path; the member path is currently UN-REGIONED), then re-run. This is a REGRESSION, not a fixture to re-pin.")
+    fail("the member send path LOST its dedup wiring: `" + MEMBER_CALL_HEAD + "…` is not present in tools.ts, so the shipped member path no longer folds duplicate sends — restore/re-materialize the wiring (the region `send-dedup-wiring` is the captain path; the member path is currently UN-REGIONED), then re-run. This is a REGRESSION, not a fixture to re-pin.")
   }
   if (memberCall.reason === "unterminated") {
-    fail("cannot build the pre-fix arm: the member dedup call at tools.js:" + memberCall.line + " has no `);` terminating its statement, so the RED arm cannot be consumed from the shipped source (the transform refuses to guess where the statement ends)")
+    fail("cannot build the pre-fix arm: the member dedup call at tools.ts:" + memberCall.line + " has no `);` terminating its statement, so the RED arm cannot be consumed from the shipped source (the transform refuses to guess where the statement ends)")
   }
   /** The indentation of the consumed statement's own line, re-applied to the pre-fix body. */
   const indent: string = (source.slice(memberCall.from).match(/^[ \t]*/) ?? [""])[0]
@@ -886,7 +886,7 @@ function revertDedupWiring(source: string): RevertedWiring {
   /** The source as the transform edits it, one replacement at a time. */
   let out: string = source
   if (!out.includes(captainRegion) || !out.includes(guardRegion)) {
-    fail("cannot build the pre-fix arm: a reverted REGION is not present verbatim in tools.js")
+    fail("cannot build the pre-fix arm: a reverted REGION is not present verbatim in tools.ts")
   }
   out = out.replace(captainRegion, captainOld)
   out = out.replace(/\n\s*\.\.\.folded \? \{ foldedDuplicate: true, dupCount: message\.dupCount \} : \{\},/, "")
@@ -917,24 +917,24 @@ function revertDedupWiring(source: string): RevertedWiring {
 function selfTest(): void {
   /** This case's own source, so the arm can assert it still drives the shipped path. */
   const caseSource: string = readFileSync(fileURLToPath(import.meta.url), "utf8")
-  if (!existsSync(STATE_JS) || !existsSync(SCHEDULER_JS) || !existsSync(TOOLS_JS)) fail("adopted plugin lib missing")
+  if (!existsSync(STATE_TS) || !existsSync(SCHEDULER_TS) || !existsSync(TOOLS_TS)) fail("adopted plugin lib missing")
   /** The shipped R1 message channel, read as text. */
-  const stateSrc: string = readFileSync(STATE_JS, "utf8")
+  const stateSrc: string = readFileSync(STATE_TS, "utf8")
   /** The shipped scheduler, read as text so its exclusion region can be parsed. */
-  const schedSrc: string = readFileSync(SCHEDULER_JS, "utf8")
+  const schedSrc: string = readFileSync(SCHEDULER_TS, "utf8")
   /** The shipped tool layer, read as text so the send wiring and RED arm can be checked. */
-  const toolsSrc: string = readFileSync(TOOLS_JS, "utf8")
+  const toolsSrc: string = readFileSync(TOOLS_TS, "utf8")
 
   // (a) the R1 surface exists and carries the archive-first marker.
-  if (!stateSrc.includes("#region mpd-delta message-channel-r1")) fail("state.js lost the message-channel-r1 region")
+  if (!stateSrc.includes("#region mpd-delta message-channel-r1")) fail("state.ts lost the message-channel-r1 region")
   for (const name of [
     "appendMailboxDeduped", "clearMailboxToWatermark", "readLiveMailbox",
     "enqueueInterjection", "readPendingInterjections", "expireInterjections", "decideInterjection",
   ]) {
-    if (!new RegExp("export async function " + name + "\\b").test(stateSrc)) fail("state.js no longer exports " + name)
+    if (!new RegExp("export async function " + name + "\\b").test(stateSrc)) fail("state.ts no longer exports " + name)
   }
   for (const name of ["MAILBOX_DEDUP_WINDOW_MS", "INTERJECTION_TTL_MS", "INTERJECTION_QUEUE", "INTERJECTION_KIND"]) {
-    if (!new RegExp("export const " + name + "\\b").test(stateSrc)) fail("state.js no longer exports " + name)
+    if (!new RegExp("export const " + name + "\\b").test(stateSrc)) fail("state.ts no longer exports " + name)
   }
   if (!/ttl[^\n]*30 \* 60 \* 1000/i.test(stateSrc)) {
     /** The declared TTL assignment, or `null` when the constant is not spelled as an assignment. */
@@ -1060,7 +1060,7 @@ async function runReal(): Promise<void> {
   mkdirSync(outDir, { recursive: true })
 
   /** The shipped state module, asserted to carry every R1 export below. */
-  const state: AdoptedStateModule = await import(STATE_JS)
+  const state: AdoptedStateModule = await import(STATE_TS)
   /** The R1 exports and constants the case requires before it measures anything. */
   const requiredExports = [
     "appendMailboxDeduped", "clearMailboxToWatermark", "readLiveMailbox", "readMailbox", "readUnreadMailbox",
@@ -1087,13 +1087,13 @@ async function runReal(): Promise<void> {
   /** HEAD before the settle window. */
   const rev0: string = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim()
   /** The two R1 files' hashes before the settle window, in `[state, scheduler]` order. */
-  const hashes0: string[] = [STATE_JS, SCHEDULER_JS].map(sha256Of)
-  LOG.push("settleWait: " + SETTLE_MS + " ms (HEAD " + rev0 + ", state.js " + hashes0[0].slice(0, 16) + ")")
+  const hashes0: string[] = [STATE_TS, SCHEDULER_TS].map(sha256Of)
+  LOG.push("settleWait: " + SETTLE_MS + " ms (HEAD " + rev0 + ", state.ts " + hashes0[0].slice(0, 16) + ")")
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
   /** HEAD after the settle window, which must equal `rev0`. */
   const rev1: string = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim()
   /** The two R1 files' hashes after the settle window, which must equal `hashes0`. */
-  const hashes1: string[] = [STATE_JS, SCHEDULER_JS].map(sha256Of)
+  const hashes1: string[] = [STATE_TS, SCHEDULER_TS].map(sha256Of)
   /** Whether HEAD and both R1 files held still across the window. */
   const settled: boolean = rev0 === rev1 && hashes0[0] === hashes1[0] && hashes0[1] === hashes1[1]
   steps.settled = { ok: settled, head: rev1, stateSha: hashes1[0], schedulerSha: hashes1[1] }
@@ -1204,7 +1204,7 @@ async function runReal(): Promise<void> {
   // that failure mode instead of inventing a guard the original never had.
   /** The shipped predicate, assembled from the scheduler's extracted exclusion region. */
   const shippedPredicate: DeliverablePredicateModule = await import(buildDeliverablePredicate(
-    extractRegion(readFileSync(SCHEDULER_JS, "utf8"), "interjection-not-auto-delivered")!,
+    extractRegion(readFileSync(SCHEDULER_TS, "utf8"), "interjection-not-auto-delivered")!,
     state.INTERJECTION_KIND,
   ))
 
@@ -1268,11 +1268,11 @@ async function runReal(): Promise<void> {
   const redWs: string = join(ws, "shipped-red")
   mkdirSync(redWs, { recursive: true })
   // The pre-fix module keeps the SAME runtime closure (sibling modules + `_deps`) as the
-  // shipped one, so the closure is copied beside it and only `tools.js` is replaced.
+  // shipped one, so the closure is copied beside it and only `tools.ts` is replaced.
   cpSync(join(repoRoot, "packages", "mpd-agent-teams-plugin"), redWs, { recursive: true })
-  /** The shipped `tools.js` reverted to its recorded pre-fix shape. */
-  const prefix: RevertedWiring = revertDedupWiring(readFileSync(TOOLS_JS, "utf8"))
-  writeFileSync(join(redWs, "lib", "tools.js"), prefix.source)
+  /** The shipped `tools.ts` reverted to its recorded pre-fix shape. */
+  const prefix: RevertedWiring = revertDedupWiring(readFileSync(TOOLS_TS, "utf8"))
+  writeFileSync(join(redWs, "lib", "tools.ts"), prefix.source)
   /** The red lane's fixture, planted against the reverted copy. */
   const red = await plantFixture(redWs, { libDir: join(redWs, "lib"), teamId: TEAM + "-red" })
   for (let i = 0; i < 3; i += 1) await red.call("agent_teams_send_message", sendArgs)
@@ -1604,7 +1604,7 @@ async function runReal(): Promise<void> {
   // The region is asserted present for the same reason the shipped predicate above is: a missing
   // region must throw in the builder exactly as the pre-conversion `.replaceAll` on `null` did.
   /** The scheduler's exclusion region body, re-extracted for this lane. */
-  const predicateSource: string = extractRegion(readFileSync(SCHEDULER_JS, "utf8"), "interjection-not-auto-delivered")!
+  const predicateSource: string = extractRegion(readFileSync(SCHEDULER_TS, "utf8"), "interjection-not-auto-delivered")!
   /** The predicate module assembled from that region. */
   const predicate: DeliverablePredicateModule = await import(buildDeliverablePredicate(predicateSource, state.INTERJECTION_KIND))
   /** The queue rows the shipped predicate is willing to auto-deliver, which must be none. */
@@ -1637,7 +1637,7 @@ async function runReal(): Promise<void> {
   //
   // ROOT CAUSE, and why this block asserts the LIBRARY's record instead of writing one
   // (review round 2, R2-F2): this case used to hand-write its own re-post under the id
-  // `ij-1-delivery` — the very id `state.js decideInterjection` had just written. The two
+  // `ij-1-delivery` — the very id `state.ts decideInterjection` had just written. The two
   // ids collided, the requester inbox held TWO records, and the `length === 1` assertion
   // failed. The library record is the production behaviour; a case that fabricates the
   // record it then counts proves nothing about the shipped path.

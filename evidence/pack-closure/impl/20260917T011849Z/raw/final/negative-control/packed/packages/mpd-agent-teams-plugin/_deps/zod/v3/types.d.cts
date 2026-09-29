@@ -1,11 +1,11 @@
-import { type IssueData, type StringValidation, type ZodCustomIssue, ZodError, type ZodErrorMap } from "./ZodError.cjs";
-import type { enumUtil } from "./helpers/enumUtil.cjs";
-import { errorUtil } from "./helpers/errorUtil.cjs";
-import { type AsyncParseReturnType, INVALID, type ParseContext, type ParseInput, type ParseParams, type ParseReturnType, ParseStatus, type SyncParseReturnType } from "./helpers/parseUtil.cjs";
-import type { partialUtil } from "./helpers/partialUtil.cjs";
-import type { Primitive } from "./helpers/typeAliases.cjs";
-import { util, type objectUtil } from "./helpers/util.cjs";
-import type { StandardSchemaV1 } from "./standard-schema.cjs";
+import { type IssueData, type StringValidation, type ZodCustomIssue, ZodError, type ZodErrorMap } from "./ZodError.cts";
+import type { enumUtil } from "./helpers/enumUtil.cts";
+import { errorUtil } from "./helpers/errorUtil.cts";
+import { type AsyncParseReturnType, INVALID, type ParseContext, type ParseInput, type ParseParams, type ParseReturnType, ParseStatus, type SyncParseReturnType } from "./helpers/parseUtil.cts";
+import type { partialUtil } from "./helpers/partialUtil.cts";
+import type { Primitive } from "./helpers/typeAliases.cts";
+import { util, type objectUtil } from "./helpers/util.cts";
+import type { StandardSchemaV1 } from "./standard-schema.cts";
 export interface RefinementCtx {
     addIssue: (arg: IssueData) => void;
     path: (string | number)[];

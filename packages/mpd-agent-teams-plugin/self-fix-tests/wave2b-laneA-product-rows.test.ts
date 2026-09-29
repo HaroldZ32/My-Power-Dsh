@@ -20,24 +20,17 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { registerAgentTeamsTools } from "../lib/tools.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { isTaskReady } from "../lib/scheduler.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { isQualityKind, taskKindOf } from "../lib/quality-gates.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { isTaskReady } from "../lib/scheduler.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { isQualityKind, taskKindOf } from "../lib/quality-gates.ts"
 // Imported as a NAMESPACE on purpose: the pre-fix revision does not export the new symbols yet, and
 // a module-load error is not an arm failing — the driver must RUN on both sides so the same
 // assertions produce the red side and the green side.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import * as types from "../lib/types.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import * as types from "../lib/types.ts"
 
 /** The overridable fields of one task fixture. */
 interface TaskOverrides {

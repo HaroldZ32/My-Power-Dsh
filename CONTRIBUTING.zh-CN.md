@@ -68,7 +68,7 @@ bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
 | 路径 | 存放内容 |
 |---|---|
 | `packages/` | 每个插件包一个目录（`src/`、已提交的 `dist/`、双语 `README` 对） |
-| `packages/mpd-bundle/cordis.patch.yml` | bundle patch：全部插件行、MCP 行与侧边栏行 |
+| `cordis.patch.yml` | bundle patch：全部插件行、MCP 行与侧边栏行 |
 | `presets/mpd.patch.yml` | `mpd` preset 行 |
 | `scripts/` | 各类关卡、打包器、安装器与扩展 CLI |
 | `skills/` | 随包提供的 skill 语料库（含 `skills/dsh-qa`） |

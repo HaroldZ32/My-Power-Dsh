@@ -750,9 +750,9 @@ export async function selfTest(): Promise<boolean> {
 
   // The real cordis waterfall: the retired shape must veto, the fixed shape must not.
   try {
-    // The vendored cordis build, loaded by ABSOLUTE PATH. The cast is unavoidable: the specifier
+    // The vendored cordis lib, loaded by ABSOLUTE PATH. The cast is unavoidable: the specifier
     // is a runtime path static analysis cannot resolve, so its surface is asserted here instead.
-    const cordis = await import(join(REPO, "packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js")) as CordisModule
+    const cordis = await import(join(REPO, "packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts")) as CordisModule
     // The fallback decision a composed waterfall must produce when no listener vetoes.
     const FALLBACK = { kind: "enter", messages: ["claimed-user-message"] }
     /**
@@ -781,7 +781,7 @@ export async function selfTest(): Promise<boolean> {
       "the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision (" + JSON.stringify(retired) + ")")
     add("C8", fixed?.kind === "enter" && Array.isArray(fixed?.messages),
       "the fixed shape (`return next()`) composes the fallback decision unchanged (" + JSON.stringify(fixed) + ")")
-    checks.push({ id: "C9", ok: true, detail: "the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js" })
+    checks.push({ id: "C9", ok: true, detail: "the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.ts" })
   } catch (error) {
     checks.push({ id: "C7", ok: false, detail: "the cordis waterfall control could not run: " + errorMessage(error) })
   }

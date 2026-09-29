@@ -125,7 +125,7 @@ staged**；captain 只在工作确实需要团队时自行用官方
 当时禁止重命名下列名称；**允许新增**。下面的团队条目描述的是已退役的插件，作为该波次的记录保留。
 
 - 斜杠指令：`/agent-teams`、`/agent-teams-mpd`（来自 `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  与 `profileCommandName('mpd')`，`lib/command.js:3,24-34,95-111`）—— **随插件退役；随包会话中
+  与 `profileCommandName('mpd')`，`lib/command.ts:3,24-34,95-111`）—— **随插件退役；随包会话中
   不存在 `/agent-teams` 命令**
 - 工具：团队工具全套 —— **随插件退役；团队工作跑在官方的 `spawn_teammate` / `team_*`
   工具上**
@@ -140,8 +140,8 @@ AGENTS.md §1 中列出。
 
 | Id | 文件 | 区域 |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释（已退役 —— 不存在该行） |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本（保留代码，未挂载） |
+| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释（已退役 —— 不存在该行） |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本（保留代码，未挂载） |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` 段与 sizing doctrine 的位置（已退役路径；预设现在位于 `presets/mpd.patch.yml`） |
 | `L4` | `packages/mpd-bundle/README.md` | 整个 `Session-start team gate (binding)` 节 |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | 整个 `会话启动团队门（强制）` 节（与 `L4` 同提交） |
@@ -151,7 +151,7 @@ AGENTS.md §1 中列出。
 | `L9` | `AGENTS.md` | 启动规则段与描述旧行为的 delta 表行 |
 
 冻结契约的 `changeLocations.items` 为准，共列 **10** 项：上表之外还有
-`packages/mpd-agent-teams-plugin/lib/index.js`（config schema 与解析后的默认值）与
+`packages/mpd-agent-teams-plugin/lib/index.ts`（config schema 与解析后的默认值）与
 `packages/mpd-agent-teams-plugin/self-fix-tests/**`（仅当 lib 行为体在已注册的 `mpd-delta`
 区域内改动时）。bundle 的 EN/ZH 两个 README 在该列表中计为两项。
 
@@ -184,9 +184,10 @@ AGENTS.md §1 中列出。
 | 锚点 | sha256 |
 |---|---|
 | `evidence/omo-align/requirements/frozen-contract.json` | `09949c8095d7ccd533329b114a2ef22bad1ce81bd24338240e68cfd0fd66be41` |
-| `packages/mpd-agent-teams-plugin/lib/session-start.js` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
-| `packages/mpd-agent-teams-plugin/lib/state.js` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
+| `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `8cfaef47e9959ef7def01003640f768ff4befa50e9c202ff692a0629ca0a2aa6` |
+| `packages/mpd-agent-teams-plugin/lib/state.ts` | `751a4c1eaf1714d37a45baa8c0a83895ee8e2a487f28574d02fd445cd1b8b825` |
 | `evidence/omo-parity-rate/raw/prompts.jsonl` | `123dca67e738f85e08a0043c6a33a686d1e91e31e9dbe0568437437414e5f9b5` |
+| （历史）`packages/mpd-agent-teams-plugin/lib/{session-start,state}.ts` | 上面两行 pin 是**历史锚点**，不是当前值：TypeScript 转换波次把这两个文件由 `.js` 改名为 `.ts`，并为 adopted body 加了首行 `@ts-nocheck`，因此今天的字节**有意**不同。当前值：`session-start.ts` `f6f73d0b4248141bf5c2e8305b0b26a935460fbfd2dc909d552ba39dad82d920`，`state.ts` `f8c0cb5d8945cd73f92f47fdff977ba58ac0ddc6f36142a7c3e4a5b74878fe4d`（`evidence/ts-cordis-conformance/`）。 |
 
 | 门禁 | 命令 | 状态 |
 |---|---|---|

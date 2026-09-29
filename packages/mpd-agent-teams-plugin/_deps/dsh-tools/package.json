@@ -11,30 +11,30 @@
     "directory": "packages/core/tools"
   },
   "type": "module",
-  "main": "lib/index.js",
+  "main": "lib/index.ts",
   "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
+      "default": "./lib/index.ts"
     },
     "./invariant": {
       "types": "./lib/types/invariant.d.ts",
-      "default": "./lib/invariant.js"
+      "default": "./lib/invariant.ts"
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
-      "default": "./lib/types/types.js"
+      "default": "./lib/types/types.ts"
     },
     "./presentation": {
       "types": "./lib/types/presentation.d.ts",
-      "default": "./lib/types/presentation.js"
+      "default": "./lib/types/presentation.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/index.js",
+    "lib/index.ts",
     "lib/invariant.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts"

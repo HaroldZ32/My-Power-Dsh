@@ -4,7 +4,7 @@
 //
 // WHAT MOVED (2026-09-27, D5): the vendored agent-teams body that used to own this gate is
 // RETIRED from the composition (AGENTS.md §1) — its mount is gone, so nothing in a shipped
-// session reached `lib/session-start.js` any more. The BINDING CONTRACT survived the
+// session reached `lib/session-start.ts` any more. The BINDING CONTRACT survived the
 // retirement and is still stated in AGENTS.md §1: the marker
 // `[AgentTeams] Session-start team rule` and the frozen predicate
 // `trigger = explicit flag OR (matchedSignals >= 1)`. Its new home is
@@ -414,7 +414,7 @@ async function selfTest(): Promise<void> {
 
   // ── the wiring the live boot depends on ──
   // The bundle patch, which must mount the row that hosts the gate.
-  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   if (!/id: mpd-roles\b/.test(patch)) fail("the bundle patch no longer mounts the `mpd-roles` row — the gate has no home")
   if (/^\s*name: '@deepseek-ai\/dsh-agent-presets'\s*$/m.test(patch)) fail("the retired @deepseek-ai/dsh-agent-presets row came back")
   if (/id:\s*agent-teams\s*$/m.test(patch)) fail("the RETIRED vendored `agent-teams` row came back into the bundle patch")

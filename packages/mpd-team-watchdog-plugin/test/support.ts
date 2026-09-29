@@ -195,7 +195,7 @@ export function teamRecordOf(box: Sandbox, teamId: string): TeamRecord | undefin
  * A test that mounts the REAL adapter (`createDshAdapter(ctx)`) needs them, because the adapter
  * reaches the official plane exactly the way production does: `ctx.get("agentTeams")` for the
  * service and `ctx.get("agents")` for the registry. The services are a faithful MINIMAL fake of
- * the installed host's (`agentTeams/lib/index.js`): `tryMembership` resolves the Lead by its
+ * the installed host's (`agentTeams/lib/index.ts`): `tryMembership` resolves the Lead by its
  * Session id and a teammate by its own id, `listMembers` returns the Lead row plus the roster in
  * creation order, and `listTasks` returns the board. The ADAPTER remains the code under test.
  *

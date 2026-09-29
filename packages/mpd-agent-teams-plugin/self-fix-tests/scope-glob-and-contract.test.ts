@@ -18,13 +18,6 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
 import {
     classifyChangedPath,
     contractContradiction,
@@ -33,10 +26,10 @@ import {
     pathMatchesScope,
     repairScopeFromFindings,
     validateCreateTask,
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-} from "../lib/quality-gates.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+} from "../lib/quality-gates.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 import { applyAgentTeamsFixes, canonicalIndent } from "../../../scripts/patch-agent-teams-fixes.ts"
 
 /** One registered mpd delta region as the derived registry reports it. */
@@ -66,8 +59,8 @@ const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 
 /** Sha256 pins of the checked-in pristine upstream fixtures (fixtures/upstream/README.md). */
 const UPSTREAM_PINS: Readonly<Record<string, string>> = {
-    "tools.js": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
-    "quality-gates.js": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
+    "tools.ts": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
+    "quality-gates.ts": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
 }
 
 /**
@@ -212,7 +205,7 @@ test("DEFECT 2 fix, REAL wave-1 inputs (team mpd-default-7332aba4 t7 + t10): the
     const t7 = {
         id: "t7",
         inScope: ["packages/mpd-dsh-adapter-plugin/src/index.ts", "packages/mpd-boulder-plugin/src/**", "packages/mpd-memory-plugin/src/**"],
-        outOfScope: ["presets/**", "packages/mpd-bundle/cordis.patch.yml", "VENDOR_LOCK.json", "AGENTS.md", "README.md", "README.zh-CN.md"],
+        outOfScope: ["presets/**", "cordis.patch.yml", "VENDOR_LOCK.json", "AGENTS.md", "README.md", "README.zh-CN.md"],
         verify: ["bun test packages"],
     }
 /** The two real wave-1 findings, one of which demands an AGENTS.md edit. */
@@ -276,13 +269,13 @@ test("DEFECT 2 falsifiability: the write-task overlap guard is a real may-two-wr
 // or the applier walks the registry against a tree that lacks it and dies with ENOENT
 // (measured 2026-09-14: registering regions in members.js + profiles.js broke 13 tests).
 // Derived from the registry so this list can never go stale again.
-const SCRATCH_BASE_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
+const SCRATCH_BASE_FILES = ["command.ts", "index.ts", "quality-gates.ts", "scheduler.ts", "session-start.ts", "state.ts", "tools.ts"]
 /** The distinct `lib/` file names the delta registry covers. */
 const SCRATCH_REGISTRY_FILES = [...new Set<string>(MPD_DELTAS.map((delta: DeltaEntry): string => delta.file.split("/").pop()!))]
 /** The adopted files the scratch tree must carry: the base set plus every registered file. */
 const SCRATCH_ADOPTED_FILES = [...new Set([...SCRATCH_BASE_FILES, ...SCRATCH_REGISTRY_FILES])]
 /** Everything the scratch tree copies, including the registry itself. */
-const SCRATCH_LIB_FILES = [...new Set([...SCRATCH_ADOPTED_FILES, "mpd-deltas.js"])]
+const SCRATCH_LIB_FILES = [...new Set([...SCRATCH_ADOPTED_FILES, "mpd-deltas.ts"])]
 
 /** Copy the adopted lib + deps into a scratch root so the applier can be driven there. */
 /** Copy the adopted lib into a scratch root so the applier can be driven there. */
@@ -327,7 +320,7 @@ test("durability: the guard refuses when a delta region is missing (observed fai
 /** The scratch root this arm strips a region from. */
     const root = scratchRoot()
     try {
-        stripDeltas(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"))
+        stripDeltas(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.ts"))
         expect(() => applyAgentTeamsFixes({ root, write: false })).toThrow(/MISSING from|no longer matches this script's registered block/)
     }
     finally {
@@ -408,17 +401,43 @@ function addedLineIndices(before: string, after: string): number[] {
     return added
 }
 
-test("F2: every t4-changed line in lib/quality-gates.js sits inside a registered mpd-delta region", () => {
+test("F2: every t4-changed line in lib/quality-gates.ts sits inside a registered mpd-delta region", () => {
     // The upstream revision is the last commit that predates the mpd deltas; the
     // comparison is against it so the sweep covers EVERY behaviour-changing line
     // t4 introduced, not just the ones a verifier happened to name.
-    const upstreamText = pristineUpstream("quality-gates.js")
+    const upstreamText = pristineUpstream("quality-gates.ts")
 /** The adopted file as it stands after every mpd delta landed. */
-    const after = readFileSync(join(pluginRoot, "lib", "quality-gates.js"), "utf8")
+    const after = readFileSync(join(pluginRoot, "lib", "quality-gates.ts"), "utf8")
 /** That file's lines, so a region's span can be located by index. */
     const lines = after.split("\n")
+/** The upstream revision's lines, in the adopted file's own coordinates (see `headerShift` below). */
+    const upstreamLines = upstreamText.split("\n")
+    // This wave prepended ONE line to every adopted file: the `@ts-nocheck` header that keeps the
+    // vendored body out of type checking. It is a comment, so the prose carve-out below already
+    // forgives it, but it shifts every later line by one and the upstream lookup must undo that.
+/** How many lines the adopted file carries above its upstream counterpart. */
+    const headerShift = lines[0]?.startsWith("// @ts-nocheck") === true ? 1 : 0
+/**
+ * The line with every module-specifier extension normalised, so the source-language rename this
+ * wave applied (`.js`/`.mjs`/`.cjs` -> `.ts`/`.cts`) compares EQUAL on both sides instead of
+ * reading as an added line. The normalisation is limited to quoted strings that end in one of
+ * those extensions, so two genuinely different statements can never collide.
+ * @param line - one line of the adopted file or of its upstream counterpart.
+ * @returns the line with specifier extensions collapsed to one placeholder.
+ */
+    const normalizeSpecifierExtensions = (line: string): string => line.replace(/(["'])([^"']*?)\.(?:js|mjs|cjs|ts|cts)\1/g, "$1$2<specifier-extension>$1")
+/**
+ * Whether an added line differs from upstream ONLY by a module-specifier extension.
+ * @param index - the added line's index in the adopted file's own coordinates.
+ * @returns true when the whole line is identical once the extensions are normalised away.
+ */
+    const isSpecifierRenameOnly = (index: number): boolean => {
+/** The added line, normalised. */
+        const normalized = normalizeSpecifierExtensions(lines[index] ?? "")
+        return normalized !== "" && normalized === normalizeSpecifierExtensions(upstreamLines[index - headerShift] ?? "")
+    }
 /** The registry entries that live in this file. */
-    const regions = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/quality-gates.js"))
+    const regions = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/quality-gates.ts"))
     expect(regions.length).toBeGreaterThanOrEqual(7)
 /** Whether one line index falls strictly inside any registered region of this file. */
     const insideRegion = (index: number): boolean => regions.some((delta: DeltaEntry) => {
@@ -451,6 +470,10 @@ test("F2: every t4-changed line in lib/quality-gates.js sits inside a registered
         if (trimmed === "") return false
         if (line.includes("//#region mpd-delta ") || line.includes("//#endregion mpd-delta ")) return false
         if (insideRegion(index)) return false
+        // The wave's source-language rule rewrote every RELATIVE specifier in the adopted tree.
+        // That renames the module a specifier points at; it is not a behaviour change, so a line
+        // whose ONLY difference from its upstream counterpart is that extension is carved out.
+        if (isSpecifierRenameOnly(index)) return false
         return !(trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*") || trimmed.startsWith("*/"))
     })
     expect(uncovered.map((index) => `${index + 1}: ${lines[index]}`)).toEqual([])
@@ -475,8 +498,8 @@ test("F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a 
     try {
         // the verifier's exact scenario: quality-gates.js replaced by the upstream
         // revision (regions AND old declarations gone), tools.js + registry stay ours
-        const upstreamText = pristineUpstream("quality-gates.js")
-        writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), upstreamText)
+        const upstreamText = pristineUpstream("quality-gates.ts")
+        writeFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.ts"), upstreamText)
         // the upstream file still carries `export function pathMatchesScope`; a region
         // insertion would produce a second declaration, so the guard must refuse
         const message = healError(root)
@@ -484,7 +507,7 @@ test("F3: healing a RE-MATERIALIZED upstream file refuses instead of emitting a 
         expect(message).toMatch(/pathMatchesScope|pathMatchesScopeNormalized/)
         expect(message).toMatch(/re-materialized|fails to import/)
         // the file must NOT have been half-healed into a duplicate declaration
-        const healed = readFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js"), "utf8")
+        const healed = readFileSync(join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.ts"), "utf8")
         expect(healed).toBe(upstreamText)
         expect((healed.match(/export function pathMatchesScope/g) ?? []).length).toBe(1)
     }
@@ -498,7 +521,7 @@ test("F3: a clean (region-carrying) tree still heals successfully", () => {
     const root = scratchRoot()
     try {
 /** The scratch copy of the file whose regions are stripped. */
-        const file = join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js")
+        const file = join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.ts")
         // stripDeltas removes WHOLE regions (markers + bodies), i.e. a clean
         // upstream rematerialize with no leftover declarations
         stripDeltas(file)
@@ -506,7 +529,7 @@ test("F3: a clean (region-carrying) tree still heals successfully", () => {
         const healed = applyAgentTeamsFixes({ root, write: true })
         expect(healed.status).toBe("applied")
 /** How many regions the registry holds for this file, which the heal must re-insert. */
-        const qualityGateRegions = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/quality-gates.js")).length
+        const qualityGateRegions = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/quality-gates.ts")).length
         expect(healed.inserted.length).toBe(qualityGateRegions)
         expect(applyAgentTeamsFixes({ root, write: false }).status).toBe("already-applied")
 /** The healed file's bytes, whose single declaration is asserted below. */
@@ -524,9 +547,9 @@ test("F4: stripping every region and healing reproduces the canonical file byte-
     const root = scratchRoot()
     try {
 /** The scratch copy of the file whose regions are stripped. */
-        const file = join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.js")
+        const file = join(root, "packages/mpd-agent-teams-plugin/lib/quality-gates.ts")
 /** The canonical adoption the heal must reproduce byte for byte. */
-        const canonical = readFileSync(join(pluginRoot, "lib", "quality-gates.js"), "utf8")
+        const canonical = readFileSync(join(pluginRoot, "lib", "quality-gates.ts"), "utf8")
         stripDeltas(file)
 /** The healer's report for the stripped tree. */
         const healed = applyAgentTeamsFixes({ root, write: true })

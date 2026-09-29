@@ -154,7 +154,7 @@ const OUT: OutDir = parseOutDir(process.argv.slice(2))
 /** Absolute staging directory: the one path every copy and write below targets. */
 const outDir: string = OUT.dir
 /** The checkout's main bundle patch path, kept as the packer's visible source-path contract. */
-const devPatch: string = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
+const devPatch: string = join(repoRoot, "cordis.patch.yml")
 /** The packed package name, i.e. the specifier every decoupled row resolves through. */
 const PKG_NAME: string = "@mpd-dsh/mpd"
 /** The JS expression a packed path-bearing value is built from: the loader's own `baseUrl`. */
@@ -171,13 +171,14 @@ const BP: string = "(typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\
  * at all while `npm run pack` still exits 0 — the same silent-omission class the
  * PLUGIN_PKGS / ROOT_ASSET_DIRS comments below record.
  *
- * The MAIN patch keeps its historical packed location (`<packed>/cordis.patch.yml`)
- * so every existing packed-path consumer is untouched; an ADDITIONAL patch is
- * staged at its own repo-relative path, which is also where ROOT_ASSET_DIRS'
- * `presets` copy already puts it.
+ * The MAIN patch lives at the repository ROOT (`cordis.patch.yml`, the standard bundle
+ * layout), so its repo-relative path and its packed path are the SAME string — every
+ * packed-path consumer that used to read `<packed>/cordis.patch.yml` still does; an
+ * ADDITIONAL patch is staged at its own repo-relative path, which is also where
+ * ROOT_ASSET_DIRS' `presets` copy already puts it.
  */
-/** Repo-relative location of the main bundle patch, which keeps its historical packed name. */
-const MAIN_PATCH_REL: string = "packages/mpd-bundle/cordis.patch.yml"
+/** Repo-relative location of the main bundle patch; it coincides with its packed location. */
+const MAIN_PATCH_REL: string = "cordis.patch.yml"
 
 /**
  * Read every patch this bundle declares, from the ONE declaration the loader reads.
@@ -197,8 +198,8 @@ function declaredPatches(): DeclaredPatches {
 }
 /** The root manifest's patch declaration, read ONCE so every staging step agrees on the same set. */
 const PATCHES: DeclaredPatches = declaredPatches()
-/** Packed-relative path of one declared patch (the main patch keeps its root name). */
-function packedPatchRel(entry: DeclaredPatch): string { return entry.rel === MAIN_PATCH_REL ? "cordis.patch.yml" : entry.rel }
+/** Packed-relative path of one declared patch: the main patch's repo-relative path IS its packed path. */
+function packedPatchRel(entry: DeclaredPatch): string { return entry.rel === MAIN_PATCH_REL ? MAIN_PATCH_REL : entry.rel }
 
 /** Wrap a JS expression as a YAML `!!js` scalar, the one tag the loader evaluates. */
 function jsVal(expr: string): string { return "!!js '" + expr + "'" }
@@ -213,7 +214,7 @@ const PLUGIN_PKGS: readonly string[] = [
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
   // mpd-team-compact-plugin is MOUNTED by the bundle patch
-  // (packages/mpd-bundle/cordis.patch.yml, loader entry `mpd-team-compact`) and was
+  // (cordis.patch.yml, loader entry `mpd-team-compact`) and was
   // missing from this list, so `npm run pack` exited 0 while the packed tree omitted
   // the package and the boot died with ERR_MODULE_NOT_FOUND on that entry (measured
   // 2026-09-14 by a teammate's QA case; a checkout install was unaffected, which is
@@ -247,7 +248,7 @@ const PLUGIN_PKGS: readonly string[] = [
   // `@mpd-dsh/mpd/packages/<pkg>/dist/index.js` row of the bundle patch is listed here.
   "mpd-tui-plugin",
   // mpd-team-watchdog-plugin is MOUNTED by the bundle patch (row `mpd-team-watchdog`,
-  // packages/mpd-bundle/cordis.patch.yml:227-228, which landed AFTER this list was last
+  // cordis.patch.yml:227-228, which landed AFTER this list was last
   // touched) and was missing from it — the FOURTH occurrence of the silent-omission
   // class the comments above record for mpd-team-compact-plugin, mpd-ext-plugin and
   // mpd-tui-plugin. Unlike those three it never reached a shipped tree: the positive

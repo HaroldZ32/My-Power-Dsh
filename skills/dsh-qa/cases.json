@@ -46,7 +46,7 @@
       "script": "skills/dsh-qa/scripts/agent-teams-messaging.ts",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.ts --only=agent-teams-messaging"
+      "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.ts, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.ts --only=agent-teams-messaging"
     },
     {
       "case": "bundle-lifecycle",

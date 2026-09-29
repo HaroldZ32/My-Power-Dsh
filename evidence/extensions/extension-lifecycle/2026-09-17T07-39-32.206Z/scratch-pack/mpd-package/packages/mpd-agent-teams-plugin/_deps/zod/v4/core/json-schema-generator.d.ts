@@ -1,7 +1,7 @@
-import type * as JSONSchema from "./json-schema.js";
-import type { $ZodRegistry } from "./registries.js";
-import type * as schemas from "./schemas.js";
-import { type JSONSchemaGeneratorParams, type ProcessParams, type Seen } from "./to-json-schema.js";
+import type * as JSONSchema from "./json-schema.ts";
+import type { $ZodRegistry } from "./registries.ts";
+import type * as schemas from "./schemas.ts";
+import { type JSONSchemaGeneratorParams, type ProcessParams, type Seen } from "./to-json-schema.ts";
 /**
  * Parameters for the emit method of JSONSchemaGenerator.
  * @deprecated Use toJSONSchema function instead

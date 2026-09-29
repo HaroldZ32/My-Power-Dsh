@@ -1,11 +1,11 @@
-import * as checks from "./checks.cjs";
-import * as core from "./core.cjs";
-import type * as errors from "./errors.cjs";
-import type * as JSONSchema from "./json-schema.cjs";
-import type { StandardSchemaV1 } from "./standard-schema.cjs";
-import type { ProcessParams, ToJSONSchemaContext } from "./to-json-schema.cjs";
-import * as util from "./util.cjs";
-import { version } from "./versions.cjs";
+import * as checks from "./checks.cts";
+import * as core from "./core.cts";
+import type * as errors from "./errors.cts";
+import type * as JSONSchema from "./json-schema.cts";
+import type { StandardSchemaV1 } from "./standard-schema.cts";
+import type { ProcessParams, ToJSONSchemaContext } from "./to-json-schema.cts";
+import * as util from "./util.cts";
+import { version } from "./versions.cts";
 export interface ParseContext<T extends errors.$ZodIssueBase = never> {
     /** Customize error messages. */
     readonly error?: errors.$ZodErrorMap<T>;
@@ -101,7 +101,7 @@ export interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeIn
 export interface _$ZodType<T extends $ZodTypeInternals = $ZodTypeInternals> extends $ZodType<T["output"], T["input"], T> {
 }
 export declare const $ZodType: core.$constructor<$ZodType>;
-export { clone } from "./util.cjs";
+export { clone } from "./util.cts";
 export interface $ZodStringDef extends $ZodTypeDef {
     type: "string";
     coerce?: boolean;

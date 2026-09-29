@@ -21,5 +21,17 @@
     "tests/**/*.ts",
     "templates/**/*.ts",
     "extensions/**/*.ts"
+  ],
+  "exclude": [
+    // The ADOPTED, RETIRED plugin package is vendored code: it was plain JavaScript until this wave
+    // renamed it to `.ts`, so nothing in it was ever type-checked, and its suite was written against
+    // the `any` surface an untyped import gives. Re-typing ~380 places inside adopted test bodies is
+    // a refactor nobody asked for, so the suite is declared OUT of the program (it still RUNS under
+    // `bun test`, which is how it was verified all along) while our own packages, scripts, skills,
+    // docker, tests, templates and extensions stay in it. `lib/**` needs no entry here: it is pulled
+    // in only through the ambient shim (`scripts/lib/vendored-agent-teams.d.ts`), and the renamed
+    // vendored files carry `@ts-nocheck` because they are not ours to type.
+    "packages/mpd-agent-teams-plugin/test",
+    "packages/mpd-agent-teams-plugin/self-fix-tests"
   ]
 }

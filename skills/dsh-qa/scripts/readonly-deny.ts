@@ -10,8 +10,8 @@
 // still KNOWN to the scope's restrictable set does not throw — it simply makes the restriction partly
 // inert, and the child then receives the FULL, unguarded toolset with no error anywhere. Two anchors
 // explain both behaviours: `@deepseek-ai/dsh-subagent` applies the filter only when
-// `composition.toolFilter` is defined (lib/index.js:711), while `@deepseek-ai/dsh-tools` throws only
-// for names OUTSIDE `view(scope).restrictableNames` (lib/index.js:2804) — so a stale-but-known name
+// `composition.toolFilter` is defined (lib/index.ts:711), while `@deepseek-ai/dsh-tools` throws only
+// for names OUTSIDE `view(scope).restrictableNames` (lib/index.ts:2804) — so a stale-but-known name
 // passes that check, the list is accepted, and the denial it was supposed to contribute simply never
 // takes effect. Older text in this delivery described the failure as a loud refusal; that is only one of
 // the two routes. The re-injection control lane below reproduces the silent route on real data, which is
@@ -366,7 +366,7 @@ function selfTest(): void {
   checks.push(["agent plane composes the filesystem tools that own write/edit", presets.includes("tool-fs")])
   checks.push(["agent plane composes bash (hence it must stay denied)", presets.includes("tool-bash")])
   // The bundle patch, which must mount the two MCP rows the list denies tools from.
-  const bundlePatch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundlePatch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   checks.push(["bundle mounts the ast_grep MCP row", /id: mcp-astgrep/.test(bundlePatch) && /serverName: ast_grep/.test(bundlePatch)])
   checks.push(["bundle mounts the lsp MCP row", /id: mcp-lsp/.test(bundlePatch) && /serverName: lsp/.test(bundlePatch)])
   checks.push(["bundle mounts the hashline plugin that owns mpd_hashline_edit", /mpd-hashline-plugin/.test(bundlePatch)])

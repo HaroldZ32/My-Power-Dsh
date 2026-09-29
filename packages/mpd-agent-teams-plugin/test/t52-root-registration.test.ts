@@ -1,7 +1,7 @@
 // t52 — the composition root WIRES the dormancy sweep. This is the guard for the
 // registration move: the sweep used to be installed from inside
 // `installSessionTeamPolicy`, which returns early when the team policy is off, and it now
-// lives in `lib/index.js#apply`. Nothing else in the suite would notice if that one call
+// lives in `lib/index.ts#apply`. Nothing else in the suite would notice if that one call
 // were deleted, and the capability would silently go dark — the exact "written, tested,
 // never called" class this wave exists to eliminate.
 //
@@ -12,13 +12,10 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted composition root is vendored JavaScript with no declaration file, so `apply` is
-// expected to arrive untyped instead of re-authoring upstream to type it.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { apply } from "../lib/index.js"
-// The adopted state module is vendored JavaScript with no declaration file, for the same reason.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { INTERJECTION_TTL_MS, enqueueInterjection, readInterjections } from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { apply } from "../lib/index.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { INTERJECTION_TTL_MS, enqueueInterjection, readInterjections } from "../lib/state.ts"
 
 /** State root every fixture team lives under, relative to the session workspace cwd. */
 const STATE_DIR = join(".mpd", "team")

@@ -48,7 +48,7 @@ instead of across every plugin.
 
 The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
 the adopted `agent-teams` plugin, whose bridge module
-`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js` (mpd-owned, name rule `lib/mpd-*.js`)
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts` (mpd-owned, name rule `lib/mpd-*.js`)
 builds the facade once at the top of `apply` and routes six bridged adopted files through them.
 Each method sits behind a `capabilities()` flag (one flag may cover two methods;
 `subagentRuntime` reuses the existing `subagents` flag), so the bridge degrades per seam instead
@@ -141,7 +141,7 @@ The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,
 **Adopted-plugin routing (the former boundary, closed 2026-09-19):** the adopted
 `agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is upstream MIT main code
 re-vendored on upgrades, and it reaches the harness seams through THIS adapter — via its
-mpd-owned bridge `lib/mpd-adapter-ctx.js`, which resolves the mounted `mpdDsh` lazily and
+mpd-owned bridge `lib/mpd-adapter-ctx.ts`, which resolves the mounted `mpdDsh` lazily and
 falls back warn-once when the adapter is absent (one absent line per plugin instance). Its
 local adaptations stay as they were (the `registerContinuableSetup` boot-safety guard, the
 workmate persona injection, the `mpd-delta` regions). The closure and its residual set are

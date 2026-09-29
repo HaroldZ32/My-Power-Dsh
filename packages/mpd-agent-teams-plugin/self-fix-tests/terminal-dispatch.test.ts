@@ -5,7 +5,7 @@
 // `task status cannot move from "completed" to "claimed"`.
 //
 // THE ROUTE, named from the code (not guessed): every SELECTION predicate already excludes
-// terminal work — `isTaskReady` requires `pending` (`lib/scheduler.js`, `mpd-delta
+// terminal work — `isTaskReady` requires `pending` (`lib/scheduler.ts`, `mpd-delta
 // ready-task-predicate`), `ownedOpenTask` requires `claimed`/`in_progress`, and
 // `nextCapableTask` filters through `isTaskReady`. That is exactly why the existing pin
 // (`test/s1-s4-semantics.test.mjs:144-150`) is green: it tests the PREDICATE. The measured
@@ -17,15 +17,8 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { installTeamScheduler } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
 
 /** One live-agent double the registry and the captain argument are built from. */
 interface AgentLike {
@@ -384,15 +377,14 @@ test("T-07 THE RACE: a task that becomes terminal before the wake is never carri
 
 test("T-07: the delivery-boundary re-check is REGISTERED (a re-materialize cannot silently drop it)", async () => {
     /** The derived delta registry, imported dynamically so the file still links without it. */
-    // A dynamic import cannot be covered by a directive above the statement, so the reason sits here:
-    // @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note at the top).
-    const { MPD_DELTAS } = await import("../lib/mpd-deltas.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { MPD_DELTAS } = await import("../lib/mpd-deltas.ts")
 /** The registered region ids this arm pins. */
     const ids = MPD_DELTAS.map((delta: DeltaEntry) => delta.id)
     expect(ids).toContain("mpd-delta terminal-dispatch-recheck")
     expect(ids).toContain("mpd-delta terminal-dispatch-import")
     // Both regions live in scheduler.js (the file whose delivery boundary they harden).
     for (const id of ["mpd-delta terminal-dispatch-recheck", "mpd-delta terminal-dispatch-import"]) {
-        expect(MPD_DELTAS.filter((delta: DeltaEntry) => delta.id === id).every((delta: DeltaEntry) => delta.file.endsWith("lib/scheduler.js"))).toBe(true)
+        expect(MPD_DELTAS.filter((delta: DeltaEntry) => delta.id === id).every((delta: DeltaEntry) => delta.file.endsWith("lib/scheduler.ts"))).toBe(true)
     }
 })

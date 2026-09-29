@@ -91,7 +91,7 @@ export interface DshToolDef {
 /**
  * Optional input hint advertised to capable clients.
  *
- * MEASURED against the installed harness (`dsh-commands/lib/index.js`
+ * MEASURED against the installed harness (`dsh-commands/lib/index.ts`
  * `normalizeDefinition`): `hint` must be a non-empty string and `attachments`, when
  * present, must be a boolean; a definition that fails either check throws at
  * `register()` time.
@@ -199,7 +199,7 @@ export interface DshPostDecision {
 /**
  * The `tools/pre-execute` decision the harness's own gate consumes.
  *
- * Measured in the installed harness (`dsh-tools/lib/index.js:3116`,
+ * Measured in the installed harness (`dsh-tools/lib/index.ts:3116`,
  * `types/index.d.ts:38`): the pre-execute waterfall resolves to this object and the
  * registry then reads `gate.kind` (`allow` dispatches, `ask` goes through approval,
  * `deny` is turned into an error result). A listener that returns without delegating
@@ -443,7 +443,7 @@ export interface DshTeamView {
 /**
  * The `agent/pre-step` payload, as much of it as an mpd listener depends on.
  *
- * MEASURED against the installed harness (`dsh-agent-loop/lib/index.js`
+ * MEASURED against the installed harness (`dsh-agent-loop/lib/index.ts`
  * `preStep()`): the waterfall is dispatched with `{messages: claimed, turn, step,
  * agent?, signal}` and its default decision is `{kind:'enter', messages}` — the
  * SAME payload `dsh-agent-instructions` and `dsh-compaction-basic` read. `messages`
@@ -907,7 +907,7 @@ export interface DshAdapter {
    * `bumpRevision` (=> `settings/document-updated`) BEFORE `commit`
    * (=> `settings/updated(ns,next,prev,source)`) inside one synchronous
    * `write()`/`publish()` call — MEASURED in
-   * `@deepseek-ai/dsh-settings/lib/index.js:466-467` and `:497-498` — so the
+   * `@deepseek-ai/dsh-settings/lib/index.ts:466-467` and `:497-498` — so the
    * source cannot be read at document-updated time. This seam therefore
    * COALESCES the two events per tick and calls the listener on the next
    * microtask, after both have fired, with the source of the same change.
@@ -931,7 +931,7 @@ export interface DshAdapter {
    * returns only `{get, watch, update, replace}` and removes the namespace from an internal
    * `ctx.effect`. The design's §1.3 fallback therefore governs: the base is fixed for the process
    * lifetime and the resolved value is the authority (the host's own `installSection` does the
-   * same, `dsh-settings/lib/index.js:327-350`).
+   * same, `dsh-settings/lib/index.ts:327-350`).
    */
   settingsRegister(
     namespace: string,
@@ -999,7 +999,7 @@ export interface DshAdapter {
    * NO-OP disposer and NEVER throws, so a plugin's `apply` cannot be taken down
    * while it degrades on `capabilities().commandsRegister`.
    *
-   * MEASURED in the installed harness (`dsh-commands/lib/index.js`): `register()`
+   * MEASURED in the installed harness (`dsh-commands/lib/index.ts`): `register()`
    * RETURNS the exact `() => void` effect disposer that unregisters the
    * definition, and that disposer is passed through verbatim when it is a
    * function — a stub registry may return anything (the codegraph test double
@@ -1019,7 +1019,7 @@ export interface DshAdapter {
    *
    * MEASURED against the installed harness
    * (`dsh-system-prompt/lib/types/index.d.ts` `SystemPrompt.section`) and its runtime
-   * (`dsh-agent/lib/index.js` `assembleContextFor`): the section's `text` provider is
+   * (`dsh-agent/lib/index.ts` `assembleContextFor`): the section's `text` provider is
    * re-evaluated at every assembly with `{agent, scope, signal?}`, and `section()`
    * returns the exact cordis effect disposer (a non-callable stub answer degrades to a
    * no-op). A DUPLICATE name throws inside the registry and that error is deliberately
@@ -1045,7 +1045,7 @@ export interface DshAdapter {
    * reports it.
    *
    * The listener runs AFTER `next()` resolves but still BEFORE the tool body dispatches
-   * (the harness awaits the whole waterfall before it executes, `dsh-tools/lib/index.js:3116`),
+   * (the harness awaits the whole waterfall before it executes, `dsh-tools/lib/index.ts:3116`),
    * so it sees the decision that will actually be used.
    *
    * @param listener - `(exec, decision)`; the decision is the harness's own
@@ -1130,7 +1130,7 @@ export interface DshAdapter {
    * Structural view of the tool runtime for internal tool calls.
    *
    * `execute`'s optional `agent` is forwarded verbatim as the harness execution's
-   * `exec.agent` (measured contract: `dsh-tools/lib/index.js:3025-3045` reads
+   * `exec.agent` (measured contract: `dsh-tools/lib/index.ts:3025-3045` reads
    * `exec.agent` and `:3190-3192` resolves the tool against it). It stays OPTIONAL
    * so every existing caller keeps its exact meaning: absent = no agent (the
    * pre-existing behaviour).
@@ -1343,7 +1343,7 @@ export interface DshAdapter {
    * Build ONE user-role message for SESSION INJECTION — the value
    * `agent.followup(message)` takes and the value a pre-step
    * `{kind:'enter', messages:[…]}` decision appends (in-tree precedent:
-   * `packages/mpd-agent-teams-plugin/lib/command.js`, the `/agent-teams`
+   * `packages/mpd-agent-teams-plugin/lib/command.ts`, the `/agent-teams`
    * handler, which is what makes a command actually RUN its objective instead of
    * only answering).
    *
@@ -1354,7 +1354,7 @@ export interface DshAdapter {
    * against the installed `dsh-llm/lib/types/message.d.ts`
    * (`Message = {id, role, content, source}`, `MessageId` is a brand-only
    * passthrough) and the vendored reference implementation
-   * (`_deps/dsh-llm/lib/index.js` `createUserMessage`): a fresh `id`, the
+   * (`_deps/dsh-llm/lib/index.ts` `createUserMessage`): a fresh `id`, the
    * `user` role, one `{type:'text', text}` block, and the producer tag
    * (`source.kind`). The message is frozen like the host's own constructors
    * freeze theirs.
@@ -1430,7 +1430,7 @@ export interface DshAdapter {
    * VERBATIM and THROWING — the same D9 discipline as {@link DshAdapter.startAgentTurn}
    * (a rejected steer must stay a throw, never a swallowed boolean).
    *
-   * Measured harness shape: `dsh-agent-loop/lib/index.js` `steer(input)` is
+   * Measured harness shape: `dsh-agent-loop/lib/index.ts` `steer(input)` is
    * `send(input, "next-step", true)` — an idle driver starts a turn, a running driver
    * consumes the item at its next step boundary (distinct from `followup`, which opens
    * its OWN turn). Adopted call sites: the approval notice and the captain-report steer.
@@ -1456,10 +1456,10 @@ export interface DshAdapter {
    * command handler needs, because the host runs a command "without sending the
    * command to the model", so returning `{kind:'success', text}` starts nothing.
    *
-   * MEASURED in the installed harness (`dsh-agent-loop/lib/index.js`):
+   * MEASURED in the installed harness (`dsh-agent-loop/lib/index.ts`):
    * `followup(input)` is `send(input, "next-turn", true)` — the item becomes the
    * sole ordinary message of its own turn and the driver wakes. The in-tree
-   * precedent is `packages/mpd-agent-teams-plugin/lib/command.js`, the
+   * precedent is `packages/mpd-agent-teams-plugin/lib/command.ts`, the
    * `/agent-teams` handler calling `invocation.agent.followup(createUserMessage(…))`.
    *
    * The agent's shape is read HERE ONLY: a caller passes whatever it holds (the

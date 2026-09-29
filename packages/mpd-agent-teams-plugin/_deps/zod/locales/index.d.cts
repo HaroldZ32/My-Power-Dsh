@@ -1,1 +1,1 @@
-export * from "../v4/locales/index.cjs";
+export * from "../v4/locales/index.cts";

@@ -3,17 +3,10 @@
 // two negative controls the row names (zero ready prints `none`; a busy member is not claimable).
 import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { memberCapacityView } from "../lib/tools.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { isTaskReady } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { memberCapacityView } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { isTaskReady } from "../lib/scheduler.ts"
 
 /** One member row of the capacity fixture, in the shape the view reads. */
 interface MemberRecord {
@@ -202,7 +195,7 @@ test("T-11 (3/4): NEG CONTROL — zero ready tasks prints `none`, and a BUSY mem
 test("T-11 (4/4): the view is FED by the scheduler's helper (wiring assert) and never re-implements it", () => {
     // DECLARED AS WIRING, never counted as the behavioural reading: the view's readiness answers come
     // from the scheduler's own export, which is what makes the DECISIVE equality above meaningful.
-    const source = readFileSync(new URL("../lib/tools.js", import.meta.url), "utf8")
+    const source = readFileSync(new URL("../lib/tools.ts", import.meta.url), "utf8")
 /** The registered region that owns the view, read from the vendored source. */
     const region = source.slice(source.indexOf("//#region mpd-delta member-capacity-view"), source.indexOf("//#endregion mpd-delta member-capacity-view"))
     expect(region).toContain("isTaskReady(tasks, task)")

@@ -85,7 +85,7 @@ export const SettingsSchema = z.object({
   }),
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
-  // `mpd-team-watchdog` row config in `packages/mpd-bundle/cordis.patch.yml` — those are the three
+  // `mpd-team-watchdog` row config in `cordis.patch.yml` — those are the three
   // declaration layers, and the T-18 cross-layer check reads them side by side. `warnSilenceMs`
   // moved 90 s -> 10 min and `actionOnEscalate` defaults to `warn-only` because the redesign's
   // predicate (not wall-clock silence) owns the WARN, and a hold must not latch by default;

@@ -122,8 +122,11 @@ function selfTest(): void {
   // `text.includes(...)` test select the wrong file).
   /** The declared patch that really declares the preset ROW, matched on a row line rather than a mention. */
   const preset = rewrites.find((entry) => /^\s*name: '@deepseek-ai\/dsh-agent-preset'\s*$/m.test(entry.text))
-  // The MAIN patch keeps its packed-name rewrite contract.
-  if (!main.source.includes("mpd-bundle")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the bundle patch (" + main.source + ")"); process.exit(1) }
+  // The MAIN patch is the repository-root `cordis.patch.yml`. The old `source.includes("mpd-bundle")`
+  // heuristic went obsolete when that file moved out of `packages/mpd-bundle/` — and a substring
+  // test on a path is not a proof anyway — so the first declared patch is pinned by PATH EQUALITY
+  // against the root the manifest's own declaration resolves to.
+  if (resolve(main.source) !== resolve(repoRoot, "cordis.patch.yml")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the repository-root cordis.patch.yml (" + main.source + ")"); process.exit(1) }
   if (main.text.includes("name: '@mpd-dsh/mpd'") || !main.text.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devFlavor web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
   // devFlavor must consume the packed `/node_modules/...` operand entirely: no
   // `<baseUrl>/node_modules/<abs-repo>` splice, no baseUrl concat left, and every

@@ -1,5 +1,5 @@
-import * as core from "../core/index.cjs";
-import { type ZodError } from "./errors.cjs";
+import * as core from "../core/index.cts";
+import { type ZodError } from "./errors.cts";
 export type ZodSafeParseResult<T> = ZodSafeParseSuccess<T> | ZodSafeParseError<T>;
 export type ZodSafeParseSuccess<T> = {
     success: true;

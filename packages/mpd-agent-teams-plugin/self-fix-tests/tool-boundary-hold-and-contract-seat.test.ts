@@ -2,8 +2,8 @@
 //
 //   D2  — a hold stops NEW DISPATCH only. The two TOOL-BOUNDARY hold guards that used to
 //         refuse `claim_task` / `update_task` on a held team are DELETED from the adopted
-//         `lib/tools.js`, and tools.js's copy of the `watchdog-hold-reader` region went with
-//         them (dead code once its two call sites were gone). `lib/scheduler.js` KEEPS its
+//         `lib/tools.ts`, and tools.js's copy of the `watchdog-hold-reader` region went with
+//         them (dead code once its two call sites were gone). `lib/scheduler.ts` KEEPS its
 //         own copy of the same region id — that is the half that still holds (dispatch).
 //   T-49 — `agent_teams_task_contract` is a MEMBER tool. The deny is computed in TWO places
 //         (the `CAPTAIN_TOOL_NAMES` constant in tool-names.js, spread into the spawn
@@ -24,26 +24,19 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, syml
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 // T-92 (t43): absence is asserted against the subject's COMMENT-STRIPPED text, so a comment may
 // name an identifier without reddening the pin; presence pins keep the raw text.
 import { codeOf } from "./lib-absence.ts"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { installTeamCapabilities } from "../lib/capabilities.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { spawnMember } from "../lib/members.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { CAPTAIN_TOOL_NAMES, MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "../lib/tool-names.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamCapabilities } from "../lib/capabilities.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { spawnMember } from "../lib/members.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { CAPTAIN_TOOL_NAMES, MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "../lib/tool-names.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 
 /** One live-agent double the registry and the captain argument are built from. */
 interface AgentLike {
@@ -267,11 +260,11 @@ function fixture(): Fixture {
 
 test("D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own", () => {
 /** The vendored tool module's raw bytes. */
-    const tools = readFileSync(join(libDir, "tools.js"), "utf8")
+    const tools = readFileSync(join(libDir, "tools.ts"), "utf8")
 /** Its absence-pin view, so a comment naming an identifier cannot redden the pin. */
     const toolsCode = codeOf(tools)
 /** The vendored scheduler module's raw bytes. */
-    const scheduler = readFileSync(join(libDir, "scheduler.js"), "utf8")
+    const scheduler = readFileSync(join(libDir, "scheduler.ts"), "utf8")
     for (const id of ["mpd-delta claim-task-hold-guard", "mpd-delta update-task-hold-guard"]) {
         expect(toolsCode, `${id} must be DELETED from tools.js`).not.toContain(id)
         expect(MPD_DELTAS.filter((delta: DeltaEntry) => delta.id === id), `${id} must leave the registry`).toHaveLength(0)
@@ -284,9 +277,9 @@ test("D2: the two tool-boundary guards and tools.js's reader copy are gone; sche
 /** The registry entries that own the hold-reader region. */
     const readerEntries = MPD_DELTAS.filter((delta: DeltaEntry) => delta.id === "mpd-delta watchdog-hold-reader")
     expect(readerEntries).toHaveLength(1)
-    expect(readerEntries[0].file.endsWith("scheduler.js")).toBe(true)
+    expect(readerEntries[0].file.endsWith("scheduler.ts")).toBe(true)
     // and the T-19 render change is a registered region, not an unmarked edit
-    expect(MPD_DELTAS.some((delta: DeltaEntry) => delta.id === "mpd-delta status-pause-mechanisms" && delta.file.endsWith("tools.js"))).toBe(true)
+    expect(MPD_DELTAS.some((delta: DeltaEntry) => delta.id === "mpd-delta status-pause-mechanisms" && delta.file.endsWith("tools.ts"))).toBe(true)
     expect(toolsCode).not.toContain("watchdog-hold-reader")
 })
 
@@ -329,7 +322,7 @@ test("D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold
         // here (and throw before this line).
         expect(isHeldCalls.length).toBeGreaterThan(0)
         for (const read of isHeldCalls)
-            expect(read.frame, `hold read from an unexpected frame: ${read.frame}`).toContain("scheduler.js")
+            expect(read.frame, `hold read from an unexpected frame: ${read.frame}`).toContain("scheduler.ts")
     }
     finally {
         rmSync(workspace, { recursive: true, force: true })
@@ -349,7 +342,7 @@ test("D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy mak
         // the adopted modules import the vendored closure through `../_deps/...`
         symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
 /** The scratch copy of the tool module the guard is injected into. */
-        const scratchTools = join(scratch, "lib", "tools.js")
+        const scratchTools = join(scratch, "lib", "tools.ts")
 /** The copy's bytes before the injection. */
         const source = readFileSync(scratchTools, "utf8")
 /** Offset of the claim tool's registration, which the guard is injected after. */
@@ -619,7 +612,7 @@ test("t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING 
                 cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
         symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
 /** The scratch copy of the tool module the refusal is neutralised in. */
-        const scratchTools = join(scratch, "lib", "tools.js")
+        const scratchTools = join(scratch, "lib", "tools.ts")
 /** The copy's bytes before the neutralisation. */
         const source = readFileSync(scratchTools, "utf8")
 /** The copy with the participant refusal removed. */
@@ -697,7 +690,7 @@ test("T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wa
         cpSync(libDir, join(scratch, "lib"), { recursive: true })
         symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
 /** The scratch copy of the tool module the wave-1 line is seeded into. */
-        const copyTools = join(scratch, "lib", "tools.js")
+        const copyTools = join(scratch, "lib", "tools.ts")
 /** The copy's bytes before the seeding. */
         const source = readFileSync(copyTools, "utf8")
         expect((source.match(SHIPPED_PAUSE_LINE) ?? []).length, "the shipped pause line must occur exactly once in the copy").toBe(1)

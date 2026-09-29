@@ -202,9 +202,9 @@ async function fixture(
   // The lib directory to import: a scratch copy, or the shipped one.
   const libDir = options.libDir ?? ADOPTED_LIB
   // The adopted scheduler module, imported under the unique query.
-  const schedulerModule = await import(pathToFileURL(join(libDir, "scheduler.js")).href + "?v=" + stamp)
+  const schedulerModule = await import(pathToFileURL(join(libDir, "scheduler.ts")).href + "?v=" + stamp)
   // The adopted tools module, imported under the same query.
-  const toolsModule = await import(pathToFileURL(join(libDir, "tools.js")).href + "?v=" + stamp)
+  const toolsModule = await import(pathToFileURL(join(libDir, "tools.ts")).href + "?v=" + stamp)
   toolsModule.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
   // The installed scheduler, whose kick methods the arms drive.
   const scheduler = schedulerModule.installTeamScheduler(ctx, { stateDir: STATE_DIR })
@@ -307,7 +307,7 @@ describe("T-48 — the KICK reading (frozen D-2): no delivery while held, claim/
     // A scratch copy of the adopted lib the control splices into.
     const scratch = scratchTree()
     // The copied scheduler module the control edits.
-    const schedulerPath = join(scratch.libDir, "scheduler.js")
+    const schedulerPath = join(scratch.libDir, "scheduler.ts")
     // The pre-redesign shape: the hold is never seen, so no decline site can fire.
     writeFileSync(schedulerPath, spliceOnce(
       readFileSync(schedulerPath, "utf8"),
@@ -339,7 +339,7 @@ describe("T-48 — the KICK reading (frozen D-2): no delivery while held, claim/
     // A scratch copy of the adopted lib the control splices into.
     const scratch = scratchTree()
     // The copied tools module the control edits.
-    const toolsPath = join(scratch.libDir, "tools.js")
+    const toolsPath = join(scratch.libDir, "tools.ts")
     // Its current text, spliced exactly once below.
     const source = readFileSync(toolsPath, "utf8")
     // The exact execute signature the guard is injected after.
@@ -484,7 +484,7 @@ describe("T-05 / T-79 (delivery half) — a blocked or terminal task is never de
     // A scratch copy of the adopted lib the control splices into.
     const scratch = scratchTree()
     // The copied scheduler module the control edits.
-    const schedulerPath = join(scratch.libDir, "scheduler.js")
+    const schedulerPath = join(scratch.libDir, "scheduler.ts")
     writeFileSync(schedulerPath, spliceOnce(
       readFileSync(schedulerPath, "utf8"),
       "\n        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0",
@@ -506,7 +506,7 @@ describe("T-05 / T-79 (delivery half) — a blocked or terminal task is never de
     // Build a fixture whose scheduler forces the task terminal inside the wake window.
     const anchorHook = async (libDir: string, label: string, stripRegion: boolean): Promise<Fixture> => {
       // The scheduler module this arm edits.
-      const schedulerPath = join(libDir, "scheduler.js")
+      const schedulerPath = join(libDir, "scheduler.ts")
       // The module text, region-stripped when the RED leg asks for it.
       let source = readFileSync(schedulerPath, "utf8")
       if (stripRegion) {

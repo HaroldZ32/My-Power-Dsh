@@ -11,7 +11,7 @@ bundle patch:
 ```
 
 There is **no `cordis.patch.yml` inside this package on purpose**: the bundle
-patch (`packages/mpd-bundle/cordis.patch.yml`) owns the row, and a second mount
+patch (`cordis.patch.yml`) owns the row, and a second mount
 would duplicate a loader entry id (the loader rejects duplicates outright).
 
 ## What it provides

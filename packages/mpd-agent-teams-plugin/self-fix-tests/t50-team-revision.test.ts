@@ -6,17 +6,10 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { readTeamSync, teamRevisionOf, bumpTeamRevision, createTeamDir, writeTeam } from "../lib/state.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { readTeamSync, teamRevisionOf, bumpTeamRevision, createTeamDir, writeTeam } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** One tool definition as the registration double captures it, keyed by its own name. */
 interface ToolDefinition {
@@ -247,10 +240,10 @@ test("T-06 (3/6): the CENSUS — two writers and ONE funnel, so every write path
     const writers = []
 /** How many `writeTeam(` call sites each vendored file carries. */
     const callSites = new Map()
-    for (const file of readdirSync(LIB).filter((name) => name.endsWith(".js")).sort()) {
+    for (const file of readdirSync(LIB).filter((name) => name.endsWith(".ts")).sort()) {
         // `mpd-deltas.js` is the DERIVED registry: it embeds region bodies as strings, so it mirrors
         // the writers below without being one. Every OTHER match is a real write site.
-        if (file === "mpd-deltas.js") continue
+        if (file === "mpd-deltas.ts") continue
 /** One vendored `lib/` file's source, scanned for write sites. */
         const text = readFileSync(join(LIB, file), "utf8")
         for (const line of text.split("\n")) {
@@ -263,11 +256,11 @@ test("T-06 (3/6): the CENSUS — two writers and ONE funnel, so every write path
         if (calls.length > 0) callSites.set(file, calls.length)
     }
     // MEASURED by t50: exactly TWO `team.json` write sites exist in the whole tree, both in
-    // `lib/state.js` — `createTeamDir` OPENS a record (all three call sites create a fresh team) and
+    // `lib/state.ts` — `createTeamDir` OPENS a record (all three call sites create a fresh team) and
     // `writeTeam` is the FUNNEL for every subsequent write. A THIRD writer would be a token bypass and
     // reddens here; a hand-rolled write in `members.js`/`scheduler.js`/`tools.js` cannot pass.
     expect(writers).toHaveLength(2)
-    expect(writers.every((line) => line.startsWith("state.js"))).toBe(true)
+    expect(writers.every((line) => line.startsWith("state.ts"))).toBe(true)
     expect(writers.filter((line) => line.includes("stateRoot")).length).toBeGreaterThanOrEqual(1)
     // MANY call sites: this is WHY the bump cannot live at the call sites — a token bumped at N sites
     // leaves the rest silently stale. Census MEASURED at t50 (call sites, not definition lines):
@@ -275,7 +268,7 @@ test("T-06 (3/6): the CENSUS — two writers and ONE funnel, so every write path
     // inherited "state.js 1" was the DEFINITION, corrected here by measurement.
     const total = [...callSites.values()].reduce((sum, count) => sum + count, 0)
     expect(total).toBeGreaterThanOrEqual(20)
-    expect([...callSites.keys()].every((file) => ["members.js", "scheduler.js", "tools.js", "state.js"].includes(file))).toBe(true)
+    expect([...callSites.keys()].every((file) => ["members.ts", "scheduler.ts", "tools.ts", "state.ts"].includes(file))).toBe(true)
     console.log(`[T-06] writeTeam call sites: ${[...callSites.entries()].map(([f, n]) => `${f} ${n}`).join(" / ")} = ${total} → ${writers.length} writers (1 funnel + 1 opener), both in state.js`)
 })
 

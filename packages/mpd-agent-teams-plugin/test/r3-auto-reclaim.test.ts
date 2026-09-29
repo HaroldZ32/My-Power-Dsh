@@ -12,14 +12,10 @@ import { expect, test } from "bun:test"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the plugin
-// config schema cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Config } from "../lib/index.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the staleness
-// helpers cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { DEFAULT_RECLAIM_STALE_AFTER_MS, findStaleStagedTeams, reclaimStaleStagedTeams } from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Config } from "../lib/index.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { DEFAULT_RECLAIM_STALE_AFTER_MS, findStaleStagedTeams, reclaimStaleStagedTeams } from "../lib/state.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")
@@ -166,12 +162,10 @@ test("R3: the threshold comes from config with a 1 h default", () => {
 })
 
 test("F2 (t22 finalisation): panel view and contract view agree, and a claimable dependent is not blocked", async () => {
-    // The adopted agent-teams body is vendored JavaScript with no declaration file, so these lazy
-    // imports stay untyped; each directive below is expected for its own import.
-    // @ts-expect-error vendored JavaScript has no declaration file
-    const { registerAgentTeamsTools } = await import("../lib/tools.js")
-    // @ts-expect-error vendored JavaScript has no declaration file
-    const { failedDependencyIds, taskVisualState } = await import("../lib/state.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { registerAgentTeamsTools } = await import("../lib/tools.ts")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { failedDependencyIds, taskVisualState } = await import("../lib/state.ts")
     /** The filesystem seam this arm re-imports lazily, aliased to `mk` for the fixture call. */
     const { mkdtempSync: mk } = await import("node:fs")
     /** The throwaway workspace holding the record both views read. */

@@ -4,17 +4,10 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { parsePlanSeedItems, readPlanSeedSet, PLAN_TODO_SECTION, PLANS_DIR } from "../lib/session-start.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { initializeProfileTeam, seedTaskDrafts } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { parsePlanSeedItems, readPlanSeedSet, PLAN_TODO_SECTION, PLANS_DIR } from "../lib/session-start.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { initializeProfileTeam, seedTaskDrafts } from "../lib/tools.ts"
 
 /** The team id the probe seeds and the state directory is keyed by. */
 const TEAM = "t52-plan-format"
@@ -121,7 +114,7 @@ test("T-42 (1/3): ONE plan file through BOTH paths yields the SAME task set (the
     expect(setB).toEqual(setA)
     // WIRING (declared as wiring, never counted as the behavioural reading): the DAG seed CALLS this
     // builder and can be handed a plan file, which is what makes the two paths one format.
-    const toolsSource = readFileSync(new URL("../lib/tools.js", import.meta.url), "utf8")
+    const toolsSource = readFileSync(new URL("../lib/tools.ts", import.meta.url), "utf8")
     expect(toolsSource).toContain("tasks: seedTaskDrafts(seedTemplates, seedToActual, now)")
     expect(toolsSource).toContain("readPlanSeedSet(workspaceOf(input.captain), input.planFile)")
 
@@ -157,7 +150,7 @@ test("T-42 (2/3): an ID COLLISION is REFUSED with the id named — never merged,
     expect(planSet.error).toContain('"T2"')
     // ...and the DAG seed throws on EXACTLY that refusal before anything is written (wiring assert:
     // the seed reads through this reader and refuses when it is not ok).
-    const toolsSource = readFileSync(new URL("../lib/tools.js", import.meta.url), "utf8")
+    const toolsSource = readFileSync(new URL("../lib/tools.ts", import.meta.url), "utf8")
     expect(toolsSource).toContain('throw new Error(`plan seed refused for "${input.planFile}": ${planSet.error}`)')
     // Nothing was persisted by the refused READ, and no half-seeded DAG exists to clean up.
     expect(() => readFileSync(join(stateRoot, TEAM, "team.json"), "utf8")).toThrow()

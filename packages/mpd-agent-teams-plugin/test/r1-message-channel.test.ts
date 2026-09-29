@@ -24,11 +24,8 @@ import {
   readMailbox,
   readPendingInterjections,
   readUnreadMailbox,
-  // The adopted agent-teams body is vendored JavaScript with no declaration file, so the mailbox
-  // and interjection primitives cannot be typed without re-authoring upstream; this import is
-  // expected to be untyped, and the directive below belongs on the specifier's own line.
-  // @ts-expect-error vendored JavaScript has no declaration file
-} from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+} from "../lib/state.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")
@@ -175,7 +172,7 @@ test("R1 interjection: pending requests are NOT deliverable unread (negative con
     /** The queued request, which must land pending on the interjection queue. */
     const request = await enqueueInterjection(stateRoot, TEAM, {
       id: "ij-1", from: "Senior Engineer", content: "summary: gate bug", ts: 1_000,
-      summary: "gate bug", reason: "wrong threshold", location: "lib/session-start.js:190",
+      summary: "gate bug", reason: "wrong threshold", location: "lib/session-start.ts:190",
     })
     expect(request.kind).toBe(INTERJECTION_KIND)
     expect(request.status).toBe("pending")

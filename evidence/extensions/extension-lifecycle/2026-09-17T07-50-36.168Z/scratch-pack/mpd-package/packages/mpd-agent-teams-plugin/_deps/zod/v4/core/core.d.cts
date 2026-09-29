@@ -1,6 +1,6 @@
-import type * as errors from "./errors.cjs";
-import type * as schemas from "./schemas.cjs";
-import type { Class } from "./util.cjs";
+import type * as errors from "./errors.cts";
+import type * as schemas from "./schemas.cts";
+import type { Class } from "./util.cts";
 type ZodTrait = {
     _zod: {
         def: any;

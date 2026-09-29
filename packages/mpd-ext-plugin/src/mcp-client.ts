@@ -15,7 +15,7 @@
 //                  then the `notifications/initialized` notification (no id, no reply),
 //                  then `tools/list` (cursor-paginated), then `tools/call`
 //                  — H/…/sdk/dist/esm/client/index.js:283-306 and
-//                  H/dsh-mcp-client/lib/index.js:88-105 (uncached request shapes)
+//                  H/dsh-mcp-client/lib/index.ts:88-105 (uncached request shapes)
 //   · version      MEASURED 2026-09-15 against packages/mpd-mcp-lsp/dist/cli.js:
 //                  requesting "2025-11-25" (the SDK's LATEST_PROTOCOL_VERSION,
 //                  H/…/sdk/dist/esm/types.js:2) is echoed back verbatim with
@@ -123,7 +123,7 @@ export function childEnv(
  * Derive the model-facing public name for one MCP tool.
  *
  * Byte-for-byte the harness algorithm (`publicToolName`,
- * H/dsh-mcp-client/lib/index.js:120-126): the clean case is
+ * H/dsh-mcp-client/lib/index.ts:120-126): the clean case is
  * `mcp__<serverName>__<rawName>` verbatim; any lossy transformation
  * (sanitization OR truncation) appends `_<12-hex sha256(serverName + NUL + rawName)>`
  * so two distinct MCP identities can never collapse into one public name.

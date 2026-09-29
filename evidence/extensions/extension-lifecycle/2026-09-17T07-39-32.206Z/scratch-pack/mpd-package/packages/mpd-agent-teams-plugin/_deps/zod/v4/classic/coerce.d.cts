@@ -1,5 +1,5 @@
-import * as core from "../core/index.cjs";
-import * as schemas from "./schemas.cjs";
+import * as core from "../core/index.cts";
+import * as schemas from "./schemas.cts";
 export interface ZodCoercedString<T = unknown> extends schemas._ZodString<core.$ZodStringInternals<T>> {
 }
 export declare function string<T = unknown>(params?: string | core.$ZodStringParams): ZodCoercedString<T>;

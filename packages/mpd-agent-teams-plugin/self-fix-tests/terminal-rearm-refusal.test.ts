@@ -8,9 +8,9 @@
 // accepted fixture seed (`t1`, attempt `35503430-5a3b-4306-b6f2-d38d416cb438`).
 //
 // WHY THE STATE HALF IS A PRIMITIVE AND NOT THE DELIVERY PATH: the ticket is composed under the team
-// lock and delivered after it, and the DELIVERY-boundary re-check lives in `lib/scheduler.js`
+// lock and delivered after it, and the DELIVERY-boundary re-check lives in `lib/scheduler.ts`
 // (`mpd-delta terminal-dispatch-recheck`) — lane C's file (decision D-1 of
-// `.mpd/plans/friction-p2-wave.md`: "`lib/scheduler.js` stays lane C's … the scheduler.js DELIVERY
+// `.mpd/plans/friction-p2-wave.md`: "`lib/scheduler.ts` stays lane C's … the scheduler.js DELIVERY
 // half is t10's"). What this lane owns is the ROTATION PRIMITIVE the compose calls
 // (`scheduler.js`: `const attemptId = beginTaskAttempt(task, currentMember.name)`) plus the tool
 // path that answered a stale capability with the stored record.
@@ -30,19 +30,12 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writ
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { registerAgentTeamsTools } from "../lib/tools.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { beginTaskAttempt } from "../lib/state.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { installTeamScheduler } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { beginTaskAttempt } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
 
 /** One live-agent double the registry and the captain argument are built from. */
 interface AgentLike {
@@ -400,7 +393,7 @@ test("T-79 negative control: with both guards removed, the SAME calls rotate and
         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
 
         // (1) the rotation primitive: strip the guard calls from the copied state.js
-        const stateCopy = join(scratch, "lib", "state.js")
+        const stateCopy = join(scratch, "lib", "state.ts")
 /** The neutralised state module's bytes, with the re-arm guard stripped. */
         const stateSource = readFileSync(stateCopy, "utf8")
 /** The exact re-arm guard call, which must occur exactly once. */
@@ -409,7 +402,7 @@ test("T-79 negative control: with both guards removed, the SAME calls rotate and
         writeFileSync(stateCopy, stateSource.replaceAll(rearmGuard, ""))
 
         // (2) the stale-capability refusal: neutralise the condition in the copied tools.js
-        const toolsCopy = join(scratch, "lib", "tools.js")
+        const toolsCopy = join(scratch, "lib", "tools.ts")
 /** The neutralised tool module's bytes, with the stale-attempt branch stripped. */
         const toolsSource = readFileSync(toolsCopy, "utf8")
 /** The exact stale-attempt condition, which must occur exactly once. */
@@ -420,7 +413,7 @@ test("T-79 negative control: with both guards removed, the SAME calls rotate and
 /** The neutralised tool module, imported so the SAME call runs against pre-fix code. */
         const preFix = await import(`${"file://"}${toolsCopy}`)
 /** The neutralised state module, whose rotation primitive mints the pre-fix attempt. */
-        const preFixState = await import(`${"file://"}${join(scratch, "lib", "state.js")}`)
+        const preFixState = await import(`${"file://"}${join(scratch, "lib", "state.ts")}`)
 
         // PRE-FIX (1): the rotation LANDS — status claimed, attempt+1, output WIPED.
         const victim = task("t1", "completed", { attemptId: STORED_ATTEMPT, output: "earned summary", verdict: "pass" })
@@ -481,7 +474,7 @@ test("T-79 restart leg: a FRESH PROCESS sees the same refusal (the restart-based
 /** The driver module's path, which the child process is spawned with. */
         const driverPath = join(driver, "restart-driver.mjs")
         writeFileSync(driverPath, `
-import { beginTaskAttempt } from ${JSON.stringify(join(LIB_DIR, "state.js"))}
+import { beginTaskAttempt } from ${JSON.stringify(join(LIB_DIR, "state.ts"))}
 const task = ${JSON.stringify(task("t1", "completed", { attemptId: STORED_ATTEMPT, output: "earned summary", verdict: "pass" }))}
 let refused = false
 let message = ""

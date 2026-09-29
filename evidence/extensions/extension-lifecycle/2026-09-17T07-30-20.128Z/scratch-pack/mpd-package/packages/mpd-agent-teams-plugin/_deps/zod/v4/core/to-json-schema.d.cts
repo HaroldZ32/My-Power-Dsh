@@ -1,8 +1,8 @@
-import type * as core from "../core/index.cjs";
-import type * as JSONSchema from "./json-schema.cjs";
-import { type $ZodRegistry } from "./registries.cjs";
-import type * as schemas from "./schemas.cjs";
-import type { StandardJSONSchemaV1, StandardSchemaWithJSONProps } from "./standard-schema.cjs";
+import type * as core from "../core/index.cts";
+import type * as JSONSchema from "./json-schema.cts";
+import { type $ZodRegistry } from "./registries.cts";
+import type * as schemas from "./schemas.cts";
+import type { StandardJSONSchemaV1, StandardSchemaWithJSONProps } from "./standard-schema.cts";
 export type Processor<T extends schemas.$ZodType = schemas.$ZodType> = (schema: T, ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams) => void;
 export interface JSONSchemaGeneratorParams {
     processors: Record<string, Processor>;

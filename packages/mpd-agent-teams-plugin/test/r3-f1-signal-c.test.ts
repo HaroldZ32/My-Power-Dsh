@@ -15,10 +15,8 @@
 // (signal A) still provisions. The gate VERDICT asserted below is unchanged — the C aggregation
 // fix this file guards is untouched.
 import { expect, test } from "bun:test"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the gate
-// module cannot be typed without re-authoring upstream; this import is expected to be untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { consumeExplicitFlag, evaluateComplexityGate, routeDecision } from "../lib/session-start.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { consumeExplicitFlag, evaluateComplexityGate, routeDecision } from "../lib/session-start.ts"
 
 /** The frozen silent prompts: every sub-signal is false, so no team may be staged for them. */
 const SIMPLE = [

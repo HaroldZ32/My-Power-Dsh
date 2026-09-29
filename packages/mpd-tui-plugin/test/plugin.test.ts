@@ -14,8 +14,8 @@ import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 // The adopted cordis body is vendored JavaScript with no declaration file, so these two
 // constructors are untyped here; the arms below use only their runtime identity.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
@@ -666,7 +666,8 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     // after the inject callback returned, so the caller must still resolve to the INJECTED
     // scope — the host's registry rejects a root or absent caller ("requires a live non-root
     // calling activation"). A MOUNTING boot is the real-host evidence and belongs to t9.
-    const root = new Context()
+    // A root context whose Proxy-installed `plugin` member the class type does not declare.
+    const root = new Context() as unknown as { plugin(plugin: unknown, config?: unknown): unknown }
     /** The `this.ctx` each registration observed. */
     const callers: unknown[] = []
     /** The service whose `register` reports its own calling context. */

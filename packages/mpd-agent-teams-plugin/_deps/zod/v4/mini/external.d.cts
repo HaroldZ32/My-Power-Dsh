@@ -1,13 +1,13 @@
-export * as core from "../core/index.cjs";
-export * from "./parse.cjs";
-export * from "./schemas.cjs";
-export * from "./checks.cjs";
-export type { infer, output, input } from "../core/index.cjs";
-export type { JSONType } from "../core/util.cjs";
-export { globalRegistry, registry, config, $output, $input, $brand, clone, regexes, treeifyError, prettifyError, formatError, flattenError, TimePrecision, util, NEVER, } from "../core/index.cjs";
-export { toJSONSchema } from "../core/json-schema-processors.cjs";
-export * as locales from "../locales/index.cjs";
+export * as core from "../core/index.cts";
+export * from "./parse.cts";
+export * from "./schemas.cts";
+export * from "./checks.cts";
+export type { infer, output, input } from "../core/index.cts";
+export type { JSONType } from "../core/util.cts";
+export { globalRegistry, registry, config, $output, $input, $brand, clone, regexes, treeifyError, prettifyError, formatError, flattenError, TimePrecision, util, NEVER, } from "../core/index.cts";
+export { toJSONSchema } from "../core/json-schema-processors.cts";
+export * as locales from "../locales/index.cts";
 /** A special constant with type `never` */
-export * as iso from "./iso.cjs";
-export { ZodMiniISODateTime, ZodMiniISODate, ZodMiniISOTime, ZodMiniISODuration, } from "./iso.cjs";
-export * as coerce from "./coerce.cjs";
+export * as iso from "./iso.cts";
+export { ZodMiniISODateTime, ZodMiniISODate, ZodMiniISOTime, ZodMiniISODuration, } from "./iso.cts";
+export * as coerce from "./coerce.cts";

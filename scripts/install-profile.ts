@@ -108,7 +108,7 @@ function extractRowBlock(patchText: string, rowId: string): RawRow {
 /** The bundle patch's own `!!js` mount guard for the sidebar row. */
 function sidebarGuardFromPatch(): string {
   /** The bundle patch: the single source of truth for the sidebar mount guard. */
-  const text: string = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const text: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** The patch's `mpd-better-sidebar` row, extracted verbatim. */
   const block: RawRow = extractRowBlock(text, "mpd-better-sidebar")
   /** The row's `disabled: !!js …` line, or undefined when the row carries no such guard. */
@@ -427,7 +427,7 @@ function buildPlan(o: PlanInputs): Plan {
     // ships the TeamService + its model-facing tools + its Web UI as first-class
     // packages, and the bundle mounts them under mpd-owned entry ids with entry
     // NAMES equal to the official package names. Mirrored verbatim from
-    // packages/mpd-bundle/cordis.patch.yml, order included.
+    // cordis.patch.yml, order included.
     {
       id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
       config: { maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
@@ -441,7 +441,7 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
-    // config) and in the same order (packages/mpd-bundle/cordis.patch.yml plus the
+    // config) and in the same order (cordis.patch.yml plus the
     // preset patch presets/mpd.patch.yml). Row-id parity with the patch layer is
     // enforced by scripts/verify-rows-parity.ts.
   ]
@@ -548,7 +548,7 @@ function selfTest(): void {
   /** The sidebar row under test; its guard must be the extracted one. */
   const sidebarRow: Row | undefined = plan.rows.find((r: Row): boolean => r.id === "mpd-better-sidebar")
   /** The bundle patch's bytes, so the assertion compares against the patch itself. */
-  const bundlePatchText: string = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const bundlePatchText: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   if (!sidebarRow || sidebarRow.name !== "dsh-better-sidebar" || sidebarRow.disabledYaml !== SIDEBAR_GUARD) { console.error("[install-profile self-test] FAIL: sidebar row + guard"); process.exit(1) }
   if (!/^!!js\s/.test(SIDEBAR_GUARD) || !SIDEBAR_GUARD.includes("dsh-better-sidebar")) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not the patch's `!!js` mount guard"); process.exit(1) }
   if (!bundlePatchText.includes("disabled: " + SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not byte-identical to the bundle patch's own `disabled:` scalar"); process.exit(1) }

@@ -9,10 +9,10 @@
 //
 // ROOT CAUSE (read from the adopted dependency, not guessed): `defineTool` compiles the flat
 // parameter map with NO `additionalProperties:false`
-// (`_deps/dsh-tools/lib/index.js`, `parameterSchemaSpecToJsonSchema`), so an unknown key passes
+// (`_deps/dsh-tools/lib/index.ts`, `parameterSchemaSpecToJsonSchema`), so an unknown key passes
 // validation and `execute` never reads it.
 //
-// THE FIX (`lib/tools.js`, symbols `assertKnownToolArguments` + `UPDATE_TASK_ARGUMENT_NAMES`,
+// THE FIX (`lib/tools.ts`, symbols `assertKnownToolArguments` + `UPDATE_TASK_ARGUMENT_NAMES`,
 // called as the FIRST statement of that tool's `execute`): an unknown key is REFUSED loudly,
 // naming every offending key and the declared set, before the caller is resolved and before any
 // lock or write.
@@ -26,15 +26,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writ
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { UPDATE_TASK_ARGUMENT_NAMES, registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { UPDATE_TASK_ARGUMENT_NAMES, registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** One live-agent double the tools registry answers with. */
 interface AgentLike {
@@ -354,7 +347,7 @@ test("T-61 negative control: with the guard call removed, the SAME payload succe
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
 /** The scratch copy of the tool module the guard call is stripped from. */
-        const copyPath = join(scratch, "lib", "tools.js")
+        const copyPath = join(scratch, "lib", "tools.ts")
 /** The copy's bytes before the guard call is removed. */
         const original = readFileSync(copyPath, "utf8")
 /** The exact guard-call text, which must occur exactly once. */
@@ -456,9 +449,8 @@ test("T-61 append channel (ii): the registered schema carries the key and a TERM
 
 test("T-61 append channel (i): the wave-1 shape is a STALE-SCHEMA drop — success returned, nothing stored", async () => {
 /** The adopted tool factory, imported dynamically so the file still links without it. */
-    // A dynamic import cannot be covered by a directive above the statement, so the reason sits here:
-    // @ts-expect-error TS7016: the vendored _deps JS module has no declaration file.
-    const { defineTool } = await import("../_deps/dsh-tools/lib/index.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { defineTool } = await import("../_deps/dsh-tools/lib/index.ts")
     // `declaresAppend` models the MODULE REVISION the process had loaded: T-52's channel exists in
     // the tree today (and is independently reviewed), so what wave 1 met is the process-side half —
     // a registered schema that does not declare the key, whose handler therefore never consults it.

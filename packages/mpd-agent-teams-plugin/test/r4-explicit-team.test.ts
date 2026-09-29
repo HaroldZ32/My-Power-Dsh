@@ -9,10 +9,8 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the explicit
-// entry helpers cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { EXPLICIT_TEAM_INQUIRY_MARKER, EXPLICIT_TEAM_NOTICE_MARKER, ensureExplicitTeam } from "../lib/command.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { EXPLICIT_TEAM_INQUIRY_MARKER, EXPLICIT_TEAM_NOTICE_MARKER, ensureExplicitTeam } from "../lib/command.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")
@@ -174,10 +172,8 @@ test("R4 silent-failure: an AMBIGUOUS session (two teams) warns instead of guess
         // findTeamByParticipant refuses to guess when the session shows up in two
         // teams; the explicit path must surface that as a WARNING, never as silence
         // and never by quietly picking one.
-        // The adopted agent-teams body is vendored JavaScript with no declaration file, so this lazy
-        // import of the profile-init helper stays untyped; the directive below is expected here.
-        // @ts-expect-error vendored JavaScript has no declaration file
-        const { initializeProfileTeam } = await import("../lib/tools.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+        const { initializeProfileTeam } = await import("../lib/tools.ts")
         /** The stub context the first, successful call uses. */
         const ctxOk = makeCtx()
         /** The first call's result, which stages one team for this session. */

@@ -14,32 +14,24 @@ import { expect, test } from "bun:test"
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Config, apply } from "../lib/index.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { createAgentTeamsCtx } from "../lib/mpd-adapter-ctx.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installTeamCapabilities } from "../lib/capabilities.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsCommand } from "../lib/command.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installInterjectionExpirySweep, installSessionTeamPolicy } from "../lib/session-start.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { haltTeamWork, registerAgentTeamsTools } from "../lib/tools.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { captainSessionOf } from "../lib/events.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Config, apply } from "../lib/index.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { createAgentTeamsCtx } from "../lib/mpd-adapter-ctx.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamCapabilities } from "../lib/capabilities.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsCommand } from "../lib/command.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installInterjectionExpirySweep, installSessionTeamPolicy } from "../lib/session-start.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { haltTeamWork, registerAgentTeamsTools } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { captainSessionOf } from "../lib/events.ts"
 import {
     deliverToMember, interruptMember, resolveMemberLlmSelection, spawnMember, steerCaptainReport, validateMemberLlmSelections,
-    // The adopted agent-teams body is vendored JavaScript with no declaration file, so these exports are untyped.
-    // @ts-expect-error vendored JavaScript has no declaration file
-} from "../lib/members.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+} from "../lib/members.ts"
 
 /** The captain session id the fake agent handles are keyed by. */
 const CAPTAIN_ID = "session-captain"

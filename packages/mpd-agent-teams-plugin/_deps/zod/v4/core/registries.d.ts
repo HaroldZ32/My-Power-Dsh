@@ -1,5 +1,5 @@
-import type * as core from "./core.js";
-import type { $ZodType } from "./schemas.js";
+import type * as core from "./core.ts";
+import type { $ZodType } from "./schemas.ts";
 export declare const $output: unique symbol;
 export type $output = typeof $output;
 export declare const $input: unique symbol;

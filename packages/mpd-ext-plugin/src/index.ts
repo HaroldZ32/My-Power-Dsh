@@ -63,7 +63,7 @@ export const inject: string[] = [...REQUIRED_SEAMS]
  * This is the ONE place that describes it; the sites THIS FIX touched CROSS-REFERENCE it
  * instead of half-repeating it — mpd-roles (`packages/mpd-roles-plugin/src/index.ts`, its
  * identity comment) and the bundle patch's row-order bullet
- * (`packages/mpd-bundle/cordis.patch.yml`).
+ * (`cordis.patch.yml`).
  * RESIDUAL, recorded honestly: the OTHER rows that still inline
  * `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` (the rest of the mpd plugin rows) resolve
  * EAGERLY at apply and stay silent about it; they are OUTSIDE this fix's scope — only mpd-ext
@@ -258,7 +258,7 @@ function toView(entry: ExtensionEntry, config: ExtensionConfig): ExtensionView {
  * the first tool generation of each reachable server is published BEFORE
  * activation completes. The `async` keyword itself matters: cordis treats a
  * non-async prototype-bearing function as a constructor, whose returned promise
- * is not startup work (H/dsh-mcp-client/lib/index.js:762-770).
+ * is not startup work (H/dsh-mcp-client/lib/index.ts:762-770).
  */
 export async function apply(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
   try {
@@ -646,7 +646,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
    * to the skill corpus, to a user skills root or to a sibling provider is decided
    * inside `ctx.skills`, so the only honest answer is to ask it — `list()` returns
    * the merged winning summaries, each carrying the `provider` that serves it
-   * (H/dsh-skill/lib/index.js:224-226, 491-501). This runs in the TOOL path on
+   * (H/dsh-skill/lib/index.ts:224-226, 491-501). This runs in the TOOL path on
    * purpose: calling the catalog from inside our own provider would recurse
    * (`snapshot()` -> `provider.list()` -> `snapshot()`).
    *

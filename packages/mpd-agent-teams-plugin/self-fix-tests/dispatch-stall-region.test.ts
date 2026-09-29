@@ -12,15 +12,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 import { applyAgentTeamsFixes } from "../../../scripts/patch-agent-teams-fixes.ts"
 import { stageScript } from "./scratch-scripts.ts"
 
@@ -39,7 +32,7 @@ const repoRoot = join(pluginRoot, "..", "..")
 /** The distinct `lib/` file names the delta registry covers, which the scratch tree must copy. */
 const REGISTRY_FILES = [...new Set<string>(MPD_DELTAS.map((delta: DeltaEntry): string => delta.file.split("/").pop()!))]
 /** The vendored scheduler module the region pins are read from. */
-const SCHEDULER = join(pluginRoot, "lib", "scheduler.js")
+const SCHEDULER = join(pluginRoot, "lib", "scheduler.ts")
 /** The dispatch-stall regions this fix owns; every one must be registered. */
 const DISPATCH_REGIONS = [
     "mpd-delta dispatch-decline-guard",
@@ -58,7 +51,7 @@ function scratchRoot(): string {
     const root = mkdtempSync(join(tmpdir(), "mpd-t13-dispatch-"))
     mkdirSync(join(root, "packages/mpd-agent-teams-plugin/lib"), { recursive: true })
     mkdirSync(join(root, "scripts"), { recursive: true })
-    for (const name of [...REGISTRY_FILES, "mpd-deltas.js"])
+    for (const name of [...REGISTRY_FILES, "mpd-deltas.ts"])
         cpSync(join(pluginRoot, "lib", name), join(root, "packages/mpd-agent-teams-plugin/lib", name))
     stageScript(root, "patch-agent-teams-fixes.ts")
     return root
@@ -106,9 +99,9 @@ test("t13: every dispatch-stall edit is region-registered (nothing unmarked surv
 /** The canonical scheduler source the strip arms read. */
     const source = readFileSync(SCHEDULER, "utf8")
 /** The region ids the registry registers for the scheduler. */
-    const registered = new Set(MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/scheduler.js")).map((delta: DeltaEntry) => delta.id))
+    const registered = new Set(MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("lib/scheduler.ts")).map((delta: DeltaEntry) => delta.id))
     for (const id of DISPATCH_REGIONS)
-        expect(registered.has(id), `${id} is missing from lib/mpd-deltas.js`).toBe(true)
+        expect(registered.has(id), `${id} is missing from lib/mpd-deltas.ts`).toBe(true)
 /** The scheduler with every region removed, which no fix token may survive. */
     const skeleton = stripAllRegions(source)
     for (const token of FIX_TOKENS)
@@ -123,7 +116,7 @@ test("t13: a re-materialized scheduler.js (upstream guard restored) is REFUSED b
     const root = scratchRoot()
     try {
 /** The scratch copy of the scheduler the upstream guard is restored into. */
-        const path = join(root, "packages/mpd-agent-teams-plugin/lib", "scheduler.js")
+        const path = join(root, "packages/mpd-agent-teams-plugin/lib", "scheduler.ts")
 /** The canonical scheduler bytes, which the reconstruction must differ from. */
         const canonical = readFileSync(path, "utf8")
         // Reconstruct the pre-fix shape: our guard region removed, the upstream
@@ -167,7 +160,7 @@ test("t13: stripping every scheduler.js region heals byte-for-byte back to the c
     const root = scratchRoot()
     try {
 /** The scratch copy of the scheduler shell. */
-        const path = join(root, "packages/mpd-agent-teams-plugin/lib", "scheduler.js")
+        const path = join(root, "packages/mpd-agent-teams-plugin/lib", "scheduler.ts")
 /** The scratch scheduler's bytes before the strip, which the heal must reproduce. */
         const canonical = readFileSync(path, "utf8")
 /** The scheduler with every region stripped, which the applier must heal. */

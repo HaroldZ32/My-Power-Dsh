@@ -11,34 +11,34 @@
     "directory": "packages/llm/llm"
   },
   "type": "module",
-  "main": "lib/index.js",
+  "main": "lib/index.ts",
   "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
+      "default": "./lib/index.ts"
     },
     "./invariant": {
       "types": "./lib/types/invariant.d.ts",
-      "default": "./lib/invariant.js"
+      "default": "./lib/invariant.ts"
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
-      "default": "./lib/types/types.js"
+      "default": "./lib/types/types.ts"
     },
     "./brand": {
       "types": "./lib/types/brand.d.ts",
-      "default": "./lib/types/brand.js"
+      "default": "./lib/types/brand.ts"
     },
     "./message": {
       "types": "./lib/types/message.d.ts",
-      "default": "./lib/types/message.js"
+      "default": "./lib/types/message.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/index.js",
+    "lib/index.ts",
     "lib/invariant.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts"

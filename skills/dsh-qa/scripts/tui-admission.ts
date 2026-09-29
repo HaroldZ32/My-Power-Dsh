@@ -351,7 +351,7 @@ async function loadHostAdmission(): Promise<HostAdmission> {
   const manifestLibPath = join(hostRoot, "node_modules", "@dsh-std", "manifest", "lib", "index.js")
   if (!existsSync(manifestLibPath)) return { ok: false, reason: "the vendored @dsh-std/manifest parser is missing at " + manifestLibPath }
   /** The host's own pinned manifest parser and projection. */
-  const { parseManifest, projectManifest } = await import(url("node_modules/@dsh-std/manifest/lib/index.js"))
+  const { parseManifest, projectManifest } = await import(url("node_modules/@dsh-std/manifest/lib/index.ts"))
   /** The host's own spec-data loader and registry driver set. */
   const { loadSpecData, registryEntries } = await import(url("lib/types/adapter/standard/registry.js"))
   /** The host's own contract index, validator and five-state negotiation. */

@@ -213,7 +213,7 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 
 ### 这次安装挂载了哪些插件
 
-下面每一个插件都由本 bundle 的两个 patch 文件声明 —— `packages/mpd-bundle/cordis.patch.yml`
+下面每一个插件都由本 bundle 的两个 patch 文件声明 —— `cordis.patch.yml`
 （下面所有表格里的行）与 `presets/mpd.patch.yml`（`preset-mpd` 行，见
 *本 bundle id 定向的宿主行*）—— 并被上面那一条 `dsh plugin add` 一次性挂载。`package.json` 把
 这两个文件列为数组 `dsh.bundle.patch`。主 patch 一共写了 **29 个 `- id:` 条目，分两种**：**本

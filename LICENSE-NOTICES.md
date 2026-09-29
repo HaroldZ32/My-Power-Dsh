@@ -59,13 +59,13 @@ cannot see `@deepseek-ai/*`), hence the vendored closure. Original license text 
 Local adaptations in the adopted main code (all marked in-source with `LOCAL ADAPTATION`):
 - `memberPersona` injects the workmate library's persona/memory for members named after a
   workmate;
-- `lib/members.js` degrades instead of aborting when the host harness build does not expose
+- `lib/members.ts` degrades instead of aborting when the host harness build does not expose
   `ctx.subagents.registerContinuableSetup` (dsh 0.1.2-rc.1 and every later host, incl.
   0.1.5-rc.2, dropped the seam): the member model-selection bridge is disabled with a
   warning, and members keep the Harness descriptor provider/model. Without this guard a
   single missing optional seam aborted the whole plugin tree at boot, so no bundle row
   (skills, preset, tools) could load.
-- `lib/harness-compat.js` + `lib/members.js` take the live child Agent from the
+- `lib/harness-compat.ts` + `lib/members.ts` take the live child Agent from the
   `agent/session-start` payload (`setup(agent.ctx, agent)`) instead of reading
   `childCtx.agent`. An agent-scoped Cordis ctx refuses undeclared property reads, so the
   ctx read threw `cannot get property "agent" without inject` on dsh 0.1.5; because the

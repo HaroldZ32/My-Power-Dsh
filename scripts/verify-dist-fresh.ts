@@ -332,7 +332,7 @@ function buildToolchain(root: string): ToolchainReport {
  */
 function uncoveredReason(root: string, pkg: string, dist: string, ctx: UncoveredContext): string {
   if (pkg === "mpd-agent-teams-plugin") return "adopted upstream main code under lib/ (no src/, never rebuilt here)"
-  if (pkg === "mpd-bundle") return "bundle patch/config only — not a build artifact"
+  if (pkg === "mpd-bundle") return "documentation package for the root cordis.patch.yml layer — no code, not a build artifact"
   if (!dist.endsWith(".js")) return "build metadata, not a bun build artifact"
   if (ctx.declaredNoSource.has(dist)) return "declared by scripts.build but its source file is absent (no local source)"
   if (pkg === "mpd-mcp-codegraph") return "sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/"

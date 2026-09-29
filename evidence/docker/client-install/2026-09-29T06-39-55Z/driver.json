@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-09-29T06:39:55.371Z",
+  "finishedAt": "2026-09-29T06:39:56.134Z",
+  "docker": "Docker version 29.8.0, build 88096ef",
+  "compose": "Docker Compose version v5.5.1",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /root/dshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 1
+    }
+  ],
+  "exitCode": 2
+}

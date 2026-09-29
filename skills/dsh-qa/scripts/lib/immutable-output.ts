@@ -12,8 +12,8 @@
 //   * refusing is an error, not a warning: the caller exits non-zero (IMMUTABLE_EXIT_CODE).
 //
 // Used by scripts/check-citations.ts (T-53's named checker; its DURABLE home since t16 — the frozen
-// evidence/extensions/docs-claims/check-citations.mjs is superseded beside itself) and
-// evidence/extensions/debranding-probe/<ts>/verify-debranding-full.mjs.
+// evidence/extensions/docs-claims/check-citations.ts is superseded beside itself) and
+// evidence/extensions/debranding-probe/<ts>/verify-debranding-full.ts.
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"

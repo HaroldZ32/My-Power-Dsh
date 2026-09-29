@@ -1,6 +1,6 @@
-import type { $ZodRegistry } from "./registries.js";
-import type * as schemas from "./schemas.js";
-import { type Processor, type RegistryToJSONSchemaParams, type ToJSONSchemaParams, type ZodStandardJSONSchemaPayload } from "./to-json-schema.js";
+import type { $ZodRegistry } from "./registries.ts";
+import type * as schemas from "./schemas.ts";
+import { type Processor, type RegistryToJSONSchemaParams, type ToJSONSchemaParams, type ZodStandardJSONSchemaPayload } from "./to-json-schema.ts";
 export declare const stringProcessor: Processor<schemas.$ZodString>;
 export declare const numberProcessor: Processor<schemas.$ZodNumber>;
 export declare const booleanProcessor: Processor<schemas.$ZodBoolean>;

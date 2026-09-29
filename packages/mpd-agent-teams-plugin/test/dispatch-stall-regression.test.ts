@@ -19,10 +19,8 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the scheduler
-// cannot be typed without re-authoring upstream; this import is expected to be untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installTeamScheduler } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")

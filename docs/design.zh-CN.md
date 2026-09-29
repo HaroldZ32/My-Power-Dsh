@@ -45,7 +45,7 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
    其他所有行都经由 `mpdDsh` 服务调用。host 版本重塑接缝时，只需在该处吸收，而不必全树修改（§6b）。
    被**保留但已从组合中退役**的上游 `agent-teams` 主体同样不是例外：它的 `lib/` 依旧经由该适配器
    接触这些接缝，其背后是
-   mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js`（§6b）—— 这正是这段代码被保留而不是删掉的原因。
+   mpd 自有的桥接模块 `lib/mpd-adapter-ctx.ts`（§6b）—— 这正是这段代码被保留而不是删掉的原因。
 3. **插件形态、按引用配置。** 每个能力都是 Cordis 插件行或配置好的 host 插件实例；profile 与脚本里
    不放逻辑。资产（skill 语料、`mpd` 预设）由 bundle 直接供给而非复制进 `$DSH_HOME`，因此卸载不留
    残留（§2、§6c）。
@@ -65,7 +65,7 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 DSH 是 Cordis host：插件是 composition（`cordis.yml` + patch 层）里的行，服务按
 scope provide/consume，模型路由由会话的 request header 解析。my-power-dsh 以 **npm
 bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch` 数组
-（先是 `packages/mpd-bundle/cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
+（先是 `cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
 profile 添加行。它贡献：
 
 - **28 个插入行**，分布在**两层**增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
@@ -86,7 +86,7 @@ profile 添加行。它贡献：
 ## 2. Bundle 与包结构
 
 **仓库根目录就是 bundle 包。** `package.json` 名为 `@mpd-dsh/mpd`，声明了
-`dsh.bundle.patch`（数组：先是 `./packages/mpd-bundle/cordis.patch.yml`，再是
+`dsh.bundle.patch`（数组：先是 `./cordis.patch.yml`，再是
 `./presets/mpd.patch.yml`）、`dsh.client`、各行解析所依赖的
 `exports` 映射以及工具链 `optionalDependencies`，因此在仓库根执行 `dsh plugin add .` 一条命令即可
 完成整体安装（无需打包步骤）。`scripts/pack-mpd.ts` 是**发布**步骤：为发布/tarball 安装组装
@@ -171,7 +171,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 
 ## 4. 插件清单
 
-**`packages/mpd-bundle/cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
+**`cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
 共携带 **28 个 `insert` 行**；本 bundle 的**第二个** patch 文件（`presets/mpd.patch.yml`）再携带一个
 插入行 —— `preset-mpd` —— 两个文件都列在 manifest 的 `dsh.bundle.patch` **数组**里。
 `node scripts/verify-rows-parity.ts` 断言这份列表与本仓库自身的行
@@ -352,13 +352,13 @@ key**。
   退役）：** `packages/mpd-agent-teams-plugin` 处的 `agent-teams` 主体（MIT）作为来源记录被保留，
   且没有任何 loader 行挂载它，但它仍然
   每个 Harness 接缝都经由本适配器 —— 但
-  `setup(childCtx, child)` 这一条**已计数**的例外除外（见 `AGENTS.md` §6：`lib/members.js`
+  `setup(childCtx, child)` 这一条**已计数**的例外除外（见 `AGENTS.md` §6：`lib/members.ts`
   中五行、逐行断言；该 scoped ctx 由宿主传入，会转交给 vendored 的 `_deps/dsh-agent` 助手，
   且在旧版 Alpha.2 宿主上 `childCtx` 不保证等于 `child.ctx`）。新增的
-  mpd 自有模块 `lib/mpd-adapter-ctx.js`（命名规则 `lib/mpd-*.js`，可由 delta 注册表按字节
+  mpd 自有模块 `lib/mpd-adapter-ctx.ts`（命名规则 `lib/mpd-*.js`，可由 delta 注册表按字节
   恢复）在 `apply` 顶部**只构建一次**门面，因此**六个**已桥接的采纳文件
-  （`lib/index.js`、`lib/capabilities.js`、`lib/harness-compat.js`、`lib/members.js`、
-  `lib/command.js`、`lib/tools.js`）使用该门面，其余采纳的服务端文件原样接收它。
+  （`lib/index.ts`、`lib/capabilities.ts`、`lib/harness-compat.ts`、`lib/members.ts`、
+  `lib/command.ts`、`lib/tools.ts`）使用该门面，其余采纳的服务端文件原样接收它。
   让这段代码继续经由适配器，正是它被保留而不是删除的原因：后续波次可以在不必重新推导 D6 分析的
   前提下删除它。门面惰性解析已挂载的 `mpdDsh` 服务，并在缺失时 warn-once 回退（每个插件实例
   **恰好一行**
@@ -383,7 +383,7 @@ key**。
 `presets/mpd.patch.yml` 把 `mpd` 预设声明为一个普通的**行**：插入一行 `preset-mpd`
 （`name: '@deepseek-ai/dsh-agent-preset'`、`config.id: mpd`，子 entry 列表内联在
 `config.plugins` 下）。那份子列表**就是**每个 `mpd` 会话加入的 agent 层组合，而该文件是 manifest 的
-第二个 `dsh.bundle.patch` 条目；`packages/mpd-bundle/cordis.patch.yml` 把
+第二个 `dsh.bundle.patch` 条目；`cordis.patch.yml` 把
 `agent-preset-registry` id 定向为 `{ default: mpd }`。Harness **0.1.7-rc.2 替换了目录形式**：
 `@deepseek-ai/dsh-agent-presets`（那个从 preset 根目录提供 `preset.yml` + `agent.cordis.yml` 的包）
 已不存在，因此不再有 `<bundle>/presets` preset 根目录，也不再有 `$DSH_HOME/.agent-presets` 副本。

@@ -111,7 +111,7 @@ function selfTest(): void {
     if (rootManifest.exports?.[key] === undefined) fail("self-test: repo root exports missing " + key)
   }
   /** The main bundle patch, whose rows, id-targets and provider wiring are asserted below. */
-  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   // The registry row is ID-TARGETED at column 0 (it is declared by the web-app
   // layer); the retired `@deepseek-ai/dsh-agent-presets` row must not come back.
   if (!/^- id: agent-preset-registry$/m.test(patch) || !/^\s+default: mpd$/m.test(patch)) fail("self-test: the agent-preset-registry id-target (default: mpd) is missing from the bundle patch")
@@ -125,7 +125,7 @@ function selfTest(): void {
   // The preset patch: the mpd composition is a ROW now, so it must declare a real
   // `@deepseek-ai/dsh-agent-preset` declaration carrying `config.id: mpd`.
   /** The declared patch that is not the main bundle patch: the preset patch, by elimination. */
-  const presetPatchEntry = declaredPatches.find((entry) => entry !== "./packages/mpd-bundle/cordis.patch.yml")
+  const presetPatchEntry = declaredPatches.find((entry) => entry !== "./cordis.patch.yml")
   /** The preset patch's bytes, read to prove it declares the preset ROW. */
   const presetPatch = readFileSync(join(repoRoot, presetPatchEntry), "utf8")
   if (!/id: preset-mpd$/m.test(presetPatch) || !/name: '@deepseek-ai\/dsh-agent-preset'$/m.test(presetPatch) || !/^\s+id: mpd$/m.test(presetPatch)) {

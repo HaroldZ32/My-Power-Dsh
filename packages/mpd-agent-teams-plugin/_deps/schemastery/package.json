@@ -11,14 +11,14 @@
     "directory": "vendor/schemastery"
   },
   "type": "module",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
+  "main": "lib/index.cts",
+  "module": "lib/index.ts",
   "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs"
+      "import": "./lib/index.ts",
+      "require": "./lib/index.cts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"

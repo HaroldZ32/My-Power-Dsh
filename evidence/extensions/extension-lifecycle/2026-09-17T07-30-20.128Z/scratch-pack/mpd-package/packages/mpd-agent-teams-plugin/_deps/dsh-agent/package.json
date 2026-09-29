@@ -24,7 +24,7 @@
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
-      "default": "./lib/types/types.js"
+      "default": "./lib/types/types.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"

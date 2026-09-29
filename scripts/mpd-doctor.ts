@@ -21,7 +21,7 @@
 // Resolution sources: packages/mpd-mcp-shared/bin-resolve.ts,
 // packages/mpd-mcp-{astgrep,codegraph}/launch.ts, packages/mpd-codegraph-plugin/src/index.ts,
 // packages/mpd-comment-checker-plugin/src/index.ts, packages/mpd-mcp-{lsp,gitbash}/dist/cli.js,
-// packages/mpd-bundle/cordis.patch.yml, package.json optionalDependencies.
+// cordis.patch.yml, package.json optionalDependencies.
 //
 // EXIT CODES (the verdict line always names the rule that decided the code):
 //   0  every entry resolved;

@@ -18,15 +18,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 import { applyAgentTeamsFixes, assertRegistryFormat, canonicalIndent, findRegion } from "../../../scripts/patch-agent-teams-fixes.ts"
 import { stageScript } from "./scratch-scripts.ts"
 
@@ -35,7 +28,7 @@ const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 /** The repository root, two levels above the plugin package. */
 const repoRoot = join(pluginRoot, "..", "..")
 /** The upstream-named adopted files every scratch tree must carry. */
-const BASE_LIB_FILES = ["command.js", "index.js", "quality-gates.js", "scheduler.js", "session-start.js", "state.js", "tools.js"]
+const BASE_LIB_FILES = ["command.ts", "index.ts", "quality-gates.ts", "scheduler.ts", "session-start.ts", "state.ts", "tools.ts"]
 // A file that carries a REGISTERED mpd-delta region must be staged in the scratch tree,
 // or the applier walks the registry against a tree that lacks it and dies with ENOENT
 // (measured 2026-09-14: registering regions in members.js + profiles.js broke 13 tests).
@@ -45,7 +38,7 @@ const REGISTRY_LIB_FILES: string[] = [...new Set<string>(MPD_DELTAS.map((delta: 
 /** Every adopted file to stage: the base set plus whatever the registry addresses. */
 const ADOPTED_FILES = [...new Set([...BASE_LIB_FILES, ...REGISTRY_LIB_FILES])]
 /** The staged lib files, which additionally include the delta registry itself. */
-const LIB_FILES = [...new Set([...ADOPTED_FILES, "mpd-deltas.js"])]
+const LIB_FILES = [...new Set([...ADOPTED_FILES, "mpd-deltas.ts"])]
 
 /**
  * One entry of the mpd delta registry as this file reads it. The vendored module ships no declaration
@@ -90,8 +83,8 @@ const libPath = (root: string, name: string): string => join(root, "packages/mpd
 
 /** Sha256 pins of the checked-in pristine upstream fixtures (fixtures/upstream/README.md). */
 const UPSTREAM_PINS = {
-    "tools.js": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
-    "quality-gates.js": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
+    "tools.ts": "ba1f6ab20d18285956c1cf206762f5a751eacd584513fa0d0f0c798e8bfc9ce7",
+    "quality-gates.ts": "4907ff10a45351af8080b0a6203239012e25028c8175bd7588d31a7aa7481b57",
 }
 
 /**
@@ -195,11 +188,11 @@ test("t2: a stripped tools.js heals byte-for-byte and the task-contract region l
     const root = scratchRoot()
     try {
         /** The checked-in tools.js bytes the healed tree must reproduce. */
-        const canonical = canonicalOf("tools.js")
-        stripDeltas(libPath(root, "tools.js"))
+        const canonical = canonicalOf("tools.ts")
+        stripDeltas(libPath(root, "tools.ts"))
         expect(applyAgentTeamsFixes({ root, write: true }).status).toBe("applied")
         /** The healed file's bytes, compared against canonical. */
-        const healed = readFileSync(libPath(root, "tools.js"), "utf8")
+        const healed = readFileSync(libPath(root, "tools.ts"), "utf8")
         // BYTE identity is the property wave 2 lost: the measured defect was 60 diff
         // lines with `mpd-delta task-contract` re-inserted at 1970 instead of 1733.
         expect(healed).toBe(canonical)
@@ -220,10 +213,10 @@ test("t2: quality-gates.js strip-heal stays byte-identical (no trade between the
     const root = scratchRoot()
     try {
         /** The checked-in quality-gates.js bytes the healed tree must reproduce. */
-        const canonical = canonicalOf("quality-gates.js")
-        stripDeltas(libPath(root, "quality-gates.js"))
+        const canonical = canonicalOf("quality-gates.ts")
+        stripDeltas(libPath(root, "quality-gates.ts"))
         expect(applyAgentTeamsFixes({ root, write: true }).status).toBe("applied")
-        expect(readFileSync(libPath(root, "quality-gates.js"), "utf8")).toBe(canonical)
+        expect(readFileSync(libPath(root, "quality-gates.ts"), "utf8")).toBe(canonical)
     }
     finally {
         rmSync(root, { recursive: true, force: true })
@@ -293,9 +286,9 @@ test("t2: a region heals to its canonical position under partial insertion histo
 // ---------- the marker prefix fix: one fixture per colliding pair ----------
 /** The three ids that are prefixes of a sibling, with the file that carries them. */
 const COLLIDING_PAIRS = [
-    { outer: "mpd-delta scope-overlap", inner: "mpd-delta scope-overlap-normalize", file: "quality-gates.js" },
-    { outer: "mpd-delta repair-scope", inner: "mpd-delta repair-scope-fields", file: "quality-gates.js" },
-    { outer: "mpd-delta task-contract", inner: "mpd-delta task-contract-render", file: "tools.js" },
+    { outer: "mpd-delta scope-overlap", inner: "mpd-delta scope-overlap-normalize", file: "quality-gates.ts" },
+    { outer: "mpd-delta repair-scope", inner: "mpd-delta repair-scope-fields", file: "quality-gates.ts" },
+    { outer: "mpd-delta task-contract", inner: "mpd-delta task-contract-render", file: "tools.ts" },
 ]
 
 /** Independent oracle for a region's span: the prefix-shaped regexes the emitter scans with. */
@@ -464,7 +457,7 @@ const endMarker = (id: string): string => `//#endregion ${id}`
 /** The region id the canon row table drives its begin/end cases with. */
 const CANON_ID = "mpd-delta repair-scope"
 /** The adopted file that carries CANON_ID. */
-const CANON_FILE = "quality-gates.js"
+const CANON_FILE = "quality-gates.ts"
 
 /** The [begin, end] line indices of one region, by exact marker line. */
 function regionSpanOf(lines: readonly string[], id: string): { begin: number; end: number } {
@@ -641,7 +634,7 @@ test("t9 (A): assertRegistryFormat refuses the OLD anchor format with the migrat
         block: delta.block,
     }))
     /** The exact one-time migration message the format guard must print. */
-    const migration = /FAIL: lib\/mpd-deltas\.js is in the OLD anchor format — run: node scripts\/patch-agent-teams-fixes\.mjs --write-registry \(one-time migration\)/
+    const migration = /FAIL: lib\/mpd-deltas\.ts is in the OLD anchor format — run: node scripts\/patch-agent-teams-fixes\.mjs --write-registry \(one-time migration\)/
     expect(() => assertRegistryFormat(old)).toThrow(migration)
     // an entry with neither the pair nor the old keys is refused the same way
     // The fixture carries NEITHER the context pair NOR the retired keys, so it cannot satisfy the
@@ -654,7 +647,7 @@ test("t9 (A): the CLI refuses a pre-migration registry by name, and --write-regi
     const root = scratchRoot()
     try {
         /** The staged delta registry, rewritten to the retired format. */
-        const registryPath = libPath(root, "mpd-deltas.js")
+        const registryPath = libPath(root, "mpd-deltas.ts")
         /** The registry's new-format bytes, the input to the downgrade rewrites. */
         const source = readFileSync(registryPath, "utf8")
         /** The registry with its context pairs replaced by the retired line keys. */
@@ -682,7 +675,7 @@ test("t9 (A): the CLI refuses a pre-migration registry by name, and --write-regi
         /** The --check refusal, which must name the migration command. */
         const refused = run("--check")
         expect(refused.code).toBe(1)
-        expect(refused.out).toContain("FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)")
+        expect(refused.out).toContain("FAIL: lib/mpd-deltas.ts is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)")
         expect(refused.out).not.toContain("TypeError")
         // the migration path stays open (the guard is NOT at module load)
         const migrated = run("--write-registry")
@@ -711,16 +704,16 @@ test("t9: all four states of the ONLY shared seam heal byte-identically", () => 
         const root = scratchRoot()
         try {
             /** Canonical bytes the healed file must reproduce for this state. */
-            const canonical = canonicalOf("quality-gates.js")
+            const canonical = canonicalOf("quality-gates.ts")
             /** The regions absent in this state, which the heal must re-insert. */
             const missing = new Set(shared.filter((_, index) => !present[index]))
             if (missing.size > 0)
-                stripDeltas(libPath(root, "quality-gates.js"), missing)
+                stripDeltas(libPath(root, "quality-gates.ts"), missing)
             /** Verdict of the heal for this state. */
             const healed = applyAgentTeamsFixes({ root, write: true })
             expect(healed.status, label).toBe(missing.size > 0 ? "applied" : "already-applied")
             expect(healed.inserted.length, label).toBe(missing.size)
-            expect(readFileSync(libPath(root, "quality-gates.js"), "utf8"), label).toBe(canonical)
+            expect(readFileSync(libPath(root, "quality-gates.ts"), "utf8"), label).toBe(canonical)
         }
         finally {
             rmSync(root, { recursive: true, force: true })
@@ -734,9 +727,9 @@ test("t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts
     const root = scratchRoot()
     try {
         /** The staged tools.js, overwritten with the pristine upstream bytes. */
-        const path = libPath(root, "tools.js")
+        const path = libPath(root, "tools.ts")
         /** The pristine upstream fixture, which carries no mpd marker. */
-        const upstreamText = pristineUpstream("tools.js")
+        const upstreamText = pristineUpstream("tools.ts")
         expect(upstreamText.match(/mpd-delta/g) ?? []).toHaveLength(0)
         writeFileSync(path, upstreamText)
         /** The refusal text for the re-materialized file. */
@@ -767,9 +760,9 @@ test("t9: the targeted re-materialize shape (upstream twins restored at the lite
     const root = scratchRoot()
     try {
         /** The staged tools.js, mutated into the drifted-twin shape. */
-        const path = libPath(root, "tools.js")
+        const path = libPath(root, "tools.ts")
         /** The pristine upstream fixture split into lines. */
-        const upstreamLines = pristineUpstream("tools.js").split("\n")
+        const upstreamLines = pristineUpstream("tools.ts").split("\n")
         /** Line of the update_task tool's name field in the upstream fixture. */
         const upstreamName = upstreamLines.findIndex((line) => line.trim() === "name: 'agent_teams_update_task',")
         /** The upstream description line; the pinned fixture carries it exactly once, so the lookup cannot miss. */
@@ -781,7 +774,7 @@ test("t9: the targeted re-materialize shape (upstream twins restored at the lite
         /** The upstream status schema lines restored into our tool. */
         const upstreamStatus = upstreamLines.slice(upstreamStatusAt, upstreamStatusEnd + 1)
         // strip exactly the three update_task regions from OUR canonical file
-        stripDeltas(path, new Set<string>(MPD_DELTAS.filter((delta: DeltaEntry): boolean => delta.file.endsWith("lib/tools.js") && delta.id.startsWith("mpd-delta update-task")).map((delta: DeltaEntry): string => delta.id)))
+        stripDeltas(path, new Set<string>(MPD_DELTAS.filter((delta: DeltaEntry): boolean => delta.file.endsWith("lib/tools.ts") && delta.id.startsWith("mpd-delta update-task")).map((delta: DeltaEntry): string => delta.id)))
         /** Our file's lines, after the three update-task regions were stripped. */
         const lines = readLines(path)
         /** Line of the update_task tool's name field in our file. */

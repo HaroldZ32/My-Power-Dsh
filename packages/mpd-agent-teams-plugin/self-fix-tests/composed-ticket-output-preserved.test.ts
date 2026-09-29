@@ -3,8 +3,8 @@
 // MEASURED (wave 1, `t36`'s author — `evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/
 // output-wipe-probe.mjs`; re-measured by this lane at HEAD `c826f16`): ONE `kickMember` over an
 // `in_progress` task holding a stored deliverable left the record at `output: null`, `attempt: 2`,
-// `status: claimed` — DETERMINISTIC, because the compose (`lib/scheduler.js` `kickMember`) rotates the
-// attempt through `beginTaskAttempt` → `lib/state.js` `activateTaskAttempt` on EVERY dispatched ticket.
+// `status: claimed` — DETERMINISTIC, because the compose (`lib/scheduler.ts` `kickMember`) rotates the
+// attempt through `beginTaskAttempt` → `lib/state.ts` `activateTaskAttempt` on EVERY dispatched ticket.
 // The dispatch-boundary re-check (`mpd-delta terminal-dispatch-recheck`) runs AFTER that, so it can
 // prevent the WAKE and never the WIPE: the phantom-claim family's mechanical cause is a silent DELETE.
 //
@@ -25,15 +25,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writ
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { installTeamScheduler } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
 
 /** The overridable inputs of one fixture team; only the fields an arm varies are passed. */
 interface FixtureInput {
@@ -191,7 +184,7 @@ test("T-73 negative control: with the new condition neutralised, the SAME fixtur
         // The type is ignored on POSIX, so this spelling is portable.
         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
 /** The scratch copy of the state module the condition is neutralised in. */
-        const copyPath = join(scratch, "lib", "state.js")
+        const copyPath = join(scratch, "lib", "state.ts")
 /** The copy's bytes before the condition is neutralised. */
         const original = readFileSync(copyPath, "utf8")
 /** The exact new condition text, which must occur exactly once. */
@@ -201,7 +194,7 @@ test("T-73 negative control: with the new condition neutralised, the SAME fixtur
 
         expect(taskOf(box.teamFile).output).toBe(STORED)
 /** The neutralised copy, imported so the SAME fixture runs against pre-fix code. */
-        const preFix = await import(pathToFileURL(join(scratch, "lib", "scheduler.js")).href)
+        const preFix = await import(pathToFileURL(join(scratch, "lib", "scheduler.ts")).href)
 /** The runtime double and the captain the pre-fix kick runs as. */
         const { ctx, captain, deliveries } = runtime(box.dir)
 /** The PRE-FIX scheduler, installed over the double. */
@@ -238,9 +231,8 @@ test("T-73 control: a HANDOVER still clears (the fix is not 'never clear')", asy
         output: STORED,
     }
 /** The two state seams the handover path itself calls. */
-    // A dynamic import cannot be covered by a directive above the statement, so the reason sits here:
-    // @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note at the top).
-    const { invalidateTaskAttempt, beginTaskAttempt } = await import("../lib/state.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { invalidateTaskAttempt, beginTaskAttempt } = await import("../lib/state.ts")
     invalidateTaskAttempt(task, "Reviewer", true)
     expect(task.status, "the handover returns the task to the pool").toBe("pending")
     expect(task.assignee).toBe("Reviewer")
@@ -293,11 +285,10 @@ test("T-73 ∩ T-79: the SAME function still refuses terminal work, and the term
 
 test("T-73: the region is REGISTERED in the delta registry and lives in state.js", async () => {
 /** The derived delta registry, imported dynamically so the file still links without it. */
-    // A dynamic import cannot be covered by a directive above the statement, so the reason sits here:
-    // @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note at the top).
-    const { MPD_DELTAS } = await import("../lib/mpd-deltas.js")
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+    const { MPD_DELTAS } = await import("../lib/mpd-deltas.ts")
 /** The region whose registration this arm pins. */
     const delta = MPD_DELTAS.find((item: DeltaEntry) => item.id === "mpd-delta composed-ticket-output-preserved")
     expect(delta, "the region must be registered or a re-materialize would drop it silently").toBeDefined()
-    expect(delta.file.endsWith("lib/state.js")).toBe(true)
+    expect(delta.file.endsWith("lib/state.ts")).toBe(true)
 })

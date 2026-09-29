@@ -5,7 +5,7 @@
 // Why this file exists: regions heal by CONTEXT PAIR, but a MISSING FILE was outside that
 // machinery. A human re-materialize (`rm -rf lib && cp -r upstream/lib lib`) restores the
 // upstream tree, which does NOT contain our mpd-owned bridge, so
-// packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js would vanish and the plugin would
+// packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts would vanish and the plugin would
 // fail at import with nothing louder than a raw ENOENT from the guard that was supposed to
 // protect it. This file pins the three answers that close that class:
 //   1. --check FAILS LOUDLY BY NAME on a missing registered mpd-*.js file (never ENOENT);
@@ -24,15 +24,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 import { applyAgentTeamsFixes, createClassBase, mpdDeltaFiles, reconstructCreateClassFile } from "../../../scripts/patch-agent-teams-fixes.ts"
 import { stageScript } from "./scratch-scripts.ts"
 
@@ -57,11 +50,11 @@ const pluginRoot = join(here, "..")
 /** The repository root, derived from the plugin root above. */
 const repoRoot = join(pluginRoot, "..", "..")
 /** The mpd-owned bridge file the create class exists for. */
-const bridgeRelative = "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js"
+const bridgeRelative = "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts"
 /** The derived registry file, which must never be treated as create-class. */
-const registryRelative = "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js"
+const registryRelative = "packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts"
 /** An ordinary adopted file, which must never be created. */
-const otherRelative = "packages/mpd-agent-teams-plugin/lib/quality-gates.js"
+const otherRelative = "packages/mpd-agent-teams-plugin/lib/quality-gates.ts"
 /** Spell one `lib/` file's repository-relative path. */
 const relativeOf = (name: string): string => `packages/mpd-agent-teams-plugin/lib/${name}`
 
@@ -77,7 +70,7 @@ const REAL_PINS = { bridge: sha256(realText(bridgeRelative)), registry: sha256(r
  * Every real lib file is staged, so `--write-registry` in the scratch tree is faithful (the
  * registry names 13 files; a missing one would now refuse by name instead of regenerating).
  */
-const LIB_FILES = readdirSync(join(pluginRoot, "lib")).filter((name) => name.endsWith(".js"))
+const LIB_FILES = readdirSync(join(pluginRoot, "lib")).filter((name) => name.endsWith(".ts"))
 
 /** Copy the adopted lib + the applier CLI into a scratch root, so the real tree is never driven. */
 /** Copy the adopted lib and the applier CLI into a scratch root, so the real tree is never driven. */
@@ -119,7 +112,7 @@ function bridgeEntry(): DeltaEntry {
     return entries[0]
 }
 
-test("AC8: --check on a MISSING lib/mpd-adapter-ctx.js FAILS LOUDLY by name — never a raw ENOENT", () => {
+test("AC8: --check on a MISSING lib/mpd-adapter-ctx.ts FAILS LOUDLY by name — never a raw ENOENT", () => {
 /** The scratch root this arm drives. */
     const root = scratchRoot()
     try {
@@ -128,7 +121,7 @@ test("AC8: --check on a MISSING lib/mpd-adapter-ctx.js FAILS LOUDLY by name — 
         const check = runCli(root, "--check")
         expect(check.code).toBe(1)
         expect(check.output).toContain("[patch-agent-teams-fixes] FAIL")
-        expect(check.output).toContain("mpd-adapter-ctx.js")
+        expect(check.output).toContain("mpd-adapter-ctx.ts")
         expect(check.output).toContain("re-run with --write")
         expect(check.output).not.toContain("ENOENT")
     }
@@ -153,7 +146,7 @@ test("AC8: --write recreates the missing bridge BYTE-IDENTICALLY (sha256 vs the 
         expect(created.endsWith("\n")).toBe(true)
         expect(created.endsWith("\n\n")).toBe(false)
         // the create path touched ONLY the missing file
-        for (const name of ["tools.js", "quality-gates.js", "mpd-deltas.js", "index.js"])
+        for (const name of ["tools.ts", "quality-gates.ts", "mpd-deltas.ts", "index.ts"])
             expect(sha256(readFileSync(libPath(root, relativeOf(name)), "utf8"))).toBe(sha256(realText(relativeOf(name))))
         // and the healed tree is accepted by the verify-only mode again
         expect(runCli(root, "--check").code).toBe(0)
@@ -171,13 +164,13 @@ test("the create predicate refuses every OTHER missing registered file BY NAME (
 /** The check run with an ordinary adopted file deleted. */
         const check = runCli(root, "--check")
         expect(check.code).toBe(1)
-        expect(check.output).toContain("quality-gates.js")
+        expect(check.output).toContain("quality-gates.ts")
         expect(check.output).toContain("NOT a create-class file")
         expect(check.output).not.toContain("ENOENT")
 /** The write run over the same tree, which must refuse too. */
         const write = runCli(root, "--write")
         expect(write.code).toBe(1)
-        expect(write.output).toContain("quality-gates.js")
+        expect(write.output).toContain("quality-gates.ts")
         expect(write.output).not.toContain("ENOENT")
         expect(existsSync(libPath(root, otherRelative))).toBe(false)
     }
@@ -186,10 +179,10 @@ test("the create predicate refuses every OTHER missing registered file BY NAME (
     }
 })
 
-test("predicate-1 exclusion: lib/mpd-deltas.js is NEVER create-class (the derived registry is not restorable from its own entries)", () => {
+test("predicate-1 exclusion: lib/mpd-deltas.ts is NEVER create-class (the derived registry is not restorable from its own entries)", () => {
     expect(createClassBase(registryRelative)).toBeUndefined()
     expect(mpdDeltaFiles()).not.toContain(registryRelative)
-    expect(createClassBase(bridgeRelative)).toBe("mpd-adapter-ctx.js")
+    expect(createClassBase(bridgeRelative)).toBe("mpd-adapter-ctx.ts")
     expect(createClassBase(otherRelative)).toBeUndefined()
     expect(mpdDeltaFiles()).toContain(bridgeRelative)
 })
@@ -229,7 +222,7 @@ test("RULE A refuses a create-class file whose windows do NOT reproduce its byte
 /** The refused registry regeneration run. */
         const run = runCli(root, "--write-registry")
         expect(run.code).toBe(1)
-        expect(run.output).toContain("mpd-adapter-ctx.js")
+        expect(run.output).toContain("mpd-adapter-ctx.ts")
         expect(run.output).toContain("create-class file")
         expect(run.output).toContain("more than one region")
         expect(sha256(readFileSync(libPath(root, registryRelative), "utf8"))).toBe(before)
@@ -249,7 +242,7 @@ test("--write-registry meeting a MISSING registered file is a loud named FAIL te
 /** The refused run over the tree with a missing registered file. */
         const run = runCli(root, "--write-registry")
         expect(run.code).toBe(1)
-        expect(run.output).toContain("mpd-adapter-ctx.js")
+        expect(run.output).toContain("mpd-adapter-ctx.ts")
         expect(run.output).toContain("--write")
         expect(run.output).not.toContain("ENOENT")
         expect(sha256(readFileSync(libPath(root, registryRelative), "utf8"))).toBe(before)
@@ -268,7 +261,7 @@ test("round-trip rule: a create that fails re-verification is DELETED again (no 
     const savedBlock = entry.block
     try {
         rmSync(libPath(root, bridgeRelative))
-        // Corrupt ONLY the in-memory entry — the real lib/mpd-deltas.js is never written: the
+        // Corrupt ONLY the in-memory entry — the real lib/mpd-deltas.ts is never written: the
         // block loses its begin marker, so the created bytes cannot re-verify as a complete region.
         entry.block = ["// not-a-region-marker", ...savedBlock.split("\n").slice(1)].join("\n")
 /** The applier's failure text, or the empty string when it wrongly succeeded. */
@@ -280,7 +273,7 @@ test("round-trip rule: a create that fails re-verification is DELETED again (no 
         catch (error) {
             message = String(error instanceof Error ? error.message : error)
         }
-        expect(message).toContain("mpd-adapter-ctx.js")
+        expect(message).toContain("mpd-adapter-ctx.ts")
         expect(message).toContain("DELETED again")
         expect(existsSync(libPath(root, bridgeRelative))).toBe(false)
     }

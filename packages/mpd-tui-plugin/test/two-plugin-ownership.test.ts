@@ -2,7 +2,7 @@
 // registration and the TUI package is a PURE CONSUMER whose registration is a guarded FALLBACK.
 //
 // The settings double below models the HOST'S OWN GUARD — `register()` throws
-// `settings namespace "<ns>" is already registered` (`dsh-settings/lib/index.js:283`) — so a
+// `settings namespace "<ns>" is already registered` (`dsh-settings/lib/index.ts:283`) — so a
 // collision cannot pass silently here: if both plugins registered, the second call throws and the
 // registration count would be 2 or the apply would fail.
 import { describe, expect, test } from "bun:test"

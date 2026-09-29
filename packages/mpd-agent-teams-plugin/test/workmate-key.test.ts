@@ -1,8 +1,6 @@
 import { test, expect } from "bun:test"
-// The adopted member surface is vendored JavaScript with no declaration file, and its types are
-// not recoverable without re-authoring upstream, so `workmateKey` arrives untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { workmateKey } from "../lib/members.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { workmateKey } from "../lib/members.ts"
 
 // The member-name → workmate directory key must stay byte-for-byte identical to
 // mpd-workmate-plugin's `sanitizeName`, otherwise multi-word members (e.g.

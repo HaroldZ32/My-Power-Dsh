@@ -1,0 +1,72 @@
+=== JavaScript -> TypeScript conversion + standard cordis layout: final verification, read 2026-09-29T06:36:15Z ===
+repo /root/dshProj/My-Power-Dsh · branch dev · HEAD 5e5454bb5ba449a4817b827938a9fd4b04e30936 · node v24.16.0 · bun 1.3.14 (recorded buildToolchain bun@1.4.0)
+
+--- JavaScript left in the source tree (excluding node_modules / caches / derived dist/) ---
+  packages/mpd-agent-teams-plugin/lib/client.js
+  packages/mpd-better-sidebar-host/dist/index.js
+  packages/mpd-bootstrap-plugin/dist/index.js
+  packages/mpd-boulder-plugin/dist/index.js
+  packages/mpd-bundle-plugin/client.js
+  packages/mpd-bundle-plugin/dist/index.js
+  packages/mpd-codegraph-plugin/dist/index.js
+  packages/mpd-comment-checker-plugin/dist/index.js
+  packages/mpd-config-plugin/dist/index.js
+  packages/mpd-dsh-adapter-plugin/dist/index.js
+  packages/mpd-ext-plugin/dist/index.js
+  packages/mpd-ext-plugin/dist/sdk.js
+  packages/mpd-hashline-plugin/dist/index.js
+  packages/mpd-mcp-astgrep/dist/cli.js
+  packages/mpd-mcp-codegraph/dist/serve.js
+  packages/mpd-mcp-gitbash/dist/cli.js
+  packages/mpd-mcp-lsp/dist/cli.js
+  packages/mpd-memory-plugin/dist/index.js
+  packages/mpd-modelchain-plugin/dist/index.js
+  packages/mpd-qa-roles-probe/dist/index.js
+  packages/mpd-roles-plugin/dist/index.js
+  packages/mpd-roster-provider-plugin/dist/index.js
+  packages/mpd-team-compact-plugin/dist/index.js
+  packages/mpd-team-tools-plugin/dist/index.js
+  packages/mpd-team-watchdog-plugin/dist/index.js
+  packages/mpd-tools-plugin/dist/index.js
+  packages/mpd-tui-plugin/dist/index.js
+  packages/mpd-ulw-plugin/dist/index.js
+  packages/mpd-workmate-plugin/dist/index.js
+  skills/ultimate-browsing/engine/templates/playwright_mobile_chrome.js
+  skills/ultimate-browsing/engine/templates/playwright_real_chrome.js
+  skills/visual-qa/scripts/visual-qa.mjs
+  TOTAL: 32 (all four classes are the measured-irreducible set)
+
+--- TypeScript family counts ---
+  .ts  : 4777
+  .cts : 1280
+
+--- typecheck ---
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(36,31): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(39,34): error TS2307: Cannot find module 'typescript/unstable/async' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(41,34): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(265,47): error TS7006: Parameter 'm' implicitly has an 'any' type.
+error: script "typecheck" exited with code 1
+--- verify:rows ---
+[verify-rows-parity] ok: 33 row ids match the 2-file bundle patch layer (agent-preset-registry, dsh-tui-agent-preset-registry, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-tools, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+--- verify:docs ---
+[verify-docs-parity] root=/root/dshProj/My-Power-Dsh pairs=41 failed=0 violations=0 exempt=21 derived=3 links=419 dead=0 — PASS
+--- verify:comments ---
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+--- verify:manifest --pack ---
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+--- verify:pack-closure ---
+[verify-pack-closure] ok: 20 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 21 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/My-Power-Dsh/dist/mpd-package (390 asset files); agent references 3/3; root files 1/1; declared packages 25/25 present in the artifact; content bytes: 1202 file(s) compared, 1202 identical, 0 drift, 0 expected-after-pack; completeness: 420 declared source file(s) compared, 419 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-29T06:36:00.909Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+--- verify:manual-paths ---
+[verify-manual-paths] PASS resolved=132 over-report=91 under-report=88 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+--- verify:vendor (assets only; the upstream checkout pinned at 8c57e46 is absent here) ---
+[verify-vendor] FAIL - upstream commit mismatch: HEAD=d1557a4b48fdbec06a7144fdc4afa3e65c6523ed lock=8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] FAIL - upstream version mismatch: 5.0.0-beta.62 vs 5.0.0-beta.20
+[verify-vendor] asset OK: skills 324 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+--- verify-dist-fresh (environment-sensitive: local bun != recorded buildToolchain) ---
+[verify-dist-fresh] build toolchain: bun 1.3.14 · recorded buildToolchain bun@1.4.0 — NOTE: the recorded build toolchain (bun@1.4.0) differs from the bun rebuilding here (1.3.14): a different bun minor rewrites the injected helper preamble and minifier variable names, so the byte comparison below certifies these bytes under THIS bun only
+[verify-dist-fresh] FAIL - 23 of 23 targets not fresh (STALE: 23) — 650ms

@@ -4,7 +4,7 @@
 //
 // Why: `packages/mpd-agent-teams-plugin/lib` is adopted upstream main code (MIT). Our deltas
 // there are bracketed by `//#region mpd-delta <id> (mpd LOCAL ADAPTATION; ...)` markers and
-// registered in `packages/mpd-agent-teams-plugin/lib/mpd-deltas.js`. A re-vendor / re-materialize
+// registered in `packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts`. A re-vendor / re-materialize
 // of that tree must not be able to SILENTLY drop or rewrite them, so this script is the guard
 // `scripts/vendor-agent-teams.mjs` re-runs after every refresh, exactly like
 // `patch-agent-teams-client.mjs` guards the prebuilt client bundle via the export bridge.
@@ -15,7 +15,7 @@
 //   --write            additionally RESTORE a missing (or partially stripped) region at the
 //                      seam its registered before/after CONTEXT PAIR brackets, refusing when
 //                      that pair is not unique or does not bracket a seam, then re-verify.
-//   --write-registry   regenerate lib/mpd-deltas.js from the marked regions in the files
+//   --write-registry   regenerate lib/mpd-deltas.ts from the marked regions in the files
 //                      (used when a delta itself changes; never hand-edit the registry).
 //
 // Addressing: a region is addressed ONLY by the context pair recorded for it (see the
@@ -33,14 +33,17 @@ import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import process from "node:process"
 import { repoRootFrom } from "./lib/repo.ts"
-import { MPD_DELTA_MARKERS, MPD_DELTAS } from "../packages/mpd-agent-teams-plugin/lib/mpd-deltas.js"
+import { MPD_DELTA_MARKERS, MPD_DELTAS } from "../packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts"
 // The vendored registry's entry shape, imported as a TYPE only: the registry itself stays
 // JavaScript, `scripts/lib/vendored-agent-teams.d.ts` declares its surface, and this import is
 // erased before node ever runs the module.
-import type { MpdDeltaEntry } from "../packages/mpd-agent-teams-plugin/lib/mpd-deltas.js"
+import type { MpdDeltaEntry } from "../packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts"
 
 /** Repository root, derived from this script's own module URL (`<root>/scripts/`). */
 const repoRoot = repoRootFrom(import.meta.url)
+
+/** The adopted-body header the regenerated registry carries as its first line. */
+const REGISTRY_NOCHECK = "// @ts-nocheck -- vendored upstream body: renamed to .ts for this repository's source-language rule, never typed here."
 
 /** Region begin line for one delta id. */
 const beginLine = (id: string): string => MPD_DELTA_MARKERS.begin(id)
@@ -58,14 +61,14 @@ export function mpdDeltaFiles(): string[] {
   /** Repository-relative paths that already carry a registered region, de-duplicated. */
   const registered = [...new Set(MPD_DELTAS.map((delta: MpdDeltaEntry): string => delta.file))]
   // A region can only be registered from a file the registry already names, so a NEW
-  // delta file (lib/index.js, t8's carrier hook) would never be discovered by
+  // delta file (lib/index.ts, t8's carrier hook) would never be discovered by
   // --write-registry. Discover the adopted lib files that carry region markers and are
   // not registered yet — the registry stays the authority, this only seeds it once.
   /** Absolute path of the adopted plugin's lib directory, scanned for marker carriers. */
   const libDir = join(repoRoot, "packages/mpd-agent-teams-plugin/lib")
   /** Adopted lib files that carry a region marker yet have no registry entry, repo-relative. */
   const discovered = readdirSync(libDir)
-    .filter((name: string): boolean => name.endsWith(".js") && name !== "mpd-deltas.js")
+    .filter((name: string): boolean => name.endsWith(".ts") && name !== "mpd-deltas.ts")
     .map((name: string): string => relative(repoRoot, join(libDir, name)).split("\\").join("/"))
     .filter((file: string): boolean => !registered.includes(file) && readFileSync(join(repoRoot, file), "utf8").includes("//#region mpd-delta "))
   return [...registered, ...discovered]
@@ -75,14 +78,14 @@ export function mpdDeltaFiles(): string[] {
  * Name-derived CREATE CLASS (t6): the files the registry may RECREATE byte-faithfully when
  * they are missing. mpd-owned-ness comes from the FILE NAME — never from a registry field, so
  * the schema stays its five keys — and the derived registry itself is EXCLUDED: it matches
- * `mpd-*.js` but is the artifact being generated, never restorable from its own entries.
+ * `mpd-*.ts` but is the artifact being generated, never restorable from its own entries.
  * @param file - repository-relative path of an adopted lib file.
  * @returns {string|undefined} the basename when it is create-class-eligible, else undefined
  */
 export function createClassBase(file: string): string | undefined {
   /** The path's final segment, or undefined when the path has none. */
   const base = file.split("/").pop()
-  if (base === undefined || base === "mpd-deltas.js" || !/^mpd-.*\.js$/.test(base)) return undefined
+  if (base === undefined || base === "mpd-deltas.ts" || !/^mpd-.*\.ts$/.test(base)) return undefined
   return base
 }
 
@@ -532,7 +535,7 @@ function assertRegionMatches(lines: readonly string[], delta: MpdDeltaEntry, fil
     throw new Error(
       `[patch-agent-teams-fixes] FAIL: delta "${delta.id}" in ${file} (lines ${found.begin + 1}-${found.end + 1}) no longer matches this script's registered block`
       + ` — first difference at line ${found.begin + 1 + (firstDiff === -1 ? 0 : firstDiff)}`
-      + `; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it`,
+      + `; either the delta was edited without regenerating lib/mpd-deltas.ts (run --write-registry) or a re-vendor rewrote it`,
     )
   }
 }
@@ -550,7 +553,7 @@ function assertRegionMatches(lines: readonly string[], delta: MpdDeltaEntry, fil
  */
 function driftedOrphanError(delta: MpdDeltaEntry, file: string, found: RegionLocation): Error {
   return new Error(
-    `[patch-agent-teams-fixes] FAIL: delta "${delta.id}" in ${file}: the begin marker at line ${found.begin + 1} has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.js; restore the marked region, or fix it and run: node scripts/patch-agent-teams-fixes.mjs --write-registry`,
+    `[patch-agent-teams-fixes] FAIL: delta "${delta.id}" in ${file}: the begin marker at line ${found.begin + 1} has no end marker and the surviving lines are NOT the registered block — the delta was edited without regenerating lib/mpd-deltas.ts; restore the marked region, or fix it and run: node scripts/patch-agent-teams-fixes.mjs --write-registry`,
   )
 }
 
@@ -573,7 +576,7 @@ export function assertRegistryFormat(entries: readonly MpdDeltaEntry[] = MPD_DEL
   const carriesContextPair = entries.every((entry: MpdDeltaEntry): boolean => Array.isArray(entry.beforeContext) && entry.beforeContext.length > 0
     && Array.isArray(entry.afterContext) && entry.afterContext.length > 0)
   if (carriesOldKeys || !carriesContextPair) {
-    throw new Error("[patch-agent-teams-fixes] FAIL: lib/mpd-deltas.js is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)")
+    throw new Error("[patch-agent-teams-fixes] FAIL: lib/mpd-deltas.ts is in the OLD anchor format — run: node scripts/patch-agent-teams-fixes.mjs --write-registry (one-time migration)")
   }
 }
 
@@ -622,10 +625,10 @@ export function applyAgentTeamsFixes({ root = repoRoot, write = false }: ApplyOp
       /** The file's single registry entry, or undefined when it is not a create-class file. */
       const entry = createClassEntry(file)
       if (entry === undefined) {
-        throw new Error(`[patch-agent-teams-fixes] FAIL: registered adopted file ${file} is MISSING and is NOT a create-class file (lib/mpd-*.js, excluding mpd-deltas.js, carrying exactly ONE registry entry) — the registry cannot reconstruct it from context; restore the file from the re-materialize source and re-run`)
+        throw new Error(`[patch-agent-teams-fixes] FAIL: registered adopted file ${file} is MISSING and is NOT a create-class file (lib/mpd-*.ts, excluding mpd-deltas.ts, carrying exactly ONE registry entry) — the registry cannot reconstruct it from context; restore the file from the re-materialize source and re-run`)
       }
       if (!write) {
-        throw new Error(`[patch-agent-teams-fixes] FAIL: registered mpd-owned file ${file} is MISSING (verify-only mode) — its single registry entry "${entry.id}" reconstructs it byte-faithfully; re-run with --write to recreate it from lib/mpd-deltas.js`)
+        throw new Error(`[patch-agent-teams-fixes] FAIL: registered mpd-owned file ${file} is MISSING (verify-only mode) — its single registry entry "${entry.id}" reconstructs it byte-faithfully; re-run with --write to recreate it from lib/mpd-deltas.ts`)
       }
       /** The bytes the create-class entry reconstructs for the missing file. */
       const expected = reconstructCreateClassFile(entry)
@@ -681,7 +684,7 @@ export function applyAgentTeamsFixes({ root = repoRoot, write = false }: ApplyOp
         if (found !== undefined && found.orphan === "end" && reBracketOrphan(lines, delta, found) === undefined) {
           throw driftedOrphanError(delta, file, found)
         }
-        throw new Error(`[patch-agent-teams-fixes] FAIL: delta "${delta.id}" is MISSING from ${file}${partial} (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.js`)
+        throw new Error(`[patch-agent-teams-fixes] FAIL: delta "${delta.id}" is MISSING from ${file}${partial} (verify-only mode) — a re-vendor dropped it; re-run with --write to restore it from lib/mpd-deltas.ts`)
       }
       if (found !== undefined) {
         // PARTIAL strip: restore the missing marker around an intact body when we
@@ -792,19 +795,19 @@ function regionSpans(lines: readonly string[]): RegionSpan[] {
 
 /** Where the regenerated registry was written and how many region entries it carries. */
 interface RegistryWriteResult {
-  /** Absolute path of the regenerated `lib/mpd-deltas.js`. */
+  /** Absolute path of the regenerated `lib/mpd-deltas.ts`. */
   file: string
   /** Number of region entries written, in file order. */
   regions: number
 }
 
 /**
- * Regenerate lib/mpd-deltas.js from the marked regions in the adopted files.
+ * Regenerate lib/mpd-deltas.ts from the marked regions in the adopted files.
  * @returns the written path and the number of entries emitted.
  */
 export function writeRegistry(): RegistryWriteResult {
   /** Absolute path of the generated registry module. */
-  const registryFile = join(repoRoot, "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js")
+  const registryFile = join(repoRoot, "packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts")
   /** The registry module's lines, joined with `\n` when the file is written. */
   const out: string[] = []
   /** The entries collected from the marked regions, in file order. */
@@ -857,11 +860,12 @@ export function writeRegistry(): RegistryWriteResult {
         /** The bytes this entry's context pair plus block reconstruct for the file. */
         const reconstructed = reconstructCreateClassFile({ beforeContext, afterContext, block })
         if (reconstructed !== text) {
-          throw new Error(`[patch-agent-teams-fixes] FAIL: ${file} is a create-class file (lib/mpd-*.js, exactly one region) but beforeContext + block + afterContext does NOT reproduce its current bytes — a create-class file must be reconstructible from beforeContext+block+afterContext; make the leading/trailing skeleton lines unique (the frozen bridge layout is 1 leading comment + region + 1 different trailing comment) or drop the create guarantee by using more than one region`)
+          throw new Error(`[patch-agent-teams-fixes] FAIL: ${file} is a create-class file (lib/mpd-*.ts, exactly one region) but beforeContext + block + afterContext does NOT reproduce its current bytes — a create-class file must be reconstructible from beforeContext+block+afterContext; make the leading/trailing skeleton lines unique (the frozen bridge layout is 1 leading comment + region + 1 different trailing comment) or drop the create guarantee by using more than one region`)
         }
       }
     }
   }
+  out.push(REGISTRY_NOCHECK)
   out.push("/**")
   out.push(" * mpd LOCAL ADAPTATION registry for the adopted agent-teams plugin.")
   out.push(" *")
@@ -874,6 +878,25 @@ export function writeRegistry(): RegistryWriteResult {
   out.push(" * marked region and regenerate.")
   out.push(" * @module dsh-agent-teams/mpd-deltas")
   out.push(" */")
+  out.push("/** One registered mpd delta region: its file, id, context pair and replacement block. */")
+  out.push("export interface MpdDeltaEntry {")
+  out.push("  /** Repository-relative path of the adopted file the region lives in. */")
+  out.push("  readonly file: string")
+  out.push("  /** Region id, unique per file; the marker text interpolates it into both markers. */")
+  out.push("  readonly id: string")
+  out.push("  /** Shortest unique window of region-stripped lines ending at the seam. */")
+  out.push("  readonly beforeContext: readonly string[]")
+  out.push("  /** Shortest unique window of region-stripped lines starting after the seam. */")
+  out.push("  readonly afterContext: readonly string[]")
+  out.push("  /** Exact bytes the region must contain, including both marker lines. */")
+  out.push("  readonly block: string")
+  out.push("  /** RETIRED wave-2 line key, read only from a pre-migration registry by assertRegistryFormat. */")
+  out.push("  readonly anchor?: string")
+  out.push("  /** RETIRED wave-2 marker line the anchor was keyed by, read only from a pre-migration registry. */")
+  out.push("  readonly anchorMarker?: string")
+  out.push("  /** RETIRED wave-2 occurrence index of anchorMarker, read only from a pre-migration registry. */")
+  out.push("  readonly anchorOccurrence?: number")
+  out.push("}")
   out.push("/** Region markers that bracket every mpd delta in the adopted plugin. */")
   out.push("export const MPD_DELTA_MARKERS = {")
   out.push('    begin: (id) => `//#region ${id} (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)`,')

@@ -10,22 +10,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the panel-view
-// predicates cannot be typed without re-authoring upstream; this import is expected to be untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { failedDependencyIds, taskVisualState } from "../lib/state.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the live tool
-// registrations cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the frozen tool
-// name lists cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { CAPTAIN_TOOL_NAMES, MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "../lib/tool-names.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the plugin
-// config schema cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { Config } from "../lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { failedDependencyIds, taskVisualState } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { CAPTAIN_TOOL_NAMES, MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "../lib/tool-names.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { Config } from "../lib/index.ts"
 
 /** This test file's own directory, used to resolve the repository root below. */
 const here = dirname(fileURLToPath(import.meta.url))

@@ -1,7 +1,7 @@
-import * as core from "./core.cjs";
-import * as errors from "./errors.cjs";
-import type * as schemas from "./schemas.cjs";
-import * as util from "./util.cjs";
+import * as core from "./core.cts";
+import * as errors from "./errors.cts";
+import type * as schemas from "./schemas.cts";
+import * as util from "./util.cts";
 export type $ZodErrorClass = {
     new (issues: errors.$ZodIssue[]): errors.$ZodError;
 };

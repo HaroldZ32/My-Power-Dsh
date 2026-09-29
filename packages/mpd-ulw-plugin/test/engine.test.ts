@@ -9,8 +9,8 @@ import type { DshSpawnSpec, DshTextBlock, DshToolDef, DshToolExec } from "../../
 // checked here exactly as the harness checks a tool result at runtime.
 // That vendored closure is plain JavaScript with no declaration file, so the two validators
 // stay untyped at the import and are given precise local types where a result is received.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { assertSupportedJsonSchema, validateJsonSchemaValue } from "../../mpd-agent-teams-plugin/_deps/dsh-tools/lib/index.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { assertSupportedJsonSchema, validateJsonSchemaValue } from "../../mpd-agent-teams-plugin/_deps/dsh-tools/lib/index.ts"
 
 /** One canned subagent answer, keyed in the fake's table by a suffix of the child's label. */
 interface CannedArm {

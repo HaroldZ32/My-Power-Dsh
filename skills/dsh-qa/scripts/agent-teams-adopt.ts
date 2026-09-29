@@ -85,9 +85,9 @@ function readSources(): ProvenanceSources {
   return {
     notices: readFileSync(join(repoRoot, "LICENSE-NOTICES.md"), "utf8"),
     agents: readFileSync(join(repoRoot, "AGENTS.md"), "utf8"),
-    patch: readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8"),
+    patch: readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8"),
     licenseExists: existsSync(join(repoRoot, ADOPTED, "LICENSE")),
-    depsExist: existsSync(join(repoRoot, ADOPTED, "_deps", "schemastery", "lib", "index.mjs")),
+    depsExist: existsSync(join(repoRoot, ADOPTED, "_deps", "schemastery", "lib", "index.ts")),
     version: (() => {
       try { return JSON.parse(readFileSync(join(repoRoot, ADOPTED, "package.json"), "utf8")).version } catch { return null }
     })(),
@@ -138,7 +138,7 @@ if (argv.includes("--self-test")) {
   const controlLicence: string[] = auditProvenance({ ...sources, notices: sources.notices.split(MIT_MARKER).join("SOMETHING ELSE") })
   if (controlLicence.length === 0) fail("negative control: the audit passed with the MIT attribution block removed")
   /** The audit of a copy with an `agent-teams` row re-declared, which must report a problem. */
-  const controlRow: string[] = auditProvenance({ ...sources, patch: sources.patch + "\n- insert:\n    - id: agent-teams\n      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'\n" })
+  const controlRow: string[] = auditProvenance({ ...sources, patch: sources.patch + "\n- insert:\n    - id: agent-teams\n      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.ts'\n" })
   if (controlRow.length === 0) fail("negative control: the audit passed with an `agent-teams` row re-declared")
   console.log("[agent-teams-adopt self-test] ok: retained adopted body — MIT notice + copyright + LICENSE + pinned " + PINNED_VERSION
     + " + _deps closure + AGENTS.md naming exception, and NO `agent-teams` row in the bundle patch"

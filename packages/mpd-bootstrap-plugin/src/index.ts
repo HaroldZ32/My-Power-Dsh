@@ -8,7 +8,7 @@
 //      corpus is visible exactly while the bundle is installed and disappears
 //      when the row unloads — no $DSH_HOME/skills copy, no stale version stamp.
 //   2) mpd preset: served from <bundle>/presets by the agent-presets root the
-//      bundle patch configures (packages/mpd-bundle/cordis.patch.yml) — no
+//      bundle patch configures (cordis.patch.yml) — no
 //      $DSH_HOME/.agent-presets copy.
 //   3) Legacy migration: the version-stamped copies written by bundle <= 0.2.6
 //      into $DSH_HOME/skills and $DSH_HOME/.agent-presets are removed on the

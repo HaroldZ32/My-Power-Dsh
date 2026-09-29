@@ -15,10 +15,8 @@ import { describe, expect, test } from "bun:test"
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted scheduler is vendored JavaScript with no declaration file, so `installTeamScheduler`
-// arrives untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installTeamScheduler } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
 
 /** State root the scheduler reads every fixture team from, relative to the workspace cwd. */
 const STATE_DIR = ".agent-teams"

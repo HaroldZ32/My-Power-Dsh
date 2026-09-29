@@ -6,7 +6,7 @@
 // waited for a source that could only complete AFTER the repair — the captain had to take the task
 // over to break the cycle (`.mpd/team/archive/friction-p1-wave/team.json`, task `t21`).
 //
-// THE FIX (`lib/quality-gates.js`, `validateCreateTask`, the repair auto-wire): the edge is wired
+// THE FIX (`lib/quality-gates.ts`, `validateCreateTask`, the repair auto-wire): the edge is wired
 // only for a NON-open source. `completed` keeps the protection the edge was written for;
 // `failed`/`cancelled` keep the edge so the existing refusal still fires; an OPEN source
 // (`pending`/`claimed`/`in_progress`) keeps `sourceTaskId` as PROVENANCE and acquires no edge.
@@ -19,17 +19,10 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { validateCreateTask } from "../lib/quality-gates.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { unsatisfiedDependencies } from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { validateCreateTask } from "../lib/quality-gates.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { unsatisfiedDependencies } from "../lib/state.ts"
 
 /** The overridable fields of one task fixture. */
 interface TaskOverrides {
@@ -140,7 +133,7 @@ test("T-81 negative control: with the pre-fix unconditional edge, the SAME fixtu
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
 /** The scratch copy of the gate module the condition is stripped from. */
-        const copyPath = join(scratch, "lib", "quality-gates.js")
+        const copyPath = join(scratch, "lib", "quality-gates.ts")
 /** The copy's bytes before the condition is neutralised. */
         const original = readFileSync(copyPath, "utf8")
 /** The exact pre-fix condition text, which must occur exactly once. */

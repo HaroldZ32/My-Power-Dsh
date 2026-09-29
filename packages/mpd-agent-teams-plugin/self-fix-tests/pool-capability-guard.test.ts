@@ -13,19 +13,12 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { MPD_DELTAS } from "../lib/mpd-deltas.ts"
 import { codeOf } from "./lib-absence.ts"
 import { applyAgentTeamsFixes } from "../../../scripts/patch-agent-teams-fixes.ts"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import * as scheduler from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import * as scheduler from "../lib/scheduler.ts"
 import { stageScript } from "./scratch-scripts.ts"
 
 // Namespace import on purpose: the fix may be ABSENT (pre-fix tree, or a re-materialize
@@ -88,7 +81,7 @@ const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 /** The repository root, derived from the plugin root above. */
 const repoRoot = join(pluginRoot, "..", "..")
 /** The vendored scheduler module the registration arms read. */
-const SCHEDULER = join(pluginRoot, "lib", "scheduler.js")
+const SCHEDULER = join(pluginRoot, "lib", "scheduler.ts")
 
 /** The roster's read-only restriction, verbatim from the profile data. */
 const READONLY_DENY = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
@@ -189,7 +182,7 @@ test("the guard is region-registered and its replacement is REFUSED after a re-m
   for (const token of ["nextCapableTask", "taskCapabilityGap", "taskCapabilityNeed", "pool-capability"])
     expect(stripped).not.toContain(token)
   // (2) The replacement is registered where the seam is.
-  const ids = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("scheduler.js")).map((delta: DeltaEntry) => delta.id)
+  const ids = MPD_DELTAS.filter((delta: DeltaEntry) => delta.file.endsWith("scheduler.ts")).map((delta: DeltaEntry) => delta.id)
   expect(ids).toContain("mpd-delta pool-capability-guard")
   expect(ids).toContain("mpd-delta pool-capability-select")
 
@@ -205,7 +198,7 @@ test("the guard is region-registered and its replacement is REFUSED after a re-m
       cpSync(join(pluginRoot, "lib", name), join(libDir, name))
     stageScript(root, "patch-agent-teams-fixes.ts")
 /** The scratch copy of the scheduler the re-materialize is simulated on. */
-    const target = join(libDir, "scheduler.js")
+    const target = join(libDir, "scheduler.ts")
     // Simulate the re-materialize: the upstream selection comes back, our region is gone.
     const materialized = readFileSync(target, "utf8").replace(
       /[ ]*\/\/#region mpd-delta pool-capability-select[\s\S]*?\/\/#endregion mpd-delta pool-capability-select\n/,

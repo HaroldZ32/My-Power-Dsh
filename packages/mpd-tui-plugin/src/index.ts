@@ -235,7 +235,7 @@ export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<t
  * The calling agent is sourced from the adapter's own live registry
  * (`liveAgent(captainSessionId)`, else `liveAgents()[0]` when the record carries no
  * id) and passed as the adapter's optional `agent`, which forwards it verbatim as
- * `exec.agent` — the adopted write tools require one (`lib/tools.js:65-71`).
+ * `exec.agent` — the adopted write tools require one (`lib/tools.ts:65-71`).
  *
  * Every refusal is LOUD and never a fabricated success: an unregistered tool, an
  * unattached captain session (the Web route's own 409 case) and a tool error all

@@ -67,7 +67,7 @@ function selfTest(): void {
   /** Every named check, kept as `[label, verdict]` so a failure names its subject. */
   const checks: Array<[string, boolean]> = []
   /** The bundle patch, which must carry the web-compat self-row. */
-  const patch = readFileSync(join(ROOT, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(ROOT, "cordis.patch.yml"), "utf8")
   checks.push(["patch web-compat self-row", patch.includes("id: mpd-web-compat") && patch.includes("name: '@mpd-dsh/mpd'")])
   /** The packer script, which must declare the bundle-plugin main and the client export. */
   const pack = readFileSync(join(ROOT, "scripts", "pack-mpd.ts"), "utf8")

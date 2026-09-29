@@ -1,3 +1,3 @@
-import * as z from "./external.cjs";
-export * from "./external.cjs";
+import * as z from "./external.cts";
+export * from "./external.cts";
 export { z };

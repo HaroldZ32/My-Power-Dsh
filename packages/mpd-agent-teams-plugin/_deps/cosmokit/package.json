@@ -11,18 +11,18 @@
     "directory": "vendor/cosmokit"
   },
   "type": "module",
-  "main": "lib/index.js",
+  "main": "lib/index.ts",
   "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
+      "default": "./lib/index.ts"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/index.js",
+    "lib/index.ts",
     "lib/types/**/*.d.ts",
     "lib/types/**/*.d.ts.map",
     "src"

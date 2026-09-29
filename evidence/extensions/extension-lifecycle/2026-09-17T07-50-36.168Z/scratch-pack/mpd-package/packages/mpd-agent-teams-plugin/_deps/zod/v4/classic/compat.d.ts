@@ -1,12 +1,12 @@
-import * as core from "../core/index.js";
-import type { ZodType } from "./schemas.js";
+import * as core from "../core/index.ts";
+import type { ZodType } from "./schemas.ts";
 export type { 
 /** @deprecated Use `z.output<T>` instead. */
 output as TypeOf, 
 /** @deprecated Use `z.output<T>` instead. */
 output as Infer, 
 /** @deprecated Use `z.core.$$ZodFirstPartyTypes` instead */
-$ZodTypes as ZodFirstPartySchemaTypes, } from "../core/index.js";
+$ZodTypes as ZodFirstPartySchemaTypes, } from "../core/index.ts";
 /** @deprecated Use the raw string literal codes instead, e.g. "invalid_type". */
 export declare const ZodIssueCode: {
     readonly invalid_type: "invalid_type";
@@ -31,7 +31,7 @@ export type BRAND<T extends string | number | symbol = string | number | symbol>
         [k in T]: true;
     };
 };
-export { $brand, config } from "../core/index.js";
+export { $brand, config } from "../core/index.ts";
 /** @deprecated Use `z.config(params)` instead. */
 export declare function setErrorMap(map: core.$ZodErrorMap): void;
 /** @deprecated Use `z.config()` instead. */

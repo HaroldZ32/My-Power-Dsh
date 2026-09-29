@@ -13,14 +13,10 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the dependency
-// predicates cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { dependencyStates, unsatisfiedDependencies } from "../lib/state.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so the live tool
-// registrations cannot be typed without re-authoring upstream; this import stays untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { dependencyStates, unsatisfiedDependencies } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** The state directory the plugin resolves under a session workspace. */
 const STATE_DIR = join(".mpd", "team")
@@ -217,7 +213,7 @@ test("OPT-1: the captain-takeover path (reassign_task) also stops blocking on a 
 })
 
 test("OPT-1: B dispatches within the scheduler readiness path after A fails", () => {
-    // Mirror lib/scheduler.js nextReadyTask: pending + no blocking + not reassigning.
+    // Mirror lib/scheduler.ts nextReadyTask: pending + no blocking + not reassigning.
     /** The one-team record whose producer A has terminally failed. */
     const team = teamRecord({ teamId: "t", aStatus: "failed" })
     /** The tasks the readiness predicate would dispatch: pending, unblocked, not reassigning. */

@@ -1,7 +1,9 @@
 # mpd-bundle
 **English** | [中文](./README.zh-CN.md)
 
-DSH bundle aggregation package: `cordis.patch.yml` mounts every mpd-dsh plugin row —
+The bundle's host-plane patch layer is `cordis.patch.yml`, and it sits at the **repository ROOT**
+(the standard cordis bundle layout — `package.json` declares it as the first
+`dsh.bundle.patch` entry). It mounts every mpd-dsh plugin row —
 MCP servers (ast-grep / git-bash / lsp / codegraph + the remote context7 / grep.app rows),
 the B/C-line plugins (mpd-config first so the mpdConfig service is visible to the rows
 below, then mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline /
@@ -25,7 +27,7 @@ A session starts with **NO team** — a team is not a precondition of a session
 (upstream parity: the upstream team mode ships disabled by default). What is enforced
 mechanically by the adopted agent-teams plugin is an **advisory complexity gate**
 (`sessionTeamPolicy` config, implementation in
-`packages/mpd-agent-teams-plugin/lib/session-start.js`), not prompt guidance alone:
+`packages/mpd-agent-teams-plugin/lib/session-start.ts`), not prompt guidance alone:
 
 - `mode: off` (the default) means "no auto-provision and no unconditional notice".
   The decoupled mechanical gate is `autoRoute: true` (default enabled).

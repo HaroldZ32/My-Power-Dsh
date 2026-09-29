@@ -24,13 +24,10 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted tool surface is vendored JavaScript with no declaration file, so `registerAgentTeamsTools`
-// arrives untyped instead of re-authoring upstream to type it.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
-// The adopted state module is vendored JavaScript with no declaration file, for the same reason.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { teamLockQueueKeys } from "../lib/state.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { teamLockQueueKeys } from "../lib/state.ts"
 
 /** State root every fixture team lives under, relative to the session workspace cwd. */
 const STATE_DIR = join(".mpd", "team")

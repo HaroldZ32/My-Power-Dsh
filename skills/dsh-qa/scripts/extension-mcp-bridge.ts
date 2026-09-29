@@ -198,7 +198,7 @@ function selfTest(): void {
 
   check(existsSync(LSP_SERVER), "the repo's own stdio MCP server is missing: packages/mpd-mcp-lsp/dist/cli.js")
   // The bundle patch, read to prove the `mpd-ext` row is still mounted.
-  const patch = readFileSync(join(REPO, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const patch = readFileSync(join(REPO, "cordis.patch.yml"), "utf8")
   check(/- id: mpd-ext\b/.test(patch), "the bundle patch does not carry the mpd-ext row")
 
   // The harness formula, INCLUDING the hash branch (measured in

@@ -60,7 +60,7 @@ Offline-built MCP server that serves the CodeGraph tool surface
 real MCP child with the genuinely read-only `$HOME/.mpd`: the pre-fix launcher dies
 uncaught with `ENOENT: ... mkdir '<home>/.mpd/codegraph'` and answers no MCP request,
 while the fixed launcher exits 0 and answers `initialize` / `tools/list` (0 tools).
-`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` is the two-sided daemon proof: arm A
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.ts` is the two-sided daemon proof: arm A
 (default) answers `initialize`/`tools/call` from its own engine with NO daemon artifacts and no
 `Shared daemon` line, while arm B (`MPD_CODEGRAPH_DAEMON=1`) takes upstream's daemon path.
 

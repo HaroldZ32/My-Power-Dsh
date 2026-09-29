@@ -7,17 +7,10 @@ import { expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The vendored `lib/*.js` modules this file drives are adopted upstream JavaScript: they ship no
-// declaration file that describes the DELTA-PATCHED tree (the mpd deltas add exported functions and
-// record fields the upstream `lib/types/*.d.ts` do not know about), and that tree is outside this
-// lane's write scope. Each import below therefore carries `@ts-expect-error` with its reason, which
-// is self-retiring: the day a declaration covers the module, the directive becomes a loud unused
-// directive instead of a silent suppression. Every shape this file relies on is declared at its own
-// use site.
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { planQualityFollowUp, generatedTaskCapabilityGap } from "../lib/quality-gates.js"
-// @ts-expect-error TS7016: the vendored JS module has no declaration file (see the note above).
-import { deliveryRoutingClass, taskCapabilityGap } from "../lib/scheduler.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { planQualityFollowUp, generatedTaskCapabilityGap } from "../lib/quality-gates.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { deliveryRoutingClass, taskCapabilityGap } from "../lib/scheduler.ts"
 
 /** One member row of the routing fixture; a read-only seat carries the deny list it withholds. */
 interface MemberRecord {
@@ -197,7 +190,7 @@ test("T-93 (4/4): the predicate is a PURE READER and the dispatch boundary CONSU
     // The reading above is the predicate's own output on a live record. This one is explicitly a
     // WIRING assert (declared as such, never counted as the behavioural reading): the delivery
     // boundary in the scheduler calls the named predicate, so the class reaches the decline note.
-    const source = readFileSync(new URL("../lib/scheduler.js", import.meta.url), "utf8")
+    const source = readFileSync(new URL("../lib/scheduler.ts", import.meta.url), "utf8")
 /** The scheduler region that owns the delivery boundary, read from the vendored source. */
     const region = source.slice(source.indexOf("//#region mpd-delta terminal-dispatch-recheck"), source.indexOf("//#endregion mpd-delta terminal-dispatch-recheck"))
     expect(region).toContain("deliveryRoutingClass(")

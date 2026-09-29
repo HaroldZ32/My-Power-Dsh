@@ -782,7 +782,7 @@ test("a skill provider never throws out of list()/get() when discovery fails", a
   // ARRAY would be read as `{candidates:[], complete:true}` and CACHED per
   // (cwd, scope, revision) by the harness, so one transient filesystem failure would
   // hide this provider's skills for the rest of the session
-  // (H/dsh-skill/lib/index.js:414-426 + collect()'s cache write).
+  // (H/dsh-skill/lib/index.ts:414-426 + collect()'s cache write).
   expect(await provider.list({})).toEqual({ candidates: [], complete: false })
   expect(await provider.get({ name: "x" }, {})).toBeUndefined()
   // A second provider over the same name whose entries hold a non-object item.
@@ -1655,7 +1655,7 @@ test("F7: a CONFIG-disabled extension claims no role name, so the next claimant 
 test("F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog", async () => {
   // The harness reads an ARRAY as `{candidates:[], complete:true}` and CACHES it per
   // (cwd, scope, revision) — so one transient failure used to hide a provider's skills
-  // for the rest of the session (H/dsh-skill/lib/index.js:414-426 + collect()).
+  // for the rest of the session (H/dsh-skill/lib/index.ts:414-426 + collect()).
   // Pinned HERE, at the provider contract, because the two index-level providers cannot
   // fail their enumeration any more (see the F5 test below): the shape is what protects
   // any future enumerator, and it is the shape the harness reads.

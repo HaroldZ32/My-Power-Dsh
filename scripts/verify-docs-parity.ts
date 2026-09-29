@@ -4,7 +4,7 @@
 // WHY THIS EXISTS: the policy was previously unenforced — `scripts/pack-mpd.ts` COPIES each
 // package's README pair without asserting anything, and the QA lanes only read single docs. This
 // gate was promoted from the prototype written during the docs task
-// (`evidence/tui/docs-completeness/20260915T153835Z/docs-parity.mjs`, 87/87 on its five pairs).
+// (`evidence/tui/docs-completeness/20260915T153835Z/docs-parity.ts`, 87/87 on its five pairs).
 //
 // DISCOVERY (what a green run actually covers — stated so no reader over-reads it):
 //   * the root `README.md` + `README.zh-CN.md`;
@@ -48,7 +48,7 @@
 // (`AGENTS.md`) AND in the on-demand index that repeats it (`agent-references/index.md`), plus the
 // registry's own region/file count statement, are compared against the value the ARTIFACT derives
 // — the transcription table for the range, the GENERATED
-// `lib/mpd-deltas.js` registry (corroborated by the live `//#region mpd-delta` markers) for the
+// `lib/mpd-deltas.ts` registry (corroborated by the live `//#region mpd-delta` markers) for the
 // counts. The measured defect: `t39` moved the pointer `A1–D26 → A1–D38`, a later §6 rewrite
 // restored the pre-`t39` text, and this gate was GREEN on both revisions — a stale snapshot
 // silently reverted a delivered fix, and only reading the file caught it (wave-1 `L78`). The
@@ -186,7 +186,7 @@ const hasCjk = (text: string): boolean => /[\u3400-\u4dbf\u4e00-\u9fff]/.test(te
 //     `agent-references/agent-teams-deltas.md`, the file the manual NAMES as "the authoritative …
 //     adaptation table"; it grows by transcribing `evidence/wave2/adopted-tooling/result.json`
 //     (`adaptation_list`) plus each wave's rows, never by copying another pointer.
-//   * the region/file COUNTS — derived from `packages/mpd-agent-teams-plugin/lib/mpd-deltas.js`
+//   * the region/file COUNTS — derived from `packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts`
 //     (`MPD_DELTAS`), the registry GENERATED from the live `//#region mpd-delta` markers by
 //     `node scripts/patch-agent-teams-fixes.ts --write-registry`, and CORROBORATED against those
 //     markers as a printed READING. The registry is the AUTHORITY (the applier heals from it and
@@ -206,7 +206,7 @@ const DELTA_RANGE_SITES: readonly string[] = ["AGENTS.md", "agent-references/ind
 /** The transcription table the delta range is DERIVED from (the artifact the pointer names). */
 const DELTAS_DOC_REL = "agent-references/agent-teams-deltas.md";
 /** The GENERATED registry the region/file counts are derived from; vendored JavaScript by design. */
-const REGISTRY_REL = "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js";
+const REGISTRY_REL = "packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts";
 /** Finds every hand-carried `A1–D<n>` pointer and captures its numeric tail. */
 const DELTA_RANGE_LITERAL = /A1\s*[\u2013\u2014-]\s*D(\d+)/g;
 /** Finds the hand-carried `The live registry is **N** regions across **M** adopted files` sentence. */

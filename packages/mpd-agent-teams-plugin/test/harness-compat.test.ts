@@ -19,11 +19,10 @@
 import { describe, expect, test } from "bun:test"
 // The adopted Harness-compatibility layer is vendored JavaScript with no declaration file, so the
 // generation ladder, the delivery guards and the symbol key itself all arrive untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { HOST_PROMPT_QUEUE, guardSubagentDelivery, installContinuableMemberSetup, queueMemberPrompt, sessionOwnEvents } from "../lib/harness-compat.js"
-// The adopted member surface is vendored JavaScript with no declaration file.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { deliverToMember } from "../lib/members.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { HOST_PROMPT_QUEUE, guardSubagentDelivery, installContinuableMemberSetup, queueMemberPrompt, sessionOwnEvents } from "../lib/harness-compat.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { deliverToMember } from "../lib/members.ts"
 
 /** One prompt the fixture's `prompt` seam recorded, with the signal it was called under. */
 interface PromptCall {

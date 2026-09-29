@@ -1,9 +1,9 @@
-import * as checks from "./checks.js";
-import type * as core from "./core.js";
-import type * as errors from "./errors.js";
-import * as registries from "./registries.js";
-import * as schemas from "./schemas.js";
-import * as util from "./util.js";
+import * as checks from "./checks.ts";
+import type * as core from "./core.ts";
+import type * as errors from "./errors.ts";
+import * as registries from "./registries.ts";
+import * as schemas from "./schemas.ts";
+import * as util from "./util.ts";
 export type Params<T extends schemas.$ZodType | checks.$ZodCheck, IssueTypes extends errors.$ZodIssueBase, OmitKeys extends keyof T["_zod"]["def"] = never> = util.Flatten<Partial<util.EmptyToNever<Omit<T["_zod"]["def"], OmitKeys> & ([IssueTypes] extends [never] ? {} : {
     error?: string | errors.$ZodErrorMap<IssueTypes> | undefined;
     /** @deprecated This parameter is deprecated. Use `error` instead. */

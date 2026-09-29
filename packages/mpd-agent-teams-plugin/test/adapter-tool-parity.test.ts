@@ -9,12 +9,10 @@
 // without the adapter, in the SAME registration order, and the SAME object reference reaches the
 // seam in both lanes.
 import { expect, test } from "bun:test"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { createAgentTeamsCtx } from "../lib/mpd-adapter-ctx.js"
-// The adopted agent-teams body is vendored JavaScript with no declaration file, so this export is untyped.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { createAgentTeamsCtx } from "../lib/mpd-adapter-ctx.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** One captured tool definition, narrowed to the member the cross-lane comparison reads. */
 interface RecordedDefinition {

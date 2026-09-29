@@ -57,7 +57,7 @@ mounts it since 0.1.7-rc.2, when the official Agent Teams plugin replaced it (se
 above and `docs/plan-0.1.7-adaptation.md`).
 
 The retained plugin is `0.1.16-rc.3-mpd`: the **0.1.14 body** plus the audited upstream
-**0.1.16-rc.3** deltas this host generation needs — `lib/harness-compat.js` (team delivery
+**0.1.16-rc.3** deltas this host generation needs — `lib/harness-compat.ts` (team delivery
 through the public `ctx.subagents.prompt(request, signal)` continuable seam on harness
 **0.1.5-rc.2+**, with the Alpha.2 `followup` and the Alpha.5…0.1.2-rc.1 symbol-keyed FIFO
 queue `Symbol.for('dsh.subagent.queuePrompt')` kept only as older-generation fallbacks;
@@ -66,9 +66,9 @@ payload (`setup(agent.ctx, agent)`) instead of reading `childCtx.agent` — an a
 Cordis ctx is a proxy that throws `cannot get property "agent" without inject` (there is no
 `agent` service; the host injects `agents`, plural), and the listener fires for the captain's
 own session too, so the old read aborted member initialization team-wide and made 0.1.5 team
-mode unusable; retirement guard on every delivery face), `lib/capabilities.js`
-(agent-scoped member instructions + captain-tool denial), `lib/tool-names.js`,
-`lib/web-routes.js` (browser-authentication fence + bounded JSON body), member
+mode unusable; retirement guard on every delivery face), `lib/capabilities.ts`
+(agent-scoped member instructions + captain-tool denial), `lib/tool-names.ts`,
+`lib/web-routes.ts` (browser-authentication fence + bounded JSON body), member
 turn-failure handling (`failMemberOpenAttempt`), and the durability fixes (settled
 team-lock release, blank optional task-field normalization, captain `claim_task` guard,
 parked-attempt recovery idempotency). Evidence: `evidence/agent-teams/scheduler-wakeup-fix/`.

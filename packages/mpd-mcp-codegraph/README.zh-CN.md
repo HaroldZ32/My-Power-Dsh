@@ -50,7 +50,7 @@
 `$HOME/.mpd` 驱动真实 MCP 子进程：修复前的 launcher 以未捕获的
 `ENOENT: ... mkdir '<home>/.mpd/codegraph'` 崩溃且不响应任何 MCP 请求，修复后的 launcher
 退出码 0 并响应 `initialize` / `tools/list`（0 个工具）。
-`evidence/mpd-defects-2/raw/codegraph-daemon-probe.mjs` 是 daemon 的双向证明：A 臂（默认）用自身
+`evidence/mpd-defects-2/raw/codegraph-daemon-probe.ts` 是 daemon 的双向证明：A 臂（默认）用自身
 引擎应答 `initialize`/`tools/call`，且不产生任何 daemon 产物、也没有 `Shared daemon` 提示；B 臂
 （`MPD_CODEGRAPH_DAEMON=1`）则走上游的 daemon 路径。
 

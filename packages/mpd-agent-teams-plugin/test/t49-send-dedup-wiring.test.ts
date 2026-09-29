@@ -5,16 +5,12 @@ import { expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-// The adopted state module is vendored JavaScript with no declaration file, so its exports arrive
-// untyped instead of re-authoring upstream to type them.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { CAPTAIN_KEY, INTERJECTION_QUEUE, appendMailbox, clearMailboxToWatermark, readMailbox, readUnreadMailbox } from "../lib/state.js"
-// The adopted scheduler module is vendored JavaScript with no declaration file, for the same reason.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { installTeamScheduler } from "../lib/scheduler.js"
-// The adopted tool surface is vendored JavaScript with no declaration file, for the same reason.
-// @ts-expect-error vendored JavaScript has no declaration file
-import { registerAgentTeamsTools } from "../lib/tools.js"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { CAPTAIN_KEY, INTERJECTION_QUEUE, appendMailbox, clearMailboxToWatermark, readMailbox, readUnreadMailbox } from "../lib/state.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { installTeamScheduler } from "../lib/scheduler.ts"
+// The vendored module now resolves to its .ts source, so this surface is typed from that file.
+import { registerAgentTeamsTools } from "../lib/tools.ts"
 
 /** State root every fixture team lives under, relative to the session workspace cwd. */
 const STATE_DIR = join(".mpd", "team")

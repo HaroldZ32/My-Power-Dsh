@@ -1,4 +1,4 @@
-import * as z from "./v4/classic/external.cjs";
-export * from "./v4/classic/external.cjs";
+import * as z from "./v4/classic/external.cts";
+export * from "./v4/classic/external.cts";
 export { z };
 export default z;
