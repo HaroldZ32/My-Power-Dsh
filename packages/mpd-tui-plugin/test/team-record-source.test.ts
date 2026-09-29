@@ -8,7 +8,7 @@
 import { describe, expect, test } from "bun:test"
 import { readBoardState } from "../src/state.js"
 import { mpdTeamRecords, principalRecord, readRecordWorkflow } from "../src/team-state.js"
-import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** The frozen instant every record in this file is stamped with. */
 const NOW = "2026-09-30T09:15:00.000Z"

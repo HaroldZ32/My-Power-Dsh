@@ -1,4 +1,4 @@
-// mpd-team-tools-plugin: the team WORKFLOW the official Agent Teams plugin does not ship.
+// mpd-team-core-plugin: the team RECORD and the team WORKFLOW the official Agent Teams plugin does not ship.
 //
 // WHY THIS EXISTS. Harness 0.1.7-rc.2 replaced the vendored `agent-teams` body with an official
 // plugin that owns the RUNTIME — roster, shared board, mailbox, continuable teammates — and
@@ -85,7 +85,7 @@ import {
 } from "./team-store"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
-export const name = "mpd-team-tools"
+export const name = "mpd-team-core"
 // INJECT: the TOOLS and COMMANDS seams (both resolved through the adapter, never on the raw
 // ctx — the D6 gate polices that) and NOT the team plane itself: `ctx.agentTeams` is reached
 // exclusively through `dsh.team*`, so a harness rename lands in the adapter.
@@ -283,7 +283,7 @@ export function apply(ctx: any): void {
         },
       } satisfies MpdTeamsService)
     } catch (error) {
-      console.warn(`[mpd-team-tools] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
+      console.warn(`[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
     }
   }
 
@@ -778,7 +778,7 @@ export function apply(ctx: any): void {
           })
           markDelivered(workspace, [result.message.id], now())
         } catch (error) {
-          console.warn(`[mpd-team-tools] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+          console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
         }
         return { message: result.message }
       }
@@ -881,7 +881,7 @@ export function apply(ctx: any): void {
       // DERIVED, both numbers: `disposers` holds the tool registrations plus the ONE command this
       // apply() registers last. The literal that used to sit here said "13 tools" while the plane had
       // grown to 14 — a boot line a reader trusts must not be hand-maintained.
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
+      console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
     } catch { /* a read-only workspace must not break the boot */ }
   }
 

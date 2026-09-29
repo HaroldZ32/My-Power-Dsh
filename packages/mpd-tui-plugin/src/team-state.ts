@@ -4,7 +4,7 @@
 // 0.1.7 REBASE, then the 2026-09-30 TEAM-PLANE SPLIT.
 //
 // TWO SOURCES, ONE SHAPE. The PRIMARY source is now the mpd-OWNED team record, read through the
-// `mpdTeams` service (`<workspace>/.mpd/team/teams/<teamId>.json`, written by `mpd-team-tools`),
+// `mpdTeams` service (`<workspace>/.mpd/team/teams/<teamId>.json`, written by `mpd-team-core`),
 // which carries the review fields the official board has no column for — `kind`, `attempt`,
 // `round`, `verdict` — and which exists even in a composition where the official service cannot
 // mount. The OFFICIAL live readout (`liveTeamViews` → `dsh.teamLiveTeams()`) is kept as a
@@ -35,7 +35,7 @@
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
-import type { TeamRecord, TeamTaskRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
+import type { TeamRecord, TeamTaskRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** Bounded caps — so one pathological readout cannot stall a render. */
 const MAX_TEAMS = 20
@@ -197,7 +197,7 @@ export function mailboxKey(name: string): string {
  * dependents: they stay `open` and dispatchable, and the failure is carried in the SECOND list so a
  * renderer can name it (`failed-dep=`). The reasoning recorded with the decision: a failed dependency
  * must not pin its dependents forever, and a cancelled one already does not. An unknown id counts as
- * pending, hence blocking. `mpd-team-tools-plugin/src/team-store.ts` carries the same rule on the
+ * pending, hence blocking. `mpd-team-core-plugin/src/team-store.ts` carries the same rule on the
  * mpd-owned record; the two must keep agreeing.
  */
 function blockingDependencies(tasks: readonly TeamTaskRow[], dependencies: readonly string[]): { blocking: string[]; failed: string[] } {

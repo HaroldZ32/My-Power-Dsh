@@ -34,7 +34,7 @@ import { boardLines, readBoardState, statusLine } from "./state.js"
 import { clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
-import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
 /** Unique, kebab-case scene id. */

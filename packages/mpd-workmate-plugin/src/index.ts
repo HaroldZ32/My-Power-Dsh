@@ -490,7 +490,7 @@ function noteSpawnEnd(key: string): void {
  * TWO layouts are read, because the bundle has had two and a workspace may hold either:
  *  • `.mpd/team/<dir>/team.json` — the RETIRED vendored plugin's record, scanned unchanged so a
  *    workspace that still carries one keeps working;
- *  • `.mpd/team/teams/<teamId>.json` — the mpd-OWNED record (`mpd-team-tools-plugin/src/team-store.ts`),
+ *  • `.mpd/team/teams/<teamId>.json` — the mpd-OWNED record (`mpd-team-core-plugin/src/team-store.ts`),
  *    which is what a team approved today actually writes.
  *
  * The second layout is why this function was fixed: it used to read ONLY the retired one, so every

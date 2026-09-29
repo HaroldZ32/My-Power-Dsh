@@ -394,7 +394,7 @@ function buildPlan(o: PlanInputs): Plan {
       config: { baseProvider: "spawn" }
     },
     {
-      id: "mpd-team-tools", name: p("packages/mpd-team-tools-plugin/dist/index.js"),
+      id: "mpd-team-core", name: p("packages/mpd-team-core-plugin/dist/index.js"),
       config: {}
     },
     {
@@ -604,7 +604,7 @@ function selfTest(): void {
   // The two rows the parity gate proved were missing: the extension registry (new with
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.
-  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact") || !rows.includes("mpd-team-tools") || !rows.includes("mpd-roster-provider")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact/team-tools/roster-provider rows"); process.exit(1) }
+  if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact") || !rows.includes("mpd-team-core") || !rows.includes("mpd-roster-provider")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact/team-core/roster-provider rows"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path
   /** The web-compat row, whose entry name is a resolution contract, not a path. */

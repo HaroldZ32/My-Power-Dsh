@@ -1,5 +1,5 @@
 {
-  "name": "@mpd-dsh/team-tools-plugin",
+  "name": "@mpd-dsh/team-core-plugin",
   "private": true,
   "version": "0.1.0",
   "type": "module",

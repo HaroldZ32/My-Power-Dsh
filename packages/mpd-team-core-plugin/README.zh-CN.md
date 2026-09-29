@@ -1,4 +1,4 @@
-# mpd-team-tools-plugin
+# mpd-team-core-plugin
 
 [English](./README.md) | **简体中文**
 

@@ -400,8 +400,8 @@
     # a different object serving a different realm (measured: sameObject false), so the
     # lookup lives in ONE adapter helper. Audit lands under <workspace>/.mpd/team-compact/;
     # this row never writes .mpd/team (that state belongs to the agent-teams plugin).
-    - id: mpd-team-tools
-      name: '@mpd-dsh/mpd/packages/mpd-team-tools-plugin/dist/index.js'
+    - id: mpd-team-core
+      name: '@mpd-dsh/mpd/packages/mpd-team-core-plugin/dist/index.js'
     - id: mpd-team-compact
       name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
     # Bundle asset provisioning (no home writes since 0.3.0): registers the

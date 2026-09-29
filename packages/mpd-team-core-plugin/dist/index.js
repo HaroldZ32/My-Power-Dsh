@@ -1,4 +1,4 @@
-// packages/mpd-team-tools-plugin/src/index.ts
+// packages/mpd-team-core-plugin/src/index.ts
 import { existsSync as existsSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync4, readdirSync as readdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join4 } from "node:path";
 
@@ -994,7 +994,7 @@ function createDshAdapter(ctx, config = {}) {
   return adapter;
 }
 
-// packages/mpd-team-tools-plugin/src/mailbox-store.ts
+// packages/mpd-team-core-plugin/src/mailbox-store.ts
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 function mailboxPath(workspace) {
@@ -1149,7 +1149,7 @@ function markRead(workspace, ids, now) {
   return moved;
 }
 
-// packages/mpd-team-tools-plugin/src/dispatch.ts
+// packages/mpd-team-core-plugin/src/dispatch.ts
 function dispatchMessage(task, description) {
   return [
     `You have been assigned shared task ${task.id}: ${task.subject}`,
@@ -1226,7 +1226,7 @@ function reconcile(ledger, tasks) {
   return { ledger: next, forgotten };
 }
 
-// packages/mpd-team-tools-plugin/src/plan-store.ts
+// packages/mpd-team-core-plugin/src/plan-store.ts
 import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join as join2 } from "node:path";
 function teamRoot(workspace) {
@@ -1365,7 +1365,7 @@ function moveIntoArchive(workspace, from, planId) {
   return target;
 }
 
-// packages/mpd-team-tools-plugin/src/team-store.ts
+// packages/mpd-team-core-plugin/src/team-store.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join3 } from "node:path";
 function teamRoot2(workspace) {
@@ -1683,8 +1683,8 @@ function memberProgress(record, name) {
   };
 }
 
-// packages/mpd-team-tools-plugin/src/index.ts
-var name = "mpd-team-tools";
+// packages/mpd-team-core-plugin/src/index.ts
+var name = "mpd-team-core";
 var inject = ["tools", "commands"];
 var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
@@ -1801,7 +1801,7 @@ function apply(ctx) {
         }
       });
     } catch (error) {
-      console.warn(`[mpd-team-tools] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
+      console.warn(`[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
     }
   }
   disposers.push(dsh.registerTool({
@@ -2186,7 +2186,7 @@ ${result.message.body}`),
           });
           markDelivered(workspace, [result.message.id], now());
         } catch (error) {
-          console.warn(`[mpd-team-tools] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
+          console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
         }
         return { message: result.message };
       }
@@ -2269,7 +2269,7 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
     try {
       const staging = join4(root, ".mpd", "team", "staging");
       const pending = existsSync4(staging) ? readdirSync3(staging).filter((file) => file.endsWith(".json")).length : 0;
-      console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
+      console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
     } catch {}
   }
   if (typeof ctx?.on === "function")

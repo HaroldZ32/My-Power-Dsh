@@ -30,7 +30,7 @@ let sandbox = ""
 /** The frozen clock every stored timestamp in this file is derived from. */
 const NOW = new Date("2026-09-27T10:00:00.000Z")
 
-beforeEach(() => { sandbox = mkdtempSync(join(tmpdir(), "mpd-team-tools-")) })
+beforeEach(() => { sandbox = mkdtempSync(join(tmpdir(), "mpd-team-core-")) })
 afterEach(() => { rmSync(sandbox, { recursive: true, force: true }) })
 
 /** A minimal staged member: the store requires a name and a non-empty prompt. */

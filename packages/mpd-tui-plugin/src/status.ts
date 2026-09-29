@@ -14,7 +14,7 @@ import type { Log } from "./log.js"
 import { effectOn, onService } from "./host.js"
 import { readBoardState, statusLine } from "./state.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
-import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** The status key (conventions: the plugin id, `mpd-tui`, or `mpd-tui:<sub>`). */
 export const STATUS_KEY = "mpd-tui"

@@ -14,7 +14,7 @@ import { join } from "node:path"
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
-import type { TeamRecord } from "../../mpd-team-tools-plugin/src/team-store.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** Bounded caps so one pathological state directory cannot stall a render. */
 const MAX_TEAMS = 20
