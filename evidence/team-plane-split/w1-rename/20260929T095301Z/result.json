@@ -69,7 +69,19 @@
     }
   },
   "not_claimed": [
-    "no live dsh boot was run for this rename: the gates above are static plus the full unit suite. A mounting boot is required before the wave is called released (\u00a74 'Boot check').",
-    "W1.3 (host routes) stays open by design \u2014 it lands with its consumer in W4."
-  ]
+    "W1.3 (host routes) stays open by design \u2014 it lands with its consumer in W4.",
+    "bundle-lifecycle.ts was NOT run: it refuses to start without ~/.dsh/.credentials.yaml, which this environment has no reason to hold. preset-conformance was run instead \u2014 it performs a REAL isolated boot and session creation, which is the stronger of the two for a row-id/module-path change."
+  ],
+  "mount_boot": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+    "result": "PASS",
+    "what_it_proves": "a REAL boot in an isolated DSH_HOME: conformance checked=33 rows against the installed schemas, a session was CREATED with agentPreset=mpd (sessionCreate ok=true, sessionHeader written), bootLog signatures=[] (no error), and the negative control reddened as required",
+    "renamed_row_activated": "the boot log carries the row's OWN line \u2014 `[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)` \u2014 which can print only if the renamed row APPLIED and registered its five tools and its command. That is the \u00a74 Boot-check evidence for the row-id and module-path change.",
+    "source_evidence": "evidence/dsh-qa/preset-conformance/2026-09-29T09-54-22.299Z",
+    "copied_here": [
+      "mount-boot.log",
+      "mount-output.log",
+      "mount-proof.txt"
+    ]
+  }
 }
