@@ -1179,6 +1179,25 @@
 
   /** The element factory, bound once for the Team tab's terser render tree. */
   const h = react.createElement;
+  /** The workmate tab's stable id in the harness right sidebar's registry. */
+  const WORKMATE_TAB_ID = "@mpd-dsh/workmate-sidebar";
+  /** The workmate tab's kind (the tab registry keys open tabs on it). */
+  const WORKMATE_TAB_KIND = "mpd-workmate";
+  /** The shortcut that opens the workmate tab, named by its guide entry. */
+  const WORKMATE_COMMAND_ID = "mpd-workmate.new";
+
+  /**
+   * The workmate library seat in the harness right sidebar.
+   *
+   * The library view reads only a translator, so this seat builds the same element the
+   * better-sidebar descriptor does — one view, two hosts, exactly like the team tab beside it. The
+   * seat's own props carry no translator, so the bound one from this module's locale is used.
+   * @param props - seat props from `sidebar.right.pane.tab`.
+   * @returns the library element.
+   */
+  function WorkmateSidebarBody(props: { t?: Translate } | undefined): unknown {
+    return react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) });
+  }
   /** The Team tab's stable id. */
   const TEAM_TAB_ID = "@mpd-dsh/team-sidebar";
   /** The Team tab's kind (the tab registry keys open tabs on it). */
@@ -1307,6 +1326,42 @@
       locale: "mpdTeamSidebar",
       inject: (sessionId: unknown) => ({ sessionId }),
     }, TeamSidebarBody), "mpd-team-sidebar:body");
+    // ── THE WORKMATE LIBRARY, THE SAME WAY ───────────────────────────────────
+    // The library was a better-sidebar-ONLY surface, so a profile with just the harness sidebar —
+    // which is what a checkout install resolves, because `dsh-better-sidebar` is an optional peer —
+    // had NO way to reach it at all. It is registered HERE, inside the same preference gate, so the
+    // two hosts are two registrations of one feature rather than two features.
+    sidebar.effect(() => sidebar.sidebarRightTabs.register({
+      id: WORKMATE_TAB_ID,
+      kind: WORKMATE_TAB_KIND,
+      priority: "extension",
+      title: () => "Workmates",
+      guide: [{
+        id: "new",
+        commandId: WORKMATE_COMMAND_ID,
+        order: 41,
+        title: () => "Workmates",
+        description: () => "Durable agents from your library",
+      }],
+    }), "mpd-workmate-sidebar:type");
+    sidebar.effect(() => sidebar.slots.register({
+      name: "sidebar.right.pane.tab",
+      key: WORKMATE_TAB_ID,
+      locale: WORKMATE_LOCALE_NAMESPACE,
+      inject: () => ({}),
+    }, WorkmateSidebarBody), "mpd-workmate-sidebar:body");
+    });
+    // The command the workmate guide entry names. Registered in the same injected scope as the
+    // team's, because both open a tab on the SAME registry and neither may run before it exists.
+    ctx.inject(["shortcuts"], (scope) => {
+      scope.effect(() => scope.shortcuts.register({
+        id: WORKMATE_COMMAND_ID,
+        label: () => "Workmates",
+        aliases: ["workmate", "open workmate tab"],
+        regions: ["page", "editable", "terminal"],
+        modals: [],
+        resolve: () => ({ status: "handled", run: () => ctx.sidebarRight.openTab(WORKMATE_TAB_KIND) }),
+      }), "mpd-workmate-sidebar:command");
     });
   }
 
