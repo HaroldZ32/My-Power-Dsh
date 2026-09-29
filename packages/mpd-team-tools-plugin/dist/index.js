@@ -1731,6 +1731,19 @@ function apply(ctx) {
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return { workspace, sessionId, plan };
   };
+  const watchdogHold = (workspace, sessionId) => {
+    try {
+      const record = recordFor(workspace, sessionId);
+      if (record === undefined)
+        return;
+      const watchdog = typeof ctx?.get === "function" ? ctx.get("mpdWatchdog") : undefined;
+      if (typeof watchdog?.isHeld !== "function")
+        return;
+      return watchdog.isHeld(record.teamId, workspace) ? `the team watchdog holds ${record.teamId}` : undefined;
+    } catch {
+      return;
+    }
+  };
   const recordFor = (workspace, sessionId) => {
     try {
       const bound = activeTeamId(workspace, sessionId);
@@ -2068,6 +2081,8 @@ function apply(ctx) {
         return { released };
       }
       const hold = readHold(workspace);
+      const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId;
+      const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)));
       const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
         id: task.id,
         subject: task.subject,
@@ -2082,7 +2097,7 @@ function apply(ctx) {
         tasks,
         members,
         ledger: pruned.ledger,
-        ...hold === undefined ? {} : { hold: hold.reason },
+        ...holdReason === undefined ? {} : { hold: holdReason },
         ...typeof args?.limit === "number" ? { limit: args.limit } : {}
       });
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {

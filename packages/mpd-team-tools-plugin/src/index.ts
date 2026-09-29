@@ -196,6 +196,36 @@ export function apply(ctx: any): void {
   }
 
   /**
+   * The hold the TEAM WATCHDOG has placed on this session's team, as a refusal sentence.
+   *
+   * The watchdog's hold used to be carried and consulted by nobody, while `agent_teams_dispatch`
+   * read only its own workspace-wide `hold.json` — so a team the watchdog had parked stayed
+   * dispatchable, which is the one thing a preserve-hold exists to prevent. The two holds are
+   * different things and BOTH stop a pass: `hold.json` halts the workspace, the watchdog's halts one
+   * team. Reading the record is what makes this possible at all, because only the record says which
+   * team this session's dispatch belongs to.
+   *
+   * Fail-open: an absent service, an unknown team or a throwing read answers `undefined`, so a
+   * composition without the watchdog dispatches exactly as it did before.
+   * @param workspace - the workspace the pass runs in.
+   * @param sessionId - the Lead session whose team is being dispatched.
+   * @returns the refusal reason, or undefined when no watchdog hold applies.
+   */
+  const watchdogHold = (workspace: string, sessionId: string): string | undefined => {
+    try {
+      /** This session's team, or undefined when nothing has been approved here. */
+      const record = recordFor(workspace, sessionId)
+      if (record === undefined) return undefined
+      /** The watchdog's own service, read defensively: it is another row and may be absent. */
+      const watchdog = typeof (ctx as { get?: unknown })?.get === "function" ? (ctx as { get: (id: string) => any }).get("mpdWatchdog") : undefined
+      if (typeof watchdog?.isHeld !== "function") return undefined
+      return watchdog.isHeld(record.teamId, workspace) ? `the team watchdog holds ${record.teamId}` : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * The mpd team record bound to one session — the team itself, once one has been approved.
    *
    * The index is the fast path; when it is missing (a hand-removed `teams.json`, a workspace copied
@@ -617,6 +647,12 @@ export function apply(ctx: any): void {
 
       /** The workspace hold, if any; its reason refuses the WHOLE pass inside `planDispatch`. */
       const hold = readHold(workspace)
+      // The WATCHDOG's hold is a second, per-team pause. It is composed into the same refusal so a
+      // caller reads one sentence whichever hold stopped the pass.
+      /** This session's team, which names the team a watchdog hold would apply to. */
+      const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId
+      /** The refusal reason, whichever of the two holds applies first. */
+      const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)))
       /** The board projected into the dispatch task shape. */
       const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
         id: task.id,
@@ -635,7 +671,7 @@ export function apply(ctx: any): void {
         tasks,
         members,
         ledger: pruned.ledger,
-        ...(hold === undefined ? {} : { hold: hold.reason }),
+        ...(holdReason === undefined ? {} : { hold: holdReason }),
         ...(typeof args?.limit === "number" ? { limit: args.limit } : {}),
       })
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {

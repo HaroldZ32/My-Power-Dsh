@@ -47,6 +47,8 @@ interface Harness {
 
 /** What the stub executor should answer, so an arm can make it fail on demand. */
 interface StubOptions {
+  /** The watchdog's verdict for any team id, when an arm needs a hold in force. */
+  watchdogHolds?: boolean
   /** The member whose spawn throws, by name, when an arm needs a half-built team. */
   failMember?: string
   /** The executor's own task handles, in creation order (defaults to `board-1`, `board-2`, …). */
@@ -75,8 +77,13 @@ function harness(options: StubOptions = {}): Harness {
     registerCommand: () => () => {},
     workspaceRoot: () => workspace,
     text: (value: string) => value,
-    teamListMembers: () => [],
-    teamListTasks: () => [],
+    // `inactive` is the official roster's word for IDLE, which is what the pairing draws from.
+    teamListMembers: () => [{ id: "sess-Senior-Engineer", name: "Senior Engineer", status: "inactive" }],
+    teamListTasks: () => [{ id: "official-77", subject: "core", status: "pending", ready: true, blockedBy: [], description: "own the record" }],
+    teamSendMessage: async (_caller: unknown, request: Record<string, unknown>) => {
+      calls.push({ method: "sendMessage", args: request })
+      return {}
+    },
     teamSpawnTeammate: async (_caller: unknown, request: Record<string, unknown>) => {
       calls.push({ method: "spawnTeammate", args: request })
       if (options.failMember !== undefined && request.name === options.failMember) throw new Error("the executor refused " + String(request.name))
@@ -96,8 +103,13 @@ function harness(options: StubOptions = {}): Harness {
     capabilities: () => ({}),
   }
   /** The minimal cordis context `apply` needs, with `provide` capturing the published service. */
+  /** The stub watchdog service, when this arm staged one. */
+  const watchdog = options.watchdogHolds === undefined
+    ? undefined
+    : { isHeld: () => options.watchdogHolds === true, holds: () => (options.watchdogHolds === true ? ["held"] : []) }
+  /** The minimal cordis context `apply` needs; `provide` captures the service it publishes. */
   const ctx = {
-    get: (id: string) => (id === "mpdDsh" ? dsh : undefined),
+    get: (id: string) => (id === "mpdDsh" ? dsh : id === "mpdWatchdog" ? watchdog : undefined),
     on: () => {},
     effect: (fn: () => unknown) => { try { return fn() ?? (() => {}) } catch { return () => {} } },
     provide: (id: string, value: unknown) => { if (id === TEAMS_SERVICE) service = value as MpdTeamsService },
@@ -278,5 +290,48 @@ describe("the published service is the read surface", () => {
     expect(h.service?.active(h.workspace, "sess-1")?.teamId).toBe(before.teamId)
     // A DIFFERENT session in the same workspace is not given someone else's team.
     expect(h.service?.active(h.workspace, "sess-other")).toBeUndefined()
+  })
+})
+
+describe("the watchdog hold stops a dispatch pass", () => {
+  test("a team the watchdog holds is NOT dispatched, and the refusal names the team", async () => {
+    // THE DEFECT THIS PINS: the watchdog's hold was carried by a service NO shipped gate consulted,
+    // while `agent_teams_dispatch` read only its own workspace-wide `hold.json`. A parked team
+    // therefore stayed dispatchable. With the record naming the team, the hold can be asked about.
+    /** The harness whose watchdog holds every team. */
+    const h = harness({ watchdogHolds: true })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The dispatch result, which must refuse the whole pass. */
+    const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { halted?: string; pairs?: unknown[] }
+    expect(result.halted).toContain("watchdog")
+    expect(result.pairs).toHaveLength(0)
+    // Nothing was paired, so nothing was sent to a member.
+    expect(h.calls.some((call) => call.method === "sendMessage")).toBe(false)
+  })
+
+  test("with the watchdog's hold LIFTED the same pass dispatches", async () => {
+    // The falsifier: without it, the arm above would pass even if dispatch were broken outright.
+    /** The harness whose watchdog holds nothing. */
+    const h = harness({ watchdogHolds: false })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The dispatch result, which must pair the one ready task. */
+    const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { halted?: string }
+    expect(result.halted).toBeUndefined()
+    expect(h.calls.filter((call) => call.method === "sendMessage").length).toBe(1)
+  })
+
+  test("with NO watchdog service at all the pass dispatches — the read fails OPEN", async () => {
+    /** The harness whose composition has no watchdog row. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The dispatch result under an absent service. */
+    const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { halted?: string }
+    expect(result.halted).toBeUndefined()
   })
 })
