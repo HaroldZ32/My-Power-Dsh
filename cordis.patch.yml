@@ -497,14 +497,42 @@
 # (docs/tui.md NOT-CLAIMED #3), it registers nothing the TUI renders and it
 # breaks nothing — disabling it would be a change beyond this defect.
 #
+# ── W5 OF THE TEAM-PLANE SPLIT: WHY THIS GUARD IS **KEPT** (2026-09-30) ────
+# The split removed the REASON THE TEAM NEEDED THAT ROW and did NOT remove the
+# reason the ROW cannot mount. Stated separately, because conflating them is how
+# a guard gets deleted as "no longer needed" and a boot error comes back:
+#
+#   * WHAT THE SPLIT FIXED. The mpd team is now its own record
+#     (`mpd-team-core-plugin`, `.mpd/team/teams/<id>.json`, served as
+#     `mpdTeams`) and its own EXECUTOR (`mpd-dsh-adapter`'s `TeamExecutor`,
+#     native by default over `ctx.subagents.startContinuable`, which needs
+#     NOTHING from the official plugin). A dsh-tui composition therefore has a
+#     WORKING team plane with these two rows disabled — W2's boot line says so
+#     in as many words: `team executor: native (native: the default backend —
+#     it needs nothing from the official plugin)`, and the W3 scene renders the
+#     record's own dependency graph.
+#   * WHAT IT CANNOT FIX, and this is the whole of the remaining argument:
+#     `TeamService`'s ROOT-bound `sessionProjections.register` above. It is a
+#     property of the dsh-tui HOST's capability wrapper, not of any row value,
+#     not of the pinned version, and not of anything this bundle owns. Enabling
+#     `mpd-agent-team` in a TUI composition does not give the TUI plane a team
+#     service — it gives it the SAME activation error on every boot, which is
+#     the defect this guard was added for.
+#
+# So the guard's justification is RE-SCOPED, not preserved by inertia: it no
+# longer says "the team plane would be dead here" (untrue since W2) and it says
+# "a row that cannot mount in this composition would print an activation error
+# on every boot, and disabling it costs the TUI plane nothing" (true, and now
+# measurable — the team works either way).
+#
 # WHAT IS LEFT IN A TUI PLANE (stated so no reader assumes more): the mpd team
 # WORKFLOW rows stay mounted by design — `agent_teams_plan`/`_task`/`_mail`/
 # `_control` keep their file-backed actions (`<workspace>/.mpd/team/`) and read
 # the official roster defensively, so they degrade per action instead of
-# vanishing; actions that need the service itself (approve, dispatch, a
-# teammate message, compaction) fail through the adapter with the service
-# named. The Web/headless plane is untouched: the guard returns false unless a
-# dsh-tui host row is actually composed.
+# vanishing; and since W2 the actions that used to fail (approve, dispatch, a
+# teammate message) go through the NATIVE executor and work. The Web/headless
+# plane is untouched: the guard returns false unless a dsh-tui host row is
+# actually composed.
 #
 # THE GUARD RULE (identical shape to the `mpd-better-sidebar` mount guard — a
 # `!!js` row-metadata expression evaluated against the Loader context at every
@@ -517,7 +545,7 @@
 - insert:
     - id: mpd-agent-team
       name: '@deepseek-ai/dsh-experimental-agent-team'
-      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
+      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
       config:
         maxMembers: 16
         maxTasks: 256

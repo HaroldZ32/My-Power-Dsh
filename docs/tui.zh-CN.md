@@ -119,6 +119,10 @@ TUI 命令树暴露 `/mpd team` 与 `/mpd plan`
 而为快捷键。`tui-team-surface` 波次记录的限制（依赖残留限制与一个无法定位的契约行标签）仍在
 `docs/tui-parity.zh-CN.md` §4–§5 中保持**未修复** —— 引用本页的状态之前请先读那一页。
 
+**MPD 团队已不再依赖它：自团队平面拆分（W2）起，团队拥有自己的记录与基于 `ctx.subagents` 的 native
+执行器，因此 TUI 会话可以在官方服务完全不挂载的情况下完成组队、派发与渲染 —— §10 第 11 条给出了说明这一点
+的启动日志。**
+
 **官方 Agent Teams 平面在 TUI 宿主下无法激活，因此本 bundle 不在那里挂载它（2026-09-29 实测：
 harness 0.2.0-rc.1 + `dsh-tui` 0.11.2；见本页 §10 第 11 条）。**
 `@deepseek-ai/dsh-experimental-agent-team` 通过 `ctx.root.sessionProjections.register(...)` 注册它的
@@ -454,12 +458,20 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    disposer；正因如此，本包对该接缝只报 `requested`，从不报 `confirmed`。之后的一次单进程交叉运行复现
    了"全新事件类型会渲染、这个已知类型不会"（同目录 `CORRECTION-renderer-causation.md`），这把原因
    收窄到宿主的拒绝名单捕获顺序，而不是"任何渲染行都无法产生"；处置结论不变。
-11. **TUI 会话无法创建队友。** 官方 Agent Teams 服务在 dsh-tui 宿主下根本无法激活 —— 宿主拒绝该插件
-    自己发起的 `ctx.root.sessionProjections.register(...)` 所创建的根 fiber 副作用，于是
-    `TeamService` 的构造函数在服务存在之前就抛错。机制、测量与仍然可用的部分见 §3.2；本 bundle 因此
-    在那里禁用该平面的两行，而不是挂载一行永远无法启动的插件（`cordis.patch.yml` 的 TUI 平面守卫），
-    证据在 `evidence/tui/team-plane-not-mountable/20260929T083309Z/`。`mpd-tui-team` 场景、计划场景与
-    状态行照常渲染 —— 它们展示的名册为空，`team -` 是诚实的读数，而不是渲染缺陷。
+11. **TUI 会话现在可以创建队友了 —— 本条目过去写的是"不能"。** 官方 Agent Teams 服务在 dsh-tui 宿主下
+    依然无法激活：宿主拒绝该插件自己发起的 `ctx.root.sessionProjections.register(...)` 所创建的根
+    fiber 副作用，于是 `TeamService` 的构造函数在服务存在之前就抛错（机制与测量见 §3.2）。
+    **变化在于 mpd 团队不再需要它。** 自团队平面拆分（W2）起，团队运行在自己的记录
+    （`mpd-team-core-plugin`，以 `mpdTeams` 对外提供）与自己的执行器之上 —— 即 `mpd-dsh-adapter` 的
+    `TeamExecutor`，默认走 **native** 后端，基于 `ctx.subagents.startContinuable`，完全不读官方插件的
+    任何东西。启动日志就是这么写的：`[mpd-team-core] team executor: native (native: the default
+    backend — it needs nothing from the official plugin)`。
+    因此那两行官方插件仍然保持禁用，守卫也**保留** —— 但它的理由是被**重新界定**的，而不是惯性沿用：
+    它不再说"这里团队平面会死掉"（自 W2 起已不成立），而是说"一行在此组合中无法挂载的插件会在每次启动时
+    打印激活错误，而禁用它对 TUI 平面毫无损失"（成立，且可测量 —— 两种情况下团队都能工作）。原缺陷的
+    证据在 `evidence/tui/team-plane-not-mountable/20260929T083309Z/`。
+    `mpd-tui-team` 场景、计划场景与状态行照常渲染；自 W3 起，该场景绘制记录自身的**任务依赖图** ——
+    按 rank 分层、带状态颜色、带焦点链路，终端过窄时回退为缩进轨道视图。
 
 ## 11. 本页的验证状态
 

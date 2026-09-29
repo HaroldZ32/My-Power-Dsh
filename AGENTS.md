@@ -91,10 +91,15 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   **workmate library** (`mpd-workmate-plugin`). §13 defines roster, stable id, workmate and
   team-model slot precisely, and `mpd-roles-plugin` holds the authoritative names — read §13 before
   touching any of them.
-- **THE TEAM RECORD IS OURS (team-plane split, W1, 2026-09-30).** `mpd-team-core-plugin` owns the team
+- **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
-  **`mpdTeams`**: mpd surfaces read THAT, not `dsh.teamLiveTeams()`, and the official plane is one
-  interchangeable EXECUTOR backend. See `docs/plan-team-plane-split.md`.
+  **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
+  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
+  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
+  `dsh.teamLiveTeams()` any more. Surfaces: the TUI team scene draws the record's dependency graph
+  (rank columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered
+  into `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the
+  workmate library. See `docs/plan-team-plane-split.md`.
 - **The vendored `agent-teams` body is RETIRED from the composition (2026-09-27).** It is a **0.1.14
   body with the audited 0.1.16-rc.3 deltas backported** (adopted package version `0.1.16-rc.3-mpd`;
   `lib/client.js` is still the 0.1.14 client build), it still lives at
