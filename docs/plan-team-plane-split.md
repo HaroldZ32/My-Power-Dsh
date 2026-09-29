@@ -68,20 +68,23 @@ User's decisions (2026-09-30), binding for this plan:
 
 | Step | What | Evidence |
 |---|---|---|
-| W1.1 | branch `feature/team-plane-split`; this work order | branch off the `fix/tui-team-plane-guard` tip so the evidence-backed TUI guard fix rides along |
-| W1.2 | `packages/mpd-team-tools-plugin/src/team-store.ts` — the mpd-owned team record: roster, board, mpd-minted short ids (`T1`, `M1`), `kind`/`attempt`/`round`/`verdict`, `blockedBy` edges, executor handles kept BESIDE our ids | `test/team-store.test.ts`, 19 arms |
-| W1.2b | `approve` materialises the record BEFORE spawning anything and keeps the executor's handles in `executorRef`; `status` reports the record as the team with the official readout beside it | `test/team-record.test.ts`, 8 arms |
+| W1.1 | branch `feature/team-plane-split`; this work order | off the `fix/tui-team-plane-guard` tip so the evidence-backed TUI guard fix rides along |
+| W1.2 | `packages/mpd-team-core-plugin/src/team-store.ts` — the mpd-owned team record: roster, board, mpd-minted short ids (`T1`, `M1`), `kind`/`attempt`/`round`/`verdict`, `blockedBy` edges, executor handles kept BESIDE our ids | `test/team-store.test.ts`, 19 arms |
+| W1.2b | `approve` materialises the record BEFORE spawning anything and keeps the executor's handles in `executorRef`; `status` reports the record as the team | `test/team-record.test.ts`, 11 arms |
 | W1.2c | `ctx.mpdTeams` published — the read surface every other mpd plugin resolves instead of `dsh.teamLiveTeams()` | same file, "the published service is the read surface" |
+| W1.4 | the TUI team scene, the board and the status line read the RECORD first and the official readout only as a fallback — which is what makes the team plane work at all in a `dsh-tui` composition | `test/team-record-source.test.ts`, 7 arms |
 | W1.5a | `busyTeams()` reads the mpd-owned record layout too, and respects the lifecycle (`endedAt`, settled members) | `rename-delete.test.ts`, 2 new arms |
-| — | four dists rebuilt (stale since the `.js`→`.ts` vendored rename), so `verify-dist-fresh` is green for the first time on this branch | `node scripts/verify-dist-fresh.ts` → 23/23 fresh |
+| W1.5b | the watchdog's per-team hold now stops `agent_teams_dispatch`; before, it was carried by a service NO shipped gate consulted | `team-record.test.ts`, 3 arms including the lifted-hold falsifier |
+| W1.1b | `mpd-team-tools` → `mpd-team-core` (dir, plugin name, row id, package name) — LAST, so the name never claimed a role the package did not hold | `evidence/team-plane-split/w1-rename/` |
+| — | four dists rebuilt (stale since the `.js`→`.ts` vendored rename), so `verify-dist-fresh` is green for the first time on this branch | `evidence/team-plane-split/w1-record/` |
 
-### 4.2 Delivered with a caveat
+### 4.2 The one thing a reader MUST know before trusting a dist gate
 
 **`verify-dist-fresh` needs the PINNED toolchain.** The repo declares `buildToolchain: bun@1.4.0`;
 `PATH`'s bun here is 1.3.14, which emits a different export order, so 23/23 targets read STALE until
 bun 1.4.0 is first on `PATH`. The pinned bun is installed at `.toolchain/node_modules/.bin/bun`
-(gitignored). **Every dist gate run in this wave MUST prefix the PATH**, or it measures the
-toolchain rather than the tree:
+(gitignored). **Every dist-gate run in this wave MUST prefix the PATH**, or it measures the toolchain
+rather than the tree:
 
 ```
 PATH="$PWD/.toolchain/node_modules/.bin:$PATH" node scripts/verify-dist-fresh.ts
@@ -89,14 +92,25 @@ PATH="$PWD/.toolchain/node_modules/.bin:$PATH" node scripts/verify-dist-fresh.ts
 
 Making the gate resolve the pinned toolchain itself is a declared follow-up, not part of W1.
 
-### 4.3 Still open in W1
+### 4.3 Still open in W1 — one item, by design
 
-| Step | What | Why it is not done yet |
+| Step | What | Why |
 |---|---|---|
-| W1.3 | host routes `/plugins/mpd-team/{state,plan,task,mail}` | the web body that consumes them is W4; the route lands with its consumer so no dead endpoint ships |
-| W1.4 | rewire the TUI, watchdog and compact readers off `dsh.teamLiveTeams()` | the TUI half belongs with W3's scene rewrite (one change to that file, not two) |
-| W1.5b | wire the watchdog hold into `agent_teams_dispatch` | needs the hold to be readable per TEAM, not per workspace |
-| W1.1b | rename `mpd-team-tools` → `mpd-team-core` | deliberately LAST in W1: the name must not claim a role the package does not hold yet |
+| W1.3 | host routes `/plugins/mpd-team/{state,plan,task,mail}` | lands WITH its consumer (W4's web body) so no dead endpoint ships in between |
+
+### 4.4 A decision that was REVERTED, and why it is recorded here
+
+While building the store I "fixed" a failed blocker so it would block its dependents, reasoning that a
+task whose prerequisite gave up must not look dispatchable. Grepping for the reason found **OPT-1 — a
+USER DECISION recorded 2026-09-13** in `evidence/omo-parity-rate/raw/pinned/state.ts`: *"a FAILED
+dependency no longer pins its dependents forever; the dependent stays pending and dispatchable, while
+`failedDependencyIds` carries the failure so the view can say so."* Overturning a recorded user decision
+inside a refactor is not a refactor. Both copies keep OPT-1 and now carry the decision and its reason in
+the code with a `DO NOT "FIX" THIS` marker, because it is exactly what the next reader would "correct".
+
+What changed instead: `summariseTeam` counts `releasedByFailure` APART from `ready`, so "6 ready" can
+never hide "3 of them are only ready because a prerequisite failed", and `failed` now means a failed
+TASK (which it did not — a failed task fell into `other`).
 
 ## 5. W2–W5 (unchanged from the approved plan)
 
@@ -109,11 +123,16 @@ Making the gate resolve the pinned toolchain itself is a declared follow-up, not
 
 ## 6. Acceptance for W1
 
-1. `bun test packages/mpd-team-tools-plugin packages/mpd-workmate-plugin` green. ✅ 121 pass.
+1. `bun test packages` green. ✅ 1287 pass, 3 skip, 0 fail (119 files).
 2. `bun run verify:comments` PASS. ✅
 3. `PATH=<pinned bun> node scripts/verify-dist-fresh.ts` → 23/23 fresh. ✅
 4. `bun run verify:rows` → 33 row ids match. ✅
 5. A team approved through the tools leaves an mpd record whose ids are MPD's and whose
    `executorRef`s are the executor's. ✅ `team-record.test.ts`.
+7. A MOUNT boot proves the renamed row activates and registers: the boot log carries
+   `[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6`. ✅
+   `evidence/team-plane-split/w1-rename/20260929T095301Z/mount-proof.txt`.
+8. Every other static gate PASS: `verify:rows` (33 ids), `verify:manifest`, `verify:docs`,
+   `verify:comments`, `verify-manual-paths`, `install-profile --dry-run`. ✅
 6. A workmate named by a member of an mpd-owned record is refused by rename/delete. ✅
    `rename-delete.test.ts`.
