@@ -408,6 +408,136 @@ export interface DshTeamSpawnTeammateResult {
   member: DshTeamMemberView
 }
 
+// ── THE TEAM EXECUTOR: mpd's team system behind ONE seam ─────────────────────
+//
+// WHY THIS EXISTS (the 2026-09-30 team-plane split, W2). Until now the ONLY way to
+// raise a teammate was the official service, so the bundle's team plane could not exist
+// in a composition where that service is absent or unmountable — measured in the
+// `dsh-tui` case, where `TeamService`'s ROOT-bound projection registration is refused
+// and the row never activates at all.
+//
+// A team's life is three operations, and BOTH backends can perform them:
+//   spawn a member · deliver a message to it · interrupt it.
+// Everything else a team has (the roster, the board, the dependency DAG, attempts,
+// verdicts) belongs to `mpd-team-core`'s own record, which is why this seam is
+// deliberately NARROW: the more it carries, the more the two backends must agree on,
+// and the more the official plane creeps back into being the system of record.
+//
+// The two implementations, and what each one buys:
+//   `native`   — `ctx.subagents.startContinuable` + `sendMessage` + `interrupt`, with the
+//                provider and the per-member `agentOptions` chosen BY THE CALLER. That is
+//                the whole point: a teammate's model route stops depending on the
+//                official tool row's `freshProvider` config, the read-only deny list and
+//                the persona travel as ordinary spawn arguments, and nothing here needs
+//                the official plugin to be mounted. DEFAULT.
+//   `official` — the `dsh.team*` calls the bundle already made. Kept because it is a real
+//                implementation with behaviour the native path does not reproduce
+//                (adjacency-checked delivery between peers, a host-owned roster), and
+//                because a composition that already runs it must not regress.
+//
+// Selection is a CAPABILITY decision, made once and REPORTED (`reason`), never guessed at
+// a call site. An explicit override exists for a diagnosis, not for normal operation.
+
+/** Which backend raises and drives a team's members. */
+export type DshTeamExecutorKind = "native" | "official"
+
+/** Everything a backend needs to raise ONE member, in a vocabulary both backends can serve. */
+export interface DshTeamSpawnRequest {
+  /** The mpd team this member belongs to; carried into the native registry for membership. */
+  teamId: string
+  /** The mpd member id (`M1`), which is what a caller addresses the member by. */
+  memberId: string
+  /** The member's display name; unique inside its team and what the roster shows. */
+  name: string
+  /** One-line description shown on the roster; also the identity the roster route reads. */
+  description: string
+  /** The instantiation prompt the member receives. */
+  prompt: string
+  /**
+   * The subagent provider to raise the member through (`spawn`, `fork`, `mpd-roster`, …).
+   * NATIVE only — the official backend resolves its provider from row config and has no
+   * per-call override, which is exactly the limitation this seam removes. Absent means
+   * the composition's own default (`spawn`).
+   */
+  provider?: string
+  /**
+   * Harness-shaped `AgentOptions` (provider / model / reasoningEffort) for this member.
+   * NATIVE only, for the same reason as {@link provider}: it is how a roster slot route
+   * reaches a teammate WITHOUT the official tool row's `freshProvider` indirection.
+   */
+  agentOptions?: unknown
+  /** Cancellation for the spawn and for the member's first turn. */
+  signal?: AbortSignal
+}
+
+/** What one backend reports after raising a member. */
+export interface DshTeamSpawnResult {
+  /** The backend's OWN handle for the member (a durable child session id). Never an mpd id. */
+  handle: string
+  /** Which backend produced it, so a caller can record it and a reader can see it. */
+  executor: DshTeamExecutorKind
+}
+
+/** One member a backend currently knows about, for a surface that lists them. */
+export interface DshTeamExecutorMember {
+  /** The backend's own handle. */
+  handle: string
+  /** The mpd team id this member was raised for. */
+  teamId: string
+  /** The mpd member id this handle was raised for. */
+  memberId: string
+  /** The member's display name. */
+  name: string
+}
+
+/**
+ * The ONE seam a team's execution goes through.
+ *
+ * Every method is total: an absent backend is a REFUSAL with a sentence, never a crash and
+ * never a silent success. A caller records what this seam answers; it never infers it.
+ */
+export interface DshTeamExecutor {
+  /** Which backend this is. A caller records it; a reader sees it. */
+  readonly kind: DshTeamExecutorKind
+  /** Why this backend is the active one — shown on a boot line and carried into a refusal. */
+  readonly reason: string
+  /** The subagent provider names this backend can raise a member through; `[]` for official. */
+  providers(): string[]
+  /**
+   * Raise one member.
+   * @param caller - the exact live Lead agent the member is raised under.
+   * @param request - who the member is, what it is told, and (native) how it is routed.
+   * @returns the backend's handle for the member.
+   * @throws when the member cannot be raised — a member that does not exist must be loud.
+   */
+  spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult>
+  /**
+   * Deliver one message to a member.
+   * @param caller - the exact live sender authorizing the delivery.
+   * @param handle - the backend handle {@link spawn} returned.
+   * @param content - the message text.
+   * @param signal - cancellation, owning the operation only until acceptance.
+   * @throws when the message was not admitted.
+   */
+  send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void>
+  /**
+   * Interrupt a member's current turn. Fire-and-return, like both underlying seams.
+   * @param caller - the exact live caller authorizing the interrupt.
+   * @param handle - the backend handle {@link spawn} returned.
+   * @throws when the interrupt is refused.
+   */
+  interrupt(caller: unknown, handle: string): Promise<void>
+  /**
+   * The team identity of one live agent, in the SAME shape the official roster answers, so
+   * a consumer (the read-only discipline's tool guard) needs no knowledge of the backend.
+   * @param agent - the agent to identify.
+   * @returns the membership, or undefined when this agent is not a member of any team.
+   */
+  membership(agent: unknown): DshTeamMembership | undefined
+  /** The members this backend currently knows about; `[]` when it tracks none. */
+  members(): DshTeamExecutorMember[]
+}
+
 /** The target status sampled before a teammate interrupt. */
 export interface DshTeamInterruptResult {
   /** The member's status sampled immediately BEFORE cancellation. */
@@ -634,6 +764,15 @@ export interface DshCapabilities {
   subagentsProvider: boolean
   /** `ctx.subagents.startContinuable` — the durable continuable-child seam. */
   subagentsContinuable: boolean
+  /**
+   * The NATIVE team executor is the active backend for `teamExecutor()`.
+   *
+   * The pre-flight check for a caller that must know whether a team member will be raised
+   * through mpd's own path (true) or through the mounted official service (false). It is
+   * deliberately not the only thing a caller reads: `teamExecutor().reason` carries the
+   * sentence, including the case where NEITHER backend can serve and every call will refuse.
+   */
+  teamExecutorNative: boolean
   /** `ctx.subagents.interrupt` — the parked-child interrupt seam. */
   subagentsInterrupt: boolean
   /** `ctx.llm.listModels` — the per-provider model list (the catalog seam needs its own trio). */
@@ -1204,6 +1343,37 @@ export interface DshAdapter {
    * sync. Every mpd consumer is expected to prefer the typed methods below and to read
    * this one only as an escape hatch (it is also what the team plane's own probes use).
    * It is contained: a `ctx` that cannot answer is `undefined`, never a throw.
+   */
+  /**
+   * The ACTIVE team executor — the seam mpd's own team system raises members through.
+   *
+   * NEVER throws and never returns undefined: a composition always gets a backend, and when
+   * neither can serve, the answer is an executor whose every call REFUSES with the reason.
+   * The choice is made from `capabilities()` once per call (cheap, and it keeps a late-ACTIVE
+   * service from being frozen out) and the `reason` says which way it went:
+   *
+   *   `native`   when `subagentsContinuable` is true — the default, and the one that needs
+   *              nothing from the official plugin;
+   *   `official` when the native seams are absent but `ctx.agentTeams` is mounted;
+   *   a REFUSING `native` executor when neither is available, naming both misses, so a
+   *              caller gets a sentence rather than a TypeError.
+   *
+   * `MPD_DSH_TEAM_EXECUTOR=native|official` overrides the choice. It exists for a
+   * DIAGNOSIS — "is this defect in the executor or in the record?" — and never for normal
+   * operation: the whole point of the split is that mpd owns the team, and an override that
+   * quietly handed execution back would hide exactly the regression this seam prevents.
+   */
+  teamExecutor(): DshTeamExecutor
+  /**
+   * The mounted Agent Teams service itself (`ctx.get("agentTeams")`), or `undefined` when this
+   * composition has no team row.
+   *
+   * The RAW service is handed out deliberately for the same reason
+   * {@link DshAdapter.subagentRuntime} is: a consumer may need a surface this adapter does not
+   * model yet, and re-declaring it here would be a second seam to keep in sync. Every mpd consumer
+   * is expected to prefer the typed methods — and, for a TEAM, `teamExecutor()` — and to read this
+   * one only as an escape hatch. It is contained: a `ctx` that cannot answer is `undefined`, never
+   * a throw.
    */
   teamService(): unknown | undefined
   /**
@@ -2022,6 +2192,210 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /** The assembled seam surface, provided as the row's `mpdDsh` service. */
+  // ── the two team backends ─────────────────────────────────────────────────
+  //
+  // Both registries below are created ONCE per adapter instance, not per call: the
+  // `teamExecutor()` factory is re-entered on every call (so a late-ACTIVE service is picked
+  // up), and a handle recorded by one call must still be resolvable by the next.
+  /** Native members, by the durable child session id `startContinuable` returned. */
+  const nativeMembers = new Map<string, { teamId: string; memberId: string; name: string; description: string }>()
+  /** Official members, by handle, so an interrupt can name the member the way that backend wants. */
+  const officialMembers = new Map<string, { teamId: string; memberId: string; name: string }>()
+
+  /** A signal that is never aborted, for a call that supplied none. */
+  const neverAborted = (): AbortSignal => new AbortController().signal
+
+  /** The session id of one live agent, or the empty string when it carries none. */
+  const sessionIdOfAgent = (agent: unknown): string => {
+    /** The agent's session, read defensively: a stub or a stale handle may carry none. */
+    const session = (agent as { session?: { id?: unknown } } | undefined)?.session
+    return typeof session?.id === "string" ? session.id : ""
+  }
+
+  /**
+   * Build the NATIVE executor: `ctx.subagents`, with the provider and the member's route
+   * chosen BY THE CALLER.
+   *
+   * This is the whole point of the split. The official tool row forwards only
+   * `{ prompt, parent }` to `startContinuable`, so a per-member route had to be smuggled in
+   * through row config (`freshProvider`) and a member's identity had to be encoded in its
+   * DESCRIPTION. Here the provider and `agentOptions` are ordinary arguments, which is what
+   * lets the roster's model slots, its persona and its read-only deny list apply to a
+   * teammate directly — and what makes the path independent of the official plugin.
+   * @param reason - why this backend is the active one, shown on a boot line and in a refusal.
+   * @param ready - whether `subagentsContinuable` answered true; false makes every call refuse.
+   * @returns the executor.
+   */
+  function nativeTeamExecutor(reason: string, ready: boolean): DshTeamExecutor {
+    /** The subagents service, resolved per call so a late-ACTIVE service is not frozen out. */
+    const subagentsOf = (): any => service("subagents")
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        /** The provider names the harness itself reports, which is what a caller may name. */
+        try {
+          /** The service's own list, or undefined when it exposes none. */
+          const list = subagentsOf()?.providers
+          if (typeof list !== "function") return []
+          /** Its answer, filtered to strings so the declared `string[]` cannot leak a stub value. */
+          const names = list.call(subagentsOf())
+          return Array.isArray(names) ? names.filter((entry: unknown): entry is string => typeof entry === "string") : []
+        } catch { return [] }
+      },
+      /** Raise one member through `ctx.subagents.startContinuable`, with the caller's route. */
+      async spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult> {
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member")
+        }
+        /** The continuable-start spec: the member's prompt, its parent, and its ROUTE. */
+        const spec: Record<string, unknown> = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+          },
+          signal: request.signal ?? neverAborted(),
+        }
+        /** The manager's answer, whose `childId` is the durable handle a caller records. */
+        const started: any = await subagents.startContinuable.call(subagents, spec)
+        /** The durable child id, or the empty string when the manager reported none. */
+        const handle = String(started?.childId ?? started?.id ?? "")
+        // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
+        // put a member on the roster that no later call could reach. It is refused here.
+        if (handle === "") throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`)
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description })
+        return { handle, executor: "native" }
+      },
+      /** Deliver one message to a member; the manager cold-resumes a child that is not live. */
+      async send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void> {
+        // The SAME availability guard as `spawn`: an executor that cannot raise a member must not
+        // half-work by delivering into a team it could never have built. Refusing here is what
+        // makes "the reason" a property of the BACKEND rather than of one method.
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`)
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member")
+        }
+        // `sendMessage` cold-resumes an absent direct child, which is why the native path does
+        // NOT need the child to be live the way a raw `agent.inject` would.
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() })
+      },
+      /** Interrupt a member's current turn under the exact live caller's ancestry. */
+      async interrupt(caller: unknown, handle: string): Promise<void> {
+        // Same availability guard as `spawn` and `send`, for the same reason.
+        if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
+        /** The subagents service, or a throw naming the action that could not happen. */
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`)
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member")
+        }
+        // The `ancestor` authority is the exact live caller whose lineage must contain the child,
+        // which is the form this seam can honestly present: the record carries no human address.
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller })
+      },
+      /** Identify a member this adapter raised, by the handle its own session id carries. */
+      membership(agent: unknown): DshTeamMembership | undefined {
+        /** The agent's own session id, which is what a handle IS on this backend. */
+        const id = sessionIdOfAgent(agent)
+        if (id === "") return undefined
+        /** The member this handle was raised for, if this adapter raised it. */
+        const entry = nativeMembers.get(id)
+        // No entry is a normal negative: this is used as a FILTER, so an unknown agent is a miss.
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name }
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name })),
+    }
+  }
+
+  /**
+   * Build the OFFICIAL executor: the `dsh.team*` calls the bundle already made.
+   *
+   * Kept as a real implementation rather than a shim, because it does two things the native path
+   * does not: the host owns the roster (so a member raised outside this adapter is still
+   * visible), and delivery is adjacency-checked between peers. A composition that already runs
+   * it must not regress to something worse.
+   * @returns the executor.
+   */
+  function officialTeamExecutor(): DshTeamExecutor {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      /** Raise one member through the official service, in that service's own vocabulary. */
+      async spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`)
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member")
+        }
+        /** The host's spawn answer, whose id is read from whichever field this version fills. */
+        const spawned: any = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...(request.signal === undefined ? {} : { signal: request.signal }),
+        })
+        /** The handle, read the same way the tool row reads it. */
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "")
+        if (handle === "") throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`)
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name })
+        return { handle, executor: "official" }
+      },
+      /** Deliver one message through the official service, which adjacency-checks the pair. */
+      async send(caller: unknown, handle: string, content: string, signal?: AbortSignal): Promise<void> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`)
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member")
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...(signal === undefined ? {} : { signal }) })
+      },
+      /** Interrupt one member; this backend addresses it by NAME, which is why the handle is kept. */
+      async interrupt(caller: unknown, handle: string): Promise<void> {
+        /** The Agent Teams service, or a throw naming the action that could not happen. */
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`)
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member")
+        }
+        // This backend addresses a member by NAME, which is why the handle was recorded with one.
+        /** The recorded member name, or the handle itself when this adapter did not raise it. */
+        const target = officialMembers.get(handle)?.name ?? handle
+        teams.interrupt.call(teams, caller, target)
+      },
+      /** Ask the HOST for the identity, so a member raised by another row is still identified. */
+      membership: (agent: unknown): DshTeamMembership | undefined => {
+        // The host owns this answer, so it is asked rather than reconstructed: a member raised by
+        // ANOTHER row (the official tool plugin's own `spawn_teammate`) is still identified.
+        /** The Agent Teams service, or undefined when it is not mounted. */
+        const teams = service("agentTeams")
+        /** The identity read, probed before it is called with the service as receiver. */
+        const tryMembership = teams?.tryMembership
+        if (typeof tryMembership !== "function") return undefined
+        try {
+          /** The host's raw answer. */
+          const membership: any = tryMembership.call(teams, agent)
+          if (membership === undefined || membership === null) return undefined
+          /** The host's role, accepted only when it is one of the two declared values. */
+          const role = membership.role
+          if (role !== "lead" && role !== "teammate") return undefined
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") }
+        } catch {
+          // A stale identity or a non-Team subagent is a normal negative: this is a FILTER.
+          return undefined
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name })),
+    }
+  }
+
+  /** The frozen adapter surface, assembled once from the primitives above. */
   const adapter: DshAdapter = {
     /** Probe every seam once and report one boolean per contract; see {@link DshCapabilities}. */
     capabilities(): DshCapabilities {
@@ -2088,6 +2462,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // reads this flag must never hit a half-present service.
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        // The same predicate `teamExecutor()` uses, so a caller that pre-flights cannot disagree
+        // with the backend it is about to get.
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -2520,6 +2897,45 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // or a key rewrite here could only lose a field this adapter does not model — the
     // same discipline `registerHostTool` follows. Replies are PROJECTED (see the
     // module-level projections), so a consumer's declared types are truthful.
+    /**
+     * The active team executor. A FACTORY, not a field: the choice is re-made per call so a
+     * service that becomes ACTIVE later is picked up rather than frozen out, and so the
+     * native registry below is the only state this seam keeps.
+     */
+    teamExecutor(): DshTeamExecutor {
+      /** The operator's explicit override, when one was set. */
+      const override = ((): string | undefined => {
+        try {
+          /** The env value, trimmed; the harness also exposes it through the row config. */
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined
+        } catch {
+          return undefined
+        }
+      })()
+      // Read with the SAME expression `capabilities()` uses, rather than through it: the
+      // capabilities object is built inside the adapter literal below, and this factory must
+      // stay callable from every method without depending on construction order.
+      /** Whether the native path can raise a durable child at all. */
+      const nativeReady = typeof service("subagents")?.startContinuable === "function"
+      /** Whether the official service is mounted. */
+      const officialReady = service("agentTeams") !== undefined
+      /** The chosen backend, honouring a valid override and falling through when it cannot serve. */
+      const chosen: DshTeamExecutorKind = override === "official" && officialReady ? "official"
+        : override === "native" && nativeReady ? "native"
+          : nativeReady ? "native"
+            : officialReady ? "official"
+              : "native"
+      if (chosen === "official") return officialTeamExecutor()
+      return nativeTeamExecutor(
+        nativeReady
+          ? (override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native")
+          : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse",
+        nativeReady,
+      )
+    },
+
+    /** Hand out the raw Agent Teams service; the contained probe never throws. */
     teamService(): unknown | undefined {
       // The contained probe (never a throw): `undefined` is the whole degrade contract,
       // and `capabilities().team` is the pre-flight check a consumer reads.

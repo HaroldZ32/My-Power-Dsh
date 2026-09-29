@@ -1,0 +1,32 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts:
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 24 package(s), 108 .ts file(s)
+RESULT: PASS (0 findings)
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 24 package(s), 108 .ts file(s)
+RESULT: PASS (0 findings)
+(pass) no direct Agent Teams access outside the adapter (D6) [547.80ms]
+SELF-TEST — no-direct-team-access (negative control over a seeded fixture tree)
+  ok   seeded violation at packages/mpd-fixture/src/index.ts:3
+  ok   seeded violation in a NESTED file (recursion)
+  ok   a RAW ctx.on("agent/pre-step") subscription is a finding
+  ok   a cordis FRAMEWORK event (internal/service) is NOT a finding
+  ok   the STRING spelling ctx.get("agentTeams") reddens too
+  ok   a COMMENT mentioning both identifiers is NOT a finding
+  ok   the adapter package is excluded
+  ok   a non-mpd package is outside the band
+  ok   exactly the five seeded findings are reported, one per violation
+  ok   a finding turns into a NONZERO exit code, a clean scan into zero
+  ok   an out-of-band .js hit is REPORTED as NOT COVERED, never as a failure
+  ok   the fixture walker actually read the seeded band
+SELF-TEST: PASS (12/12 checks)
+(pass) the gate reddens on a seeded violation (negative control) [3.92ms]
+
+ 2 pass
+ 0 fail
+ 2 expect() calls
+Ran 2 tests across 1 file. [1323.00ms]

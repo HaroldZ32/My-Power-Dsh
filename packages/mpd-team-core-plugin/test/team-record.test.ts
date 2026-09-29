@@ -11,6 +11,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { listTeams, readTeam, teamRoot } from "../src/team-store"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
@@ -51,8 +52,6 @@ interface StubOptions {
   watchdogHolds?: boolean
   /** The member whose spawn throws, by name, when an arm needs a half-built team. */
   failMember?: string
-  /** The executor's own task handles, in creation order (defaults to `board-1`, `board-2`, …). */
-  taskIds?: string[]
 }
 
 /**
@@ -65,51 +64,60 @@ function harness(options: StubOptions = {}): Harness {
   const workspace = mkdtempSync(join(tmpdir(), "mpd-team-record-"))
   /** The tools the plugin registered. */
   const tools = new Map<string, Tool>()
-  /** Every executor call, in order. */
+  /** Every call the harness double observed, in order. */
   const calls: ExecutorCall[] = []
   /** The service the plugin published. */
   let service: MpdTeamsService | undefined
-  /** How many tasks the stub board has handed out so far. */
-  let minted = 0
-  /** The stub adapter: only the seams this path reaches, each one RECORDED. */
+  // THE NATIVE BACKEND (W2). The double sits at the HARNESS boundary — `ctx.subagents` — and the
+  // REAL adapter is built over it, so these arms exercise the executor implementation rather than a
+  // stub of it. `spawnTeammate` is deliberately ABSENT: an approval that still reached for the
+  // official service would fail here instead of passing quietly.
+  /** The `ctx.subagents` double: the three seams the native executor uses. */
+  const subagents = {
+    providers: () => ["spawn", "mpd-roster"],
+    /** Record the raise and answer with a handle derived from the member name. */
+    startContinuable(this: unknown, spec: any): Promise<unknown> {
+      calls.push({ method: "startContinuable", args: spec })
+      /** The member name the executor put on the label, which is how a failure is aimed. */
+      const label = String(spec?.label ?? "")
+      if (options.failMember !== undefined && label.startsWith(options.failMember)) {
+        throw new Error("the executor refused " + options.failMember)
+      }
+      // The handle is derived from the member name so an arm can predict it, exactly as the
+      // official double's ids used to be.
+      return Promise.resolve({ childId: "child-" + label.split(" \u00b7 ")[0].replace(/\s+/g, "-"), messageId: "m1" })
+    },
+    /** Record the delivery and answer with an inbox id. */
+    sendMessage(this: unknown, sender: unknown, targetId: unknown, content: unknown, opts: unknown): Promise<unknown> {
+      calls.push({ method: "sendMessage", args: { sender, targetId, content, opts } })
+      return Promise.resolve("m2")
+    },
+    /** Record the interrupt. */
+    interrupt(this: unknown, targetId: unknown, authority: unknown): void {
+      calls.push({ method: "interrupt", args: { targetId, authority } })
+    },
+  }
+  /** The stub watchdog service, when this arm staged one. */
+  const watchdog = options.watchdogHolds === undefined
+    ? undefined
+    : { isHeld: () => options.watchdogHolds === true, holds: () => (options.watchdogHolds === true ? ["held"] : []) }
+  /** The stub adapter: the plugin's own seams, plus the REAL executor over the harness double. */
   const dsh = {
     registerTool: (definition: Tool) => { tools.set(definition.name, definition); return () => {} },
     registerCommand: () => () => {},
     workspaceRoot: () => workspace,
     text: (value: string) => value,
-    // `inactive` is the official roster's word for IDLE, which is what the pairing draws from.
-    teamListMembers: () => [{ id: "sess-Senior-Engineer", name: "Senior Engineer", status: "inactive" }],
-    teamListTasks: () => [{ id: "official-77", subject: "core", status: "pending", ready: true, blockedBy: [], description: "own the record" }],
-    teamSendMessage: async (_caller: unknown, request: Record<string, unknown>) => {
-      calls.push({ method: "sendMessage", args: request })
-      return {}
-    },
-    teamSpawnTeammate: async (_caller: unknown, request: Record<string, unknown>) => {
-      calls.push({ method: "spawnTeammate", args: request })
-      if (options.failMember !== undefined && request.name === options.failMember) throw new Error("the executor refused " + String(request.name))
-      return { id: "sess-" + String(request.name).replace(/\s+/g, "-") }
-    },
-    teamCreateTask: async (_caller: unknown, request: Record<string, unknown>) => {
-      calls.push({ method: "createTask", args: request })
-      minted += 1
-      /** The handle this board mints, which the RECORD must keep but never adopt as its own id. */
-      const id = options.taskIds?.[minted - 1] ?? "board-" + minted
-      return { id, revision: 7, subject: request.subject }
-    },
-    teamUpdateTask: async (_caller: unknown, request: Record<string, unknown>) => {
-      calls.push({ method: "updateTask", args: request })
-      return { id: request.taskId, revision: 8 }
-    },
+    // NO `agentTeams` is mounted anywhere in this harness: `ctx.get("agentTeams")` answers
+    // undefined, so the executor's choice must land on the native default. An arm asserting the
+    // old official behaviour would fail here rather than pass against a half-migrated path.
+    teamExecutor: () => createDshAdapter({ get: (name: string) => (name === "subagents" ? subagents : undefined) } as never).teamExecutor(),
+    teamListMembers: () => [],
+    teamListTasks: () => [],
     capabilities: () => ({}),
   }
-  /** The minimal cordis context `apply` needs, with `provide` capturing the published service. */
-  /** The stub watchdog service, when this arm staged one. */
-  const watchdog = options.watchdogHolds === undefined
-    ? undefined
-    : { isHeld: () => options.watchdogHolds === true, holds: () => (options.watchdogHolds === true ? ["held"] : []) }
   /** The minimal cordis context `apply` needs; `provide` captures the service it publishes. */
   const ctx = {
-    get: (id: string) => (id === "mpdDsh" ? dsh : id === "mpdWatchdog" ? watchdog : undefined),
+    get: (id: string) => (id === "mpdDsh" ? dsh : id === "mpdWatchdog" ? watchdog : id === "subagents" ? subagents : undefined),
     on: () => {},
     effect: (fn: () => unknown) => { try { return fn() ?? (() => {}) } catch { return () => {} } },
     provide: (id: string, value: unknown) => { if (id === TEAMS_SERVICE) service = value as MpdTeamsService },
@@ -171,39 +179,65 @@ describe("approval builds an mpd-owned team record", () => {
   })
 
   test("the executor's handles are KEPT BESIDE our ids, never adopted as them", async () => {
-    /** The harness under test, whose stub board mints handles that look nothing like ours. */
-    const h = harness({ taskIds: ["official-77", "official-88"] })
+    /** The harness under test, whose double mints handles that look nothing like ours. */
+    const h = harness()
     sandboxes.push(h.workspace)
     await staged(h)
     await h.call("agent_teams_plan", { action: "approve" })
     /** The approved record. */
     const record = listTeams(h.workspace)[0]
-    // Our ids are unchanged by whatever the executor answered...
+    // Our ids are unchanged by whatever the backend answered...
     expect(record.tasks.map((task) => task.id)).toEqual(["T1", "T2"])
-    // ...while the handles are recorded for the calls that must name them.
-    expect(record.tasks.map((task) => task.executorRef)).toEqual(["official-77", "official-88"])
+    expect(record.members.map((member) => member.id)).toEqual(["M1", "M2"])
+    // ...while the backend's handle is recorded for the calls that must name it.
+    expect(record.members.map((member) => member.executorRef)).toEqual(["child-Senior-Engineer", "child-Reviewer"])
     expect(record.members.every((member) => member.status === "running")).toBe(true)
-    expect(record.members[0].executorRef).toBe("sess-Senior-Engineer")
   })
 
-  test("the executor is told OUR dependency in ITS vocabulary, and the owner in ITS handle", async () => {
+  test("NO BOARD IS MIRRORED: the mpd record IS the board, so a task keeps our id and only our id", async () => {
+    // THE SEPARATION, ASSERTED NEGATIVELY. W1 still posted every task to the official board and
+    // recorded the board's id beside ours, which left TWO sources of truth for one team and made
+    // the official plugin a hard dependency of `approve`. The record now carries the dependency
+    // edges, the review fields and the ownership itself, so nothing is posted anywhere.
     /** The harness under test. */
-    const h = harness({ taskIds: ["official-77", "official-88"] })
+    const h = harness()
     sandboxes.push(h.workspace)
     await staged(h)
     await h.call("agent_teams_plan", { action: "approve" })
-    /** The two createTask payloads, in order. */
-    const creates = h.calls.filter((call) => call.method === "createTask")
-    expect(creates.length).toBe(2)
-    // The blocker leaves as the EXECUTOR's id for our T1, not as our id and not as the subject.
-    expect(creates[1].args.blockedBy).toEqual(["official-77"])
-    expect(creates[0].args.blockedBy).toBeUndefined()
-    /** The reassign calls, one per owned task. */
-    const reassigns = h.calls.filter((call) => call.method === "updateTask")
-    expect(reassigns.map((call) => call.args.owner)).toEqual(["sess-Senior-Engineer", "sess-Reviewer"])
-    expect(reassigns.map((call) => call.args.taskId)).toEqual(["official-77", "official-88"])
-    // The revision the executor reported is echoed back, so its own CAS is satisfied.
-    expect(reassigns[0].args.expectedRevision).toBe(7)
+    /** The approved record. */
+    const record = listTeams(h.workspace)[0]
+    // The tasks carry NO backend handle, because no backend was asked to mint one.
+    expect(record.tasks.every((task) => task.executorRef === undefined)).toBe(true)
+    // The dependency edge, the ownership and the scopes are all mpd's own, and they are what a
+    // dispatch pass reads — `readyTasks` and `idleMembers` resolve them against this board.
+    expect(record.tasks[1].blockedBy).toEqual(["T1"])
+    expect(record.tasks[0].owner).toBe("Senior Engineer")
+    expect(record.tasks[0].writeScopes).toEqual(["packages/**"])
+    // Not one call reached the official service: `spawnTeammate` is not even on the double, so a
+    // regression to the old path would throw here rather than pass.
+    expect(h.calls.map((call) => call.method)).toEqual(["startContinuable", "startContinuable"])
+  })
+
+  test("the member's ROUTE reaches the executor as an ordinary argument", async () => {
+    // This is the whole reason the native default exists: the official tool row forwards only
+    // `{ prompt, parent }`, so a per-member model route had to arrive through ROW CONFIG
+    // (`freshProvider`) and a member's identity had to be encoded in its DESCRIPTION. Here the
+    // route is a spawn argument, which is what lets a roster slot, a persona and the read-only
+    // deny list apply to a teammate directly.
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The two spawn specs the double recorded, in order. */
+    const specs = h.calls.filter((call) => call.method === "startContinuable").map((call) => call.args as any)
+    expect(specs.length).toBe(2)
+    // The provider and the label are the executor's own; the parent is the calling Lead.
+    expect(specs[0].provider).toBe("spawn")
+    expect(specs[0].label).toBe("Senior Engineer · " + listTeams(h.workspace)[0].teamId)
+    expect(specs[0].request.parent).toEqual({ session: { id: "sess-1" } })
+    // The prompt travels as content blocks, which is what the continuation manager takes.
+    expect(specs[0].request.prompt[0].text).toBe("You implement.")
   })
 
   test("a spawn that fails STOPS the approval but still leaves the team on record", async () => {

@@ -31,6 +31,8 @@ import { createDshAdapter, type DshTeamMemberView, type DshTeamTaskView } from "
  */
 const FROZEN_TEAM_SURFACE: ReadonlyArray<readonly [string, number]> = [
   ["teamService", 0],
+  // The W2 executor seam: zero arguments, and the whole point is that it ALWAYS answers.
+  ["teamExecutor", 0],
   ["teamMembership", 1],
   ["teamListMembers", 1],
   ["teamListTasks", 1],
@@ -47,7 +49,7 @@ const FROZEN_TEAM_SURFACE: ReadonlyArray<readonly [string, number]> = [
 ]
 
 /** One capability flag per new seam of the team plane. */
-const FROZEN_TEAM_FLAGS = ["team", "teamTasks", "teamMessages", "subagentsProviderRegister"] as const
+const FROZEN_TEAM_FLAGS = ["team", "teamTasks", "teamMessages", "subagentsProviderRegister", "teamExecutorNative"] as const
 
 /** One recorded call: the seam name, the receiver it was called on, and the forwarded arguments. */
 type Call = { seam: string; receiver: unknown; args: unknown[] }
@@ -196,13 +198,23 @@ function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } =
 
   /** The registry's own disposer, returned so identity can be asserted. */
   const providerDispose = (): void => { /* the registry's own disposer */ }
-  /** The subagent provider registry double. */
+  /** The subagent provider registry double, with the continuable seam a FULL harness has. */
   const subagents = {
     marker: "subagents-service",
     /** Record the provider registration and hand back the registry disposer. */
     registerProvider(this: unknown, provider: unknown): () => void {
       record("subagents.registerProvider", this, provider)
       return providerDispose
+    },
+    /**
+     * The continuable-raise seam. It is present because this double models a FULL harness, and
+     * a full harness is what makes `teamExecutorNative` true — the executor seam's own default
+     * backend. A double without it would make the capability arm assert a falsehood about a
+     * stripped harness rather than a truth about a complete one.
+     */
+    startContinuable(this: unknown, spec: unknown): Promise<unknown> {
+      record("subagents.startContinuable", this, spec)
+      return Promise.resolve({ childId: "child-1", messageId: "m1" })
     },
   }
   /** The live-session registry double, overridable per test. */

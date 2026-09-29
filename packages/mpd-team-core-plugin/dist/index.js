@@ -362,6 +362,138 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -406,6 +538,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -661,6 +794,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -1682,6 +1831,13 @@ function memberProgress(record, name) {
     ...current === undefined ? {} : { current: current.id }
   };
 }
+function readyTasks(record) {
+  return record.tasks.filter((task) => task.status === "pending" && blockingDependencies(record.tasks, task.blockedBy).blocking.length === 0);
+}
+function idleMembers(record) {
+  const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
+  return record.members.filter((member) => member.status === "running" && !busy.has(member.name));
+}
 
 // packages/mpd-team-core-plugin/src/index.ts
 var name = "mpd-team-core";
@@ -1721,6 +1877,7 @@ function apply(ctx) {
   const dsh = adapterFor(ctx);
   const disposers = [];
   const now = () => new Date;
+  const executor = () => dsh.teamExecutor();
   const where = (exec) => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) });
   const requirePlan = (exec) => {
     const { workspace, sessionId } = where(exec);
@@ -1953,44 +2110,27 @@ function apply(ctx) {
         let stoppedAt;
         for (const member of record.members) {
           try {
-            const spawned = await dsh.teamSpawnTeammate(exec.agent, {
+            const spawned = await executor().spawn(exec.agent, {
+              teamId: record.teamId,
+              memberId: member.id,
               name: member.name,
               description: member.description === "" ? member.name : member.description,
               prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
+              ...member.route === undefined ? {} : { provider: member.route },
               ...exec.signal === undefined ? {} : { signal: exec.signal }
             });
-            const id = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
-            created.members.push({ name: member.name, id });
-            record = updateTeamMember(record, member.id, id === "" ? {} : { executorRef: id, status: "running" });
+            created.members.push({ name: member.name, id: spawned.handle });
+            record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
           } catch (error) {
             record = updateTeamMember(record, member.id, { status: "failed" });
             stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
             break;
           }
         }
-        if (stoppedAt === undefined) {
+        if (stoppedAt === undefined)
           for (const task of record.tasks) {
-            try {
-              const resolved = task.blockedBy.map((id) => executorTaskId.get(id)).filter((id) => id !== undefined);
-              const view = await dsh.teamCreateTask(exec.agent, {
-                subject: task.subject,
-                description: task.description,
-                ...resolved.length === 0 ? {} : { blockedBy: resolved },
-                ...task.writeScopes.length === 0 ? {} : { writeScopes: task.writeScopes }
-              });
-              executorTaskId.set(task.id, view.id);
-              created.tasks.push({ subject: task.subject, id: view.id });
-              record = updateTeamTask(record, task.id, { executorRef: view.id }, now());
-              const ownerRef = task.owner === undefined ? undefined : record.members.find((member) => member.name === task.owner)?.executorRef;
-              if (ownerRef !== undefined) {
-                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerRef });
-              }
-            } catch (error) {
-              stoppedAt = `task ${task.subject}: ${String(error?.message ?? error)}`;
-              break;
-            }
+            created.tasks.push({ subject: task.subject, id: task.id });
           }
-        }
         const approvedRecord = withDerivedPhase({ ...record, approvedAt: now().toISOString() });
         writeTeam(workspace, approvedRecord);
         const approved = { ...plan, approvedAt: now().toISOString(), created };
@@ -2037,17 +2177,25 @@ function apply(ctx) {
         return { contract };
       }
       if (action === "claim") {
-        const view = dsh.teamGetTask(exec.agent, String(args?.task_id ?? ""));
+        const record = recordFor(workspace, sessionIdOf(exec));
+        if (record === undefined)
+          throw new Error("no team record in this workspace — approve a plan first");
+        const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""));
+        if (task === undefined)
+          throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`);
+        const claimant = String(args?.claimant ?? sessionIdOf(exec));
         const contract = claimContract(workspace, {
-          id: view.id,
-          subject: view.subject,
-          description: view.description,
-          blockedBy: view.blockedBy,
-          writeScopes: view.writeScopes,
-          revision: view.revision
-        }, String(args?.claimant ?? sessionIdOf(exec)), now());
-        const task = await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "claim" }).catch(() => view);
-        return { contract, task };
+          id: task.id,
+          subject: task.subject,
+          description: task.description,
+          blockedBy: task.blockedBy,
+          writeScopes: task.writeScopes,
+          revision: task.revision
+        }, claimant, now());
+        const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now());
+        writeTeam(workspace, claimed);
+        const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task;
+        return { contract, task: view };
       }
       throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release)`);
     }
@@ -2083,15 +2231,21 @@ function apply(ctx) {
       const hold = readHold(workspace);
       const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId;
       const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)));
-      const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
+      let record = recordFor(workspace, sessionIdOf(exec));
+      if (record === undefined)
+        return { pairs: [], skipped: [], refused: "no team record in this workspace — approve a plan first" };
+      const opened = record;
+      const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id));
+      const tasks = opened.tasks.map((task) => ({
         id: task.id,
         subject: task.subject,
         status: task.status,
-        ready: task.ready,
+        ready: readyIds.has(task.id),
         blockedBy: task.blockedBy,
-        ...task.ownerName === undefined ? {} : { ownerName: task.ownerName }
+        ...task.owner === undefined ? {} : { ownerName: task.owner }
       }));
-      const members = dsh.teamListMembers(exec.agent).map((member) => ({ id: member.id, name: member.name, status: member.status }));
+      const idle = new Set(idleMembers(opened).map((member) => member.name));
+      const members = opened.members.map((member) => ({ id: member.executorRef ?? member.id, name: member.name, status: idle.has(member.name) ? "inactive" : "running" }));
       const pruned = reconcile(readLedger(workspace), tasks);
       const plan = planDispatch({
         tasks,
@@ -2111,11 +2265,9 @@ function apply(ctx) {
       for (const pair of plan.pairs) {
         const task = tasks.find((candidate) => candidate.id === pair.taskId);
         try {
-          await dsh.teamSendMessage(exec.agent, {
-            target: pair.memberId,
-            content: dsh.text(dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? ""))),
-            ...exec.signal === undefined ? {} : { signal: exec.signal }
-          });
+          await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), exec.signal);
+          record = updateTeamTask(record, pair.taskId, { owner: pair.memberName, status: "in_progress" }, now());
+          writeTeam(workspace, record);
           ledger = assign(ledger, pair, now());
           sent.push(pair);
         } catch (error) {
@@ -2152,13 +2304,8 @@ function apply(ctx) {
       const { workspace } = where(exec);
       const caller = sessionIdOf(exec);
       const self = exec.agent;
-      const roster = (() => {
-        try {
-          return dsh.teamListMembers(exec.agent);
-        } catch {
-          return [];
-        }
-      })();
+      const mailTeam = recordFor(workspace, caller);
+      const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }));
       const resolve2 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
       if (args?.action === "send") {
         const target = resolve2(String(args?.to ?? ""));
@@ -2177,13 +2324,11 @@ function apply(ctx) {
         if (!result.ok)
           return { refused: result.detail };
         try {
-          await dsh.teamSendMessage(exec.agent, {
-            target: target.id,
-            content: dsh.text(`[${result.message.subject}]
+          if (target.handle === "")
+            throw new Error(`${target.name} has no executor handle — it was never raised`);
+          await executor().send(exec.agent, target.handle, `[${result.message.subject}]
 
-${result.message.body}`),
-            ...exec.signal === undefined ? {} : { signal: exec.signal }
-          });
+${result.message.body}`, exec.signal);
           markDelivered(workspace, [result.message.id], now());
         } catch (error) {
           console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
@@ -2269,7 +2414,21 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
     try {
       const staging = join4(root, ".mpd", "team", "staging");
       const pending = existsSync4(staging) ? readdirSync3(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const reportExecutor = () => {
+        const view = (() => {
+          try {
+            return executor();
+          } catch (error) {
+            return { kind: "unavailable", reason: String(error?.message ?? error) };
+          }
+        })();
+        console.log(`[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
+      };
       console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
+      reportExecutor();
+      try {
+        dsh.onServiceBound(["subagents"], () => reportExecutor());
+      } catch {}
     } catch {}
   }
   if (typeof ctx?.on === "function")

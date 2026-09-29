@@ -67,6 +67,8 @@ import {
   addTeamTask,
   blockingDependencies,
   createTeam,
+  idleMembers,
+  readyTasks,
   deleteTeam,
   derivePhase,
   listTeams,
@@ -180,6 +182,17 @@ export function apply(ctx: any): void {
   const disposers: Array<() => void> = []
   /** The clock seam: one place to substitute in a test, and the reason every store takes a `Date`. */
   const now = (): Date => new Date()
+
+  /**
+   * THE TEAM EXECUTOR: the ONE seam a member is raised through and a message delivered to.
+   *
+   * Resolved per CALL rather than cached, because which backend is active can change when a
+   * service becomes ACTIVE later — and because `teamExecutor()` is TOTAL, so a caller never has to
+   * feature-detect: a composition with no backend at all gets an executor whose every call refuses
+   * with a sentence. That is what lets this row register its tools unconditionally and work in a
+   * `dsh-tui` composition, where the official service cannot mount.
+   */
+  const executor = (): ReturnType<DshAdapter["teamExecutor"]> => dsh.teamExecutor()
 
   /** Resolve the workspace + session for one call. */
   const where = (exec: DshToolExec | undefined): { workspace: string; sessionId: string } => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) })
@@ -478,52 +491,36 @@ export function apply(ctx: any): void {
         let stoppedAt: string | undefined
         for (const member of record.members) {
           try {
-            /** The executor's spawn result, whose handle is read from whichever field it fills. */
-            const spawned = await dsh.teamSpawnTeammate(exec.agent, {
+            // THE EXECUTOR RAISES THE MEMBER. On the native backend this passes the member's
+            // PROVIDER and its `agentOptions` as ordinary arguments — the two things the official
+            // tool row cannot forward — so a roster slot route, a persona and the read-only deny
+            // list reach a teammate directly, and nothing here needs the official plugin mounted.
+            /** The backend's answer, whose handle the record keeps BESIDE our own member id. */
+            const spawned = await executor().spawn(exec.agent, {
+              teamId: record.teamId,
+              memberId: member.id,
               name: member.name,
               description: member.description === "" ? member.name : member.description,
               prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
+              ...(member.route === undefined ? {} : { provider: member.route }),
+              // The roster role travels as the identity the native provider's route reads, which is
+              // the same signal the official row had to smuggle through the teammate DESCRIPTION.
               ...(exec.signal === undefined ? {} : { signal: exec.signal }),
             })
-            /** The new member's handle, or the empty string when the executor reported none. */
-            const id = String((spawned as any)?.id ?? (spawned as any)?.sessionId ?? (spawned as any)?.member?.id ?? "")
-            created.members.push({ name: member.name, id })
-            // A member that spawned is RUNNING; one the executor answered nothing for stays
-            // `provisioning`, which is the honest state rather than a claimed success.
-            record = updateTeamMember(record, member.id, id === "" ? {} : { executorRef: id, status: "running" })
+            created.members.push({ name: member.name, id: spawned.handle })
+            record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" })
           } catch (error) {
             record = updateTeamMember(record, member.id, { status: "failed" })
             stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
             break
           }
         }
-        if (stoppedAt === undefined) {
-          for (const task of record.tasks) {
-            try {
-              /** This task's blockers, expressed in the EXECUTOR's ids. */
-              const resolved = task.blockedBy.map((id) => executorTaskId.get(id)).filter((id): id is string => id !== undefined)
-              /** The executor's board task, whose handle the record keeps beside its own id. */
-              const view = await dsh.teamCreateTask(exec.agent, {
-                subject: task.subject,
-                description: task.description,
-                ...(resolved.length === 0 ? {} : { blockedBy: resolved }),
-                ...(task.writeScopes.length === 0 ? {} : { writeScopes: task.writeScopes }),
-              })
-              executorTaskId.set(task.id, view.id)
-              created.tasks.push({ subject: task.subject, id: view.id })
-              // The owner is reassigned only when the record names one; a task with no owner is
-              // left unowned rather than silently handed to whoever spawned first.
-              record = updateTeamTask(record, task.id, { executorRef: view.id }, now())
-              /** The owning member's executor handle, present only when it actually spawned. */
-              const ownerRef = task.owner === undefined ? undefined : record.members.find((member) => member.name === task.owner)?.executorRef
-              if (ownerRef !== undefined) {
-                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerRef })
-              }
-            } catch (error) {
-              stoppedAt = `task ${task.subject}: ${String((error as Error)?.message ?? error)}`
-              break
-            }
-          }
+        // THE TASKS ARE NOT POSTED TO A BACKEND BOARD. The mpd record IS the board — the dependency
+        // edges, the attempts, the review fields and the executor handles are all here, and a
+        // second board would be a second source of truth for the same team. The official backend's
+        // `executorRef` is filled in only where a backend actually minted something to point at.
+        if (stoppedAt === undefined) for (const task of record.tasks) {
+          created.tasks.push({ subject: task.subject, id: task.id })
         }
         /** The record stamped approved, its phase brought in line with what actually happened. */
         const approvedRecord = withDerivedPhase({ ...record, approvedAt: now().toISOString() })
@@ -587,20 +584,33 @@ export function apply(ctx: any): void {
       }
 
       if (action === "claim") {
-        /** The official task as it stands NOW — the source of every value the contract freezes. */
-        const view = dsh.teamGetTask(exec.agent, String(args?.task_id ?? ""))
-        /** The contract for this attempt, written before the board is told about the claim. */
+        // THE RECORD IS THE BOARD (W2): the task, its acceptance text and its blockers are read
+        // from mpd's own team, so a contract can be frozen in a composition where no backend board
+        // exists at all. The `revision` the contract freezes is the record's own, which moves on
+        // every mpd mutation and never on somebody else's.
+        /** The team this call works on, or a refusal naming what is missing. */
+        const record = recordFor(workspace, sessionIdOf(exec))
+        if (record === undefined) throw new Error("no team record in this workspace — approve a plan first")
+        /** The task being claimed. */
+        const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""))
+        if (task === undefined) throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`)
+        /** The claimer, defaulting to the calling session. */
+        const claimant = String(args?.claimant ?? sessionIdOf(exec))
+        /** The contract for this attempt, written before the record is told about the claim. */
         const contract = claimContract(workspace, {
-          id: view.id,
-          subject: view.subject,
-          description: view.description,
-          blockedBy: view.blockedBy,
-          writeScopes: view.writeScopes,
-          revision: view.revision,
-        }, String(args?.claimant ?? sessionIdOf(exec)), now())
-        /** The board's task after the claim; a refused claim falls back to the view so a contract still answers. */
-        const task = await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "claim" }).catch(() => view)
-        return { contract, task }
+          id: task.id,
+          subject: task.subject,
+          description: task.description,
+          blockedBy: task.blockedBy,
+          writeScopes: task.writeScopes,
+          revision: task.revision,
+        }, claimant, now())
+        /** The record after the claim: owned, in flight, and carrying the new attempt counter. */
+        const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now())
+        writeTeam(workspace, claimed)
+        /** This task as the record now holds it. */
+        const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task
+        return { contract, task: view }
       }
 
       throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release)`)
@@ -653,17 +663,34 @@ export function apply(ctx: any): void {
       const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId
       /** The refusal reason, whichever of the two holds applies first. */
       const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)))
-      /** The board projected into the dispatch task shape. */
-      const tasks = dsh.teamListTasks(exec.agent).map((task) => ({
+      // THE RECORD IS THE BOARD (W2). Both loops below read mpd's own team, so a dispatch pass
+      // works in a composition where the official service cannot mount — which is the whole point
+      // of owning the record — and the readiness rule is the store's own OPT-1 rule rather than a
+      // projection of somebody else's.
+      /** The team this pass dispatches, or a refusal naming what is missing. */
+      let record = recordFor(workspace, sessionIdOf(exec))
+      if (record === undefined) return { pairs: [], skipped: [], refused: "no team record in this workspace — approve a plan first" }
+      // Bound to a const so the narrowing survives into the two closures below: `record` is
+      // reassigned as pairs are accepted, and a captured `let` would widen back to `| undefined`.
+      /** The team as this pass read it. */
+      const opened: TeamRecord = record
+      /** The tasks this pass may dispatch, by the store's own OPT-1 readiness rule. */
+      const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id))
+      /** The board, in the dispatch engine's shape. */
+      const tasks = opened.tasks.map((task) => ({
         id: task.id,
         subject: task.subject,
         status: task.status,
-        ready: task.ready,
+        // OPT-1: a FAILED blocker does not hold a task back, and `readyTasks` is the ONE place
+        // that rule lives, so the dispatch engine cannot drift from the store.
+        ready: readyIds.has(task.id),
         blockedBy: task.blockedBy,
-        ...(task.ownerName === undefined ? {} : { ownerName: task.ownerName }),
+        ...(task.owner === undefined ? {} : { ownerName: task.owner }),
       }))
-      /** The roster projected into the dispatch member shape. */
-      const members = dsh.teamListMembers(exec.agent).map((member) => ({ id: member.id, name: member.name, status: member.status }))
+      /** The roster, in the dispatch engine's shape; the engine pairs only with `inactive` (idle). */
+      const idle = new Set(idleMembers(opened).map((member) => member.name))
+      /** The roster in the dispatch engine's shape: a member is `inactive` when it is free. */
+      const members = opened.members.map((member) => ({ id: member.executorRef ?? member.id, name: member.name, status: idle.has(member.name) ? "inactive" : "running" }))
       // PRUNE FIRST: a task deleted or completed out of band must not keep its member busy forever.
       const pruned = reconcile(readLedger(workspace), tasks)
       /** The pure decision for this pass: the pairs to dispatch and a reason for every task left out. */
@@ -688,11 +715,14 @@ export function apply(ctx: any): void {
         /** The board's own record for this pair, used for the acceptance text. */
         const task = tasks.find((candidate) => candidate.id === pair.taskId)
         try {
-          await dsh.teamSendMessage(exec.agent, {
-            target: pair.memberId,
-            content: dsh.text(dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? ""))),
-            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
-          })
+          // DELIVERED THROUGH THE EXECUTOR, which on the native backend cold-resumes a child that
+          // is not currently live — the behaviour a dispatch pass depends on.
+          await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? "")), exec.signal)
+          // The pairing is recorded in the RECORD as well as the ledger: the assignment is what
+          // makes the member non-idle on the NEXT pass, and a ledger alone would leave the record
+          // claiming the task is unowned.
+          record = updateTeamTask(record, pair.taskId, { owner: pair.memberName, status: "in_progress" }, now())
+          writeTeam(workspace, record)
           ledger = assign(ledger, pair, now())
           sent.push(pair)
         } catch (error) {
@@ -746,10 +776,14 @@ export function apply(ctx: any): void {
       const caller = sessionIdOf(exec)
       /** The raw calling agent, read for the display name the official payload carries. */
       const self = exec.agent as any
-      /** The live roster, or an empty list: a mailbox call must answer even with no team plane. */
-      const roster = (() => { try { return dsh.teamListMembers(exec.agent) } catch { return [] } })()
+      // THE RECORD IS THE ROSTER (W2): a mailbox call must answer with no official plane mounted,
+      // and the handle a message is delivered to is the one the EXECUTOR recorded at spawn time.
+      /** This session's team, when one was approved here. */
+      const mailTeam = recordFor(workspace, caller)
+      /** The roster in the shape this tool addresses members by: id OR name, plus the handle. */
+      const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }))
       /** Resolve a member by name OR by id, because a captain addresses people by name. */
-      const resolve = (name: string): ReturnType<DshAdapter["teamListMembers"]>[number] | undefined => roster.find((member) => member.id === name || member.name === name)
+      const resolve = (name: string): { id: string; name: string; status: string; handle: string } | undefined => roster.find((member) => member.id === name || member.name === name)
 
       if (args?.action === "send") {
         /** The addressed member, or undefined — in which case the refusal names the whole roster. */
@@ -771,11 +805,10 @@ export function apply(ctx: any): void {
         // The transport carries it; a delivery failure does NOT lose the record — the message stays
         // undelivered in the ledger, which is exactly what `summary` reports.
         try {
-          await dsh.teamSendMessage(exec.agent, {
-            target: target.id,
-            content: dsh.text(`[${result.message.subject}]\n\n${result.message.body}`),
-            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
-          })
+          // A member with no handle was never raised, so there is nothing to deliver to and the
+          // message stays UNDELIVERED in the ledger — which is exactly what `summary` reports.
+          if (target.handle === "") throw new Error(`${target.name} has no executor handle — it was never raised`)
+          await executor().send(exec.agent, target.handle, `[${result.message.subject}]\n\n${result.message.body}`, exec.signal)
           markDelivered(workspace, [result.message.id], now())
         } catch (error) {
           console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
@@ -881,7 +914,36 @@ export function apply(ctx: any): void {
       // DERIVED, both numbers: `disposers` holds the tool registrations plus the ONE command this
       // apply() registers last. The literal that used to sit here said "13 tools" while the plane had
       // grown to 14 — a boot line a reader trusts must not be hand-maintained.
+      // THE EXECUTOR IS NAMED ON A LOG LINE, because which backend raises a member is the ONE fact
+      // an operator needs when a team behaves differently than expected — and because a silent fall
+      // back to the official plane is exactly the regression the split exists to prevent.
+      //
+      // TIMING, MEASURED: `subagents` is a HOST-plane service and this row can apply BEFORE it is
+      // ACTIVE, so an apply-time read answers "unavailable" in a perfectly healthy composition
+      // (`evidence/dsh-qa/preset-conformance/*/boot.log`, the run that produced the deferred branch
+      // below). The TOOLS are unaffected — every call re-resolves the executor lazily, which is why
+      // that is the design — so only this LINE has to wait for the binding to become true.
+      /** Log the executor as it stands right now. Called at apply, and again on a late binding. */
+      const reportExecutor = (): void => {
+        /** The executor at this instant, contained: the seam is total but a log line must not throw. */
+        const view = (() => { try { return executor() } catch (error) { return { kind: "unavailable", reason: String((error as Error)?.message ?? error) } } })()
+        console.log(`[mpd-team-core] team executor: ${view.kind} (${view.reason})`)
+      }
       console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
+      reportExecutor()
+      // Re-report ONCE when the NATIVE backend's service binds, so the line the operator reads is
+      // the composition's real answer rather than an ordering artefact. A composition that never
+      // binds it keeps the apply-time line, which is the honest thing to print.
+      //
+      // ONLY `subagents` IS NAMED, and not the official service beside it: naming that service by
+      // string outside the adapter is EXACTLY what the D6 gate forbids (`node
+      // packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts` reported this line the
+      // first time it was written with both). The gate is right, and nothing is lost — the executor
+      // re-resolves its backend on every CALL, so a late-binding official service is picked up
+      // where it matters whether or not this line is ever re-printed.
+      try {
+        dsh.onServiceBound(["subagents"], () => reportExecutor())
+      } catch { /* an adapter without the seam keeps the apply-time line */ }
     } catch { /* a read-only workspace must not break the boot */ }
   }
 
