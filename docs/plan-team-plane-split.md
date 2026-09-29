@@ -226,9 +226,50 @@ what a mounted service projected.
 that evaluate the served bytes. The evidence therefore records `node --check` on the artifact plus the
 presence of both splices.
 
-## 5d. W5 (remaining)
+## 5d. W5 — close-out (LANDED)
 
-Bilingual docs, the full gate sweep, and removal of the now-unneeded TUI-plane guard.
+### The TUI-plane guard is KEPT, with its justification RE-SCOPED
+
+The approved plan said this wave removes the "now-unneeded" guard. **It is not unneeded, and removing
+it would be a regression**, so the decision is recorded rather than executed on autopilot:
+
+- **What the split fixed:** the mpd team no longer needs that official row. It is its own record
+  (`mpd-team-core-plugin`, `.mpd/team/teams/<id>.json`, served as `mpdTeams`) plus its own executor
+  (`mpd-dsh-adapter`'s `TeamExecutor`, **native** by default over `ctx.subagents.startContinuable`),
+  and the native path reads nothing from the official plugin.
+- **What it cannot fix:** why the row cannot mount. `TeamService`'s ROOT-bound
+  `ctx.root.sessionProjections.register` is refused by the dsh-tui host — a property of the HOST's
+  capability wrapper, measured at harness 0.2.0-rc.1 + dsh-tui 0.11.2 and **identical** in the
+  0.1.7-rc.2 copy this bundle pins. Enabling those rows in a TUI composition does not give it a team
+  service; it gives it the same activation error on every boot.
+
+So the guard now says *"a row that cannot mount in this composition would print an activation error on
+every boot, and disabling it costs the TUI plane nothing"* — true, and **measurable**, because the team
+works either way. The runtime warning tells the operator the team is unaffected and why.
+
+### The stale claim it was hiding, corrected in both languages
+
+`docs/tui.md` §10 item 11 said **"No teammate can be spawned in a TUI session"** — false since W2.
+It now separates what still cannot happen (the official service activating) from what now can (a
+teammate being spawned), and carries the boot line that proves it. §3.2 gains the same distinction in
+EN and zh-CN and names the W3 scene. `AGENTS.md` §1 names `mpdTeams`, the route, the `TeamExecutor`
+seam with native-as-default, and both rebuilt surfaces.
+
+### The sweep
+
+| gate | result |
+|---|---|
+| `bun test packages` | **1337 pass, 3 skip, 0 fail** (122 files, 13122 assertions) |
+| `verify-dist-fresh` | 23/23 fresh |
+| `verify:comments` · `verify:rows` · `verify:manifest` · `verify:docs` · `verify-manual-paths` · D6 | all PASS |
+| `bun run test:qa` · `install-profile --dry-run` · `preset-conformance` | all PASS |
+| `typecheck` | the same 4 pre-existing `skills/` errors |
+| `verify-vendor` | exit 1 — **environment prerequisite** (`MPD_UPSTREAM_ROOT` absent here), not a regression; no `skills/**` file changed this wave, so no re-pin is due |
+
+**Not claimed, and stated so no reader assumes more:** no TUI real-machine lane (`tui-mount` and
+`tui-team-surface` both SKIP for an absent dsh-tui profile fixture — the TUI surface is carried by its
+47 arms, not by a live PTY); no live teammate was ever spawned (this environment holds no credentials,
+and §7 forbids writing any); no browser profile was booted.
 
 ## 6. Acceptance for W1
 
