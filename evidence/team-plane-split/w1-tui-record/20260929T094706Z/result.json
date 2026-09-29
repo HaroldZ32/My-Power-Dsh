@@ -1,0 +1,46 @@
+{
+  "wave": "W1.4 \u2014 the TUI team surfaces read the mpd-owned record",
+  "head": "2127420d67807cbc7ba7e4737af7681aeab95fa0",
+  "toolchain": {
+    "bun": "1.4.0",
+    "node": "v24.16.0",
+    "note": "bun 1.4.0 (the manifest's pinned buildToolchain) first on PATH; verify-dist-fresh measures the tree only with it"
+  },
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1281 pass, 3 skip, 0 fail \u2014 1284 tests across 119 files, 12306 expect() calls"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh (each rebuilt twice, byte-identical)"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "exit": 1,
+      "summary": "4 errors, ALL pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts (typescript/unstable/* not resolvable in this tree) \u2014 verified identical with these changes STASHED, so none is new"
+    }
+  },
+  "delivered": [
+    "readRecordWorkflow() + mpdTeamRecords() in mpd-tui-plugin/src/team-state.ts, producing the SAME TeamWorkflow every renderer already consumed",
+    "the scenes' one reader prefers the principal mpd record and falls back to the official readout",
+    "readBoardState(records) + readRecordTeam() \u2014 the board scene and the status line show the team too",
+    "index.ts resolves the mpdTeams service with the deferred inject form, per call, never cached",
+    "kind/attempt/round/verdict are now REAL on the TUI surfaces; they were permanently blank before"
+  ],
+  "reverted_deliberately": [
+    "I first made a FAILED blocker block its dependents. That overturns OPT-1 \u2014 a USER DECISION recorded 2026-09-13 ('a FAILED dependency no longer pins its dependents forever; the dependent stays pending and dispatchable, while failedDependencyIds carries the failure so the view can say so'). Both copies keep OPT-1 and now carry the decision and its reason in the code with a DO NOT FIX marker.",
+    "Instead: summariseTeam counts releasedByFailure apart from ready, so 'N ready' cannot hide that some are ready only because a prerequisite failed. `failed` now means a failed TASK (it fell into `other` before)."
+  ],
+  "not_claimed": [
+    "the TUI scene still renders the OLD text layout: this wave changed the SOURCE, not the renderer. The boxed dependency graph, the colours, the focus chain and mouse focus are W3.",
+    "no live teammate was spawned; no model call was made"
+  ]
+}
