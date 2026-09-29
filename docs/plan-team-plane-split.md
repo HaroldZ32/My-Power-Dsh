@@ -112,13 +112,49 @@ What changed instead: `summariseTeam` counts `releasedByFailure` APART from `rea
 never hide "3 of them are only ready because a prerequisite failed", and `failed` now means a failed
 TASK (which it did not — a failed task fell into `other`).
 
-## 5. W2–W5 (unchanged from the approved plan)
+## 5. W2 — the TeamExecutor seam (LANDED)
 
-- **W2** `TeamExecutor` seam in `mpd-dsh-adapter`: `native` (default) + `official` (fallback).
+`DshTeamExecutor` in `mpd-dsh-adapter`, with two backends and a capability-based choice:
+
+| | native (DEFAULT) | official (FALLBACK) |
+|---|---|---|
+| spawn | `subagents.startContinuable`, with the **provider and the member's `agentOptions` chosen by the caller** | `agentTeams.spawnTeammate` |
+| send | `subagents.sendMessage` (cold-resumes an absent child) | `agentTeams.sendMessage` (adjacency-checked) |
+| interrupt | `subagents.interrupt` under `{kind:'ancestor'}` | `agentTeams.interrupt` by NAME |
+| membership | this adapter's own registry, keyed by the child session id | asked of the host |
+
+Why the native default is the point of the whole split: the official tool row forwards only
+`{ prompt, parent }` to `startContinuable`, so a per-member model route had to arrive through **row
+config** (`freshProvider`) and a member's identity had to be encoded in its **teammate description**.
+As a spawn argument the route is ordinary data, which is what lets a roster slot, a persona and the
+read-only deny list apply to a teammate directly — and what makes the path need nothing from the
+official plugin.
+
+**The record is now the board for BOTH backends.** `approve` raises members through the executor and
+posts no task anywhere; `dispatch` and `claim` read the record; `mail` delivers to the handle the
+executor recorded. W1 still mirrored tasks to the official board, which left two sources of truth for
+one team; an arm now asserts the negative directly (the spawn log is exactly
+`["startContinuable", "startContinuable"]`, and no task carries a backend handle).
+
+### 5.1 Three findings W2 produced
+
+1. **`subagents` is a HOST-plane service and `mpd-team-core` can apply before it is ACTIVE**, so an
+   apply-time read answers "unavailable" in a perfectly healthy composition. The TOOLS were never
+   affected — every call re-resolves the executor lazily, which is why that is the design — but the
+   boot LINE was, and it now re-reports when the service binds. The boot log carries both lines,
+   which is how the ordering was measured rather than guessed.
+2. **The D6 gate reported the first version of that deferred binding.** Naming the official service
+   by string outside the adapter is exactly what it forbids. Only `subagents` is named now; the GATE
+   was right and the CODE changed.
+3. **Editing the adapter's source changes the built bytes of 19 other packages** — `bun build`
+   inlines the relative imports. Every one had to be rebuilt, and `verify-dist-fresh` names them.
+
+## 5b. W3–W5 (unchanged from the approved plan)
+
 - **W3** the TUI team scene as previewed: boxed DAG, status colours, focus chain, rail fallback,
   mouse + keyboard focus.
 - **W4** one adaptive web sidebar body (better-sidebar first, official right sidebar fallback) for
-  team and workmate, fed by MPD's own host routes.
+  team and workmate, fed by MPD's own host routes (W1.3).
 - **W5** bilingual docs, full gate sweep, evidence, and removal of the now-unneeded TUI-plane guard.
 
 ## 6. Acceptance for W1
