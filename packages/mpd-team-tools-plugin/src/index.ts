@@ -61,6 +61,28 @@ import {
   type StagedPlan,
   type StagedTask,
 } from "./plan-store"
+import {
+  activeTeamId,
+  addTeamMember,
+  addTeamTask,
+  blockingDependencies,
+  createTeam,
+  deleteTeam,
+  derivePhase,
+  listTeams,
+  memberProgress,
+  readTeam,
+  summariseTeam,
+  taskDepths,
+  taskVisual,
+  unbindActiveTeam,
+  updateTeamMember,
+  updateTeamTask,
+  withDerivedPhase,
+  writeTeam,
+  type TeamRecord,
+  type TeamTaskRecord,
+} from "./team-store"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-team-tools"
@@ -68,6 +90,37 @@ export const name = "mpd-team-tools"
 // ctx — the D6 gate polices that) and NOT the team plane itself: `ctx.agentTeams` is reached
 // exclusively through `dsh.team*`, so a harness rename lands in the adapter.
 export const inject = ["tools", "commands"]
+
+/**
+ * The service id this row publishes: the bundle's OWN team read surface.
+ *
+ * Every mpd surface that used to reconstruct a team from `dsh.teamLiveTeams()` — the TUI scenes,
+ * the web panel, the watchdog, the workmate in-use gate — resolves this instead. It is the seam
+ * that makes the separation real: a consumer reads the mpd record and never asks the official
+ * plane what the team is, so the team plane survives a composition where the official service is
+ * absent or unmountable (which is exactly the `dsh-tui` case).
+ */
+export const TEAMS_SERVICE = "mpdTeams"
+
+/** The read surface published as {@link TEAMS_SERVICE}; every member is synchronous and non-throwing. */
+export interface MpdTeamsService {
+  /** Every team this workspace holds, newest first. */
+  list: (workspace: string) => TeamRecord[]
+  /** One team by id, or undefined. */
+  get: (workspace: string, teamId: string) => TeamRecord | undefined
+  /** The team bound to one Lead session, or undefined when that session has none. */
+  active: (workspace: string, sessionId?: string) => TeamRecord | undefined
+  /** The tallies, edges, cycles and per-task rank of one team. */
+  summary: (record: TeamRecord) => ReturnType<typeof summariseTeam>
+  /** The visual state a renderer draws for one task of one team (`blocked` is derived here). */
+  visual: (record: TeamRecord, taskId: string) => string
+  /** The completed/total counts and the current task of one member. */
+  progress: (record: TeamRecord, name: string) => ReturnType<typeof memberProgress>
+  /** The team ids this workspace holds, so a gate can ask "is any of these live?" without reading. */
+  teamIds: (workspace: string) => string[]
+  /** The member display names of one team, which is what the workmate in-use gate matches on. */
+  memberNames: (workspace: string) => string[]
+}
 
 /** A tool result narrow enough for the adapter's renderer. */
 const text = (value: unknown): { type: "text"; text: string }[] => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }]
@@ -142,6 +195,68 @@ export function apply(ctx: any): void {
     return { workspace, sessionId, plan }
   }
 
+  /**
+   * The mpd team record bound to one session — the team itself, once one has been approved.
+   *
+   * The index is the fast path; when it is missing (a hand-removed `teams.json`, a workspace copied
+   * without it, a record written by another surface) the newest record whose `leadSessionId` is
+   * this session answers instead, so the team is never lost to a bookkeeping file. Returns
+   * `undefined` — never throws — so a status render cannot be taken down by a bad record.
+   * @param workspace - the workspace to read.
+   * @param sessionId - the Lead session whose team is wanted.
+   * @returns the record, or undefined when this session has no team.
+   */
+  const recordFor = (workspace: string, sessionId: string): TeamRecord | undefined => {
+    try {
+      /** The bound team id, when the index still carries one. */
+      const bound = activeTeamId(workspace, sessionId)
+      if (bound !== undefined) {
+        /** The bound record, which may have been deleted out from under the index. */
+        const record = readTeam(workspace, bound)
+        if (record !== undefined) return record
+      }
+      // Newest first, so a session that approved several waves gets its LATEST team.
+      return listTeams(workspace).find((record) => record.leadSessionId === sessionId)
+    } catch {
+      return undefined
+    }
+  }
+
+  // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
+  // Published before the tools so a consumer that resolves the service during this row's own
+  // activation still finds it. Every member is synchronous and non-throwing: it is called from
+  // render paths (the TUI scene, the web panel) and from a mutation gate (workmate rename/delete),
+  // and neither may be taken down by a bad record.
+  if (typeof (ctx as { provide?: unknown })?.provide === "function") {
+    try {
+      ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+        list: (workspace: string) => { try { return listTeams(workspace) } catch { return [] } },
+        get: (workspace: string, teamId: string) => { try { return readTeam(workspace, teamId) } catch { return undefined } },
+        active: (workspace: string, sessionId?: string) => recordFor(workspace, sessionId ?? "workspace"),
+        summary: (record: TeamRecord) => summariseTeam(record),
+        visual: (record: TeamRecord, taskId: string) => {
+          /** The task asked about, or undefined when the id is not on this board. */
+          const task = record.tasks.find((candidate) => candidate.id === taskId)
+          return task === undefined ? "unknown" : taskVisual(task, record.tasks)
+        },
+        progress: (record: TeamRecord, name: string) => memberProgress(record, name),
+        teamIds: (workspace: string) => { try { return listTeams(workspace).map((record) => record.teamId) } catch { return [] } },
+        memberNames: (workspace: string) => {
+          try {
+            /** Every member name of every team in this workspace, deduplicated. */
+            const names = new Set<string>()
+            for (const record of listTeams(workspace)) for (const member of record.members) names.add(member.name)
+            return [...names]
+          } catch {
+            return []
+          }
+        },
+      } satisfies MpdTeamsService)
+    } catch (error) {
+      console.warn(`[mpd-team-tools] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
+    }
+  }
+
   // ── the tool surface: FIVE tools, not fourteen ──────────────────────────────
   //
   // WHY CONSOLIDATED. Every tool's name, description and parameter schema sits in the model's context
@@ -191,13 +306,20 @@ export function apply(ctx: any): void {
       const { workspace, sessionId } = where(exec)
 
       if (action === "status") {
-        /** Read one official seam defensively: a status call must answer even when a service is absent. */
+        /** Read one seam defensively: a status call must answer even when a service is absent. */
         const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
+        /** The mpd record bound to this session — the team, when one was ever approved here. */
+        const record = recordFor(workspace, sessionId)
+        // THE AUTHORITATIVE HALF: with a record present, the roster and the board are MPD's. The
+        // official readout is still reported, but BESIDE it and under its own key, so a reader can
+        // see the executor's view without confusing it for the team.
         return {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
-          members: read(() => dsh.teamListMembers(exec.agent), []),
-          tasks: read(() => dsh.teamListTasks(exec.agent), []),
+          team: record ?? null,
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
+          summary: record === undefined ? null : summariseTeam(record),
           contracts: read(() => listContracts(workspace), []),
         }
       }
@@ -297,50 +419,75 @@ export function apply(ctx: any): void {
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
         }
+        // ── the separation, at the one moment it matters ──────────────────────
+        // The mpd record is materialised BEFORE anything is spawned and carries its OWN ids, so
+        // the team exists as mpd data from the first instant. Everything below only fills in
+        // `executorRef` — the backend's handle — which is why a crash mid-approval leaves a record
+        // naming exactly what was attempted instead of nothing at all, and why an executor swap
+        // (W2) changes no id any surface has already shown.
+        /** The mpd record this approval builds; persisted at the end, and on failure too. */
+        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId }, now())
+        for (const member of plan.members) {
+          record = addTeamMember(record, { name: member.name, description: member.description, ...(member.role === undefined ? {} : { role: member.role }) }, now())
+        }
+        for (const task of plan.tasks) {
+          record = addTeamTask(record, {
+            subject: task.subject,
+            description: task.description,
+            kind: "work",
+            ...(task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy }),
+            ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
+            ...(task.owner === undefined ? {} : { owner: task.owner }),
+          }, now())
+        }
         /** What approval actually created, recorded onto the plan so a reader can reconcile plan with reality. */
         const created: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> } = { members: [], tasks: [] }
-        /** Created board id per task SUBJECT, so a `blocked_by` written as a subject resolves to a real id. */
-        const bySubject = new Map<string, string>()
-        /** Spawned session id per member NAME, so an `owner` written as a name resolves to a real id. */
-        const idByName = new Map<string, string>()
+        /** The executor's own task handle per mpd task id, so a blocker can be named in ITS vocabulary. */
+        const executorTaskId = new Map<string, string>()
         /** The first failure's description; set means approval stopped rather than half-build the team. */
         let stoppedAt: string | undefined
-        for (const member of plan.members) {
+        for (const member of record.members) {
           try {
-            /** The official spawn result, whose id is read from whichever field this harness version fills. */
+            /** The executor's spawn result, whose handle is read from whichever field it fills. */
             const spawned = await dsh.teamSpawnTeammate(exec.agent, {
               name: member.name,
               description: member.description === "" ? member.name : member.description,
-              prompt: member.prompt,
+              prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
               ...(exec.signal === undefined ? {} : { signal: exec.signal }),
             })
-            /** The new member's session id, or the empty string when the harness reported none. */
+            /** The new member's handle, or the empty string when the executor reported none. */
             const id = String((spawned as any)?.id ?? (spawned as any)?.sessionId ?? (spawned as any)?.member?.id ?? "")
             created.members.push({ name: member.name, id })
-            if (id !== "") idByName.set(member.name, id)
+            // A member that spawned is RUNNING; one the executor answered nothing for stays
+            // `provisioning`, which is the honest state rather than a claimed success.
+            record = updateTeamMember(record, member.id, id === "" ? {} : { executorRef: id, status: "running" })
           } catch (error) {
+            record = updateTeamMember(record, member.id, { status: "failed" })
             stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
             break
           }
         }
         if (stoppedAt === undefined) {
-          for (const task of plan.tasks) {
+          for (const task of record.tasks) {
             try {
-              /** Blocker references resolved to board ids, a raw value left alone when nothing matches it. */
-              const resolved = (task.blockedBy ?? []).map((reference) => bySubject.get(reference) ?? reference)
-              /** The created board task, whose id and revision the owner reassignment below needs. */
+              /** This task's blockers, expressed in the EXECUTOR's ids. */
+              const resolved = task.blockedBy.map((id) => executorTaskId.get(id)).filter((id): id is string => id !== undefined)
+              /** The executor's board task, whose handle the record keeps beside its own id. */
               const view = await dsh.teamCreateTask(exec.agent, {
                 subject: task.subject,
                 description: task.description,
                 ...(resolved.length === 0 ? {} : { blockedBy: resolved }),
-                ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
+                ...(task.writeScopes.length === 0 ? {} : { writeScopes: task.writeScopes }),
               })
-              bySubject.set(task.subject, view.id)
+              executorTaskId.set(task.id, view.id)
               created.tasks.push({ subject: task.subject, id: view.id })
-              /** The owner's session id, present only when the plan named a member this pass actually spawned. */
-              const ownerId = task.owner === undefined ? undefined : idByName.get(task.owner)
-              if (ownerId !== undefined) {
-                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerId })
+              // The owner is reassigned only when the record names one; a task with no owner is
+              // left unowned rather than silently handed to whoever spawned first.
+              record = updateTeamTask(record, task.id, { executorRef: view.id }, now())
+              /** The owning member's executor handle, present only when it actually spawned. */
+              const ownerRef = task.owner === undefined ? undefined : record.members.find((member) => member.name === task.owner)?.executorRef
+              if (ownerRef !== undefined) {
+                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerRef })
               }
             } catch (error) {
               stoppedAt = `task ${task.subject}: ${String((error as Error)?.message ?? error)}`
@@ -348,10 +495,16 @@ export function apply(ctx: any): void {
             }
           }
         }
+        /** The record stamped approved, its phase brought in line with what actually happened. */
+        const approvedRecord = withDerivedPhase({ ...record, approvedAt: now().toISOString() })
+        writeTeam(workspace, approvedRecord)
         /** The plan marked approved, carrying what was created. */
         const approved: StagedPlan = { ...plan, approvedAt: now().toISOString(), created }
         writePlan(workspace, approved)
-        return { plan: approved, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
+        // The plan is archived so the STAGING slot is free for the next wave while the approved
+        // plan stays readable; the record is what every surface reads from here on.
+        if (stoppedAt === undefined) archivePlan(workspace, { ...approved })
+        return { plan: approved, team: approvedRecord, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
       }
 
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`)

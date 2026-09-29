@@ -1,6 +1,6 @@
 // packages/mpd-team-tools-plugin/src/index.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync4, readdirSync as readdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -1365,22 +1365,339 @@ function moveIntoArchive(workspace, from, planId) {
   return target;
 }
 
+// packages/mpd-team-tools-plugin/src/team-store.ts
+import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+function teamRoot2(workspace) {
+  return join3(workspace, ".mpd", "team");
+}
+function teamsDir(workspace) {
+  return join3(teamRoot2(workspace), "teams");
+}
+function teamRecordPath(workspace, teamId) {
+  return join3(teamsDir(workspace), sanitizeId(teamId) + ".json");
+}
+function teamsIndexPath(workspace) {
+  return join3(teamRoot2(workspace), "teams.json");
+}
+function sanitizeId(value) {
+  const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
+  return cleaned === "" ? "unnamed" : cleaned;
+}
+function readJson2(path) {
+  try {
+    const parsed = JSON.parse(readFileSync3(path, "utf8"));
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return;
+  }
+}
+function writeJson2(path, value) {
+  mkdirSync3(join3(path, ".."), { recursive: true });
+  writeFileSync2(path, JSON.stringify(value, null, 2) + `
+`);
+}
+function newTeamId(now) {
+  return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+}
+function sessionKey(sessionId) {
+  return typeof sessionId === "string" && sessionId !== "" ? sessionId : "workspace";
+}
+function readTeamsIndex(workspace) {
+  const index = readJson2(teamsIndexPath(workspace));
+  if (index === undefined || index.version !== 1 || index.active === null || typeof index.active !== "object" || Array.isArray(index.active)) {
+    return { version: 1, active: {} };
+  }
+  return index;
+}
+function writeTeamsIndex(workspace, index) {
+  writeJson2(teamsIndexPath(workspace), index);
+}
+function activeTeamId(workspace, sessionId) {
+  const id = readTeamsIndex(workspace).active[sessionKey(sessionId)];
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+function bindActiveTeam(workspace, sessionId, teamId) {
+  const index = readTeamsIndex(workspace);
+  index.active[sessionKey(sessionId)] = teamId;
+  writeTeamsIndex(workspace, index);
+}
+function readTeam(workspace, teamId) {
+  const record = readJson2(teamRecordPath(workspace, teamId));
+  if (record === undefined || record.version !== 1)
+    return;
+  if (!Array.isArray(record.members) || !Array.isArray(record.tasks))
+    return;
+  return record;
+}
+function writeTeam(workspace, record) {
+  writeJson2(teamRecordPath(workspace, record.teamId), record);
+}
+function listTeams(workspace) {
+  let names = [];
+  try {
+    names = readdirSync2(teamsDir(workspace));
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of names) {
+    if (!name.endsWith(".json"))
+      continue;
+    const record = readTeam(workspace, name.slice(0, -".json".length));
+    if (record !== undefined)
+      out.push(record);
+  }
+  return out.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+function createTeam(workspace, input, now) {
+  const record = {
+    version: 1,
+    teamId: newTeamId(now),
+    name: input.name,
+    description: input.description,
+    leadSessionId: sessionKey(input.leadSessionId),
+    phase: "staged",
+    createdAt: now.toISOString(),
+    members: [],
+    tasks: [],
+    nextMemberNumber: 1,
+    nextTaskNumber: 1
+  };
+  writeTeam(workspace, record);
+  bindActiveTeam(workspace, input.leadSessionId, record.teamId);
+  return record;
+}
+function addTeamMember(record, input, now) {
+  const name = input.name.trim();
+  if (name === "")
+    return record;
+  if (record.members.some((member2) => member2.name === name))
+    return record;
+  const member = {
+    id: "M" + record.nextMemberNumber,
+    name,
+    description: input.description,
+    status: "provisioning",
+    spawnedAt: now.toISOString(),
+    ...input.role === undefined ? {} : { role: input.role },
+    ...input.route === undefined ? {} : { route: input.route }
+  };
+  return { ...record, members: [...record.members, member], nextMemberNumber: record.nextMemberNumber + 1 };
+}
+function resolveBlocker(record, reference) {
+  if (record.tasks.some((task) => task.id === reference))
+    return reference;
+  const bySubject = record.tasks.find((task) => task.subject === reference);
+  return bySubject === undefined ? reference : bySubject.id;
+}
+function addTeamTask(record, input, now) {
+  const subject = input.subject.trim();
+  if (subject === "")
+    return record;
+  const blockedBy = (input.blockedBy ?? []).map((reference) => resolveBlocker(record, reference));
+  const task = {
+    id: "T" + record.nextTaskNumber,
+    subject,
+    description: input.description,
+    kind: input.kind ?? "work",
+    status: "pending",
+    blockedBy,
+    writeScopes: [...input.writeScopes ?? []],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    revision: 1,
+    ...input.owner === undefined ? {} : { owner: input.owner },
+    ...input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf },
+    ...input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }
+  };
+  return { ...record, tasks: [...record.tasks, task], nextTaskNumber: record.nextTaskNumber + 1 };
+}
+function updateTeamTask(record, taskId, patch, now) {
+  let touched = false;
+  const tasks = record.tasks.map((task) => {
+    if (task.id !== taskId)
+      return task;
+    touched = true;
+    const next = {
+      ...task,
+      updatedAt: now.toISOString(),
+      revision: task.revision + 1,
+      ...patch.status === undefined ? {} : { status: patch.status },
+      ...patch.attempt === undefined ? {} : { attempt: patch.attempt },
+      ...patch.round === undefined ? {} : { round: patch.round },
+      ...patch.verdict === undefined ? {} : { verdict: patch.verdict },
+      ...patch.executorRef === undefined ? {} : { executorRef: patch.executorRef },
+      ...patch.blockedBy === undefined ? {} : { blockedBy: patch.blockedBy.map((reference) => resolveBlocker(record, reference)) }
+    };
+    if (patch.owner !== undefined) {
+      if (patch.owner === "")
+        delete next.owner;
+      else
+        next.owner = patch.owner;
+    }
+    return next;
+  });
+  return touched ? { ...record, tasks } : record;
+}
+function updateTeamMember(record, key, patch) {
+  let touched = false;
+  const members = record.members.map((member) => {
+    if (member.id !== key && member.name !== key)
+      return member;
+    touched = true;
+    return {
+      ...member,
+      ...patch.status === undefined ? {} : { status: patch.status },
+      ...patch.executorRef === undefined ? {} : { executorRef: patch.executorRef },
+      ...patch.route === undefined ? {} : { route: patch.route }
+    };
+  });
+  return touched ? { ...record, members } : record;
+}
+function derivePhase(record) {
+  if (record.endedAt !== undefined)
+    return "ended";
+  if (record.approvedAt === undefined)
+    return "staged";
+  const busyMember = record.members.some((member) => member.status === "running" || member.status === "provisioning");
+  const busyTask = record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
+  return busyMember || busyTask ? "active" : "idle";
+}
+function withDerivedPhase(record) {
+  const phase = derivePhase(record);
+  return phase === record.phase ? record : { ...record, phase };
+}
+function blockingDependencies(board, blockedBy) {
+  const byId = new Map(board.map((task) => [task.id, task]));
+  const blocking = [];
+  const failed = [];
+  for (const id of blockedBy) {
+    const status = byId.get(id)?.status;
+    if (status === "completed" || status === "cancelled")
+      continue;
+    if (status === "failed")
+      failed.push(id);
+    else
+      blocking.push(id);
+  }
+  return { blocking, failed };
+}
+function taskVisual(task, board) {
+  if (task.status === "completed")
+    return "completed";
+  if (task.status === "failed")
+    return "failed";
+  if (task.status === "cancelled")
+    return "cancelled";
+  if (task.status === "in_progress" || task.status === "claimed")
+    return "running";
+  const { blocking, failed } = blockingDependencies(board, task.blockedBy);
+  return blocking.length > 0 || failed.length > 0 ? "blocked" : "open";
+}
+function taskDepths(board) {
+  const byId = new Map(board.map((task) => [task.id, task]));
+  const depths = new Map;
+  const visiting = new Set;
+  const depthOf = (id) => {
+    const cached = depths.get(id);
+    if (cached !== undefined)
+      return cached;
+    if (visiting.has(id))
+      return 0;
+    const task = byId.get(id);
+    if (task === undefined)
+      return 0;
+    visiting.add(id);
+    const blockers = [...task.blockedBy].filter((candidate) => byId.has(candidate)).sort();
+    const depth = blockers.length === 0 ? 0 : 1 + Math.max(...blockers.map(depthOf));
+    visiting.delete(id);
+    depths.set(id, depth);
+    return depth;
+  };
+  for (const task of board)
+    depthOf(task.id);
+  return depths;
+}
+function cycleIds(board) {
+  const byId = new Map(board.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const inStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (inStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    inStack.add(id);
+    stack.push(id);
+    for (const blocker of task.blockedBy)
+      if (byId.has(blocker))
+        visit(blocker);
+    stack.pop();
+    inStack.delete(id);
+    done.add(id);
+  };
+  for (const task of board)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function summariseTeam(record) {
+  const board = record.tasks;
+  const summary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) };
+  for (const task of board) {
+    const visual = taskVisual(task, board);
+    if (visual === "completed")
+      summary.completed += 1;
+    else if (visual === "running")
+      summary.running += 1;
+    else if (visual === "blocked") {
+      if (blockingDependencies(board, task.blockedBy).failed.length > 0)
+        summary.failed += 1;
+      else
+        summary.blocked += 1;
+    } else if (visual === "open")
+      summary.ready += 1;
+    else
+      summary.other += 1;
+    summary.links += task.blockedBy.filter((id) => board.some((candidate) => candidate.id === id)).length;
+  }
+  return summary;
+}
+function memberProgress(record, name) {
+  const owned = record.tasks.filter((task) => task.owner === name);
+  const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled");
+  return {
+    done: owned.filter((task) => task.status === "completed").length,
+    total: owned.length,
+    ...current === undefined ? {} : { current: current.id }
+  };
+}
+
 // packages/mpd-team-tools-plugin/src/index.ts
 var name = "mpd-team-tools";
 var inject = ["tools", "commands"];
+var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
-var dispatchPath = (workspace) => join3(workspace, ".mpd", "team", "dispatch.json");
+var dispatchPath = (workspace) => join4(workspace, ".mpd", "team", "dispatch.json");
 function readLedger(workspace) {
   try {
-    const raw = JSON.parse(readFileSync3(dispatchPath(workspace), "utf8"));
+    const raw = JSON.parse(readFileSync4(dispatchPath(workspace), "utf8"));
     return raw !== null && typeof raw === "object" ? raw : {};
   } catch {
     return {};
   }
 }
 function writeLedger(workspace, ledger) {
-  mkdirSync3(join3(workspace, ".mpd", "team"), { recursive: true });
-  writeFileSync2(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + `
+  mkdirSync4(join4(workspace, ".mpd", "team"), { recursive: true });
+  writeFileSync3(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + `
 `);
 }
 function describePlan(plan) {
@@ -1412,6 +1729,66 @@ function apply(ctx) {
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return { workspace, sessionId, plan };
   };
+  const recordFor = (workspace, sessionId) => {
+    try {
+      const bound = activeTeamId(workspace, sessionId);
+      if (bound !== undefined) {
+        const record = readTeam(workspace, bound);
+        if (record !== undefined)
+          return record;
+      }
+      return listTeams(workspace).find((record) => record.leadSessionId === sessionId);
+    } catch {
+      return;
+    }
+  };
+  if (typeof ctx?.provide === "function") {
+    try {
+      ctx.provide(TEAMS_SERVICE, {
+        list: (workspace) => {
+          try {
+            return listTeams(workspace);
+          } catch {
+            return [];
+          }
+        },
+        get: (workspace, teamId) => {
+          try {
+            return readTeam(workspace, teamId);
+          } catch {
+            return;
+          }
+        },
+        active: (workspace, sessionId) => recordFor(workspace, sessionId ?? "workspace"),
+        summary: (record) => summariseTeam(record),
+        visual: (record, taskId) => {
+          const task = record.tasks.find((candidate) => candidate.id === taskId);
+          return task === undefined ? "unknown" : taskVisual(task, record.tasks);
+        },
+        progress: (record, name2) => memberProgress(record, name2),
+        teamIds: (workspace) => {
+          try {
+            return listTeams(workspace).map((record) => record.teamId);
+          } catch {
+            return [];
+          }
+        },
+        memberNames: (workspace) => {
+          try {
+            const names = new Set;
+            for (const record of listTeams(workspace))
+              for (const member of record.members)
+                names.add(member.name);
+            return [...names];
+          } catch {
+            return [];
+          }
+        }
+      });
+    } catch (error) {
+      console.warn(`[mpd-team-tools] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
+    }
+  }
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description: "The team PLAN. `create` stages a plan (nothing is spawned); `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it (spawns members through spawn_teammate, posts tasks to the official board, resolves blocked_by and owner); `delete` archives it; `status` shows the plan, the halt, and the official roster and board side by side.",
@@ -1447,11 +1824,14 @@ function apply(ctx) {
             return fallback;
           }
         };
+        const record = recordFor(workspace, sessionId);
         return {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
-          members: read(() => dsh.teamListMembers(exec.agent), []),
-          tasks: read(() => dsh.teamListTasks(exec.agent), []),
+          team: record ?? null,
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
+          summary: record === undefined ? null : summariseTeam(record),
           contracts: read(() => listContracts(workspace), [])
         };
       }
@@ -1539,42 +1919,56 @@ function apply(ctx) {
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
         }
-        const created = { members: [], tasks: [] };
-        const bySubject = new Map;
-        const idByName = new Map;
-        let stoppedAt;
+        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId }, now());
         for (const member of plan.members) {
+          record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, now());
+        }
+        for (const task of plan.tasks) {
+          record = addTeamTask(record, {
+            subject: task.subject,
+            description: task.description,
+            kind: "work",
+            ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
+            ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
+            ...task.owner === undefined ? {} : { owner: task.owner }
+          }, now());
+        }
+        const created = { members: [], tasks: [] };
+        const executorTaskId = new Map;
+        let stoppedAt;
+        for (const member of record.members) {
           try {
             const spawned = await dsh.teamSpawnTeammate(exec.agent, {
               name: member.name,
               description: member.description === "" ? member.name : member.description,
-              prompt: member.prompt,
+              prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
               ...exec.signal === undefined ? {} : { signal: exec.signal }
             });
             const id = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
             created.members.push({ name: member.name, id });
-            if (id !== "")
-              idByName.set(member.name, id);
+            record = updateTeamMember(record, member.id, id === "" ? {} : { executorRef: id, status: "running" });
           } catch (error) {
+            record = updateTeamMember(record, member.id, { status: "failed" });
             stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
             break;
           }
         }
         if (stoppedAt === undefined) {
-          for (const task of plan.tasks) {
+          for (const task of record.tasks) {
             try {
-              const resolved = (task.blockedBy ?? []).map((reference) => bySubject.get(reference) ?? reference);
+              const resolved = task.blockedBy.map((id) => executorTaskId.get(id)).filter((id) => id !== undefined);
               const view = await dsh.teamCreateTask(exec.agent, {
                 subject: task.subject,
                 description: task.description,
                 ...resolved.length === 0 ? {} : { blockedBy: resolved },
-                ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }
+                ...task.writeScopes.length === 0 ? {} : { writeScopes: task.writeScopes }
               });
-              bySubject.set(task.subject, view.id);
+              executorTaskId.set(task.id, view.id);
               created.tasks.push({ subject: task.subject, id: view.id });
-              const ownerId = task.owner === undefined ? undefined : idByName.get(task.owner);
-              if (ownerId !== undefined) {
-                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerId });
+              record = updateTeamTask(record, task.id, { executorRef: view.id }, now());
+              const ownerRef = task.owner === undefined ? undefined : record.members.find((member) => member.name === task.owner)?.executorRef;
+              if (ownerRef !== undefined) {
+                await dsh.teamUpdateTask(exec.agent, { taskId: view.id, expectedRevision: view.revision, action: "reassign", owner: ownerRef });
               }
             } catch (error) {
               stoppedAt = `task ${task.subject}: ${String(error?.message ?? error)}`;
@@ -1582,9 +1976,13 @@ function apply(ctx) {
             }
           }
         }
+        const approvedRecord = withDerivedPhase({ ...record, approvedAt: now().toISOString() });
+        writeTeam(workspace, approvedRecord);
         const approved = { ...plan, approvedAt: now().toISOString(), created };
         writePlan(workspace, approved);
-        return { plan: approved, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
+        if (stoppedAt === undefined)
+          archivePlan(workspace, { ...approved });
+        return { plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
       }
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`);
     }
@@ -1852,8 +2250,8 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
   })();
   if (root !== "") {
     try {
-      const staging = join3(root, ".mpd", "team", "staging");
-      const pending = existsSync3(staging) ? readdirSync2(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const staging = join4(root, ".mpd", "team", "staging");
+      const pending = existsSync4(staging) ? readdirSync3(staging).filter((file) => file.endsWith(".json")).length : 0;
       console.log(`[mpd-team-tools] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
     } catch {}
   }
@@ -1867,6 +2265,7 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
     });
 }
 export {
+  TEAMS_SERVICE,
   addMember,
   addTask,
   apply,
