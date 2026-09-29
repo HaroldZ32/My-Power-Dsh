@@ -149,10 +149,44 @@ one team; an arm now asserts the negative directly (the spawn log is exactly
 3. **Editing the adapter's source changes the built bytes of 19 other packages** — `bun build`
    inlines the relative imports. Every one had to be rebuilt, and `verify-dist-fresh` names them.
 
-## 5b. W3–W5 (unchanged from the approved plan)
+## 5b. W3 — the TUI team scene (LANDED)
 
-- **W3** the TUI team scene as previewed: boxed DAG, status colours, focus chain, rail fallback,
-  mouse + keyboard focus.
+`packages/mpd-tui-plugin/src/graph.ts` is a PURE renderer: a board and a width in, text plus tones
+out. The scene consumes it, which is what makes the drawing testable without a terminal, a React
+reconciler or a team.
+
+| view | when | what it is |
+|---|---|---|
+| `boxes` | the default | the layered DAG; rank (longest dependency path) is the vertical axis, edges drawn with box-drawing junctions |
+| `rail` | a rank too wide for the viewport | an indented forest; a multi-blocker task names the extras inline (`⇠ T4+T6`) rather than losing an edge |
+| `list` | a board too dense to lay out | a rank-grouped table |
+
+`layoutBoxes` REFUSES rather than squeezing below its minimum, so the fallback is a fact about the
+geometry instead of a guess about the terminal. Colour is a MEANING: a span carries a `GraphTone`
+and `GRAPH_THEME` maps it to a dsh-tui theme key, so the drawing follows the palette and a test can
+assert the semantics rather than a hex value.
+
+**Mouse is additive.** The graph Box declares `onMouseEnter`/`onClick`/`onWheel`, and `hitTest`
+resolves a pointer by RECTANGLE against the layout that was actually drawn — no second geometry to
+drift. Hover previews · click pins · `esc` unpins (the second `esc` closes). A host without mouse
+tracking never fires the handlers and the keyboard path is untouched.
+
+### 5b.1 Five bugs the arms caught, all fixed
+
+1. **`layoutRail` recursed forever on a cyclic board** — its "draw a task reached by no root"
+   fallback re-entered the cycle. A visited set makes the forest one row per task: the correct
+   output AND the termination proof.
+2. **The rail overflowed a 24-cell viewport at 31 cells** because its label floor outranked the
+   tail. `clampSpans` now enforces "never exceeds the width" STRUCTURALLY, in all three layouts.
+3. **Untouched cells were labelled `dim`**, so a drawing with nothing dimmed still reported that
+   tone — which made the focus's dimming signal unreadable.
+4. **An absent `kind` left a double space** in the boxes view and not in the rail; one `labelOf`
+   builder now serves all three.
+5. **The scene rewrite dropped the team id** from the header, which `approve <teamId>` needs. Two
+   existing arms caught it — the second through the control character it carries.
+
+## 5c. W4–W5 (remaining)
+
 - **W4** one adaptive web sidebar body (better-sidebar first, official right sidebar fallback) for
   team and workmate, fed by MPD's own host routes (W1.3).
 - **W5** bilingual docs, full gate sweep, evidence, and removal of the now-unneeded TUI-plane guard.
