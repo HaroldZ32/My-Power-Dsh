@@ -1326,6 +1326,13 @@ function noteSpawnEnd(key) {
 }
 function busyTeams(key, roots) {
   const hits = [];
+  const note = (teamId, memberName) => {
+    if (memberName === "" || sanitizeName(memberName) !== key)
+      return;
+    if (hits.some((hit) => hit.teamId === teamId && hit.member === memberName))
+      return;
+    hits.push({ teamId, member: memberName });
+  };
   const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()];
   for (const root of scanRoots) {
     try {
@@ -1341,11 +1348,27 @@ function busyTeams(key, roots) {
         try {
           const team = JSON.parse(readFileSync(file, "utf8"));
           const members = Array.isArray(team?.members) ? team.members : [];
+          for (const m of members)
+            note(String(team?.id ?? entry.name), typeof m?.name === "string" ? m.name : "");
+        } catch {}
+      }
+    } catch {}
+    try {
+      const records = join(root, ".mpd", "team", "teams");
+      if (!existsSync(records))
+        continue;
+      for (const name2 of readdirSync(records)) {
+        if (!name2.endsWith(".json"))
+          continue;
+        try {
+          const team = JSON.parse(readFileSync(join(records, name2), "utf8"));
+          if (team?.endedAt !== undefined)
+            continue;
+          const members = Array.isArray(team?.members) ? team.members : [];
           for (const m of members) {
-            const memberName = typeof m?.name === "string" ? m.name : "";
-            if (memberName !== "" && sanitizeName(memberName) === key && !hits.some((h) => h.teamId === String(team?.id ?? entry.name) && h.member === memberName)) {
-              hits.push({ teamId: String(team?.id ?? entry.name), member: memberName });
-            }
+            if (m?.status === "inactive" || m?.status === "failed")
+              continue;
+            note(String(team?.teamId ?? name2.replace(/\.json$/, "")), typeof m?.name === "string" ? m.name : "");
           }
         } catch {}
       }
