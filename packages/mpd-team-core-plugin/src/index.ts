@@ -61,6 +61,7 @@ import {
   type StagedPlan,
   type StagedTask,
 } from "./plan-store"
+import { registerTeamRoutes, TEAM_STATE_PATH } from "./team-web"
 import {
   activeTeamId,
   addTeamMember,
@@ -931,6 +932,30 @@ export function apply(ctx: any): void {
       }
       console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
       reportExecutor()
+      // ── THE WEB ROUTE: the mpd team, served to the browser ───────────────────
+      // Registered through the adapter's `webServerOf()` (never a raw ctx service read), and
+      // re-attempted when the web server binds LATER — the same host-plane ordering that made the
+      // executor line lie once already, so the second attempt is not speculative.
+      /** Register the route against whatever web server this composition has right now. */
+      const mountTeamRoute = (): boolean => registerTeamRoutes(dsh.webServerOf() as never, {
+        recordFor: (sessionId: string) => recordFor(dsh.workspaceRoot(), sessionId),
+        workspace: () => dsh.workspaceRoot(),
+        executor: () => {
+          /** The executor as of this request, contained so a route never throws into a response. */
+          const view = executor()
+          return { kind: view.kind, reason: view.reason }
+        },
+        effect: (fn: () => unknown, label: string) => { try { return ctx?.effect?.(fn, label) } catch { return undefined } },
+        warn: (line: string) => console.warn(`[mpd-team-core] ${line}`),
+      })
+      // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
+      // host's own registry, and a second registration attempt against the SAME server is harmless
+      // because the composition only ever has one.
+      if (mountTeamRoute()) console.log(`[mpd-team-core] team state route: ${TEAM_STATE_PATH}`)
+      try {
+        dsh.onServiceBound(["webServer", "httpServer"], () => { mountTeamRoute() })
+      } catch { /* an adapter without the seam keeps the single attempt above */ }
+
       // Re-report ONCE when the NATIVE backend's service binds, so the line the operator reads is
       // the composition's real answer rather than an ordering artefact. A composition that never
       // binds it keeps the apply-time line, which is the honest thing to print.

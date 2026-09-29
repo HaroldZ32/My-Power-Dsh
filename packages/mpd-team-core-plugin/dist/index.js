@@ -1839,6 +1839,116 @@ function idleMembers(record) {
   return record.members.filter((member) => member.status === "running" && !busy.has(member.name));
 }
 
+// packages/mpd-team-core-plugin/src/team-web.ts
+var TEAM_STATE_PATH = "/plugins/mpd-team/state";
+function buildTeamState(record, workspace, sessionId, executor) {
+  const empty = {
+    ok: true,
+    workspace,
+    sessionId,
+    team: null,
+    counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
+    members: [],
+    tasks: [],
+    cycles: [],
+    executor,
+    problems: []
+  };
+  if (record === undefined)
+    return empty;
+  const summary = summariseTeam(record);
+  const ready = new Set(readyTasks(record).map((task) => task.id));
+  const idle = new Set(idleMembers(record).map((member) => member.name));
+  const tasks = record.tasks.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    ...task.kind === undefined ? {} : { kind: task.kind },
+    status: task.status,
+    visual: taskVisual(task, record.tasks),
+    ...task.owner === undefined ? {} : { owner: task.owner },
+    ...task.attempt === undefined ? {} : { attempt: task.attempt },
+    ...task.round === undefined ? {} : { round: task.round },
+    ...task.verdict === undefined ? {} : { verdict: task.verdict },
+    blockedBy: [...task.blockedBy],
+    failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
+    depth: summary.depths.get(task.id) ?? 0
+  })).sort((left, right) => left.depth - right.depth);
+  return {
+    ok: true,
+    workspace,
+    sessionId,
+    team: {
+      id: record.teamId,
+      name: record.name,
+      description: record.description,
+      phase: derivePhase(record),
+      ...record.approvedAt === undefined ? {} : { approvedAt: record.approvedAt },
+      links: summary.links
+    },
+    counts: {
+      total: summary.total,
+      completed: summary.completed,
+      running: summary.running,
+      ready: ready.size,
+      blocked: summary.blocked,
+      failed: summary.failed,
+      releasedByFailure: summary.releasedByFailure
+    },
+    members: record.members.map((member) => {
+      const progress = memberProgress(record, member.name);
+      return {
+        id: member.id,
+        name: member.name,
+        ...member.role === undefined ? {} : { role: member.role },
+        status: member.status === "running" && idle.has(member.name) ? "idle" : member.status,
+        done: progress.done,
+        total: progress.total,
+        ...progress.current === undefined ? {} : { current: progress.current },
+        ...member.route === undefined ? {} : { route: member.route }
+      };
+    }),
+    tasks,
+    cycles: cycleIds(record.tasks),
+    executor,
+    problems: summary.cycles.length === 0 ? [] : [`cycle ${summary.cycles.join(",")}`]
+  };
+}
+function registerTeamRoutes(webServer, deps) {
+  if (webServer === undefined || typeof webServer.register !== "function")
+    return false;
+  const json = (res, status, body) => {
+    const out = res;
+    out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+    out.end(JSON.stringify(body));
+  };
+  const sessionOf = (req) => {
+    const url = String(req.url ?? "");
+    const at = url.indexOf("?");
+    if (at < 0)
+      return "";
+    const value = new URLSearchParams(url.slice(at + 1)).get("sessionId");
+    return value === null ? "" : value.trim();
+  };
+  try {
+    deps.effect(() => webServer.register({
+      kind: "exact",
+      path: TEAM_STATE_PATH,
+      handler: (req, res) => {
+        try {
+          const sessionId = sessionOf(req);
+          json(res, 200, buildTeamState(deps.recordFor(sessionId), deps.workspace(), sessionId, deps.executor()));
+        } catch (error) {
+          json(res, 500, { ok: false, error: `mpd-team-core: ${String(error?.message ?? error)}` });
+        }
+      }
+    }), "mpd-team-core: web state route");
+    return true;
+  } catch (error) {
+    deps.warn(`registering ${TEAM_STATE_PATH} failed: ${String(error?.message ?? error)}`);
+    return false;
+  }
+}
+
 // packages/mpd-team-core-plugin/src/index.ts
 var name = "mpd-team-core";
 var inject = ["tools", "commands"];
@@ -2426,6 +2536,29 @@ Add members with agent_teams_add_member and tasks with agent_teams_create_task, 
       };
       console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
       reportExecutor();
+      const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
+        recordFor: (sessionId) => recordFor(dsh.workspaceRoot(), sessionId),
+        workspace: () => dsh.workspaceRoot(),
+        executor: () => {
+          const view = executor();
+          return { kind: view.kind, reason: view.reason };
+        },
+        effect: (fn, label) => {
+          try {
+            return ctx?.effect?.(fn, label);
+          } catch {
+            return;
+          }
+        },
+        warn: (line) => console.warn(`[mpd-team-core] ${line}`)
+      });
+      if (mountTeamRoute())
+        console.log(`[mpd-team-core] team state route: ${TEAM_STATE_PATH}`);
+      try {
+        dsh.onServiceBound(["webServer", "httpServer"], () => {
+          mountTeamRoute();
+        });
+      } catch {}
       try {
         dsh.onServiceBound(["subagents"], () => reportExecutor());
       } catch {}

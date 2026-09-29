@@ -387,6 +387,11 @@
           console.warn("[mpd] AgentTeams sidebar file failed to mount: " + String(error));
         }
         try {
+          registerTeamSidebarTab(sidebarCtx, service);
+        } catch (error) {
+          console.warn("[mpd] the team tab registration failed: " + String(error));
+        }
+        try {
           registerWorkmateSidebarTab(sidebarCtx, service);
         } catch (error) {
           console.warn("[mpd] workmate sidebar tab registration failed: " + String(error));
@@ -403,6 +408,46 @@
     }
   }
 
+  // ── THE TEAM VIEW (W4) ─────────────────────────────────────────────────────
+  // INSIDE THE FACTORY, and that placement is load-bearing. This module is spliced into the client
+  // as ONE ARROW EXPRESSION, so anything declared after the closing brace lands OUTSIDE the module
+  // wrapper: the ambient `declare`s below survive that because they erase to nothing, but RUNTIME
+  // code does not — measured: `const TEAM_STATE_PATH` sitting there broke the whole built client
+  // with `Unexpected token 'const'`, in every arm that evaluates the served bytes.
+  /** The route the team view polls; the host row registers the same path. */
+  const TEAM_STATE_PATH = "/plugins/mpd-team/state"
+
+  /** The shared team view, built once per client entry; undefined when the splice is absent. */
+  let teamView: { TeamView: (props?: unknown) => unknown } | undefined
+
+  /** The React surface `require("react")` answers with, or undefined. */
+  function reactSurface(): unknown {
+    try { return require("react") } catch { return undefined }
+  }
+
+  /**
+   * Build (once) the team view both sidebar hosts render.
+   *
+   * ONE body for both hosts is the point: they are different extension APIs with different prop shapes,
+   * and a view written against either works only there. Both can `fetch`, so both read this bundle's
+   * own route (`/plugins/mpd-team/state`) — the mpd RECORD — instead of the official client projection
+   * this view used to read, which is empty in exactly the compositions the split exists for.
+   * @returns the view, or undefined when the host has no React or the splice produced nothing.
+   */
+  function teamViewOf(): { TeamView: (props?: unknown) => unknown } | undefined {
+    if (teamView !== undefined) return teamView
+    /** The host's React, which the factory body builds elements with. */
+    const react = reactSurface()
+    if (react === undefined) return undefined
+    if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
+    try {
+      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH })
+      return teamView
+    } catch (error) {
+      console.warn("[mpd] the team view could not be built: " + String(error))
+      return undefined
+    }
+  }
   /** Read one service from a context that has it in scope (never throws). */
   function readService(ctx: ClientContext, name: string): unknown {
     try {
@@ -1019,6 +1064,50 @@
    * + menu entry and its page component; there is no floating fallback by decision,
    * mirroring the AgentTeams page.
    */
+  // The tab id is named apart from the OFFICIAL sidebar's registration further down: the two hosts
+  // keep separate id spaces, and reusing one name for both invited exactly the collision the compiler
+  // caught. The watchdog page keeps its own `mpd-agent-teams` id, so all three are distinct.
+  /** The better-sidebar tab id for the MPD team view. */
+  const TEAM_PAGE_TAB_ID = "mpd-team";
+  /** Where the team tab sits among the host's tabs: before the watchdog page, after the builtins. */
+  const TEAM_TAB_ORDER = 80;
+
+  /**
+   * Register the MPD TEAM tab on `dsh-better-sidebar` — the PREFERRED host.
+   *
+   * ONE BODY, TWO HOSTS. The component is the shared team view ({@link teamViewOf}), which reads
+   * this bundle's own route; a host that cannot fetch renders it as the empty state, and the tab
+   * still opens. Where the two hosts differ is only registration.
+   * @param ctx - the injection scope, which owns the disposer.
+   * @param sidebar - the better-sidebar service.
+   * @returns whether the tab was registered.
+   */
+  function registerTeamSidebarTab(ctx: ClientContext, sidebar: SidebarService): boolean {
+    if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts and the
+    // host's `registerTab` THROWS on a duplicate id (the same rule the workmate tab follows).
+    if (sidebarAlreadyHasTab(sidebar, TEAM_PAGE_TAB_ID)) return true;
+    /** The shared view, or undefined when this host has no React to build it with. */
+    const view = teamViewOf();
+    if (view === undefined) return false;
+    ctx.effect(() => sidebar.registerTab({
+      id: TEAM_PAGE_TAB_ID,
+      title: () => "Team",
+      icon: () => "◆",
+      order: TEAM_TAB_ORDER,
+      single: true,
+      component: (props: unknown) => view.TeamView(props),
+    }), "mpd: team sidebar tab");
+    return true;
+  }
+
+  /**
+   * Register the library as a DSH-better-sidebar tab. The sidebar service is passed in
+   * because it must be RESOLVED through `ctx.inject` (see mountSidebarPages) — a probe at
+   * apply() time races the provider and always loses. The descriptor owns the tab type, its
+   * + menu entry and its page component; there is no floating fallback by decision,
+   * mirroring the AgentTeams page.
+   */
   function registerWorkmateSidebarTab(ctx: ClientContext, sidebar: SidebarService): boolean {
     if (typeof sidebar.registerTab !== "function") return false;
     // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
@@ -1129,84 +1218,22 @@
    *   own `inject`, and `useSessions`/`useSession` from the primitives package.
    */
   function TeamSidebarBody(props: TeamSidebarProps): unknown {
-    /** The session whose team this tab renders, as the seat resolved it. */
-    const sessionId = props.sessionId;
-    // The primitives package is a bare global here (see the ambient declaration above), so both
-    // fallbacks are narrowed to the hook shape at the point of use.
-    /** The sessions store hook: the seat's own, else the host's primitives package. */
-    const useSessions = props.useSessions || primitives.useSessions as SessionsHook;
-    /** The session store hook: the seat's own, else the host's primitives package. */
-    const useSession = props.useSession || primitives.useSession as SessionHook;
-    // A teammate's own panel addresses the LEAD's board: the same rule the official UI uses.
-    /** The parent session's id when this seat is a teammate's own panel. */
-    const ambientLead = typeof useSession === "function"
-      ? useSession((snapshot) => snapshot?.subagent?.address?.parentSessionId)
-      : undefined;
-    /** The board this tab addresses: the ambient lead when there is one, else its own session. */
-    const leadId = ambientLead || sessionId;
-    /** The team projection of that board, or undefined while it has no team. */
-    const team = typeof useSessions === "function"
-      ? useSessions((state) => (leadId === undefined ? undefined : state.projectionsBySession?.[leadId]?.values?.agentTeam))
-      : undefined;
-
-    if (team === undefined) {
+    // ── ONE BODY, TWO HOSTS ────────────────────────────────────────────────────
+    // This used to read the OFFICIAL client projection
+    // (`useSessions(s => s.projectionsBySession[leadId].values.agentTeam)`), which is the last place
+    // the official plugin was still the source of truth — and a store that is EMPTY in exactly the
+    // compositions the split exists for, because a client store can only carry what a mounted
+    // service projected. It now renders the SAME component the better-sidebar tab does, over this
+    // bundle's own route, so the two hosts cannot disagree about what the team is.
+    /** The shared team view, or undefined when this host has no React to build it with. */
+    const view = teamViewOf();
+    if (view === undefined) {
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
-        "No team in this session yet. Ask the Lead to spawn one with spawn_teammate.");
+        "The team view is unavailable in this client build.");
     }
-    /** The team's members (an absent list renders the empty-state line). */
-    const members = Array.isArray(team.members) ? team.members : [];
-    /** The team's shared tasks (an absent list renders the empty-state line). */
-    const tasks = Array.isArray(team.tasks) ? team.tasks : [];
-    /** How many tasks are completed. */
-    const done = tasks.filter((task) => task.status === "completed").length;
-    /** The completion percentage (0 while the board has no tasks). */
-    const percent = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
-    // A completion bar alone cannot say whether anything is MOVING. The board already carries
-    // `ready` and `blockedBy`, so the view states what a captain acts on: how many tasks a
-    // teammate could pick up right now, and how many are waiting on something else.
-    /** How many open tasks a teammate could pick up right now. */
-    const ready = tasks.filter((task) => task.status !== "completed" && task.ready === true).length;
-    /** How many open tasks are waiting on something else. */
-    const blocked = tasks.filter((task) => task.status !== "completed" && task.ready === false).length;
-    /** How many members are currently working. */
-    const running = members.filter((member) => member.phase === "active" || member.phase === "running").length;
-
-    return h("div", { style: { padding: "10px 12px 14px", overflowY: "auto" } },
-      h("div", { style: { display: "flex", alignItems: "baseline", gap: "8px" } },
-        h("strong", { style: { fontSize: "12px" } }, "Team progress"),
-        h("span", { style: dim }, done + "/" + tasks.length + " done"),
-      ),
-      h("div", { style: { ...dim, marginTop: "2px" } },
-        running + " of " + members.length + " running · " + ready + " ready · " + blocked + " blocked"),
-      h("div", { style: { height: "6px", borderRadius: "3px", background: "var(--dsh-color-fill-secondary, #e6e8eb)", marginTop: "6px", overflow: "hidden" } },
-        h("div", { style: { height: "100%", width: percent + "%", background: "#22a06b" } }),
-      ),
-      team.failure === undefined ? null
-        : h("div", { style: { ...dim, color: "#d64545", marginTop: "6px" } }, String(team.failure)),
-
-      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Members (" + members.length + ")"),
-      members.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No member yet — the captain spawns them with spawn_teammate.")
-        : members.map((member) => h("div", { key: String(member.id), style: rowStyle },
-            h("span", { style: dot(STATUS_COLOR[member.phase] || "#8a8f98") }),
-            h("span", { style: { ...ellipsis, fontSize: "12px" } }, String(member.name)),
-            h("span", { style: chip(member.role === "lead" ? "#6b4fd8" : "#8a8f98") }, String(member.role)),
-            member.error === undefined ? null : h("span", { style: { ...dim, color: "#d64545", ...ellipsis } }, String(member.error)),
-          )),
-
-      h("div", { style: { ...dim, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: "12px" } }, "Tasks (" + tasks.length + ")"),
-      tasks.length === 0
-        ? h("div", { style: { ...dim, padding: "4px 0" } }, "No shared task yet — the captain posts them with team_task_create.")
-        : tasks.map((task) => h("div", { key: String(task.id), style: { ...rowStyle, alignItems: "flex-start" } },
-            h("span", { style: chip(STATUS_COLOR[task.status] || "#8a8f98") }, String(task.status)),
-            h("div", { style: { flex: "1 1 auto", minWidth: 0 } },
-              h("div", { style: { ...ellipsis, fontSize: "12px" } }, String(task.subject)),
-              h("div", { style: { ...dim, ...ellipsis } },
-                (task.ownerName === undefined ? "unowned" : String(task.ownerName)) +
-                (Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " · blocked by " + task.blockedBy.join(", ") : "") +
-                (task.ready === false ? " · not ready" : "")),
-            ))),
-    );
+    // The seat's own props are forwarded VERBATIM: the view reads the session id from whichever
+    // spelling its host used, so nothing here needs to know which host this is.
+    return view.TeamView(props);
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
@@ -1246,6 +1273,21 @@
       }), "mpd-team-sidebar:command");
     });
     ctx.inject(["sidebarRightTabs", "sidebarRight"], (sidebar) => {
+      // ── THE PREFERENCE, APPLIED AT THE ONE MOMENT IT CAN BE ──────────────────
+      // `dsh-better-sidebar` FIRST, this official sidebar only as the FALLBACK (user decision,
+      // 2026-09-30). The check runs HERE, when the official sidebar is ready to accept a
+      // registration, because that is the latest moment at which the answer is knowable and the
+      // earliest at which it matters: registering into both would put the same panel in two places
+      // in a profile that mounts both hosts.
+      if (typeof ctx.get === "function") {
+        /** The better-sidebar service, when this profile has that host. */
+        let primary: unknown;
+        try { primary = ctx.get("betterSidebar"); } catch { primary = undefined; }
+        if (primary !== undefined && primary !== null) {
+          console.info("[mpd] better-sidebar is mounted: the team view registers THERE, and the official right sidebar is left to its own tabs");
+          return;
+        }
+      }
     sidebar.effect(() => sidebar.sidebarRightTabs.register({
       id: TEAM_TAB_ID,
       kind: TEAM_TAB_KIND,
@@ -1341,3 +1383,27 @@ interface MpdSettingsCardGlobal {
 
 /** The spliced settings card module, or undefined when the build did not splice one. */
 declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
+
+/** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
+interface MpdTeamViewGlobal {
+  /** Build the shared team view once, so both hosts render one component with one poller. */
+  createTeamView: (deps: { react: unknown; statePath: string; pollMs?: number }) => MpdTeamViewModule
+}
+
+/** The built team view. */
+interface MpdTeamViewModule {
+  /** The component both sidebar hosts render; each host passes its own props and the view tolerates them. */
+  TeamView: (props?: unknown) => unknown
+}
+
+/**
+ * The team view the build splices in (W4) — see {@link MPD_SETTINGS_CARD} for why it arrives as a
+ * global rather than an import: only THIS module is applied as a client plugin, so a sibling
+ * `load()` block would define the view where nothing applied can reach it.
+ *
+ * THE TYPE IS NAMED, and that is not style: a `declare const` carrying an INLINE multi-line object
+ * type does not survive type stripping here — the stripped artifact keeps a stray `{`, which then
+ * swallows the rest of the module as an object literal and fails the whole client with
+ * `Unexpected token 'const'` a hundred lines later. Measured on this very declaration.
+ */
+declare const MPD_TEAM_VIEW: MpdTeamViewGlobal | undefined

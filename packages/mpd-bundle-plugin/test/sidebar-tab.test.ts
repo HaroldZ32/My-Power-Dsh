@@ -136,9 +136,11 @@ describe("with DSH-better-sidebar installed", () => {
   /** The tab descriptor registered under one id, if any. */
   const tabById = (id: string): TabDescriptor | undefined => tabs.find((tab) => tab.id === id);
 
-  test("registers the AgentTeams page and the workmate library, and no legacy floater", () => {
+  test("registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater", () => {
     expect(provided).toBe(true);
-    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // THREE tabs since W4: the mpd-owned TEAM view (`mpd-team`, which reads this bundle's own
+    // /plugins/mpd-team/state route) beside the adopted AgentTeams page and the workmate library.
+    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
   /** Every keyed slot registration the host recorded. */
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
@@ -180,10 +182,15 @@ describe("a sidebar provider REMOUNT keeps both tabs", () => {
   /** The client this arm mounts for the same-service re-fire. */
     const client = loadMpdClient({ sidebarAtApply: true });
     client.exports.apply(client.ctx);
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // EVERY tab this client registers, so a fourth one is caught by this list rather than by nothing:
+    // the mpd team view (`mpd-team`, W4), the adopted AgentTeams page and the workmate library.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     client.refireInjections();
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // The RE-FIRE is the point: `ctx.inject` re-runs on a provider remount, and the host's own
+    // `registerTab` THROWS on a duplicate id — so a missing idempotence guard reddens right here.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
+    expect(client.sidebarService.getTab("mpd-team")).toBeDefined();
     expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
     restore(client);
   });
