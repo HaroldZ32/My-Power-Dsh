@@ -291,14 +291,35 @@ No unit arm could have caught it: the arms build their fixtures through the STOR
 layout by construction. Only a case that hand-writes a record and drives a real host can see the two
 disagree.
 
-### (b) The plan scene still refuses to approve, claiming no tool exists — STALE
+### (b) The plan scene cannot approve — and the reason is deeper than a stale tool name
 
-`packages/mpd-tui-plugin/src/scenes.ts` exports `PLAN_MUTATION_UNAVAILABLE`, whose comment says the
-approval tool is "GONE with the plugin that registered them" and that "the OFFICIAL Agent Teams plane
-has NO equivalent". The first half is true of the RETIRED vendored plugin and FALSE of this bundle:
-`mpd-team-core` registers **`agent_teams_plan`** with an **`approve`** action (`src/index.ts`, the
-`action === "approve"` branch), which raises the team through the NATIVE executor. The scene should call
-it, and `agent_teams_dispatch`/`_mail`/`_control` are registered beside it.
+**DECISION TAKEN (user, 2026-09-30): the phrase gate moves to the plan id, keeping the deliberate typed
+confirmation.** What follows is what that costs, measured while starting it.
+
+Two layers, and only the first is a copy problem:
+
+1. `packages/mpd-tui-plugin/src/scenes.ts` exports `PLAN_MUTATION_UNAVAILABLE`, whose comment says the
+   approval tool is "GONE with the plugin that registered them". True of the RETIRED vendored plugin and
+   FALSE of this bundle: `mpd-team-core` registers **`agent_teams_plan`** with an **`approve`** action,
+   which raises the team through the NATIVE executor. `createPlanActions` returns a permanently
+   unavailable executor on that stale premise.
+2. **THE ACTUAL BLOCKER — the TUI cannot FIND the thing it would approve.** A staged plan is
+   SESSION-scoped: `.mpd/team/staging/<sessionId>.json` (`plan-store.ts`). The TUI surfaces are
+   WORKSPACE-scoped — `grep sessionId packages/mpd-tui-plugin/src/scenes.ts` returns NOTHING — so the
+   plan scene has no key to read a staged plan with, and no `planId` to demand in its phrase gate.
+
+   The team RECORD is not a substitute: it is materialised **at** approval, so before one there is no
+   record, which is exactly why the panel renders `MPD approval — (none)`.
+
+So the phrase-gate change is the SMALL half. The large half is giving the `mpd-tui` row a SESSION
+resolver, and that carries its own design question: one host serves many sessions with different
+workspaces, and the row currently resolves only the workspace (`dsh.workspaceRoot`). Picking "the
+calling session" needs the same per-call discipline §6 already demands for the workspace root — and it
+must not become a cached module-level value.
+
+**Not started. Starting it and stopping would leave an approval path that nothing can reach, which is
+worse than the honest refusal it has today.** The route family (§5f) already serves the staged plan to
+the Web side, so the same `planId` decision is answerable there first if that is the cheaper order.
 
 ### (c) `mpd-team-core`'s own copy named tools nothing registers — FIXED
 
