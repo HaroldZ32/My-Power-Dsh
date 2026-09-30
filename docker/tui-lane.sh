@@ -145,6 +145,51 @@ for _ in $(seq 1 60); do
 done
 sleep 4
 tmux -S "$SOCK" capture-pane -p -J -t tui >"$TUI_DIR/pane-boot.txt" 2>/dev/null || true
+
+# ── THE TEAM SCENE, on a real terminal (W3) ──────────────────────────────────
+# The graph is this wave's visual centrepiece and until now only unit arms had ever drawn it: the
+# arms render the component through a host DOUBLE, so no real terminal had produced a single box. The
+# record is written FIRST, because a scene with no team correctly renders its empty state and proving
+# that would prove nothing about the drawing.
+mkdir -p "$WORK_DIR/ws/.mpd/team/teams"
+cat >"$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" <<'TEAMJSON'
+{
+  "version": 1,
+  "teamId": "tui-scene",
+  "name": "Scene Smoke",
+  "description": "proves the graph draws on a real terminal",
+  "leadSessionId": "scene-smoke",
+  "phase": "active",
+  "createdAt": "2026-09-30T00:00:00.000Z",
+  "approvedAt": "2026-09-30T00:01:00.000Z",
+  "members": [
+    { "id": "m1", "name": "Senior Engineer", "description": "implements", "status": "running", "spawnedAt": "2026-09-30T00:01:00.000Z" },
+    { "id": "m2", "name": "Reviewer", "description": "judges", "status": "inactive", "spawnedAt": "2026-09-30T00:01:00.000Z" }
+  ],
+  "tasks": [
+    { "id": "T1", "subject": "freeze the contract", "description": "d", "kind": "requirement", "status": "completed", "blockedBy": [], "writeScopes": [], "owner": "Senior Engineer", "attempt": 1, "createdAt": "2026-09-30T00:01:00.000Z", "updatedAt": "2026-09-30T00:02:00.000Z", "revision": 1 },
+    { "id": "T2", "subject": "build the graph", "description": "d", "kind": "work", "status": "in_progress", "blockedBy": ["T1"], "writeScopes": [], "owner": "Senior Engineer", "attempt": 1, "createdAt": "2026-09-30T00:01:00.000Z", "updatedAt": "2026-09-30T00:02:00.000Z", "revision": 1 },
+    { "id": "T3", "subject": "review the graph", "description": "d", "kind": "review", "status": "pending", "blockedBy": ["T2"], "writeScopes": [], "owner": "Reviewer", "attempt": 1, "createdAt": "2026-09-30T00:01:00.000Z", "updatedAt": "2026-09-30T00:02:00.000Z", "revision": 1 }
+  ],
+  "nextMemberNumber": 3,
+  "nextTaskNumber": 4
+}
+TEAMJSON
+printf '{"version":1,"active":{}}' >"$WORK_DIR/ws/.mpd/team/teams.json"
+
+tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
+sleep 6
+tmux -S "$SOCK" capture-pane -p -J -t tui >"$TUI_DIR/pane-team.txt" 2>/dev/null || true
+TEAM_PANE="$(cat "$TUI_DIR/pane-team.txt" 2>/dev/null || true)"
+record tui.teamSceneOpened "$(printf '%s' "$TEAM_PANE" | grep -q 'task dependency graph' && echo true || echo false)" \
+  "the /mpd team scene opened on a real terminal" "chars=$(printf '%s' "$TEAM_PANE" | wc -c)"
+record tui.teamGraphDrawn "$(printf '%s' "$TEAM_PANE" | grep -qE '┌.*┐' && printf '%s' "$TEAM_PANE" | grep -qE '└.*┘' && echo true || echo false)" \
+  "the LAYERED BOXES were drawn: a top border, a bottom border, and the subjects inside them" "graph=boxes"
+record tui.teamGraphEdges "$(printf '%s' "$TEAM_PANE" | grep -qE '┬|┴|│' && echo true || echo false)" \
+  "the dependency EDGES were drawn with box-drawing junctions" "junctions=$(printf '%s' "$TEAM_PANE" | grep -coE '┬|┴|│' || echo 0)"
+record tui.teamGraphContent "$(printf '%s' "$TEAM_PANE" | grep -q 'T1' && printf '%s' "$TEAM_PANE" | grep -q 'build the graph' && echo true || echo false)" \
+  "the boxes carry the record's own task ids and subjects" "ids=T1 subject=build the graph"
+
 tmux -S "$SOCK" send-keys -t tui "/quit" Enter 2>/dev/null || true
 sleep 2
 tmux -S "$SOCK" kill-server 2>/dev/null || true
