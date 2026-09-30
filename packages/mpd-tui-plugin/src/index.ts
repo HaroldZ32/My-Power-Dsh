@@ -262,10 +262,15 @@ export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, 
    * @param args - the tool arguments (the `action`, plus whatever that action needs).
    * @returns the outcome; a failure carries the tool's own message, never a fabricated success.
    */
-  const call = async (args: Record<string, unknown>): Promise<PlanActionOutcome> => {
+  const call = async (args: Record<string, unknown>, sessionId?: string): Promise<PlanActionOutcome> => {
     try {
+      // THE CALLER IS THE SESSION THE SCENE BELONGS TO. `agent_teams_plan` resolves its workspace and
+      // session from the exec it is handed, so a call without one lands on the process cwd instead of
+      // the caller's workspace — which is how a surface can appear to approve "nothing".
+      /** The caller identity for this call, omitted when the scene has no session bound yet. */
+      const agent = sessionId === undefined || sessionId === "" ? undefined : { session: { id: sessionId } }
       /** The harness's own result for this call. */
-      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args })
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, ...(agent === undefined ? {} : { agent }) })
       if (result.ok && !result.isError) return { ok: true, ...(result.value === undefined ? {} : { value: result.value }) }
       return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") }
     } catch (error) {
@@ -287,12 +292,12 @@ export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, 
     // THE PHRASE GATE IS KEPT AND RE-POINTED (user decision, 2026-09-30): the scene demands the plan
     // id, and the confirmation travels with the call so a caller that skipped the gate is refused by
     // the tool rather than by this executor's good manners.
-    approve: async (input: { teamId: string; confirmation: string; captainSessionId?: string }) =>
-      call({ action: "approve", confirmation: input.confirmation, ...(input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId }) }),
+    approve: async (input: { teamId: string; confirmation: string; captainSessionId?: string; sessionId?: string }) =>
+      call({ action: "approve", confirmation: input.confirmation }, input.sessionId ?? input.captainSessionId),
     // Discard archives the staged plan; `mpd-team-core` owns that action, and the scene arms it with
     // its own second-press window.
-    discard: async (input: { captainSessionId?: string }) =>
-      call({ action: "delete", ...(input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId }) }),
+    discard: async (input: { captainSessionId?: string; sessionId?: string }) =>
+      call({ action: "delete" }, input.sessionId ?? input.captainSessionId),
   }
 }
 

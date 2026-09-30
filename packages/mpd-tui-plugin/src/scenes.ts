@@ -105,10 +105,17 @@ export interface PlanActionOutcome {
 export interface PlanActions {
   /** Whether this composition can perform the mutations at all (never true on the 0.1.7 plane). */
   available(): boolean
-  /** Approves a staged plan once the user typed the exact phrase; never fabricates success. */
-  approve(input: { teamId: string; confirmation: string; captainSessionId?: string }): Promise<PlanActionOutcome>
+  /**
+   * Approves a staged plan once the user typed the exact phrase; never fabricates success.
+   *
+   * `sessionId` IS NOT OPTIONAL DECORATION. The tool this rides resolves its own context from the
+   * caller it is invoked with — `where(exec)` = `{ workspace: dsh.workspaceRoot(exec), sessionId:
+   * sessionIdOf(exec) }` — so a call made without one cannot find the right workspace or session. The
+   * scene acts FOR the session it belongs to, and it reads that id off its own live channel.
+   */
+  approve(input: { teamId: string; confirmation: string; captainSessionId?: string; sessionId?: string }): Promise<PlanActionOutcome>
   /** Archives a staged plan; the scene arms it with a second Ctrl+D inside the frozen window. */
-  discard(input: { captainSessionId?: string }): Promise<PlanActionOutcome>
+  discard(input: { captainSessionId?: string; sessionId?: string }): Promise<PlanActionOutcome>
 }
 
 /** The honest default: what a composition without the executor gets (never a fake success). */
@@ -876,8 +883,12 @@ function createPlanComponent(
       try {
         /** The executor's verdict for this approval. */
         const result = await actions.approve({
-          teamId: team.id,
+          teamId: stagedPlan?.planId ?? team.id,
           confirmation: echo,
+          // THE SESSION THE SCENE ACTS FOR, off its own live channel. The tool resolves its workspace
+          // and session from the caller it is given, so this is what makes the call land on the RIGHT
+          // plan rather than on whatever the process cwd happens to name.
+          ...(channelSession() === undefined ? {} : { sessionId: channelSession() as string }),
           ...(team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
         })
         if (result.ok) {
@@ -927,7 +938,10 @@ function createPlanComponent(
       setMessage("working…")
       try {
         /** The executor's verdict for this discard. */
-        const result = await actions.discard(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId })
+        const result = await actions.discard({
+          ...(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
+          ...(channelSession() === undefined ? {} : { sessionId: channelSession() as string }),
+        })
         setMessage(result.ok ? "discarded: team archived" : `discard failed: ${result.error ?? "the tool refused the call"}`)
         // Same rule as approve (§4.5): only a SUCCESSFUL call consumes the consent echo.
         if (result.ok) setEcho("")

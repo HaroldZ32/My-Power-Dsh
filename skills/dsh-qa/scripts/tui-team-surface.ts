@@ -346,6 +346,11 @@ function teamRecordFrom(record: StagedTeamRecord): Record<string, unknown> {
     leadSessionId: record.captainSessionId,
     phase,
     createdAt: isoOf(record.createdAt),
+    // THE TUI DERIVES `staged` FROM `approvedAt`, NOT FROM `phase` (`team-state.ts`: `staged:
+    // record.approvedAt === undefined`). A fixture that set only the phase therefore read as STAGED
+    // whatever it said — which is why the `non-staged-record` control could not produce the empty
+    // state it exists for. A record past staging HAS an approval instant, so this states it.
+    ...(phase === "staged" ? {} : { approvedAt: isoOf(record.createdAt) }),
     members: record.members.map((member, index) => ({
       id: member.id,
       name: member.name,
@@ -509,9 +514,20 @@ export interface BoundaryCall {
     /** The phrase the surface typed, which the adopted gate compares against the record's id. */
     readonly confirmation?: string
   }
-  /** The calling agent the adapter forwarded from `exec.agent`. */
+  /**
+   * The calling agent the adapter forwarded from `exec.agent`.
+   *
+   * ALL THREE SPELLINGS, because the product's own `sessionIdOf` tries them in order:
+   * `agent.session.id`, then a flattened `agent.sessionId`, then `agent.id`. A surface that
+   * legitimately presents a session (the TUI scene acts for the session it belongs to) would look
+   * like "no caller" to a reader that knew only the third.
+   */
   readonly agent?: {
-    /** The agent's id, matched against the record's captain session. */
+    /** The nested session, which is how a surface-initiated call presents its caller. */
+    readonly session?: { readonly id?: string }
+    /** A flattened session field, for a caller that carries it that way. */
+    readonly sessionId?: string
+    /** The agent's own id, matched against the record's captain session. */
     readonly id?: string
   }
   /** The correlation id the harness assigned to the call. */
@@ -581,7 +597,12 @@ export function observe({ text, boundaryCalls }: ObserveOptions, phrase: string 
     approvalAttempts: approveCalls.map((call) => ({
       name: call.name,
       confirmation: call.arguments?.confirmation,
-      agentId: call.agent?.id,
+      // THE CALLER'S IDENTITY, read with the SAME precedence the tool itself uses
+      // (`sessionIdOf`: `agent.session.id` ?? `agent.sessionId` ?? `agent.id`). Reading only `.id`
+      // made this arm report "no caller" about a call that carried the session the tool had just
+      // resolved its workspace from — the observation disagreed with the product about what a caller
+      // even IS.
+      agentId: call.agent?.session?.id ?? call.agent?.sessionId ?? call.agent?.id,
       callIdPresent: typeof call.callId === "string" && call.callId.length > 0,
     })),
     approvalHappened: approveCalls.length > 0,
@@ -1260,6 +1281,7 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
   // it should have accepted: the echo it received WAS the phrase.
   /** The exact phrase the approval gate demands, as the shared projection serves it. */
   const plannedPhrase = approvalPhrase(planId)
+  /** The happy-path drive: the phrase typed in full, which is the only run that may approve. */
   const green = await drive({ kit, component: mounted.plan!.component, mode: "typed", phrase: plannedPhrase })
   /** The green drive reduced to its observable facts. */
   const greenObs = observe({ text: green.afterChord, boundaryCalls: mounted.boundaryCalls })

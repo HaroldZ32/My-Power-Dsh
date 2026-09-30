@@ -4445,8 +4445,9 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
       setMessage("working…");
       try {
         const result = await actions.approve({
-          teamId: team.id,
+          teamId: stagedPlan?.planId ?? team.id,
           confirmation: echo,
+          ...channelSession() === undefined ? {} : { sessionId: channelSession() },
           ...team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }
         });
         if (result.ok) {
@@ -4482,7 +4483,10 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
       setBusy(true);
       setMessage("working…");
       try {
-        const result = await actions.discard(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId });
+        const result = await actions.discard({
+          ...team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId },
+          ...channelSession() === undefined ? {} : { sessionId: channelSession() }
+        });
         setMessage(result.ok ? "discarded: team archived" : `discard failed: ${result.error ?? "the tool refused the call"}`);
         if (result.ok)
           setEcho("");
@@ -5090,9 +5094,10 @@ function workspaceResolver(ctx, adapter) {
 }
 function createPlanActions(adapter, log) {
   const PLAN_TOOL = "agent_teams_plan";
-  const call = async (args) => {
+  const call = async (args, sessionId) => {
     try {
-      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args });
+      const agent = sessionId === undefined || sessionId === "" ? undefined : { session: { id: sessionId } };
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, ...agent === undefined ? {} : { agent } });
       if (result.ok && !result.isError)
         return { ok: true, ...result.value === undefined ? {} : { value: result.value } };
       return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") };
@@ -5109,8 +5114,8 @@ function createPlanActions(adapter, log) {
         return false;
       }
     },
-    approve: async (input) => call({ action: "approve", confirmation: input.confirmation, ...input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId } }),
-    discard: async (input) => call({ action: "delete", ...input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId } })
+    approve: async (input) => call({ action: "approve", confirmation: input.confirmation }, input.sessionId ?? input.captainSessionId),
+    discard: async (input) => call({ action: "delete" }, input.sessionId ?? input.captainSessionId)
   };
 }
 function homeDir() {
