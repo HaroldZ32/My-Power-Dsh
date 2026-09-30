@@ -5089,10 +5089,28 @@ function workspaceResolver(ctx, adapter) {
   };
 }
 function createPlanActions(adapter, log) {
+  const PLAN_TOOL = "agent_teams_plan";
+  const call = async (args) => {
+    try {
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args });
+      if (result.ok && !result.isError)
+        return { ok: true, ...result.value === undefined ? {} : { value: result.value } };
+      return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") };
+    } catch (error) {
+      log.warn(`plan ${String(args.action)} failed: ${String(error?.message ?? error)}`);
+      return { ok: false, error: String(error?.message ?? error) };
+    }
+  };
   return {
-    available: () => false,
-    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
-    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE })
+    available: () => {
+      try {
+        return adapter.hasTool(PLAN_TOOL);
+      } catch {
+        return false;
+      }
+    },
+    approve: async (input) => call({ action: "approve", confirmation: input.confirmation, ...input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId } }),
+    discard: async (input) => call({ action: "delete", ...input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId } })
   };
 }
 function homeDir() {

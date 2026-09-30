@@ -52,7 +52,7 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { boardSummary, PLAN_MUTATION_UNAVAILABLE, registerScene, type PlanActions } from "./scenes.js"
+import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
@@ -247,16 +247,52 @@ export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<t
  * @returns the executor.
  */
 export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, log: Log): PlanActions {
-  // 0.1.7: the two tools this executor used to call are RETIRED and the official plane has no
-  // replacement (see `PLAN_MUTATION_UNAVAILABLE`), so the production executor is PERMANENTLY
-  // unavailable and says exactly why. It is deliberately not a fake that "might work": the plan
-  // surface tells the user the truth, and no tool name that no longer exists is looked up.
-  void adapter
-  void log
+  // ── THE EXECUTOR IS REAL AGAIN (W6) ────────────────────────────────────────
+  // It used to be PERMANENTLY unavailable, on the premise that the two tools it called were retired
+  // and the official plane had no replacement. That premise is half true and was read as wholly true:
+  // the RETIRED vendored plugin's tools are gone, and the OFFICIAL plane has no approval — but THIS
+  // BUNDLE registers one. `mpd-team-core` owns the staged plan and exposes
+  // `agent_teams_plan {action:"approve"}`, which materialises the mpd record and raises the members
+  // through the NATIVE executor. So the surface can act, and refusing was telling the user that
+  // approval was impossible when it was one call away.
+  /** The tool that owns the staged plan and its approval. */
+  const PLAN_TOOL = "agent_teams_plan"
+  /**
+   * Call the plan tool and project its result into the scene's own outcome shape.
+   * @param args - the tool arguments (the `action`, plus whatever that action needs).
+   * @returns the outcome; a failure carries the tool's own message, never a fabricated success.
+   */
+  const call = async (args: Record<string, unknown>): Promise<PlanActionOutcome> => {
+    try {
+      /** The harness's own result for this call. */
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args })
+      if (result.ok && !result.isError) return { ok: true, ...(result.value === undefined ? {} : { value: result.value }) }
+      return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") }
+    } catch (error) {
+      // A throwing seam must redden the outcome, never escape into a render.
+      log.warn(`plan ${String(args.action)} failed: ${String((error as Error)?.message ?? error)}`)
+      return { ok: false, error: String((error as Error)?.message ?? error) }
+    }
+  }
   return {
-    available: () => false,
-    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
-    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+    // AVAILABILITY IS ASKED, NOT ASSUMED. A composition without the team row has no plan tool, and
+    // saying "available" there would render a gate whose chord can only fail.
+    available: () => {
+      try {
+        return adapter.hasTool(PLAN_TOOL)
+      } catch {
+        return false
+      }
+    },
+    // THE PHRASE GATE IS KEPT AND RE-POINTED (user decision, 2026-09-30): the scene demands the plan
+    // id, and the confirmation travels with the call so a caller that skipped the gate is refused by
+    // the tool rather than by this executor's good manners.
+    approve: async (input: { teamId: string; confirmation: string; captainSessionId?: string }) =>
+      call({ action: "approve", confirmation: input.confirmation, ...(input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId }) }),
+    // Discard archives the staged plan; `mpd-team-core` owns that action, and the scene arms it with
+    // its own second-press window.
+    discard: async (input: { captainSessionId?: string }) =>
+      call({ action: "delete", ...(input.captainSessionId === undefined ? {} : { sessionId: input.captainSessionId }) }),
   }
 }
 
