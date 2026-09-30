@@ -81,6 +81,15 @@ export const INSTRUCTION: string = "approval needs the exact team id typed below
 export const TUI_DIST: string = join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js")
 /** Absolute path of the built adapter dist whose REAL factory answers the boundary calls. */
 export const ADAPTER_DIST: string = join(REPO, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js")
+/**
+ * The TEAM CORE plugin, whose REAL `apply()` publishes `mpdTeams`.
+ *
+ * MOUNTING THIS IS THE POINT (user directive: both sides share the infrastructure). A case-local
+ * double that read `teams/<id>.json` and `staging/<sessionId>.json` would be a SECOND implementation
+ * of the store's read — free to drift from the one every shipped surface uses, which is exactly what
+ * the shared projection exists to prevent.
+ */
+export const CORE_DIST: string = join(REPO, "packages", "mpd-team-core-plugin", "dist", "index.js")
 /** Evidence root of this lane; each run writes `<root>/<timestamp>/`. */
 export const EVIDENCE_ROOT: string = join(REPO, "evidence", "tui", "team-surface-verify")
 
@@ -796,6 +805,8 @@ export interface ContextDouble {
   readonly on: () => { dispose: () => void }
   /** Run a scoped effect immediately; a throwing effect is contained because a disposed scope owns none. */
   readonly effect: (fn: () => void) => void
+  /** Publish one service, so a REAL plugin row can expose its seam to the next row mounted. */
+  readonly provide: (id: string, value: unknown) => unknown
   /** The plugin's logger seam, with every level a no-op so the mount stays quiet. */
   readonly logger: {
     /** Swallow an info line. */
@@ -937,6 +948,9 @@ export async function mountBundle({ workspace, home, members = 2, tasks = 2 }: M
       dispose(): void {}
     }),
     effect: (fn: () => void): void => { try { fn() } catch { /* a disposed scope owns no effects */ } },
+    // `provide` writes into the SAME bag `get` reads, which is what lets the real core row publish
+    // `mpdTeams` and the real TUI row find it — the two rows composed here as they are in a boot.
+    provide: (id: string, value: unknown): unknown => { services[id] = value; return value },
     logger: { info: (): void => {}, warn: (): void => {}, debug: (): void => {}, error: (): void => {} },
   }
 
@@ -958,6 +972,19 @@ export async function mountBundle({ workspace, home, members = 2, tasks = 2 }: M
   const adapter: AdapterModule = (await import(pathToFileURL(ADAPTER_DIST).href))
   services.mpdDsh = adapter.createDshAdapter(ctx)
 
+  /** The built TUI plugin module, mounted below through its REAL `apply()`. */
+  // THE CORE ROW FIRST, so `mpdTeams` exists before the TUI row looks for it. Its REAL `apply()` is
+  // what publishes the service — the same call a boot makes — so the offline surface reads through the
+  // one implementation rather than a case-local lookalike.
+  if (services.mpdTeams === undefined) {
+    try {
+      /** The core plugin module, mounted for its service publication. */
+      const core = (await import(pathToFileURL(CORE_DIST).href)) as { apply?: (ctx: unknown) => void }
+      core.apply?.(ctx)
+    } catch (error) {
+      installErrors.push("core apply: " + String((error as { message?: unknown })?.message ?? error))
+    }
+  }
   /** The built TUI plugin module, mounted below through its REAL `apply()`. */
   const tui: TuiPluginModule = await import(pathToFileURL(TUI_DIST).href)
   /** What `apply()` returned, `undefined` when it threw. */
@@ -1010,6 +1037,8 @@ export interface DriveOptions {
   readonly mode: DriveMode
   /** The phrase typed keystroke by keystroke; defaults to the record's own approval phrase. */
   readonly phrase?: string
+  /** The live session the host hands the scene on its channel; the staged plan is keyed by it. */
+  readonly sessionId?: string
 }
 
 /**
@@ -1019,11 +1048,16 @@ export interface DriveOptions {
  * @param options.component - the registered plan scene component.
  * @param options.mode - the scenario phase.
  * @param phrase - the phrase to type; the wrong-id red overrides it with another team's.
+ * @param sessionId - the LIVE session the host hands the scene on its channel; the plan is keyed by it.
  * @returns The echo at entry, the render before the chord and the render after it settled.
  */
-export async function drive({ kit, component, mode, phrase = approvalPhrase() }: DriveOptions): Promise<DriveRun> {
-  /** The extra props the surface is rendered with; the drive adds none. */
-  const props: Record<string, unknown> = {}
+export async function drive({ kit, component, mode, phrase = approvalPhrase(), sessionId = CAPTAIN_ID }: DriveOptions): Promise<DriveRun> {
+  // THE CHANNEL IS THE SESSION. A staged plan is session-scoped and the scene reads the id off its own
+  // live channel, so a drive that passes no channel leaves the surface with no key to read a plan with
+  // — which is precisely what made this arm report an empty phrase before the split's own wiring moved
+  // the plan behind a session.
+  /** The extra props the surface is rendered with. */
+  const props: Record<string, unknown> = { channel: { sessionId } }
   /** The current rendered surface text. */
   let text = renderScene(kit, component, props)
   /** The confirmation echo as read before any keystroke, which must be empty (no prefill). */
@@ -1164,6 +1198,8 @@ export interface BoundaryArmOptions {
   readonly home: string
   /** Evidence directory the raw surfaces and the negative control are written into. */
   readonly outDir: string
+  /** The staged plan's own id, which is the phrase the approval gate demands. */
+  readonly planId: string
 }
 
 /**
@@ -1173,7 +1209,7 @@ export interface BoundaryArmOptions {
  * @param options.outDir - evidence directory the negative control is written into.
  * @returns The assertion rows, the mount, the green/red observations and the control record.
  */
-export async function armBoundary({ workspace, home, outDir }: BoundaryArmOptions): Promise<BoundaryArmResult> {
+export async function armBoundary({ workspace, home, outDir, planId }: BoundaryArmOptions): Promise<BoundaryArmResult> {
   /** The mounted plugin: its real `apply()` over the recording host double. */
   const mounted = await mountBundle({ workspace, home })
   /** Every assertion row of this arm, in assertion order. */
@@ -1193,7 +1229,11 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
   const kit = makeKit()
   // A1 above asserts the plan scene registered; `!` states that invariant to the checker without
   // adding a runtime branch the original code did not have.
-  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed" })
+  // THE GREEN DRIVE TYPES THE PLAN'S PHRASE, because that is what the gate now demands: the shared
+  // projection builds it from the PRE-approval identity, and the team id is not knowable at the moment
+  // the gate asks. A drive still typing the team id would fail the gate for a reason that has nothing
+  // to do with the surface.
+  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed", phrase: approvalPhrase(planId) })
   /** The green drive reduced to its observable facts. */
   const greenObs = observe({ text: green.afterChord, boundaryCalls: mounted.boundaryCalls })
   /** The parsed lines of the green render after the chord. */
@@ -1881,12 +1921,20 @@ async function real(): Promise<void> {
   /** The workspace the staged fixture and arm 1 both run against. */
   const workspace = root.endsWith("/ws") ? root : join(root, "ws")
   mkdirSync(workspace, { recursive: true })
+  /** The record every arm describes; arm 1's captain session is the one its channel presents. */
+  const staged = stagedRecord()
   /** The staged fixture and the digest that witnesses the TUI never writes it. */
-  const fixture = writeTeamFixture(workspace, stagedRecord())
+  const fixture = writeTeamFixture(workspace, staged)
   say("fixture written to " + fixture.file.replace(REPO + "/", "") + " (sha256 " + fixture.sha256.slice(0, 12) + ")")
+  // THE PLAN HALF FOR ARM 1, keyed to the SAME session its channel presents. Without it the offline
+  // surface has no plan to approve and reports an empty phrase — not because it is broken, but because
+  // the plan is session-scoped and nothing had staged one for that session.
+  /** The staged plan arm 1's surface reads, and the phrase its gate demands. */
+  const plan = stagePlanFixture(workspace, staged.captainSessionId, staged)
+  say("plan " + plan.planId + " staged for session " + staged.captainSessionId)
 
   /** What arm 1 registered, drove and refused. */
-  const arm1 = await armBoundary({ workspace, home: join(root, "home"), outDir })
+  const arm1 = await armBoundary({ workspace, home: join(root, "home"), outDir, planId: plan.planId })
   for (const item of arm1.items) say("arm1 " + item.id + " " + (item.ok ? "ok" : "FAIL") + " — " + item.note)
   // The TUI must not write team state: the fixture digest is the witness.
   /** The fixture's digest after every drive in arm 1. */
