@@ -318,10 +318,28 @@ BUN_ROUTE="official-script"
 run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL https://bun.sh/install | bash'
 if [ "$STEP_CODE" != "0" ]; then
   BUN_ROUTE="npm"
-  run_step 03-bun-npm bash -c 'set -euo pipefail; npm i -g bun'
+  # `--allow-scripts=bun`: the npm package downloads its platform binary in `install.js`, and npm
+  # REFUSES to run a dependency install script by default — measured: `added 2 packages` with
+  # `npm warn allow-scripts bun@1.4.2 (postinstall: node install.js)` and NO binary on PATH, so the
+  # fallback exited 0 and still left `bun --version` empty. The same class as the pnpm
+  # `ERR_PNPM_IGNORED_BUILDS` this repository already documents in AGENTS.md §8.
+  run_step 03-bun-npm bash -c 'set -euo pipefail; npm i -g --allow-scripts=bun bun'
 fi
-ln -sf "$BUN_INSTALL/bin/bun" /usr/local/bin/bun 2>/dev/null || true
-command -v bun >/dev/null 2>&1 || ln -sf "$(npm root -g)/bun/bin/bun" /usr/local/bin/bun 2>/dev/null || true
+# RESOLVE THE BINARY BY SEARCH, not by guessing its layout. The official script installs to
+# `$BUN_INSTALL/bin/bun`; the npm package puts its downloaded binary somewhere under its own tree, and
+# two attempts to guess that path left `bun --version` EMPTY while the install exited 0. So: prefer the
+# script's path, then npm's global bin, and only then search — reporting which one was used, because a
+# silent miss here is what made two runs die at the FIRST assertion.
+BUN_ON_PATH="$(command -v bun 2>/dev/null || true)"
+if [ -z "$BUN_ON_PATH" ] && [ -x "$BUN_INSTALL/bin/bun" ]; then BUN_ON_PATH="$BUN_INSTALL/bin/bun"; fi
+if [ -z "$BUN_ON_PATH" ] && [ -x "$(npm prefix -g 2>/dev/null)/bin/bun" ]; then BUN_ON_PATH="$(npm prefix -g)/bin/bun"; fi
+if [ -z "$BUN_ON_PATH" ]; then
+  # `-print -quit` rather than `| head -1`: pipefail turns the reader's early exit into a SIGPIPE on
+  # `find`, which `set -e` then turns into an abort. Measured earlier in this very script.
+  BUN_ON_PATH="$(find /usr /opt /root -name bun -type f -perm -u+x -print -quit 2>/dev/null || true)"
+fi
+[ -n "$BUN_ON_PATH" ] && ln -sf "$BUN_ON_PATH" /usr/local/bin/bun 2>/dev/null || true
+fact bunPath "${BUN_ON_PATH:-not-found}"
 BUN_V="$(bun --version 2>/dev/null || true)"
 fact bun "$BUN_V (route=$BUN_ROUTE, BUN_INSTALL=$BUN_INSTALL)"
 case "$BUN_V" in
@@ -875,6 +893,55 @@ BOOT_ENDED="$(date +%s)"
 # so its process exit status is an artifact of that termination, not of the boot. The step's exit
 # column is recorded as -1 for exactly that reason.
 append_step "11-boot" -1 "$((BOOT_ENDED - BOOT_STARTED))" "11-boot.log" "dsh --profile web --patch probe.yml --port $PORT --no-open (background; terminated by the harness after the assertions)"
+
+# ── 10b. the mpd TEAM ROUTES, against the REAL mounted bundle ────────────────
+# W4 of the team-plane split added four host routes and this is the only place they meet a REAL
+# mounted row: `/plugins/mpd-team/{state,plan,task,mail}`. A 404 here would mean the row never
+# registered them — a fact no unit arm can produce, because the arms mount the row themselves.
+#
+# The session id created just above is passed to `/plan`, because a staged plan is keyed by SESSION:
+# asking without one is a legitimate empty answer, and asserting on THAT would prove nothing about the
+# lookup.
+LIVE_SESSION_ID="$(node -e '
+  try {
+    const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+    process.stdout.write(String(body?.result?.value?.sessionId ?? body?.result?.value?.id ?? ""))
+  } catch { process.stdout.write("") }
+' "$SESSION_JSON" 2>/dev/null || true)"
+fact teamRoutesSession "${LIVE_SESSION_ID:-none}"
+TEAM_ROUTE_OK=0
+TEAM_ROUTE_SEEN=""
+for ROUTE in state plan task mail; do
+  ROUTE_BODY="$WORK_DIR/route-$ROUTE.json"
+  ROUTE_URL="http://127.0.0.1:$PORT/plugins/mpd-team/$ROUTE"
+  [ "$ROUTE" = "plan" ] && [ -n "$LIVE_SESSION_ID" ] && ROUTE_URL="$ROUTE_URL?sessionId=$LIVE_SESSION_ID"
+  ROUTE_CODE="$(curl -s -b "$COOKIE_JAR" -c "$COOKIE_JAR" -o "$ROUTE_BODY" -w '%{http_code}' --max-time 20 "$ROUTE_URL" 2>/dev/null || true)"
+  ROUTE_VERDICT="$(node -e '
+    try {
+      const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+      process.stdout.write(String(body?.ok === true) + "|" + Object.keys(body).filter((k) => k !== "ok").join(","))
+    } catch { process.stdout.write("false|unparseable") }
+  ' "$ROUTE_BODY" 2>/dev/null || echo "false|node-failed")"
+  ROUTE_OK="${ROUTE_VERDICT%%|*}"
+  ROUTE_KEYS="${ROUTE_VERDICT#*|}"
+  TEAM_ROUTE_SEEN="$TEAM_ROUTE_SEEN $ROUTE=$ROUTE_CODE/$ROUTE_OK"
+  if [ "$ROUTE_CODE" = "200" ] && [ "$ROUTE_OK" = "true" ]; then TEAM_ROUTE_OK=$((TEAM_ROUTE_OK + 1)); fi
+  record "team.route.$ROUTE" "$([ "$ROUTE_CODE" = "200" ] && [ "$ROUTE_OK" = "true" ] && echo true || echo false)" \
+    "the mpd team route answered a JSON payload from a REAL mounted row" "HTTP $ROUTE_CODE keys=$ROUTE_KEYS"
+done
+fact teamRoutes "$TEAM_ROUTE_SEEN"
+record team.routesAll "$([ "$TEAM_ROUTE_OK" = "4" ] && echo true || echo false)" \
+  "all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true" "green=$TEAM_ROUTE_OK/4"
+# The PLANNED lookup is asserted apart from the count: a route can answer 200 with `plan: null` for a
+# session that staged nothing, so the SHAPE is what says the lookup ran rather than the status.
+PLAN_SHAPE="$(node -e '
+  try {
+    const body = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+    process.stdout.write(Object.prototype.hasOwnProperty.call(body, "plan") ? (body.plan === null ? "null" : "object") : "missing")
+  } catch { process.stdout.write("unreadable") }
+' "$WORK_DIR/route-plan.json" 2>/dev/null || echo unreadable)"
+record team.planLookup "$([ "$PLAN_SHAPE" = "null" ] || [ "$PLAN_SHAPE" = "object" ] && echo true || echo false)" \
+  "the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)" "plan=$PLAN_SHAPE session=${LIVE_SESSION_ID:-none}"
 
 # Stop the boot before the isolation checks (a live session writes workspace state).
 if kill -0 "$BOOT_PID" 2>/dev/null; then

@@ -1,0 +1,38 @@
+{
+  "result": "THE FULL LIVE DOCKER LANE IS GREEN: ok=true complete=true passed=51 failed=0 null=0",
+  "command": "eval \"$(grep -E '^export DEEPSEEK_API_KEY=' ~/.bashrc | head -1)\" && node scripts/docker-e2e.ts --mode source --allow-rootful-docker --live",
+  "what_this_wave_claims_and_what_the_run_measured": {
+    "W2 native executor is the default": {
+      "claim": "the team runs on ctx.subagents.startContinuable and needs NOTHING from the official Agent Teams plugin",
+      "measured": "live.nativeExecutor=true \u2014 after a REAL model drove agent_teams_plan through create -> mpd_role_persona -> add_member -> create_task -> approve, the mpd record exists with phase=active and 1/1 member(s) carrying an executorRef: a handle only an executor that actually raised the member can mint"
+    },
+    "W4 the host route family": {
+      "claim": "four routes serve the record, the staged plan, the contracts/hold and the mailbox",
+      "measured": "team.route.{state,plan,task,mail}=true and team.routesAll=true \u2014 all four answer a JSON payload with ok:true from a REAL mounted row. A unit arm mounts the row itself; this is the only place the routes meet a real boot."
+    },
+    "W6 the shared plan projection": {
+      "claim": "the plan is served by ONE projection, keyed by planId",
+      "measured": "team.planLookup=true \u2014 /plan answered a plan SHAPE for the LIVE session (null when nothing is staged, which is the honest pre-approval answer rather than an error)"
+    }
+  },
+  "the_two_problems_the_route_probe_had_before_it_passed": [
+    "FIRST ATTEMPT measured HTTP 000 on all four: the probe had been placed AFTER the boot was terminated ('Stop the boot before the isolation checks'), so it was knocking on a closed port. Moved before the shutdown.",
+    "the run that found it was ALSO the one where the bun bootstrap finally worked, so two fixes landed together and the log shows them separately."
+  ],
+  "the_bun_bootstrap_saga_three_real_fixes": [
+    "the official script fetches from GITHUB RELEASES and this environment's route there is intermittent (`curl: (56)`, then `curl: (28) ... after 135500 ms`) while registry.npmjs.org answered 200 in under a second. Added `npm i -g bun` as a fallback and made `fact bun` NAME THE ROUTE.",
+    "the first fallback NEVER FIRED: `run_step ... || { ... }` cannot work, because run_step returns the append's status rather than the child's \u2014 its own contract is 'never abort (the verdict is the report's)'. It now tests the STEP_CODE global.",
+    "`npm i -g bun` exited 0 and installed NOTHING RUNNABLE: npm refuses dependency install scripts by default (`npm warn allow-scripts bun@1.4.2 (postinstall: node install.js)`) and that postinstall is what downloads the binary. Fixed with `--allow-scripts=bun`, and the binary is now RESOLVED BY SEARCH rather than by guessing its layout \u2014 two guessed paths had already left `bun --version` empty while the install reported success."
+  ],
+  "how_the_credential_travelled": "`-e DEEPSEEK_API_KEY` WITH NO VALUE, so compose read it from the driver's environment and the secret never entered the echoed argv. The container wrote it into the SANDBOX home's credentials document (mode 0600) and deleted it after the turn. AGENTS.md \u00a710 held throughout: never committed, never logged, never echoed.",
+  "gates_after_the_change": {
+    "bun test packages": "1350 pass, 0 fail",
+    "verify:comments": "PASS",
+    "test:qa": "all self-tests passed",
+    "typecheck": "the same 4 pre-existing skills/ errors"
+  },
+  "not_claimed": [
+    "the teammate that was raised did not itself run a turn \u2014 the assertion is that the executor minted its handle, which is precisely W2's claim",
+    "one live turn, not a suite of them"
+  ]
+}

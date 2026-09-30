@@ -1,0 +1,478 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-09-30T05:24:23.000Z",
+  "finishedAt": "2026-09-30T05:27:36.712Z",
+  "durationSeconds": 194,
+  "harness": {
+    "installed": null,
+    "expected": null,
+    "assertion": "harness.version",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": " (route=npm, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": null,
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 42,
+    "passed": 3,
+    "failed": 1,
+    "null": 38,
+    "failedNames": [
+      "toolchain.bun"
+    ],
+    "nullNames": [
+      "toolchain.pnpm",
+      "harness.version",
+      "copy.contextFiltered",
+      "copy.repo",
+      "build.bunInstall",
+      "build.dists",
+      "install.exit",
+      "install.profileDep",
+      "install.installedTree",
+      "compose.dumpExit",
+      "compose.mpdRows",
+      "compose.presetRow",
+      "compose.agentTeamRows",
+      "boot.probeApplied",
+      "boot.adapterService",
+      "boot.adapterToolCall",
+      "boot.mpdTools",
+      "boot.agentTeamTools",
+      "boot.sessionGateListener",
+      "boot.agentTeamService",
+      "boot.servesHttp",
+      "boot.presetMount",
+      "boot.noFatalSignatures",
+      "isolation.home",
+      "isolation.realHome",
+      "isolation.noCredentials",
+      "tui.hostInstall",
+      "tui.pluginAddHost",
+      "tui.pluginAddBundle",
+      "tui.compose",
+      "tui.registryDefaultMpd",
+      "tui.presetRow",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.boot",
+      "tui.noFatalSignatures",
+      "tui.sessionPreset",
+      "boot.llmTurn"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "install by official tarball, sha256 verified against the published SHASUMS256.txt",
+      "raw": "v24.19.0 (1:node-v24.19.0-linux-x64.tar.xz: OK )"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": false,
+      "reason": "bun did not install / did not report a 1.x version (routes tried: official-script, npm)",
+      "raw": ""
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "harness.version",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "copy.repo",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "build.dists",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.exit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.profileDep",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "install.installedTree",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.home",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.compose",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.registryDefaultMpd",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.boot",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    }
+  ],
+  "observations": {},
+  "facts": {
+    "stamp": "2026-09-30T05:24:23Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "node=24.19.0 dsh=0.1.7-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "51",
+    "nodeArch": "amd64 -> linux-x64",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": " (route=npm, BUN_INSTALL=/opt/toolchain/bun)",
+    "abort": "bun is not usable",
+    "finishedAt": "2026-09-30T05:27:36Z"
+  },
+  "hashes": [],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 29,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1310 kB]",
+        "Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:7 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1934 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:9 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1542 kB]",
+        "Get:10 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:11 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1637 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2162 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2057 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Fetched 33.0 MB in 28s (1201 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 22,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 17363,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "02-node",
+      "exit": 0,
+      "seconds": 24,
+      "cmd": "bash -c  set -euo pipefail V=\"$1\"; A=\"$2\" cd /tmp curl -fsSLO \"https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz\" curl -fsSL -o SHASUMS256.txt \"https://nodejs.org/dist/v${V}/SHASUMS256.txt\" grep \" node-v${V}-linux-${A}.tar.xz\\$\" SHASUMS256.txt > node.sha256 sha256sum -c node.sha256 tar -xJf \"node-v${V}-linux-${A}.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner rm -f \"node-v${V}-linux-${A}.tar.xz\" SHASUMS256.txt node.sha256 node -v npm -v  _ 24.19.0 x64 ",
+      "logFile": "02-node.log",
+      "logBytes": 52,
+      "tail": [
+        "node-v24.19.0-linux-x64.tar.xz: OK",
+        "v24.19.0",
+        "11.17.0",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 1,
+      "seconds": 91,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 7445,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r-=O#-#   #   #                                                                 \r-=O=#  #   #   #                                                               \r-=O=-#  #    #   #                                                             \r-=O=- #   #   #    #                                                           \r-=O=-   #   #   #     #                                                        \r-=O=-    #   #    #     #                                                      \r-=O=-      #   #     #    #                                                    \r-=O=-        #   #     #    #                                                  \r-=O=-         #    #     #     #                                               \r-=O=-           #     #    #     #                                             \r-=O=-             #     #     #     #                                          \r-=O=-                #    #     #     #                                        \r-=O=-                  #    #     #     #                                      \r-=O=-                    #     #     #     #                                   \r-=O=-                      #     #     #     #                                 \r-=O=-                         #     #     #     #                              \r-=O=-                           #     #     #     #                            \r-=O=-                             #     #     #     #                          \r-=O=-                                #     #     #    #                        \r-=O=-                                  #     #     #     #                     \r-=O=-                                     #     #    #     #                   \r-=O=-                                       #     #    #     #                 \r-=O=-                                         #     #     #    #               \r-=O=-                                            #    #     #   #              \r-=O=-                                              #     #    #   #            \r-=O=-                                                #     #   #    #          \r-=O=-                                                  #     #   #   #         \r-=O=-                                                     #    #   #   #       \r-=O=-                                                       #   #   #   #      \r-=O=-                                                         #   #   #  #     \r-=O=-                                                          #    #  #  #    \r-=O=-                                                            #   #  #  #   \r-=O=-                                                              #   # # #   \r-=O=-                                                               #   # # #  \r-=O=-                                                                 #  # ##  \r-=O=-                                                                  #  # #  \r-=O=-                                                                   #  ### \r-=O=-                                                                    # ##  \r-=O=-                                                                     # #  \r-=O=-                                                                      ##  \r-=O=-                                                                      ##  \r-=O=-                                                                      ### \r-=O=-                                                                     # #  \r-=O=-                                                                    # ##  \r-=O=-                                                                   # # #  \r-=O=-                                                                  # # ##  \r-=O=-                                                                #  #  ##  \r-=O=-                                                               #  #  # #  \r-=O=-                                                             #   #  # #   \r-=O=-                                                           #   #   # #    \r-=O=-                                                          #   #   # #     \r-=O=-                                                        #   #   #  #      \r-=O=-                                                      #   #    #  #       \r-=O=-                                                    #    #   #   #        \r-=O=-                                                 #     #   #   #          \r-=O=-                                               #     #    #   #           \r-=O=-                                             #    #     #   #             \r-=O=-                                           #    #     #   #               \r-=O=-                                        #     #     #    #                \r-=O=-                                      #     #    #     #                  \r-=O=-                                   #     #     #     #                    \r-=O=-                                 #     #     #    #                       \r-=O=-                               #     #     #    #                         \r-=O=-                            #     #     #     #                           \r-=O=-                          #     #     #     #                             \r-=O=-                       #     #     #     #                                \r-=O=-                     #     #     #     #                                  \r-=O=-                   #     #     #     #                                    \r-=O=-                 #    #     #     #                                       \r-=O=-              #     #     #     #                                         \r-=O=-            #     #    #     #                                            \r-=O=-          #     #    #     #                                              \r-=O=-        #    #     #     #                                                \r-=O=-       #   #     #    #                                                   \r-=O=-     #   #    #     #                                                     \r-=O=-   #    #   #     #                                                       \r-=O=-  #   #   #     #                                                         \r-=O=-#   #   #    #                                                            \r-=O=#   #   #   #                                                              \r-=O#- #   #   #                                                                \r-=#=-#  #    #                                                                 \r-#O=#  #   #                                                                   \r-#O#-#   #                                                                     \r#=#=#   #                                                                      \r##O#- #                                                                        \rcurl: (56) Failure when receiving data from the peer",
+        "",
+        "error: Failed to download bun from \"https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip\"",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun-npm",
+      "exit": 0,
+      "seconds": 27,
+      "cmd": "bash -c set -euo pipefail; npm i -g bun ",
+      "logFile": "03-bun-npm.log",
+      "logBytes": 386,
+      "tail": [
+        "",
+        "added 2 packages in 27s",
+        "npm warn allow-scripts 1 package has install scripts not yet covered by allowScripts:",
+        "npm warn allow-scripts   bun@1.4.2 (postinstall: node install.js)",
+        "npm warn allow-scripts",
+        "npm warn allow-scripts Run `npm install -g --allow-scripts=bun` to allow these scripts once, or `npm config set allow-scripts=bun --location=user` to allow them for all global installs.",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}
