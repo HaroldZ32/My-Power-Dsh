@@ -887,13 +887,17 @@ export function apply(ctx: any): void {
       /** The command's argument, trimmed; empty means the user gets usage instead of a plan. */
       const goal = String(invocation?.rawInput ?? "").trim()
       if (goal === "") {
-        return { kind: "message", text: "Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_approve." }
+        // THE NAMES ARE THE REGISTERED ONES. These lines used to send the user to `agent_teams_approve`,
+        // `agent_teams_add_member` and `agent_teams_create_task` — three tools the RETIRED vendored
+        // plugin registered and this one does not. The real surface is the `action` enum on
+        // `agent_teams_plan`, so a user following the old sentence looked up a tool that is not there.
+        return { kind: "message", text: "Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_plan {action: \"approve\"}." }
       }
       /** The staged plan, awaiting approval — which the reply says explicitly. */
       const plan = stagePlan(workspace, sessionId, { name: goal.slice(0, 60), description: goal, approval: "required" }, now())
       return {
         kind: "message",
-        text: `Staged ${describePlan(plan)}.\nAdd members with agent_teams_add_member and tasks with agent_teams_create_task, then approve with agent_teams_approve. Nobody is spawned before that.`,
+        text: `Staged ${describePlan(plan)}.\nAdd members and tasks with agent_teams_plan {action: \"add_member\" | \"create_task\"}, then approve with agent_teams_plan {action: \"approve\"}. Nobody is spawned before that.`,
       }
     },
   }))

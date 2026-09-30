@@ -2503,13 +2503,13 @@ ${result.message.body}`, exec.signal);
       const sessionId = sessionIdOf({ agent: invocation?.agent });
       const goal = String(invocation?.rawInput ?? "").trim();
       if (goal === "") {
-        return { kind: "message", text: "Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_approve." };
+        return { kind: "message", text: 'Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_plan {action: "approve"}.' };
       }
       const plan = stagePlan(workspace, sessionId, { name: goal.slice(0, 60), description: goal, approval: "required" }, now());
       return {
         kind: "message",
         text: `Staged ${describePlan(plan)}.
-Add members with agent_teams_add_member and tasks with agent_teams_create_task, then approve with agent_teams_approve. Nobody is spawned before that.`
+Add members and tasks with agent_teams_plan {action: "add_member" | "create_task"}, then approve with agent_teams_plan {action: "approve"}. Nobody is spawned before that.`
       };
     }
   }));

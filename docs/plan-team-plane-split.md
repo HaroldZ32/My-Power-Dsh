@@ -300,14 +300,15 @@ has NO equivalent". The first half is true of the RETIRED vendored plugin and FA
 `action === "approve"` branch), which raises the team through the NATIVE executor. The scene should call
 it, and `agent_teams_dispatch`/`_mail`/`_control` are registered beside it.
 
-### (c) `mpd-team-core`'s own copy names a tool nothing registers
+### (c) `mpd-team-core`'s own copy named tools nothing registers — FIXED
 
-Its `/agent-teams` usage lines tell the user to approve "with `agent_teams_approve`" and to add members
+Its `/agent-teams` usage lines told the user to approve "with `agent_teams_approve`" and to add members
 "with `agent_teams_add_member`" / tasks "with `agent_teams_create_task`". None of those three is
-registered — the real surface is the `action` enum on `agent_teams_plan`. The bundled README and
-`docs/plan-team-plane-split.md` were updated in W1; these user-facing strings were not.
+registered — the real surface is the `action` enum on `agent_teams_plan`. Both strings now name the
+registered calls (`agent_teams_plan {action: "approve" | "add_member" | "create_task"}`), so a user
+following the sentence looks up a tool that exists.
 
-**None of the three is a reason to doubt the split itself** — the record, the executor and both rebuilt
+**Neither open item is a reason to doubt the split itself** — the record, the executor and both rebuilt
 surfaces are proven by their own arms and by `tui-mount`. They are the last mile of the surface
 migration, and (b) is the one that matters: a captain reading the TUI is told approval is impossible
 when it is one call away.
