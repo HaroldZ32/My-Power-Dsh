@@ -1,0 +1,7 @@
+{
+  "case": "docker-client-install",
+  "ok": false,
+  "complete": false,
+  "reporter": "bash fallback: node was never installed, so docker/lib/report.ts could not run",
+  "assertions": [{"name":"ubuntu.version","ok":true,"reason":"the base image is ubuntu:24.04","raw":"ubuntu 24.04"},{"name":"toolchain.apt","ok":true,"reason":"apt-get update + install curl git ca-certificates unzip xz-utils tmux","raw":"exit=0/0"},{"name":"toolchain.node","ok":false,"reason":"node is not the pinned major v24.19.0","raw":""}]
+}

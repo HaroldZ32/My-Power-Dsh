@@ -8,8 +8,8 @@
   ],
   "verification_state": {
     "syntax": "bash -n docker/tui-lane.sh passes",
-    "exercised": "NOT YET. The two runs since the change both died on this environment's outbound network BEFORE the TUI step: attempt 1 on `curl: (35) Recv failure: Connection reset by peer` fetching node from nodejs.org, and the retry was still in the same early step when the budget ran out.",
-    "so": "THE FOUR NEW ASSERTIONS HAVE NEVER RUN. They are committed because leaving them uncommitted loses the work, not because they are proven. The next run that reaches the TUI step will exercise them.",
+    "exercised": "NO \u2014 THREE consecutive runs died before the TUI step, all on the same step: the node download from nodejs.org. attempt 1 `curl: (35) Recv failure: Connection reset by peer`; attempt 2 was broken BY ME (I deleted its evidence directory while it was still writing \u2014 100% my mistake, not the network); attempt 3 the same `curl: (35)`.",
+    "so": "THE FOUR NEW ASSERTIONS HAVE STILL NEVER RUN. They are committed because leaving them uncommitted loses the work, not because they are proven. THREE runs is enough to say the obstacle is this environment's outbound network rather than the change.",
     "what_would_settle_it": "one complete `--mode source --allow-rootful-docker --live` run on a machine whose outbound network to nodejs.org and github.com is not resetting mid-transfer"
   },
   "the_network_is_the_obstacle_not_the_code": {
@@ -24,5 +24,6 @@
   "not_claimed": [
     "the four new assertions are unexercised",
     "no run since this change has reached the TUI step"
-  ]
+  ],
+  "what_would_settle_it": "one complete `--mode source --allow-rootful-docker --live` run where nodejs.org does not reset mid-transfer. The node step is the FIRST hard dependency and the only one still without a fallback: Ubuntu 24.04's apt node is 18.x and the harness needs >= 22, so there is no cheap second source the way there was for bun (npm carries it)."
 }
