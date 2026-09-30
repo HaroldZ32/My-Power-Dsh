@@ -1845,6 +1845,9 @@ var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
 var TEAM_TASK_PATH = "/plugins/mpd-team/task";
 var TEAM_MAIL_PATH = "/plugins/mpd-team/mail";
 var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH];
+function approvalPhraseFor(planId) {
+  return `approve ${planId}`;
+}
 function buildTeamState(record, workspace, sessionId, executor) {
   const empty = {
     ok: true,
@@ -1932,6 +1935,7 @@ function buildTeamPlan(plan, workspace, sessionId) {
       description: plan.description,
       approval: plan.approval,
       stagedAt: plan.stagedAt,
+      phrase: approvalPhraseFor(plan.planId),
       approved: plan.approvedAt !== undefined,
       discarded: plan.discardedAt !== undefined,
       members: plan.members.map((member) => ({
@@ -1984,6 +1988,9 @@ function buildTeamMail(workspace) {
   });
   return { ok: true, workspace, messages, records: readRecords(workspace).length };
 }
+function planForSession(workspace, sessionId) {
+  return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId);
+}
 function registerTeamRoutes(webServer, deps) {
   if (webServer === undefined || typeof webServer.register !== "function")
     return false;
@@ -2026,8 +2033,7 @@ function registerTeamRoutes(webServer, deps) {
   }) && all;
   all = mount(TEAM_PLAN_PATH, (req) => {
     const sessionId = sessionOf(req);
-    const workspace = deps.workspace();
-    return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId);
+    return planForSession(deps.workspace(), sessionId);
   }) && all;
   all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all;
   all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all;
@@ -2149,6 +2155,14 @@ function apply(ctx) {
             return [...names];
           } catch {
             return [];
+          }
+        },
+        planFor: (workspace, sessionId) => {
+          try {
+            return planForSession(workspace, sessionId);
+          } catch (error) {
+            console.warn(`[mpd-team-core] reading the staged plan failed: ${String(error?.message ?? error)}`);
+            return { ok: true, workspace, sessionId, plan: null };
           }
         }
       });

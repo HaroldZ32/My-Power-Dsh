@@ -41,6 +41,21 @@ export const TEAM_MAIL_PATH = "/plugins/mpd-team/mail"
 /** Every route this module registers, so a reader and a test can enumerate them from one place. */
 export const TEAM_ROUTES: readonly string[] = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH]
 
+/**
+ * The exact phrase an approval gate demands for one staged plan.
+ *
+ * ONE IMPLEMENTATION FOR EVERY SURFACE. The Web panel, the TUI scene and any future surface must
+ * demand the SAME string, or a captain who learned the gesture in one place is refused in the other —
+ * and, worse, two spellings of "the thing you must type" make neither of them the contract. The phrase
+ * names the **`planId`**, which is the PRE-approval identity: the team record does not exist yet, so
+ * demanding its `teamId` is demanding something that cannot be known at the moment it is asked for.
+ * @param planId - the staged plan's own identity (`plan-<instant>`).
+ * @returns the exact string the user must type.
+ */
+export function approvalPhraseFor(planId: string): string {
+  return `approve ${planId}`
+}
+
 /** The reader key the route answers for, so a log can tell a panel from another consumer. */
 export const TEAM_WEB_READER = "web-panel"
 
@@ -255,6 +270,8 @@ export interface TeamWebPlan {
     approval: string
     /** ISO instant the plan was staged. */
     stagedAt: string
+    /** The EXACT string a gate demands before approving this plan. Served, never re-derived. */
+    phrase: string
     /** Whether an approval already committed; a second one is refused. */
     approved: boolean
     /** Whether it was discarded instead. */
@@ -313,6 +330,9 @@ export function buildTeamPlan(plan: StagedPlan | undefined, workspace: string, s
       description: plan.description,
       approval: plan.approval,
       stagedAt: plan.stagedAt,
+      // SERVED, NOT RE-DERIVED. Every consumer that computed this itself would be a second
+      // implementation of the gate, free to drift from this one.
+      phrase: approvalPhraseFor(plan.planId),
       approved: plan.approvedAt !== undefined,
       discarded: plan.discardedAt !== undefined,
       // The stage's OWN fields only. A staged plan carries no `provider`/`model`/`kind` — routing is
@@ -394,6 +414,21 @@ export function buildTeamMail(workspace: string): TeamWebMail {
   // nothing else, so asking it for a count invented a field that does not exist and read as 0 — which
   // would have told every panel "nothing was ever sent" about a mailbox holding messages.
   return { ok: true, workspace, messages, records: readRecords(workspace).length }
+}
+
+/**
+ * The ONE plan projection, shared by the route and the service.
+ *
+ * `buildTeamPlan` is pure and this is the impure half — it resolves the workspace itself, PER CALL,
+ * because one host serves many sessions with different workspaces (§6). Both consumers call THIS:
+ * the `/plan` route for the browser, and `mpdTeams.planFor` for the TUI. Neither re-reads the staging
+ * file, so the two cannot disagree about what is staged or what the gate demands.
+ * @param workspace - the workspace to read.
+ * @param sessionId - the session whose staged plan is wanted.
+ * @returns the payload.
+ */
+export function planForSession(workspace: string, sessionId: string): TeamWebPlan {
+  return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId)
 }
 
 /** The response surface a route handler may rely on, structurally typed. */
@@ -484,9 +519,8 @@ export function registerTeamRoutes(
   all = mount(TEAM_PLAN_PATH, (req) => {
     /** The session whose staged plan is asked for. */
     const sessionId = sessionOf(req)
-    /** The workspace resolved for THIS request, never cached across requests. */
-    const workspace = deps.workspace()
-    return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId)
+    // The SHARED projection — the same call the service exposes to the TUI, so the two cannot drift.
+    return planForSession(deps.workspace(), sessionId)
   }) && all
   all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all
   all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all

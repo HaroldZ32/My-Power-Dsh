@@ -61,7 +61,7 @@ import {
   type StagedPlan,
   type StagedTask,
 } from "./plan-store"
-import { registerTeamRoutes, TEAM_ROUTES } from "./team-web"
+import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
 import {
   activeTeamId,
   addTeamMember,
@@ -123,6 +123,17 @@ export interface MpdTeamsService {
   teamIds: (workspace: string) => string[]
   /** The member display names of one team, which is what the workmate in-use gate matches on. */
   memberNames: (workspace: string) => string[]
+  /**
+   * The STAGED PLAN of one session — what exists BEFORE an approval — or a null-plan payload.
+   *
+   * THE SAME PROJECTION THE `/plan` ROUTE SERVES, deliberately: a surface that re-read the staging
+   * file itself would be a second implementation of both the projection and the approval gate, free to
+   * drift from the Web panel's. This is the shared half; a surface only decides how to DRAW it.
+   * @param workspace - the workspace to read.
+   * @param sessionId - the session whose staged plan is wanted.
+   * @returns the payload, with `plan: null` when that session has nothing staged.
+   */
+  planFor: (workspace: string, sessionId: string) => TeamWebPlan
 }
 
 /** A tool result narrow enough for the adapter's renderer. */
@@ -293,6 +304,18 @@ export function apply(ctx: any): void {
             return [...names]
           } catch {
             return []
+          }
+        },
+        // THE SHARED PROJECTION. The TUI calls this and the `/plan` route calls `planForSession`
+        // directly; both resolve through the same function, so a surface cannot disagree with the Web
+        // panel about what is staged or what phrase the gate demands. It never throws: a broken
+        // staging file must redden a surface's empty state, not take its render down.
+        planFor: (workspace: string, sessionId: string) => {
+          try {
+            return planForSession(workspace, sessionId)
+          } catch (error) {
+            console.warn(`[mpd-team-core] reading the staged plan failed: ${String((error as Error)?.message ?? error)}`)
+            return { ok: true, workspace, sessionId, plan: null }
           }
         },
       } satisfies MpdTeamsService)

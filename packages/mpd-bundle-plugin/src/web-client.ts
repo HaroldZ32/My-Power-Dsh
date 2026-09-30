@@ -416,6 +416,14 @@
   // with `Unexpected token 'const'`, in every arm that evaluates the served bytes.
   /** The route the team view polls; the host row registers the same path. */
   const TEAM_STATE_PATH = "/plugins/mpd-team/state"
+  /**
+   * The route serving the session's STAGED PLAN — the shared projection's other half.
+   *
+   * A SEPARATE ROUTE, and the view polls BOTH in one pass: a staged plan is what exists BEFORE an
+   * approval and the team record is what exists AFTER one, so a panel that read only records showed
+   * nothing for the state a captain most needs to act on.
+   */
+  const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
 
   /** The shared team view, built once per client entry; undefined when the splice is absent. */
   let teamView: { TeamView: (props?: unknown) => unknown } | undefined
@@ -441,7 +449,7 @@
     if (react === undefined) return undefined
     if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
     try {
-      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH })
+      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH, planPath: TEAM_PLAN_PATH })
       return teamView
     } catch (error) {
       console.warn("[mpd] the team view could not be built: " + String(error))
@@ -1442,7 +1450,7 @@ declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
 interface MpdTeamViewGlobal {
   /** Build the shared team view once, so both hosts render one component with one poller. */
-  createTeamView: (deps: { react: unknown; statePath: string; pollMs?: number }) => MpdTeamViewModule
+  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; pollMs?: number }) => MpdTeamViewModule
 }
 
 /** The built team view. */

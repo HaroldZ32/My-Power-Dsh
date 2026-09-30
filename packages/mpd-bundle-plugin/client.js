@@ -6400,6 +6400,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // with `Unexpected token 'const'`, in every arm that evaluates the served bytes.
   /** The route the team view polls; the host row registers the same path. */
   const TEAM_STATE_PATH = "/plugins/mpd-team/state"
+  /**
+   * The route serving the session's STAGED PLAN — the shared projection's other half.
+   *
+   * A SEPARATE ROUTE, and the view polls BOTH in one pass: a staged plan is what exists BEFORE an
+   * approval and the team record is what exists AFTER one, so a panel that read only records showed
+   * nothing for the state a captain most needs to act on.
+   */
+  const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
 
   /** The shared team view, built once per client entry; undefined when the splice is absent. */
   let teamView                                                        
@@ -6425,7 +6433,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     if (react === undefined) return undefined
     if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
     try {
-      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH })
+      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH, planPath: TEAM_PLAN_PATH })
       return teamView
     } catch (error) {
       console.warn("[mpd] the team view could not be built: " + String(error))
@@ -8898,10 +8906,41 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                       
    
 
+  /** The staged plan, as `/plugins/mpd-team/plan` serves it — the SHARED projection's half. */
+                      
+                                          
+                
+                                                                                    
+           
+                                                                                         
+                    
+                                          
+                  
+                                  
+                         
+                                                       
+                      
+                                       
+                      
+                                                                                                     
+                    
+                                                   
+                       
+                                              
+                        
+                                           
+                                                                                       
+                                       
+                                                                                                              
+            
+   
+
   /** What one poll produced: the last payload, or the last failure. */
                        
                                                                        
                            
+                                                                                               
+                         
                                                                                         
                    
    
@@ -8941,7 +8980,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
      * @param deps - the React surface and the route path.
      * @returns the view component and its poller.
      */
-    createTeamView(deps                                                             )   
+    createTeamView(deps                                                                                )   
                                                                                                         
                                             
                                                                                     
@@ -8951,31 +8990,44 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       {
       /** The two dependencies this closure reads on every call. */
       /** The two dependencies this closure reads on every call. */
-      const { react, statePath } = deps
+      /** The two dependencies this closure reads on every call, plus the plan route when given. */
+      const { react, statePath, planPath } = deps
       /** How often the panel re-reads; the route is cheap and this is a status surface. */
       const pollMs = typeof deps.pollMs === "number" && deps.pollMs > 0 ? deps.pollMs : 2000
 
       /** Read the route once. Never rejects: a failure is a VALUE the panel renders. */
-      /** Read the route once, never rejecting. */
-      const read = async (sessionId        )                     => {
+      /** The session suffix both routes take, so the two cannot address different sessions. */
+      const queryOf = (sessionId        )         => (sessionId === "" ? "" : "?sessionId=" + encodeURIComponent(sessionId))
+      /** Read ONE route, never rejecting; a failure is a VALUE the panel renders. */
+      const readOne = async     (path        , sessionId        )                                                => {
         try {
-          /** The route, carrying the session only when the caller named one. */
-          const url = statePath + (sessionId === "" ? "" : "?sessionId=" + encodeURIComponent(sessionId))
           /** The host's own transport; the panel never assumes a proxy. */
-          const response = await fetch(url, { headers: { accept: "application/json" } })
-          if (!response.ok) return { state: null, error: { status: response.status } }
+          const response = await fetch(path + queryOf(sessionId), { headers: { accept: "application/json" } })
+          if (!response.ok) return { value: null, error: { status: response.status } }
           /** The served payload, validated below rather than trusted. */
-          const payload = (await response.json())             
-          // A payload without the route's own `ok` marker is treated as unreadable rather than
-          // rendered as an empty team, which would claim "no team" about a route that failed.
-          if (payload === null || typeof payload !== "object" || payload.ok !== true) return { state: null, error: { status: response.status, body: payload } }
-          return { state: payload }
+          const payload = (await response.json())                        
+          // A payload without the route's own `ok` marker is treated as unreadable rather than rendered
+          // as an empty team, which would claim "no team" about a route that failed.
+          if (payload === null || typeof payload !== "object" || payload.ok !== true) return { value: null, error: { status: response.status, body: payload } }
+          return { value: payload }
         } catch (error) {
-          return { state: null, error }
+          return { value: null, error }
         }
+      }
+      /** Read BOTH routes, never rejecting. */
+      const read = async (sessionId        )                     => {
+        // BOTH ROUTES IN ONE PASS. They are two halves of one answer — the team as it exists after an
+        // approval, and the plan that awaits one — and a panel that polled them separately could show a
+        // staged plan beside a team that approval had already replaced.
+        const [state, plan] = await Promise.all([
+          readOne           (statePath, sessionId),
+          planPath === undefined ? Promise.resolve({ value: null                    }) : readOne          (planPath, sessionId),
+        ])
+        return { state: state.value, plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value, error: state.error }
       }
 
       /** Poll until stopped; the interval is owned by the CALLER's effect. */
+      /** Start polling; the returned function stops it. */
       /** Start polling; the returned function stops it. */
       const start = (sessionId        , publish                           )               => {
         /** Whether the caller still wants results; cleared by the returned stop function. */
@@ -8995,6 +9047,44 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
 
       /**
+       * The STAGED PLAN, drawn from the shared projection.
+       *
+       * Every string here comes from the payload — including the approval phrase, which is SERVED
+       * rather than re-derived, so the Web panel and the TUI scene demand the same thing.
+       * @param plan - the staged plan half of the payload.
+       * @returns the section element.
+       */
+      const planSection = (plan                               )          => {
+        /** The plan's rows, in render order. */
+        const rows            = [
+          react.createElement("div", { key: "p-head", style: CSS.head }, plan.name),
+          react.createElement("div", { key: "p-id", style: CSS.dim }, plan.planId + " · staged · " + plan.approval + " approval"),
+          react.createElement("div", { key: "p-desc", style: { marginTop: "4px" } }, plan.description),
+          react.createElement("div", { key: "p-members-head", style: { marginTop: "8px", fontWeight: 600 } }, "Wants " + plan.members.length + " member(s)"),
+        ]
+        for (const member of plan.members) {
+          rows.push(react.createElement("div", { key: "pm-" + member.name, style: CSS.row },
+            react.createElement("span", { style: { flex: "1 1 auto" } }, member.name),
+            react.createElement("span", { style: CSS.dim }, member.role ?? "")))
+        }
+        rows.push(react.createElement("div", { key: "p-tasks-head", style: { marginTop: "8px", fontWeight: 600 } }, "Wants " + plan.tasks.length + " task(s)"))
+        for (const task of plan.tasks) {
+          rows.push(react.createElement("div", {
+            key: "pt-" + task.subject,
+            style: { ...CSS.node, borderColor: undefined },
+            title: task.description,
+          },
+          task.subject + (task.owner === undefined ? "" : " @" + task.owner),
+          task.blockedBy.length === 0 ? null : react.createElement("div", { style: { ...CSS.dim, fontSize: "10px" } }, "⇠ " + task.blockedBy.join(","))))
+        }
+        // THE GATE, stated where the plan is read. The phrase is the PRE-approval identity, so it is
+        // knowable the whole time the plan is staged — which a teamId would not be.
+        rows.push(react.createElement("div", { key: "p-gate", style: { marginTop: "10px", fontWeight: 600 } }, "To approve, type:"))
+        rows.push(react.createElement("div", { key: "p-phrase", style: { ...CSS.node, marginTop: "2px", fontWeight: 700 } }, plan.phrase))
+        return react.createElement("div", { style: CSS.panel }, rows)
+      }
+
+      /**
        * The team panel.
        *
        * The session id comes from the host's own props when it offers one (both hosts do, in their
@@ -9007,7 +9097,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The session this panel addresses; empty asks the route for the workspace principal. */
         const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "")
         /** The polled store and its setter. */
-        const [store, setStore] = react.useState({ state: null, error: undefined }             )
+        const [store, setStore] = react.useState({ state: null, plan: null, error: undefined }             )
         // One poller per session: the effect re-runs when the host hands this panel a different one.
         react.useEffect(() => start(sessionId, setStore), [sessionId])
         /** The store, narrowed out of the tuple above. */
@@ -9021,6 +9111,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               : "No team state is being served. The mpd team row may not be mounted in this profile.")
         }
         if (state.team === null) {
+          // A STAGED PLAN WITH NO TEAM IS THE NORMAL PRE-APPROVAL STATE, not an empty one: the team
+          // record is materialised AT approval, so before one there is nothing to show here and
+          // everything to show in the plan. Returning the empty sentence would have hidden the very
+          // thing the captain came to approve.
+          if (current.plan !== null && current.plan.plan !== null) return planSection(current.plan.plan)
           return react.createElement("div", { style: { ...CSS.panel, ...CSS.dim } },
             "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.")
         }
@@ -9388,7 +9483,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
                              
                                                                                              
-                                                                                                     
+                                                                                                                        
  
 
 /** The built team view. */

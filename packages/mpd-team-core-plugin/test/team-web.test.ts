@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, registerTeamRoutes } from "../src/team-web"
+import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, planForSession, registerTeamRoutes } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -352,5 +352,60 @@ describe("the route family", () => {
     // another — and the client's constants come from the same list.
     expect(TEAM_ROUTES.length).toBe(4)
     expect(TEAM_ROUTES).toContain(TEAM_PLAN_PATH)
+  })
+})
+
+// ── the SHARED half: one phrase rule, one projection, two consumers ─────────
+//
+// The user's directive for this work: the Web panel and the TUI scene share the infrastructure and
+// differ only in how they DRAW it. These arms pin the two things that would otherwise be implemented
+// twice — the approval phrase and the plan projection — because two spellings of "the thing you must
+// type" make neither of them the contract.
+describe("the shared approval phrase", () => {
+  test("names the planId, and is SERVED in the payload rather than re-derived by a consumer", () => {
+    /** The workspace holding the staged plan. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-phrase-"))
+    sandboxes.push(workspace)
+    /** A staged plan, which is the only state in which a gate is asked for a phrase. */
+    const staged = stagePlan(workspace, "sess-phrase", { name: "wave", description: "d", approval: "required" }, NOW)
+    writePlan(workspace, staged)
+    /** The payload a surface would render. */
+    const payload = planForSession(workspace, "sess-phrase")
+    // THE PHRASE IS THE PLAN ID, because that is the PRE-approval identity: at the moment the gate
+    // asks, no `teamId` exists to demand.
+    expect(payload.plan?.phrase).toBe(approvalPhraseFor(staged.planId))
+    expect(payload.plan?.phrase).toBe(`approve ${staged.planId}`)
+    expect(payload.plan?.phrase.startsWith("approve plan-")).toBe(true)
+    // SERVED, not re-derived: a consumer that computed this itself would be a second implementation of
+    // the gate, free to drift from this one.
+    expect(payload.plan?.phrase).toContain(payload.plan?.planId ?? "")
+  })
+
+  test("planForSession and the /plan route answer with the SAME projection", () => {
+    // One function feeds both, so a surface cannot disagree with the Web panel about what is staged.
+    /** The workspace under test. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-same-"))
+    sandboxes.push(workspace)
+    /** A staged plan with one member and one task. */
+    const staged = addTask(
+      addMember(
+        stagePlan(workspace, "s1", { name: "n", description: "d", approval: "required" }, NOW),
+        { name: "Reviewer", description: "judges", prompt: "judge" },
+      ),
+      { subject: "review it", description: "acceptance" },
+    )
+    writePlan(workspace, staged)
+    /** The routes the double captured, by path. */
+    const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.set(route.path, route.handler); return () => {} } }, {
+      recordFor: () => undefined, workspace: () => workspace, executor: () => EXECUTOR, effect: (fn: () => unknown) => fn(), warn: () => {},
+    })
+    /** The response double. */
+    const captured: { body: unknown } = { body: undefined }
+    ;(routes.get(TEAM_PLAN_PATH) as (req: unknown, res: unknown) => unknown)(
+      { url: `${TEAM_PLAN_PATH}?sessionId=s1` },
+      { writeHead: () => {}, end: (text: string) => { captured.body = JSON.parse(text) } },
+    )
+    expect(captured.body).toEqual(planForSession(workspace, "s1"))
   })
 })
