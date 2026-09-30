@@ -302,13 +302,31 @@ esac
 # ── 04. bun (official install script, into the toolchain dir) ─────────────────
 log ""
 log "----- bun (official install script) -----"
+# ── the official script FIRST, npm SECOND, and the route is RECORDED ─────────
+# The official script fetches the binary from GITHUB RELEASES, and this environment's route to
+# github.com is intermittent: measured twice in one session as
+# `curl: (56) Failure when receiving data from the peer` and
+# `curl: (28) Failed to connect to github.com port 443 after 135500 ms`, while registry.npmjs.org
+# answered 200 in under a second. A flake there REDDENED A LANE WHOSE SUBJECT IS THIS BUNDLE — the
+# toolchain is a means, not the thing under test — and a retry passed, which is the definition of an
+# assertion that measures the network rather than the artifact. So the fallback exists, and `fact bun`
+# names which route produced the binary so a reader is never told the official script ran when it did not.
+# `run_step` returns the append's status, NOT the child's — its own contract is "never abort (the
+# verdict is the report's)" — so the fallback tests the `STEP_CODE` global it sets. Measured: an
+# `|| { ... }` here never fired even though the step exited 1, and the fallback silently did not run.
+BUN_ROUTE="official-script"
 run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL https://bun.sh/install | bash'
-ln -sf "$BUN_INSTALL/bin/bun" /usr/local/bin/bun
+if [ "$STEP_CODE" != "0" ]; then
+  BUN_ROUTE="npm"
+  run_step 03-bun-npm bash -c 'set -euo pipefail; npm i -g bun'
+fi
+ln -sf "$BUN_INSTALL/bin/bun" /usr/local/bin/bun 2>/dev/null || true
+command -v bun >/dev/null 2>&1 || ln -sf "$(npm root -g)/bun/bin/bun" /usr/local/bin/bun 2>/dev/null || true
 BUN_V="$(bun --version 2>/dev/null || true)"
-fact bun "$BUN_V (BUN_INSTALL=$BUN_INSTALL)"
+fact bun "$BUN_V (route=$BUN_ROUTE, BUN_INSTALL=$BUN_INSTALL)"
 case "$BUN_V" in
-  1.*) record toolchain.bun true "bun installed by the official script and asserted on PATH" "$BUN_V" ;;
-  *) record toolchain.bun false "bun did not install / did not report a 1.x version" "$BUN_V" ;;
+  1.*) record toolchain.bun true "bun $BUN_V on PATH, installed via $BUN_ROUTE" "$BUN_V" ;;
+  *) record toolchain.bun false "bun did not install / did not report a 1.x version (routes tried: official-script, npm)" "$BUN_V" ;;
 esac
 [ -n "$BUN_V" ] || bail "bun is not usable"
 
