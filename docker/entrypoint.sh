@@ -277,12 +277,24 @@ case "$(dpkg --print-architecture)" in
     ;;
 esac
 fact nodeArch "$(dpkg --print-architecture) -> linux-$NODE_ARCH"
+# ── THE PREINSTALLED NODE IS ASSERTED, NOT RE-FETCHED (default) ───────────────
+# The image carries node from the OFFICIAL `node:24-bookworm` image (docker/Dockerfile), because the
+# nodejs.org tarball path — the FIRST hard dependency of this run — died on this environment's network
+# three times in a row even with `--retry 8 --retry-all-errors`. That path is NOT deleted: set
+# `MPD_E2E_NODE_SOURCE=tarball` and the original install runs exactly as it did, so a machine whose
+# nodejs.org route holds can still make the stronger claim.
+if [ "${MPD_E2E_NODE_SOURCE:-image}" = "tarball" ]; then
+fact nodeSource "tarball (nodejs.org, sha256 verified)"
 run_step 02-node bash -c '
 set -euo pipefail
 V="$1"; A="$2"
 cd /tmp
-curl -fsSLO "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz"
-curl -fsSL -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt"
+# --retry-all-errors, NOT just --retry: curl only retries its own transient failures by default, and
+# `curl: (35) Recv failure: Connection reset by peer` is a TRANSPORT error that a plain --retry leaves
+# alone. Measured: three consecutive runs died on THIS step, which is the first hard dependency of the
+# whole lane, while the same lane had passed twice on the same code when the network held.
+curl -fsSLO --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 "https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz"
+curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 -o SHASUMS256.txt "https://nodejs.org/dist/v${V}/SHASUMS256.txt"
 grep " node-v${V}-linux-${A}.tar.xz\$" SHASUMS256.txt > node.sha256
 sha256sum -c node.sha256
 tar -xJf "node-v${V}-linux-${A}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner
@@ -293,10 +305,22 @@ npm -v
 NODE_V="$(node -v 2>/dev/null || true)"
 NPM_V="$(npm -v 2>/dev/null || true)"
 fact node "$NODE_V (npm $NPM_V)"
-case "$NODE_V" in
-  "v${NODE_VERSION%%.*}"*) record toolchain.node true "install by official tarball, sha256 verified against the published SHASUMS256.txt" "$NODE_V ($(witness "$STEPS_DIR/02-node.log" 'linux-.*tar\.xz: OK' 1))" ;;
-  *) record toolchain.node false "node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
-esac
+  case "$NODE_V" in
+    "v${NODE_VERSION%%.*}"*) record toolchain.node true "install by official tarball, sha256 verified against the published SHASUMS256.txt" "$NODE_V ($(witness "$STEPS_DIR/02-node.log" 'linux-.*tar\.xz: OK' 1))" ;;
+    *) record toolchain.node false "node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
+  esac
+else
+  # The image's own node. `node -v` and `npm -v` are BOTH asserted: copying `/usr/local` carries npm's
+  # module tree with it, and a node that runs while npm does not would fail at the first `dsh plugin`
+  # call instead of here where the cause is legible.
+  NODE_V="$(node -v 2>/dev/null || true)"
+  NPM_V="$(npm -v 2>/dev/null || true)"
+  fact nodeSource "image (node:24-bookworm /usr/local)"
+  case "$NODE_V" in
+    "v${NODE_VERSION%%.*}"*) [ -n "$NPM_V" ] && record toolchain.node true "node $NODE_V and npm $NPM_V come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org" "$NODE_V npm=$NPM_V" || record toolchain.node false "node runs but npm does not — the copied /usr/local is incomplete" "node=$NODE_V npm=missing" ;;
+    *) record toolchain.node false "the image's node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;
+  esac
+fi
 [ -n "$NODE_V" ] || bail "node is not on PATH after the tarball install"
 
 # ── 04. bun (official install script, into the toolchain dir) ─────────────────
@@ -315,7 +339,7 @@ log "----- bun (official install script) -----"
 # verdict is the report's)" — so the fallback tests the `STEP_CODE` global it sets. Measured: an
 # `|| { ... }` here never fired even though the step exited 1, and the fallback silently did not run.
 BUN_ROUTE="official-script"
-run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL https://bun.sh/install | bash'
+run_step 03-bun bash -c 'set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash'
 if [ "$STEP_CODE" != "0" ]; then
   BUN_ROUTE="npm"
   # `--allow-scripts=bun`: the npm package downloads its platform binary in `install.js`, and npm

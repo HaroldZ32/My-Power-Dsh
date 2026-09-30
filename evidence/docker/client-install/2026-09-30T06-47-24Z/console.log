@@ -1,0 +1,37 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 975B done
+#1 DONE 0.0s
+
+#2 [mpd-oneclick internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 6.33kB done
+#2 DONE 0.0s
+
+#3 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [mpd-client internal] load metadata for docker.io/library/node:24-bookworm
+#4 ERROR: failed to do request: Head "https://registry-1.docker.io/v2/library/node/manifests/24-bookworm": dial tcp 108.160.167.147:443: i/o timeout
+------
+ > [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm:
+------
+Dockerfile:35
+
+--------------------
+
+  33 |     # apparatus is TypeScript and is executed by the Node 24 the entrypoint installs, so the image needs
+
+  34 |     # no build step of its own.
+
+  35 | >>> FROM node:24-bookworm AS node-runtime
+
+  36 |     FROM ubuntu:24.04
+
+  37 |     # The official Node image's `/usr/local` carries node, npm and npx with their module tree intact, so
+
+--------------------
+
+target mpd-client: failed to solve: DeadlineExceeded: node:24-bookworm: failed to resolve source metadata for docker.io/library/node:24-bookworm: failed to do request: Head "https://registry-1.docker.io/v2/library/node/manifests/24-bookworm": dial tcp 108.160.167.147:443: i/o timeout
+
