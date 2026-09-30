@@ -271,6 +271,47 @@ seam with native-as-default, and both rebuilt surfaces.
 47 arms, not by a live PTY); no live teammate was ever spawned (this environment holds no credentials,
 and §7 forbids writing any); no browser profile was booted.
 
+## 5e. OPEN after W5 — found by the real-host TUI lane (2026-09-30)
+
+The real-machine lane was repaired and run for the first time since the split
+(`evidence/tui/lane-repair/20260930T013130Z/`). `tui-mount` **PASSES** on a real PTY — triple layer in
+order, `crashes=[]`, `preset=mpd`, `isolationOffenders=0`. `tui-team-surface` runs and fails 10
+assertions, and the failures resolve to THREE findings rather than ten defects. They are recorded here
+because each is a consequence of the split that was not carried through.
+
+### (a) The fixture writes the PRE-SPLIT record layout — one root cause
+
+`skills/dsh-qa/scripts/tui-team-surface.ts` `writeTeamFixture()` writes
+`<workspace>/.mpd/team/<id>/team.json`. W1 moved the record to
+`<workspace>/.mpd/team/teams/<teamId>.json` plus the index `.mpd/team/teams.json`, so the scene reads
+NO team and renders `MPD plan approval — (none)`. A4–A8, B2, B3, H1, H3 and H4 all fail as a
+**cascade from that**, not independently.
+
+No unit arm could have caught it: the arms build their fixtures through the STORE, so they write the new
+layout by construction. Only a case that hand-writes a record and drives a real host can see the two
+disagree.
+
+### (b) The plan scene still refuses to approve, claiming no tool exists — STALE
+
+`packages/mpd-tui-plugin/src/scenes.ts` exports `PLAN_MUTATION_UNAVAILABLE`, whose comment says the
+approval tool is "GONE with the plugin that registered them" and that "the OFFICIAL Agent Teams plane
+has NO equivalent". The first half is true of the RETIRED vendored plugin and FALSE of this bundle:
+`mpd-team-core` registers **`agent_teams_plan`** with an **`approve`** action (`src/index.ts`, the
+`action === "approve"` branch), which raises the team through the NATIVE executor. The scene should call
+it, and `agent_teams_dispatch`/`_mail`/`_control` are registered beside it.
+
+### (c) `mpd-team-core`'s own copy names a tool nothing registers
+
+Its `/agent-teams` usage lines tell the user to approve "with `agent_teams_approve`" and to add members
+"with `agent_teams_add_member`" / tasks "with `agent_teams_create_task`". None of those three is
+registered — the real surface is the `action` enum on `agent_teams_plan`. The bundled README and
+`docs/plan-team-plane-split.md` were updated in W1; these user-facing strings were not.
+
+**None of the three is a reason to doubt the split itself** — the record, the executor and both rebuilt
+surfaces are proven by their own arms and by `tui-mount`. They are the last mile of the surface
+migration, and (b) is the one that matters: a captain reading the TUI is told approval is impossible
+when it is one call away.
+
 ## 6. Acceptance for W1
 
 1. `bun test packages` green. ✅ 1287 pass, 3 skip, 0 fail (119 files).
