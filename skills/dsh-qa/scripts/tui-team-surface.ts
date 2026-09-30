@@ -60,10 +60,14 @@ export const TASK: string = "t3"
 export const PLAN_SCENE: TuiScene = { id: "mpd-tui-plan", title: "MPD plan approval" }
 /** The second frozen scene of the pair: its registration is asserted alongside the plan scene's. */
 export const TEAM_SCENE: TuiScene = { id: "mpd-tui-team", title: "MPD team" }
-/** The adopted tools the two mutations must ride (§6.1). */
-export const APPROVE_TOOL: string = "agent_teams_approve"
-/** The adopted tool the discard mutation rides; recorded so the boundary double answers it too. */
-export const DISCARD_TOOL: string = "agent_teams_delete"
+// THE TOOL NAME MOVED WITH THE SPLIT (W6). These named the RETIRED vendored plugin's tools, and after
+// the split the approval rides `mpd-team-core`'s own `agent_teams_plan` — one tool with an `action`
+// enum, not a tool per verb. The boundary double below answers THIS name, so a stale constant here
+// made `available()` answer false and the surface refuse before any call could be observed.
+/** The tool both plan mutations ride, through its `action` argument (§6.1). */
+export const APPROVE_TOOL: string = "agent_teams_plan"
+/** The discard mutation rides the SAME tool, so the boundary records it under one name. */
+export const DISCARD_TOOL: string = "agent_teams_plan"
 /** The frozen confirmation phrase is built from the record's OWN id (§4.1). */
 export const TEAM_ID: string = "mpd-fixture-1"
 /** The display name the surface renders beside the id; A4 reads it off the rendered line. */
@@ -279,16 +283,135 @@ export interface WriteTeamFixtureOptions {
  * @returns the record dir, the file, and the file's digest (the "no write" witness).
  */
 export function writeTeamFixture(workspace: string, record: StagedTeamRecord, { mailbox = true }: WriteTeamFixtureOptions = {}): TeamFixture {
-  /** The record's own directory under the sandbox workspace's `.mpd/team/`. */
-  const dir = join(workspace, ".mpd", "team", String(record.id))
-  mkdirSync(join(dir, "inbox"), { recursive: true })
-  /** Absolute path of the serialized record. */
-  const file = join(dir, "team.json")
-  writeFileSync(file, JSON.stringify(record, null, 2) + "\n")
+  // ── THE POST-SPLIT LAYOUT (fixed 2026-09-30) ────────────────────────────────
+  // This wrote the RETIRED directory form, `<ws>/.mpd/team/<id>/team.json`. The team-plane split
+  // moved the record to `<ws>/.mpd/team/teams/<teamId>.json` plus the index
+  // `<ws>/.mpd/team/teams.json`, so the surface read NOTHING and rendered
+  // `MPD plan approval — (none)` — and A4–A8, B2, B3, H1, H3 and H4 all failed as a CASCADE from
+  // that one cause. No unit arm could see it: the arms build fixtures through the STORE.
+  /** The teams directory the record lives in. */
+  const teamsDir = join(workspace, ".mpd", "team", "teams")
+  mkdirSync(join(teamsDir, "inbox"), { recursive: true })
+  /** The record file, named by its OWN id as the store names it. */
+  const file = join(teamsDir, String(record.id) + ".json")
+  writeFileSync(file, JSON.stringify(teamRecordFrom(record), null, 2) + "\n")
+  // The INDEX is what `activeTeamId` reads; a record without one is a team no session is bound to.
+  writeFileSync(join(workspace, ".mpd", "team", "teams.json"), JSON.stringify({ version: 1, active: { [record.captainSessionId]: record.id } }, null, 2) + "\n")
   if (mailbox) {
-    writeFileSync(join(dir, "inbox", "captain.jsonl"), JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }) + "\n")
+    writeFileSync(join(teamsDir, "inbox", "captain.jsonl"), JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }) + "\n")
   }
-  return { dir, file, sha256: sha256File(file) }
+  return { dir: teamsDir, file, sha256: sha256File(file) }
+}
+
+/** An ISO instant from one the fixture records as epoch milliseconds. */
+const isoOf = (ms: number): string => new Date(Number.isFinite(ms) ? ms : 0).toISOString()
+
+/**
+ * Translate the case's own record shape into the STORE's `TeamRecord`.
+ *
+ * The case's `StagedTeamRecord` predates the split and names its fields its own way
+ * (`id`/`captainSessionId`/`taskSeq`); the store is what the surface actually reads, so the fixture
+ * must speak the store's language rather than a lookalike of it. Every union value is mapped
+ * EXPLICITLY, because a silently mistyped status is a state the surface would render as `open`.
+ * @param record The case's record.
+ * @returns the record as `.mpd/team/teams/<id>.json` carries it.
+ */
+function teamRecordFrom(record: StagedTeamRecord): Record<string, unknown> {
+  /** The store's own status vocabulary; the case's `running` phase is the store's `active`. */
+  const phase = record.phase === "staged" ? "staged" : record.phase === "running" ? "active" : record.phase === "ended" ? "ended" : "idle"
+  /** The task status the store knows, defaulting to `pending` for anything else. */
+  const statusOf = (value: string): string =>
+    value === "in_progress" || value === "completed" || value === "failed" || value === "cancelled" || value === "claimed" ? value : "pending"
+  /** The task kind the store knows, defaulting to `work`. */
+  const kindOf = (value: string): string =>
+    value === "requirement" || value === "review" || value === "repair" || value === "integration" ? value : "work"
+  return {
+    version: 1,
+    teamId: String(record.id),
+    name: record.name,
+    description: record.description,
+    leadSessionId: record.captainSessionId,
+    phase,
+    createdAt: isoOf(record.createdAt),
+    members: record.members.map((member, index) => ({
+      id: member.id,
+      name: member.name,
+      description: member.role,
+      ...(member.role === "" ? {} : { role: member.role }),
+      ...(member.provider === "" && member.model === "" ? {} : { route: member.provider + "/" + member.model }),
+      status: member.status === "running" || member.status === "failed" || member.status === "inactive" ? member.status : "inactive",
+      spawnedAt: isoOf(member.joinedAt),
+      // Order is the store's own numbering; a member without one reads as unnumbered rather than 0.
+      ...(index === 0 ? {} : {}),
+    })),
+    tasks: record.tasks.map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      description: task.subject,
+      kind: kindOf(task.kind),
+      status: statusOf(task.status),
+      blockedBy: [...task.dependencies],
+      writeScopes: [],
+      ...(task.assignee === "" ? {} : { owner: task.assignee }),
+      attempt: task.attempt,
+      round: task.round,
+      ...(task.verdict === undefined ? {} : { verdict: task.verdict }),
+      createdAt: isoOf(task.createdAt),
+      updatedAt: isoOf(task.updatedAt),
+      revision: 1,
+    })),
+    nextMemberNumber: record.members.length + 1,
+    nextTaskNumber: Math.max(record.taskSeq, record.tasks.length + 1),
+  }
+}
+
+/**
+ * The PRE-approval identity of a staged plan, derived from the record the case builds.
+ *
+ * ONE derivation, used by both the fixture that writes the plan and the step that types the phrase: a
+ * second spelling of the plan id would make the gate and the fixture disagree, and the case would then
+ * fail for a reason that has nothing to do with the surface.
+ * @param record The case's staged record.
+ * @returns the plan id (`plan-<instant>`).
+ */
+export function planIdOf(record: StagedTeamRecord): string {
+  return "plan-" + isoOf(record.createdAt).replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")
+}
+
+/**
+ * Stage a PLAN for one session, in the layout the shared projection reads.
+ *
+ * WHY THE RECORD ALONE IS NOT ENOUGH (W6): the plan surface is usable through the SHARED projection,
+ * and a plan is keyed by SESSION — `.mpd/team/staging/<sessionId>.json`. The team record is
+ * materialised AT approval, so before one there is no record, and a fixture that wrote only a record
+ * would leave the surface showing its empty state in exactly the state it exists for.
+ * @param workspace The sandbox workspace.
+ * @param sessionId The LIVE session the surface will read with, discovered after the boot.
+ * @param record The case's staged record, whose members and tasks become the plan's.
+ * @returns the staged plan's file and its own identity.
+ */
+export function stagePlanFixture(workspace: string, sessionId: string, record: StagedTeamRecord): { file: string; planId: string } {
+  /** The staging directory, one JSON file per session as the store writes it. */
+  const stagingDir = join(workspace, ".mpd", "team", "staging")
+  mkdirSync(stagingDir, { recursive: true })
+  /** The plan's own identity: the PRE-approval name, and the phrase the gate demands. */
+  const planId = planIdOf(record)
+  /** The staged plan, in the store's own shape. */
+  const plan = {
+    version: 1,
+    planId,
+    sessionId,
+    name: record.name,
+    description: record.description,
+    approval: "required",
+    members: record.members.map((member) => ({ name: member.name, description: member.role === "" ? member.name : member.role, prompt: member.role === "" ? member.name : member.role, ...(member.role === "" ? {} : { role: member.role }) })),
+    tasks: record.tasks.map((task) => ({ subject: task.subject, description: task.subject, blockedBy: [...task.dependencies], ...(task.assignee === "" ? {} : { owner: task.assignee }) })),
+    stagedAt: isoOf(record.createdAt),
+  }
+  /** Where the plan is written; the surface resolves it by session id. */
+  const file = join(stagingDir, sessionId + ".json")
+  writeFileSync(file, JSON.stringify(plan, null, 2) + "\n")
+  return { file, planId }
 }
 
 /** The lines of a rendered surface this case judges, already trimmed for the pane's own padding. */
@@ -1146,7 +1269,7 @@ export async function armBoundary({ workspace, home, outDir }: BoundaryArmOption
         /** The record directory the malformed bytes are written into. */
         const dir = join(ws, ".mpd", "team", TEAM_ID)
         mkdirSync(dir, { recursive: true })
-        writeFileSync(join(dir, "team.json"), "{ this is not JSON at all")
+        writeFileSync(join(dir, TEAM_ID + ".json"), "{ this is not JSON at all")
       },
     },
     { name: "non-staged-record", setup: (ws: string): void => { writeTeamFixture(ws, { ...stagedRecord(), phase: "running" }) } },
@@ -1459,7 +1582,10 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   // The record exists BEFORE the surface opens, so the scene reads it from disk.
   writeTeamFixture(workspace, stagedRecord({ captainSessionId: "sess-not-yet-attached" }))
   /** The frozen confirmation phrase, built from the fixture's own team id. */
-  const phrase = approvalPhrase()
+  // THE PHRASE NAMES THE PLAN, not the team: the shared projection builds it from the PRE-approval
+  // identity, because at the moment the gate asks there is no team id to demand. It is assigned by the
+  // step below, which is where the live session id becomes known.
+  let phrase = approvalPhrase()
   /** The driven steps, in order; the picker dialog is driven LAST and in its own capture. */
   const steps: TuiStep[] = [
     {
@@ -1467,9 +1593,21 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
       before: (): void => {
         /** The live session id the boot produced for the sandbox workspace. */
         const id = liveSessionId(root, workspace)
+        /** The record the fixture — and the plan staged from it — both describe. */
+        const staged = stagedRecord({ captainSessionId: id ?? "unresolved-live-session" })
         /** The fixture re-written with that live session as its captain. */
-        const fixture = writeTeamFixture(workspace, stagedRecord({ captainSessionId: id ?? "unresolved-live-session" }))
+        const fixture = writeTeamFixture(workspace, staged)
         log("host: fixture captainSessionId := " + JSON.stringify(id ?? null) + " (record " + fixture.sha256.slice(0, 12) + ")")
+        // THE PLAN HALF, staged here because a plan is keyed by SESSION and the session id only exists
+        // once the boot has created one. The record alone is not enough: it is materialised AT
+        // approval, so a surface reading only records shows its empty state over a plan awaiting a
+        // decision — which is the defect this case was written to catch.
+        if (id !== undefined) {
+          /** The staged plan and the identity its gate demands. */
+          const stagedPlan = stagePlanFixture(workspace, id, staged)
+          phrase = approvalPhrase(stagedPlan.planId)
+          log("host: staged plan " + stagedPlan.planId + " for session " + id)
+        }
       },
       keys: ["/mpd plan", "Enter"],
       waitMs: 9000,
@@ -1490,7 +1628,9 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   /** Read one captured pane's text by step name, `""` when that step produced no capture. */
   const pane = (name: string): string => session.panes.find((entry) => entry.name === name)?.text ?? ""
   /** Absolute path of the record the drive mutates — the truth source of this arm. */
-  const recordFile = join(workspace, ".mpd", "team", TEAM_ID, "team.json")
+  // The POST-SPLIT record path. Reading the retired one made H4/H5 report `phase=undefined` about a
+  // record that WAS on disk — the read, not the surface, was wrong.
+  const recordFile = join(workspace, ".mpd", "team", "teams", TEAM_ID + ".json")
   // The record is re-read from disk: the parsed JSON is dynamic, so it is given the local record
   // shape (the fields this lane judges) instead of flowing out as an `any` parse result.
   /** The record as it stands after the drive, `undefined` when the file does not exist. */

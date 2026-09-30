@@ -1,0 +1,24 @@
+{
+  "change": "the tui-team-surface fixture speaks the post-split layout (item (a), first half)",
+  "what_was_wrong": "writeTeamFixture wrote the RETIRED directory form `<ws>/.mpd/team/<id>/team.json`. W1 moved the record to `<ws>/.mpd/team/teams/<teamId>.json` plus the index `<ws>/.mpd/team/teams.json`, so the surface read NOTHING and rendered `MPD plan approval \u2014 (none)`, and ten assertions failed as a cascade from that one cause.",
+  "fixed": [
+    "writeTeamFixture writes the post-split record (store-shaped: version/teamId/leadSessionId/phase/members/tasks/nextMemberNumber/nextTaskNumber, every union mapped EXPLICITLY) plus the teams.json index `activeTeamId` reads",
+    "stagePlanFixture stages `.mpd/team/staging/<liveSessionId>.json` \u2014 the PLAN half W6 made necessary, because the plan surface is usable through the SHARED projection and a plan is keyed by SESSION",
+    "planIdOf() derives the pre-approval identity ONCE, used by both the fixture that writes the plan and the step that types the phrase",
+    "the arm-2 driver stages the plan inside its post-boot step, where `liveSessionId` is known, and sets `phrase = approvalPhrase(planId)`",
+    "the malformed-record control, the post-drive record read and the tool-name constants moved to the split's own names (`agent_teams_plan`; the approval is ONE tool with an `action` enum, not a tool per verb)"
+  ],
+  "measured_before_after": {
+    "before": "H1 `MPD plan approval \u2014 (none)`; H5 `record phase=undefined`",
+    "after": "H1 `MPD plan approval \u2014 Fixture Team` PASSES \u2014 the surface SEES the fixture; H5 `record phase=\"staged\"` PASSES \u2014 the record is found and read",
+    "still_failing": "arm 1 A4-A8/B2/B3 (the offline host double renders no usable surface) and arm 2 H3/H4 (no approval committed)"
+  },
+  "the_remaining_work_in_this_case": [
+    "arm 1's host double provides no `channel.sessionId` and stages no plan, so the offline surface has nothing to approve \u2014 it needs both, keyed to each other",
+    "arm 2 H3/H4: the host renders the surface (H1 proves it) but the confirmation step never appears and no approval commits. H4b reports the pane honestly, so this is the SURFACE not reaching its gate, not a lying assertion."
+  ],
+  "not_claimed": [
+    "the case does not PASS yet \u2014 this commit fixes the fixture, not the case",
+    "`tui-mount` still passes unchanged (evidence/tui/lanes/2026-09-30T02-13-36.746Z)"
+  ]
+}
