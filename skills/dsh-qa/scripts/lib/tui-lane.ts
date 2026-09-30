@@ -954,13 +954,26 @@ export interface TuiPrereq {
 export interface TuiPrereqOptions {
   /** Answers whether the sandbox root already carries an installed `dsh-tui` profile. */
   readonly sandboxPresent: () => unknown
+  /**
+   * Answers WHY the `--install` arm's host install was refused, or undefined when it was not.
+   *
+   * Optional: a caller that never attempted an install has nothing to refuse.
+   */
+  readonly hostInstallRefusal?: () => string | undefined
 }
 
 /** Declared prerequisites, in check order. */
-export function tuiPrereqs({ sandboxPresent }: TuiPrereqOptions): TuiPrereq[] {
+export function tuiPrereqs({ sandboxPresent, hostInstallRefusal }: TuiPrereqOptions): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.11.2", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
+    // CHECKED BEFORE `absent-fixture`, and it exists because that one LIED. When `--install` ran and
+    // the harness REFUSED the host on peer ranges, the run fell through to `requested-absent-fixture`
+    // — a sentence that says "set this up first" about a setup that was just attempted and rejected,
+    // so re-running the documented remedy reproduces it verbatim. Measured 2026-09-30: the pin was
+    // 0.11.1, which `dsh 0.2.0-rc.1` refuses, while this repository's own `docker/README.md` already
+    // recorded 0.11.2 as the version that accepts both harness pins.
+    { code: "host-install-refused", probe: `the dsh-tui host install (${hostInstallRefusal?.() ?? "not attempted"})`, remedy: "move the pin to the version the installed harness accepts (see docker/README.md) or grant an exact-version exemption deliberately", present: () => hostInstallRefusal === undefined || hostInstallRefusal() === undefined },
     { code: "absent-fixture", probe: "tui profile in the sandbox root", remedy: "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install", present: sandboxPresent },
   ]
 }
@@ -1051,9 +1064,20 @@ export function readSessionHeaders(root: string, { limit = 1000, projectKey: onl
     if (!statSync(keyDir).isDirectory()) continue
     // Every session under this key is read; the header is the store's first record.
     for (const id of readdirSync(keyDir)) {
-      /** The store file of one session; a session without a v3 store is skipped. */
-      const file = join(keyDir, id, "session.v3.jsonl.zstd")
-      if (!existsSync(file)) continue
+      // THE STORE VERSION IS DISCOVERED, NOT ASSUMED. This read `session.v3.jsonl.zstd` by name,
+      // and harness 0.2.0-rc.1 writes `session.v4.jsonl.zstd` — so on the CURRENT harness the reader
+      // found no store for any session and every witness it feeds read `undefined`. Measured
+      // 2026-09-30: a real dsh-tui boot created
+      // `sessions/<key>/<id>/session.v4.jsonl.zstd`, whose one decoded frame carries
+      // `"agentPreset":"mpd"` — the very value the lane reported missing. A version-pinned filename
+      // in a reader is a claim about the HARNESS, and this one had silently expired.
+      /** The session's store directory; a non-directory entry is skipped. */
+      const sessionDir = join(keyDir, id)
+      /** The store files actually present, newest version first so a v4 beats a leftover v3. */
+      const stores = readdirSync(sessionDir).filter((name) => /^session\.v\d+\.jsonl\.zstd$/.test(name)).sort().reverse()
+      /** The store file of one session; a session with no store at all is skipped. */
+      const file = stores.length === 0 ? "" : join(sessionDir, stores[0])
+      if (file === "" || !existsSync(file)) continue
       /** Every decoded frame of the store, concatenated as the harness wrote them. */
       const text = decompressAllFrames(file)
       /** The store's first `session` record line, or `undefined` when it carries none. */
