@@ -1,0 +1,838 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": true,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-09-30T03:20:15.000Z",
+  "finishedAt": "2026-09-30T03:26:46.082Z",
+  "durationSeconds": 391,
+  "harness": {
+    "installed": "0.1.7-rc.2",
+    "expected": "0.1.7-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": "1.4.2 (BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 43,
+    "passed": 42,
+    "failed": 1,
+    "null": 0,
+    "failedNames": [
+      "boot.llmTurn"
+    ],
+    "nullNames": []
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "install by official tarball, sha256 verified against the published SHASUMS256.txt",
+      "raw": "v24.19.0 (1:node-v24.19.0-linux-x64.tar.xz: OK )"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun installed by the official script and asserted on PATH",
+      "raw": "1.4.2"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.1.7-rc.2"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed",
+      "raw": "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": true,
+      "reason": "bun install resolved the workspace and the dev/optional dependencies",
+      "raw": "exit=0"
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=23/23"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile",
+      "raw": "exit=0 spec=."
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true,
+      "reason": "the profile links the checkout and keeps the box bundles",
+      "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true,
+      "reason": "the installed bundle resolves inside the profile",
+      "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": true,
+      "reason": "the sanctioned composer exited 0",
+      "raw": "exit=0"
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": true,
+      "reason": "the mpd host rows compose and the default preset selection is mpd",
+      "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x1"
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": true,
+      "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+      "raw": "- id: preset-mpd"
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": true,
+      "reason": "the official agent-team rows compose under the mpd-owned ids (§4 D3)",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": true,
+      "reason": "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition",
+      "raw": "[docker-probe] APPLIED=ok"
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": true,
+      "reason": "the mpd-dsh-adapter row applied and provided the mpdDsh service",
+      "raw": "[mpd-dsh-adapter] mpdDsh provided"
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": true,
+      "reason": "an internal tool call through the adapter answered ok",
+      "raw": "[docker-probe] ADAPTER_TOOL_CALL=ok"
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": true,
+      "reason": "every core mpd tool answered from the live registry",
+      "raw": "CORE_TOOLS=6/6"
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": true,
+      "reason": "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)",
+      "raw": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)",
+      "raw": "[mpd-roles] session gate listener registered for agent \"session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd369c\" agentPreset=mpd"
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": true,
+      "reason": "the official TeamService is mounted in the booted process (its class name is the witness)",
+      "raw": "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership"
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": true,
+      "reason": "the booted Web app answered 200",
+      "raw": "/plugins/mpd-workmate/list -> 200"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+      "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1790738703-19882\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd369c\",\"agentPreset\":\"mpd\"}}}"
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module signature in the boot log",
+      "raw": "0 matches"
+    },
+    {
+      "name": "isolation.home",
+      "ok": true,
+      "reason": "HOME and DSH_HOME stay on the sandbox paths for every harness command",
+      "raw": "HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh"
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": true,
+      "reason": "no harness/toolchain marker under the real home (/root)",
+      "raw": "absent: .dsh .mpd .npm .bun"
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": true,
+      "reason": "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)",
+      "raw": "inventory=.credentials.yaml(161B),"
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": true,
+      "reason": "the TUI host installs globally and lands on PATH",
+      "raw": "version=0.11.2 bin=/usr/local/bin/dsh-tui"
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": true,
+      "reason": "the TUI host bundle installs into the dsh-tui profile",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": true,
+      "reason": "THIS bundle installs into the dsh-tui profile as the third patch layer",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.compose",
+      "ok": true,
+      "reason": "dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.registryDefaultMpd",
+      "ok": true,
+      "reason": "the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)",
+      "raw": "id=dsh-tui-agent-preset-registry default=mpd"
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": true,
+      "reason": "the mpd preset row is composed in the TUI plane",
+      "raw": "id=preset-mpd"
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": true,
+      "reason": "the bundle's mpd-tui row is composed in the TUI plane",
+      "raw": "id=mpd-tui"
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": true,
+      "reason": "all three official Agent Teams rows are composed in the TUI plane",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "tui.boot",
+      "ok": true,
+      "reason": "the REAL TUI booted on a real PTY and reached its chat screen",
+      "raw": "tmux=new-session-ok ready=chat-screen"
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module/preset signature in the TUI pane or log",
+      "raw": "scanned=pane+pane-log"
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": true,
+      "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+      "raw": "{\"found\":true,\"sessionId\":\"0d5d56fd-7549-4827-8810-74d28742444d\",\"agentPreset\":\"mpd\",\"bytes\":436}"
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": false,
+      "reason": "the live turn ran but committed no team record — the model did not reach agent_teams_plan approve (exit 0)",
+      "raw": "see 13-live.log"
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": true,
+      "reason": "the TUI lane ran to completion with every assertion green",
+      "raw": "records=11"
+    }
+  ],
+  "observations": {
+    "rebuildNoSrc": "NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+    "installSpec": ".",
+    "installTail": "+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 649ms using pnpm v11.23.0 ",
+    "dumpMpdRowIds": "mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-ui-agent-team,mpd-ulw,mpd-web-compat,mpd-workmate,",
+    "dumpDefaultMpdLines": "1",
+    "dumpAgentTeamRows": "mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,",
+    "retiredToolsPresent": "<probe did not report>",
+    "teamToolPlane": "root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below",
+    "uiTeamRow": "resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)",
+    "sessionCreate": "http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd",
+    "realHomeMarkers": ".bashrc,.profile,sandbox-dsh,sandbox-home,",
+    "credentialFiles": ".credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)"
+  },
+  "facts": {
+    "stamp": "2026-09-30T03:20:15Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "node=24.19.0 dsh=0.1.7-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "47",
+    "nodeArch": "amd64 -> linux-x64",
+    "node": "v24.19.0 (npm 11.17.0)",
+    "bun": "1.4.2 (BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "dsh": "0.1.7-rc.2 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.1.7-rc.2",
+    "harnessVersionExpected": "0.1.7-rc.2",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=23",
+    "profileDep": "link:/opt/mpd",
+    "profileBundles": "@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd",
+    "bootCoreTools": "6/6",
+    "bootTeamToolsRootPlane": "0/9",
+    "bootAdapterCaps": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+    "bootAgentTeamsMethods": "listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+    "bootCookieJarLines": "4",
+    "bootCookieExchange": "http=303 tokenPresent=yes",
+    "bootHttp": "/plugins/mpd-workmate/list -> 200",
+    "bootAgentTeamToolsScoped": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd",
+    "bootSessionGate": "[mpd-roles] session gate listener registered for agent \"session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd369c\" agentPreset=mpd",
+    "liveCredentialStaged": "refs:DEEPSEEK_API_KEY written to the SANDBOX home (mode 0600); the value is never recorded",
+    "hashesMeasuredAt": "2026-09-30T03:26:45Z",
+    "finishedAt": "2026-09-30T03:26:45Z"
+  },
+  "hashes": [
+    {
+      "sha256": "39242314d17fee37403b7836a87cd80523922a73ba8a51080aebbb57c2b69361",
+      "path": "/opt/mpd/package.json"
+    },
+    {
+      "sha256": "78ba1379b930ae6219fdde857c35c0369dd77401fc2794a853b39d60ffe19fe5",
+      "path": "/opt/mpd/cordis.patch.yml"
+    },
+    {
+      "sha256": "84b9b3487094dbe63732999d14b6ab399dd87f2c866f48619417dadfee6413c6",
+      "path": "/opt/mpd/presets/mpd.patch.yml"
+    },
+    {
+      "sha256": "d6a787c4a59ab8fa0a8b0ac639ed54d7dc0c3ff9085d4aa38e449e06b868c48c",
+      "path": "packages/mpd-better-sidebar-host/dist/index.js"
+    },
+    {
+      "sha256": "16a1892305a1acd721c1368bb9f05d877c2b9fa88ba27099c6d15fdd7da10c33",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js"
+    },
+    {
+      "sha256": "7f535611440ee4c868f6083faeeee75a0bfe7ad7b234ca0ae41bbb57e6d495a4",
+      "path": "packages/mpd-boulder-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d08531906ef3902ac11dc7437388ca5794b6f4f3f47e60578138767e4cd4e5a7",
+      "path": "packages/mpd-bundle-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a4732dde932549876e2861129969123eae114dac9bd9931847412f0f5eac71d4",
+      "path": "packages/mpd-codegraph-plugin/dist/index.js"
+    },
+    {
+      "sha256": "191ac1434c3163218990d8234485d7cd76a873a275a420e006e1b7c8e18db3fe",
+      "path": "packages/mpd-comment-checker-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d9ca1b7d4ae42dad6463dbc43c5873f2ed403b002553479205154d67a5fb4091",
+      "path": "packages/mpd-config-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a57092854a556baf48371f9ea8009a18f74396fc35c61f4cec15733abbf310cd",
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "faeb619802a70a9e63817aeb8ef4aabe54ac1c79df05645876c678365c2f6374",
+      "path": "packages/mpd-ext-plugin/dist/index.js"
+    },
+    {
+      "sha256": "caafcefd1a0927d075f9ecc3756724a5a1e8b45cacbd0651da6b26803c980578",
+      "path": "packages/mpd-hashline-plugin/dist/index.js"
+    },
+    {
+      "sha256": "9c30a3400f7aa6cd8a4df623423c7eb309bd1b992947780b308b9b537d3da60a",
+      "path": "packages/mpd-memory-plugin/dist/index.js"
+    },
+    {
+      "sha256": "affcd1599cdcc2c720ef5cd3fadbc3c58aa64be53661cb42ae59e96085d553f4",
+      "path": "packages/mpd-modelchain-plugin/dist/index.js"
+    },
+    {
+      "sha256": "1900f4dda2e245e86d45271c1d5f121b644901da7dce6a8f61b5f865475d2c6f",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "sha256": "274d9c131347fb6af5a6169c4eb4cbbc6f0a1300edbc0a837287249f2b1e7a5a",
+      "path": "packages/mpd-roles-plugin/dist/index.js"
+    },
+    {
+      "sha256": "ee5602a6cd30bb2124b5ba49665a5b6feb0a6e028e90aa5de617d4fd59e1723b",
+      "path": "packages/mpd-roster-provider-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a0d6f6cb07c9eaf71c66d5c196f5ec0167ca581296458446707d1d9af8d8ef9b",
+      "path": "packages/mpd-team-compact-plugin/dist/index.js"
+    },
+    {
+      "sha256": "36d48333f6bf3b4f1d73f4a916d75b73e1003ecc078b2cd6e17948e67ccd22f4",
+      "path": "packages/mpd-team-core-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b1bf4a6a1b02ccc2efd0edc795c9fc7d72a02226c2408b9a19e7e8b7e1af1abc",
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js"
+    },
+    {
+      "sha256": "239d6b0540c5b0323551fead04c60ff2884df1798e5f957a594b04b767dcdbf0",
+      "path": "packages/mpd-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "92e5f1c025f2b2e7bcfc3dcb2d6d19063b4a328efa701031e0dfa6e81fe8e5b0",
+      "path": "packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "sha256": "f1f6861d8d94ce08eb6f1c8e9ac9b5e091ca71f3194753a52bb381cec3a34d12",
+      "path": "packages/mpd-ulw-plugin/dist/index.js"
+    },
+    {
+      "sha256": "0176ecbb370b3010ccf439cec5e27046d41bd1f339aae79bddd4f90ad6a987bc",
+      "path": "packages/mpd-workmate-plugin/dist/index.js"
+    }
+  ],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:3 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:4 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1310 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:7 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:9 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1934 kB]",
+        "Get:10 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:11 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1542 kB]",
+        "Get:12 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1637 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2057 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2159 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Fetched 33.0 MB in 22s (1486 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 24,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 17363,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "02-node",
+      "exit": 0,
+      "seconds": 22,
+      "cmd": "bash -c  set -euo pipefail V=\"$1\"; A=\"$2\" cd /tmp curl -fsSLO \"https://nodejs.org/dist/v${V}/node-v${V}-linux-${A}.tar.xz\" curl -fsSL -o SHASUMS256.txt \"https://nodejs.org/dist/v${V}/SHASUMS256.txt\" grep \" node-v${V}-linux-${A}.tar.xz\\$\" SHASUMS256.txt > node.sha256 sha256sum -c node.sha256 tar -xJf \"node-v${V}-linux-${A}.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner rm -f \"node-v${V}-linux-${A}.tar.xz\" SHASUMS256.txt node.sha256 node -v npm -v  _ 24.19.0 x64 ",
+      "logFile": "02-node.log",
+      "logBytes": 52,
+      "tail": [
+        "node-v24.19.0-linux-x64.tar.xz: OK",
+        "v24.19.0",
+        "11.17.0",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 16095,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r\r                                                                           0.1%\r                                                                           0.5%\r#                                                                          1.6%\r#                                                                          2.0%\r#                                                                          2.6%\r##                                                                         2.8%\r##                                                                         4.2%\r###                                                                        4.8%\r####                                                                       5.7%\r####                                                                       6.1%\r#####                                                                      7.0%\r#####                                                                      7.4%\r######                                                                     8.6%\r######                                                                     9.1%\r######                                                                     9.6%\r#######                                                                   10.1%\r#######                                                                   10.6%\r#######                                                                   11.1%\r########                                                                  11.6%\r########                                                                  12.0%\r#########                                                                 12.5%\r#########                                                                 13.0%\r#########                                                                 13.5%\r##########                                                                14.0%\r##########                                                                14.5%\r##########                                                                15.0%\r###########                                                               15.5%\r###########                                                               16.0%\r###########                                                               16.5%\r############                                                              16.9%\r############                                                              17.4%\r############                                                              17.9%\r#############                                                             18.5%\r#############                                                             18.9%\r#############                                                             19.4%\r##############                                                            19.9%\r##############                                                            20.4%\r###############                                                           20.9%\r###############                                                           21.4%\r###############                                                           21.9%\r################                                                          22.4%\r################                                                          22.8%\r#################                                                         23.8%\r#################                                                         24.3%\r#################                                                         24.7%\r##################                                                        25.2%\r##################                                                        25.7%\r##################                                                        26.2%\r###################                                                       26.7%\r###################                                                       27.2%\r###################                                                       27.7%\r####################                                                      28.2%\r####################                                                      28.7%\r####################                                                      29.1%\r#####################                                                     29.6%\r#####################                                                     30.1%\r######################                                                    30.7%\r######################                                                    31.1%\r######################                                                    31.6%\r#######################                                                   32.1%\r#######################                                                   32.6%\r#######################                                                   33.1%\r########################                                                  33.6%\r########################                                                  34.1%\r########################                                                  34.6%\r#########################                                                 35.1%\r#########################                                                 35.5%\r#########################                                                 36.0%\r##########################                                                36.5%\r##########################                                                37.0%\r##########################                                                37.5%\r###########################                                               38.0%\r###########################                                               38.5%\r############################                                              39.0%\r############################                                              39.5%\r############################                                              39.9%\r#############################                                             40.4%\r#############################                                             40.9%\r##############################                                            42.0%\r##############################                                            42.5%\r##############################                                            43.0%\r###############################                                           43.5%\r###############################                                           44.0%\r###############################                                           44.4%\r################################                                          44.9%\r################################                                          45.4%\r#################################                                         45.9%\r#################################                                         46.4%\r#################################                                         46.9%\r##################################                                        47.4%\r##################################                                        47.9%\r##################################                                        48.4%\r###################################                                       48.9%\r###################################                                       49.3%\r###################################                                       49.8%\r####################################                                      50.3%\r####################################                                      50.8%\r####################################                                      51.3%\r#####################################                                     51.8%\r#####################################                                     52.3%\r#####################################                                     52.8%\r######################################                                    53.3%\r######################################                                    53.7%\r#######################################                                   54.3%\r#######################################                                   54.8%\r#######################################                                   55.2%\r########################################                                  55.7%\r########################################                                  56.2%\r########################################                                  56.7%\r#########################################                                 57.2%\r#########################################                                 57.7%\r#########################################                                 58.2%\r##########################################                                58.7%\r##########################################                                59.1%\r##########################################                                59.6%\r###########################################                               60.1%\r###########################################                               60.6%\r############################################                              61.1%\r############################################                              61.6%\r############################################                              62.1%\r#############################################                             62.6%\r#############################################                             63.1%\r#############################################                             63.6%\r##############################################                            64.1%\r##############################################                            64.5%\r##############################################                            65.0%\r###############################################                           65.5%\r###############################################                           66.0%\r###############################################                           66.5%\r################################################                          67.0%\r################################################                          67.5%\r################################################                          68.0%\r#################################################                         68.5%\r#################################################                         69.0%\r##################################################                        69.5%\r##################################################                        70.0%\r##################################################                        70.4%\r###################################################                       70.9%\r###################################################                       71.4%\r###################################################                       71.9%\r####################################################                      72.4%\r####################################################                      72.9%\r####################################################                      73.4%\r#####################################################                     73.9%\r#####################################################                     74.3%\r#####################################################                     74.8%\r######################################################                    75.3%\r######################################################                    75.8%\r######################################################                    76.3%\r#######################################################                   76.8%\r#######################################################                   77.3%\r########################################################                  77.8%\r########################################################                  78.3%\r########################################################                  78.8%\r#########################################################                 79.3%\r#########################################################                 79.7%\r#########################################################                 80.2%\r##########################################################                80.7%\r##########################################################                81.3%\r###########################################################               82.1%\r###########################################################               82.5%\r###########################################################               83.0%\r############################################################              83.5%\r############################################################              84.0%\r############################################################              84.5%\r#############################################################             85.0%\r#############################################################             85.5%\r#############################################################             86.0%\r##############################################################            86.5%\r##############################################################            86.9%\r##############################################################            87.4%\r###############################################################           87.9%\r###############################################################           88.4%\r################################################################          88.9%\r################################################################          89.4%\r################################################################          89.9%\r#################################################################         90.4%\r#################################################################         90.9%\r#################################################################         91.4%\r##################################################################        91.9%\r##################################################################        92.4%\r##################################################################        92.8%\r###################################################################       93.3%\r###################################################################       93.8%\r###################################################################       94.3%\r####################################################################      94.8%\r####################################################################      95.3%\r####################################################################      95.8%\r#####################################################################     96.2%\r#####################################################################     96.7%\r######################################################################    97.2%\r######################################################################    97.7%\r#######################################################################   98.9%\r#######################################################################   99.4%\r#######################################################################   99.9%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 7,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 7s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 125,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.1.7-rc.2 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1162,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 520 packages in 2m",
+        "",
+        "54 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn allow-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn allow-scripts   @deepseek-ai/dsh-subprocess-local@0.1.7-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn allow-scripts   koffi@3.3.2 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn allow-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn allow-scripts   @google/genai@1.52.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn allow-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn allow-scripts",
+        "npm warn allow-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 0,
+      "seconds": 51,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 424,
+      "tail": [
+        "bun install v1.4.2 (744846f84)",
+        "Saved lockfile",
+        "",
+        "+ @typescript/native-preview@7.0.0-dev.20260707.2",
+        "+ bun-types@1.4.0",
+        "+ dsh-better-sidebar@0.19.0-alpha.1",
+        "+ typescript5@5.9.3",
+        "+ @colbymchenry/codegraph@1.5.0",
+        "+ @deepseek-ai/dsh-experimental-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-tool-agent-team@0.1.7-rc.2",
+        "",
+        "292 packages installed [50.57s]",
+        "Removed: 1",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 3494,
+      "tail": [
+        "[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1110)",
+        "[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=62837)",
+        "[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=80202)",
+        "[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=61083)",
+        "[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=53838)",
+        "[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=55878)",
+        "[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=140014)",
+        "[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=52928)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=184194)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=87076)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=62675)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=55441)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=57010)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=89789)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=100231)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=66458)",
+        "[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=113849)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=180342)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=51492)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=205426)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=74218)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=89451)",
+        "[rebuild] ENTRIES=23",
+        "[rebuild] BUILD_OK=23/23",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+        "[rebuild] SKIPPED_SRC=mpd-mcp-astgrep=src/ exists but owns no discoverable build entry,mpd-mcp-gitbash=src/ exists but owns no discoverable build entry,mpd-mcp-lsp=src/ exists but owns no discoverable build entry",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 161,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 649ms using pnpm v11.23.0",
+        ""
+      ]
+    },
+    {
+      "id": "10-dump",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/dump-config.ts --profile web ",
+      "logFile": "10-dump.log",
+      "logBytes": 78628,
+      "tail": [
+        "              provider: claude-code",
+        "              toolName: subagent_claude_code",
+        "              backgroundMode: one-shot",
+        "              maxDepth: provider-managed",
+        "          - id: workflow-ptc",
+        "            name: '@deepseek-ai/dsh-workflow-ptc'",
+        "            config:",
+        "              provider: spawn",
+        "          - id: tool-workflow",
+        "            name: '@deepseek-ai/dsh-tool-workflow'",
+        "          - id: tool-ralph",
+        "            name: '@deepseek-ai/dsh-tool-ralph'",
+        "            config:",
+        "              subagentProvider: spawn",
+        "              maxRounds: 64",
+        "      - id: tool-ask-user",
+        "        name: '@deepseek-ai/dsh-tool-ask-user'",
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+        "      - id: present",
+        "        name: '@deepseek-ai/dsh-tool-present'",
+        "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).",
+        ""
+      ]
+    },
+    {
+      "id": "11-boot",
+      "exit": -1,
+      "seconds": 11,
+      "cmd": "dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)",
+      "logFile": "11-boot.log",
+      "logBytes": 4310,
+      "tail": [
+        "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+        "[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        "[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry \"mpd-config\") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)",
+        "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+        "[mpd-roster] provider \"mpd-roster\" registered (delegating to \"spawn\"; point the team tool row's freshProvider at it)",
+        "[docker-probe] CORE_TOOLS=6/6",
+        "[docker-probe] CORE_TOOLS_MISSING=",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+        "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+        "[docker-probe] TEAM_TOOLS_ROOT=0/9",
+        "[docker-probe] AGENTS_AT_APPLY=0",
+        "[docker-probe] RETIRED_TOOLS_PRESENT=",
+        "[docker-probe] ADAPTER_SERVICE=present",
+        "[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+        "[docker-probe] ADAPTER_TOOL_CALL=ok",
+        "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService",
+        "[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+        "[docker-probe] DONE=1",
+        "dsh web: http://127.0.0.1:3197/?token=<redacted>",
+        "[mpd-roles] roster section registered for agent \"session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd369c\" agentPreset=mpd — mpd:roster order=605",
+        "[mpd-roles] session gate listener registered for agent \"session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd369c\" agentPreset=mpd",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=97 agent=session-52c8cfaf-4d0d-47c9-aa8e-3cc0a9dd",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        ""
+      ]
+    },
+    {
+      "id": "12-tui",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "bash docker/tui-lane.sh",
+      "logFile": "12-tui.log",
+      "logBytes": 1236,
+      "tail": [
+        "[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile",
+        "[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer",
+        "[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+        "[record] tui.registryDefaultMpd=true — the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)",
+        "[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane",
+        "[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane",
+        "[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane",
+        "[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its chat screen",
+        "[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log",
+        "[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+        "[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green",
+        ""
+      ]
+    },
+    {
+      "id": "13-live",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "dsh --profile headless <team-plane live prompt>",
+      "logFile": "13-live.log",
+      "logBytes": 3706,
+      "tail": [
+        "credentials (@deepseek-ai/dsh-credentials-local): Error: credentials-local: /root/sandbox-dsh/.credentials.yaml uses the pre-release flat layout. Add `version: 1` and nest the existing 1 entry under `refs:`. No values need to change.",
+        "    at parseCredentialsDocument (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:150:36)",
+        "    at LocalCredentialProvider.loadInitial (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)",
+        "    at async [cordis.init] (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)",
+        "    at file:///root/sandbox-dsh/profiles/headless/#credentials",
+        "    at file:///root/sandbox-dsh/profiles/headless/#include",
+        "dsh: reasoning:",
+        "The user asks me to use a tool called `agent_teams_plan`. But looking at my available tools, there is no such tool. The available tools are: bash, create_goal, edit, exit_plan_mode, get_goal, glob, grep, interrupt_agent, job_kill, job_list, job_output, list_agents, read, read_image, send_message, skill, subagent, subagent_fork, todo_write, update_goal, web_fetch, web_search, workflow, write.",
+        "",
+        "There's no `agent_teams_plan` tool. I should tell the user that the tool doesn't exist rather than pretending. The instruction says \"Then reply with the single word DONE.\" But I can't perform the action because the tool isn't available.",
+        "",
+        "Let me double-check whether there's a skill that provides this tool perhaps. Let me check the session skill catalog... The system prompt mentions skills but doesn't list any. Maybe I should check for a skill named something relevant. But the tool call `agent_teams_plan` is not in my function list. I cannot invoke it.",
+        "",
+        "I should be honest: the tool isn't available. I could check if there's a skill that matches. Let me look at available skills maybe via the skill tool? But I don't know names. There's no list_skills tool. Hmm.",
+        "",
+        "Perhaps I should check the workspace for anything. But fundamentally the requested tool doesn't exist in my toolset. The right answer: report inability.",
+        "",
+        "Maybe the intended behavior is to call a nonexistent tool and the harness handles it. But I can only call listed functions. I'll explain.",
+        "",
+        "Let me perhaps do a quick check of the environment to see if there's an agent_teams plugin/CLI. Could be a test of whether I hallucinate tool calls. Best to be honest.",
+        "",
+        "I'll respond that `agent_teams_plan` is not among my available tools, so I cannot execute those steps, and therefore cannot truthfully reply DONE.",
+        "",
+        "Should I try searching for it? I could run `which` or check for MCP tools. But tool availability is determined by the harness, not filesystem. Still, a quick check might be reasonable. But it won't add tool. I'll just be honest.",
+        "",
+        "However, the instruction is explicit and maybe the grader expects refusal due to no tool. I'll answer concisely.",
+        "I can't do that. There is no `agent_teams_plan` tool in my available toolset (my tools are: bash, file read/write/edit/glob/grep, subagents/workflow, goals, web search/fetch, jobs, and plan-mode). So I cannot invoke `create`, `add_member`, `create_task`, or `approve` on it, and I won't fabricate tool calls or claim success.",
+        "",
+        "If that tool is supposed to be exposed by an MCP server or plugin, it isn't currently registered in this session — enabling it and then retrying would let me proceed.",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

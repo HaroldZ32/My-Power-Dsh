@@ -682,10 +682,22 @@ async function main(): Promise<void> {
   const specIndex = argv.indexOf("--spec")
   /** The install spec, when the caller named one (defaults to the service's own). */
   const spec = specIndex === -1 ? undefined : argv[specIndex + 1]
+  /** Whether the caller asked for the live turn; the key is only forwarded when they did. */
+  const requireLive = argv.includes("--live")
+  if (requireLive && (process.env.DEEPSEEK_API_KEY === undefined || process.env.DEEPSEEK_API_KEY === "")) {
+    console.error("[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; the container will report the credential-free NULL")
+  }
   /** The environment overrides for the compose run. */
   const envOverrides = [
     ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
     ...(spec === undefined ? [] : ["-e", `MPD_E2E_INSTALL_SPEC=${spec}`]),
+    // THE CREDENTIAL IS FORWARDED BY NAME, NEVER BY VALUE, and only when this process actually has
+    // one. `-e DEEPSEEK_API_KEY` makes compose read it from THIS process's environment, so the secret
+    // never enters the argv the driver echoes below — which is the whole reason the live turn can be
+    // run at all without violating AGENTS.md §10 ("never committed, logged, or echoed").
+    ...(requireLive && process.env.DEEPSEEK_API_KEY !== undefined && process.env.DEEPSEEK_API_KEY !== ""
+      ? ["-e", "DEEPSEEK_API_KEY"]
+      : []),
   ]
 
   /** The resolved docker toolchain, or the reason it is unusable. */

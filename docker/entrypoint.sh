@@ -928,10 +928,73 @@ STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$
 cat "$STEPS_DIR/12-tui.log" || true
 append_step 12-tui "$TUI_STEP" 0 "12-tui.log" "bash docker/tui-lane.sh"
 
-# ── 13. the assertion that cannot be made here, stated instead of faked ───────
-record boot.llmTurn null \
-  "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum." \
-  "no credentials staged by design"
+# ── 13. a LIVE LLM turn, when the caller stages a key (opt-in) ────────────────
+# THE CREDENTIAL IS NEVER LOGGED OR ECHOED (AGENTS.md §10). The caller forwards it with
+# `docker compose run -e DEEPSEEK_API_KEY` — the NAME only, so the value never reaches this
+# script's argv or any log line — and it is written straight into the sandbox credentials
+# document, which the harness reads as `refs:`. When it is absent the assertion stays the NULL
+# it has always been: a credential-free run is the maximum this lane can claim, not a failure.
+if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+  LIVECRED="$DSH_HOME/.credentials.yaml"
+  mkdir -p "$DSH_HOME"
+  # `version: 1` AND the nested `refs:` mapping: the harness's credential reader REFUSES the
+  # pre-release flat layout by name ("uses the pre-release flat layout. Add `version: 1` and nest the
+  # existing 1 entry under `refs:`") — measured on the first live attempt, which then had no
+  # credentials at all and every dependent row reported `pending (waiting for service: credentials)`.
+  { printf 'version: 1\n'; printf 'refs:\n'; printf '  DEEPSEEK_API_KEY: %s\n' "$DEEPSEEK_API_KEY"; } > "$LIVECRED"
+  chmod 600 "$LIVECRED"
+  fact liveCredentialStaged "refs:DEEPSEEK_API_KEY written to the SANDBOX home (mode 0600); the value is never recorded"
+
+  # ── the task: exercise THIS WAVE's plane end to end, in one turn ────────────
+  # A staged plan and its approval are the two steps the team-plane split rebuilt: `approve`
+  # materialises the mpd RECORD and raises the member through the NATIVE executor
+  # (`ctx.subagents.startContinuable`), which is the whole point of W2.
+  LIVE_PROMPT="Use the agent_teams_plan tool twice: first with action \"create\" (name it live-smoke, description \"docker live turn\"), then action \"add_member\" for a member named Reviewer, then action \"create_task\" with subject \"check the mount\". Finally call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+  LIVE_LOG="$STEPS_DIR/13-live.log"
+  LIVE_CODE=0
+  # THE BUNDLE MUST BE INSTALLED INTO THE PROFILE THE TURN RUNS UNDER, and that is not optional:
+  # `--profile headless` alone composes the harness's BASE headless tree, which registers NOTHING of
+  # ours. Measured on the first live attempt: the model listed its own tools (bash, create_goal, edit,
+  # … read, write) and `agent_teams_plan` was not among them, so it correctly refused to invent a call.
+  #
+  # A `--patch <installed bundle>` operand does NOT fix that, and the reason is worth writing down:
+  # every path-bearing value in the patch resolves through the loader's baseUrl, which is the PROFILE
+  # directory — so patching the web profile's copy into a headless run made the loader look for
+  # `profiles/headless/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts` and die with
+  # MODULE_NOT_FOUND. Installing the bundle INTO the headless profile is the one-command fix.
+  dsh plugin --profile headless add "$APP_DIR" >"$STEPS_DIR/13-live-install.log" 2>&1 || true
+  ( cd "$WORK_DIR/ws" && DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" dsh --profile headless "$LIVE_PROMPT" ) >"$LIVE_LOG" 2>&1 || LIVE_CODE=$?
+  append_step 13-live "$LIVE_CODE" 0 "13-live.log" "dsh --profile headless <team-plane live prompt>"
+
+  # ── the assertion is a REAL ARTIFACT, never the model's prose (§7) ──────────
+  # The mpd record is materialised AT approval and carries an `executorRef` for every member the
+  # native executor actually raised, so a record on disk with a non-empty handle is a fact only a
+  # real tool call could have produced.
+  # `-print -quit` instead of `| head -1`: the script runs under `set -o pipefail`, and a `find` whose
+  # reader exits after one line takes SIGPIPE — which pipefail turns into a non-zero pipeline and `set
+  # -e` turns into an abort. Measured: this line killed the run at `find` and every assertion after it
+  # was reported "not reached".
+  LIVETEAMS="$(find "$WORK_DIR/ws/.mpd/team/teams" -name '*.json' -type f -print -quit 2>/dev/null || true)"
+  if [ -n "$LIVETEAMS" ]; then
+    LIVE_MEMBERS="$(node -e 'const d=require(process.argv[1]);const m=(d.members||[]).filter(x=>typeof x.executorRef==="string"&&x.executorRef!=="");console.log(m.length+"/"+(d.members||[]).length)' "$LIVETEAMS" 2>/dev/null || echo "?")"
+    LIVE_PHASE="$(node -e 'console.log(require(process.argv[1]).phase||"?")' "$LIVETEAMS" 2>/dev/null || echo "?")"
+    record boot.llmTurn true \
+      "a live headless turn ran and the team plane committed: the mpd record exists with phase=$LIVE_PHASE and $LIVE_MEMBERS member(s) carrying an executor handle" \
+      "tool=agent_teams_plan action=approve"
+    record live.teamRecord true "the mpd team record exists after a REAL approval" "file=$(basename "$LIVETEAMS") phase=$LIVE_PHASE"
+    record live.nativeExecutor "$([ "${LIVE_MEMBERS%%/*}" != "0" ] && echo true || echo false)" \
+      "a member carries an executorRef, i.e. the NATIVE executor raised it through ctx.subagents" "members-with-handle=$LIVE_MEMBERS"
+  else
+    record boot.llmTurn false \
+      "the live turn ran but committed no team record — the model did not reach agent_teams_plan approve (exit $LIVE_CODE)" \
+      "see 13-live.log"
+  fi
+  rm -f "$LIVECRED"
+else
+  record boot.llmTurn null \
+    "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum." \
+    "no credentials staged by design"
+fi
 
 # ── 14. pin the state the run measured (§7: quote a hash with its measurement moment) ──
 {
