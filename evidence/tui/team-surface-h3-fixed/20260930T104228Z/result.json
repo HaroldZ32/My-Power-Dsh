@@ -1,0 +1,28 @@
+{
+  "status": "tui-team-surface: ARM 1 IS 12/12, ARM 2 IS 6/7 \u2014 ONE assertion remains (H4)",
+  "H3_FIXED": {
+    "symptom": "the real host rendered the surface and the gate, but the drive typed the WRONG phrase: the pane showed `confirm approve mpd-fixture-1` beside `required approve plan-20260930T023541Z`, and the surface refused with `confirmation does not match this team` \u2014 correctly.",
+    "cause": "the steps array captured `phrase` BY VALUE when it was built, and the phrase was assigned later inside the first step's `before` hook. The drive therefore typed the previous value every time.",
+    "second_cause": "`stagedRecord()` stamps `createdAt: Date.now() - 60_000`, so it returns a DIFFERENT plan id on every call \u2014 the pre-written record and the later-staged plan disagreed about the identity the gate demands. Arm 2 now builds ONE record and derives the phrase from it, so the fixture, the staged plan and the typed phrase are all one identity.",
+    "verified": "H3 now PASSES \u2014 the host rendered the confirmation step and echoed the typed phrase"
+  },
+  "H4_IS_NOW_A_REAL_INTEGRATION_FINDING": {
+    "pane": "`approve failed: session \"36ac6a44-\u2026\" is not live in this store`",
+    "where_it_comes_from": "the HARNESS's own session store (`dsh-session`: `if (entry === void 0 || this.store.get(entry.id) !== entry) throw new Error(\\`session \"${session.id}\" is not live in this store\\`)`). It is NOT this bundle refusing.",
+    "what_it_means": "the surface reached the tool with the RIGHT session and the call was refused at the harness boundary. Passing `agent: { session: { id } }` from a TUI surface is NOT sufficient: the harness resolves a caller as a LIVE AGENT in its registry, and an id taken off a channel is not the same thing.",
+    "the_open_question": "the surface needs the live AGENT the harness knows \u2014 or the tool must resolve its session by another route. That is a DESIGN question about what a user-initiated surface call speaks as, not a missing field: `sessionIdOf` happily READ the synthetic id (that is why A7 passes offline), and only the harness's liveness check refuses it.",
+    "not_papered_over": "recorded rather than worked around by loosening the caller shape until the harness stops complaining"
+  },
+  "arm2": {
+    "passing": "H1, H2, H3, H4b, H5, H6",
+    "failing": "H4 only"
+  },
+  "gates": {
+    "bun test packages": "1350 pass, 0 fail",
+    "typecheck": "4 pre-existing skills/ errors"
+  },
+  "not_claimed": [
+    "the case exits 1 \u2014 one assertion",
+    "no live teammate was spawned"
+  ]
+}

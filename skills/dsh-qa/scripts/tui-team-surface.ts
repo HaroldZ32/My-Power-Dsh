@@ -1686,12 +1686,20 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   }
 
   // The record exists BEFORE the surface opens, so the scene reads it from disk.
-  writeTeamFixture(workspace, stagedRecord({ captainSessionId: "sess-not-yet-attached" }))
-  /** The frozen confirmation phrase, built from the fixture's own team id. */
+  // ONE RECORD FOR THE WHOLE ARM. `stagedRecord()` stamps `createdAt: Date.now() - 60_000`, so calling
+  // it twice yields two different plan ids — and a pre-written record and a later-staged plan that
+  // disagree about the identity the gate demands.
+  /** The one record every step of this arm describes; its `createdAt` fixes the plan id. */
+  const baseRecord = stagedRecord()
+  writeTeamFixture(workspace, { ...baseRecord, captainSessionId: "sess-not-yet-attached" })
   // THE PHRASE NAMES THE PLAN, not the team: the shared projection builds it from the PRE-approval
-  // identity, because at the moment the gate asks there is no team id to demand. It is assigned by the
-  // step below, which is where the live session id becomes known.
-  let phrase = approvalPhrase()
+  // identity, because at the moment the gate asks there is no team id to demand. It is computed HERE,
+  // from the one record, because the steps array below captures it BY VALUE — a version assigned in a
+  // step's `before` hook would arrive too late, and the drive would type the previous phrase. Measured:
+  // the pane echoed `approve mpd-fixture-1` while the gate demanded `approve plan-…`, and the surface
+  // refused with `confirmation does not match this team` — correctly.
+  /** The exact phrase the gate demands, fixed by the one record's `createdAt`. */
+  const phrase = approvalPhrase(planIdOf(baseRecord))
   /** The driven steps, in order; the picker dialog is driven LAST and in its own capture. */
   const steps: TuiStep[] = [
     {
@@ -1699,8 +1707,8 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
       before: (): void => {
         /** The live session id the boot produced for the sandbox workspace. */
         const id = liveSessionId(root, workspace)
-        /** The record the fixture — and the plan staged from it — both describe. */
-        const staged = stagedRecord({ captainSessionId: id ?? "unresolved-live-session" })
+        /** The one record, re-stamped with the live session the boot produced. */
+        const staged = { ...baseRecord, captainSessionId: id ?? "unresolved-live-session" }
         /** The fixture re-written with that live session as its captain. */
         const fixture = writeTeamFixture(workspace, staged)
         log("host: fixture captainSessionId := " + JSON.stringify(id ?? null) + " (record " + fixture.sha256.slice(0, 12) + ")")
@@ -1709,10 +1717,9 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
         // approval, so a surface reading only records shows its empty state over a plan awaiting a
         // decision — which is the defect this case was written to catch.
         if (id !== undefined) {
-          /** The staged plan and the identity its gate demands. */
+          /** The staged plan; its id is `planIdOf(staged)`, which IS the phrase this arm types. */
           const stagedPlan = stagePlanFixture(workspace, id, staged)
-          phrase = approvalPhrase(stagedPlan.planId)
-          log("host: staged plan " + stagedPlan.planId + " for session " + id)
+          log("host: staged plan " + stagedPlan.planId + " for session " + id + " (phrase " + phrase + ")")
         }
       },
       keys: ["/mpd plan", "Enter"],
