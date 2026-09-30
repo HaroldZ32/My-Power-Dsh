@@ -279,17 +279,33 @@ order, `crashes=[]`, `preset=mpd`, `isolationOffenders=0`. `tui-team-surface` ru
 assertions, and the failures resolve to THREE findings rather than ten defects. They are recorded here
 because each is a consequence of the split that was not carried through.
 
-### (a) The fixture writes the PRE-SPLIT record layout — one root cause
+### (a) The fixture writes the PRE-SPLIT record layout — DIAGNOSED, two changes needed
 
 `skills/dsh-qa/scripts/tui-team-surface.ts` `writeTeamFixture()` writes
 `<workspace>/.mpd/team/<id>/team.json`. W1 moved the record to
 `<workspace>/.mpd/team/teams/<teamId>.json` plus the index `.mpd/team/teams.json`, so the scene reads
 NO team and renders `MPD plan approval — (none)`. A4–A8, B2, B3, H1, H3 and H4 all fail as a
-**cascade from that**, not independently.
+**cascade from that**.
 
 No unit arm could have caught it: the arms build their fixtures through the STORE, so they write the new
 layout by construction. Only a case that hand-writes a record and drives a real host can see the two
 disagree.
+
+**THE SEQUENCING IS ALREADY RIGHT, which narrows the fix to two changes.** The case already discovers
+the live session id after the boot (`liveSessionId(root, workspace)`, used in the arm-2 driver) and
+re-writes its fixture with that id — so it is NOT blocked on not knowing the session, which is what this
+looked like before the W6 work made the question concrete.
+
+1. **The layout.** `writeTeamFixture` writes the post-split record (`teams/<teamId>.json` plus the
+   `teams.json` index) instead of the retired directory form.
+2. **A PLAN HALF, which W6 made necessary.** The plan surface is now usable through the SHARED
+   projection, and a plan is keyed by SESSION: the case must also stage
+   `.mpd/team/staging/<liveSessionId>.json` (planId, name, description, approval, members, tasks,
+   `stagedAt`) so the surface has something to approve. `writeTeamFixture` alone cannot make the
+   surface usable any more, because the record is materialised AT approval and the plan is what exists
+   before one.
+
+Neither is a path tweak, and both are confined to the QA script — no product code is implicated.
 
 ### (b) The plan scene cannot approve — and the reason is deeper than a stale tool name
 
