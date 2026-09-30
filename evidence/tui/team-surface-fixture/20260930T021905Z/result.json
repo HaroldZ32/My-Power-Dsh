@@ -14,8 +14,9 @@
     "still_failing": "arm 1 A4-A8/B2/B3 (the offline host double renders no usable surface) and arm 2 H3/H4 (no approval committed)"
   },
   "the_remaining_work_in_this_case": [
-    "arm 1's host double provides no `channel.sessionId` and stages no plan, so the offline surface has nothing to approve \u2014 it needs both, keyed to each other",
-    "arm 2 H3/H4: the host renders the surface (H1 proves it) but the confirmation step never appears and no approval commits. H4b reports the pane honestly, so this is the SURFACE not reaching its gate, not a lying assertion."
+    "arm 1's harness mounts NO `mpdTeams` service (`grep -n mpdTeams skills/dsh-qa/scripts/tui-team-surface.ts` returns NOTHING). The row's `planReader` is therefore `readPlanView(undefined, \u2026)` -> undefined and `teamRecords` is `mpdTeamRecords(undefined, \u2026)` -> [], so the offline surface reads no team and no plan and can never reach its gate. THE FIX IS A DESIGN CHOICE, which is why it is recorded rather than guessed: either (a) mount the REAL `mpd-team-core` plugin in the arm-1 harness so `mpdTeams` is the real service over the real files \u2014 the option that keeps ONE implementation, at the cost of satisfying that plugin's own ctx seams; or (b) a double in the case that reads `teams/<id>.json` and `staging/<sessionId>.json` \u2014 cheaper, but it is a SECOND implementation of the store's read, which is what the shared-infrastructure directive exists to avoid.",
+    "arm 1 also passes no `channel`, so even with a service the scene has no session id to key a plan read on. `channel` appears NOWHERE in the case (`grep -n channel` returns nothing); the host double must supply `{ sessionId }`, and the plan must be staged for that same id \u2014 the two have to be keyed to each other or the surface still sees nothing.",
+    "arm 2 H3/H4: the host renders the surface (H1 PASSES) but the confirmation step never appears and no approval commits. H4b reports the pane honestly ('no approval committed and the pane said so'), so this is the SURFACE not reaching its gate rather than a lying assertion. Note the record is now READ correctly (`phase=\"staged\"`), so H5 no longer masks the question."
   ],
   "not_claimed": [
     "the case does not PASS yet \u2014 this commit fixes the fixture, not the case",
