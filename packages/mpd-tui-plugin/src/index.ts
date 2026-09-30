@@ -53,6 +53,7 @@ import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
 import { boardSummary, PLAN_MUTATION_UNAVAILABLE, registerScene, type PlanActions } from "./scenes.js"
+import { readPlanView, type MpdPlanView } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -317,6 +318,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   })
   /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
   const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
+  // THE SHARED PLAN READER. The service face is the SAME projection the Web panel's `/plan` route
+  // serves, so the two surfaces cannot disagree about what is staged or what phrase the gate demands.
+  // The workspace is resolved per CALL (§6) and the session id comes from the scene's own live channel.
+  /** Read the staged plan of one session, or undefined when this composition exposes no plan face. */
+  // `teamsService` is a LATE-BOUND variable, not a function: the service arrives after apply, so it
+  // is read at call time and may still be undefined — which `readPlanView` handles by returning
+  // undefined rather than throwing.
+  const planReader = (sessionId: string): MpdPlanView["plan"] | undefined => readPlanView(teamsService, workspaceRoot(), sessionId)
 
   // Measured once, at apply: an append is only safe when the event type is known
   // to a reachable dsh-session copy (iron rule 2).
@@ -379,7 +388,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews, teamRecords)
+    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords)
     : {
         outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
         open: () => false,

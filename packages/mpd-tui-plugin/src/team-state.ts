@@ -569,6 +569,63 @@ export interface MpdTeamsLike {
   list?: (workspace: string) => TeamRecord[]
   /** The team bound to one Lead session. */
   active?: (workspace: string, sessionId?: string) => TeamRecord | undefined
+  /**
+   * The STAGED PLAN of one session — the SHARED projection, exactly as the Web panel receives it.
+   *
+   * The service-level reads above are workspace-scoped because an agentless surface has no session of
+   * its own; a SCENE does, on its live channel, which is why this one takes a session id and why the
+   * TUI does not need a second implementation of the plan projection or of the approval gate.
+   * @param workspace - the workspace to read.
+   * @param sessionId - the session whose staged plan is wanted.
+   * @returns the payload, or undefined when this composition exposes no plan face.
+   */
+  planFor?: (workspace: string, sessionId: string) => MpdPlanView | undefined
+}
+
+/** The staged-plan payload a TUI surface renders; the shared projection's own shape. */
+export interface MpdPlanView {
+  /** The staged plan, or null when this session has nothing awaiting approval. */
+  plan: {
+    /** The PRE-approval identity. */
+    planId: string
+    /** The team name the user reads. */
+    name: string
+    /** What the team is for. */
+    description: string
+    /** `required` waits for an explicit approval. */
+    approval: string
+    /** The EXACT string the approval gate demands, SERVED rather than re-derived. */
+    phrase: string
+    /** Whether an approval already committed. */
+    approved: boolean
+    /** Whether it was discarded instead. */
+    discarded: boolean
+    /** The teammates it wants raised. */
+    members: Array<{ name: string; description: string; role?: string }>
+    /** The tasks it wants posted. */
+    tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+  } | null
+}
+
+/**
+ * Read the staged plan a TUI surface should show, through the SHARED service face.
+ *
+ * The session id comes from the surface's own live channel — the one piece of session identity a TUI
+ * scene has, and the reason the plan is reachable here at all. Nothing is cached: the caller resolves
+ * it per read, exactly as §6 requires of every workspace root.
+ * @param teams - the `mpdTeams` service face, or undefined when the composition has none.
+ * @param workspace - the workspace resolved for THIS read.
+ * @param sessionId - the live session's id, or undefined when the channel has not bound one yet.
+ * @returns the plan view, or undefined when there is nothing to show or no service to ask.
+ */
+export function readPlanView(teams: MpdTeamsLike | undefined, workspace: string, sessionId: string | undefined): MpdPlanView["plan"] | undefined {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "") return undefined
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined
+  } catch {
+    // A service that throws must redden the surface's empty state, not take its render down.
+    return undefined
+  }
 }
 
 /**

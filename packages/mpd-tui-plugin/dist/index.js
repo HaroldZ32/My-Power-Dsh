@@ -3497,6 +3497,15 @@ function readTeamWorkflow(workspace, holds = [], views = []) {
 function approvalPhrase(teamId) {
   return `approve ${teamId}`;
 }
+function readPlanView(teams, workspace, sessionId) {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
+    return;
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
+  } catch {
+    return;
+  }
+}
 function mpdTeamRecords(teams, workspace) {
   try {
     const list = teams?.list;
@@ -4315,14 +4324,14 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function planActionLines(workflow, echo, armed, message) {
+function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
   const team = workflow?.team;
-  const phrase = team === undefined ? "" : approvalPhrase(team.id);
+  const phrase = servedPhrase !== "" ? servedPhrase : team === undefined ? "" : approvalPhrase(team.id);
   const rows = [];
   rows.push("");
-  rows.push(`approval needs the exact team id typed below, then Ctrl+X`);
+  rows.push(servedPhrase !== "" ? "approval needs the exact phrase typed below, then Ctrl+X" : "approval needs the exact team id typed below, then Ctrl+X");
   rows.push(`confirm    ${echo}`);
-  rows.push(`required   ${phrase === "" ? "(no team record)" : phrase}`);
+  rows.push(`required   ${phrase === "" ? "(no staged plan)" : phrase}`);
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`);
   if (armed)
     rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan");
@@ -4333,13 +4342,18 @@ function planActionLines(workflow, echo, armed, message) {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, teamViews, teamRecords) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
+    const channelSession = () => {
+      const live = props?.channel;
+      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
+      return id === undefined || id === "" ? undefined : id;
+    };
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }));
     const target = targetState[0];
     const viewState = React.useState(undefined);
@@ -4402,8 +4416,10 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       };
     }, [armedAt]);
     const team = view?.team;
-    const phrase = team === undefined ? "" : approvalPhrase(team.id);
-    const usable = view !== undefined && team !== undefined && team.staged;
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "");
+    const stagedPlan = rawPlan ?? undefined;
+    const phrase = stagedPlan === undefined ? team === undefined ? "" : approvalPhrase(team.id) : stagedPlan.phrase;
+    const usable = view !== undefined && team !== undefined && team.staged || stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true;
     const leave = () => {
       setEcho("");
       setScroll(0);
@@ -4531,14 +4547,14 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`);
     }
     if (usable)
-      for (const row of planActionLines(view, echo, armedAt !== 0, message))
+      for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? ""))
         body.push(row);
     const measured = measureTerminal(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
     const settled = message !== "";
     const verdict = !usable && settled;
-    const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`;
+    const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`;
     const children = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))];
     if (!usable) {
       if (verdict) {
@@ -4559,7 +4575,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, teamViews, teamRecords) {
+function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords) {
   let outcome = { state: "absent", detail: "tuiScenes was not injected" };
   let scenes;
   const nav = { planFromTeam: false };
@@ -4588,7 +4604,7 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     try {
       runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped);
       runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped);
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews, teamRecords) }, scoped);
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, scoped);
       outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` };
     } catch (error) {
       outcome = { state: "refused", detail: String(error?.message ?? error) };
@@ -5101,6 +5117,7 @@ function apply(ctx, config = {}) {
     teamsService = service;
   });
   const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
+  const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
   const record = (id, outcome) => {
@@ -5134,7 +5151,7 @@ function apply(ctx, config = {}) {
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
   status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews, teamRecords) : {
+  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords) : {
     outcome: () => ({ state: "absent", detail: "disabled by config" }),
     open: () => false,
     openScene: () => false,

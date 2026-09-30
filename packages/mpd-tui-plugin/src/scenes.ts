@@ -33,7 +33,7 @@ import { onService } from "./host.js"
 import { boardLines, readBoardState, statusLine } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
 import { GRAPH_THEME, hitTest, layoutGraph, type GraphTask } from "./graph.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -655,19 +655,25 @@ function createTeamComponent(
  * @param echo - the confirmation echo line (starts EMPTY, clears on refresh).
  * @param armed - whether the discard arm is live.
  * @param message - the last tool result line (empty when there is none).
+ * @param servedPhrase - the approval phrase the SHARED projection served, or "" when this
+ *   composition exposes no plan face (the record-derived fallback then applies).
  * @returns the appended rows.
  */
-export function planActionLines(workflow: TeamWorkflow | undefined, echo: string, armed: boolean, message: string): string[] {
+export function planActionLines(workflow: TeamWorkflow | undefined, echo: string, armed: boolean, message: string, servedPhrase: string = ""): string[] {
   /** The team the action block addresses; undefined without a record. */
   const team = workflow?.team
-  /** The exact phrase the user must type to approve this team. */
-  const phrase = team === undefined ? "" : approvalPhrase(team.id)
+  // THE PHRASE IS SERVED, NOT DERIVED. It arrives from the SAME projection the Web panel renders, so
+  // the two surfaces demand the same string; a surface that computed its own would be a second
+  // implementation of the gate, free to drift. The record-based fallback below exists only for a
+  // composition that exposes no plan face at all, and it is named as such in the row it renders.
+  /** The exact phrase the user must type, or the empty marker when there is nothing to approve. */
+  const phrase = servedPhrase !== "" ? servedPhrase : (team === undefined ? "" : approvalPhrase(team.id))
   /** The action-block rows, in render order. */
   const rows: string[] = []
   rows.push("")
-  rows.push(`approval needs the exact team id typed below, then Ctrl+X`)
+  rows.push(servedPhrase !== "" ? "approval needs the exact phrase typed below, then Ctrl+X" : "approval needs the exact team id typed below, then Ctrl+X")
   rows.push(`confirm    ${echo}`)
-  rows.push(`required   ${phrase === "" ? "(no team record)" : phrase}`)
+  rows.push(`required   ${phrase === "" ? "(no staged plan)" : phrase}`)
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`)
   if (armed) rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan")
   if (message !== "") rows.push(message)
@@ -696,6 +702,7 @@ function createPlanComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   actions: PlanActions,
+  planFor?: (sessionId: string) => MpdPlanView["plan"] | undefined,
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
@@ -706,6 +713,21 @@ function createPlanComponent(
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
+
+    // ── THE SESSION ID COMES FROM THE LIVE CHANNEL ────────────────────────────
+    // A staged plan is SESSION-scoped (`.mpd/team/staging/<sessionId>.json`) while every other read
+    // this row makes is workspace-scoped — the row has no session of its own. A SCENE does: the host
+    // hands it the live channel, and `sessionId` is one of that channel's published properties. That
+    // is the whole reason the plan is reachable here, and it is why nothing needs caching: the id is
+    // read per render off the props the host just passed.
+    /** The live channel's session id, or undefined before the channel has bound one. */
+    const channelSession = (): string | undefined => {
+      /** The channel, narrowed to the one property this surface reads. */
+      const live = (props as { channel?: { sessionId?: unknown } } | undefined)?.channel
+      /** The id as a string, or undefined when the host has not bound one yet. */
+      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined
+      return id === undefined || id === "" ? undefined : id
+    }
 
     // The mount-time navigation target: plain in-memory state, no I/O in the render path.
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }))
@@ -806,12 +828,25 @@ function createPlanComponent(
 
     /** The team this render addresses; undefined without a record. */
     const team = view?.team
-    /** The exact approval phrase of that team. */
-    const phrase = team === undefined ? "" : approvalPhrase(team.id)
+    // THE STAGED PLAN, THROUGH THE SHARED PROJECTION. Nothing here re-reads the staging file or
+    // re-derives the gate: `planFor` is the same function the Web panel's route calls, so both
+    // surfaces demand the same phrase. A composition with no plan face, or a session with nothing
+    // staged, yields undefined and this surface falls back to the record-derived phrase.
+    /** The plan this session has staged, or undefined when there is none to approve. */
+    /** The plan this session has staged, or undefined when there is none to approve. */
+    /** What the reader answered: the plan, or null when the session has none staged. */
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "")
+    /** The plan to render, with the reader's own null normalised to undefined. */
+    const stagedPlan = rawPlan ?? undefined
+    /** The exact approval phrase: SERVED when there is a plan, else the record-derived fallback. */
+    const phrase = stagedPlan === undefined ? (team === undefined ? "" : approvalPhrase(team.id)) : stagedPlan.phrase
     // The precondition the Web itself enforces before it renders the editor
     // (`client.js:2437`): a STAGED team with a plan. Outside it the scene is a
     // read-only statement that accepts ONLY Esc — no chord, no mutation.
-    const usable = view !== undefined && team !== undefined && team.staged
+    // A STAGED PLAN WITH NO RECORD IS THE NORMAL PRE-APPROVAL STATE: the record is materialised AT
+    // approval, so requiring one here made the surface unusable in exactly the state it exists for —
+    // the same fact that made the Web panel show "no team yet" over a plan awaiting a decision.
+    const usable = (view !== undefined && team !== undefined && team.staged) || (stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true)
 
     /** Leave the surface. Esc never mutates (frozen §3.2). */
     const leave = (): void => {
@@ -978,7 +1013,7 @@ function createPlanComponent(
     if (usable && target.teamId !== undefined && team !== undefined && target.teamId !== team.id) {
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`)
     }
-    if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message)) body.push(row)
+    if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? "")) body.push(row)
 
     /** The terminal measurement, taken once per render. */
     const measured = measureTerminal(ui)
@@ -1003,7 +1038,9 @@ function createPlanComponent(
       ? verdict
         ? `MPD plan approval — ${team?.name ?? "(none)"}`
         : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}`
-      : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`
+      // A STAGED PLAN WITH NO RECORD still has a NAME — the plan's own — so the title addresses it
+      // instead of falling back to "(none)" over the very plan the surface is asking about.
+      : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`
     /** The elements handed to the host's Box, in render order. */
     const children: unknown[] = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))]
     if (!usable) {
@@ -1051,6 +1088,7 @@ export function registerScene(
   home: () => string,
   holds: () => readonly string[] = () => [],
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
+  planReader?: (sessionId: string) => MpdPlanView["plan"] | undefined,
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
 ): SceneSeam {
@@ -1089,7 +1127,7 @@ export function registerScene(
     try {
       runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped)
       runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped)
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews, teamRecords) }, scoped)
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, scoped)
       // `open(unknownId)` is how the host reports an unregistered scene; calling
       // it here would OPEN a scene, so it is never used as a probe. The host
       // exposes no scene read-back, hence `requested`.

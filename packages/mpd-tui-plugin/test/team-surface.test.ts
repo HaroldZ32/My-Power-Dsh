@@ -549,7 +549,23 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
 /** Register the real scenes against a minimal host double and return the kit + components. */
 function mountScenes(
   workspace: string,
-  options: { holds?: readonly string[]; actions?: PlanActions; terminal?: { columns: number; rows: number } } = {},
+  options: {
+    holds?: readonly string[]
+    actions?: PlanActions
+    terminal?: { columns: number; rows: number }
+    /** The shared plan reader, when an arm wants a staged plan to exist. */
+    planFor?: (sessionId: string) => {
+      planId: string
+      name: string
+      description: string
+      approval: string
+      phrase: string
+      approved: boolean
+      discarded: boolean
+      members: Array<{ name: string; description: string; role?: string }>
+      tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+    } | undefined
+  } = {},
 ): { kit: Kit; components: Record<string, unknown>; opened: string[]; seam: ReturnType<typeof registerScene> } {
   /** The registered scene components, by id. */
   const components: Record<string, unknown> = {}
@@ -590,6 +606,10 @@ function mountScenes(
       approve: async () => ({ ok: true, value: { status: "running" } }),
       discard: async () => ({ ok: true }),
     },
+    // The SHARED plan reader (W6): the row hands the scene the same projection the Web panel's
+    // `/plan` route serves. The fixture returns nothing staged unless an arm stages one, which is
+    // what keeps the pre-W6 arms behaving exactly as they did.
+    options.planFor ?? (() => undefined),
     // The composition root resolves the OFFICIAL readout per call (0.1.7) and hands it to the
     // scene; the fixture's views are what a host would return here.
     () => viewsOf(workspace),
@@ -790,7 +810,10 @@ describe("surface T2 — the plan approval", () => {
     expect(rows.join("\n")).toContain("some message")
     expect(planActionLines(workflow, "", false, "").join("\n")).not.toContain("DISCARD ARMED")
     // No team record: the required phrase degrades honestly instead of inventing one.
-    expect(planActionLines(undefined, "", false, "").join("\n")).toContain("required   (no team record)")
+    // "(no staged plan)" since W6: the phrase is SERVED by the shared projection, and a surface with
+    // nothing staged has nothing to approve — which is a different sentence from "no team record",
+    // the record being materialised only AT approval.
+    expect(planActionLines(undefined, "", false, "").join("\n")).toContain("required   (no staged plan)")
   })
 })
 
@@ -1124,5 +1147,93 @@ describe("the team scene's focus", () => {
     /** This arm's kit at a width the boxes fit. */
     const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
     expect(render(wide.kit, wide.components[TEAM_SCENE_ID])).toContain("┌")
+  })
+})
+
+// ── W6: the TUI consumes the SHARED plan projection ─────────────────────────
+//
+// THE USER'S DIRECTIVE for this work: the Web panel and the TUI scene share the infrastructure and
+// differ only in how they DRAW it. These arms pin the TUI's half of that: the phrase it demands is the
+// one the shared projection SERVED (never one it derived), and the session it read the plan with comes
+// from its own live channel — the one piece of session identity a TUI scene has, and the reason a
+// session-scoped plan is reachable from a workspace-scoped row at all.
+describe("the plan scene reads the SHARED projection", () => {
+  /**
+   * A staged plan as the shared projection serves it.
+   * @returns the plan half of the payload, with the served phrase.
+   */
+  const stagedPlan = (): {
+    /** The PRE-approval identity. */
+    planId: string
+    /** The team name the user reads. */
+    name: string
+    /** What the team is for. */
+    description: string
+    /** `required` waits for an explicit approval. */
+    approval: string
+    /** The EXACT string the gate demands, SERVED by the projection. */
+    phrase: string
+    /** Whether an approval already committed. */
+    approved: boolean
+    /** Whether it was discarded instead. */
+    discarded: boolean
+    /** The teammates it wants raised. */
+    members: Array<{ name: string; description: string; role?: string }>
+    /** The tasks it wants posted. */
+    tasks: Array<{ subject: string; description: string; owner?: string; blockedBy: string[] }>
+  } => ({
+    planId: "plan-20260930T010000",
+    name: "Shared infra",
+    description: "one projection, two surfaces",
+    approval: "required",
+    phrase: "approve plan-20260930T010000",
+    approved: false,
+    discarded: false,
+    members: [{ name: "Senior Engineer", description: "implements" }],
+    tasks: [{ subject: "build it", description: "acceptance", blockedBy: ["core"] }],
+  })
+
+  test("the phrase is the SERVED one, not a record-derived lookalike", () => {
+    // The record-based phrase would be `approve <teamId>` — a DIFFERENT string. Passing the served
+    // phrase through and asserting on it is what proves the scene renders the shared contract rather
+    // than computing its own.
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, with a plan staged and a channel-bound session. */
+    const { kit, components } = mountScenes(workspace, { planFor: () => stagedPlan() })
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).toContain("approve plan-20260930T010000")
+    expect(text).toContain("typed below")
+    // And the record-derived spelling must NOT appear beside it.
+    expect(text).not.toContain("approve mpd-fixture-1")
+  })
+
+  test("a STAGED PLAN with no usable record still renders the gate", () => {
+    // The record is materialised AT approval, so a staged plan with no record is the NORMAL
+    // pre-approval state — the same fact that made the Web panel show 'no team yet' over a plan
+    // awaiting a decision. Requiring a record made this surface unusable exactly when it was needed.
+    /** A fixture whose record is NOT staged, so only the plan can make the surface usable. */
+    const workspace = teamFixture({ id: "run-9", name: "Running", phase: "running", members: [], tasks: [] })
+    /** This arm's kit, with a plan staged regardless of the record's phase. */
+    const { kit, components } = mountScenes(workspace, { planFor: () => stagedPlan() })
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).toContain("approve plan-20260930T010000")
+  })
+
+  test("with NO plan face the scene never INVENTS a plan phrase", () => {
+    // A composition exposing no `planFor` keeps its pre-W6 behaviour rather than breaking. What this
+    // arm pins is the narrow claim: with no plan face the scene cannot render a phrase it was never
+    // served — it either falls back to the record-derived one or shows its empty state, and both are
+    // honest. (The record-derived fallback itself is covered by the `planActionLines` arms.)
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(stagedRecord())
+    /** This arm's kit, with no plan reader at all. */
+    const { kit, components } = mountScenes(workspace)
+    /** The rendered plan scene. */
+    const text = render(kit, components[PLAN_SCENE_ID])
+    expect(text).not.toContain("approve plan-")
+    expect(text).toContain("MPD plan approval")
   })
 })
