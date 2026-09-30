@@ -61,7 +61,7 @@ import {
   type StagedPlan,
   type StagedTask,
 } from "./plan-store"
-import { registerTeamRoutes, TEAM_STATE_PATH } from "./team-web"
+import { registerTeamRoutes, TEAM_ROUTES } from "./team-web"
 import {
   activeTeamId,
   addTeamMember,
@@ -955,7 +955,7 @@ export function apply(ctx: any): void {
       // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
       // host's own registry, and a second registration attempt against the SAME server is harmless
       // because the composition only ever has one.
-      if (mountTeamRoute()) console.log(`[mpd-team-core] team state route: ${TEAM_STATE_PATH}`)
+      if (mountTeamRoute()) console.log(`[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`)
       try {
         dsh.onServiceBound(["webServer", "httpServer"], () => { mountTeamRoute() })
       } catch { /* an adapter without the seam keeps the single attempt above */ }

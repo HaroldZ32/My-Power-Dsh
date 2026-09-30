@@ -1841,6 +1841,10 @@ function idleMembers(record) {
 
 // packages/mpd-team-core-plugin/src/team-web.ts
 var TEAM_STATE_PATH = "/plugins/mpd-team/state";
+var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
+var TEAM_TASK_PATH = "/plugins/mpd-team/task";
+var TEAM_MAIL_PATH = "/plugins/mpd-team/mail";
+var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH];
 function buildTeamState(record, workspace, sessionId, executor) {
   const empty = {
     ok: true,
@@ -1913,6 +1917,73 @@ function buildTeamState(record, workspace, sessionId, executor) {
     problems: summary.cycles.length === 0 ? [] : [`cycle ${summary.cycles.join(",")}`]
   };
 }
+function buildTeamPlan(plan, workspace, sessionId) {
+  if (plan === undefined)
+    return { ok: true, workspace, sessionId, plan: null };
+  const memberIds = new Map((plan.created?.members ?? []).map((entry) => [entry.name, entry.id]));
+  const taskIds = new Map((plan.created?.tasks ?? []).map((entry) => [entry.subject, entry.id]));
+  return {
+    ok: true,
+    workspace,
+    sessionId,
+    plan: {
+      planId: plan.planId,
+      name: plan.name,
+      description: plan.description,
+      approval: plan.approval,
+      stagedAt: plan.stagedAt,
+      approved: plan.approvedAt !== undefined,
+      discarded: plan.discardedAt !== undefined,
+      members: plan.members.map((member) => ({
+        name: member.name,
+        description: member.description,
+        ...member.role === undefined ? {} : { role: member.role },
+        ...memberIds.has(member.name) ? { id: memberIds.get(member.name) } : {}
+      })),
+      tasks: plan.tasks.map((task) => ({
+        subject: task.subject,
+        description: task.description,
+        ...task.owner === undefined ? {} : { owner: task.owner },
+        blockedBy: [...task.blockedBy ?? []],
+        ...taskIds.has(task.subject) ? { id: taskIds.get(task.subject) } : {}
+      }))
+    }
+  };
+}
+function buildTeamTasks(workspace) {
+  const hold = readHold(workspace);
+  return {
+    ok: true,
+    workspace,
+    contracts: listContracts(workspace).map((contract) => ({
+      taskId: contract.taskId,
+      subject: contract.subject,
+      description: contract.description,
+      claimedBy: contract.claimedBy,
+      claimedAt: contract.claimedAt,
+      attempt: contract.attempt,
+      blockedBy: [...contract.blockedBy]
+    })),
+    hold: hold === undefined ? null : { reason: hold.reason, heldBy: hold.heldBy, heldAt: hold.heldAt }
+  };
+}
+function buildTeamMail(workspace) {
+  const state = readMailbox(workspace);
+  const messages = (Array.isArray(state.messages) ? state.messages : []).map((raw) => {
+    const entry = raw ?? {};
+    return {
+      id: String(entry.id ?? ""),
+      fromName: String(entry.fromName ?? ""),
+      toName: String(entry.toName ?? ""),
+      subject: String(entry.subject ?? ""),
+      body: String(entry.body ?? ""),
+      sentAt: String(entry.sentAt ?? ""),
+      ...entry.deliveredAt === undefined ? {} : { deliveredAt: String(entry.deliveredAt) },
+      ...entry.readAt === undefined ? {} : { readAt: String(entry.readAt) }
+    };
+  });
+  return { ok: true, workspace, messages, records: readRecords(workspace).length };
+}
 function registerTeamRoutes(webServer, deps) {
   if (webServer === undefined || typeof webServer.register !== "function")
     return false;
@@ -1929,24 +2000,38 @@ function registerTeamRoutes(webServer, deps) {
     const value = new URLSearchParams(url.slice(at + 1)).get("sessionId");
     return value === null ? "" : value.trim();
   };
-  try {
-    deps.effect(() => webServer.register({
-      kind: "exact",
-      path: TEAM_STATE_PATH,
-      handler: (req, res) => {
-        try {
-          const sessionId = sessionOf(req);
-          json(res, 200, buildTeamState(deps.recordFor(sessionId), deps.workspace(), sessionId, deps.executor()));
-        } catch (error) {
-          json(res, 500, { ok: false, error: `mpd-team-core: ${String(error?.message ?? error)}` });
+  const mount = (path, build) => {
+    try {
+      deps.effect(() => webServer.register({
+        kind: "exact",
+        path,
+        handler: (req, res) => {
+          try {
+            json(res, 200, build(req));
+          } catch (error) {
+            json(res, 500, { ok: false, error: `mpd-team-core: ${String(error?.message ?? error)}` });
+          }
         }
-      }
-    }), "mpd-team-core: web state route");
-    return true;
-  } catch (error) {
-    deps.warn(`registering ${TEAM_STATE_PATH} failed: ${String(error?.message ?? error)}`);
-    return false;
-  }
+      }), `mpd-team-core: web route ${path}`);
+      return true;
+    } catch (error) {
+      deps.warn(`registering ${path} failed: ${String(error?.message ?? error)}`);
+      return false;
+    }
+  };
+  let all = true;
+  all = mount(TEAM_STATE_PATH, (req) => {
+    const sessionId = sessionOf(req);
+    return buildTeamState(deps.recordFor(sessionId), deps.workspace(), sessionId, deps.executor());
+  }) && all;
+  all = mount(TEAM_PLAN_PATH, (req) => {
+    const sessionId = sessionOf(req);
+    const workspace = deps.workspace();
+    return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId);
+  }) && all;
+  all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all;
+  all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all;
+  return all;
 }
 
 // packages/mpd-team-core-plugin/src/index.ts
@@ -2553,7 +2638,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         warn: (line) => console.warn(`[mpd-team-core] ${line}`)
       });
       if (mountTeamRoute())
-        console.log(`[mpd-team-core] team state route: ${TEAM_STATE_PATH}`);
+        console.log(`[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);
       try {
         dsh.onServiceBound(["webServer", "httpServer"], () => {
           mountTeamRoute();

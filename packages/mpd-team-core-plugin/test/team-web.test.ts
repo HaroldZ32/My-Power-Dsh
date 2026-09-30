@@ -12,7 +12,9 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_STATE_PATH, buildTeamState, registerTeamRoutes } from "../src/team-web"
+import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, registerTeamRoutes } from "../src/team-web"
+import { appendRecord } from "../src/mailbox-store"
+import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -166,9 +168,11 @@ describe("the route", () => {
       warn: () => {},
     })
     expect(ok).toBe(true)
-    expect(routes.length).toBe(1)
-    expect(routes[0].kind).toBe("exact")
-    expect(routes[0].path).toBe(TEAM_STATE_PATH)
+    // FOUR routes since W1.3: the record, the staged plan, the contracts/hold and the mailbox. The
+    // state route is still the one this arm drives.
+    expect(routes.length).toBe(TEAM_ROUTES.length)
+    for (const route of routes) expect(route.kind).toBe("exact")
+    expect(routes.map((route) => route.path)).toContain(TEAM_STATE_PATH)
     // The path is the one the CLIENT polls: the two are one constant, not two literals.
     expect(TEAM_STATE_PATH).toBe("/plugins/mpd-team/state")
     /** The response double, capturing the status and the body. */
@@ -179,21 +183,21 @@ describe("the route", () => {
       end: (text: string) => { captured.body = JSON.parse(text) },
     }
     // The caller's OWN session decides which team is answered.
-    routes[0].handler({ url: `${TEAM_STATE_PATH}?sessionId=sess-1` }, res)
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({ url: `${TEAM_STATE_PATH}?sessionId=sess-1` }, res)
     expect(captured.status).toBe(200)
     expect((captured.body as { team: { id: string } | null }).team?.id).toBe(team.teamId)
     // A session with no team still gets a 200 and an empty state.
-    routes[0].handler({ url: `${TEAM_STATE_PATH}?sessionId=sess-other` }, res)
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({ url: `${TEAM_STATE_PATH}?sessionId=sess-other` }, res)
     expect(captured.status).toBe(200)
     expect((captured.body as { team: unknown }).team).toBeNull()
     // A request with NO query at all is answered rather than throwing.
-    routes[0].handler({}, res)
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({}, res)
     expect(captured.status).toBe(200)
   })
 
   test("a THROWING read becomes a 500 payload, never an uncaught throw in a request", () => {
     /** The routes the double captured. */
-    const routes: Array<{ handler: (req: unknown, res: unknown) => unknown }> = []
+    const routes: Array<{ path: string; handler: (req: unknown, res: unknown) => unknown }> = []
     /** The server double: it captures the route and never refuses. */
     const server = { register: (route: { kind: string; path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.push(route); return () => {} } }
     registerTeamRoutes(server, {
@@ -205,7 +209,7 @@ describe("the route", () => {
     })
     /** The response double. */
     const captured: { status: number; body: unknown } = { status: 0, body: undefined }
-    routes[0].handler({ url: TEAM_STATE_PATH }, {
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({ url: TEAM_STATE_PATH }, {
       writeHead: (status: number) => { captured.status = status },
       end: (text: string) => { captured.body = JSON.parse(text) },
     })
@@ -225,7 +229,9 @@ describe("the route", () => {
     expect(registerTeamRoutes({ register: () => { throw new Error("duplicate route") } }, {
       recordFor: () => undefined, workspace: () => "/ws", executor: () => EXECUTOR, effect: (fn: () => unknown) => fn(), warn: (line: string) => warned.push(line),
     })).toBe(false)
-    expect(warned.length).toBe(1)
+    // ONE WARNING PER ROUTE, because a server that refuses the registration refuses all four — the
+    // family is mounted together, so a count of 1 here would mean three routes went unreported.
+    expect(warned.length).toBe(TEAM_ROUTES.length)
     expect(warned[0]).toContain("duplicate route")
   })
 })
@@ -233,3 +239,118 @@ describe("the route", () => {
 /** Remove every sandbox this file created, so no arm leaks state into the next. */
 import { afterEach } from "bun:test"
 afterEach(() => { for (const dir of sandboxes.splice(0)) rmSync(dir, { recursive: true, force: true }) })
+
+// ── W1.3: the three routes that serve what exists BEFORE an approval ─────────
+//
+// WHY THEY ARE SEPARATE FROM `/state`, and it is not tidiness. The mpd TEAM RECORD is materialised AT
+// approval, so before one there is no record to read. A surface that reads only records therefore
+// shows NOTHING for a staged plan — which is exactly what the TUI plan panel did, and why it claimed
+// approval was impossible when `agent_teams_plan {action:"approve"}` was one call away. The staged
+// plan carries its own identity, `planId`, and these arms pin the routes that serve it.
+describe("the staged-plan route", () => {
+  test("serves the PLAN and its planId, not the team record", () => {
+    /** The workspace holding the staged plan. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-plan-"))
+    sandboxes.push(workspace)
+    /** A plan staged through the store, so the fixture cannot drift from the real shape. */
+    let plan = stagePlan(workspace, "sess-plan", { name: "wave-4", description: "the web sidebar", approval: "required" }, NOW)
+    plan = addMember(plan, { name: "Senior Engineer", description: "implements", prompt: "do it", role: "Senior Engineer" })
+    plan = addTask(plan, { subject: "build it", description: "acceptance text", owner: "Senior Engineer", blockedBy: ["core"] })
+    writePlan(workspace, plan)
+    /** The payload the route would serve. */
+    const payload = buildTeamPlan(plan, workspace, "sess-plan")
+    expect(payload.ok).toBe(true)
+    expect(payload.plan?.planId).toBe(plan.planId)
+    // The planId is the PRE-approval identity and the phrase the approval gate demands — NOT the
+    // teamId, which does not exist yet.
+    expect(payload.plan?.planId.startsWith("plan-")).toBe(true)
+    expect(payload.plan?.approved).toBe(false)
+    expect(payload.plan?.discarded).toBe(false)
+    expect(payload.plan?.members[0].name).toBe("Senior Engineer")
+    expect(payload.plan?.tasks[0].blockedBy).toEqual(["core"])
+    // A staged plan's own fields only: routing and task kind are resolved AT approval by the roster
+    // slot, so projecting them here would invent columns the stage does not have.
+    expect(Object.keys(payload.plan?.members[0] ?? {}).sort()).toEqual(["description", "name", "role"])
+  })
+
+  test("a session with NO staged plan is a payload with plan null, not an error", () => {
+    /** The payload for a session that never staged anything. */
+    const payload = buildTeamPlan(undefined, "/ws", "sess-none")
+    expect(payload.ok).toBe(true)
+    expect(payload.plan).toBeNull()
+  })
+})
+
+describe("the task route", () => {
+  test("serves the frozen contracts and the hold, in the store's own fields", () => {
+    /** The workspace whose contracts are read. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-task-"))
+    sandboxes.push(workspace)
+    /** A plan staged through the store; `stagePlan` does not take members or tasks. */
+    const staged = addTask(
+      stagePlan(workspace, "s1", { name: "t", description: "d", approval: "required" }, NOW),
+      { subject: "core", description: "the acceptance text" },
+    )
+    writePlan(workspace, staged)
+    /** The payload under test. */
+    const payload = buildTeamTasks(workspace)
+    expect(payload.ok).toBe(true)
+    expect(Array.isArray(payload.contracts)).toBe(true)
+    expect(payload.hold).toBeNull()
+    // A contract carries the FROZEN acceptance text plus who claimed it — there is no separate
+    // `owner`/`acceptance` key, and inventing one would describe a shape the store does not have.
+    if (payload.contracts.length > 0) {
+      expect(Object.keys(payload.contracts[0]).sort()).toEqual(["attempt", "blockedBy", "claimedAt", "claimedBy", "description", "subject", "taskId"])
+    }
+  })
+})
+
+describe("the mail route", () => {
+  test("serves the fold, and distinguishes an EMPTY mailbox from an unread one", () => {
+    /** The workspace whose mailbox is read. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-mail-"))
+    sandboxes.push(workspace)
+    /** The payload for a mailbox nothing has written to. */
+    const empty = buildTeamMail(workspace)
+    expect(empty.ok).toBe(true)
+    expect(empty.messages).toEqual([])
+    // The RECORD COUNT is the discriminator the panel needs: zero records means nothing was ever
+    // sent, which is a different sentence from "everything was read".
+    expect(empty.records).toBe(0)
+    // A `send` record in the union's own shape — `t` discriminates it, and the fold reads THAT.
+    appendRecord(workspace, { t: "send", id: "m1", fromId: "s-arch", fromName: "Architect", toId: "s-cap", toName: "captain", subject: "contract", body: "contract frozen", at: "2026-09-30T09:00:00.000Z" })
+    /** The payload after one message. */
+    const one = buildTeamMail(workspace)
+    expect(one.records).toBe(1)
+    expect(one.messages.length).toBe(1)
+    expect(one.messages[0].fromName).toBe("Architect")
+    expect(one.messages[0].body).toBe("contract frozen")
+    // A message the transport has not touched yet has NO delivery instant — the fold's own way of
+    // saying "queued", which is a different sentence from "delivered and unread".
+    expect(one.messages[0].deliveredAt).toBeUndefined()
+    expect(one.messages[0].readAt).toBeUndefined()
+  })
+})
+
+describe("the route family", () => {
+  test("registers ALL FOUR paths, and one registration covers the family", () => {
+    /** The routes the double captured. */
+    const routes: string[] = []
+    /** The web server double. */
+    const server = { register: (route: { path: string }) => { routes.push(route.path); return () => {} } }
+    /** Whether every route registered. */
+    const ok = registerTeamRoutes(server, {
+      recordFor: () => undefined,
+      workspace: () => "/ws",
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    expect(ok).toBe(true)
+    expect(routes.sort()).toEqual([...TEAM_ROUTES].sort())
+    // The four paths are ONE family, declared in one place, so a panel cannot find one and miss
+    // another — and the client's constants come from the same list.
+    expect(TEAM_ROUTES.length).toBe(4)
+    expect(TEAM_ROUTES).toContain(TEAM_PLAN_PATH)
+  })
+})

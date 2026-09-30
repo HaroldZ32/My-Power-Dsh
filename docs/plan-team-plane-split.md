@@ -96,7 +96,7 @@ Making the gate resolve the pinned toolchain itself is a declared follow-up, not
 
 | Step | What | Why |
 |---|---|---|
-| W1.3 | host routes `/plugins/mpd-team/{state,plan,task,mail}` | lands WITH its consumer (W4's web body) so no dead endpoint ships in between |
+| W1.3 | host routes `/plugins/mpd-team/{state,plan,task,mail}` | **CLOSED (2026-09-30)** — `state` landed with W4's web body; the other three landed when a consumer was named. See §5f. |
 
 ### 4.4 A decision that was REVERTED, and why it is recorded here
 
@@ -312,6 +312,41 @@ following the sentence looks up a tool that exists.
 surfaces are proven by their own arms and by `tui-mount`. They are the last mile of the surface
 migration, and (b) is the one that matters: a captain reading the TUI is told approval is impossible
 when it is one call away.
+
+## 5f. W1.3 CLOSED — the route family, and the distinction that matters
+
+Four routes, registered together as one family so a panel cannot find one and miss another
+(`TEAM_ROUTES` is the single declaration both the server and, later, the client read):
+
+| route | serves | identity |
+|---|---|---|
+| `/plugins/mpd-team/state` | the mpd **RECORD** — the team as it exists after approval | `teamId` |
+| `/plugins/mpd-team/plan` | the **STAGED PLAN** — what exists before one | `planId` |
+| `/plugins/mpd-team/task` | the frozen acceptance contracts and the workspace hold | `taskId` |
+| `/plugins/mpd-team/mail` | the mailbox fold | message id |
+
+### Why `/plan` is not part of `/state`
+
+This is the fact the TUI plan surface got wrong, and it is worth stating plainly: **the team record is
+materialised AT approval.** Before one there is no record, so a surface that reads only records shows
+nothing — which is exactly why the TUI panel rendered `MPD plan approval — (none)` and concluded that
+approval was impossible when `agent_teams_plan {action:"approve"}` was one call away.
+
+The staged plan lives in `.mpd/team/staging/<sessionId>.json` and carries its OWN identity, `planId`
+(`plan-<instant>`), which is what an approval gate must demand.
+
+### Three projections that were WRONG on the first pass, and how
+
+Each was caught by asserting the payload against the STORE's own types rather than against the shape I
+had imagined — the lesson being that a projection is a claim about someone else's data structure:
+
+1. `StagedMember`/`StagedTask` carry **no** `provider`, `model` or `kind` — routing and task kind are
+   resolved AT approval by the roster slot. Projecting them would have invented columns.
+2. `TaskContract` carries `subject`/`description`/`claimedBy`/`claimedAt`/`attempt`/`blockedBy` — there
+   is no separate `owner` or `acceptance` key.
+3. `MailMessage` carries `fromName`/`toName`/`subject`/`body`/`sentAt` (+ optional `deliveredAt`/
+   `readAt`) — there is no `from`/`to`/`content`/`ts`. The invented names yielded a payload of empty
+   strings and `read: false` for every message, i.e. a mailbox of blank unread rows.
 
 ## 6. Acceptance for W1
 
