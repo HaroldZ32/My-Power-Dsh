@@ -1,0 +1,10 @@
+--- RED BASELINE (pre-fix, operator run reproduced) ---
+    "root.effect is unavailable from a plugin activation": 1,
+    "pending (waiting for service": 1,
+
+--- GREEN (guard active) ---
+[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)
+
+--- NEGATIVE CONTROL (guard overridden with disabled: false) ---
+mpd-agent-team (@deepseek-ai/dsh-experimental-agent-team): Error: dsh-tui: root.effect is unavailable from a plugin activation
+mpd-tool-agent-team (@deepseek-ai/dsh-experimental-tool-agent-team): pending (waiting for service: agentTeams)

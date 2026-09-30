@@ -1,0 +1,10 @@
+installing the host into the sandbox profile (network required): /root/dshProj/My-Power-Dsh/.mpd/tui-lane
+host install exit=0
+bundle install exit=0
+install log=evidence/tui/lanes/2026-09-30T01-26-58.807Z/install.log
+sandbox root=/root/dshProj/My-Power-Dsh/.mpd/tui-lane explicit=true warm=true fresh=false
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+statusLine=true counters=true crashes=[]
+session keys created=["--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--"] inherited=[]
+preset=mpd session=3cb80e26-618f-418c-9f6c-cb14e0e3a364 isolationOffenders=0

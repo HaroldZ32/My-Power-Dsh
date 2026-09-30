@@ -1,0 +1,12 @@
+[tui-mount] installing the host into the sandbox profile (network required): /root/dshProj/My-Power-Dsh/.mpd/tui-lane
+[tui-mount] host install exit=0
+[tui-mount] bundle install exit=0
+[tui-mount] install log=evidence/tui/lanes/2026-09-30T02-13-36.746Z/install.log
+[tui-mount] sandbox root=/root/dshProj/My-Power-Dsh/.mpd/tui-lane explicit=true warm=true fresh=false
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=["--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--"] inherited=[]
+[tui-mount] preset=mpd session=60e024af-6e76-465c-8e8f-750462077f10 isolationOffenders=0
+[tui-mount] ok=true -> /root/dshProj/My-Power-Dsh/evidence/tui/lanes/2026-09-30T02-13-36.746Z
+[tui-mount] PASS: third layer mounted, 1 session record(s) decoded, zero apply-crash signatures

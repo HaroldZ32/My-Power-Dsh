@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "harnessRoot": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh",
+  "note": "session/create mounts the mpd preset row and refuses on any inactive row, so its ok answer is the mount proof; the negative control boots the same sandbox with a --patch id-target rewriting the preset-mpd row's persona back to the retired `text:` form and must fail.",
+  "steps": {
+    "conformance": {
+      "ok": true,
+      "checked": 33,
+      "schemaFree": 7,
+      "patchFiles": [
+        "cordis.patch.yml",
+        "presets/mpd.patch.yml"
+      ],
+      "preset": {
+        "rowId": "preset-mpd",
+        "id": "mpd",
+        "children": 28,
+        "file": "presets/mpd.patch.yml"
+      },
+      "parity": {
+        "reference": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml",
+        "referenceDeclared": 29,
+        "referenceActive": 25,
+        "oursDeclared": 28,
+        "oursActive": 26,
+        "missing": [],
+        "extra": [],
+        "disabledByReference": [
+          "tool-plugin-manager"
+        ],
+        "enabledHereDisabledThere": [
+          "tool-ralph"
+        ]
+      },
+      "notes": [
+        "the installed standard preset declares (disabled) tool-plugin-manager — not required, a disabled row grants no capability either way",
+        "the mpd preset ENABLES row(s) the installed standard preset ships disabled: tool-ralph — deliberate preset policy, listed so a reader can see it"
+      ],
+      "problems": []
+    },
+    "auth": {
+      "ok": true,
+      "tokenSeen": true,
+      "cookieSession": true
+    },
+    "sessionCreate": {
+      "ok": true,
+      "status": 200,
+      "sessionId": "session-cc3440c2-8156-4685-8e2e-cf648f538afe",
+      "agentPreset": "mpd",
+      "raw": "{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1790676651474\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-cc3440c2-8156-4685-8e2e-cf648f538afe\",\"agentPreset\":\"mpd\"}}}"
+    },
+    "sessionHeader": {
+      "ok": true,
+      "agentPreset": "mpd",
+      "log": "/tmp/mpd-preset-main-dL0VJt/home/sessions/--tmp-mpd-preset-main-dL0VJt-ws--/session-cc3440c2-8156-4685-8e2e-cf648f538afe/session.v4.jsonl.zstd"
+    },
+    "bootLog": {
+      "ok": true,
+      "signatures": []
+    },
+    "negativeControl": {
+      "ok": true,
+      "code": "agent-preset/invalid",
+      "message": "persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)",
+      "mutations": [
+        "preset-mpd row: persona prefix: -> text:"
+      ],
+      "override": "id-target on preset-mpd via --patch"
+    }
+  }
+}

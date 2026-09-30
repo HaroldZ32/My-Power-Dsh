@@ -1,0 +1,13 @@
+{
+  "change": "verify-dist-fresh now resolves its own pinned build toolchain (declared follow-up, closed)",
+  "problem": "the gate byte-compares every dist against a rebuild, and those bytes are only reproducible under the PINNED bun. The pin lives in package.json buildToolchain, but nothing made the two meet: the honest way to run the gate was to export PATH=\"$PWD/.toolchain/node_modules/.bin:$PATH\" first. Measured cost of forgetting: one full wave reported 23/23 STALE plus failures in two other packages' F1 arms, because bun 1.3.x and 1.4.x emit a different injected helper preamble.",
+  "fix": "resolveBuildBin(root) runs ONCE per run, before anything builds: a .toolchain/node_modules/.bin/bun that REPORTS the pinned version wins; anything else falls back to PATH and the report SAYS which was used. A local bun that disagrees with the pin is NOT preferred, because preferring it would certify the bytes under the wrong bun.",
+  "proof": {
+    "unprefixed_run": "with bun 1.3.14 first on PATH (the wrong one) and NO export line, the gate reports 23/23 FRESH and prints: FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha d6a787c4a59a\u2026 18ms  <- packages/mpd-better-sidebar-host/src/index.ts",
+    "self_test": "17/17 arms, including two NEW ones for the resolver: (h4) a local toolchain that AGREES with the pin is preferred over PATH; (h5) one that DISAGREES falls back to PATH and says so.",
+    "regression_guard": "the existing 15 arms still pass, so the gate still reddens on a seeded mismatch"
+  },
+  "not_claimed": [
+    "the toolchain is still INSTALLED by whatever put it there; the gate resolves it, it does not fetch it. A tree with no .toolchain still runs on PATH and says so."
+  ]
+}

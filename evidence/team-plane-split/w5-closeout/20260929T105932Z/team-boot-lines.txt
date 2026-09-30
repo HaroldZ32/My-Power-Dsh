@@ -1,0 +1,2 @@
+mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)

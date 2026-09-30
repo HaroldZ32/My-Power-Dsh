@@ -1,0 +1,2 @@
+mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+error-lines-in-boot-log=0

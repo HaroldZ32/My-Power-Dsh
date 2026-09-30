@@ -52,8 +52,10 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { boardSummary, PLAN_MUTATION_UNAVAILABLE, registerScene, type PlanActions } from "./scenes.js"
-import { liveTeamViews } from "./team-state.js"
+import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
+import { readPlanView, type MpdPlanView } from "./team-state.js"
+import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
+import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
 import { registerShortcuts } from "./shortcuts.js"
@@ -245,16 +247,57 @@ export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<t
  * @returns the executor.
  */
 export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, log: Log): PlanActions {
-  // 0.1.7: the two tools this executor used to call are RETIRED and the official plane has no
-  // replacement (see `PLAN_MUTATION_UNAVAILABLE`), so the production executor is PERMANENTLY
-  // unavailable and says exactly why. It is deliberately not a fake that "might work": the plan
-  // surface tells the user the truth, and no tool name that no longer exists is looked up.
-  void adapter
-  void log
+  // ── THE EXECUTOR IS REAL AGAIN (W6) ────────────────────────────────────────
+  // It used to be PERMANENTLY unavailable, on the premise that the two tools it called were retired
+  // and the official plane had no replacement. That premise is half true and was read as wholly true:
+  // the RETIRED vendored plugin's tools are gone, and the OFFICIAL plane has no approval — but THIS
+  // BUNDLE registers one. `mpd-team-core` owns the staged plan and exposes
+  // `agent_teams_plan {action:"approve"}`, which materialises the mpd record and raises the members
+  // through the NATIVE executor. So the surface can act, and refusing was telling the user that
+  // approval was impossible when it was one call away.
+  /** The tool that owns the staged plan and its approval. */
+  const PLAN_TOOL = "agent_teams_plan"
+  /**
+   * Call the plan tool and project its result into the scene's own outcome shape.
+   * @param args - the tool arguments (the `action`, plus whatever that action needs).
+   * @returns the outcome; a failure carries the tool's own message, never a fabricated success.
+   */
+  const call = async (args: Record<string, unknown>, sessionId?: string): Promise<PlanActionOutcome> => {
+    try {
+      // THE CALLER IS THE SESSION THE SCENE BELONGS TO. `agent_teams_plan` resolves its workspace and
+      // session from the exec it is handed, so a call without one lands on the process cwd instead of
+      // the caller's workspace — which is how a surface can appear to approve "nothing".
+      /** The caller identity for this call, omitted when the scene has no session bound yet. */
+      const agent = sessionId === undefined || sessionId === "" ? undefined : { session: { id: sessionId } }
+      /** The harness's own result for this call. */
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, ...(agent === undefined ? {} : { agent }) })
+      if (result.ok && !result.isError) return { ok: true, ...(result.value === undefined ? {} : { value: result.value }) }
+      return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") }
+    } catch (error) {
+      // A throwing seam must redden the outcome, never escape into a render.
+      log.warn(`plan ${String(args.action)} failed: ${String((error as Error)?.message ?? error)}`)
+      return { ok: false, error: String((error as Error)?.message ?? error) }
+    }
+  }
   return {
-    available: () => false,
-    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
-    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+    // AVAILABILITY IS ASKED, NOT ASSUMED. A composition without the team row has no plan tool, and
+    // saying "available" there would render a gate whose chord can only fail.
+    available: () => {
+      try {
+        return adapter.hasTool(PLAN_TOOL)
+      } catch {
+        return false
+      }
+    },
+    // THE PHRASE GATE IS KEPT AND RE-POINTED (user decision, 2026-09-30): the scene demands the plan
+    // id, and the confirmation travels with the call so a caller that skipped the gate is refused by
+    // the tool rather than by this executor's good manners.
+    approve: async (input: { teamId: string; confirmation: string; captainSessionId?: string; sessionId?: string }) =>
+      call({ action: "approve", confirmation: input.confirmation }, input.sessionId ?? input.captainSessionId),
+    // Discard archives the staged plan; `mpd-team-core` owns that action, and the scene arms it with
+    // its own second-press window.
+    discard: async (input: { captainSessionId?: string; sessionId?: string }) =>
+      call({ action: "delete" }, input.sessionId ?? input.captainSessionId),
   }
 }
 
@@ -300,6 +343,30 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // the board, the status line, the workflow scene and the plan scene — reads it through this ONE
   // provider, so a missing seam degrades them together (`[]`) instead of one at a time.
   const teamViews = (): readonly DshTeamView[] => liveTeamViews(adapter, workspaceRoot())
+  // ── THE PRIMARY TEAM SOURCE: the mpd-owned record ────────────────────────
+  // `mpdTeams` is another plugin's service, so it is reached with the deferred inject form (a
+  // one-shot probe cannot see it, and a declared dependency would park this entry). It is read PER
+  // CALL and never cached: one host serves many sessions with different workspaces.
+  //
+  // This is the difference that makes the team plane work at all in a `dsh-tui` composition, where
+  // the official service cannot mount (`TeamService` registers through a ROOT-bound proxy and the
+  // dsh-tui host refuses `root.effect` from a plugin activation). With the mpd row present the
+  // scenes read a team that exists; with it absent they fall back to the official readout, so this
+  // package still works mounted alone.
+  let teamsService: MpdTeamsLike | undefined
+  onService(ctx, "mpdTeams", (_scoped: PluginContextLike, service: unknown) => {
+    teamsService = service as MpdTeamsLike
+  })
+  /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
+  const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
+  // THE SHARED PLAN READER. The service face is the SAME projection the Web panel's `/plan` route
+  // serves, so the two surfaces cannot disagree about what is staged or what phrase the gate demands.
+  // The workspace is resolved per CALL (§6) and the session id comes from the scene's own live channel.
+  /** Read the staged plan of one session, or undefined when this composition exposes no plan face. */
+  // `teamsService` is a LATE-BOUND variable, not a function: the service arrives after apply, so it
+  // is read at call time and may still be undefined — which `readPlanView` handles by returning
+  // undefined rather than throwing.
+  const planReader = (sessionId: string): MpdPlanView["plan"] | undefined => readPlanView(teamsService, workspaceRoot(), sessionId)
 
   // Measured once, at apply: an append is only safe when the event type is known
   // to a reachable dsh-session copy (iron rule 2).
@@ -356,13 +423,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
 
   status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews)
+    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
   // The two team surfaces (frozen §3): registered on the SAME `tuiScenes` seam as the
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews)
+    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords)
     : {
         outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
         open: () => false,
@@ -384,7 +451,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openTeam: () => scene.openTeam(),
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
-          void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews)
+          void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords)
         },
       })
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
@@ -395,10 +462,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
         openPlan: () => scene.openPlan(),
-        statusText: () => boardSummary(workspaceRoot, home, teamViews),
+        statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
-          const state = readBoardState(workspaceRoot(), home(), teamViews())
+          const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords())
           return state.workmates.count === 0
             ? "mpd workmates: none"
             : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`
@@ -471,9 +538,10 @@ async function pickWorkmate(
   home: () => string,
   scene: ReturnType<typeof registerScene>,
   teamViews: () => readonly DshTeamView[],
+  teamRecords: () => readonly TeamRecord[] = () => [],
 ): Promise<void> {
   /** The workmate display names read from the durable library. */
-  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names
+  const names = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords()).workmates.names
   if (!dialogs.available() || names.length === 0) {
     scene.open()
     return

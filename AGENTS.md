@@ -91,6 +91,15 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   **workmate library** (`mpd-workmate-plugin`). §13 defines roster, stable id, workmate and
   team-model slot precisely, and `mpd-roles-plugin` holds the authoritative names — read §13 before
   touching any of them.
+- **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
+  (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
+  **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
+  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
+  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
+  `dsh.teamLiveTeams()` any more. Surfaces: the TUI team scene draws the record's dependency graph
+  (rank columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered
+  into `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the
+  workmate library. See `docs/plan-team-plane-split.md`.
 - **The vendored `agent-teams` body is RETIRED from the composition (2026-09-27).** It is a **0.1.14
   body with the audited 0.1.16-rc.3 deltas backported** (adopted package version `0.1.16-rc.3-mpd`;
   `lib/client.js` is still the 0.1.14 client build), it still lives at
@@ -168,7 +177,6 @@ mpd-dsh/
 ├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
 │                                 #   + lib/repo.ts: the shared primitives every script imports
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
-│                                 #   mpd-skills-plugin was removed; mpd-bundle/ is the layer's README
 │   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
 │   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
 │   ├── mpd-agent-teams-plugin/   # RETIRED vendored dsh-agent-teams body — kept, NOT mounted (§1)
@@ -188,8 +196,7 @@ mpd-dsh/
 │   ├── mpd-team-watchdog-plugin/ # stall detection: the member record-stream fold, heartbeat store,
 │   │                             #   WARN->ESCALATE ladder, preserving hold (NEW DISPATCH only)
 │   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
-│   ├── mpd-team-tools-plugin/   # the team WORKFLOW the official plugin lacks: staged plan +
-│   │                             #   approval, task contracts with an attempt counter, halt, archive
+│   ├── mpd-team-core-plugin/     # THE TEAM RECORD + WORKFLOW + the `mpdTeams` service (W1)
 │   ├── mpd-roster-provider-plugin/ # per-member model routing for OFFICIAL teammates: registers
 │   │                             #   the `mpd-roster` subagent provider the team tool row points at
 │   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)

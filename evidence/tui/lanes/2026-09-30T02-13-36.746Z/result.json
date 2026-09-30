@@ -1,0 +1,92 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetSessionId": "60e024af-6e76-465c-8e8f-750462077f10",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "isolationOffenders": [],
+      "sessionKeysCreated": [
+        "--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--"
+      ],
+      "sessionKeysInherited": [],
+      "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--",
+      "sandboxSessions": 1,
+      "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/tui-lane",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-30T02-13-36.746Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": [],
+    "installAttempt": {
+      "hostExit": 0,
+      "bundleExit": 0,
+      "log": "evidence/tui/lanes/2026-09-30T02-13-36.746Z/install.log",
+      "root": ".mpd/tui-lane"
+    }
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetSessionId": "60e024af-6e76-465c-8e8f-750462077f10",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "isolationOffenders": [],
+    "sessionKeysCreated": [
+      "--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--"
+    ],
+    "sessionKeysInherited": [],
+    "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-tui-lane-ws--",
+    "sandboxSessions": 1,
+    "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/tui-lane",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-09-30T02-13-36.746Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "aa542492c1b73b21f1743c940ed2a1ff10f783ecef4ffcd5e70c7c70d0d7a9a4",
+    "bytes": 210785,
+    "mtimeLocal": "2026-09-30T02:09:03.274Z",
+    "mtimeUtc": "2026-09-30T02:09:03.274Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "aa542492c1b73b21f1743c940ed2a1ff10f783ecef4ffcd5e70c7c70d0d7a9a4",
+    "after": "aa542492c1b73b21f1743c940ed2a1ff10f783ecef4ffcd5e70c7c70d0d7a9a4",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "01a64a7a37d74b31fa4eed5f55d39cc735d6fbbe26e2f0333bea925afa7d26bc"
+}

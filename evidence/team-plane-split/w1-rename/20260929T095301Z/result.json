@@ -1,0 +1,87 @@
+{
+  "wave": "W1.1b \u2014 mpd-team-tools renamed to mpd-team-core",
+  "toolchain": {
+    "bun": "1.4.0",
+    "note": "bun 1.4.0 (the manifest's pinned buildToolchain) first on PATH"
+  },
+  "why": "The package now HOLDS the role the new name claims: it owns the team record and serves it as `mpdTeams`. The rename was deliberately the LAST step of W1, so the name never claimed a role the package did not yet hold.",
+  "renamed": {
+    "dir": "packages/mpd-team-tools-plugin -> packages/mpd-team-core-plugin",
+    "plugin name": "mpd-team-tools -> mpd-team-core",
+    "row id": "mpd-team-tools -> mpd-team-core",
+    "package.json name": "@mpd-dsh/team-tools-plugin -> @mpd-dsh/team-core-plugin",
+    "touched": [
+      "cordis.patch.yml",
+      "scripts/install-profile.ts",
+      "scripts/pack-mpd.ts",
+      "AGENTS.md",
+      "packages/mpd-tui-plugin/src/{index,state,status,scenes,team-state}.ts",
+      "packages/mpd-tui-plugin/test/team-record-source.test.ts",
+      "packages/mpd-workmate-plugin/src/index.ts",
+      "packages/mpd-team-core-plugin/{src/index.ts,test/plan-store.test.ts,package.json,README.md,README.zh-CN.md}"
+    ]
+  },
+  "left_alone_on_purpose": [
+    "evidence/** \u2014 historical records; rewriting them would falsify what was measured",
+    "CHANGELOG.md and docs/plan-ui-team-gui.md \u2014 records of the waves that used the old name",
+    "dist/mpd-package/** \u2014 a generated artifact, refreshed at pack time"
+  ],
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1287 pass, 3 skip, 0 fail \u2014 119 files, 12312 expect() calls"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh (each rebuilt twice, byte-identical)"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "33 row ids match, WITH mpd-team-core in the list"
+    },
+    "verify:manifest": {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "PASS \u2014 every row module path resolves under the new name"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "pairs=41 failed=0 violations=0 \u2014 PASS"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify-manual-paths": {
+      "cmd": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "summary": "PASS; AGENTS.md trimmed back inside its 65536-byte instruction budget (65515)"
+    },
+    "installer": {
+      "cmd": "node scripts/install-profile.ts --dry-run",
+      "exit": 0,
+      "summary": "PASS \u2014 the self-test's row assertion moved to mpd-team-core"
+    }
+  },
+  "not_claimed": [
+    "W1.3 (host routes) stays open by design \u2014 it lands with its consumer in W4.",
+    "bundle-lifecycle.ts was NOT run: it refuses to start without ~/.dsh/.credentials.yaml, which this environment has no reason to hold. preset-conformance was run instead \u2014 it performs a REAL isolated boot and session creation, which is the stronger of the two for a row-id/module-path change."
+  ],
+  "mount_boot": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+    "result": "PASS",
+    "what_it_proves": "a REAL boot in an isolated DSH_HOME: conformance checked=33 rows against the installed schemas, a session was CREATED with agentPreset=mpd (sessionCreate ok=true, sessionHeader written), bootLog signatures=[] (no error), and the negative control reddened as required",
+    "renamed_row_activated": "the boot log carries the row's OWN line \u2014 `[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)` \u2014 which can print only if the renamed row APPLIED and registered its five tools and its command. That is the \u00a74 Boot-check evidence for the row-id and module-path change.",
+    "source_evidence": "evidence/dsh-qa/preset-conformance/2026-09-29T09-54-22.299Z",
+    "copied_here": [
+      "mount-boot.log",
+      "mount-output.log",
+      "mount-proof.txt"
+    ]
+  }
+}

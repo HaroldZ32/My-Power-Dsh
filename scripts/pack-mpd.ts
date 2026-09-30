@@ -222,9 +222,9 @@ const PLUGIN_PKGS: readonly string[] = [
   // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
   // and mounted by an overlay, never by the shipped patch.
   "mpd-team-compact-plugin",
-  // mpd-team-tools-plugin is MOUNTED by the bundle patch (row `mpd-team-tools`): the
+  // mpd-team-core-plugin is MOUNTED by the bundle patch (row `mpd-team-core`): the
   // staged-plan / task-contract / halt workflow around the official team runtime.
-  "mpd-team-tools-plugin",
+  "mpd-team-core-plugin",
   // mpd-roster-provider-plugin is MOUNTED by the bundle patch (row `mpd-roster-provider`):
   // the per-member subagent provider the official team tool is pointed at.
   "mpd-roster-provider-plugin",

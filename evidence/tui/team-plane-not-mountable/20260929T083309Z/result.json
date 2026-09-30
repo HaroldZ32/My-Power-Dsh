@@ -1,0 +1,138 @@
+{
+  "task": "fix the TUI boot error «mpd-agent-team … Error: dsh-tui: root.effect is unavailable from a plugin activation» reported after installing the bundle into a dsh-tui profile",
+  "slug": "tui/team-plane-not-mountable",
+  "timestamp": "20260929T083309Z",
+  "producedBy": "captain session (single writer; no team staged)",
+  "revision": {
+    "gitHead": "fcfb1e6fd0818312bfb5906ff16ed14fc5b5bd87",
+    "cordisPatchYmlBefore": {
+      "bytes": 38059,
+      "sha256": "823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1"
+    },
+    "cordisPatchYmlAfter": {
+      "bytes": 44183,
+      "sha256": "0813528078cb0e1668c977bcdf5e1b57595520648fc21d335fc060df0a2793a2"
+    },
+    "docsEdited": [
+      {
+        "path": "docs/tui.md",
+        "bytes": 48620,
+        "sha256": "eaa347f59f159db3e045216c398d9e8ece4d293dd4c570618138fd649b1caa07"
+      },
+      {
+        "path": "docs/tui.zh-CN.md",
+        "bytes": 47078,
+        "sha256": "28086507267afcbf2ac29f3c617113468398daeb0090be6bf9e14d630a4aefce"
+      },
+      {
+        "path": "agent-references/troubleshooting.md",
+        "bytes": 61232,
+        "sha256": "776130a22ec9db53e8292836a8d63351b53ad915b704300d6a630d739c0cab97"
+      }
+    ],
+    "harness": "0.2.0-rc.1",
+    "dshTui": "0.11.2",
+    "agentTeamLoadedByTheTuiProfile": "0.2.0-rc.1 (the harness copy; this bundle pins 0.1.7-rc.2 — both make the same ctx.root call)",
+    "node": "v24.16.0"
+  },
+  "defect": {
+    "symptom": [
+      "mpd-agent-team (@deepseek-ai/dsh-experimental-agent-team): Error: dsh-tui: root.effect is unavailable from a plugin activation",
+      "mpd-tool-agent-team (@deepseek-ai/dsh-experimental-tool-agent-team): pending (waiting for service: agentTeams)"
+    ],
+    "mechanism": "TeamService's constructor registers its session projection through ctx.root.sessionProjections.register(...); Cordis binds a service call to the CALLER context, so the effect lands on the ROOT fiber, and the dsh-tui admission layer refuses root.effect from a plugin activation by design (host-access.d.ts). Config has no projection toggle and the call throws before any dedup, so no row value, mount order or isolate realm can change it.",
+    "sourceSites": [
+      "@deepseek-ai/dsh-experimental-agent-team lib/index.js TeamService constructor (ctx.root.sessionProjections.register + ctx.effect)",
+      "node_modules/@deepseek-ai/dsh-session-projection/lib/index.js SessionProjectionService.register (this.ctx.effect)",
+      "@deepseek-harness-tui/dsh-tui lib/types/dsh-adapter/host-access.js guardRootCapabilities/rejectRootCapability",
+      "@deepseek-harness-tui/dsh-tui lib/types/dsh-adapter/host-access.d.ts (the documented reason)",
+      "@deepseek-harness-tui/dsh-tui lib/types/dsh-adapter/activity-store.js (the host's own sanctioned pattern: ctx.inject + effect on the INJECTED fiber)"
+    ],
+    "notFixableByVersionPin": "both the pinned 0.1.7-rc.2 copy and the harness 0.2.0-rc.1 copy call ctx.root.sessionProjections.register"
+  },
+  "fix": {
+    "file": "cordis.patch.yml",
+    "rows": [
+      "mpd-agent-team",
+      "mpd-tool-agent-team"
+    ],
+    "kind": "!!js row-metadata guard on the row metadata key disabled (same shape as the existing mpd-better-sidebar mount guard)",
+    "predicate": "an entry whose options.name is @deepseek-harness-tui/dsh-tui (or a subpath of it) or whose options.id starts with dsh-tui",
+    "failMode": "OPEN — a throwing guard keeps the row ENABLED and warns once, because a false disable would silently remove the team plane from a working Web/headless profile",
+    "leftMountedOnPurpose": [
+      "mpd-ui-agent-team (Web client contribution; registers nothing the TUI renders)",
+      "the mpd team WORKFLOW rows (mpd-team-tools/compact/watchdog, mpd-roster-provider): their file-backed actions keep working and only service-dependent actions degrade through the adapter"
+    ]
+  },
+  "arms": {
+    "redBaseline": {
+      "command": "bun .mpd/recon/tui-repro/repro.ts (sandbox profile copy + bundle layer declared), real dsh-tui in tmux",
+      "counts": {
+        "root.effect is unavailable from a plugin activation": 1,
+        "pending (waiting for service": 1
+      },
+      "artifact": "raw/red-baseline-summary.json"
+    },
+    "green": {
+      "counts": {
+        "root.effect is unavailable from a plugin activation": 0,
+        "pending (waiting for service": 0,
+        "guard line naming the reason": 1
+      },
+      "tuiReachedChatScreen": true,
+      "failures": [],
+      "artifact": "raw/green-summary.json"
+    },
+    "negativeControl": {
+      "how": "the sandbox profile's OWN patch layer re-enables both rows (disabled: false) at the same revision",
+      "counts": {
+        "root.effect is unavailable from a plugin activation": 1,
+        "pending (waiting for service": 1,
+        "guard line": 0
+      },
+      "artifact": "raw/control-summary.json"
+    },
+    "guardProbe": {
+      "command": "node evidence/tui/team-plane-not-mountable/20260929T083309Z/probe-guard.ts",
+      "arms": 11,
+      "failed": 0,
+      "artifact": "raw/guard-probe.json"
+    },
+    "composition": {
+      "command": "node scripts/dump-config.ts --profile dsh-tui (sandbox DSH_HOME)",
+      "exit": 0,
+      "artifact": "raw/dump-fixed.txt"
+    },
+    "operatorCapture": {
+      "source": "/root/.dsh-tui/history.jsonl",
+      "artifact": "raw/operator-history-error.txt",
+      "match": "byte-for-byte with the reproduced error"
+    }
+  },
+  "gates": {
+    "bun run verify:rows": "PASS — 33 row ids match the 2-file patch layer",
+    "bun run verify:docs": "PASS — pairs=41 failed=0 violations=0 exempt=21 derived=3 links=419 dead=0",
+    "bun run verify:manifest": "PASS (also with --pack: packed-content lists 882 files, 0 required absent)",
+    "node scripts/verify-plugin-manifest.ts --pack": "PASS",
+    "node skills/dsh-qa/scripts/preset-conformance.ts --self-test": "PASS — 33 harness rows conform; mpd preset 28 child rows; 4/4 negative controls reddened",
+    "node skills/dsh-qa/scripts/preset-conformance.ts (REAL case)": "PASS — sessionCreate agentPreset=mpd, bootLog signatures [], negative control agent-preset/invalid",
+    "bun run verify:comments": "PASS — 350 files, 27274 declarations",
+    "node scripts/verify-pack-closure.ts": "PASS after the local re-pack — 1202 compared, 1202 identical, 0 drift, 0 expected-after-pack",
+    "bun run verify:gates": "FAIL 2/7 — vendor (exit 1) and dist-fresh (exit 1), BOTH unrelated to this change and reproduced without it: vendor needs MPD_UPSTREAM_ROOT (no upstream checkout at /), dist-fresh rebuilds every dist with the LOCAL bun 1.3.14 while the committed dists record buildToolchain bun@1.4.0, so all 23 targets differ byte-wise at equal size"
+  },
+  "observations": [
+    "OPERATOR PROFILE, measured: /root/.dsh/profiles/dsh-tui/package.json declares only [@deepseek-ai/dsh-base, @deepseek-harness-tui/dsh-tui] — @mpd-dsh/mpd is NOT in dsh.profile.bundles while node_modules/@mpd-dsh/mpd exists as a link into this checkout (symlink mtime 15:59 local, manifest mtime 16:02 local). MEASURED that an undeclared bundle composes NO rows (.mpd/recon/no-declare/dump.txt: 0 occurrences of mpd-agent-team), so the failing boot did have the layer mounted at that moment and the manifest lost the declaration afterwards — the profile-row-loss-after-an-unrelated-install friction agent-references/troubleshooting.md names. The operator text in ~/.dsh-tui/history.jsonl is their PASTE at 08:24:08Z (the message that opened this task), not a boot notice of that session. Remedy for the operator: re-add the layer once (dsh plugin --profile dsh-tui add /root/dshProj/My-Power-Dsh); the guard keys on the composed dsh-tui HOST row, not on the route that contributed our rows.",
+    "the local dist/mpd-package artifact shipped the PRE-fix cordis.patch.yml (sha 823e9575…) until this run re-packed it (now 08135280…); verify-pack-closure reported 0 drift while that patch differed — its byte comparison covers the ROOT_ASSET_DIRS trees, packages/** and REQUIRED_ROOT_FILES (EXTENSIONS-FOR-AGENTS.md) but not the staged patch files (measured 2026-09-29)."
+  ],
+  "followUps": [
+    "skills/dsh-qa/scripts/lib/tui-lane.ts APPLY_CRASH_SIGNATURES does not include the `Error:` line a row activation prints, while docs/tui.md §2 quotes it as scanned — the lane therefore stayed green through this defect. A skills/** edit needs the single VENDOR_LOCK re-pin in the same commit (§9), so it is listed for the captain, not taken here.",
+    "verify-pack-closure byte comparison does not cover cordis.patch.yml / presets/mpd.patch.yml (see observations).",
+    "upstream: @deepseek-ai/dsh-experimental-agent-team should reach sessionProjections through its own ctx (or ctx.inject), the way dsh-tui's own activity-store.js does; until then no TUI profile can host the official team plane.",
+    "optional surface work: the TUI plan/board scenes could state «team plane unavailable in this host» instead of rendering an empty roster."
+  ],
+  "artifacts": {
+    "probe": "probe-guard.ts",
+    "narrative": "output.log",
+    "raw": "raw/"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "wave": "W6 \u2014 the shared plan infrastructure, and the Web UI as its first consumer",
+  "directive": "user, 2026-09-30: start from the Web; BOTH sides share the infrastructure and differ only in the UI layer",
+  "what_is_shared_now": {
+    "approvalPhraseFor(planId)": "ONE implementation of the approval gate's phrase. It names the planId because that is the PRE-approval identity: at the moment the gate asks, no teamId exists to demand. The phrase is SERVED inside the payload rather than re-derived by each consumer, because two spellings of 'the thing you must type' make neither of them the contract.",
+    "planForSession(workspace, sessionId)": "ONE plan projection. The /plan ROUTE calls it (Web) and mpdTeams.planFor calls it (TUI), so a surface cannot disagree with the Web panel about what is staged or what the gate demands.",
+    "mpdTeams.planFor": "the service face the TUI will read. It never throws: a broken staging file must redden a surface's empty state, not take its render down."
+  },
+  "what_is_the_ui_layer": {
+    "web": "packages/mpd-bundle-plugin/src/team-view.ts polls /state AND /plan in ONE pass and draws a staged-plan section: wants N members, wants N tasks, and the exact phrase. Every string comes from the payload.",
+    "tui": "NOT DONE \u2014 see the blocker below. Its UI is the same projection over mpdTeams.planFor."
+  },
+  "why_one_pass_the_two_routes": "they are two halves of one answer \u2014 the team as it exists after an approval and the plan that awaits one \u2014 and a panel that polled them separately could show a staged plan beside a team that approval had already replaced",
+  "why_a_staged_plan_shows_with_NO_team": "the team record is materialised AT approval, so before one there is no record. The panel used to return its empty sentence in exactly the state a captain most needs to act on; it now renders the plan section instead. THIS IS THE SAME FACT that made the TUI panel render 'MPD approval \u2014 (none)'.",
+  "the_tui_blocker_restated": "a staged plan is SESSION-scoped (.mpd/team/staging/<sessionId>.json) while the TUI surfaces are WORKSPACE-scoped; grep sessionId packages/mpd-tui-plugin/src/scenes.ts returns nothing. The shared projection is now reachable from the TUI, but the TUI still has no sessionId to call it with. The scene props DO carry a live `channel`, which is the likely source \u2014 that is the next investigation, not a guess to build on.",
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1347 pass, 3 skip, 0 fail (122 files, 13156 expect() calls; 16 arms in team-web, 2 new)"
+    },
+    "verify-dist-fresh": {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 fresh \u2014 and the run needed NO PATH prefix, because the gate now resolves its own pinned toolchain"
+    },
+    "verify:comments": {
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:docs": {
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify-manual-paths": {
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "test:qa": {
+      "exit": 0,
+      "summary": "all self-tests passed"
+    },
+    "typecheck": {
+      "summary": "4 errors, ALL pre-existing in skills/"
+    },
+    "client.js": {
+      "cmd": "node --check",
+      "summary": "parses \u2014 503436 bytes, BOTH splices present"
+    }
+  },
+  "not_claimed": [
+    "no browser profile was booted: the plan section is proven by arms plus a parse check of the served bytes",
+    "the TUI does NOT yet consume the shared projection \u2014 that is the next unit, and it is blocked on a session resolver rather than on this infrastructure"
+  ]
+}

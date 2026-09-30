@@ -136,9 +136,11 @@ describe("with DSH-better-sidebar installed", () => {
   /** The tab descriptor registered under one id, if any. */
   const tabById = (id: string): TabDescriptor | undefined => tabs.find((tab) => tab.id === id);
 
-  test("registers the AgentTeams page and the workmate library, and no legacy floater", () => {
+  test("registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater", () => {
     expect(provided).toBe(true);
-    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // THREE tabs since W4: the mpd-owned TEAM view (`mpd-team`, which reads this bundle's own
+    // /plugins/mpd-team/state route) beside the adopted AgentTeams page and the workmate library.
+    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
   /** Every keyed slot registration the host recorded. */
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
@@ -180,10 +182,15 @@ describe("a sidebar provider REMOUNT keeps both tabs", () => {
   /** The client this arm mounts for the same-service re-fire. */
     const client = loadMpdClient({ sidebarAtApply: true });
     client.exports.apply(client.ctx);
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // EVERY tab this client registers, so a fourth one is caught by this list rather than by nothing:
+    // the mpd team view (`mpd-team`, W4), the adopted AgentTeams page and the workmate library.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     client.refireInjections();
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    // The RE-FIRE is the point: `ctx.inject` re-runs on a provider remount, and the host's own
+    // `registerTab` THROWS on a duplicate id — so a missing idempotence guard reddens right here.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
+    expect(client.sidebarService.getTab("mpd-team")).toBeDefined();
     expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
     restore(client);
   });
@@ -812,3 +819,96 @@ describe("without DSH-better-sidebar", () => {
     expect(warnings.filter((message) => message.includes("no registerTab")).length).toBe(0);
   });
 });
+
+// ── W4: the host PREFERENCE, asserted rather than assumed ────────────────────
+//
+// THE RULE (user decision, 2026-09-30): `dsh-better-sidebar` is the PREFERRED host for the mpd
+// panels, and the harness's own right sidebar is the FALLBACK — so a profile mounting BOTH must not
+// end up with the same panel in two places. The behaviour is one early return inside the official
+// registration callback, which is exactly the kind of thing a later refactor deletes without
+// noticing, so both directions are pinned here.
+describe("the sidebar host preference (W4)", () => {
+  /**
+     * The registry double for the harness sidebar.
+     * @returns the tab/pane recorders and the two service objects the client injects.
+     */
+  const harnessSidebarDouble = (): {
+    /** The tab definitions the host accepted. */
+    tabs: Array<{ id: string; kind: string; title: () => string }>
+    /** The pane bodies the host accepted. */
+    bodies: Array<{ key: string; name: string; component: unknown }>
+    /** The tabs the client asked the host to open. */
+    opened: string[]
+    /** The tab-type registry the client registers into. */
+    sidebarRightTabs: { register: (definition: { id: string; kind: string; title: () => string }) => () => void }
+    /** The pane opener the client's commands call. */
+    sidebarRight: { openTab: (kind: string) => () => void }
+    /** A pane-body registry, for an arm that wants to install its own over the harness's. */
+    slots: { register: (definition: { key: string; name: string }, component: unknown) => () => void }
+  } => {
+    /** The tab definitions the host accepted. */
+    const tabs: Array<{ id: string; kind: string; title: () => string }> = [];
+    /** The pane bodies the host accepted, when an arm installs this double over the harness's own. */
+    const bodies: Array<{ key: string; name: string; component: unknown }> = [];
+    /** The tabs the client asked the host to open. */
+    const opened: string[] = [];
+    return {
+      tabs,
+      bodies,
+      opened,
+      sidebarRightTabs: {
+        register: (definition: { id: string; kind: string; title: () => string }) => { tabs.push(definition); return () => {}; },
+      },
+      sidebarRight: {
+        openTab: (kind: string) => { opened.push(kind); return () => {}; },
+      },
+      slots: {
+        register: (definition: { key: string; name: string }, component: unknown) => { bodies.push({ ...definition, component }); return () => {}; },
+      },
+    };
+  }
+
+  test("with better-sidebar MOUNTED the official right sidebar stays untouched", () => {
+    /** The client with BOTH hosts available. */
+    const client = loadMpdClient({ sidebarAtApply: true });
+    /** The harness sidebar's registry double. */
+    const harness = harnessSidebarDouble();
+    client.exports.apply(client.ctx);
+    // The official sidebar arrives after apply(), exactly as it does live.
+    client.provideService("sidebarRightTabs", harness.sidebarRightTabs);
+    client.provideService("slots", harness.slots);
+    client.provideService("sidebarRight", harness.sidebarRight);
+    // better-sidebar won, so NOTHING was registered on the fallback host — no duplicate panel.
+    expect(harness.tabs).toEqual([]);
+    expect(harness.bodies).toEqual([]);
+    // The preferred host DID get the tabs, which is what makes this a preference and not a disable.
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    restore(client);
+  });
+
+  test("with better-sidebar ABSENT both panels register on the official fallback", () => {
+    /** The client in a profile that has the harness sidebar and not the third-party one. */
+    const client = loadMpdClient({ withoutSidebar: true });
+    /** The harness sidebar's registry double. */
+    const harness = harnessSidebarDouble();
+    client.exports.apply(client.ctx);
+    client.provideService("slots", harness.slots);
+    client.provideService("sidebarRightTabs", harness.sidebarRightTabs);
+    client.provideService("sidebarRight", harness.sidebarRight);
+    // BOTH panels reach the fallback: the team view AND the workmate library, which used to be a
+    // better-sidebar-only surface and was therefore unreachable in exactly this profile.
+    expect(harness.tabs.map((tab) => tab.id).sort()).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"]);
+    // The PANE BODIES go through the harness's own `slots` service, which is the one this client
+    // declares as a dependency — so this is the real path, not a double the arm installed.
+    /** The pane bodies both tabs registered, by the key they were registered under. */
+    // FILTERED BY SLOT NAME: `slotsRegistered` also carries the non-sidebar rows this client
+    // registers (the command view and the settings section), which are a different concern.
+    const bodies = (client.calls.slotsRegistered ?? []).filter((slot) => slot.name === "sidebar.right.pane.tab").map((slot) => slot.key).sort();
+    expect(bodies).toEqual(["@mpd-dsh/team-sidebar", "@mpd-dsh/workmate-sidebar"]);
+    // Every body is a component the host can call, not a value.
+    for (const body of client.calls.slotsRegistered ?? []) {
+      if (body.name === "sidebar.right.pane.tab") expect(typeof body.component).toBe("function");
+    }
+    restore(client);
+  });
+})

@@ -1,0 +1,41 @@
+{
+  "what": "the Docker real-machine lane on a real ubuntu:24.04, both modes",
+  "invocation": "node scripts/docker-e2e.ts --mode source --allow-rootful-docker / --mode oneclick --allow-rootful-docker",
+  "why_allow_rootful": "this machine's Docker is ROOTFUL and the lane refuses it by default (`--require-docker` exits 3 with `this machine's Docker is ROOTFUL, not rootless`). `--allow-rootful-docker` is the lane's own documented opt-in, not a bypass invented here.",
+  "why_no_api_key": {
+    "the_request": "the user asked for the Docker lane with the API key imported from ~/.bashrc",
+    "measured_answer": "THE LANE DOES NOT TAKE ONE, and staging a key would work against it. The run reported `boot.llmTurn=null \u2014 not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md \u00a710)`, and the lane ASSERTS `isolation.noCredentials` on the premise that nothing was staged in the first place. Its session is created through `POST /api/session/create` with `agentPreset=mpd` \u2014 a MOUNT proof, not a model call.",
+    "so": "the key was deliberately NOT passed. Passing it would have reddened isolation.noCredentials and converted a deliberate NULL into a claim the lane is not built to make."
+  },
+  "source_mode": {
+    "ok": true,
+    "passed": 42,
+    "failed": 0,
+    "null": 1,
+    "evidence": "evidence/docker/client-install/2026-09-30T02-46-58Z",
+    "the_one_null": "boot.llmTurn \u2014 deliberate, credential-free"
+  },
+  "oneclick_mode": {
+    "ok": true,
+    "passed": 44,
+    "failed": 0,
+    "null": 3,
+    "evidence": "evidence/docker/client-install-oneclick/2026-09-30T02-57-11Z",
+    "the_three_nulls": "build.bunInstall and build.dists (not applicable in one-click mode: the published package ships its built dists) plus boot.llmTurn (deliberate)",
+    "first_attempt_failed_on_a_NETWORK_FLAKE": "`curl: (56) Failure when receiving data from the peer` fetching the bun binary from GitHub releases, at STEP 03-bun, 91s in. The SOURCE lane had passed the same step minutes earlier, so it was the network and not the step. The retry passed. Recorded rather than reported as a defect, and the failed run is kept as oneclick-attempt1-network-flake.log."
+  },
+  "what_the_source_lane_proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd"
+  ],
+  "not_claimed": [
+    "any live LLM turn or model routing \u2014 no credentials are staged",
+    "a packed/tarball install from dist/mpda-package",
+    "a machine without network access"
+  ]
+}

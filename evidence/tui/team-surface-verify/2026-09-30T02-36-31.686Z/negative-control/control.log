@@ -1,0 +1,8 @@
+GREEN run (phrase typed):     pass=true the harness boundary recorded 1 call(s) to agent_teams_plan
+  message: approved: plan-20260930T023531Z running · members 2 · tasks 2
+RED run (empty):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: confirmation does not match this team
+RED run (wrong-id):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: confirmation does not match this team
+RED run (cancelled):          pass=false no call to agent_teams_plan reached the harness boundary (calls=0)
+  message: confirmation does not match this team

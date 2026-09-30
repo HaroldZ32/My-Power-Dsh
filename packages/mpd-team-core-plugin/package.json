@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/team-core-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The team WORKFLOW the official Agent Teams plugin does not ship: a staged plan the user approves before anybody is spawned, task contracts frozen at claim time with a monotonic attempt counter, a halt that stops new dispatch without ending the team, and archive-first deletion. Sidecar in <workspace>/.mpd/team/; the roster and board stay the official service's, read through the adapter.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

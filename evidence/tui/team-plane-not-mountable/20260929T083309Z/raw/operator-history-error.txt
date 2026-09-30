@@ -1,0 +1,19 @@
+captured: 2026-09-29T08:33:43Z
+source: /root/.dsh-tui/history.jsonl (the operator's own TUI session record, NOT the sandbox)
+--- the error record, verbatim (extracted from its JSON payload) ---
+该工程安装后运行TUI会报错：mpd-agent-team (@deepseek-ai/dsh-experimental-agent-team): Error: dsh-tui: root.effect is unavailable from a plugin activation
+    at rejectRootCapability (file:///root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-access.js:308:15)
+    at Fiber.value (file:///root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-access.js:378:13)
+    at Proxy.register (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-session-projection/lib/index.js:82:28)
+    at Object.apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:120:36)
+    at Fiber.<anonymous> (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-experimental-agent-team/lib/index.js:1731:58)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1142:34
+    at new TeamService (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-experimental-agent-team/lib/index.js:1730:7)
+    at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1068:24)
+    at file:///root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-access.js:205:28
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at runActivation (file:///root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-access.js:203:30)
+    at Fiber.value (file:///root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-access.js:96:28)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1142:34
+    at composeError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:199:18)
+mpd-tool-agent

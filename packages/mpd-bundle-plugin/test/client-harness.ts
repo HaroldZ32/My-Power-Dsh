@@ -283,6 +283,15 @@ export interface HarnessCtx {
   locale: {
     /** Register one namespace's dictionaries. */
     register: (ns: string, dictionaries: Record<string, Record<string, string>>) => () => void
+    /**
+     * Bind a translator to one namespace.
+     *
+     * PART OF THE CONTRACT, not a convenience: the official right sidebar's mount is guarded by
+     * `typeof ctx.locale?.bind !== "function"` and returns early without it. The double used to omit
+     * it, which meant NO harness arm ever reached that registration — and a preference arm written
+     * against it passed for the wrong reason.
+     */
+    bind: (ns: string) => (key: string) => string
   }
 }
 
@@ -978,17 +987,28 @@ export function createHarness(options: HarnessOptions = {}): Harness {
    */
   const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
   /** A ctx scoped to one caller's inject list, as cordis scopes a resolved service. */
-  const scopedCtx = (deps: string[]): HarnessCtx => ({
-    ...ctx,
-    // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
-    // caller-scoped method reading a seam the caller never declared throws (the measured live
-    // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
-    // fixture can also prove the chain on a probe-visible service.
-    get: (name) => {
-      if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
-      return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
-    },
-  });
+  const scopedCtx = (deps: string[]): HarnessCtx => {
+    /** The scoped view, built from the root ctx before the deps are attached. */
+    const scoped: HarnessCtx = {
+      ...ctx,
+      // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
+      // caller-scoped method reading a seam the caller never declared throws (the measured live
+      // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
+      // fixture can also prove the chain on a probe-visible service.
+      get: (name) => {
+        if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
+        return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
+      },
+    };
+    // A DECLARED DEP IS ALSO A PROPERTY, which is cordis' own rule and was the harness's blind spot:
+    // an injection callback reads its services off the ctx object (`sidebar.sidebarRightTabs`), not
+    // through `get`. Without this the official right sidebar's registration threw
+    // `undefined is not an object` inside every arm that reached it — which is why no arm had.
+    // The cast goes through `unknown` because HarnessCtx declares its OWN members and TS refuses a
+    // direct index-signature conversion; the write is a property attach, which is exactly the point.
+    for (const dep of deps) (scoped as unknown as Record<string, unknown>)[dep] = scoped.get(dep);
+    return scoped;
+  };
   /** Run every parked injection whose dependencies are satisfied. */
   const runInjections = (): void => {
     for (const entry of [...pendingInjections]) {
@@ -1078,6 +1098,22 @@ export function createHarness(options: HarnessOptions = {}): Harness {
         calls.localeDictionaries = calls.localeDictionaries ?? [];
         calls.localeDictionaries.push({ namespace: ns, dictionaries });
         return () => {};
+      },
+      // `bind` IS PART OF THE CONTRACT, and its absence was hiding an entire surface: the official
+      // right sidebar's mount is guarded by `typeof ctx.locale?.bind !== "function"` and returns
+      // early without it, so NO harness arm ever reached that registration — and a preference arm
+      // written against it passed for the wrong reason (nothing registered because nothing ran).
+      // The bound translator resolves against the dictionaries registered for that namespace, which
+      // is what the real host does, so a key MISS is visible here instead of silently empty.
+      bind: (ns) => (key) => {
+        /** The dictionaries registered for this namespace so far. */
+        const registered = (calls.localeDictionaries ?? []).filter((entry) => entry.namespace === ns);
+        for (const entry of registered) {
+          for (const dictionary of Object.values(entry.dictionaries)) {
+            if (typeof dictionary?.[key] === "string") return dictionary[key];
+          }
+        }
+        return key;
       },
     },
   };

@@ -1,0 +1,73 @@
+{
+  "wave": "W2 \u2014 the TeamExecutor seam (native default, official fallback)",
+  "toolchain": {
+    "bun": "1.4.0",
+    "note": "the manifest's pinned buildToolchain, first on PATH"
+  },
+  "delivered": [
+    "DshTeamExecutor in mpd-dsh-adapter: kind, reason, providers(), spawn(), send(), interrupt(), membership(), members() \u2014 every method total, a refusal carrying a sentence",
+    "the NATIVE backend (DEFAULT): ctx.subagents.startContinuable + sendMessage + interrupt, with the PROVIDER and the member's agentOptions chosen BY THE CALLER \u2014 the two arguments the official tool row cannot forward, and therefore the whole point",
+    "the OFFICIAL backend (FALLBACK): the dsh.team* calls, kept as a real implementation because it owns the roster (a member raised by another row is still identified) and adjacency-checks delivery",
+    "capabilities().teamExecutorNative \u2014 the pre-flight flag, read with the SAME predicate teamExecutor() uses so the two cannot disagree",
+    "MPD_DSH_TEAM_EXECUTOR=native|official \u2014 a DIAGNOSIS override that FALLS THROUGH when the named backend cannot serve, so it can never hand back a broken backend",
+    "the mpd team record is now the BOARD for BOTH backends: approve raises members through the executor and posts NO task anywhere; dispatch and claim read the record; mail resolves the handle the executor recorded"
+  ],
+  "why_it_matters": "In a dsh-tui composition the official service cannot mount at all, so before this wave the bundle's team plane could not raise a member there. The native default needs nothing from the official plugin.",
+  "measured_findings": [
+    "subagents is a HOST-plane service and mpd-team-core can apply BEFORE it is ACTIVE, so an apply-time read answers 'unavailable' in a healthy composition (evidence/dsh-qa/preset-conformance/*/boot.log). The TOOLS were never affected \u2014 every call re-resolves the executor lazily, which is why that is the design \u2014 but the LOG LINE was, and it now re-reports on the binding.",
+    "the D6 gate reported the first version of that deferred binding: naming the official service by string outside the adapter is exactly what it forbids. Only `subagents` is named now, and nothing is lost \u2014 the executor re-resolves its backend on every call.",
+    "editing the adapter's SOURCE changes the built bytes of 19 other packages, because bun build inlines the relative imports. Every one had to be rebuilt; verify-dist-fresh names them."
+  ],
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1301 pass, 3 skip, 0 fail \u2014 120 files, 12391 expect() calls (16 executor arms + 12 core arms among them)"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh (each rebuilt twice, byte-identical)"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:manifest": {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "d6-no-direct-team-access": {
+      "cmd": "bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts",
+      "exit": 0,
+      "summary": "PASS \u2014 0 findings; it CAUGHT one during this wave and the code was changed, not the gate"
+    },
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "exit": 1,
+      "summary": "4 errors, ALL pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts \u2014 none new"
+    }
+  },
+  "mount_boot": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+    "result": "PASS",
+    "proves": "in a REAL isolated boot the active backend resolves to NATIVE: the boot log carries 'team executor: native (native: the default backend \u2014 it needs nothing from the official plugin)'. The apply-time line reads UNAVAILABLE first, which is the measured host-plane ordering above and is why the report is deferred.",
+    "source": "evidence/dsh-qa/preset-conformance/2026-09-29T10-14-30.066Z/"
+  },
+  "not_claimed": [
+    "no LIVE teammate was raised: the executor is proven by arms against harness doubles and by the resolution in a real boot, not by a model call (this environment holds no credentials, per \u00a77 the sandbox must not hold any).",
+    "the official backend's arms drive a double, so its behaviour against the real service is unchanged from W1 rather than re-proven."
+  ]
+}

@@ -64,7 +64,7 @@ var __export = (target, all) => {
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
-// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+// packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.ts
 var exports_lib = {};
 __export(exports_lib, {
   Binary: () => Binary,
@@ -432,7 +432,7 @@ var init_lib = __esm(() => {
   })(Time || (Time = {}));
 });
 
-// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
+// packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cts
 var require_lib = __commonJS(function(exports, module) {
   var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
@@ -1494,6 +1494,138 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
     return;
   }
+  const nativeMembers = new Map;
+  const officialMembers = new Map;
+  const neverAborted = () => new AbortController().signal;
+  const sessionIdOfAgent = (agent) => {
+    const session = agent?.session;
+    return typeof session?.id === "string" ? session.id : "";
+  };
+  function nativeTeamExecutor(reason, ready) {
+    const subagentsOf = () => service("subagents");
+    return {
+      kind: "native",
+      reason,
+      providers: () => {
+        try {
+          const list = subagentsOf()?.providers;
+          if (typeof list !== "function")
+            return [];
+          const names = list.call(subagentsOf());
+          return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+        } catch {
+          return [];
+        }
+      },
+      async spawn(caller, request) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        if (typeof subagents.startContinuable !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
+        }
+        const spec = {
+          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          label: `${request.name} · ${request.teamId}`,
+          request: {
+            prompt: textBlock(request.prompt),
+            parent: caller,
+            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+          },
+          signal: request.signal ?? neverAborted()
+        };
+        const started = await subagents.startContinuable.call(subagents, spec);
+        const handle = String(started?.childId ?? started?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
+        return { handle, executor: "native" };
+      },
+      async send(caller, handle, content, signal) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
+        if (typeof subagents.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
+      },
+      async interrupt(caller, handle) {
+        if (!ready)
+          throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
+        const subagents = requireService("subagents", `cannot interrupt team member "${handle}"`);
+        if (typeof subagents.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt() — cannot interrupt a team member");
+        }
+        subagents.interrupt.call(subagents, handle, { kind: "ancestor", agent: caller });
+      },
+      membership(agent) {
+        const id = sessionIdOfAgent(agent);
+        if (id === "")
+          return;
+        const entry = nativeMembers.get(id);
+        return entry === undefined ? undefined : { teamId: entry.teamId, role: "teammate", name: entry.name };
+      },
+      members: () => [...nativeMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
+  function officialTeamExecutor() {
+    return {
+      kind: "official",
+      reason: "official: the native seams are unavailable, so the mounted Agent Teams service executes the team",
+      providers: () => [],
+      async spawn(caller, request) {
+        const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
+        if (typeof teams.spawnTeammate !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        const spawned = await teams.spawnTeammate.call(teams, caller, {
+          name: request.name,
+          description: request.description === "" ? request.name : request.description,
+          prompt: request.prompt,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+        const handle = String(spawned?.id ?? spawned?.sessionId ?? spawned?.member?.id ?? "");
+        if (handle === "")
+          throw new Error(`mpd-dsh-adapter: the official backend raised "${request.name}" but reported no id`);
+        officialMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name });
+        return { handle, executor: "official" };
+      },
+      async send(caller, handle, content, signal) {
+        const teams = requireService("agentTeams", `cannot deliver a message to team member "${handle}"`);
+        if (typeof teams.sendMessage !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no sendMessage() — cannot deliver to a team member");
+        }
+        await teams.sendMessage.call(teams, caller, { target: handle, content: textBlock(content), ...signal === undefined ? {} : { signal } });
+      },
+      async interrupt(caller, handle) {
+        const teams = requireService("agentTeams", `cannot interrupt team member "${handle}"`);
+        if (typeof teams.interrupt !== "function") {
+          throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no interrupt() — cannot interrupt a team member");
+        }
+        const target = officialMembers.get(handle)?.name ?? handle;
+        teams.interrupt.call(teams, caller, target);
+      },
+      membership: (agent) => {
+        const teams = service("agentTeams");
+        const tryMembership = teams?.tryMembership;
+        if (typeof tryMembership !== "function")
+          return;
+        try {
+          const membership = tryMembership.call(teams, agent);
+          if (membership === undefined || membership === null)
+            return;
+          const role = membership.role;
+          if (role !== "lead" && role !== "teammate")
+            return;
+          return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+        } catch {
+          return;
+        }
+      },
+      members: () => [...officialMembers.entries()].map(([handle, entry]) => ({ handle, teamId: entry.teamId, memberId: entry.memberId, name: entry.name }))
+    };
+  }
   const adapter = {
     capabilities() {
       const tools = service("tools");
@@ -1538,6 +1670,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: typeof subagents?.startContinuable === "function",
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -1793,6 +1926,22 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamExecutor() {
+      const override = (() => {
+        try {
+          const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_TEAM_EXECUTOR : undefined;
+          return typeof raw === "string" && raw.trim() !== "" ? raw.trim().toLowerCase() : undefined;
+        } catch {
+          return;
+        }
+      })();
+      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const officialReady = service("agentTeams") !== undefined;
+      const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
+      if (chosen === "official")
+        return officialTeamExecutor();
+      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -2218,6 +2367,12 @@ function stripControl(value) {
 function collapse(value) {
   return value.replace(/\s+/gu, " ").trim();
 }
+function cellWidth(value) {
+  let width = 0;
+  for (const character of value)
+    width += WIDE.test(character) ? 2 : 1;
+  return width;
+}
 function clampCells(value, maxCells) {
   if (maxCells <= 0)
     return "";
@@ -2322,6 +2477,42 @@ function readTeam(views, problems) {
     tasks: counts
   };
 }
+function readRecordTeam(record) {
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
+  for (const task of record.tasks.slice(0, MAX_TASKS)) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  return {
+    id: scalarText(record.teamId, 60) ?? "?",
+    name: scalarText(record.name, 80) ?? "?",
+    phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : record.phase,
+    description: scalarText(record.description, 200),
+    members: record.members.length,
+    tasks: counts
+  };
+}
 function readBoulder(root, problems) {
   const path = join(root, ".mpd", "boulder.json");
   let document;
@@ -2383,7 +2574,7 @@ function readWorkmates(home) {
     return { count: 0, names: [] };
   }
 }
-function readBoardState(workspace, home = homedir(), views = []) {
+function readBoardState(workspace, home = homedir(), views = [], records = []) {
   const problems = [];
   const state = {
     workspace,
@@ -2393,7 +2584,8 @@ function readBoardState(workspace, home = homedir(), views = []) {
     problems
   };
   try {
-    state.team = readTeam(views, problems);
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
+    state.team = principal === undefined ? readTeam(views, problems) : readRecordTeam(principal);
   } catch {
     problems.push("team state unreadable");
   }
@@ -2465,7 +2657,7 @@ function boardLines(state, holds = []) {
 
 // packages/mpd-tui-plugin/src/status.ts
 var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews) {
+function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
   let outcome = { state: "absent", detail: "tuiStatus was not injected" };
   let refresh = () => {};
   onService(ctx, "tuiStatus", (scoped, service) => {
@@ -2479,7 +2671,7 @@ function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice,
     let published;
     const publish = () => {
       try {
-        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), bridgeNotice?.());
+        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.());
         if (text === published)
           return;
         published = text;
@@ -3305,75 +3497,118 @@ function readTeamWorkflow(workspace, holds = [], views = []) {
 function approvalPhrase(teamId) {
   return `approve ${teamId}`;
 }
-function teamWorkflowLines(workflow) {
-  if (workflow.team === undefined)
-    return ["team       (none in this workspace)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id})`);
-  lines.push(`phase      ${team.phase}`);
-  if (team.staged && team.planReviewState !== undefined)
-    lines.push(`plan       ${team.planReviewState}`);
-  if (team.captainSessionId !== undefined)
-    lines.push(`captain    ${team.captainSessionId}`);
-  if (team.staged && team.stagedAt !== undefined)
-    lines.push(`staged     ${team.stagedAt}`);
-  if (workflow.holds.includes(team.id))
-    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    let row = `  ${parts.join(" · ")}`;
-    row += ` · ${member.done}/${member.total}`;
-    if (member.currentTask !== undefined)
-      row += ` · ${member.currentTask}`;
-    if (member.unread !== null && member.unread > 0)
-      row += ` · ${member.unread} unread`;
-    lines.push(row);
+function readPlanView(teams, workspace, sessionId) {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
+    return;
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
+  } catch {
+    return;
   }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.attempt !== undefined)
-      row += ` attempt ${task.attempt}`;
-    if (task.round !== undefined)
-      row += ` r${task.round}`;
-    if (task.verdict !== undefined)
-      row += ` verdict ${task.verdict}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    for (const failed of task.failedDependencies)
-      row += ` failed-dep=${failed}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
+}
+function mpdTeamRecords(teams, workspace) {
+  try {
+    const list = teams?.list;
+    if (typeof list !== "function" || workspace === "")
+      return [];
+    return list(workspace) ?? [];
+  } catch {
+    return [];
   }
-  lines.push("");
-  const tasks = workflow.counts;
-  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
-  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
-  for (const message of workflow.mail.captainInbox)
-    lines.push(`  ${message.from}: ${message.content}`);
-  if (workflow.problems.length > 0) {
-    lines.push("");
-    for (const problem of workflow.problems)
-      lines.push(`note       ${problem}`);
+}
+function readRecordWorkflow(workspace, holds, record) {
+  const problems = [];
+  const board = record.tasks.slice(0, MAX_TASKS2);
+  const tasks = board.map((task) => ({
+    id: scalarText(task.id, 40) ?? "",
+    subject: scalarText(task.subject, 160) ?? "",
+    kind: scalarText(task.kind, 24),
+    status: scalarText(task.status, 40) ?? "pending",
+    visual: "open",
+    assignee: scalarText(task.owner, 80),
+    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
+    round: typeof task.round === "number" ? task.round : undefined,
+    verdict: scalarText(task.verdict, 40),
+    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
+    failedDependencies: [],
+    depth: 0
+  }));
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
   }
-  return lines;
+  const order = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const members = record.members.map((member) => {
+    const name = scalarText(member.name, 80) ?? "?";
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
+    return {
+      name,
+      role: scalarText(member.role ?? member.description, 120),
+      route: scalarText(member.route, 80),
+      status: scalarText(member.status, 40) ?? "unknown",
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      currentTask: current?.id,
+      unread: null
+    };
+  });
+  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  return {
+    workspace,
+    team: {
+      id: scalarText(record.teamId, 60) ?? "?",
+      name: scalarText(record.name, 80) ?? "?",
+      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
+      description: scalarText(record.description, 200),
+      captainSessionId: scalarText(record.leadSessionId, 80),
+      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
+      staged: record.approvedAt === undefined,
+      runnable: members.length > 0 && tasks.length > 0,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS2)
+  };
 }
 function planProjectionLines(workflow) {
   if (workflow.team === undefined)
@@ -3415,10 +3650,349 @@ function planProjectionLines(workflow) {
   return lines;
 }
 
+// packages/mpd-tui-plugin/src/graph.ts
+var GRAPH_THEME = Object.freeze({
+  completed: "success",
+  running: "activity",
+  failed: "error",
+  blocked: "warning",
+  cancelled: "inactive",
+  open: "subtle",
+  focus: "accentShimmer",
+  dim: "inactive",
+  edge: "promptBorder",
+  chain: "accent",
+  blank: "text"
+});
+var GLYPH = Object.freeze({
+  completed: "✓",
+  running: "◐",
+  failed: "✗",
+  blocked: "○",
+  cancelled: "⊘",
+  open: "○"
+});
+var KIND_ABBREV = Object.freeze({
+  requirement: "REQ",
+  work: "WRK",
+  review: "REV",
+  repair: "FIX",
+  integration: "INT"
+});
+var MIN_NODE_WIDTH = 16;
+var NODE_GAP = 3;
+var MAX_NODE_WIDTH = 34;
+var MAX_BOX_RANKS = 12;
+var UP = 1;
+var DOWN = 2;
+var LEFT = 4;
+var RIGHT = 8;
+var JUNCTION = Object.freeze({
+  0: " ",
+  [UP]: "│",
+  [DOWN]: "│",
+  [UP | DOWN]: "│",
+  [LEFT]: "─",
+  [RIGHT]: "─",
+  [LEFT | RIGHT]: "─",
+  [DOWN | RIGHT]: "┌",
+  [DOWN | LEFT]: "┐",
+  [UP | RIGHT]: "└",
+  [UP | LEFT]: "┘",
+  [UP | DOWN | RIGHT]: "├",
+  [UP | DOWN | LEFT]: "┤",
+  [UP | LEFT | RIGHT]: "┴",
+  [DOWN | LEFT | RIGHT]: "┬",
+  [UP | DOWN | LEFT | RIGHT]: "┼"
+});
+function clampSpans(spans, cols) {
+  const kept = [];
+  let used = 0;
+  for (const span of spans) {
+    if (used >= cols)
+      break;
+    const room = cols - used;
+    if (cellWidth(span.text) <= room) {
+      kept.push(span);
+      used += cellWidth(span.text);
+      continue;
+    }
+    kept.push({ text: clampCells(span.text, room), tone: span.tone });
+    used = cols;
+  }
+  return kept;
+}
+function labelOf(task, focus) {
+  const marker = task.id === focus ? "▶" : GLYPH[task.visual] ?? "?";
+  const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
+  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ");
+}
+function toneOf(task, focus, chain) {
+  if (task.id === focus)
+    return "focus";
+  if (chain === undefined) {
+    const visual = task.visual;
+    return visual === "completed" || visual === "running" || visual === "failed" || visual === "blocked" || visual === "cancelled" ? visual : "open";
+  }
+  return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim";
+}
+function dependencyChain(tasks, id) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const seen = new Set;
+  const stack = [...byId.get(id)?.dependencies ?? []];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (seen.has(current) || !byId.has(current))
+      continue;
+    seen.add(current);
+    for (const next of byId.get(current)?.dependencies ?? [])
+      if (!seen.has(next))
+        stack.push(next);
+  }
+  return seen;
+}
+function ranksOf(tasks) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks) {
+    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0;
+    ranks[rank].push(task);
+  }
+  return ranks;
+}
+function cycleIds2(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const onStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    onStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    onStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function layoutBoxes(tasks, cols, focus) {
+  if (tasks.length === 0) {
+    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] };
+    if (focus !== undefined)
+      empty.focus = focus;
+    return empty;
+  }
+  const ranks = ranksOf(tasks);
+  if (ranks.length > MAX_BOX_RANKS)
+    return;
+  const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
+  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest));
+  if (nodeWidth < MIN_NODE_WIDTH)
+    return;
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
+  const column = new Map;
+  for (const rank of ranks) {
+    const ordered = rank.map((task, index) => {
+      const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id));
+      return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length };
+    }).sort((left, right) => left.key - right.key || left.index - right.index);
+    ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)));
+  }
+  const mask = [];
+  const text = [];
+  const tone = [];
+  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
+  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
+  const grow = (row) => {
+    while (mask.length <= row) {
+      mask.push(new Array(width).fill(0));
+      text.push(new Array(width).fill(null));
+      tone.push(new Array(width).fill(null));
+    }
+  };
+  const link = (row, col, dir, at) => {
+    if (col < 0 || col >= width || row < 0)
+      return;
+    grow(row);
+    mask[row][col] |= dir;
+    const current = toneAt(row, col);
+    if (current === undefined || order.indexOf(at) > order.indexOf(current))
+      tone[row][col] = at;
+  };
+  const label = (row, col, char, at) => {
+    if (col < 0 || col >= width)
+      return;
+    grow(row);
+    text[row][col] = char;
+    tone[row][col] = at;
+  };
+  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
+  const RANK_STRIDE = 6;
+  const hits = [];
+  for (let rank = 0;rank < ranks.length; rank++) {
+    const top = rank * RANK_STRIDE;
+    for (const task of ranks[rank]) {
+      const left = column.get(task.id) ?? 0;
+      const right = left + nodeWidth - 1;
+      const at = toneOf(task, focus, chain);
+      for (let col = left + 1;col < right; col++)
+        link(top, col, LEFT | RIGHT, at);
+      link(top, left, RIGHT | DOWN, at);
+      link(top, right, LEFT | DOWN, at);
+      link(top + 1, left, UP | DOWN, at);
+      link(top + 1, right, UP | DOWN, at);
+      const body = labelOf(task, focus);
+      let cursor = left + 1;
+      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) {
+        label(top + 1, cursor, char, at);
+        cursor += cellWidth(char);
+      }
+      for (let col = left + 1;col < right; col++)
+        link(top + 2, col, LEFT | RIGHT, at);
+      link(top + 2, left, RIGHT | UP, at);
+      link(top + 2, right, LEFT | UP, at);
+      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
+        link(top + 2, centreOf(task.id), DOWN, at);
+      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right });
+    }
+    if (rank + 1 >= ranks.length)
+      break;
+    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5;
+    for (const child of ranks[rank + 1]) {
+      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
+      if (parents.length === 0)
+        continue;
+      const centre = centreOf(child.id);
+      link(top + 6, centre, UP, toneOf(child, focus, chain));
+      link(stubBottom, centre, UP | DOWN, toneOf(child, focus, chain));
+      for (const id of parents) {
+        const from = centreOf(id);
+        const edgeTone = focus === undefined ? "edge" : (id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true) ? "chain" : "dim";
+        link(stubTop, from, UP | DOWN, edgeTone);
+        if (from === centre) {
+          link(bus, from, UP | DOWN, edgeTone);
+          continue;
+        }
+        link(bus, from, UP, edgeTone);
+        link(bus, centre, DOWN, edgeTone);
+        for (let col = Math.min(from, centre) + 1;col < Math.max(from, centre); col++)
+          link(bus, col, LEFT | RIGHT, edgeTone);
+        link(bus, Math.min(from, centre), RIGHT, edgeTone);
+        link(bus, Math.max(from, centre), LEFT, edgeTone);
+      }
+    }
+  }
+  const lines = [];
+  for (let row = 0;row < mask.length; row++) {
+    const cells = [];
+    let run = null;
+    for (let col = 0;col < width; col++) {
+      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
+      const at = toneAt(row, col) ?? "blank";
+      if (run !== null && run.tone === at)
+        run.text += char;
+      else {
+        run = { text: char, tone: at };
+        cells.push(run);
+      }
+    }
+    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
+      cells.pop();
+    lines.push(clampSpans(cells, width));
+  }
+  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
+    lines.pop();
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutRail(tasks, cols, focus) {
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const children = new Map;
+  for (const task of tasks) {
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0];
+    if (parent === undefined)
+      continue;
+    if (!children.has(parent))
+      children.set(parent, []);
+    children.get(parent).push(task);
+  }
+  const drawn = [];
+  const seen = new Set;
+  const walk = (task, prefix, leaf, depth) => {
+    if (seen.has(task.id))
+      return;
+    seen.add(task.id);
+    drawn.push({ task, prefix, leaf, depth });
+    const kids = children.get(task.id) ?? [];
+    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1));
+  };
+  for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0))
+    walk(root, "", true, 0);
+  for (const task of tasks)
+    walk(task, "", true, 0);
+  const lines = [];
+  const hits = [];
+  drawn.forEach((entry, index) => {
+    const at = toneOf(entry.task, focus, chain);
+    const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
+    const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`;
+    const connector = entry.depth === 0 ? "" : `${entry.prefix}${entry.leaf ? "└─" : "├─"} `;
+    const label = labelOf(entry.task, focus);
+    const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
+    const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
+    const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
+    const shown = clampCells(stripControl(label), labelRoom);
+    const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : "";
+    lines.push(clampSpans([
+      { text: connector, tone: at },
+      { text: shown + gap, tone: at },
+      ...useTail ? [{ text: "  " + tail, tone: at }] : []
+    ], cols));
+    hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
+  });
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutGraph(tasks, cols, focus) {
+  const width = Math.max(8, Math.floor(cols));
+  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus);
+}
+function hitTest(view, row, col) {
+  for (const hit of view.hits) {
+    if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd)
+      return hit.taskId;
+  }
+  return;
+}
+
 // packages/mpd-tui-plugin/src/scenes.ts
 var BOARD_SCENE_ID = "mpd-tui-board";
 var TEAM_SCENE_ID = "mpd-tui-team";
 var PLAN_SCENE_ID = "mpd-tui-plan";
+var FALLBACK_COLS = 100;
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
 var SCENE_ROW_MAX_CELLS = 4000;
@@ -3442,7 +4016,7 @@ function usableKit(React, ui) {
     return false;
   return typeof ui.Box === "function" && typeof ui.Text === "function";
 }
-function readWorkflow(workspaceRoot, holds, teamViews) {
+function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
   try {
     let holdIds = [];
     try {
@@ -3456,14 +4030,38 @@ function readWorkflow(workspaceRoot, holds, teamViews) {
     } catch {
       views = [];
     }
+    let records = [];
+    try {
+      records = teamRecords?.() ?? [];
+    } catch {
+      records = [];
+    }
+    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
+    if (principal !== undefined)
+      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
     return readTeamWorkflow(workspaceRoot(), holdIds, views);
   } catch {
     return;
   }
 }
+function wrapCells(value, cols) {
+  const out = [];
+  let line = "";
+  for (const word of value.split(" ")) {
+    const next = line === "" ? word : `${line} ${word}`;
+    if (cellWidth(next) > cols && line !== "") {
+      out.push(line);
+      line = word;
+    } else
+      line = next;
+  }
+  if (line !== "")
+    out.push(line);
+  return out;
+}
 function measureTerminal(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", window: 20 };
+    return { size: "", cols: FALLBACK_COLS, window: 20 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -3473,9 +4071,14 @@ function measureTerminal(ui) {
   }
   const terminalRows = Number(rows);
   const size = `${String(columns)}x${String(rows)}`;
-  return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 };
+  const terminalCols = Number(columns);
+  return {
+    size,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
+  };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3485,7 +4088,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     }
     const read = () => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds());
+        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds());
       } catch {
         return ["board state unreadable"];
       }
@@ -3547,55 +4150,41 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
-    const read = () => {
-      let workflow;
-      let root = "";
-      try {
-        root = workspaceRoot();
-      } catch {
-        root = "?";
-      }
-      try {
-        workflow = readWorkflow(workspaceRoot, holds, teamViews);
-      } catch {
-        workflow = undefined;
-      }
-      if (workflow === undefined)
-        return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false };
-      const subject2 = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`;
-      return {
-        rows: teamWorkflowLines(workflow),
-        subject: subject2,
-        staged: workflow.team?.staged === true,
-        ...workflow.team?.id === undefined ? {} : { teamId: workflow.team.id }
-      };
-    };
-    const rowsState = React.useState([]);
-    const rows = rowsState[0];
-    const setRows = rowsState[1];
-    const subjectState = React.useState("MPD team");
-    const subject = subjectState[0];
-    const setSubject = subjectState[1];
+    const workflowState = React.useState(undefined);
+    const workflow = workflowState[0];
+    const setWorkflow = workflowState[1];
     const noticeState = React.useState("");
     const notice = noticeState[0];
     const setNotice = noticeState[1];
+    const pinnedState = React.useState(undefined);
+    const pinned = pinnedState[0];
+    const setPinned = pinnedState[1];
+    const hoverState = React.useState(undefined);
+    const hover = hoverState[0];
+    const setHover = hoverState[1];
     const scrollState = React.useState(0);
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const latestRef = React.useRef?.(undefined);
+    const viewRef = React.useRef?.(undefined);
     const refresh = () => {
-      const snapshot = read();
-      setRows(snapshot.rows);
-      setSubject(snapshot.subject);
-      if (latestRef !== undefined && latestRef !== null)
-        latestRef.current = { staged: snapshot.staged, teamId: snapshot.teamId };
+      let next;
+      try {
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
+      } catch {
+        next = undefined;
+      }
+      setWorkflow(next);
+      if (latestRef !== undefined && latestRef !== null) {
+        latestRef.current = { staged: next?.team?.staged === true, ...next?.team?.id === undefined ? {} : { teamId: next.team.id } };
+      }
     };
     React.useEffect(() => {
       refresh();
@@ -3613,18 +4202,50 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
         }
       };
     }, []);
+    const graphTasks = (workflow?.tasks ?? []).map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      ...task.kind === undefined ? {} : { kind: task.kind },
+      visual: task.visual,
+      ...task.assignee === undefined ? {} : { assignee: task.assignee },
+      dependencies: task.dependencies,
+      depth: task.depth,
+      ...task.attempt === undefined ? {} : { attempt: task.attempt }
+    }));
+    const focus = hover ?? pinned;
+    const measured = measureTerminal(ui);
+    const graphWidth = Math.max(20, measured.cols - 4);
+    const view = layoutGraph(graphTasks, graphWidth, focus);
+    if (viewRef !== undefined && viewRef !== null)
+      viewRef.current = view;
+    const ordered = view.hits.map((hit) => hit.taskId);
+    const moveFocus = (delta) => {
+      if (ordered.length === 0)
+        return;
+      const at = focus === undefined ? -1 : ordered.indexOf(focus);
+      const next = at < 0 ? delta > 0 ? 0 : ordered.length - 1 : (at + delta + ordered.length) % ordered.length;
+      setHover(undefined);
+      setPinned(ordered[next]);
+    };
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
+        if (key?.escape === true && pinned !== undefined) {
+          setPinned(undefined);
+          setHover(undefined);
+          return;
+        }
         if (key?.escape === true || input === "q")
           close();
         else if (input === "r") {
           setScroll(0);
           refresh();
         } else if (key?.upArrow === true || input === "k")
-          setScroll(scroll > 0 ? scroll - 1 : 0);
+          key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1);
         else if (key?.downArrow === true || input === "j")
-          setScroll(scroll + 1);
-        else if (input === "p") {
+          key?.shift === true ? setScroll(scroll + 1) : moveFocus(1);
+        else if (input === "g") {
+          setScroll(0);
+        } else if (input === "p") {
           nav.planFromTeam = false;
           openScene(BOARD_SCENE_ID);
         } else if (input === "a") {
@@ -3641,30 +4262,76 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
         }
       });
     }
-    const measured = measureTerminal(ui);
-    const visible = rows.slice(scroll, scroll + measured.window);
-    const size = measured.size;
-    const children = [
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${subject}${size === "" ? "" : ` · ${size}`}`)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${rows.length} line(s) · scroll ${scroll}`))
-    ];
-    for (let index = 0;index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])));
+    const children = [];
+    const head = workflow?.team;
+    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    if (workflow === undefined) {
+      children.push(React.createElement(ui.Text, { key: "unreadable" }, safeLine("team state unreadable")));
+    } else if (head === undefined) {
+      children.push(React.createElement(ui.Text, { key: "none", dimColor: true }, safeLine("no team in this workspace — stage one with agent_teams_plan, then approve it")));
+    } else {
+      const counts = workflow.counts;
+      children.push(React.createElement(ui.Text, { key: "phase" }, safeLine(`${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`)));
+      const roster = workflow.members.length === 0 ? "roster  (no members)" : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ");
+      for (const chunk of wrapCells(roster, graphWidth))
+        children.push(React.createElement(ui.Text, { key: `roster-${chunk}`, dimColor: true }, safeLine(chunk)));
+      if (workflow.holds.includes(head.id))
+        children.push(React.createElement(ui.Text, { key: "hold", color: "warning" }, safeLine(`watchdog   HELD (${workflow.holds.join(", ")})`)));
+      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeLine(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`)));
+      const graphWindow = Math.max(3, measured.window - 4);
+      const graphRows = [];
+      for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
+      }
+      children.push(React.createElement(ui.Box, {
+        key: "graph",
+        flexDirection: "column",
+        onMouseEnter: (event) => {
+          const drawn = viewRef?.current;
+          if (drawn === undefined)
+            return;
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          setHover(under);
+        },
+        onMouseLeave: () => setHover(undefined),
+        onClick: (event) => {
+          const drawn = viewRef?.current;
+          if (drawn === undefined)
+            return;
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1));
+          setPinned(under === undefined || under === pinned ? undefined : under);
+          setHover(under);
+        },
+        onWheel: (event) => {
+          const delta = Number(event?.deltaY ?? 0);
+          if (delta !== 0)
+            setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)));
+        }
+      }, graphRows));
+      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus);
+      if (detail !== undefined) {
+        children.push(React.createElement(ui.Text, { key: "detail", bold: true }, safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)));
+        children.push(React.createElement(ui.Text, { key: "detail-meta", dimColor: true }, safeLine(`${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`)));
+      }
+      for (const problem of workflow.problems)
+        children.push(React.createElement(ui.Text, { key: `problem-${problem}`, color: "warning" }, safeLine(`note       ${problem}`)));
     }
     if (notice !== "")
       children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)));
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · ↑/k ↓/j scroll · a plan approval · p board")));
+    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board")));
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function planActionLines(workflow, echo, armed, message) {
+function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
   const team = workflow?.team;
-  const phrase = team === undefined ? "" : approvalPhrase(team.id);
+  const phrase = servedPhrase !== "" ? servedPhrase : team === undefined ? "" : approvalPhrase(team.id);
   const rows = [];
   rows.push("");
-  rows.push(`approval needs the exact team id typed below, then Ctrl+X`);
+  rows.push(servedPhrase !== "" ? "approval needs the exact phrase typed below, then Ctrl+X" : "approval needs the exact team id typed below, then Ctrl+X");
   rows.push(`confirm    ${echo}`);
-  rows.push(`required   ${phrase === "" ? "(no team record)" : phrase}`);
+  rows.push(`required   ${phrase === "" ? "(no staged plan)" : phrase}`);
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`);
   if (armed)
     rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan");
@@ -3675,13 +4342,18 @@ function planActionLines(workflow, echo, armed, message) {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, teamViews) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
+    const channelSession = () => {
+      const live = props?.channel;
+      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
+      return id === undefined || id === "" ? undefined : id;
+    };
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }));
     const target = targetState[0];
     const viewState = React.useState(undefined);
@@ -3703,7 +4375,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews));
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       setEcho("");
       setArmedAt(0);
       setScroll(0);
@@ -3713,7 +4385,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds, teamViews));
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -3744,8 +4416,10 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       };
     }, [armedAt]);
     const team = view?.team;
-    const phrase = team === undefined ? "" : approvalPhrase(team.id);
-    const usable = view !== undefined && team !== undefined && team.staged;
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "");
+    const stagedPlan = rawPlan ?? undefined;
+    const phrase = stagedPlan === undefined ? team === undefined ? "" : approvalPhrase(team.id) : stagedPlan.phrase;
+    const usable = view !== undefined && team !== undefined && team.staged || stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true;
     const leave = () => {
       setEcho("");
       setScroll(0);
@@ -3771,8 +4445,9 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       setMessage("working…");
       try {
         const result = await actions.approve({
-          teamId: team.id,
+          teamId: stagedPlan?.planId ?? team.id,
           confirmation: echo,
+          ...channelSession() === undefined ? {} : { sessionId: channelSession() },
           ...team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }
         });
         if (result.ok) {
@@ -3790,7 +4465,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       }
     };
     const runDiscard = async () => {
@@ -3808,7 +4483,10 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       setBusy(true);
       setMessage("working…");
       try {
-        const result = await actions.discard(team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId });
+        const result = await actions.discard({
+          ...team?.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId },
+          ...channelSession() === undefined ? {} : { sessionId: channelSession() }
+        });
         setMessage(result.ok ? "discarded: team archived" : `discard failed: ${result.error ?? "the tool refused the call"}`);
         if (result.ok)
           setEcho("");
@@ -3816,7 +4494,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -3873,14 +4551,14 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`);
     }
     if (usable)
-      for (const row of planActionLines(view, echo, armedAt !== 0, message))
+      for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? ""))
         body.push(row);
     const measured = measureTerminal(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
     const settled = message !== "";
     const verdict = !usable && settled;
-    const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`;
+    const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`;
     const children = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))];
     if (!usable) {
       if (verdict) {
@@ -3901,7 +4579,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, team
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, teamViews) {
+function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords) {
   let outcome = { state: "absent", detail: "tuiScenes was not injected" };
   let scenes;
   const nav = { planFromTeam: false };
@@ -3928,9 +4606,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
     scenes = runtime;
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped);
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped);
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped);
+      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped);
+      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped);
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, scoped);
       outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` };
     } catch (error) {
       outcome = { state: "refused", detail: String(error?.message ?? error) };
@@ -3954,9 +4632,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
   };
 }
-function boardSummary(workspaceRoot, home, teamViews) {
+function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []));
+    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []));
   } catch {
     return "mpd: state unreadable";
   }
@@ -4415,10 +5093,29 @@ function workspaceResolver(ctx, adapter) {
   };
 }
 function createPlanActions(adapter, log) {
+  const PLAN_TOOL = "agent_teams_plan";
+  const call = async (args, sessionId) => {
+    try {
+      const agent = sessionId === undefined || sessionId === "" ? undefined : { session: { id: sessionId } };
+      const result = await adapter.executeTool({ name: PLAN_TOOL, arguments: args, ...agent === undefined ? {} : { agent } });
+      if (result.ok && !result.isError)
+        return { ok: true, ...result.value === undefined ? {} : { value: result.value } };
+      return { ok: false, error: typeof result.error === "string" ? result.error : JSON.stringify(result.error ?? result.raw ?? "the call failed") };
+    } catch (error) {
+      log.warn(`plan ${String(args.action)} failed: ${String(error?.message ?? error)}`);
+      return { ok: false, error: String(error?.message ?? error) };
+    }
+  };
   return {
-    available: () => false,
-    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
-    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE })
+    available: () => {
+      try {
+        return adapter.hasTool(PLAN_TOOL);
+      } catch {
+        return false;
+      }
+    },
+    approve: async (input) => call({ action: "approve", confirmation: input.confirmation }, input.sessionId ?? input.captainSessionId),
+    discard: async (input) => call({ action: "delete" }, input.sessionId ?? input.captainSessionId)
   };
 }
 function homeDir() {
@@ -4438,6 +5135,12 @@ function apply(ctx, config = {}) {
   const workspaceRoot = workspaceResolver(ctx, adapter);
   const home = () => homeDir();
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
+  let teamsService;
+  onService(ctx, "mpdTeams", (_scoped, service) => {
+    teamsService = service;
+  });
+  const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
+  const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
   const record = (id, outcome) => {
@@ -4470,8 +5173,8 @@ function apply(ctx, config = {}) {
     onAcknowledged: () => status.refresh()
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
-  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews) : {
+  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
+  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords) : {
     outcome: () => ({ state: "absent", detail: "disabled by config" }),
     open: () => false,
     openScene: () => false,
@@ -4486,16 +5189,16 @@ function apply(ctx, config = {}) {
     openTeam: () => scene.openTeam(),
     refreshStatus: () => status.refresh(),
     pickWorkmate: () => {
-      pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews);
+      pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords);
     }
   }) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
   const commands = resolved.commands ? registerCommands(ctx, log, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
     openPlan: () => scene.openPlan(),
-    statusText: () => boardSummary(workspaceRoot, home, teamViews),
+    statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
-      const state = readBoardState(workspaceRoot(), home(), teamViews());
+      const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
       return state.workmates.count === 0 ? "mpd workmates: none" : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`;
     },
     pickAction: () => pickAction(log, dialogs),
@@ -4538,8 +5241,8 @@ async function pickAction(log, dialogs) {
     log.debug(`/mpd picker chose ${scalarText(choice, 40) ?? "?"}`);
   return choice;
 }
-async function pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews) {
-  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names;
+async function pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords = () => []) {
+  const names = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords()).workmates.names;
   if (!dialogs.available() || names.length === 0) {
     scene.open();
     return;

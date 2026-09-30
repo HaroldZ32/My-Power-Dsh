@@ -1,0 +1,10 @@
+git HEAD: fcfb1e6fd0818312bfb5906ff16ed14fc5b5bd87
+git status:
+ M cordis.patch.yml
+?? evidence/tui/team-plane-not-mountable/
+cordis.patch.yml sha256 (HEAD): 823e95759b3a542b778edff18584a655137516b33663e35194ae95876670dae1
+cordis.patch.yml sha256 (worktree): 0813528078cb0e1668c977bcdf5e1b57595520648fc21d335fc060df0a2793a2
+harness: 0.2.0-rc.1
+dsh-tui: @deepseek-harness-tui/dsh-tui 0.11.2 (launcher) profile: 0.11.2  /root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui 
+agent-team copy loaded by the TUI profile: 0.2.0-rc.1
+node: v24.16.0

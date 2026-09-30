@@ -1,0 +1,63 @@
+{
+  "wave": "W4b \u2014 the workmate fallback, and the host PREFERENCE asserted in both directions",
+  "toolchain": {
+    "bun": "1.4.0",
+    "note": "the manifest's pinned buildToolchain, first on PATH"
+  },
+  "delivered": [
+    "the WORKMATE library now registers on the harness right sidebar as well as better-sidebar: it was a better-sidebar-ONLY surface, and `dsh-better-sidebar` is an optional peer a checkout install does not resolve, so exactly that profile had NO way to reach the library at all",
+    "both official registrations sit inside the SAME preference gate, so the two hosts are two registrations of one feature rather than two features",
+    "a shortcut command opens the workmate tab, named by its guide entry",
+    "TWO arms pin the preference in BOTH directions: better-sidebar mounted => the official registry stays untouched (and the preferred host still gets its three tabs); better-sidebar absent => BOTH tabs register on the fallback"
+  ],
+  "the_arm_that_was_a_false_pass": {
+    "what": "the first version of the preference arm asserted `the official registry is untouched` while better-sidebar was mounted \u2014 and passed. It passed for the WRONG reason: nothing was registered because NOTHING RAN.",
+    "why": "the harness's `locale` double had no `bind`, and `mountHarnessSidebar` is guarded by `typeof ctx.locale?.bind !== \"function\"` \u2014 so it returned early in EVERY arm. The official right sidebar had never been exercised by this suite at all.",
+    "second_why": "once `bind` existed, the callback still threw `undefined is not an object (evaluating 'sidebar.sidebarRightTabs.register')`: the harness's scoped ctx exposed injected services only through `get`, while cordis \u2014 and therefore the client \u2014 reads them as PROPERTIES of the callback's ctx.",
+    "fix": "both modelled faithfully: `bind` resolves against the registered dictionaries, and a declared dep is attached to the scoped ctx as a property. The arm now fails if the preference is removed, which is the only thing that makes it evidence."
+  },
+  "gates": {
+    "tests": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "summary": "1337 pass, 3 skip, 0 fail \u2014 122 files, 13122 expect() calls (103 bundle-client arms among them)"
+    },
+    "verify-dist-fresh": {
+      "cmd": "PATH=<pinned bun> node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "23/23 targets fresh"
+    },
+    "verify:comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:rows": {
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "summary": "PASS \u2014 33 row ids"
+    },
+    "verify:manifest": {
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "verify:docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "summary": "PASS"
+    },
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "summary": "4 errors, ALL pre-existing in skills/programming/scripts/typescript/check-no-excuse-rules.ts \u2014 none new"
+    }
+  },
+  "shipped_artifact_check": {
+    "cmd": "node --check packages/mpd-bundle-plugin/client.js",
+    "result": "parses"
+  },
+  "not_claimed": [
+    "no live browser profile was booted: the preference and the fallback are proven by arms against host doubles plus a parse check of the served artifact",
+    "the workmate SEAT's own rendering is not asserted beyond `component` being a function; the library view's behaviour is covered by its existing arms through the better-sidebar path"
+  ]
+}

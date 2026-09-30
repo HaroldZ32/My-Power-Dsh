@@ -1,0 +1,31 @@
+{
+  "change": "arm 1 mounts the REAL mpd-team-core row, and the offline surface works end to end (item (a))",
+  "what_changed": [
+    "the ctx double gained `provide`, writing into the SAME bag `get` reads \u2014 which is what lets the real core row publish `mpdTeams` and the real TUI row find it, the two rows composed here as they are in a boot",
+    "arm 1 mounts `mpd-team-core-plugin/dist` through its REAL `apply()` BEFORE the TUI row, so `mpdTeams` is the real service over the real files. A case-local double was the alternative and was REJECTED on the user's own directive: it would be a SECOND implementation of the store's read, free to drift from the one every shipped surface uses",
+    "`drive()` passes `channel: { sessionId }` \u2014 a staged plan is session-scoped and the scene reads the id off its own live channel, so a drive with no channel leaves the surface no key to read a plan with",
+    "a plan is staged for arm 1's own captain session, and its green drive types the PLAN's phrase rather than the team id"
+  ],
+  "measured": {
+    "A4-real-fixture-read": "PASSES \u2014 the surface renders `team Fixture Team (mpd-fixture-1) \u00b7 phase staged \u00b7 review -`",
+    "B1/B2/B3": "PASS \u2014 the gate refuses with `confirmation does not match this team` in all three bypassed runs, and the observation still discriminates",
+    "A5/A6/A7/A8 now report WORKING things": [
+      "A5: `required phrase \"approve plan-20260930T022334Z\"` \u2014 the phrase IS rendered",
+      "A6: `the echo after typing is \"approve plan-20260930T022334Z\"` \u2014 the echo IS the phrase",
+      "A7: `boundary call {\"name\":\"agent_teams_plan\",\"confirmation\":\"approve plan-\u2026\"} (the harness boundary recorded 1 call)` \u2014 the call REACHED the boundary",
+      "A8: `approved: plan-20260930T022334Z running \u00b7 members 2 \u00b7 tasks 2` \u2014 the tool's result IS rendered"
+    ],
+    "why_they_still_fail": "the ASSERTIONS compare against `approvalPhrase()` \u2014 the TEAM id \u2014 while the gate now demands the plan's phrase. A6 is the clearest: it received exactly the string it should, and rejected it for not being the old one.",
+    "A10": "the malformed and absent controls still render the empty state; the NON-STAGED control no longer does, because the plan half persists for that session \u2014 the control needs to clear the plan, not just change the record's phase",
+    "arm2": "H1/H2/H4b/H5/H6 pass; H3/H4 remain (the host renders the surface but never reaches the confirmation step)"
+  },
+  "gates": {
+    "typecheck": "the same 4 pre-existing skills/ errors",
+    "verify:comments": "PASS",
+    "bun test packages": "1350 pass, 0 fail"
+  },
+  "not_claimed": [
+    "the case does not PASS yet \u2014 exit 1, and the remaining failures are ASSERTION updates to the plan vocabulary plus one control that must clear the plan",
+    "no product code changed in this step"
+  ]
+}
