@@ -1,0 +1,27 @@
+{
+  "change": "the case's assertions move to the PLAN vocabulary, and two controls are corrected",
+  "fixed_and_verified": {
+    "A5": "PASSES. The frozen INSTRUCTION constant said 'the exact team id typed below'; W6 changed the line to name the PHRASE, because the shared projection builds it from the PRE-approval identity. The constant moved with the line.",
+    "A6": "PASSES. It now compares against the phrase the surface was SERVED. Before, it received exactly the string it should have accepted and rejected it for not being the old team-derived one.",
+    "A8": "PASSES. The tool reports the identity it approved, which is the PLAN's \u2014 the team record does not exist until that call commits, so a message naming the team id would name something not yet made.",
+    "red runs B1/B2/B3": "PASS, keyed to the same planned phrase so the control is still a control.",
+    "the malformed-record control": "writes its corrupt file at the POST-SPLIT path. It had been corrupting a file the surface no longer reads, which is how it passed while the real fixture was unreadable."
+  },
+  "arm1_status": "9 of 12 assertions pass",
+  "A7_IS_NOT_COSMETIC": {
+    "symptom": "`attempt.agentId` is undefined, and the boundary call carries no agent.",
+    "cause": "`createPlanActions` calls `adapter.executeTool({ name, arguments })` with NO agent. But the tool it calls resolves its context from that exec: `where(exec)` = `{ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) }`. So the missing agent is not a missing assertion field \u2014 WITHOUT IT THE TOOL CANNOT FIND THE RIGHT WORKSPACE OR SESSION.",
+    "the_gap": "`PlanActions.approve` takes `{ teamId, confirmation, captainSessionId }` \u2014 a shape built for the RETIRED tool, which took a team id. It carries neither an agent nor the plan id, and the executor holding it has no agent context of its own.",
+    "not_papered_over": "This is recorded rather than satisfied by inventing an agent in the executor, because which agent a USER-initiated surface call should speak as is a real question: the scene acts for the captain, so the captain's session is the natural answer \u2014 and the scene already HAS that id on its live channel."
+  },
+  "A10_still_open": "the `non-staged-record` control still renders the surface. `clearPlanFixture` was added and called, so the plan is NOT being found where the control clears it \u2014 the control's own workspace and the one the surface is mounted with are not the same, and that needs reading rather than guessing.",
+  "arm2_status": "H1/H2/H4b/H5/H6 pass; H3/H4 remain \u2014 the host renders the surface but never reaches the confirmation step",
+  "gates": {
+    "typecheck": "the same 4 pre-existing skills/ errors",
+    "verify:comments": "PASS"
+  },
+  "not_claimed": [
+    "the case does not PASS yet \u2014 exit 1",
+    "no product code changed in this step"
+  ]
+}

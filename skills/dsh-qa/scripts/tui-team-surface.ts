@@ -75,7 +75,11 @@ export const TEAM_NAME: string = "Fixture Team"
 /** The captain session the fixture names by default; arm 2 rewrites it to the attached one. */
 export const CAPTAIN_ID: string = "fixture-captain-session"
 /** The instruction line the surface must always render verbatim (§3.2). */
-export const INSTRUCTION: string = "approval needs the exact team id typed below, then Ctrl+X"
+// The instruction names the PHRASE since W6. It used to say "the exact team id", and that wording went
+// with the record-derived gate: the shared projection builds the phrase from the PRE-approval identity,
+// which is what the surface has when the gate asks. The frozen contract §3.2 fixed the INSTRUCTION
+// LINE, so the constant moves with the line rather than the line being bent to keep the constant.
+export const INSTRUCTION: string = "approval needs the exact phrase typed below, then Ctrl+X"
 
 /** Absolute path of the built plugin dist the arm-1 mount imports. */
 export const TUI_DIST: string = join(REPO, "packages", "mpd-tui-plugin", "dist", "index.js")
@@ -372,6 +376,23 @@ function teamRecordFrom(record: StagedTeamRecord): Record<string, unknown> {
     nextMemberNumber: record.members.length + 1,
     nextTaskNumber: Math.max(record.taskSeq, record.tasks.length + 1),
   }
+}
+
+/**
+ * Remove the staged plan of one session, so a control can present a workspace with none.
+ *
+ * The counterpart of {@link stagePlanFixture}: a control that means "nothing is awaiting approval" has
+ * to CLEAR the plan, because the record's phase no longer decides usability on its own.
+ * @param workspace The sandbox workspace.
+ * @param sessionId The session whose plan is dropped.
+ * @returns whether a plan file was there to remove.
+ */
+export function clearPlanFixture(workspace: string, sessionId: string): boolean {
+  /** The plan file the surface would have read. */
+  const file = join(workspace, ".mpd", "team", "staging", sessionId + ".json")
+  if (!existsSync(file)) return false
+  rmSync(file, { force: true })
+  return true
 }
 
 /**
@@ -1233,7 +1254,13 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
   // projection builds it from the PRE-approval identity, and the team id is not knowable at the moment
   // the gate asks. A drive still typing the team id would fail the gate for a reason that has nothing
   // to do with the surface.
-  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed", phrase: approvalPhrase(planId) })
+  // THE GATE'S PHRASE NAMES THE PLAN. Since W6 the shared projection builds it from the PRE-approval
+  // identity, so every assertion below compares against THIS string — the one the surface was served.
+  // They used to compare against `approvalPhrase()` (the TEAM id), which made A6 reject the very string
+  // it should have accepted: the echo it received WAS the phrase.
+  /** The exact phrase the approval gate demands, as the shared projection serves it. */
+  const plannedPhrase = approvalPhrase(planId)
+  const green = await drive({ kit, component: mounted.plan!.component, mode: "typed", phrase: plannedPhrase })
   /** The green drive reduced to its observable facts. */
   const greenObs = observe({ text: green.afterChord, boundaryCalls: mounted.boundaryCalls })
   /** The parsed lines of the green render after the chord. */
@@ -1242,9 +1269,9 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
   add("A4-real-fixture-read", green.afterChord.includes(TEAM_NAME) && greenTitle.teamLine.includes(TEAM_ID),
     "the surface rendered the record on disk: " + greenTitle.teamLine)
   add("A5-confirm-step-requested",
-    greenTitle.instruction === INSTRUCTION && greenTitle.requiredPhrase === approvalPhrase() && green.atEntry === "",
+    greenTitle.instruction === INSTRUCTION && greenTitle.requiredPhrase === plannedPhrase && green.atEntry === "",
     "verbatim instruction present, required phrase " + JSON.stringify(greenTitle.requiredPhrase) + ", echo at entry " + JSON.stringify(green.atEntry))
-  add("A6-echo-carries-phrase", surfaceFacts(green.beforeChord).confirmEcho === approvalPhrase(),
+  add("A6-echo-carries-phrase", surfaceFacts(green.beforeChord).confirmEcho === plannedPhrase,
     "the echo after typing is " + JSON.stringify(surfaceFacts(green.beforeChord).confirmEcho))
 
   /** The lane's own approval assertion on the green run. */
@@ -1253,12 +1280,14 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
   const attempt = greenObs.approvalAttempts[0]
   add("A7-approval-attempt", greenAssertion.pass &&
     attempt?.name === APPROVE_TOOL &&
-    attempt?.confirmation === approvalPhrase() &&
+    attempt?.confirmation === plannedPhrase &&
     attempt?.agentId === CAPTAIN_ID &&
     attempt?.callIdPresent === true,
     "boundary call " + JSON.stringify(attempt) + " (" + greenAssertion.reason + ")")
+  // The tool reports the identity IT approved, which is the PLAN's — the team record does not exist
+  // until this call commits, so a message naming the team id would be naming something not yet made.
   add("A8-tool-result-rendered",
-    greenObs.facts.message.startsWith("approved: " + TEAM_ID + " running"),
+    greenObs.facts.message.startsWith("approved: " + planId + " running"),
     "the scene rendered the tool's own structured result: " + JSON.stringify(greenObs.facts.message))
 
   // The three bypassed runs. Each MUST report no approval at the boundary.
@@ -1274,7 +1303,10 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
     /** The per-run bookkeeping object the original keeps beside the drive. */
     const sub: BypassScratch = { boundaryCalls: calls, name: mode }
     /** The phrase this run types; the wrong-id red types another team's id. */
-    const phrase = mode === "wrong-id" ? approvalPhrase("some-other-team") : approvalPhrase()
+    // The RED runs type something that is NOT this plan's phrase: the empty string, another plan's, or
+    // nothing at all. Both must be judged against the SAME string the green run typed, or the control
+    // stops being a control.
+    const phrase = mode === "wrong-id" ? approvalPhrase("plan-some-other-plan") : plannedPhrase
     // A per-run recording boundary: the same component, a fresh call log.
     /** How many boundary calls the mount had recorded before this run started. */
     const original = mounted.boundaryCalls.length
@@ -1307,12 +1339,24 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
       name: "malformed-record",
       setup: (ws: string): void => {
         /** The record directory the malformed bytes are written into. */
-        const dir = join(ws, ".mpd", "team", TEAM_ID)
+        // The POST-SPLIT path. A control that corrupts a file the surface no longer reads proves
+        // nothing — which is exactly how this arm passed while the real fixture was unreadable.
+        const dir = join(ws, ".mpd", "team", "teams")
         mkdirSync(dir, { recursive: true })
         writeFileSync(join(dir, TEAM_ID + ".json"), "{ this is not JSON at all")
       },
     },
-    { name: "non-staged-record", setup: (ws: string): void => { writeTeamFixture(ws, { ...stagedRecord(), phase: "running" }) } },
+    {
+      name: "non-staged-record",
+      setup: (ws: string): void => {
+        writeTeamFixture(ws, { ...stagedRecord(), phase: "running" })
+        // AND CLEAR THE PLAN, which is the half W6 made load-bearing: the surface is usable when a
+        // STAGED PLAN exists, whatever the record's phase says, because the record is materialised AT
+        // approval and the plan is what exists before one. Changing only the phase left a plan the
+        // surface could still act on, so this control no longer produced the empty state it exists for.
+        clearPlanFixture(ws, CAPTAIN_ID)
+      },
+    },
     { name: "absent-record", setup: (): void => {} },
   ]
   for (const entry of emptyCases) {
