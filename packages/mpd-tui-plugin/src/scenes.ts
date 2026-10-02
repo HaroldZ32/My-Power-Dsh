@@ -27,14 +27,15 @@
 // React contract: every hook and element uses the React instance and ui kit the
 // host injects through the scene props; this file therefore never imports React
 // (it uses `props.React.createElement`, the documented always-safe form).
-import type { PluginContextLike, SeamOutcome, TuiScenePropsLike, TuiScenesLike } from "./types.js"
+import { TUI_SEAMS } from "./types.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
 import { boardLines, readBoardState, statusLine } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
 import { GRAPH_THEME, hitTest, layoutGraph, type GraphTask } from "./graph.js"
+import { SUBAGENT_SCENE_ID, SUBAGENT_SCENE_TITLE, createSubagentSceneComponent } from "./subagent-scene.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
@@ -145,6 +146,8 @@ export interface SceneSeam {
   openTeam(): boolean
   /** Open the plan-approval surface. */
   openPlan(options?: { teamId?: string; returnToTeam?: boolean }): boolean
+  /** Open the merged panel: the host's own subagent rows above the MPD team body. */
+  openSubagents(): boolean
 }
 
 /** A no-op store subscription, so the hook order stays stable without a channel. */
@@ -1087,16 +1090,21 @@ function createPlanComponent(
 
 /**
  * Activate the full-screen scenes.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each scene's registration identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param workspaceRoot - resolves the workspace root per call.
  * @param home - resolves the home directory per call.
  * @param holds - the watchdog's held team ids; the hold row is simply omitted when unknown.
  * @param planActions - the adapter-backed approval executor.
+ * @param planReader - the shared plan reader, per session.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
  * @returns the seam handle.
  */
 export function registerScene(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
   workspaceRoot: () => string,
   home: () => string,
@@ -1106,49 +1114,53 @@ export function registerScene(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
 ): SceneSeam {
-  /** The seam result, rewritten when the three scenes are registered. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiScenes was not injected" }
-  /** The registered scene service, undefined until the deferred activation runs. */
-  let scenes: TuiScenesLike | undefined
   /** Navigation shared by the three components, mutated only by their own handlers. */
   const nav: SceneNav = { planFromTeam: false }
 
   /** Opens a registered scene by id, reporting a refusal instead of throwing. */
   const openScene = (id: string): boolean => {
-    if (scenes === undefined) {
-      log.debug(`scene open(${id}) skipped: tuiScenes was not injected`)
+    // The navigation call is the adapter's, resolved at CALL time: a scene opened before the seam
+    // bound (or after it was composed late) takes the same path.
+    if (!tui.openScene(id)) {
+      log.debug(`scene open(${id}) skipped: this composition does not serve the scene seam or the id`)
       return false
     }
-    try {
-      /** The host's answer; anything but `true` is reported as a refusal. */
-      const opened = scenes.open(id)
-      if (opened !== true) log.debug(`scene open(${id}) returned ${String(opened)}`)
-      return opened === true
-    } catch (error) {
-      log.debug(`scene open(${id}) failed: ${String((error as Error)?.message ?? error)}`)
-      return false
-    }
+    return true
   }
 
-  onService(ctx, "tuiScenes", (scoped, service) => {
-    /** The probed service as the scene registry, before `register` is trusted. */
-    const runtime = service as TuiScenesLike
+  /** The seam handle: the aggregate outcome is recorded once all three scenes were requested. */
+  const seam = tui.whenBound("scenes", (_service, _scope, handle) => {
+    /** The bound scene registry, before `register` is trusted. */
+    const runtime = tui.scenes()
     if (typeof runtime?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiScenes.register is missing" }
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.scenes}.register is missing` })
       return
     }
-    scenes = runtime
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped)
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped)
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, scoped)
+      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, ctx)
+      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, ctx)
+      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, ctx)
+      // The MERGED PANEL rides the SAME seam: the host's own subagent rows on top, the MPD team
+      // body below them. It gets the SAME `readWorkflow` closure the team scene uses, so the two
+      // surfaces cannot describe one team differently. MPD's own key opens it; `Ctrl+A` — the
+      // host's subagent dashboard — is never bound anywhere in this package.
+      tui.registerScene(
+        {
+          id: SUBAGENT_SCENE_ID,
+          title: SUBAGENT_SCENE_TITLE,
+          component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords)),
+        },
+        ctx,
+      )
       // `open(unknownId)` is how the host reports an unregistered scene; calling
       // it here would OPEN a scene, so it is never used as a probe. The host
       // exposes no scene read-back, hence `requested`.
-      outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` }
+      handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` })
     } catch (error) {
-      outcome = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.debug(`scene registration refused: ${outcome.detail ?? ""}`)
+      /** The refusal reason, reported and logged once. */
+      const detail = String((error as Error)?.message ?? error)
+      handle.record({ state: "refused", detail })
+      log.debug(`scene registration refused: ${detail}`)
     }
   })
 
@@ -1156,7 +1168,7 @@ export function registerScene(
   const open = (): boolean => openScene(BOARD_SCENE_ID)
 
   return {
-    outcome: () => outcome,
+    outcome: (): SeamOutcome => seam.outcome(),
     open,
     openScene,
     openTeam: () => {
@@ -1169,6 +1181,7 @@ export function registerScene(
       nav.planTeamId = options?.teamId
       return openScene(PLAN_SCENE_ID)
     },
+    openSubagents: () => openScene(SUBAGENT_SCENE_ID),
   }
 }
 

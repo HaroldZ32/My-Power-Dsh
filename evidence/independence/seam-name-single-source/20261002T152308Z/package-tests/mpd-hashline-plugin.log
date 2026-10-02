@@ -1,0 +1,8 @@
+(pass) read then edit works with lines as a single string AND as an array of strings [1.46ms]
+(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.21ms]
+(pass) the guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [0.65ms]
+
+ 11 pass
+ 0 fail
+ 41 expect() calls
+Ran 11 tests across 2 files. [18.00ms]

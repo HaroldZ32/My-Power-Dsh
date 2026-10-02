@@ -1,0 +1,2 @@
+[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified
+SELFTEST_EXIT=0

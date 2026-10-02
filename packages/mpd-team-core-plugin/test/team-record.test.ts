@@ -50,6 +50,8 @@ interface Harness {
 interface StubOptions {
   /** The watchdog's verdict for any team id, when an arm needs a hold in force. */
   watchdogHolds?: boolean
+  /** Whether the watchdog service answers a `held` that is not a boolean, i.e. an unreadable hold. */
+  watchdogUnreadable?: boolean
   /** The member whose spawn throws, by name, when an arm needs a half-built team. */
   failMember?: string
 }
@@ -98,9 +100,25 @@ function harness(options: StubOptions = {}): Harness {
     },
   }
   /** The stub watchdog service, when this arm staged one. */
-  const watchdog = options.watchdogHolds === undefined
+  const watchdog = options.watchdogHolds === undefined && options.watchdogUnreadable !== true
     ? undefined
-    : { isHeld: () => options.watchdogHolds === true, holds: () => (options.watchdogHolds === true ? ["held"] : []) }
+    : {
+        // THE REAL CONTRACT (defect 3): `isHeld` answers a HoldView OBJECT, never a boolean — the
+        // object is truthy even when `held` is false, which is exactly why a gate that read it for
+        // truthiness refused every pass with a hold the watchdog's own store did not have. The
+        // double models the object so the gate's own reading is what the arm tests.
+        isHeld: () => ({
+          held: options.watchdogUnreadable === true ? "yes" : options.watchdogHolds === true,
+          holdId: options.watchdogHolds === true ? "hold-1" : null,
+          at: options.watchdogHolds === true ? 1_790_953_153_225 : null,
+          reason: options.watchdogHolds === true ? "silence" : null,
+          taskId: null,
+          attemptId: null,
+          workspace,
+          source: "file",
+        }),
+        holds: () => (options.watchdogHolds === true ? ["held"] : []),
+      }
   /** The stub adapter: the plugin's own seams, plus the REAL executor over the harness double. */
   const dsh = {
     registerTool: (definition: Tool) => { tools.set(definition.name, definition); return () => {} },
@@ -367,5 +385,23 @@ describe("the watchdog hold stops a dispatch pass", () => {
     /** The dispatch result under an absent service. */
     const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { halted?: string }
     expect(result.halted).toBeUndefined()
+  })
+
+  test("a hold that CANNOT be read is REPORTED as not-readable, never as a hold", async () => {
+    // THE SECOND HALF OF DEFECT 3. The gate may not branch on the HoldView's truthiness (the arm
+    // above pins that), but it may not treat every unreadable answer as a hold either: a service that
+    // answers a `held` which is not a boolean is UNREADABLE, and the pass must say so — `not-readable`
+    // — instead of parking the team with a hold nobody can clear.
+    /** The harness whose watchdog answers an unreadable `held`. */
+    const h = harness({ watchdogUnreadable: true })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The dispatch result, which must dispatch AND carry the honest note. */
+    const result = (await h.call("agent_teams_dispatch", { action: "run" })) as { halted?: string; holdRead?: string; pairs?: unknown[] }
+    expect(result.halted).toBeUndefined()
+    expect(result.holdRead).toContain("not-readable")
+    // The pass really ran: the one ready task reached its member.
+    expect(h.calls.filter((call) => call.method === "sendMessage").length).toBe(1)
   })
 })

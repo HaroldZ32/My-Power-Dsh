@@ -3,8 +3,9 @@
 // actionable error instead of crashing the plugin tree.
 import { describe, expect, spyOn, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 
 // The two vendored `_deps/**` JS modules ship NO type declarations, and that tree is outside this
 // lane's write scope, so the imports are the one place a directive is the honest tool: the module
@@ -260,6 +261,56 @@ describe("capabilities", () => {
   })
 })
 
+/**
+ * The lines appended to a log file since a byte offset was marked, oldest first.
+ *
+ * @param file the log file the sink wrote into.
+ * @param offset the byte offset marked before the call under test.
+ * @returns the appended text split into non-empty lines; `[]` when nothing was appended.
+ */
+function appendedAfter(file: string, offset: number): string[] {
+  try {
+    return readFileSync(file, "utf8").slice(offset).split("\n").filter((line) => line !== "")
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Run `run` with the row-log root pinned to a fresh SANDBOX workspace, and collect what the adapter
+ * appended to that row's log.
+ *
+ * R5 (lane F) moved the adapter's own diagnostics off `console.warn` and into
+ * `<workspace>/.mpd/logs/<row>.log`, so the two arms below read the file a user would instead of a
+ * console spy that can no longer see anything. `MPD_MCP_LOG_DIR` OUTRANKS `DSH_WORKSPACE_ROOT` in the
+ * sink's documented root chain, so BOTH are pinned to the sandbox — an ambient value would otherwise
+ * win — and both are put back before the arm returns. The repo's own `.mpd/logs` is never touched.
+ *
+ * @param row the row log's base name, i.e. `<row>.log`.
+ * @param run the call under test.
+ * @returns the call's own result, plus the lines appended to the row log while it ran.
+ */
+async function inRowLog<T>(row: string, run: () => Promise<T>): Promise<{ result: T; lines: string[] }> {
+  /** The sandbox workspace this arm's row log is written under; removed before the arm returns. */
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-adapter-rowlog-"))
+  /** The two env keys the sink's root chain reads, saved for the restore below. */
+  const saved = { logDir: process.env.MPD_MCP_LOG_DIR, workspace: process.env.DSH_WORKSPACE_ROOT }
+  process.env.MPD_MCP_LOG_DIR = sandbox
+  process.env.DSH_WORKSPACE_ROOT = sandbox
+  /** This row's log file under the sandbox. */
+  const file = join(sandbox, ".mpd", "logs", `${row}.log`)
+  /** The log's byte size BEFORE the call, so only the appended bytes are read back. */
+  let offset = 0
+  try { offset = statSync(file).size } catch { offset = 0 }
+  try {
+    return { result: await run(), lines: appendedAfter(file, offset) }
+  } finally {
+    if (saved.logDir === undefined) delete process.env.MPD_MCP_LOG_DIR; else process.env.MPD_MCP_LOG_DIR = saved.logDir
+    if (saved.workspace === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = saved.workspace
+    rmSync(sandbox, { recursive: true, force: true })
+  }
+}
+
 describe("llm catalog plane", () => {
   // A ctx whose ONLY service is the model registry (the seam reads nothing else).
   const llmOnlyCtx = (llm: unknown): { get: (name: string) => unknown } => ({ get: (name: string) => (name === "llm" ? llm : undefined) })
@@ -326,34 +377,53 @@ describe("llm catalog plane", () => {
   })
 
   test("a missing llm service degrades and warns exactly once", async () => {
-    /** The console.warn spy, restored in the finally block. */
+    /** The console.warn spy: R5 says the line must NOT reach the terminal, so it is asserted empty. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
-      /** An adapter over a harness with no llm service. */
-      const adapter = createDshAdapter({ get: () => undefined })
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      // Second read: same degrade, but the warn-once line is NOT repeated.
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llmCatalog degraded/)
-      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llm service is unavailable/)
+      /** The two catalog reads this arm makes, plus the row-log lines they appended. */
+      const { result, lines } = await inRowLog("mpd-dsh-adapter", async () => {
+        /** An adapter over a harness with no llm service. */
+        const adapter = createDshAdapter({ get: () => undefined })
+        /** The first degraded read. */
+        const first = await adapter.llmCatalog()
+        // Second read: same degrade, but the warn-once line is NOT repeated.
+        /** The second degraded read. */
+        const second = await adapter.llmCatalog()
+        return { first, second }
+      })
+      expect(result.first).toEqual({ providers: [], degraded: true })
+      expect(result.second).toEqual({ providers: [], degraded: true })
+      // The warn-once guard is read off the file: exactly ONE line for two reads, naming the seam.
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toMatch(/llmCatalog degraded/)
+      expect(lines[0]).toMatch(/llm service is unavailable/)
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }
   })
 
   test("a partial seam degrades, names the missing method, and reports capabilities false", async () => {
-    /** The console.warn spy, restored in the finally block. */
+    /** The console.warn spy: R5 says the line must NOT reach the terminal, so it is asserted empty. */
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     try {
       /** A registry missing resolveModelInfo. */
       const partial = { listProviders: () => [], listModels: async () => [] }
-      /** The adapter over that partial seam. */
-      const adapter = createDshAdapter(llmOnlyCtx(partial))
-      expect(adapter.capabilities().llmCatalog).toBe(false)
-      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(String(warn.mock.calls[0]?.[0])).toContain("resolveModelInfo")
+      /** The seam's capability reading plus the catalog read, and the lines that read appended. */
+      const { result, lines } = await inRowLog("mpd-dsh-adapter", async () => {
+        /** The adapter over that partial seam. */
+        const adapter = createDshAdapter(llmOnlyCtx(partial))
+        /** Whether the seam reports itself usable. */
+        const usable = adapter.capabilities().llmCatalog
+        /** The degraded catalog the read returns. */
+        const catalog = await adapter.llmCatalog()
+        return { usable, catalog }
+      })
+      expect(result.usable).toBe(false)
+      expect(result.catalog).toEqual({ providers: [], degraded: true })
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain("resolveModelInfo")
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }

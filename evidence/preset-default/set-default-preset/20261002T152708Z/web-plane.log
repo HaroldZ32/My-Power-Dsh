@@ -1,0 +1,14 @@
+[set-default-preset] profile: web (no preference file)
+[set-default-preset] preset:  mpd
+[set-default-preset] home:    /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home  [sandbox/override]
+[set-default-preset] dshHome: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home/.dsh  (profile NOT present)
+[set-default-preset] profile "web" is not a dsh-tui profile, so this helper writes NOTHING.
+[set-default-preset] The deployment default is a HOST-OWNED row (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home/.dsh/profiles/web/node_modules -> @deepseek-ai/dsh-agent-preset-registry),
+[set-default-preset] and this bundle does not override it (strict zero-override; a second registry row is a duplicate-service boot error).
+[set-default-preset] Use ONE of these instead:
+[set-default-preset]   1. Settings -> Agent preset -> "mpd". That writes the `selectedDefault` VOLATILE field of the
+[set-default-preset]      `agent-preset-registry` entry, which the registry resolves for new sessions in preference to the deployment `default`.
+[set-default-preset]   2. dsh-tui plane only: `DSH_TUI_PRESET=mpd` in YOUR OWN profile patch
+[set-default-preset]      (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/set-default-preset/20261002T152708Z/sandbox-home/.dsh/profiles/web/cordis.patch.yml), or this helper with `--profile dsh-tui --yes`.
+[set-default-preset] Full steps: docs/preset-default.md (English) / docs/preset-default.zh-CN.md (简体中文).
+EXIT=0

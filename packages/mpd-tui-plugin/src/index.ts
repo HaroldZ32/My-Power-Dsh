@@ -45,9 +45,9 @@ import { homedir } from "node:os"
 // relative FILE import in this package carries an explicit extension.
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
-import type { PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
+import type { PluginContextLike, SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
 import { createLog, type Log } from "./log.js"
-import { describeOutcome, onService, serviceOf } from "./host.js"
+import { onService, reportOutcomes, resolveTuiAdapter, serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } from "./state.js"
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
@@ -330,12 +330,14 @@ export interface ApplyReport {
 export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport {
   /** The config with every key resolved, so nothing optional is left below. */
   const resolved = resolveConfig(config)
-  /** The prefixed diagnostic sink, backed by `ctx.logger` when the context has one. */
-  const log: Log = createLog(ctx?.logger, resolved.logPrefix)
   /** The one adapter every harness seam of this row goes through. */
   const adapter = resolveAdapter(ctx)
+  /** The ONE DSH-TUI seam adapter: every `tui*` service, `commands` and `settings` goes through it. */
+  const tui: TuiAdapter = resolveTuiAdapter(ctx)
   /** The per-call workspace resolver (the calling session's workspace, never the process cwd). */
   const workspaceRoot = workspaceResolver(ctx, adapter)
+  /** The prefixed diagnostic sink: the host logger when present, else a FILE (never a terminal). */
+  const log: Log = createLog(ctx?.logger, resolved.logPrefix, process.env, () => tui.diagnosticSink({ root: workspaceRoot }))
   /** The per-call home resolver; the workmate library lives under it by design. */
   const home = (): string => homeDir()
   // The OFFICIAL team readout for the CURRENT workspace, resolved per call through the adapter
@@ -374,10 +376,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
 
   /** One entry per seam, in wiring order, for the aggregate diagnostic and the tests. */
   const outcomes: { id: string; outcome: SeamOutcome }[] = []
-  /** Appends one seam's outcome to the report. */
-  const record = (id: string, outcome: SeamOutcome): void => {
-    outcomes.push({ id, outcome })
+  /** Appends one seam handle's measured outcome to the report. */
+  const record = (handle: { outcome(): SeamOutcome }): void => {
+    /** The handle's own outcome, which carries the seam id it belongs to. */
+    const measured = handle.outcome()
+    outcomes.push({ id: measured.id, outcome: measured })
   }
+  /** The outcome of a seam this row deliberately did not activate (a config switch). */
+  const skipped = (key: Parameters<TuiAdapter["skipped"]>[0], detail: string): { outcome(): SeamOutcome } => tui.skipped(key, detail)
 
   // ── the seven activation-gated UI seams ───────────────────────────────────
   // The settings-bridge outcome, surfaced as a RUNTIME notice on the status line (§D.2 row 2):
@@ -407,14 +413,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // (w6): a held team and an unread-incident replay are line content, not a constant nobody renders.
   // It is built BEFORE the status seam so the FIRST publish already carries it; the acknowledge
   // callback reaches the status handle through a mutable reference (the seam is created below).
-  const dialogs = createDialogs(ctx, log)
+  const dialogs = createDialogs(tui, log)
   /** The status handle; mutable because the watchdog acknowledges through it. */
   let status: { outcome(): SeamOutcome; refresh(): void } = {
-    outcome: () => ({ state: "absent" as const, detail: "not wired yet" }),
+    ...tui.skipped("status", "not wired yet"),
     refresh: () => {},
   }
   /** The watchdog front door, attached before the status seam so its notice is published first. */
-  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, log, {
+  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, tui, log, {
     workspaceRoot,
     dialogs,
     onAcknowledged: () => status.refresh(),
@@ -423,45 +429,48 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
 
   status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords)
-    : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
+    ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords)
+    : { ...skipped("status", "disabled by config"), refresh: () => {} }
   // The two team surfaces (frozen §3): registered on the SAME `tuiScenes` seam as the
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords)
+    ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords)
     : {
-        outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
+        ...skipped("scenes", "disabled by config"),
         open: () => false,
         openScene: () => false,
         openTeam: () => false,
         openPlan: () => false,
+        openSubagents: () => false,
       }
   /** The renderer seam result, or a config-disabled stub. */
-  const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+  const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config")
   /** The settings-section seam result, or a config-disabled stub. */
-  const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+  const settings = resolved.settingsSection ? registerSettingsSection(ctx, tui, log) : skipped("settingsSections", "disabled by config")
   /** The command-tree seam result, or a config-disabled stub. */
-  const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+  const trees = resolved.commandTrees ? registerCommandTrees(tui) : skipped("commandTrees", "disabled by config")
 
   // ── supporting surfaces ──────────────────────────────────────────────────
   const shortcuts = resolved.shortcuts
-    ? registerShortcuts(ctx, log, {
+    ? registerShortcuts(ctx, tui, log, {
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
+        openSubagents: () => scene.openSubagents(),
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
           void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords)
         },
       })
-    : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+    : skipped("shortcuts", "disabled by config")
 
   /** The command seam result, or a config-disabled stub. */
   const commands = resolved.commands
-    ? registerCommands(ctx, log, {
+    ? registerCommands(tui, {
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
         openPlan: () => scene.openPlan(),
+        openSubagents: () => scene.openSubagents(),
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
@@ -476,33 +485,31 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           appendBoardOpened(session, sessionEventTypeKnown, via, "board", log)
         },
       })
-    : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
+    : skipped("commands", "disabled by config")
 
   // ── the decision-event seam: attempt, expect refusal, disclose once ───────
   const decisions = resolved.decisionEvents
-    ? attemptDecisionEvents(ctx, log)
-    : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), attempts: () => [] }
+    ? attemptDecisionEvents(ctx, tui, log)
+    : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] }
 
-  record("tuiStatus", status.outcome())
-  record("tuiRenderers", renderers.outcome())
-  record("tuiSettingsSections", settings.outcome())
-  record("tuiScenes", scene.outcome())
-  record("tuiCommandTrees", trees.outcome())
-  record("tuiShortcuts", shortcuts.outcome())
-  record("tuiDialogs", dialogs.outcome())
-  record("commands", commands.outcome())
-  record("decisionEvents", decisions.outcome())
+  record(status)
+  record(renderers)
+  record(settings)
+  record(scene)
+  record(trees)
+  record(shortcuts)
+  record(dialogs)
+  record(commands)
+  // The decision-event ROLE is reported under its own name; the seam it rides is the mediated
+  // plugin host's, which the adapter's own table reports separately.
+  outcomes.push({ id: "decisionEvents", outcome: decisions.outcome() })
 
   // ── one aggregate diagnostic, honest about what was NOT confirmed ─────────
   // "Something happened" includes a REFUSED registration: the aggregate line
   // must be able to report a refusal instead of hiding it behind the
-  // nothing-composed warning.
-  const attempted = outcomes.filter((entry) => entry.outcome.state !== "absent")
-  if (attempted.length === 0) {
-    log.warn("no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped")
-  } else {
-    log.info(`mpd TUI surfaces: ${outcomes.map((entry) => describeOutcome(entry.id, entry.outcome)).join(" · ")}`)
-  }
+  // nothing-composed warning. The line itself lives in the adapter, which owns
+  // the outcome vocabulary for this plane.
+  reportOutcomes(log, outcomes.map((entry) => entry.outcome))
   log.debug(`session event type ${BOARD_OPENED_EVENT}: ${sessionEventTypeKnown ? "verified known" : "NOT verified (records will be skipped)"}`)
 
   return { outcomes, sessionEventTypeKnown }
@@ -520,6 +527,7 @@ async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): 
     { id: "board", label: "Board", description: "team, tasks, boulder, plans, workmates" },
     { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
+    { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" },
   ])

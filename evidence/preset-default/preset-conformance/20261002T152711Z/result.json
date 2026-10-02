@@ -1,0 +1,27 @@
+{
+  "slug": "preset-default/preset-conformance",
+  "what": "The `mpd` preset row still registers and a session still MOUNTS it after the two host-row id-targets were removed from cordis.patch.yml.",
+  "self_test": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+    "exit": 0,
+    "detail": "32 harness rows conform against the installed schemas; mpd preset 28 child rows; row parity 26/25; 4/4 negative controls reddened"
+  },
+  "live_run": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts",
+    "exit": 1,
+    "mount_proof": "sessionCreate {\"ok\":true,\"status\":200,\"agentPreset\":\"mpd\"} + sessionHeader {\"ok\":true,\"agentPreset\":\"mpd\"}",
+    "negative_control": "agent-preset/invalid, persona $.prefix missing required value (4/4 arms reddened)",
+    "only_failure": "bootLog {\"ok\":false,\"signatures\":[\"did not activate\"]} — caused SOLELY by the new mpd-tui-adapter row whose dist does not exist yet: boot.log line 17 `dsh: warning: 1 entry did not activate` + line 18 `mpd-tui-adapter (@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js): failed to import`",
+    "measured_consequence": "An unresolvable module path is NOT boot-fatal on harness 0.2.0-rc.2: the row degrades to a warning + non-activating entry, and the session still mounts `mpd`. The lane still counts it as a failure, so the dist must land in the same tree.",
+    "lane_evidence": "evidence/dsh-qa/preset-conformance/2026-10-02T15-27-15.541Z/",
+    "note": "The first run (before Lane A dist) is kept as the measurement of the non-activating row."
+  },
+  "isolation": "isolated DSH_HOME + HOME + sandboxed workspace cwd (the lane asserts no session store key outside the sandbox); the real ~/.dsh was never read or written except the one-time credential/settings copy the lane performs by design",
+  "live_run_after_lane_a_dist": {
+    "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts (re-run after packages/mpd-tui-adapter-plugin/dist/index.js landed)",
+    "exit": 0,
+    "result": "[preset-conformance] PASS — bootLog {\"ok\":true,\"signatures\":[]}, sessionCreate/sessionHeader agentPreset mpd, negative control agent-preset/invalid",
+    "artifact": "live-run-after-dist.log",
+    "lane_evidence": "evidence/dsh-qa/preset-conformance/2026-10-02T15-36-17.244Z/"
+  }
+}

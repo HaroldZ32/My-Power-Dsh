@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
-import { textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
@@ -27,7 +27,7 @@ import {
 /** The cordis plugin name; the loader addresses this row and its settings entry by it. */
 export const name = "mpd-config"
 /** The one service this row consumes; every other seam rides the adapter resolved at apply(). */
-export const inject = ["tools"]
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /**
  * The cordis context as this row uses it: the tool registrar plus the service/provider seams.
@@ -313,7 +313,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // read-only/conflicting/ambiguous target produced NO diagnostic anywhere (design §9.3 F6).
   const warn = (message: string): void => {
     try {
-      console.log(message)
+      rowLogLine("mpd-config", message)
       if (ctx.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
     } catch {
       // logging must never fail the write-back

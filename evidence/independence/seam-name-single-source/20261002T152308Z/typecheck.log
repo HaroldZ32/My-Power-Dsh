@@ -1,0 +1,53 @@
+$ tsgo --noEmit
+packages/mpd-tui-plugin/src/command-trees.ts(7,74): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/command-trees.ts(9,27): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/command-trees.ts(36,38): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/command-trees.ts(36,47): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/commands.ts(26,80): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/commands.ts(28,27): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/commands.ts(68,31): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/commands.ts(68,40): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/commands.ts(79,25): error TS7006: Parameter 'invocation' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/decisions.ts(23,82): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/decisions.ts(25,37): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/decisions.ts(71,36): error TS7006: Parameter 'scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/decisions.ts(71,44): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/dialogs.ts(12,69): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/dialogs.ts(14,27): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/dialogs.ts(42,33): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/dialogs.ts(42,42): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/index.ts(48,66): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/index.ts(50,55): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/log.ts(7,33): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/renderers.ts(14,88): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/renderers.ts(16,37): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/renderers.ts(133,35): error TS7006: Parameter 'scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/renderers.ts(133,43): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/scenes.ts(30,87): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/scenes.ts(32,27): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/scenes.ts(1133,32): error TS7006: Parameter 'scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/scenes.ts(1133,40): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/settings.ts(37,146): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/settings.ts(45,38): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/settings.ts(375,31): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/settings.ts(375,40): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/settings.ts(415,42): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/settings.ts(415,51): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/shortcuts.ts(13,81): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/shortcuts.ts(15,37): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/shortcuts.ts(48,35): error TS7006: Parameter 'scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/shortcuts.ts(48,43): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/status.ts(12,78): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/status.ts(14,37): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/status.ts(56,32): error TS7006: Parameter 'scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/status.ts(56,40): error TS7006: Parameter 'service' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/watchdog.ts(20,27): error TS2307: Cannot find module './host.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/watchdog.ts(21,40): error TS2307: Cannot find module './types.js' or its corresponding type declarations.
+packages/mpd-tui-plugin/src/watchdog.ts(255,37): error TS7006: Parameter '_scoped' implicitly has an 'any' type.
+packages/mpd-tui-plugin/src/watchdog.ts(255,46): error TS7006: Parameter 'resolved' implicitly has an 'any' type.
+packages/mpd-tui-plugin/test/state.test.ts(282,36): error TS7006: Parameter 'line' implicitly has an 'any' type.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(36,31): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(39,34): error TS2307: Cannot find module 'typescript/unstable/async' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(41,34): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(265,47): error TS7006: Parameter 'm' implicitly has an 'any' type.
+error: script "typecheck" exited with code 1

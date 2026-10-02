@@ -12,12 +12,12 @@ import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
-import { bundleRootOf, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, bundleRootOf, dshSeamInject, textBlock, workspaceRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis row id this plugin registers under; the bundle patch mounts it as `mpd-comment-checker`. */
 export const name = "mpd-comment-checker"
 /** Cordis service ids this row waits for; the tool seam is its only hard requirement. */
-export const inject = ["tools"]
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the cordis context this row uses: the tool seam plus the optional config service. */
 type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }

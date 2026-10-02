@@ -1,0 +1,214 @@
+{
+  "at": "2026-10-02T15:42:55Z",
+  "steps": [
+    {
+      "name": "sandbox created",
+      "ok": true,
+      "detail": {
+        "sandbox": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence",
+        "dshHome": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/dsh-home",
+        "userHome": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/home",
+        "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/ws"
+      }
+    },
+    {
+      "name": "credentials seeded into the sandbox",
+      "ok": true,
+      "detail": {
+        "credentials": {
+          "provider": "deepseek",
+          "keyName": "DEEPSEEK_API_KEY",
+          "present": true,
+          "source": "credentials-file",
+          "file": "/home/haroldzhao/.dsh/.credentials.yaml",
+          "line": 9,
+          "length": 35,
+          "reason": null,
+          "tried": [
+            {
+              "tier": "environment",
+              "detail": "DEEPSEEK_API_KEY",
+              "outcome": "unset"
+            },
+            {
+              "tier": "credentials-file",
+              "detail": "/home/haroldzhao/.dsh/.credentials.yaml:9 (flat layout)",
+              "outcome": "hit"
+            }
+          ],
+          "wrote": {
+            "storeCopied": true,
+            "settingsCopied": false,
+            "refsMerged": false
+          }
+        },
+        "settingsStaged": false
+      }
+    },
+    {
+      "name": "bundle patches dev-flavored",
+      "ok": true,
+      "detail": {
+        "devFiles": [
+          "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/bundle.dev.0.patch.yml",
+          "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/bundle.dev.1.patch.yml"
+        ]
+      }
+    },
+    {
+      "name": "MCP rows rewritten to checkout-absolute operands",
+      "ok": true,
+      "detail": {
+        "mcpRows": [
+          "packages/mpd-mcp-astgrep/launch.ts",
+          "packages/mpd-mcp-codegraph/launch.ts",
+          "packages/mpd-mcp-lsp/launch.ts",
+          "packages/mpd-mcp-gitbash/launch.ts"
+        ]
+      }
+    },
+    {
+      "name": "gitbash enable overlay written",
+      "ok": true,
+      "detail": {
+        "gitbashOverlay": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/enable-gitbash.patch.yml"
+      }
+    },
+    {
+      "name": "dsh boot completed",
+      "ok": true,
+      "detail": {
+        "status": 0,
+        "signal": null,
+        "error": ""
+      }
+    },
+    {
+      "name": "session store is sandboxed",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-terminal-silence-ws--"
+        ]
+      }
+    },
+    {
+      "name": "MCP children wrote their logs into the pinned root",
+      "ok": true,
+      "detail": {
+        "logDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/mcp-logs/.mpd/logs",
+        "logFiles": [
+          "mpd-mcp-astgrep.log",
+          "mpd-mcp-codegraph.log",
+          "mpd-mcp-gitbash.log",
+          "mpd-mcp-lsp.log",
+          "mpd-patch-guards.log"
+        ]
+      }
+    },
+    {
+      "name": "the patch guards wrote their line to the log FILE, not the terminal",
+      "ok": true,
+      "detail": {
+        "guardLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-terminal-silence/mcp-logs/.mpd/logs/mpd-patch-guards.log",
+        "guardText": "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle\n"
+      }
+    },
+    {
+      "name": "host stderr carries NO patch-guard line",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "name": "host stdout carries ZERO MCP-child bytes",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "host stderr carries ZERO MCP-child bytes",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "in-process row bytes are reported (expected non-zero until the phase-2 sweep)",
+      "ok": true,
+      "detail": {
+        "stdout": [
+          {
+            "line": 1,
+            "text": "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)"
+          },
+          {
+            "line": 2,
+            "text": "[mpd-bootstrap] skill corpus served from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills (provider mpd-bundle, bundle 0.11.6)"
+          },
+          {
+            "line": 3,
+            "text": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on"
+          },
+          {
+            "line": 4,
+            "text": "[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)"
+          },
+          {
+            "line": 5,
+            "text": "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)"
+          },
+          {
+            "line": 6,
+            "text": "[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry \"mpd-config\") and edited through the harness's own form. The legacy file write-back and override clearing are dormant."
+          },
+          {
+            "line": 7,
+            "text": "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)"
+          },
+          {
+            "line": 8,
+            "text": "[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)"
+          },
+          {
+            "line": 9,
+            "text": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory"
+          },
+          {
+            "line": 10,
+            "text": "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh"
+          },
+          {
+            "line": 11,
+            "text": "[mpd-roster] provider \"mpd-roster\" registered (delegating to \"spawn\"; point the team tool row's freshProvider at it)"
+          },
+          {
+            "line": 12,
+            "text": "[mpd-roles] roster section registered for agent \"session-1e665b5b-2f91-4748-808e-d440727db963\" agentPreset=none — mpd:roster order=605"
+          },
+          {
+            "line": 13,
+            "text": "[mpd-roles] session gate listener registered for agent \"session-1e665b5b-2f91-4748-808e-d440727db963\" agentPreset=none"
+          },
+          {
+            "line": 17,
+            "text": "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)"
+          },
+          {
+            "line": 18,
+            "text": "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)"
+          }
+        ],
+        "stderr": [],
+        "note": "these are the frozen SWEEP_INVENTORY files, not MCP children"
+      }
+    },
+    {
+      "name": "the captures are files with real content (the boot really spoke)",
+      "ok": true,
+      "detail": {
+        "stdout": 2756,
+        "stderr": 1184
+      }
+    }
+  ],
+  "ok": true
+}

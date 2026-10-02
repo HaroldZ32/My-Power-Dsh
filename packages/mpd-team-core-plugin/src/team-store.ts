@@ -754,6 +754,31 @@ export function summariseTeam(record: TeamRecord): TeamRecordSummary {
   return summary
 }
 
+/**
+ * One team summary in the shape a TOOL RESULT may carry: identical counts, with `depths` as a plain
+ * id→depth RECORD instead of a Map.
+ *
+ * WHY IT EXISTS (measured 2026-10-02, defect 1): the harness runs its lossless-JSON snapshot over a
+ * tool body's value BEFORE it validates the declared output schema, and a `Map` is not lossless JSON
+ * — so `agent_teams_plan action:"status"` failed with "value is not lossless JSON" whenever a team
+ * record existed, and the whole status view was unreadable. The `mpdTeams` service keeps the Map
+ * (the Web and TUI planes index it by id), so the projection belongs at the tool boundary alone.
+ */
+export interface TeamRecordSummaryResult extends Omit<TeamRecordSummary, "depths"> {
+  /** Longest blocker path per task id, as a plain record keyed by task id. */
+  depths: Record<string, number>
+}
+
+/**
+ * Project a summary onto the lossless-JSON shape a tool result must carry.
+ *
+ * @param summary - the summary read from the store.
+ * @returns the same counts, with `depths` as a plain record.
+ */
+export function losslessSummary(summary: TeamRecordSummary): TeamRecordSummaryResult {
+  return { ...summary, depths: Object.fromEntries(summary.depths) }
+}
+
 /** The member's progress over the tasks it owns. */
 export interface MemberProgress {
   /** Tasks owned by this member that are completed. */

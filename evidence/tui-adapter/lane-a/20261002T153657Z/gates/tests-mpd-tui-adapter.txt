@@ -1,0 +1,43 @@
+bun test v1.4.2 (744846f84)
+
+test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.36ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.11ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.39ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.17ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.20ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.21ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.12ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.12ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.07ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.17ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [0.84ms]
+
+test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 25 package(s), 113 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 25 package(s), 113 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [535.61ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.93ms]
+
+ 14 pass
+ 0 fail
+ 72 expect() calls
+Ran 14 tests across 2 files. [1083.00ms]

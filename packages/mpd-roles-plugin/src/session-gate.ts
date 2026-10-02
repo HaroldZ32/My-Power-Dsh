@@ -22,6 +22,7 @@
 import { readdir as readdirFs } from "node:fs/promises"
 import { join } from "node:path"
 import type { DshAdapter, DshAgentPreStep, DshPreStepDecision } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The notice marker (frozen; AGENTS.md §1 and the retired implementation both carry it). */
 export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
@@ -253,7 +254,7 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
  */
 function gateTrace(line: string): void {
   try {
-    if (process.env.MPD_ROLES_GATE_TRACE === "1") console.log("[mpd-roles] gate trace: " + line)
+    if (process.env.MPD_ROLES_GATE_TRACE === "1") rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line)
   } catch { /* tracing must never take the gate down */ }
 }
 

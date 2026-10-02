@@ -20,12 +20,12 @@ import {
   normalizeHashlineEdits,
   type HashlineEdit,
 } from "./vendor/index.ts"
-import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** Cordis plugin name of this row; the bundle patch mounts it under the id `mpd-hashline`. */
 export const name = "mpd-hashline"
-/** Cordis service ids this row waits for: the tool registrar is its only seam. */
-export const inject = ["tools"]
+/** Cordis service ids this row waits for: the tool registrar is its only seam, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the cordis context this row uses: the tool registrar, the post-execute seam and an optional service lookup. */
 type Ctx = { tools: any; on: (ev: string, fn: (...a: any[]) => any) => void; get?: (k: string) => any }

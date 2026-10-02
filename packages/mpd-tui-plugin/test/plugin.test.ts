@@ -12,12 +12,14 @@ import { describe, expect, test } from "bun:test"
 import * as mod from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 // The adopted cordis body is vendored JavaScript with no declaration file, so these two
 // constructors are untyped here; the arms below use only their runtime identity.
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
 import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
+import { COMMAND_ACTIONS } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
@@ -418,7 +420,11 @@ describe("full composition (every service injected)", () => {
     // tuiCommandTrees + commands: the tree root matches the registered command.
     expect(calls.maps).toHaveLength(1)
     expect(calls.maps[0].root).toBe("mpd")
-    expect(calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)).toEqual(["board", "team", "plan", "workmates", "status"])
+    // CONTENT-ROBUST: the completion advertises EXACTLY the declarative action list, in any order,
+    // whatever that list is. Freezing the literal here would make a grammar addition (Lane C's
+    // `subagents`) a test edit in two places; comparing against the module's own declaration keeps
+    // the invariant that matters — the tree and the grammar cannot drift apart.
+    expect([...calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)].sort()).toEqual([...COMMAND_ACTIONS].sort())
     expect(calls.commands).toHaveLength(1)
     expect(calls.commands[0].name).toBe("mpd")
 
@@ -656,7 +662,7 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
       inject: (_deps: readonly string[], callback: (scope: unknown) => void) => { callback(scoped); callback(scoped); return {} },
       logger: { info: () => {}, warn: () => {}, debug: () => {} },
     }
-    registerSettingsSection(ctx as never, createLog(ctx.logger, "mpd-tui"), { llmCatalog: async () => TWO_PROVIDER_CATALOG })
+    registerSettingsSection(ctx as never, createTuiAdapter(ctx as never), createLog(ctx.logger, "mpd-tui"), { llmCatalog: async () => TWO_PROVIDER_CATALOG })
     await settle()
     expect(registered).toHaveLength(1)
   })

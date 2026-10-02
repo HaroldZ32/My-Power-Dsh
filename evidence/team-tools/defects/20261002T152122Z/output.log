@@ -1,0 +1,24 @@
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)
+[mpd-team-core] team executor: native (stub)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+
+===== BEFORE (dist, pre-fix) =====
+defect 1a (plan status, empty session):  REFUSED: "value.plan" must be an object; "value.hold" must be an object
+defect 1b (plan status, team record):   REFUSED: value is not lossless JSON
+defect 2  (watchdog status):            accepted (lossless)
+defect 3  (dispatch, free HoldView):    HALTED: the team watchdog holds team-20261002153408
+defect 4/5(board tasks after approve):  [{"owner":null,"blockedBy":[]},{"owner":null,"blockedBy":[]}]
+
+===== AFTER (src, fixed) =====
+defect 1a (plan status, empty session):  accepted
+defect 1b (plan status, team record):   accepted
+defect 2  (watchdog status):            accepted (lossless)
+defect 3  (dispatch, free HoldView):    no halt (correct)
+defect 4/5(board tasks after approve):  [{"owner":"TuiAdapter Engineer","blockedBy":[]},{"owner":"PanelScene Worker","blockedBy":["T1"]}]
+
+===== defect 2 mechanism =====
+raw value with a Map/undefined/-0:       REFUSED: value is not lossless JSON
+after the boundary projection:           accepted (lossless)

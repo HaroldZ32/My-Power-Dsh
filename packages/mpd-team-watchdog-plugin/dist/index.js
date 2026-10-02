@@ -1132,13 +1132,211 @@ var import_schemastery = __toESM(require_lib(), 1);
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_AGENTS = "agents";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1166,11 +1364,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1183,7 +1393,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -1334,6 +1544,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -1399,7 +1610,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -1687,6 +1898,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -2161,7 +2373,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -2180,7 +2392,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -2273,12 +2485,12 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-team-watchdog-plugin/src/actions.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/paths.ts
 import { createHash } from "node:crypto";
-import { join } from "node:path";
-var DEFAULT_STATE_DIR = join(".mpd", "team");
+import { join as join2 } from "node:path";
+var DEFAULT_STATE_DIR = join2(".mpd", "team");
 var WATCHDOG_DIR = "watchdog";
 var DEFAULT_KEEP_GENERATIONS = 3;
 function safeSegment(value) {
@@ -2295,44 +2507,44 @@ function digest(text) {
   return createHash("sha256").update(text).digest("hex").slice(0, 8);
 }
 function stateRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(workspace, stateDir);
+  return join2(workspace, stateDir);
 }
 function watchdogRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(stateRoot(workspace, stateDir), WATCHDOG_DIR);
+  return join2(stateRoot(workspace, stateDir), WATCHDOG_DIR);
 }
 function heartbeatDir(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "heartbeat");
+  return join2(watchdogRoot(workspace, stateDir), "heartbeat");
 }
 function heartbeatPath(workspace, stateDir, memberKey) {
-  return join(heartbeatDir(workspace, stateDir), safeSegment(memberKey) + ".jsonl");
+  return join2(heartbeatDir(workspace, stateDir), safeSegment(memberKey) + ".jsonl");
 }
 function sceneDir(workspace, stateDir, teamId) {
-  return join(watchdogRoot(workspace, stateDir), "scene", safeSegment(teamId));
+  return join2(watchdogRoot(workspace, stateDir), "scene", safeSegment(teamId));
 }
 function holdDir(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "hold");
+  return join2(watchdogRoot(workspace, stateDir), "hold");
 }
 function holdPath(workspace, stateDir, teamId) {
-  return join(holdDir(workspace, stateDir), safeSegment(teamId) + ".json");
+  return join2(holdDir(workspace, stateDir), safeSegment(teamId) + ".json");
 }
 function incidentsPath(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "incidents.jsonl");
+  return join2(watchdogRoot(workspace, stateDir), "incidents.jsonl");
 }
 function watermarkPath(workspace, stateDir = DEFAULT_STATE_DIR) {
-  return join(watchdogRoot(workspace, stateDir), "read-watermark.json");
+  return join2(watchdogRoot(workspace, stateDir), "read-watermark.json");
 }
 
 // packages/mpd-team-watchdog-plugin/src/sidecars.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, rmSync } from "node:fs";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, rmSync as rmSync2 } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/store.ts
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
+import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { basename, dirname, join as join3 } from "node:path";
 function appendHeartbeat(workspace, stateDir, memberKey, stamp) {
   const path = heartbeatPath(workspace, stateDir, memberKey);
   try {
-    mkdirSync(dirname(path), { recursive: true });
+    mkdirSync2(dirname(path), { recursive: true });
     appendFileSync(path, JSON.stringify(stamp) + `
 `, "utf8");
     return { ok: true, path };
@@ -2449,10 +2661,10 @@ function writeFileAtomic(path, text) {
       if (current === text)
         return { changed: false, path };
     }
-    mkdirSync(dirname(path), { recursive: true });
-    const temp = join2(dirname(path), "." + basename(path) + ".tmp-" + process.pid);
+    mkdirSync2(dirname(path), { recursive: true });
+    const temp = join3(dirname(path), "." + basename(path) + ".tmp-" + process.pid);
     writeFileSync(temp, text, "utf8");
-    renameSync(temp, path);
+    renameSync2(temp, path);
     return { changed: true, path };
   } catch (error) {
     return { changed: false, path, error: errorMessage(error) };
@@ -2489,7 +2701,7 @@ function clearHold(workspace, stateDir, teamId) {
   let cleared = false;
   try {
     if (existsSync2(path)) {
-      rmSync(path);
+      rmSync2(path);
       cleared = true;
     }
   } catch {}
@@ -2498,7 +2710,7 @@ function clearHold(workspace, stateDir, teamId) {
 function appendIncident(workspace, stateDir, incident) {
   const path = incidentsPath(workspace, stateDir);
   try {
-    mkdirSync2(dirname2(path), { recursive: true });
+    mkdirSync3(dirname2(path), { recursive: true });
     appendFileSync2(path, JSON.stringify(incident) + `
 `, "utf8");
     return { ok: true, path };
@@ -2685,6 +2897,69 @@ function teamOf(teams, agent) {
   return;
 }
 
+// packages/mpd-team-watchdog-plugin/src/lossless.ts
+function losslessJson(value, seen = new Set) {
+  if (value === null)
+    return null;
+  switch (typeof value) {
+    case "boolean":
+    case "string":
+      return value;
+    case "number":
+      if (!Number.isFinite(value))
+        return null;
+      return Object.is(value, -0) ? 0 : value;
+    case "bigint":
+      return value.toString();
+    case "undefined":
+    case "function":
+    case "symbol":
+      return null;
+    default:
+      break;
+  }
+  const node = value;
+  if (seen.has(node))
+    return null;
+  if (node instanceof Map) {
+    const next2 = new Set(seen);
+    next2.add(node);
+    const out2 = {};
+    for (const [key, entry] of node.entries())
+      out2[String(key)] = losslessJson(entry, next2);
+    return out2;
+  }
+  if (node instanceof Set) {
+    const next2 = new Set(seen);
+    next2.add(node);
+    return [...node.values()].map((entry) => losslessJson(entry, next2));
+  }
+  if (node instanceof Date) {
+    return Number.isNaN(node.getTime()) ? null : node.toISOString();
+  }
+  const next = new Set(seen);
+  next.add(node);
+  if (Array.isArray(node)) {
+    const out2 = [];
+    for (let index = 0;index < node.length; index += 1)
+      out2.push(losslessJson(node[index], next));
+    return out2;
+  }
+  const out = {};
+  for (const key of Object.keys(node)) {
+    let raw;
+    try {
+      raw = node[key];
+    } catch {
+      raw = null;
+    }
+    if (raw === undefined || typeof raw === "function" || typeof raw === "symbol")
+      continue;
+    out[key] = losslessJson(raw, next);
+  }
+  return out;
+}
+
 // packages/mpd-team-watchdog-plugin/src/actions.ts
 var HOLD_TOOL = "session-watchdog-hold";
 var RESUME_TOOL = "session-watchdog-resume";
@@ -2827,13 +3102,13 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
     execute: (args, exec) => {
       const workspace = dsh.workspaceRoot(exec);
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
-      return {
+      return losslessJson({
         workspace,
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
         knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false, fileApplied: false, liveLayer: "namespace" },
         paths: {
           heartbeat: heartbeatDir(workspace, stateDir),
-          hold: join3(workspace, stateDir, "watchdog", "hold"),
+          hold: join4(workspace, stateDir, "watchdog", "hold"),
           incidents: incidentsPath(workspace, stateDir),
           watermark: watermarkPath(workspace, stateDir)
         },
@@ -2866,7 +3141,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
             isHeld: registry?.isHeld(teamId, workspace) ?? null
           };
         })
-      };
+      });
     }
   });
 }
@@ -3110,8 +3385,8 @@ class ChannelFold {
 
 // packages/mpd-team-watchdog-plugin/src/config-file.ts
 import { readFileSync as readFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
-var PROJECT_CONFIG_FILE = join4(".mpd", "mpd.jsonc");
+import { join as join5 } from "node:path";
+var PROJECT_CONFIG_FILE = join5(".mpd", "mpd.jsonc");
 function stripJsonComments(text) {
   let out = "";
   let inString = false;
@@ -3157,7 +3432,7 @@ function stripTrailingCommas(text) {
   return text.replace(/,(\s*[}\]])/g, "$1");
 }
 function readWatchdogSection(workspace) {
-  const path = join4(workspace, PROJECT_CONFIG_FILE);
+  const path = join5(workspace, PROJECT_CONFIG_FILE);
   let text;
   try {
     text = readFileSync3(path, "utf8");
@@ -3179,8 +3454,8 @@ function readWatchdogSection(workspace) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/holds.ts
-import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync } from "node:fs";
-import { join as join5, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
+import { join as join6, resolve as resolve3 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
 function readHoldFile(workspace, stateDir, teamId) {
   let text;
@@ -3206,17 +3481,17 @@ class HoldRegistry {
   fallbackWorkspace = null;
   constructor(stateDir, fallbackWorkspace = null) {
     this.stateDir = stateDir;
-    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve2(fallbackWorkspace);
+    this.fallbackWorkspace = fallbackWorkspace === null ? null : resolve3(fallbackWorkspace);
   }
   key(workspace, teamId) {
-    return resolve2(workspace) + "\x00" + teamId;
+    return resolve3(workspace) + "\x00" + teamId;
   }
   hydrate(roots) {
     let loaded = 0;
     for (const root of roots) {
       if (typeof root !== "string" || root === "")
         continue;
-      const workspace = resolve2(root);
+      const workspace = resolve3(root);
       if (this.fallbackWorkspace === null)
         this.fallbackWorkspace = workspace;
       if (this.hydrated.has(workspace))
@@ -3243,7 +3518,7 @@ class HoldRegistry {
   }
   record(workspace, hold) {
     this.entries.set(this.key(workspace, hold.teamId), hold);
-    this.hydrated.add(resolve2(workspace));
+    this.hydrated.add(resolve3(workspace));
   }
   forget(workspace, teamId) {
     this.entries.delete(this.key(workspace, teamId));
@@ -3276,7 +3551,7 @@ class HoldRegistry {
       } catch {
         return notHeld("none");
       }
-      return notHeld("none", resolve2(where));
+      return notHeld("none", resolve3(where));
     }
     for (const [key, hold] of this.entries) {
       const [root, team] = key.split("\x00");
@@ -3350,7 +3625,7 @@ class HoldRegistry {
   }
   workspaceOf(workspace) {
     if (typeof workspace === "string" && workspace !== "")
-      return resolve2(workspace);
+      return resolve3(workspace);
     return this.fallbackWorkspace;
   }
   holdView(hold, workspace, source) {
@@ -3705,7 +3980,7 @@ function candidateFor(team, stampSource, memberKeyOf) {
 
 // packages/mpd-team-watchdog-plugin/src/scene.ts
 import { existsSync as existsSync4, readFileSync as readFileSync5 } from "node:fs";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 var SCENE_SCHEMA_VERSION = 1;
 function newestForTask(stamps, taskId, attemptId, teamId) {
   let newest = null;
@@ -3793,12 +4068,12 @@ function isoBasic(at) {
 function writeScene(workspace, stateDir, teamId, scene, at) {
   const dir = sceneDir(workspace, stateDir, teamId);
   const base = isoBasic(at) + "-" + scene.reason;
-  let path = join6(dir, base + ".json");
+  let path = join7(dir, base + ".json");
   let suffix = 1;
   try {
     while (existsSync4(path)) {
       suffix += 1;
-      path = join6(dir, base + "-" + suffix + ".json");
+      path = join7(dir, base + "-" + suffix + ".json");
       if (suffix > 1000)
         break;
     }
@@ -3809,7 +4084,7 @@ function writeScene(workspace, stateDir, teamId, scene, at) {
   if (written.error !== undefined) {
     return { ok: false, path: null, latestPath: null, bytes: 0, error: written.error };
   }
-  const latest = writeFileAtomic(join6(dir, "latest.json"), text);
+  const latest = writeFileAtomic(join7(dir, "latest.json"), text);
   if (latest.error !== undefined) {
     return { ok: false, path, latestPath: null, bytes: Buffer.byteLength(text), error: latest.error };
   }
@@ -3863,7 +4138,7 @@ function sessionIdOf(value) {
 }
 function report(text) {
   try {
-    console.warn("[mpd-team-watchdog] " + text);
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] " + text);
   } catch {}
 }
 function subscribe(dsh, event, handler) {
@@ -4422,7 +4697,7 @@ class WatchdogEngine {
     } catch {}
     if (this.config.verboseSkips) {
       try {
-        console.log("[" + this.config.logPrefix + "] skipped " + reason);
+        rowLogLine("mpd-team-watchdog", "[" + this.config.logPrefix + "] skipped " + reason);
       } catch {}
     }
   }
@@ -4641,16 +4916,16 @@ class WatchdogEngine {
     } catch {}
     try {
       if (level === "warn")
-        console.warn(line);
+        rowLogLine("mpd-team-watchdog", line);
       else
-        console.log(line);
+        rowLogLine("mpd-team-watchdog", line);
     } catch {}
   }
 }
 
 // packages/mpd-team-watchdog-plugin/src/index.ts
 var name = "mpd-team-watchdog";
-var inject = ["tools", "agents"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS);
 var Config = import_schemastery.default.object({
   enabled: import_schemastery.default.boolean().default(true),
   warnSilenceMs: import_schemastery.default.number().default(WATCHDOG_DEFAULTS.warnSilenceMs),
@@ -4687,7 +4962,7 @@ function resolveConfig(config = {}) {
 }
 function warn(prefix, text) {
   try {
-    console.warn("[" + prefix + "] " + text);
+    rowLogLine("mpd-team-watchdog", "[" + prefix + "] " + text);
   } catch {}
 }
 function apply(ctx, config = {}) {
@@ -4806,7 +5081,7 @@ function apply(ctx, config = {}) {
   for (const issue of issues)
     warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback));
   try {
-    console.log("[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) + " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs) + " holdTtlMs=" + (resolved.holdTtlMs === 0 ? "off" : resolved.holdTtlMs) + " predicate=" + engine.predicateStatus().source + " enrichment=" + (engine.predicateStatus().enrichment ? "on" : "off"));
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled + " warnSilenceMs=" + engine.getKnobs().warnSilenceMs + " tickIntervalMs=" + intervalMs + " warnStreakToEscalate=" + engine.getKnobs().warnStreakToEscalate + " actionOnEscalate=" + engine.getKnobs().actionOnEscalate + " stateDir=" + resolved.stateDir + " disposers=" + disposers.length + " holdService=" + (holdService ?? "none") + " hydratedHolds=" + hydratedHolds + " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) + " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs) + " holdTtlMs=" + (resolved.holdTtlMs === 0 ? "off" : resolved.holdTtlMs) + " predicate=" + engine.predicateStatus().source + " enrichment=" + (engine.predicateStatus().enrichment ? "on" : "off"));
   } catch {}
   return { applied: true, engine, knobs: engine.getKnobs(), intervalMs, disposers: disposers.length, holdService, hydratedHolds };
 }

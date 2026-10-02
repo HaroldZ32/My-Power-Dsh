@@ -1,0 +1,23 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 365 TypeScript file(s) of 365 in the source set; inspected 29017 declaration(s); skipped 13639 inline callback(s) as out of family
+
+VERDICT: FAIL — 20 violation(s) across 1 file(s).
+
+packages/mpd-tui-adapter-plugin/src/index.ts (20)
+  266: comment — write
+  1018: comment — adapter
+  1039: comment — registerScene
+  1061: comment — openScene
+  1072: comment — closeScene
+  1083: comment — setStatus
+  1108: comment — registerStatusView
+  1112: return-type — <anonymous>
+  1188: comment — registerRenderer
+  1213: comment — registerSettingsSection
+  1254: comment — registerShortcut
+  1276: comment — registerCommandTree
+  … 8 more
+
+error: script "verify:comments" exited with code 1

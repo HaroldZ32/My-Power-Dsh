@@ -11,9 +11,9 @@
 // HONESTY (T10-F1 class): the host answers a refused registration with a NO-OP
 // disposer, so a returned function proves nothing. This seam therefore reports
 // `requested`, never `confirmed` — the host exposes no read-back for renderers.
-import type { PluginContextLike, SeamOutcome, TuiRenderersLike, TuiRenderResult } from "./types.js"
+import { TUI_SEAMS } from "./types.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiRenderResult } from "./types.js"
 import type { Log } from "./log.js"
-import { effectOn, onService } from "./host.js"
 import { field, scalarLines, scalarText } from "./sanitize.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
 
@@ -122,19 +122,18 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
 
 /**
  * Activate every transcript renderer.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each registration's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @returns the seam handle.
  */
-export function registerRenderers(ctx: PluginContextLike, log: Log): { outcome(): SeamOutcome } {
-  /** The seam result, rewritten as registrations are requested or refused. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiRenderers was not injected" }
-
-  onService(ctx, "tuiRenderers", (scoped, service) => {
-    /** The probed service as the renderer registry, before `register` is trusted. */
-    const renderers = service as TuiRenderersLike
-    if (typeof renderers?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiRenderers.register is missing" }
+export function registerRenderers(ctx: PluginContextLike, tui: TuiAdapter, log: Log): { outcome(): SeamOutcome } {
+  /** The seam handle: the aggregate outcome is recorded once every renderer was requested. */
+  const seam = tui.whenBound("renderers", (_service, _scope, handle) => {
+    /** The bound renderer registry, before any registration is trusted. */
+    const registry = tui.renderers()
+    if (typeof registry?.register !== "function") {
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` })
       return
     }
     /** Registrations the host did not throw on; a returned disposer is all it gives back. */
@@ -145,41 +144,37 @@ export function registerRenderers(ctx: PluginContextLike, log: Log): { outcome()
       /** The renderer for this event type; types without one are skipped. */
       const render = TRANSCRIPT_RENDERERS[type]
       if (render === undefined) continue
-      try {
-        /** The host's handle for this registration; a no-op when the host refused it (see below). */
-        const disposer = renderers.register(
-          type,
-          (payload: unknown) => {
-            try {
-              /** The renderer's raw result, undefined when it declines to render this payload. */
-              const result = render(payload)
-              if (result === undefined) return undefined
-              /** The sanitized row title; an unusable title is dropped rather than rendered. */
-              const title = scalarText(result.title, 120)
-              return { ...(title === undefined ? {} : { title }), lines: scalarLines(result.lines, 100, 400) }
-            } catch {
-              return undefined
-            }
-          },
-          scoped,
-        )
-        if (typeof disposer === "function") {
-          requested += 1
-          // The host answers a refusal with a no-op disposer, so the disposer is
-          // owned for cleanup and NEVER treated as proof of registration.
-          const release = disposer
-          effectOn(scoped, () => release(), `mpd-tui renderer ${type}`)
-        }
-      } catch (error) {
+      /** The adapter's handle for this one registration; the admission call happened there. */
+      const registration = tui.registerRenderer(
+        type,
+        (payload: unknown) => {
+          try {
+            /** The renderer's raw result, undefined when it declines to render this payload. */
+            const result = render(payload)
+            if (result === undefined) return undefined
+            /** The sanitized row title; an unusable title is dropped rather than rendered. */
+            const title = scalarText(result.title, 120)
+            return { ...(title === undefined ? {} : { title }), lines: scalarLines(result.lines, 100, 400) }
+          } catch {
+            return undefined
+          }
+        },
+        ctx,
+      )
+      /** What that registration measured; a host that returned no callable handle counts as a refusal. */
+      const measured = registration.outcome()
+      if (measured.state === "requested") requested += 1
+      else if (measured.state === "refused") {
         threw += 1
-        log.debug(`transcript renderer ${type} refused: ${String((error as Error)?.message ?? error)}`)
+        log.debug(`transcript renderer ${type} refused: ${measured.detail ?? "unknown"}`)
       }
     }
-    outcome =
+    handle.record(
       requested === 0
         ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` }
-        : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` }
+        : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` },
+    )
   })
 
-  return { outcome: () => outcome }
+  return { outcome: (): SeamOutcome => seam.outcome() }
 }

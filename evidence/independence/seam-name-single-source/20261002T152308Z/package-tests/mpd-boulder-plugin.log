@@ -1,0 +1,8 @@
+(pass) start, timer, complete lifecycle [2.01ms]
+(pass) plan progress parses TODOs and verification wave [0.32ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [0.61ms]
+
+ 4 pass
+ 0 fail
+ 18 expect() calls
+Ran 4 tests across 1 file. [15.00ms]

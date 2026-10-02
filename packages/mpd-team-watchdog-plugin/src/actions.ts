@@ -19,6 +19,7 @@ import { heartbeatDir, holdPath, incidentsPath, watermarkPath } from "./paths.js
 import { appendIncident, clearHold, readHold, readIncidents, readWatermarks, writeHold, type HoldRecord } from "./sidecars.js"
 import { listHeartbeatKeys, newestOverall, readHeartbeats } from "./store.js"
 import { listTeamIds, readTeam } from "./team.js"
+import { losslessJson } from "./lossless.js"
 
 /** The tool names this package registers (also the internal-seam names w7 calls). */
 export const HOLD_TOOL = "session-watchdog-hold"
@@ -327,7 +328,11 @@ export function registerWatchdogActions(
       const workspace = dsh.workspaceRoot(exec as never)
       // The team ids to report: the requested one, or every live team when it is omitted.
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
-      return {
+      // THE VALUE IS PROJECTED AT THIS BOUNDARY (measured 2026-10-02, defect 2): the harness refuses a
+      // tool value that is not lossless JSON BEFORE it validates the output schema, and this view is
+      // assembled from every reader in the store — so one `Map`, one `undefined` or one exotic object
+      // anywhere below would take the whole diagnostics call down instead of one field.
+      return losslessJson({
         workspace,
         // §4: the status view NAMES the active predicate source.
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
@@ -378,7 +383,7 @@ export function registerWatchdogActions(
             isHeld: registry?.isHeld(teamId, workspace) ?? null,
           }
         }),
-      }
+      })
     },
   })
 }

@@ -1,0 +1,1370 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-bootstrap-plugin/test/bootstrap.test.ts:
+(pass) bundle skill corpus provider > serves every shipped skill as a bundled-rank candidate [3.29ms]
+(pass) bundle skill corpus provider > get() loads the skill body and keeps the resource base [1.71ms]
+(pass) bundle skill corpus provider > frontmatter subset: quoted, folded, nested metadata and invocation policy [1.08ms]
+(pass) bundle skill corpus provider > registers an fs/observed invalidator scoped to the corpus [0.19ms]
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [0.63ms]
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.19ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.ts:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [0.32ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.25ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.15ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount reaches configForms and the client still declares only the stable seams [0.24ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.05ms]
+(pass) the registration only happens when the namespace form is available > no configForms -> no entry, one warning-free degrade, no throw out of apply [5.98ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > configForms at apply -> one SECTION entry, and its descriptor passes the whole predicate [2.00ms]
+(pass) the registration only happens when the namespace form is available > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.05ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > a late-served configForms still mounts the section (provideService wakes the fiber) [0.97ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [4.58ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [1.72ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [1.48ms]
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [3.54ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.69ms]
+(pass) isolation and front-door parity > the card's twenty-five fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift) [0.54ms]
+(pass) isolation and front-door parity > NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list [0.38ms]
+(pass) isolation and front-door parity > every slot row LEADS with its group's human sentence, in BOTH locales, before its key [0.37ms]
+(pass) isolation and front-door parity > each slot's group heading and one-line impact are DECLARED, above the slot's own rows [0.11ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the model control lists the catalog's provider/model pairs, GROUPED by provider [4.23ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the provider control lists the catalog's provider ids with their display names [4.32ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the effort control offers the SELECTED model's own efforts, and changing the model re-derives them [10.29ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > a model with no advertised efforts keeps the declared fallback list [3.16ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NO slot field is ever a text input (a slot value is never typed) [3.19ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: no catalog services -> the declared lists, and the section still renders [3.18ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: ui-model-selection: session "s1" resolved no scope)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render [6.31ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > edits through the catalog-driven controls still write ONE mutate batch with the revision fence [1.34ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the disclosure sentences are unchanged and still rendered with the new rows [4.44ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-1: each slot renders its group heading + impact ABOVE its three rows, human sentence FIRST [3.44ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-2: the human sentence renders FIRST at readable size/opacity, the disclosure dimmer beneath [3.36ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NEGATIVE CONTROL: the heading/impact lookup is falsifiable (a wrong slot attr finds nothing) [4.22ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect) [4.41ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection) [6.46ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE [4.09ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [0.78ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [3.66ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: cannot get property "testing.absent.seam" without inject)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [3.20ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G: the MEASURED list shape (`current` is a session ID STRING) reaches the LIVE catalog [3.65ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G NEGATIVE CONTROL: the PRE-FIX object-only read answers undefined for the MEASURED shape [0.07ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H: with NO current session, a LISTED session that has BOTH scope and binding is bound [3.66ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H2: NO current session and NO resolvable listed session still NAMES the reason [4.11ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-I: an ENUMERATING sessions list does not warn at boot; a READY list with no bindable session does [4.29ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows [4.90ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-2: a RESOLVED catalog emits the LIVE sentence once and leaves the slot hints untouched [4.25ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-3: warn-once survives repeated publishes and RE-ARMS only after a return to live [7.32ms]
+
+packages/mpd-bundle-plugin/test/watchdog-routes-boot.test.ts:
+(pass) the watchdog routes survive a late-bound web server > a web server that binds AFTER apply() still gets BOTH routes (the live 404) [0.42ms]
+(pass) the watchdog routes survive a late-bound web server > a web server bound AT apply() registers immediately (the path that already worked) [0.03ms]
+(pass) the watchdog routes survive a late-bound web server > an unrelated late binding registers nothing and never throws [0.04ms]
+(pass) the watchdog routes survive a late-bound web server > httpServer is accepted as the legacy name for the same surface [0.03ms]
+(pass) the watchdog routes survive a late-bound web server > no effect seam keeps the plugin a headless marker and never throws [0.03ms]
+(pass) the watchdog routes survive a late-bound web server > a rebind of the SAME server never registers the routes twice [0.02ms]
+(pass) the late-registered state route really answers > GET answers 200 with ok:true and the web reader key [0.64ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.ts:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.15ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.08ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.03ms]
+(pass) with DSH-better-sidebar installed > registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater [0.05ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces)
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.10ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered
+(pass) a sidebar provider REMOUNT keeps both tabs > a re-fire against the SAME service never double-registers [1.00ms]
+(pass) a sidebar provider REMOUNT keeps both tabs > a FRESH service (the remount) receives both tabs again [0.63ms]
+(pass) workmate page > renders the library from the host routes [5.72ms]
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the base <option> value and label are the functional NAME, with no id suffix [37.52ms]
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the "type the base id" fallback copy is gone from BOTH dictionaries [24.24ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.44ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.37ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [0.79ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [4.45ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.38ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.13ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.03ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [17.21ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [26.46ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [14.49ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [15.05ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [14.83ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [15.58ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [11.92ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.56ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.49ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [9.18ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.55ms]
+[mpd] better-sidebar is mounted: the team view registers THERE, and the official right sidebar is left to its own tabs
+(pass) the sidebar host preference (W4) > with better-sidebar MOUNTED the official right sidebar stays untouched [0.82ms]
+(pass) the sidebar host preference (W4) > with better-sidebar ABSENT both panels register on the official fallback [0.85ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.18ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.21ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.44ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.24ms]
+
+packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:
+(pass) sidebar mount guard: profile-dir derivation > derives the profile dir through a file-URL conversion, never URL.pathname [0.05ms]
+194 |   });
+195 | 
+196 |   test("ENABLED when the profile resolves the sidebar and no other layer mounts it", () => {
+197 |     /** The guard's decision and the line it logged. */
+198 |     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: true })));
+199 |     expect(warnings).toContain("ENABLED");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "ENABLED"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:199:22)
+(fail) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [0.90ms]
+206 |     // under `<bundle>/node_modules`. The clause therefore asks about both locations, and this arm
+207 |     // models the case where both are absent. The fixture writes the bundle's copy too, so the
+208 |     // bundle-present case is exercised by the arm below.
+209 |     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: false })));
+210 |     expect(disabled).toBe(true);
+211 |     expect(warnings).toContain("resolvable from neither");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "resolvable from neither"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:211:22)
+(fail) sidebar mount guard: profile-dir derivation > DISABLED only when NEITHER the profile nor the bundle can resolve the sidebar [0.16ms]
+(pass) sidebar mount guard: profile-dir derivation > clause 1 PASSES when ONLY the BUNDLE has the host — the checkout install it exists for [0.17ms]
+230 |       foreign: [{ name: "@foreign/web-all", patch: FOREIGN_MOUNT }],
+231 |     });
+232 |     /** The guard's decision and the line it logged. */
+233 |     const { disabled, warnings } = decide(baseUrlOf(dir));
+234 |     expect(disabled).toBe(true);
+235 |     expect(warnings).toContain("already mounts it in its own patch");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "already mounts it in its own patch"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:235:22)
+(fail) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [0.40ms]
+237 | 
+238 |   test("DISABLED when the composition has no enabled webserver entry", () => {
+239 |     /** The guard's decision and the line it logged. */
+240 |     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: true })), []);
+241 |     expect(disabled).toBe(true);
+242 |     expect(warnings).toContain("webserver");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "webserver"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:242:22)
+(fail) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [0.17ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.ts:
+(pass) the team-watchdog sidebar tab descriptor > registers one single-instance tab with the pinned id and order [1.42ms]
+(pass) the team-watchdog sidebar tab descriptor > the tab has NO auto-open switch: the watchdog view never opens itself [1.43ms]
+(pass) the team-watchdog sidebar tab descriptor > createTab mints the watchdog tab (id pinned, title is the watchdog's) [0.90ms]
+(pass) the watchdog page renders the bundle's OWN state route > shows the banner, the hold and the unread incident with an acknowledge control [10.52ms]
+(pass) the watchdog page renders the bundle's OWN state route > an empty store renders the honest 'no stuck team' line instead of a fake banner [8.05ms]
+(pass) the watchdog page renders the bundle's OWN state route > a FAILING route degrades to a readable error notice and never throws [8.04ms]
+(pass) the watchdog page renders the bundle's OWN state route > acknowledging posts to the bundle's ack route with the stable reader key [6.26ms]
+(pass) the watchdog page renders the bundle's OWN state route > the badge is the last poll's UNREAD count, and never a fetch [5.69ms]
+(pass) the watchdog page renders the bundle's OWN state route > mounting the tab twice keeps ONE polling controller [10.87ms]
+(pass) the removed AgentTeams surfaces can never come back > no mpd client source requires the retired adopted client [0.55ms]
+
+packages/mpd-config-plugin/test/settings-row-config.test.ts:
+(pass) the row Config > it marks EVERY node volatile, including the ones a function-blind walk would skip [0.06ms]
+(pass) the row Config > it is a schema the loader accepts: toJSON, and the standard-schema validator [0.05ms]
+(pass) the row Config > the marking is IDEMPOTENT — apply() re-marks the same tree on every boot [0.08ms]
+(pass) the row config is an EFFECTIVE layer > a knob edited in Settings reaches the plugins, and outranks the files [0.59ms]
+(pass) the row config is an EFFECTIVE layer > the ROUTING keys never leak into the effective config [0.21ms]
+
+packages/mpd-config-plugin/test/team-models.test.ts:
+(pass) A1 — the schema carries the four slots with the frozen literal defaults > the defaults are provider deepseek-official / model deepseek-v4-flash at max, high, high — plus the vision slot 4 [0.05ms]
+(pass) A1 — the schema carries the four slots with the frozen literal defaults > the schema resolves those defaults when a config supplies nothing [0.59ms]
+(pass) A1 — the schema carries the four slots with the frozen literal defaults > the schema merges a partial block over the per-slot defaults [0.23ms]
+(pass) A3 — twelve knobs in the ONE declaration, in slot order > exactly twelve new rows, after the original thirteen [0.08ms]
+(pass) A3 — twelve knobs in the ONE declaration, in slot order > every row is a select with the declared fallback list, and carries a label/zh pair [0.09ms]
+(pass) A3 — twelve knobs in the ONE declaration, in slot order > the slot copy states the group and its members: heading, impact and per-leaf sentences [0.15ms]
+(pass) A3 — twelve knobs in the ONE declaration, in slot order > every hint names its dotted mpd.jsonc key and its member class, and the disclosure is stated ONCE [0.09ms]
+(pass) A3b — the vision slot carries its own copy, verbatim, in both languages > exactly three slot-4 rows, in leaf order, with the declared sentences [0.03ms]
+(pass) A3b — the vision slot carries its own copy, verbatim, in both languages > the hint is the human sentence, then the dotted key — and nothing else [0.03ms]
+(pass) A2 — the resolved config carries the slots, with defaults, on the READ path > no teamModels anywhere: the service answers with the four complete defaults [0.97ms]
+(pass) A2 — the resolved config carries the slots, with defaults, on the READ path > a file that sets only slot2.model merges over ITS defaults and leaves slot1/slot3 untouched [0.31ms]
+(pass) A2 — the resolved config carries the slots, with defaults, on the READ path > project .mpd/mpd.jsonc outranks the user $DSH_HOME/mpd.jsonc layer, per leaf [0.36ms]
+(pass) A2 — the resolved config carries the slots, with defaults, on the READ path > materialisation is a pure READ-path projection: no mutation of the raw config [0.29ms]
+(pass) A2 — the resolved config carries the slots, with defaults, on the READ path > the mpd_config_get payload carries the slots verbatim (no key), and by key [0.51ms]
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > one registration, applies:'restart', and the base is the FILE layer — never the resolved value [1.73ms]
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > a refused registration names the host's reason and leaves the TUI fallback to own it [0.19ms]
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace [0.48ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > L3 outranks the file layers, and a missing L3 key falls back to the file [0.44ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > the in-namespace marker never becomes config and never reaches the file [0.38ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > with the namespace unserved the file layers still resolve (degraded, not fatal) [0.21ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U1/A2: one live root — a front-door edit rewrites exactly that file, comments intact [1.09ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U13: zero live roots writes NOTHING anywhere and says so [0.17ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U14 must-fail-on-fanout: two live roots REFUSE, name both, and touch no file [0.34ms]
+(pass) the write-back target rules (design §A.1/§10.5) > A6 negative control: the switch disables the FILE write only, never the value [0.27ms]
+(pass) the write-back target rules (design §A.1/§10.5) > the design's flat key (`writeBack:false`) disables it too, and both spellings are reported [0.24ms]
+(pass) the write-back target rules (design §A.1/§10.5) > the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off) [0.24ms]
+(pass) the write-back target rules (design §A.1/§10.5) > a provider reload is a READ-IN only: it never echoes into a file write [0.34ms]
+(pass) the write-back target rules (design §A.1/§10.5) > a raw-section change with NO new leaf writes nothing (the loop gate) [0.30ms]
+(pass) migration (design §6, U15) > a pre-seeded user section migrates into the file once and records the marker [1.54ms]
+(pass) migration (design §6, U15) > idempotence: a second boot at the recorded revision writes nothing [1.34ms]
+(pass) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to the mount-time fallback root [1.27ms]
+(pass) migration (design §6, U15) > two live roots defer the migration with the ambiguous reason, not a guess [1.41ms]
+(pass) migration (design §6, U15) > a refusing target aborts the migration loudly and leaves the document alone [1.65ms]
+(pass) the §1.2 clearing rule (a fresh FILE edit wins over a stale override) > a file value the bridge recorded is unset from the user section under the revision fence [1.78ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ONE live root: the base is that workspace's file (a file value that differs from the schema default) [0.22ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.12ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > N live roots: NO base is invented, the ambiguity is surfaced, and the schema defaults stand [0.36ms]
+(pass) the team-model slots are a READ-path projection only (A2) > a fully absent .mpd/mpd.jsonc still resolves the three slot defaults [1.28ms]
+(pass) the team-model slots are a READ-path projection only (A2) > NEGATIVE CONTROL: an unrelated settings-document save never injects a teamModels block into the file [1.68ms]
+(pass) the team-model slots are a READ-path projection only (A2) > a slot leaf SAVED through the settings document is what lands in the file (the slots stay editable) [1.71ms]
+
+packages/mpd-config-plugin/test/jsonc-edit.test.ts:
+(pass) U1 byte fidelity > only the edited value span changes; comments, order, trailing comma and final newline survive [0.21ms]
+(pass) U1 byte fidelity > an identical edit is a byte-level no-op (idempotence, U11) [0.07ms]
+(pass) U2 escapes and decoded keys (E1) > a neighbouring escaped string is untouched and a dotted key matches decoded text [0.08ms]
+(pass) U3/E6 nested insert > a missing intermediate object is materialised and appended as the LAST member [0.06ms]
+(pass) U3/E6 nested insert > a missing leaf inside an existing object is appended as the last member [0.05ms]
+(pass) U3/E6 nested insert > without the insert option a missing path refuses and returns no text [0.03ms]
+(pass) U4/E3 deletion span arithmetic > deleting the only member leaves valid JSONC with no dangling comma [0.29ms]
+(pass) U4/E3 deletion span arithmetic > deleting a middle member keeps the remaining members valid and ordered [0.07ms]
+(pass) U5 arrays (E4) > replace, append and delete an element, including deleting to an empty array [0.21ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: the LAST occurrence is updated, the first is byte-identical, and the note names every line [0.10ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a top-level duplicated leaf behaves the same way (the design's U6 fixture) [0.04ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a single occurrence carries NO note (nothing to warn about) [0.03ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset: EVERY occurrence is removed, so the key is genuinely gone from the parsed document [0.08ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset via the DELETE sentinel removes every occurrence too [0.04ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > a duplicated INTERMEDIATE still refuses as `ambiguous-intermediate`, byte-untouched, for BOTH set and unset [0.09ms]
+(pass) U7 CRLF (E7) > existing endings are preserved and an inserted line uses CRLF [0.12ms]
+(pass) E3 trailing-comma style on insert > a document that uses a trailing comma does not gain a dangling or doubled comma [0.06ms]
+(pass) U9 unparsable (E9) > a malformed document refuses with 'unparsable' and returns no text [0.14ms]
+(pass) reader parity > stripJsoncText tolerates comments and trailing commas exactly like the shipped reader [0.02ms]
+(pass) regression: the shipped reader's trailing-comma probe (found by these tests) > a trailing comma followed by a comment no longer breaks JSON.parse [0.02ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan proves the exact value span and reports the comma/eol facts [0.10ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan refuses with the named reasons instead of guessing [0.07ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.05ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.08ms]
+(pass) stripJsonc keeps comments inside strings [0.01ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.08ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [0.60ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.35ms]
+
+packages/mpd-config-plugin/test/bridge.test.ts:
+(pass) target set (design §A.1 — never a guessed root) > U14: exactly one live root is written; two live roots REFUSE and name both candidates [0.10ms]
+(pass) target set (design §A.1 — never a guessed root) > U14 (must-fail-if-fanout): two live roots touch NO file, the settings write is untouched [0.28ms]
+(pass) target set (design §A.1 — never a guessed root) > zero live roots writes NOTHING anywhere and reports no-live-session [0.05ms]
+(pass) target set (design §A.1 — never a guessed root) > the negative-control switch refuses to write even with a live root [0.11ms]
+(pass) happy paths > U1: a live root gets the value written with comments, order and trailing commas intact [0.21ms]
+(pass) happy paths > U11: a missing target is created with the header comment, and a repeat run is unchanged [0.26ms]
+(pass) happy paths > the writer reports per root when handed several targets (the DECIDER never hands it more than one) [0.45ms]
+(pass) loud failure paths (design §B.2/§7) > U10: a read-only target is reported denied, byte-untouched, and names the file [0.13ms]
+(pass) loud failure paths (design §B.2/§7) > U9: an unparsable target is skipped without writing a byte [0.13ms]
+(pass) loud failure paths (design §B.2/§7) > a duplicate key in the target refuses with both line numbers and no write [0.15ms]
+(pass) loud failure paths (design §B.2/§7) > U8: a human edit landing mid-write ends as conflict, leaving the human's bytes [0.28ms]
+(pass) section leaves and the change diff > a front-door edit yields only the added/changed leaves; a reset yields none [0.08ms]
+(pass) section leaves and the change diff > U12 helper: an unchanged section produces no write (the deep-equal gate cannot drop a raw change) [0.02ms]
+(pass) leavesFromSection > only declared paths become leaves, and absent paths are skipped [0.05ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated leaf key is WRITTEN (last occurrence) and the per-root result carries the loud note [0.22ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated INTERMEDIATE is still refused byte-untouched [0.15ms]
+
+packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts:
+# no-terminal-writes
+
+band: 30 package root(s), 123 TypeScript file(s) read; 20 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 10 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-codegraph/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-gitbash/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (14 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (2 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+# no-terminal-writes
+
+band: 30 package root(s), 123 TypeScript file(s) read; 20 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 10 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-codegraph/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-gitbash/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (14 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (2 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+(pass) no new terminal writes in an MPD runtime path (R5) [43.68ms]
+# no-terminal-writes --self-test
+
+[ok] comment-stripped scan finds exactly the four real writes, at their ORIGINAL lines
+[ok] the ORIGINAL line text is reported, not the stripped one
+[ok] a non-`.ts` file is counted as NOT COVERED and never fails the run
+[ok] the package-ROOT launcher band is walked too
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[FAIL] a frozen-inventory file with more hits than its ceiling is reported over ceiling
+        measured: overCeiling=[]
+[FAIL] an inventory entry with NO hits left is STALE (a frozen set that cannot rot)
+        measured: staleInventory=[]
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: FAIL (8/10 checks)
+820 |   })
+821 |   test("the gate reddens on a seeded violation (negative control)", () => {
+822 |     /** The negative control's result; every arm must have held. */
+823 |     const result = selfTest()
+824 |     reportSelfTest(result)
+825 |     expect(result.ok).toBe(true)
+                            ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts:825:23)
+(fail) the gate reddens on a seeded violation (negative control) [1.22ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-plane.test.ts:
+(pass) agentPromptSection: ONE agent's own prompt registry > forwards the section VERBATIM, receiver-bound, and passes the disposer back [0.14ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > a non-callable registry answer degrades to a no-op disposer [0.04ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > THROWS an actionable error when the agent scope exposes no section seam [0.14ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > the capability flag is a LIVE probe of the agent scope [0.40ms]
+(pass) onAgentPreStep: the adapter owns next() > registers on the agent/pre-step waterfall and returns the downstream decision VERBATIM [0.24ms]
+(pass) onAgentPreStep: the adapter owns next() > a listener's decision REPLACES the downstream one (that is how a notice is injected) [0.10ms]
+(pass) onAgentPreStep: the adapter owns next() > a THROWING listener is contained: the downstream decision stands [0.09ms]
+(pass) onAgentPreStep: the adapter owns next() > a listener that returns a rejected decision is forwarded (the gate may not veto) [0.06ms]
+(pass) onAgentPreStep: the adapter owns next() > a missing `next` and a missing event bus both degrade instead of throwing [0.13ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > registers on the AGENT scope, never on the row's event bus [0.12ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > owns next() exactly like the host-plane sibling: amend, pass through, contain a throw [0.13ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > THROWS when the agent scope exposes no on(), and the capability flag is a live probe [0.13ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-team-surface.test.ts:
+(pass) team surface: the frozen names, arity and capability flags > every method exists under its frozen name with its declared arity [0.17ms]
+(pass) team surface: the frozen names, arity and capability flags > the four new capability flags are truthful on a full harness and false on an absent one [0.17ms]
+(pass) team surface: the frozen names, arity and capability flags > team needs identity AND roster; a half-present service reads false [0.11ms]
+(pass) team surface: the frozen names, arity and capability flags > teamTasks needs ALL FOUR task seams, teamMessages BOTH message seams [0.13ms]
+(pass) team surface: the frozen names, arity and capability flags > subagentsProviderRegister tracks registerProvider alone (the READ half keeps its own flag) [0.08ms]
+(pass) teamService / teamMembership: the contained identity reads > teamService hands back the SAME service object, receiver untouched [0.04ms]
+(pass) teamService / teamMembership: the contained identity reads > teamMembership forwards the Agent by identity and projects the three declared keys [0.11ms]
+(pass) teamService / teamMembership: the contained identity reads > a non-member answers undefined, and an unknown role is a MISS rather than a fabricated one [0.06ms]
+(pass) teamService / teamMembership: the contained identity reads > teamMembership NEVER throws — a hostile service is a miss, not a failure [0.07ms]
+(pass) the roster and board reads: caller forwarded, rows projected > teamListMembers forwards the Agent by identity and normalizes every row [0.13ms]
+(pass) the roster and board reads: caller forwarded, rows projected > a malformed row cannot leak an undeclared value [0.05ms]
+(pass) the roster and board reads: caller forwarded, rows projected > teamListTasks forwards the Agent by identity and projects the task row [0.09ms]
+(pass) the roster and board reads: caller forwarded, rows projected > an unknown task status degrades to the safe non-terminal value; a non-array answer is [] [0.07ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamCreateTask forwards both objects unchanged and projects the created row [0.15ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamGetTask forwards caller and id verbatim, and its reply is projected [0.06ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamGetTask propagates the host's OWN rejection (it never invents a view) [0.04ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamUpdateTask forwards the request by identity and returns the committed revision [0.12ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamSendMessage forwards the request by identity and normalizes the durable answer [0.15ms]
+(pass) the mutation calls: caller AND request forwarded by identity > a rejected message promise stays a rejection for the caller [0.08ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamSpawnTeammate forwards the request by identity and projects the member row [0.12ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamInterrupt forwards the caller and the target name, answering the sampled status [0.06ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamWaitForChange forwards caller, timeout AND signal verbatim [0.13ms]
+(pass) registerSubagentProvider: the disposal-returning registration seam > forwards the provider VERBATIM and passes the registry's disposer back [0.05ms]
+(pass) registerSubagentProvider: the disposal-returning registration seam > a non-callable registry answer degrades to a no-op disposer, never a leak [0.03ms]
+(pass) teamLiveTeams: the contained fold over the live registry > reports one entry per live LEAD agent, with its roster and board [0.11ms]
+(pass) teamLiveTeams: the contained fold over the live registry > non-Lead agents are skipped and a membership read that throws is contained [0.10ms]
+(pass) teamLiveTeams: the contained fold over the live registry > a failing roster read yields [] for THAT entry instead of taking the fold down [0.08ms]
+(pass) teamLiveTeams: the contained fold over the live registry > [] when the service OR the agent registry is absent [0.04ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > nothing on this surface throws at construct or probe time [0.20ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > each method degrades exactly as declared, naming what could not happen [0.51ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > a service that is present but lacks ONE method names that method, not the service [0.24ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:
+(pass) agent-teams surface: the twelve frozen methods > every method exists under its frozen name with its declared arity [0.10ms]
+(pass) agent-teams surface: the twelve frozen methods > every new capability flag exists, is truthful, and is false on an absent harness [0.17ms]
+(pass) agent-teams surface: the twelve frozen methods > the provider flag needs BOTH catalogue halves, and each flag tracks its own seam [0.14ms]
+(pass) agent-teams surface: the twelve frozen methods > the five agent-object flags are LIVE-REGISTRY probes, not constant surfaces [0.30ms]
+(pass) agent-teams surface: the twelve frozen methods > each agent-object flag tracks its OWN method, never a sibling [0.14ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > the SAME object reference reaches tools.register — no rebuild, no spread, no wrapper [0.17ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > a non-callable registry answer degrades to a no-op disposer, never a leak [0.03ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > a missing tools service THROWS with the frozen message (parity with the injected ctx.tools) [0.06ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > registerTool keeps its OWN normalizing contract for its existing consumers [0.06ms]
+(pass) subagent plane forwarders > subagentRuntime returns the service ITSELF (identity), undefined when absent [0.04ms]
+(pass) subagent plane forwarders > subagentProvider is receiver-bound and returns the provider untouched [0.05ms]
+(pass) subagent plane forwarders > subagentProvider degrades to undefined for a missing service or a half-present one [0.03ms]
+(pass) subagent plane forwarders > subagentProviders returns the names in order, drops non-strings, degrades to [] [0.10ms]
+(pass) subagent plane forwarders > startContinuableAgent forwards the spec VERBATIM and hands back the service's own promise [0.09ms]
+(pass) subagent plane forwarders > startContinuableAgent THROWS synchronously when the service or the method is absent [0.08ms]
+(pass) subagent plane forwarders > interruptAgent forwards both arguments verbatim, receiver-bound, and THROWS when absent [0.10ms]
+(pass) llm plane forwarders > llmListModels forwards the provider id and returns the service's promise [0.10ms]
+(pass) llm plane forwarders > llmResolveCallConfig forwards config AND signal by identity [0.09ms]
+(pass) llm plane forwarders > both llm seams THROW synchronously on a missing service or method [0.11ms]
+(pass) registerPromptSection > forwards the section VERBATIM and passes the registry's disposer through [0.06ms]
+(pass) registerPromptSection > THROWS at the call when the seam is missing (a mandatory usage section) [0.08ms]
+(pass) registerPromptSection > a non-callable registry answer degrades to a no-op disposer [0.03ms]
+(pass) agentScope: identity-preserving per-agent scope > context IS agent.ctx and every member forwards to that same object [0.09ms]
+(pass) agentScope: identity-preserving per-agent scope > a partial context degrades to undefined instead of a scope that throws later [0.04ms]
+(pass) agentScope: identity-preserving per-agent scope > a throwing context getter is a miss, never a crash [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn calls agent.followup with the agent as receiver and the message by identity [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn preserves the agent's OWN throw — it does NOT route through submitUserTurn [0.05ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn THROWS when the agent exposes no followup [0.05ms]
+(pass) turn engine: THROWING forwarders (D9) > cancelAgentTurn forwards cause AND options verbatim, receiver-bound [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > cancelAgentTurn preserves the agent's own error and THROWS when cancel is absent [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > steerAgentTurn forwards the message to agent.steer by identity, receiver-bound [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > steerAgentTurn preserves the agent's own throw and THROWS when steer is absent [0.11ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage forwards the message to agent.inject by identity, receiver-bound [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage preserves the agent's own throw and THROWS when inject is absent [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage passes exactly ONE argument — and the adapter itself exposes no cordis ctx.inject [0.03ms]
+(pass) apply-time safety: nothing on this surface throws at construct or probe time > an empty, a property-less and a throwing ctx all build an adapter whose new flags read false [0.13ms]
+(pass) the frozen degrade table on an absent harness > each method degrades exactly as §3 declares (THROW / undefined / []) [0.10ms]
+
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts:
+(pass) which backend is chosen > NATIVE is the default, and the reason says so [0.19ms]
+(pass) which backend is chosen > OFFICIAL is chosen only when the native seams are absent [0.08ms]
+(pass) which backend is chosen > with NEITHER backend every call REFUSES with a sentence, never a TypeError [0.28ms]
+(pass) which backend is chosen > the env override picks a backend, and FALLS THROUGH when that one cannot serve [0.07ms]
+(pass) the native backend > spawn forwards the PROVIDER and the member's agentOptions — the point of the seam [0.14ms]
+(pass) the native backend > spawn DEFAULTS the provider rather than sending an empty name [0.05ms]
+(pass) the native backend > a start that reports NO child id is refused, so no phantom member is recorded [0.09ms]
+(pass) the native backend > send delivers through sendMessage, which cold-resumes an absent child [0.14ms]
+(pass) the native backend > interrupt uses the ANCESTOR authority, which is the form this seam can honestly present [0.08ms]
+(pass) the native backend > membership answers for a handle THIS adapter raised, and is a MISS for anyone else [0.10ms]
+(pass) the native backend > the provider list comes from the harness, and degrades to [] rather than leaking [0.06ms]
+(pass) the official backend > spawn, send and interrupt map onto the official service [0.27ms]
+(pass) the official backend > membership is ASKED of the host, so a member raised elsewhere is still identified [0.06ms]
+(pass) the official backend > a spawn that reports no id is refused here too [0.09ms]
+(pass) the seam is total > the executor never throws on construction, whatever the composition holds [0.10ms]
+(pass) the seam is total > the reason is a SENTENCE a boot line can carry, in every case [0.08ms]
+
+packages/mpd-dsh-adapter-plugin/test/settings-bridge-scope.test.ts:
+(pass) the settings bridge resolves the SCOPED service > a settings service that exists only below the root is still reachable [0.10ms]
+(pass) the settings bridge resolves the SCOPED service > NO scoped service, no root service -> the honest failure sentence is unchanged [0.04ms]
+(pass) the settings bridge resolves the SCOPED service > a PRESENT service without register() says so instead of claiming it is unavailable [0.04ms]
+(pass) the settings bridge resolves the SCOPED service > a ROOT service still works when no inject ever fires (the non-deferred path) [0.03ms]
+
+packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts:
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 25 package(s), 113 .ts file(s)
+RESULT: PASS (0 findings)
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 25 package(s), 113 .ts file(s)
+RESULT: PASS (0 findings)
+(pass) no direct Agent Teams access outside the adapter (D6) [286.61ms]
+SELF-TEST — no-direct-team-access (negative control over a seeded fixture tree)
+  ok   seeded violation at packages/mpd-fixture/src/index.ts:3
+  ok   seeded violation in a NESTED file (recursion)
+  ok   a RAW ctx.on("agent/pre-step") subscription is a finding
+  ok   a cordis FRAMEWORK event (internal/service) is NOT a finding
+  ok   the STRING spelling ctx.get("agentTeams") reddens too
+  ok   a COMMENT mentioning both identifiers is NOT a finding
+  ok   the adapter package is excluded
+  ok   a non-mpd package is outside the band
+  ok   exactly the five seeded findings are reported, one per violation
+  ok   a finding turns into a NONZERO exit code, a clean scan into zero
+  ok   an out-of-band .js hit is REPORTED as NOT COVERED, never as a failure
+  ok   the fixture walker actually read the seeded band
+SELF-TEST: PASS (12/12 checks)
+(pass) the gate reddens on a seeded violation (negative control) [2.54ms]
+
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts:
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 26 package(s), 115 .ts file(s)
+frozen inventory: 18 entr(y|ies); couplings in the band: 18, sanctioned adapter imports: 53
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 53:
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-boulder-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-ulw-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 2 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:3738: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:333: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+DECLARED OUT OF BAND: packages/mpd-agent-teams-plugin/lib (the RETIRED adopted body's tree) — 55 file(s), never scanned, never silently skipped
+RESULT: PASS (the frozen inventory describes the band exactly)
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 26 package(s), 115 .ts file(s)
+frozen inventory: 18 entr(y|ies); couplings in the band: 18, sanctioned adapter imports: 53
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 53:
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-boulder-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-ulw-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 2 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:3738: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:333: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+DECLARED OUT OF BAND: packages/mpd-agent-teams-plugin/lib (the RETIRED adopted body's tree) — 55 file(s), never scanned, never silently skipped
+RESULT: PASS (the frozen inventory describes the band exactly)
+(pass) the cross-package coupling inventory is exactly the frozen set (independence gate) [47.56ms]
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+  ok   an INVENTORIED coupling is not reported (no false positive)
+  ok   a NEW cross-package import reddens
+  ok   a SANCTIONED adapter import is exempt, and is PRINTED as sanctioned
+  ok   an INTRA-package import is not a coupling
+  ok   a globalThis WRITE reddens in both spellings on one line
+  ok   ctx.provide("tools") reddens as a harness-service provide
+  ok   ctx.provide("mpdFixture") is allowed and NAMED
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.30ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [0.26ms]
+(pass) capabilities > reports absent seams without throwing [0.03ms]
+(pass) llm catalog plane > projects providers, models and reasoning from the live registry [0.47ms]
+(pass) llm catalog plane > the fake full harness satisfies the seam [0.12ms]
+332 |       /** An adapter over a harness with no llm service. */
+333 |       const adapter = createDshAdapter({ get: () => undefined })
+334 |       expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+335 |       // Second read: same degrade, but the warn-once line is NOT repeated.
+336 |       expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+337 |       expect(warn).toHaveBeenCalledTimes(1)
+                         ^
+error: expect(received).toHaveBeenCalledTimes(expected)
+
+Expected number of calls: 1
+Received number of calls: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:337:20)
+(fail) llm catalog plane > a missing llm service degrades and warns exactly once [0.36ms]
+350 |       const partial = { listProviders: () => [], listModels: async () => [] }
+351 |       /** The adapter over that partial seam. */
+352 |       const adapter = createDshAdapter(llmOnlyCtx(partial))
+353 |       expect(adapter.capabilities().llmCatalog).toBe(false)
+354 |       expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+355 |       expect(warn).toHaveBeenCalledTimes(1)
+                         ^
+error: expect(received).toHaveBeenCalledTimes(expected)
+
+Expected number of calls: 1
+Received number of calls: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:355:20)
+(fail) llm catalog plane > a partial seam degrades, names the missing method, and reports capabilities false [0.20ms]
+(pass) llm catalog plane > a rejecting provider is skipped and the rest of the catalog survives [0.26ms]
+(pass) llm catalog plane > a model whose resolveModelInfo rejects is skipped, not fatal [0.09ms]
+(pass) llm catalog plane > a throwing listProviders degrades instead of rejecting [0.07ms]
+(pass) llm catalog plane > a non-array listProviders answer degrades instead of throwing [0.05ms]
+(pass) llm catalog plane > the lazy facade proxies the seam to the mounted adapter [0.19ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.12ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.04ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.05ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.06ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.04ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.10ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.14ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.07ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.02ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.13ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.13ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.12ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.07ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.32ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.14ms]
+(pass) tool plane > executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given [0.10ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.19ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.06ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.06ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.04ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.14ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.09ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.12ms]
+(pass) skill + preset plane > resolvePreset still normalizes the OPTIONAL path/trust a host build may send [0.08ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > registerCommand passes the definition through and hands back the host's own disposer [0.18ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > a stub register returning a NON-function still yields a safe no-op disposer [0.05ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > an absent seam is a no-op disposer plus two false capability flags, never a throw [0.04ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > apply() never throws when the composition has no command registry [0.08ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > capabilities() reports a present registry, and distinguishes one without register() [0.07ms]
+(pass) message plane (user-role session injection) > userMessage builds the host's message contract, frozen at every level [0.15ms]
+(pass) message plane (user-role session injection) > a producer tag wins over the default kind, and every call mints a fresh id [0.04ms]
+(pass) message plane (user-role session injection) > the field set matches the vendored host constructor, and only the identity differs [0.14ms]
+(pass) message plane (user-role session injection) > the adapter surface exposes it, and the source imports no host package by bare specifier [0.24ms]
+(pass) turn plane (the submission surface a command handler needs) > a registered command handler submits through its invocation, and the host's invocation is not mutated [0.13ms]
+(pass) turn plane (the submission surface a command handler needs) > submitUserTurn reaches the agent's followup, and every absent or broken surface is a safe no-op [0.06ms]
+(pass) turn plane (the submission surface a command handler needs) > capabilities().turnSubmit is truthful for a present and an absent agent surface [0.09ms]
+(pass) row entry > apply provides the mpdDsh service [0.04ms]
+(pass) row entry > decision helpers use the harness feedback key [0.03ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [2.26ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.17ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.31ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.19ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.18ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.31ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.18ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [514.23ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [0.77ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [0.83ms]
+(pass) lazy mpdDsh resolution (T-50) > a transient miss is served temporarily, warned honestly, and is NOT cached for the session [0.18ms]
+(pass) lazy mpdDsh resolution (T-50) > a strict success is cached; a miss is retried on every use [0.11ms]
+(pass) lazy mpdDsh resolution (T-50) > a clean boot never warns and reports the mounted identity [0.05ms]
+(pass) lazy mpdDsh resolution (T-50) > a provably absent provider keeps the row-order hint — and only that case does [0.09ms]
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [1.77ms]
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [0.51ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.22ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [70.78ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [37.29ms]
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [21.52ms]
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [79.30ms]
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [102.84ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [456.70ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [40.31ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [60.64ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [42.78ms]
+(pass) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [39.27ms]
+(pass) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [40.07ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [40.02ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [42.98ms]
+(pass) a tools/call slower than the server's budget is rejected naming that budget [292.06ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [42.04ms]
+(pass) a disabled extension never spawns a child and reports state disabled [0.67ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.48ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [38.74ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [82.83ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.55ms]
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.11ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.03ms]
+162 |       stdout.restore()
+163 |     }
+164 | 
+165 |     // Exactly one warning, from the one emission the fix adds (it is written to
+166 |     // stdout AND the logger, so count it per sink, never across sinks).
+167 |     expect(fallbackWarnings(stdout.lines).length).toBe(1)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/adapter-identity.test.ts:167:51)
+(fail) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [0.81ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [0.35ms]
+199 |     try {
+200 |       await apply(fake.ctx)
+201 |     } finally {
+202 |       stdout.restore()
+203 |     }
+204 |     expect(fallbackWarnings(stdout.lines).length).toBe(1)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/adapter-identity.test.ts:204:51)
+(fail) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.36ms]
+222 |     expect(fallbackWarnings(stdout.lines)).toEqual([])
+223 |     expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
+224 | 
+225 |     // The boot line carries the identity a mount lane greps for.
+226 |     const identityLines = stdout.lines.filter((line) => line.includes("adapterIdentity="))
+227 |     expect(identityLines.length).toBe(1)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/adapter-identity.test.ts:227:34)
+(fail) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.42ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [0.33ms]
+(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [112.34ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.38ms]
+
+packages/mpd-ext-plugin/test/core.test.ts:
+(pass) apply registers exactly the four tools, no reload, and provides the mpdExtensions service [2.36ms]
+(pass) apply contains a hostile harness: a throwing tool or skill seam never escapes apply [2.45ms]
+(pass) the four tools emit values that satisfy their own output schemas [4.34ms]
+(pass) mpd_ext_show and mpd_flow_show report an unknown id as an error naming the known ids [1.75ms]
+(pass) descriptor validation rejects unknown keys, bad apiVersion, missing id, escapes and bad rank [1.26ms]
+(pass) role provider/model must be paired and persona must stay inside the root [1.16ms]
+(pass) effectiveEnabled follows disable > enable > descriptor [1.32ms]
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [2.62ms]
+(pass) a malformed manifest is reported per item and never aborts apply or another extension [2.84ms]
+(pass) the project plane is re-read per call and never leaks across workspaces [2.22ms]
+(pass) skill candidates are pre-validated: a bad candidate is skipped, warned and never emitted [2.16ms]
+(pass) the provider pre-validates at emit time too, and reports the skip to the owner [1.24ms]
+(pass) a loaded candidate is recorded on the extension when its items are unusable [1.62ms]
+(pass) the project-plane skill provider resolves per call from provider.list({ cwd }) [1.83ms]
+(pass) a skill provider never throws out of list()/get() when discovery fails [1.36ms]
+(pass) provider names are unique by construction [1.14ms]
+(pass) flows render into skill candidates and a flow id outside the skill grammar is rejected loudly [1.40ms]
+(pass) a broken flow file is skipped and recorded while its siblings keep working [1.85ms]
+(pass) config is read lazily per use: disable/enable are honoured after apply [2.35ms]
+(pass) extensionConfig reads every extensions.* key lazily from mpdConfig (declared process-level limit) [1.20ms]
+(pass) mcp.enabled=false is honoured per call and surfaced instead of silently pending [3.16ms]
+(pass) a missing mpdConfig degrades to the documented defaults [2.20ms]
+(pass) the code plane registers through ctx.get("mpdExtensions") and shares the same validation [2.21ms]
+(pass) describe() answers the frozen descriptor shape for a known extension [1.82ms]
+(pass) one broken extension of each kind leaves the good ones working [2.35ms]
+(pass) mcp is pending until the bridge connects it, while roles are NEVER pending (t14/F3) [2.81ms]
+(pass) t14/F3: a live roles contribution reports no pending item and no 'not yet exposed' claim [2.83ms]
+(pass) t14/F4: a role colliding with a BASE roster name is refused with the roster's reason, in both paths [2.21ms]
+(pass) t14/F4: an unreadable OR empty persona is refused, and the empty case is no longer accepted [2.12ms]
+(pass) t14/F4: a CROSS-extension name collision refuses the LATER extension and names the holder [2.59ms]
+(pass) t14: a disabled extension's declared roles are reported as not exposed, never as usable [2.59ms]
+(pass) t14: refusal notes are idempotent — repeated calls neither duplicate nor lose them [2.04ms]
+(pass) t14: the ext report and the ROSTER agree about every role (parity, measured against the resolver) [2.47ms]
+(pass) t14: every spelling of a base roster name collides (case- and separator-insensitive) [1.96ms]
+(pass) discoverPlane never throws for a missing root [1.19ms]
+(pass) t16: the ext report and the ROSTER agree about a PROJECT-plane role (nothing usable, same reason) [2.27ms]
+(pass) F4: a same-name skill claimed by two extensions is reported on the loser WITH the winner and both ranks [2.27ms]
+(pass) F4: a claim the catalog resolves to a NON-extension provider is reported as not served [2.39ms]
+(pass) F4: a duplicate project-plane skill name is attributed to the PROJECT entry that claims it [4.30ms]
+(pass) F5: a provider call with NO cwd serves nothing from the project plane (never process.cwd()) [2.41ms]
+(pass) F5: a host-wide extension is still served when the caller names no workspace [1.64ms]
+(pass) F6: mpd_ext_show redacts author-declared env VALUES in the echoed descriptor [1.70ms]
+(pass) F7: a CONFIG-disabled extension claims no role name, so the next claimant is exposed [2.12ms]
+(pass) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [1.21ms]
+(pass) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [1.80ms]
+
+packages/mpd-roles-plugin/test/team-plane.test.ts:
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard's deny list IS the one-shot path's list (one constant, seven names) [0.31ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a read-only teammate is denied; a worker, the Lead and a non-team agent pass [0.08ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > every read-only NAME spelling is protected, including a team-unique numeric suffix [0.11ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard is NON-THROWING: a hostile membership resolver is a pass-through [0.08ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a missing tools.guard seam degrades with a warning instead of aborting the roster [0.04ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal A: team: prefix and !team, with the marker consumed [0.30ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal B: >= 4 DISTINCT deliverable verbs [0.05ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal C: ONE signal, fired by its own 2-of-3 majority (never counted as C1/C2/C3) [0.03ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal D: a plan artifact exists [0.01ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > no signal: nothing fires, and the trigger needs at least one [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > the advisory text carries the frozen marker, names the signals and stages nothing [0.04ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a fired SOFT signal injects ONE advisory notice and stages NOTHING [0.69ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > an explicit team: flag is ADVISED (never provisioned) and CONSUMED from the goal text [0.13ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > signal D needs a real .mpd/plans artifact, and the probe is workspace-scoped [0.17ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > scope: child sessions and other presets never get the gate; mpd and preset-less sessions do [0.14ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a step with no user text does NOT spend the settlement, and a reject decision is left alone [0.12ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a contained failure leaves the step untouched (a broken gate never breaks a turn) [0.18ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > consumeFlagFromMessage rewrites only text blocks and leaves a clean message identical [0.03ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > the text names every member, its read-only flag, and how to instantiate one [0.12ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > registered ONCE per qualifying live agent, and only for mpd top-level sessions [0.17ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a later session is covered through agent/created, and disposal releases the section [0.07ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a scope that refuses the section degrades with ONE warning, never a boot failure [0.08ms]
+(pass) gate registration through the REAL adapter (the mounted-but-silent regression) > a payload WITHOUT `agent` still injects: the registration site is the authority [0.27ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > the gate judges the GOAL even when the decision carries an injected context turn [0.24ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > latestUserMessage is source-aware, and still answers for a host that tags nothing [0.03ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.08ms]
+119 |       apply(fake.ctx)
+120 |     } finally {
+121 |       stdout.restore()
+122 |     }
+123 | 
+124 |     expect(fallbackWarnings(stdout.lines).length).toBe(1)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/adapter-identity.test.ts:124:51)
+(fail) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [0.73ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.20ms]
+154 |     try {
+155 |       apply(fake.ctx)
+156 |     } finally {
+157 |       stdout.restore()
+158 |     }
+159 |     expect(fallbackWarnings(stdout.lines).length).toBe(1)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/adapter-identity.test.ts:159:51)
+(fail) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.34ms]
+177 |     expect(fallbackWarnings(stdout.lines)).toEqual([])
+178 |     expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
+179 | 
+180 |     /** The identity banner lines, asserted to number exactly ONE per apply. */
+181 |     const identityLines = stdout.lines.filter((line) => line.includes("adapterIdentity="))
+182 |     expect(identityLines.length).toBe(1)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/adapter-identity.test.ts:182:34)
+(fail) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.41ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.19ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [100.51ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.23ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.12ms]
+(pass) persona assets exist for every role and contain real instructions [0.53ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.06ms]
+(pass) normalizeRoleKey: team-style normal names resolve to the same role as their id [0.12ms]
+(pass) a one-shot spawn is labelled with the team-style normal name, not the id [0.97ms]
+(pass) no surface advertises an upstream alias: names plus what a role does [1.44ms]
+(pass) the roster tool payloads carry no id field (an alias is not part of a result) [0.63ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.78ms]
+(pass) mpd_role_persona returns the extracted persona text under the role's NAME [0.33ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.63ms]
+(pass) mpd_roles_list returns the full roster summary [0.29ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.42ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.03ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [0.38ms]
+(pass) the built dist renders no role as `Name (upstream-alias)` [0.79ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [0.12ms]
+(pass) extension roles: a real mpd-ext registration joins the roster with its owning extension [2.60ms]
+(pass) extension roles: resolved PER CALL — later registration and disabled extensions take effect next call [1.24ms]
+(pass) extension roles: a name colliding with a base role or another extension is refused loudly, never fatally [1.64ms]
+(pass) extension roles: usable as a workmate BASE template (real mpd_workmate_init) [1.51ms]
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [1.25ms]
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [0.80ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.19ms]
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.07ms]
+
+packages/mpd-roster-provider-plugin/test/route.test.ts:
+(pass) reading the member out of the descriptor label > a description that NAMES a member routes it, before any separator [0.11ms]
+(pass) reading the member out of the descriptor label > a name with no separator still matches [0.02ms]
+(pass) reading the member out of the descriptor label > a description that names NO member routes nothing — a wrong guess moves a teammate onto a model nobody chose [0.04ms]
+(pass) reading the member out of the descriptor label > the LONGEST name wins, so a prefix cannot steal the match [0.02ms]
+(pass) resolving the slot route > every roster member maps to a slot, and a complete slot resolves to its own route [0.11ms]
+(pass) resolving the slot route > a member with NO slot inherits — the route is undefined, not a default
+(pass) resolving the slot route > an INCOMPLETE slot fails LOUDLY naming the member and the slot, never substituting [0.07ms]
+(pass) resolving the slot route > an effort the slot does not state is OMITTED, so the harness keeps its own resolution [0.02ms]
+(pass) applying a route to a request > the route replaces the three route fields and NOTHING else [0.03ms]
+(pass) applying a route to a request > no route means the request is returned BY IDENTITY — inheritance is visibly inheritance [0.01ms]
+(pass) applying a route to a request > a route with no effort CLEARS an inherited one instead of leaving it behind [0.01ms]
+(pass) applying a route to a request > a request with no agentOptions at all is still routable [0.01ms]
+(pass) applying a route to a request > the label is read from the descriptor first, then the request's own field [0.02ms]
+
+packages/mpd-team-core-plugin/test/team-record.test.ts:
+(pass) approval builds an mpd-owned team record > the record carries OUR ids, the review fields, and the resolved dependency edges [2.62ms]
+(pass) approval builds an mpd-owned team record > the executor's handles are KEPT BESIDE our ids, never adopted as them [0.63ms]
+(pass) approval builds an mpd-owned team record > NO BOARD IS MIRRORED: the mpd record IS the board, so a task keeps our id and only our id [0.74ms]
+(pass) approval builds an mpd-owned team record > the member's ROUTE reaches the executor as an ordinary argument [0.77ms]
+(pass) approval builds an mpd-owned team record > a spawn that fails STOPS the approval but still leaves the team on record [0.93ms]
+(pass) approval builds an mpd-owned team record > an approval with a dry run records NOTHING [0.44ms]
+(pass) the published service is the read surface > mpdTeams answers from the record, and reads nothing from the official plane [1.17ms]
+(pass) the published service is the read surface > status reports the RECORD as the team, with the official readout beside it [0.84ms]
+(pass) the published service is the read surface > the record survives a lost index: the Lead session still finds its team [0.66ms]
+(pass) the watchdog hold stops a dispatch pass > a team the watchdog holds is NOT dispatched, and the refusal names the team [1.32ms]
+(pass) the watchdog hold stops a dispatch pass > with the watchdog's hold LIFTED the same pass dispatches [0.85ms]
+(pass) the watchdog hold stops a dispatch pass > with NO watchdog service at all the pass dispatches — the read fails OPEN [0.72ms]
+(pass) the watchdog hold stops a dispatch pass > a hold that CANNOT be read is REPORTED as not-readable, never as a hold [0.86ms]
+
+packages/mpd-team-core-plugin/test/team-store.test.ts:
+(pass) the team record > creating a team writes one record and binds it ACTIVE for its Lead session [0.23ms]
+(pass) the team record > a record survives a reload byte-for-byte in meaning [0.24ms]
+(pass) the team record > ids are minted locally, monotonically, and never reused after a removal [0.22ms]
+(pass) the team record > a blocker written as a SUBJECT resolves to the task id, which is how a plan writes it [0.19ms]
+(pass) the team record > updating a task bumps its revision and nothing else's [0.22ms]
+(pass) the team record > an empty owner string CLEARS the owner instead of storing a blank one [0.22ms]
+(pass) the team record > a member is addressable by NAME as well as by id, because a tool caller has the name [0.21ms]
+(pass) the derived state > phase follows the record: staged until approved, active only while something is in flight [0.21ms]
+(pass) the derived state > `blocked` is DERIVED, and OPT-1 releases a task whose blocker FAILED — counted apart [0.27ms]
+(pass) the derived state > the graph maths: rank is the longest blocker path, and a cycle is REPORTED not hung on [0.25ms]
+(pass) the derived state > the summary separates ready from blocked, and counts only REAL edges [0.26ms]
+(pass) the derived state > dispatch reads the record: only unblocked pending tasks and unowned running members [0.24ms]
+(pass) the derived state > member progress names the current task and counts what is done [0.18ms]
+(pass) the index and the files > an unknown index version reads as EMPTY rather than throwing [0.14ms]
+(pass) the index and the files > a record whose version is unknown is not a record [0.21ms]
+(pass) the index and the files > an id can never escape .mpd/team, however it was written [0.06ms]
+(pass) the index and the files > listing is newest first, and a team can be dropped [0.37ms]
+(pass) the index and the files > unbinding one session leaves every other binding alone [0.18ms]
+(pass) the index and the files > a sessionless surface is keyed `workspace`, never the empty string [0.11ms]
+
+packages/mpd-team-core-plugin/test/tool-output-schema.test.ts:
+(pass) every action's value satisfies its declared output contract > status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it [1.60ms]
+(pass) every action's value satisfies its declared output contract > EVERY plan action answers a value its own schema accepts [2.09ms]
+(pass) create_task carries owner and blocked_by from BOTH spellings > owner nested under `task` and the member IDLE: the owner reaches the plan AND the board [0.65ms]
+(pass) create_task carries owner and blocked_by from BOTH spellings > owner given while the member is already BUSY: the owner still lands, and is not reassigned [1.14ms]
+(pass) create_task carries owner and blocked_by from BOTH spellings > no owner given: the task is created WITHOUT an owner key (never a null owner) [0.61ms]
+(pass) create_task carries owner and blocked_by from BOTH spellings > the MEASURED spelling — owner and blocked_by BESIDE `task` — reaches the plan and the board [0.89ms]
+
+packages/mpd-team-core-plugin/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [0.30ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.04ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.04ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.18ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.25ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.15ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.25ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.19ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.06ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.18ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.18ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.07ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.05ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.24ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.03ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.13ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.04ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.09ms]
+
+packages/mpd-team-core-plugin/test/tool-surface.test.ts:
+(pass) the consolidated surface > FIVE tools and one command — not fourteen [0.03ms]
+(pass) the consolidated surface > every tool is ACTION-based, so a caller picks an action instead of a tool [0.03ms]
+(pass) the consolidated surface > the context budget holds: the whole surface stays under 5,000 characters [0.05ms]
+(pass) the consolidated surface > EVERY action of the retired hand-written surface is still reachable [0.05ms]
+(pass) the consolidated surface > the retired TOOL NAMES are gone — a re-added one would redden here [0.02ms]
+(pass) the consolidated surface > no description is a paragraph: each stays under 700 characters
+
+packages/mpd-team-core-plugin/test/dispatch.test.ts:
+(pass) one dispatch pass > a ready task goes to an idle member, in board order [0.06ms]
+(pass) one dispatch pass > a member already working something is NOT given a second task [0.03ms]
+(pass) one dispatch pass > THE SAME TASK IS NEVER DISPATCHED TWICE — the ledger is the reason, not the message [0.03ms]
+(pass) one dispatch pass > a running member is not idle: the roster status is the gate [0.02ms]
+(pass) one dispatch pass > no idle member is reported per task, not as a silent no-op [0.02ms]
+(pass) one dispatch pass > a blocked task waits and says what blocks it; a completed one is skipped [0.02ms]
+(pass) one dispatch pass > a HALT refuses the whole pass and names the reason — and touches nothing else [0.01ms]
+(pass) one dispatch pass > the limit caps one pass and reports the rest as capped [0.02ms]
+(pass) the ledger > assign returns a NEW ledger and never mutates the old one [0.02ms]
+(pass) the ledger > release frees a pairing and reports whether there was one [0.02ms]
+(pass) the ledger > RECONCILE forgets a task that was deleted or completed out of band — a member must not stay busy forever [0.05ms]
+(pass) the message a dispatched member receives > it names the task, carries the acceptance text, and says how to report back [0.03ms]
+
+packages/mpd-team-core-plugin/test/plan-store.test.ts:
+(pass) the staged plan > a fresh stage writes a plan under .mpd/team/staging and nothing else [0.18ms]
+(pass) the staged plan > members and tasks append, and a duplicate member name refuses [0.26ms]
+(pass) the staged plan > a plan survives a reload: what is on disk is what a later call reads [0.19ms]
+(pass) the staged plan > staging again REPLACES an unapproved plan and archives it — the old plan is still readable [0.26ms]
+(pass) the staged plan > an APPROVED plan is not replaced by a plain stage — approval is the boundary [0.25ms]
+(pass) the staged plan > sessions do not share a staging slot [0.19ms]
+(pass) the staged plan > a corrupt staging file reads as absent instead of throwing [0.14ms]
+(pass) task contracts and attempts > the first claim is attempt 1 and freezes what the task said [0.24ms]
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it [0.38ms]
+(pass) task contracts and attempts > contracts list newest claim first, and an unclaimed task has none [0.48ms]
+(pass) task contracts and attempts > a corrupt contract reads as absent, never as a half-written claim [0.14ms]
+(pass) the halt > a halt records who and why, and resuming reports whether one was there [0.18ms]
+(pass) plan identity > a plan id is stable, sortable and derived from the clock [0.05ms]
+
+packages/mpd-team-core-plugin/test/team-web.test.ts:
+(pass) the payload is computed from the RECORD > it carries the review fields the official board has no column for [0.61ms]
+(pass) the payload is computed from the RECORD > the VISUAL state comes from the same function the TUI uses [0.32ms]
+(pass) the payload is computed from the RECORD > the board is ordered by RANK, so the browser can lay out a graph without re-sorting [0.30ms]
+(pass) the payload is computed from the RECORD > the EXECUTOR is named, so the split's own state is visible in the browser [0.25ms]
+(pass) the payload is computed from the RECORD > a session with NO team is a payload with `team: null`, not an error [0.04ms]
+(pass) the payload is computed from the RECORD > a cycle is REPORTED in the payload rather than drawn as a sound board [0.24ms]
+(pass) the route > registers ONE exact path, and answers the caller's own session [0.49ms]
+(pass) the route > a THROWING read becomes a 500 payload, never an uncaught throw in a request [0.10ms]
+(pass) the route > a composition with NO web server registers nothing and says so quietly [0.06ms]
+(pass) the staged-plan route > serves the PLAN and its planId, not the team record [0.27ms]
+(pass) the staged-plan route > a session with NO staged plan is a payload with plan null, not an error [0.02ms]
+(pass) the task route > serves the frozen contracts and the hold, in the store's own fields [0.20ms]
+(pass) the mail route > serves the fold, and distinguishes an EMPTY mailbox from an unread one [0.21ms]
+(pass) the route family > registers ALL FOUR paths, and one registration covers the family [0.05ms]
+(pass) the shared approval phrase > names the planId, and is SERVED in the payload rather than re-derived by a consumer [0.19ms]
+(pass) the shared approval phrase > planForSession and the /plan route answer with the SAME projection [0.26ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+69 |       // The tick's result; the throwing body must be contained.
+70 |       const result = await engine.tickOnce(1)
+71 |       expect(engine.getStats().tickErrors).toBe(1)
+72 |       expect(engine.getStats().lastError).toBe("boom")
+73 |       expect(result.skipped).toContain("tick error")
+74 |       expect(warnings.some((line) => line.includes("tick threw 1 time(s)"))).toBe(true)
+                                                                                  ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:74:78)
+(fail) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [1.27ms]
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.86ms]
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [1.97ms]
+186 |       // The stamp whose write must fail and be counted.
+187 |       const stamp = engine.stamp("step", agent("a1", box.workspace))
+188 |       expect(stamp.member).toBe("Architect")
+189 |       expect(engine.getStats().heartbeatFailures).toBe(1)
+190 |       expect(engine.getStats().heartbeatWrites).toBe(0)
+191 |       expect(warnings.some((line) => line.includes("heartbeat write failed at"))).toBe(true)
+                                                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:191:83)
+(fail) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.32ms]
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.29ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.31ms]
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.21ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [0.23ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.21ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.24ms]
+(pass) heartbeat store > the tool pair: the PRE hook opens the call (tool-start), the POST hook closes it (tool) [0.43ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [1.09ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [13.32ms]
+(pass) heartbeat store > r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence [0.57ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.33ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives in the watchdog's own tree and never changes the live team readout [0.55ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.23ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.25ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.38ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.15ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.89ms]
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.45ms]
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [1.18ms]
+
+packages/mpd-team-watchdog-plugin/test/status-lossless.test.ts:
+(pass) the lossless projection is total > every value a reader can hand it comes back as lossless JSON [0.65ms]
+(pass) the status tool's own value > round-trips through JSON unchanged, with a live team, heartbeats and a hold in the store [1.00ms]
+
+packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts:
+(pass) §1 — the four states, folded from the record stream > an open step with no committed answer is OUTSTANDING, and it carries the clock [0.21ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: the same list WITH its step/end is no longer OUTSTANDING [0.04ms]
+(pass) §1 — the four states, folded from the record stream > an answered step with an unmatched tool/call is IN-FLIGHT [0.09ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: dropping the answer makes it OUTSTANDING; adding the result makes it ALIVE [0.10ms]
+(pass) §1 — the four states, folded from the record stream > a turn that has not closed is ALIVE, and a CLOSED turn is PARKED [0.04ms]
+(pass) §1 — the four states, folded from the record stream > a completed step stays ALIVE forever: 24 h of age changes nothing [0.08ms]
+(pass) §1 — the four states, folded from the record stream > the assistant-stream START frame is the §2 enrichment: OUTSTANDING flips to ALIVE [0.07ms]
+(pass) §1 — the four states, folded from the record stream > NO CHANNEL EVIDENCE is not PARKED: it is null (the §4 degradation seam) [0.06ms]
+(pass) §1 — the four states, folded from the record stream > an unknown (extension) event type changes no verdict [0.04ms]
+(pass) §1 — the four states, folded from the record stream > the answer may be an `assistant/attempt` (a plugin-merged extension type) [0.05ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > PARKED and ALIVE never warn, however long the watchdog looks [0.11ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > OUTSTANDING warns only after warnSilenceMs SINCE THE REQUEST BECAME OUTSTANDING [0.05ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen ladder: six consecutive OUTSTANDING observations after the first warn [0.09ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > an OUTSTANDING request that becomes ALIVE resets the streak (no stale escalation) [0.06ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > IN-FLIGHT past toolInFlightMaxMs is reported ONCE and never held [0.10ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §4: with NO channel evidence the heartbeat rule WARNs exactly once and never escalates [0.08ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §1 rule 5: a candidate that never stamped is never-started, never a warn [0.05ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen §3 defaults are exactly the contract's table [0.02ms]
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+(pass) the scene document > carries exactly the AC-5 field set [0.28ms]
+(pass) the scene document > the halt flags have NO official source, so the scene carries null (never a fabricated pause) [0.11ms]
+(pass) the scene document > write -> read round-trips byte-identically and a second identical write changes no bytes [0.38ms]
+(pass) the scene document > a scene file name is unique per incident even inside one millisecond [0.27ms]
+(pass) the scene document > isoBasic is a file-safe timestamp [0.02ms]
+(pass) the scene document > the member unread count is UNOBSERVABLE on the official plane (null, never a fabricated 0) [0.14ms]
+250 |       expect(held.decisions.map((d) => d.type)).toEqual(["escalate"])
+251 |       expect(readHold(box.workspace, box.stateDir, "team-a")).toBeDefined()
+252 | 
+253 |       // The warning line naming the failed scene path.
+254 |       const named = warnings.find((line) => line.includes("scene write failed at"))
+255 |       expect(named).toBeDefined()
+                          ^
+error: expect(received).toBeDefined()
+
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/test/scene.test.ts:255:21)
+(fail) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [1.50ms]
+(pass) an unwritable scene location > writeScene returns ok:false instead of throwing [0.17ms]
+
+packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [44.36ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [25.15ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [24.64ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [5.40ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [0.12ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [2.77ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [22.49ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [45.25ms]
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [0.86ms]
+error: Cannot find module '../../mpd-mcp-shared/log-sink' from '/tmp/lane-c-src-nPWC7S/packages/mpd-dsh-adapter-plugin/src/index.ts'
+(fail) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [5.81ms]
+(pass) the pause surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the ONLY pause and never a halt that does not exist [0.22ms]
+(pass) the pause surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [0.31ms]
+
+packages/mpd-team-watchdog-plugin/test/predicate.test.ts:
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > 12 simulated minutes of an uncommitted streaming answer: NO warn, NO hold, NO write [0.91ms]
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > the same 12 minutes WITHOUT the enrichment stays OUTSTANDING (§1 rule 3's stated asymmetry) [0.74ms]
+(pass) §9 row (b) — a member between turns is PARKED, not silent > a closed turn with a STALE previous-generation stamp: NO warn, NO hold, and PARKED is named [0.80ms]
+(pass) §9 row (d) — an OUTSTANDING request: the frozen ladder, end to end > first WARN only after 600 s, then ESCALATE on the sixth observation, and the hold lands [2.51ms]
+(pass) §4 degradation — the heartbeat fallback reports once and never pauses > no channel evidence at all: ONE warn (cause silence-heartbeat), no hold, source named [1.25ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.03ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.03ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.03ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.03ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.01ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.10ms]
+(pass) the machine > a new attemptId starts a clean streak [0.06ms]
+(pass) the machine > any recent stamp resets the streak [0.02ms]
+(pass) the machine > a claimed task whose owner never stamped is never-started, and never escalates [0.04ms]
+(pass) the machine > a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates [0.03ms]
+(pass) the machine > a stale streak is RESET by the boundary (the completed turn cannot spend it later) [0.04ms]
+(pass) the machine > W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick [0.12ms]
+(pass) the machine > W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent) [0.03ms]
+(pass) the machine > a disabled watchdog observes nothing [0.01ms]
+(pass) the machine over a real team record > WARN then ESCALATE land on disk with the hold applied through the tool seam [1.43ms]
+(pass) the machine over a real team record > a live knob change is picked up without a restart [0.68ms]
+
+packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:
+(pass) a staged plan is never a dispatch problem > 12 UNOWNED pending tasks (a plan nothing was dispatched into): NO record, NO console line, NO hold [0.40ms]
+(pass) a staged plan is never a dispatch problem > CONTROL: the same 12 tasks once CLAIMED still report every never-started task [0.66ms]
+(pass) a staged plan is never a dispatch problem > a task whose work came from an EARLIER revision stays observable — and only that task does [0.38ms]
+(pass) candidateFor applies the precondition > an un-dispatched task is not a candidate; a dispatched one is [0.06ms]
+(pass) candidateFor applies the precondition > a stamp for the task keeps it observable even without a live attempt [0.05ms]
+(pass) candidateFor applies the precondition > an EARLIER generation's stamp still proves the task was worked on; another TEAM's does not [0.06ms]
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the pre-step listener DELEGATES: the decision reaches the harness unchanged [0.90ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the listener delegates DOWNSTREAM: a later listener still runs and its decision wins [0.54ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > NEGATIVE CONTROL: the retired shape really does clobber the decision [0.28ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > no listener we install returns a value on a non-waterfall dispatch (emit/serial) [0.37ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > a THROWING stamp still delegates: a heartbeat failure never vetoes the step [0.49ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.12ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.20ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [0.25ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [0.35ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.15ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.14ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [0.33ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.19ms]
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [1.57ms]
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [0.95ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.22ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [0.77ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.27ms]
+
+packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts:
+(pass) r6 — the in-flight derivation (pure) > a start with no completion is in flight; its completion closes it [0.14ms]
+(pass) r6 — the in-flight derivation (pure) > callId pairing: a completed sibling cannot clear a still-running call [0.03ms]
+(pass) r6 — the in-flight derivation (pure) > a harness build without callIds falls back to the newest-stamp rule [0.12ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > 3x the threshold inside ONE call produces NO warn, NO escalate and NO hold [0.11ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > FALSIFIER: toolInFlightMaxMs 0 restores the pre-r6 escalation for the SAME input [0.09ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > past the bound the entry STOPS suppressing: one tool-expired report, never an escalate [0.05ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > the WEDGE case is untouched: no in-flight entry still warns then escalates once [0.04ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > a finished tool call is NOT in flight: the call that COMPLETED does not suppress [0.02ms]
+(pass) r6 — the real engine, a real long command, and the durable store > a member 4x the threshold inside ONE real command gets NO warn, NO escalate and NO hold — and is watched again when it completes [1610.87ms]
+(pass) r6 — the real engine, a real long command, and the durable store > a tool that THROWS is closed by its POST (the harness routes tool failures through post-execute) [356.94ms]
+(pass) r6 — the real engine, a real long command, and the durable store > a PRE with NO POST (a killed call) is bounded: one tool-expired record, no scene, no hold, no repeat [2.27ms]
+(pass) r6 — the real engine, a real long command, and the durable store > a DENIED call is never marked in flight (nothing to explain, nothing leaked) [2.67ms]
+(pass) r6 — the real engine, a real long command, and the durable store > the SEAM is soft-probed: an adapter without the pre hook warns and keeps the pre-r6 behaviour [1.48ms]
+
+packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts:
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > RED-first: a stamp PREDATING the record's createdAt is not this generation's work [0.08ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > the same candidate is reported `never-started`, and never escalates [0.07ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > a stamp AT OR AFTER createdAt IS this generation: silence still warns and escalates [0.09ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > an ABSENT createdAt stays permissive (§0/A3 — the r7 convention, pinned) [0.03ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > approvedAt counts too: the floor is the NEWER of the two [0.02ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > ENGINE: the measured leak shape (a day-old stamp of an EARLIER revision) holds nothing [0.81ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the resolved knob's TTL travels with a hold the ENGINE persists [1.25ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > TTL path: the hold releases itself, writes the incident, and touches no team byte [0.93ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > ACTIVITY path: a stamp earned AFTER the hold disproves the wedge [0.74ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > another team's stamp cannot release this team's hold [0.48ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the HOLD tool carries ttl_ms and inherits the resolved knob when omitted [0.40ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > a legacy hold with no ttlMs reads as 0 (no bound is ever invented) [0.16ms]
+(pass) the pause surface — the watchdog's preserving hold IS the only pause (0.1.7: no halt exists) > the hold is the ONE pause reported; a halt that does not exist is never named [0.83ms]
+(pass) the pause surface — the watchdog's preserving hold IS the only pause (0.1.7: no halt exists) > a team with no pause renders as not paused, and NO new resume verb was added [0.18ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > the derivation reads the record alone [0.11ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: OUTSTANDING + blocked dependency is PARKED — no warn, no hold, no scene [0.63ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: the suppression is DERIVED, not sticky — finishing the dependency warns again [0.80ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > knobReadings is pure: difference ⇒ restartRequired, equality ⇒ silence [0.08ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > ENGINE: one warning per process, naming the file value and the live value [0.61ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > the status view prints the per-knob table with restartRequired [0.69ms]
+
+17 tests failed:
+(fail) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [0.90ms]
+(fail) sidebar mount guard: profile-dir derivation > DISABLED only when NEITHER the profile nor the bundle can resolve the sidebar [0.16ms]
+(fail) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [0.40ms]
+(fail) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [0.17ms]
+(fail) the gate reddens on a seeded violation (negative control) [1.22ms]
+(fail) llm catalog plane > a missing llm service degrades and warns exactly once [0.36ms]
+(fail) llm catalog plane > a partial seam degrades, names the missing method, and reports capabilities false [0.20ms]
+(fail) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [0.81ms]
+(fail) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.36ms]
+(fail) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.42ms]
+(fail) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [0.73ms]
+(fail) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.34ms]
+(fail) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.41ms]
+(fail) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [1.27ms]
+(fail) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.32ms]
+(fail) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [1.50ms]
+(fail) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [5.81ms]
+
+ 741 pass
+ 17 fail
+ 5391 expect() calls
+Ran 758 tests across 51 files. [6.37s]

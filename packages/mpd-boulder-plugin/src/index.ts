@@ -18,12 +18,12 @@ import {
   endTaskTimer,
 } from "./vendor/index.ts"
 import { join } from "node:path"
-import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** Cordis plugin name of this row; the loader keys the mounted instance on it. */
 export const name = "mpd-boulder"
-/** Harness services required before `apply` runs: only the tool registrar. */
-export const inject = ["tools"]
+/** Harness services required before `apply` runs: only the tool registrar, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the cordis context this plugin uses: the tool registrar plus an optional service lookup. */
 type Ctx = { tools: any; get?: (k: string) => any }

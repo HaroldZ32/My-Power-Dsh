@@ -1,0 +1,11 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 29624 declaration(s); skipped 13875 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-mcp-shared/log-sink.test.ts (1)
+  201: comment — fd
+
+error: script "verify:comments" exited with code 1

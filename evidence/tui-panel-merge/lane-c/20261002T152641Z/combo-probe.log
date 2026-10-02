@@ -1,0 +1,9 @@
+alt+a    key=alt+a    accepted
+alt+s    key=alt+s    REFUSED
+ctrl+a   key=ctrl+a   REFUSED
+alt+t    key=alt+t    accepted
+alt+m    key=alt+m    accepted
+alt+up   key=alt+upArrow REFUSED
+alt+b    key=alt+b    accepted
+alt+d    key=alt+d    accepted
+host action defaults: paste=ctrl+v|alt+v history=ctrl+r editor=ctrl+g transcript=ctrl+o trajectory=ctrl+t dashboard=ctrl+a contextPanel=ctrl+p showAll=ctrl+e redraw=ctrl+l todoFold=ctrl+q questionFold=ctrl+k expandEditor=ctrl+shift+e star=alt+s

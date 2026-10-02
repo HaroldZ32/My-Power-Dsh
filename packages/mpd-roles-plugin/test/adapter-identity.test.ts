@@ -5,9 +5,13 @@
 //   · FALLBACK — no mounted `mpdDsh`: `apply` warns EXACTLY ONCE, naming the identity;
 //   · MOUNTED  — a mounted `mpdDsh`: NO warning, identity `mounted:mpdDsh`, and the
 //     three roster tools are registered THROUGH the mounted adapter, not beside it.
+//
+// R5 (terminal silence): the row's diagnostics are READ BACK from
+// `<workspace>/.mpd/logs/mpd-roles.log` under a per-arm sandbox, and stdout is asserted EMPTY —
+// the warning is still emitted exactly once, it no longer goes to a terminal.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, apply } from "../src/index.ts"
@@ -43,6 +47,56 @@ function captureStdout(): { lines: string[]; restore: () => void } {
   return { lines, restore: () => { console.log = original } }
 }
 
+/**
+ * Read the non-empty lines a file gained since `offset`.
+ *
+ * @param file the row log to read back.
+ * @param offset the byte offset marked before the call under test.
+ * @returns the appended text split into non-empty lines; `[]` when the file is unreadable.
+ */
+function appendedAfter(file: string, offset: number): string[] {
+  try {
+    return readFileSync(file, "utf8").slice(offset).split("\n").filter((line) => line !== "")
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Run `run` with the row-log root pinned to a fresh SANDBOX workspace, and collect what this row
+ * appended to its log.
+ *
+ * R5 moved the row's diagnostics off `console.log` and into `<workspace>/.mpd/logs/<row>.log`, so the
+ * arms below read the file a user would instead of a stdout capture that can no longer see anything.
+ * `MPD_MCP_LOG_DIR` and `DSH_WORKSPACE_ROOT` are BOTH pinned to the sandbox — the adapter's
+ * workspace-root helper resolves `DSH_WORKSPACE_ROOT` first and an ambient value would otherwise win
+ * — and both are put back before the arm returns. The repository's own `.mpd/logs` is never touched.
+ *
+ * @param row the row log's base name, i.e. `<row>.log`.
+ * @param run the call under test.
+ * @returns the call's own result, plus the lines appended to that row log while it ran.
+ */
+async function inRowLog<T>(row: string, run: () => T): Promise<{ result: T; lines: string[] }> {
+  // The sandbox workspace this arm's row log is written under; removed before the arm returns.
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-roles-rowlog-"))
+  // The two env keys the sink's root chain reads, saved for the restore below.
+  const saved = { logDir: process.env.MPD_MCP_LOG_DIR, workspace: process.env.DSH_WORKSPACE_ROOT }
+  process.env.MPD_MCP_LOG_DIR = sandbox
+  process.env.DSH_WORKSPACE_ROOT = sandbox
+  // This row's log file under the sandbox.
+  const file = join(sandbox, ".mpd", "logs", `${row}.log`)
+  // The log's byte size BEFORE the call, so only the appended bytes are read back.
+  let offset = 0
+  try { offset = statSync(file).size } catch { offset = 0 }
+  try {
+    return { result: await run(), lines: appendedAfter(file, offset) }
+  } finally {
+    if (saved.logDir === undefined) delete process.env.MPD_MCP_LOG_DIR; else process.env.MPD_MCP_LOG_DIR = saved.logDir
+    if (saved.workspace === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = saved.workspace
+    rmSync(sandbox, { recursive: true, force: true })
+  }
+}
+
 /** A mounted `mpdDsh` stand-in: it records the registrations made THROUGH it. */
 function mountedAdapterStub(): {
   adapter: {
@@ -67,7 +121,7 @@ function mountedAdapterStub(): {
 interface FakeCtxOptions {
   /** The value ctx.get(mpdDsh) answers; undefined models the fallback arm. */
   mounted?: unknown
-  /** Whether the fake ctx exposes a logger, so the stdout-only warning path stays reachable. */
+  /** Whether the fake ctx exposes a logger, so the ROW-LOG-only warning path stays reachable. */
   logger?: boolean
 }
 
@@ -110,24 +164,27 @@ describe("F1 vocabulary (standing pin)", () => {
 })
 
 describe("F1 fallback arm: no mounted mpdDsh", () => {
-  test("warns exactly ONCE per apply and names the private adapter identity", () => {
+  test("warns exactly ONCE per apply and names the private adapter identity", async () => {
     /** Captured stdout, restored in finally so a failing assertion cannot leak the patch. */
     const stdout = captureStdout()
     /** The fallback-arm ctx: no mounted mpdDsh, so an adapter must be created. */
     const fake = fakeCtx() // ctx.get("mpdDsh") -> undefined
     try {
-      apply(fake.ctx)
+      /** The apply's own effect on `mpd-roles.log`: the log root is pinned to a sandbox for the call. */
+      const log = await inRowLog("mpd-roles", () => { apply(fake.ctx) })
+
+      expect(fallbackWarnings(log.lines).length).toBe(1)
+      expect(fallbackWarnings(fake.warnings).length).toBe(1)
+      expect(fallbackWarnings(log.lines)[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
+      /** The R5 invariant: this diagnostic never reaches stdout. */
+      expect(stdout.lines).toEqual([])
+
+      // The fallback really built a second adapter: the three tools landed in the fake
+      // ctx's own tools service, which is the surface `createDshAdapter(ctx)` uses.
+      expect(fake.registered.map((definition) => definition.name).sort()).toEqual([...EXPECTED_TOOLS].sort())
     } finally {
       stdout.restore()
     }
-
-    expect(fallbackWarnings(stdout.lines).length).toBe(1)
-    expect(fallbackWarnings(fake.warnings).length).toBe(1)
-    expect(fallbackWarnings(stdout.lines)[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK)
-
-    // The fallback really built a second adapter: the three tools landed in the fake
-    // ctx's own tools service, which is the surface `createDshAdapter(ctx)` uses.
-    expect(fake.registered.map((definition) => definition.name).sort()).toEqual([...EXPECTED_TOOLS].sort())
   })
 
   test("the fallback identity is assertable on the mpdRoles service field", () => {
@@ -146,22 +203,27 @@ describe("F1 fallback arm: no mounted mpdDsh", () => {
     expect(typeof fake.provided.mpdRoles.get).toBe("function")
   })
 
-  test("a warning reaches stdout even when the ctx exposes no logger", () => {
-    /** Captured stdout, since this arm proves the warning reaches it with no logger present. */
+  test("a warning reaches the row log even when the ctx exposes no logger", async () => {
+    /** Captured stdout, since R5 keeps this diagnostic off the terminal with no logger present. */
     const stdout = captureStdout()
-    /** A ctx with NO logger, forcing the warning through console.log instead. */
+    /** A ctx with NO logger, leaving the row log as the only sink for the one fallback warning. */
     const fake = fakeCtx({ logger: false })
     try {
-      apply(fake.ctx)
+      /** The apply's own effect on `mpd-roles.log`, read back from the sandbox. */
+      const log = await inRowLog("mpd-roles", () => { apply(fake.ctx) })
+      // A headless boot still reports: the warning lands in the row log...
+      expect(fallbackWarnings(log.lines).length).toBe(1)
+      // ...with no logger sink to duplicate it into, and nothing on stdout (R5).
+      expect(fake.warnings).toEqual([])
+      expect(stdout.lines).toEqual([])
     } finally {
       stdout.restore()
     }
-    expect(fallbackWarnings(stdout.lines).length).toBe(1)
   })
 })
 
 describe("F1 healthy arm: a mounted mpdDsh", () => {
-  test("emits NO warning and reports the mounted identity on both surfaces", () => {
+  test("emits NO warning and reports the mounted identity on both surfaces", async () => {
     /** Captured stdout, which the healthy arm must keep free of fallback warnings. */
     const stdout = captureStdout()
     /** The mounted adapter stand-in whose registrations prove the wiring. */
@@ -169,21 +231,24 @@ describe("F1 healthy arm: a mounted mpdDsh", () => {
     /** A ctx resolving the mounted stub, i.e. the healthy arm. */
     const fake = fakeCtx({ mounted: stub.adapter })
     try {
-      apply(fake.ctx)
+      /** The apply's own effect on `mpd-roles.log`, read back from the sandbox. */
+      const log = await inRowLog("mpd-roles", () => { apply(fake.ctx) })
+
+      expect(fallbackWarnings(log.lines)).toEqual([])
+      expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
+
+      /** The identity banner lines, asserted to number exactly ONE per apply, in the ROW LOG since R5. */
+      const identityLines = log.lines.filter((line) => line.includes("adapterIdentity="))
+      expect(identityLines.length).toBe(1)
+      expect(identityLines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_MOUNTED)
+      expect(identityLines[0]).not.toContain("fallback:")
+      /** The boot line is a row-log line now, never a terminal write. */
+      expect(stdout.lines).toEqual([])
+
+      expect(fake.provided.mpdRoles.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
     } finally {
       stdout.restore()
     }
-
-    expect(fallbackWarnings(stdout.lines)).toEqual([])
-    expect(fake.warnings.filter((line) => line.includes("ADAPTER FALLBACK"))).toEqual([])
-
-    /** The identity banner lines, asserted to number exactly ONE per apply. */
-    const identityLines = stdout.lines.filter((line) => line.includes("adapterIdentity="))
-    expect(identityLines.length).toBe(1)
-    expect(identityLines[0]).toContain("adapterIdentity=" + ADAPTER_IDENTITY_MOUNTED)
-    expect(identityLines[0]).not.toContain("fallback:")
-
-    expect(fake.provided.mpdRoles.adapterIdentity).toBe(ADAPTER_IDENTITY_MOUNTED)
   })
 
   test("the three tools are registered THROUGH the mounted adapter, not beside it", () => {

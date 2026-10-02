@@ -1,0 +1,47 @@
+########## mpd-qa-roles-probe  (committed 57036 B vs fresh 57010 B)
+574c574
+<     llmResolveCallConfig(config2, signal) {
+---
+>     llmResolveCallConfig(config, signal) {
+578c578
+<       return llm.resolveCallConfig.call(llm, config2, signal);
+---
+>       return llm.resolveCallConfig.call(llm, config, signal);
+1179c1179
+<       await new Promise((resolve2) => setTimeout(resolve2, PRESET_RESOLVE_STEP_MS));
+---
+>       await new Promise((resolve) => setTimeout(resolve, PRESET_RESOLVE_STEP_MS));
+   diff lines: 68
+########## mpd-team-watchdog-plugin  (committed 185987 B vs fresh 180342 B)
+5d4
+< var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+21c20
+<   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+---
+>   const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+34,50d32
+< var __toCommonJS = (from) => {
+<   var entry = (__moduleCache ??= new WeakMap).get(from), desc;
+<   if (entry)
+<     return entry;
+<   entry = __defProp({}, "__esModule", { value: true });
+   diff lines: 574
+bash: line 1: evidence/independence/seam-name-single-source/20261002T152308Z/scratch-builds/mpd-tui-plugin.js: No such file or directory
+########## mpd-tui-plugin  (committed 211076 B vs fresh  B)
+diff: evidence/independence/seam-name-single-source/20261002T152308Z/scratch-builds/mpd-tui-plugin.js: No such file or directory
+diff: evidence/independence/seam-name-single-source/20261002T152308Z/scratch-builds/mpd-tui-plugin.js: No such file or directory
+   diff lines: 0
+########## mpd-team-core-plugin  (committed 113871 B vs fresh 116001 B)
+13a14,18
+> var DSH_SEAM_TOOLS = "tools";
+> var DSH_SEAM_COMMANDS = "commands";
+> function dshSeamInject(...names) {
+>   return [...names];
+> }
+573c578
+<     llmResolveCallConfig(config2, signal) {
+---
+>     llmResolveCallConfig(config, signal) {
+577c582
+<       return llm.resolveCallConfig.call(llm, config2, signal);
+   diff lines: 115

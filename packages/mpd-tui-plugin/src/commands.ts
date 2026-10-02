@@ -23,9 +23,8 @@
 // session event, and only after `registration.ts` VERIFIED that the event type is
 // known to a reachable dsh-session copy — an unregistered log-only event would
 // make the user's session unresumable (iron rule 2).
-import type { CommandsLike, PluginContextLike, SeamOutcome, SessionLike } from "./types.js"
+import type { SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
 import { scalarText } from "./sanitize.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
 import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
@@ -36,6 +35,8 @@ export interface CommandActions {
   openBoard(via: "command" | "shortcut"): boolean
   /** Open the team-workflow surface (frozen §3.1). */
   openTeam(): boolean
+  /** Open the merged panel: the host's own subagent rows above the MPD team body. */
+  openSubagents(): boolean
   /** Open the plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
@@ -56,52 +57,32 @@ const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
 
 /**
  * Activate `/mpd`.
- * @param ctx - the plugin context.
- * @param log - diagnostics.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param actions - the handlers.
  * @returns the seam handle.
  */
-export function registerCommands(ctx: PluginContextLike, log: Log, actions: CommandActions): { outcome(): SeamOutcome } {
-  /** The seam result, rewritten when the registration is requested or refused. */
-  let outcome: SeamOutcome = { state: "absent", detail: "commands was not injected" }
-
-  onService(ctx, "commands", (_scoped, service) => {
-    /** The probed service as the command registry, before `register` is trusted. */
-    const commands = service as CommandsLike
-    if (typeof commands?.register !== "function") {
-      outcome = { state: "refused", detail: "commands.register is missing" }
-      return
-    }
-    try {
-      commands.register({
-        name: COMMAND_ROOT,
-        description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
-        handler: async (invocation): Promise<CommandResult> => {
-          /** The invocation's lower-cased input, empty for the bare `/mpd` form. */
-          const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
-          /** The invoking session when the registry supplied one; the log-only record needs it. */
-          const session = invocation?.agent?.session
-          if (raw === "") {
-            // Bare form = picker. The host dialog supplies the localized chrome;
-            // labels stay the host's where the contract wants that.
-            const picked = await actions.pickAction()
-            return runAction(picked ?? "board", actions, session)
-          }
-          /** The first whitespace-separated token, i.e. the action to run. */
-          const head = raw.split(/\s+/u)[0] ?? ""
-          return runAction(head, actions, session)
-        },
-      })
-      // No read-back for a command registration in this composition, and a
-      // failed register throws instead of returning a sentinel: `requested`.
-      outcome = { state: "requested", detail: `/${COMMAND_ROOT} requested (no host read-back at apply time)` }
-    } catch (error) {
-      outcome = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.debug(`/${COMMAND_ROOT} registration refused: ${outcome.detail ?? ""}`)
-    }
+export function registerCommands(tui: TuiAdapter, actions: CommandActions): { outcome(): SeamOutcome } {
+  /** The adapter's handle for this one registration; it carries the measured outcome. */
+  const handle = tui.registerCommand({
+    name: COMMAND_ROOT,
+    description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+    handler: async (invocation): Promise<CommandResult> => {
+      /** The invocation's lower-cased input, empty for the bare `/mpd` form. */
+      const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : ""
+      /** The invoking session when the registry supplied one; the log-only record needs it. */
+      const session = invocation?.agent?.session
+      if (raw === "") {
+        // Bare form = picker. The host dialog supplies the localized chrome;
+        // labels stay the host's where the contract wants that.
+        const picked = await actions.pickAction()
+        return runAction(picked ?? "board", actions, session)
+      }
+      /** The first whitespace-separated token, i.e. the action to run. */
+      const head = raw.split(/\s+/u)[0] ?? ""
+      return runAction(head, actions, session)
+    },
   })
-
-  return { outcome: () => outcome }
+  return { outcome: (): SeamOutcome => handle.outcome() }
 }
 
 /** One action of the `/mpd` grammar. */
@@ -122,6 +103,11 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     return actions.openTeam()
       ? { kind: "success" }
       : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" }
+  }
+  if (action === "subagents") {
+    return actions.openSubagents()
+      ? { kind: "success" }
+      : { kind: "error", text: "mpd: the subagents + team panel is not available in this composition" }
   }
   if (action === "plan") {
     return actions.openPlan()

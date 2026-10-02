@@ -1,0 +1,8 @@
+(pass) t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-throwing [0.25ms]
+(pass) t48 plugin: every registered tool declares an OBJECT-ROOTED parameters schema [0.08ms]
+(pass) write-on-change: sameAuditOutcome is true only for an identical outcome [0.07ms]
+
+ 22 pass
+ 0 fail
+ 98 expect() calls
+Ran 22 tests across 1 file. [22.00ms]

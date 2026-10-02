@@ -34,7 +34,7 @@
 //     `not-live` rather than silently ignored.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { createDshAdapter, type DshAdapter, type DshLiveAgent, type DshTeamView, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, createDshAdapter, dshSeamInject, type DshAdapter, type DshLiveAgent, type DshTeamView, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-team-compact"
@@ -60,7 +60,7 @@ export const name = "mpd-team-compact"
 //    same thing (`mpd-workmate`: inject ["tools","subagents"]), so this is the established
 //    pattern rather than a new one. `tools` is registered by the harness itself, so unlike
 //    `compaction` it is always satisfiable and cannot park the row.
-export const inject: string[] = ["tools"]
+export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The narrow slice of a cordis context this row uses: event seam, service reader and logger, all optional so a host lacking one still applies. */
 type Ctx = { on?: (e: string, h: (...a: any[]) => any) => any; get?: (k: string) => any; logger?: any; [k: string]: any }

@@ -1,0 +1,8 @@
+(pass) the gesture boundary leaves every non-gesture step untouched [0.18ms]
+(pass) the plugin reaches the seams only through the adapter (no direct command service, event bus or host import) [0.21ms]
+(pass) apply degrades safely when the composition has no command registry and no event bus [0.07ms]
+
+ 15 pass
+ 0 fail
+ 134 expect() calls
+Ran 15 tests across 2 files. [29.00ms]

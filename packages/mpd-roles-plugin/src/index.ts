@@ -21,12 +21,12 @@ import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
-/** The seams this row needs declared: the tool registry and the subagent spawner, both read through the adapter. */
-export const inject = ["tools", "subagents"]
+/** The seams this row needs declared: the tool registry and the subagent spawner, both named by their adapter constants. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string) => any; [k: string]: any }
@@ -389,7 +389,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const message = "[mpd-roles] " + line
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
-      else console.log(message)
+      else rowLogLine("mpd-roles", message)
     } catch { /* logging must never take the roster down */ }
   }
   // The adapter-identity warning must be visible in a HEADLESS boot as well:
@@ -399,7 +399,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     /** The line with this row's prefix, for the stdout-first reporter. */
     const message = "[mpd-roles] " + line
     try {
-      console.log(message)
+      rowLogLine("mpd-roles", message)
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(message)
     } catch { /* logging must never take the roster down */ }
   }
@@ -581,7 +581,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       members: teamMembers(),
       presets: ["mpd"],
       warn: (line) => warnOnce("team-section:" + line, line),
-      log: (line) => console.log("[mpd-roles] " + line),
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
     })
     guardOutcome.push("rosterSection=agent-scoped order=605")
   } catch (error) {
@@ -592,7 +592,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     installSessionGate(dsh, {
       presets: ["mpd"],
       warn: (line) => warn(line),
-      log: (line) => console.log("[mpd-roles] " + line),
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
     })
     guardOutcome.push("sessionGate=advisory")
   } catch (error) {
@@ -600,13 +600,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")")
   }
   try {
-    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "))
+    rowLogLine("mpd-roles", "[mpd-roles] team plane: " + guardOutcome.join(" "))
   } catch { /* logging must never take the roster down */ }
 
   // The apply-time identity line: on the healthy path this is the row's ONLY new
   // output, and it carries the same `adapterIdentity=` field the `mpdRoles` service
   // exposes, so a mount lane can assert WHICH adapter branch this row really took.
   try {
-    console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx))
+    rowLogLine("mpd-roles", "[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx))
   } catch { /* logging must never take the roster down */ }
 }

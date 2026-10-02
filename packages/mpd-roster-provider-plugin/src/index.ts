@@ -25,7 +25,7 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
@@ -44,7 +44,7 @@ export const name = "mpd-roster-provider"
  * without a subagent plane there is no provider to register, so being parked by its own dependency is
  * the honest outcome rather than a silent no-op.
  */
-export const inject = ["subagents"]
+export const inject = dshSeamInject(DSH_SEAM_SUBAGENTS)
 
 /** The provider name the bundle points `freshProvider` at. */
 export const PROVIDER_NAME = "mpd-roster"
@@ -184,7 +184,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       if (routed !== routable) {
         /** The options the harness will actually run on, logged so a wrong label is visible at spawn time. */
         const options = routed.agentOptions ?? {}
-        console.log(`[mpd-roster] routed teammate "${String(labelOf(routable) ?? "")}" -> ${String(options.provider)}/${String(options.model)}${options.reasoningEffort === undefined ? "" : " @ " + String(options.reasoningEffort)}`)
+        rowLogLine("mpd-roster", `[mpd-roster] routed teammate "${String(labelOf(routable) ?? "")}" -> ${String(options.provider)}/${String(options.model)}${options.reasoningEffort === undefined ? "" : " @ " + String(options.reasoningEffort)}`)
       }
       return base.start(routed)
     },
@@ -193,10 +193,10 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   if (config.enabled === false) return
   try {
     disposers.push(dsh.registerSubagentProvider(provider))
-    console.log(`[mpd-roster] provider "${PROVIDER_NAME}" registered (delegating to "${configBaseName}"; point the team tool row's freshProvider at it)`)
+    rowLogLine("mpd-roster", `[mpd-roster] provider "${PROVIDER_NAME}" registered (delegating to "${configBaseName}"; point the team tool row's freshProvider at it)`)
   } catch (error) {
     // A composition without a subagent plane must not lose its boot: say so once and stay inert.
-    console.warn(`[mpd-roster] the provider could not be registered — teammates keep the Lead's route: ${String((error as Error)?.message ?? error)}`)
+    rowLogLine("mpd-roster", `[mpd-roster] the provider could not be registered — teammates keep the Lead's route: ${String((error as Error)?.message ?? error)}`)
   }
 
   if (typeof ctx?.on === "function") ctx.on("dispose", () => { for (const dispose of disposers) { try { dispose() } catch { /* already gone */ } } })

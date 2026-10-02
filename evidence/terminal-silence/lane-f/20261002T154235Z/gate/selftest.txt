@@ -1,0 +1,14 @@
+# no-terminal-writes --self-test
+
+[ok] comment-stripped scan finds exactly the four real writes, at their ORIGINAL lines
+[ok] the ORIGINAL line text is reported, not the stripped one
+[ok] a non-`.ts` file is counted as NOT COVERED and never fails the run
+[ok] the package-ROOT launcher band is walked too
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+[ok] the ceiling rule still bites on a SEEDED table (the negative control for the shrink-only rule)
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: PASS (10/10 checks)

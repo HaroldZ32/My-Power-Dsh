@@ -3,12 +3,12 @@
 // 2) tool-output truncation (post-execute, token budget protection)
 // 3) edit-error recovery guidance (post-execute)
 import { existsSync, readFileSync } from "node:fs"
-import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-tools"
-/** The tool registry this row attaches its guard and both waterfalls to. */
-export const inject = ["tools"]
+/** The tool registry this row attaches its guard and both waterfalls to, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the event bus the adapter resolves. */
 type Ctx = { tools: any; on: (ev: string, fn: (...args: any[]) => any) => void; [k: string]: any }

@@ -1,16 +1,214 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync4, readdirSync as readdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join5 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_COMMANDS = "commands";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -38,11 +236,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -55,7 +265,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -206,6 +416,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -271,7 +482,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -559,6 +770,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -1033,7 +1245,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -1052,7 +1264,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1144,10 +1356,10 @@ function createDshAdapter(ctx, config = {}) {
 }
 
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync } from "node:fs";
+import { join as join2 } from "node:path";
 function mailboxPath(workspace) {
-  return join(workspace, ".mpd", "team", "mailbox.jsonl");
+  return join2(workspace, ".mpd", "team", "mailbox.jsonl");
 }
 function fold(records) {
   const byId = new Map;
@@ -1210,7 +1422,7 @@ function readMailbox(workspace) {
   return fold(readRecords(workspace));
 }
 function appendRecord(workspace, record) {
-  mkdirSync(join(workspace, ".mpd", "team"), { recursive: true });
+  mkdirSync2(join2(workspace, ".mpd", "team"), { recursive: true });
   appendFileSync(mailboxPath(workspace), JSON.stringify(record) + `
 `);
 }
@@ -1376,17 +1588,17 @@ function reconcile(ledger, tasks) {
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
-import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join as join2 } from "node:path";
+import { existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
+import { join as join3 } from "node:path";
 function teamRoot(workspace) {
-  return join2(workspace, ".mpd", "team");
+  return join3(workspace, ".mpd", "team");
 }
-var stagingDir = (workspace) => join2(teamRoot(workspace), "staging");
-var stagingPath = (workspace, sessionId) => join2(stagingDir(workspace), sessionId + ".json");
-var contractsDir = (workspace) => join2(teamRoot(workspace), "contracts");
-var contractPath = (workspace, taskId) => join2(contractsDir(workspace), taskId + ".json");
-var holdPath = (workspace) => join2(teamRoot(workspace), "hold.json");
-var archiveDir = (workspace) => join2(teamRoot(workspace), "archive");
+var stagingDir = (workspace) => join3(teamRoot(workspace), "staging");
+var stagingPath = (workspace, sessionId) => join3(stagingDir(workspace), sessionId + ".json");
+var contractsDir = (workspace) => join3(teamRoot(workspace), "contracts");
+var contractPath = (workspace, taskId) => join3(contractsDir(workspace), taskId + ".json");
+var holdPath = (workspace) => join3(teamRoot(workspace), "hold.json");
+var archiveDir = (workspace) => join3(teamRoot(workspace), "archive");
 function readJson(path) {
   try {
     return JSON.parse(readFileSync2(path, "utf8"));
@@ -1395,7 +1607,7 @@ function readJson(path) {
   }
 }
 function writeJson(path, value) {
-  mkdirSync2(join2(path, ".."), { recursive: true });
+  mkdirSync3(join3(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2) + `
 `);
 }
@@ -1442,12 +1654,12 @@ function addTask(plan, task) {
   return { ...plan, tasks: [...plan.tasks, { ...task, subject }] };
 }
 function archivePlan(workspace, plan) {
-  const target = join2(archiveDir(workspace), plan.planId);
-  mkdirSync2(target, { recursive: true });
-  writeJson(join2(target, "plan.json"), plan);
+  const target = join3(archiveDir(workspace), plan.planId);
+  mkdirSync3(target, { recursive: true });
+  writeJson(join3(target, "plan.json"), plan);
   const staged = stagingPath(workspace, plan.sessionId);
   if (existsSync2(staged))
-    rmSync(staged, { force: true });
+    rmSync2(staged, { force: true });
   return target;
 }
 function claimContract(workspace, task, claimant, now) {
@@ -1482,7 +1694,7 @@ function listContracts(workspace) {
   for (const name of names) {
     if (!name.endsWith(".json"))
       continue;
-    const contract = readJson(join2(contractsDir(workspace), name));
+    const contract = readJson(join3(contractsDir(workspace), name));
     if (contract !== undefined && contract.version === 1)
       out.push(contract);
   }
@@ -1501,33 +1713,33 @@ function clearHold(workspace) {
   const path = holdPath(workspace);
   if (!existsSync2(path))
     return false;
-  rmSync(path, { force: true });
+  rmSync2(path, { force: true });
   return true;
 }
 function archivePathFor(workspace, planId) {
-  return join2(archiveDir(workspace), planId);
+  return join3(archiveDir(workspace), planId);
 }
 function moveIntoArchive(workspace, from, planId) {
   const target = archivePathFor(workspace, planId);
-  mkdirSync2(archiveDir(workspace), { recursive: true });
-  renameSync(from, target);
+  mkdirSync3(archiveDir(workspace), { recursive: true });
+  renameSync2(from, target);
   return target;
 }
 
 // packages/mpd-team-core-plugin/src/team-store.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync as readdirSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join4 } from "node:path";
 function teamRoot2(workspace) {
-  return join3(workspace, ".mpd", "team");
+  return join4(workspace, ".mpd", "team");
 }
 function teamsDir(workspace) {
-  return join3(teamRoot2(workspace), "teams");
+  return join4(teamRoot2(workspace), "teams");
 }
 function teamRecordPath(workspace, teamId) {
-  return join3(teamsDir(workspace), sanitizeId(teamId) + ".json");
+  return join4(teamsDir(workspace), sanitizeId(teamId) + ".json");
 }
 function teamsIndexPath(workspace) {
-  return join3(teamRoot2(workspace), "teams.json");
+  return join4(teamRoot2(workspace), "teams.json");
 }
 function sanitizeId(value) {
   const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
@@ -1542,7 +1754,7 @@ function readJson2(path) {
   }
 }
 function writeJson2(path, value) {
-  mkdirSync3(join3(path, ".."), { recursive: true });
+  mkdirSync4(join4(path, ".."), { recursive: true });
   writeFileSync2(path, JSON.stringify(value, null, 2) + `
 `);
 }
@@ -1822,6 +2034,9 @@ function summariseTeam(record) {
   }
   return summary;
 }
+function losslessSummary(summary) {
+  return { ...summary, depths: Object.fromEntries(summary.depths) };
+}
 function memberProgress(record, name) {
   const owned = record.tasks.filter((task) => task.owner === name);
   const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled");
@@ -2042,10 +2257,10 @@ function registerTeamRoutes(webServer, deps) {
 
 // packages/mpd-team-core-plugin/src/index.ts
 var name = "mpd-team-core";
-var inject = ["tools", "commands"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
-var dispatchPath = (workspace) => join4(workspace, ".mpd", "team", "dispatch.json");
+var dispatchPath = (workspace) => join5(workspace, ".mpd", "team", "dispatch.json");
 function readLedger(workspace) {
   try {
     const raw = JSON.parse(readFileSync4(dispatchPath(workspace), "utf8"));
@@ -2055,7 +2270,7 @@ function readLedger(workspace) {
   }
 }
 function writeLedger(workspace, ledger) {
-  mkdirSync4(join4(workspace, ".mpd", "team"), { recursive: true });
+  mkdirSync5(join5(workspace, ".mpd", "team"), { recursive: true });
   writeFileSync3(dispatchPath(workspace), JSON.stringify(ledger, null, 2) + `
 `);
 }
@@ -2064,6 +2279,9 @@ function describePlan(plan) {
     return "no staged plan";
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`;
+}
+function stringList(value) {
+  return Array.isArray(value) ? value.map(String) : undefined;
 }
 function adapterFor(ctx) {
   const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
@@ -2089,17 +2307,25 @@ function apply(ctx) {
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return { workspace, sessionId, plan };
   };
-  const watchdogHold = (workspace, sessionId) => {
+  const readWatchdogHold = (workspace, sessionId) => {
     try {
       const record = recordFor(workspace, sessionId);
       if (record === undefined)
-        return;
+        return { state: "free" };
       const watchdog = typeof ctx?.get === "function" ? ctx.get("mpdWatchdog") : undefined;
-      if (typeof watchdog?.isHeld !== "function")
-        return;
-      return watchdog.isHeld(record.teamId, workspace) ? `the team watchdog holds ${record.teamId}` : undefined;
-    } catch {
-      return;
+      if (watchdog === undefined || watchdog === null)
+        return { state: "free" };
+      if (typeof watchdog.isHeld !== "function")
+        return { state: "not-readable", reason: "the mpdWatchdog service exposes no isHeld()" };
+      const view = watchdog.isHeld(record.teamId, workspace);
+      if (view === null || typeof view !== "object" || typeof view.held !== "boolean") {
+        return { state: "not-readable", reason: "mpdWatchdog.isHeld() answered without a boolean `held`" };
+      }
+      if (view.held !== true)
+        return { state: "free" };
+      return { state: "held", reason: `the team watchdog holds ${record.teamId}` };
+    } catch (error) {
+      return { state: "not-readable", reason: String(error?.message ?? error) };
     }
   };
   const recordFor = (workspace, sessionId) => {
@@ -2161,13 +2387,13 @@ function apply(ctx) {
           try {
             return planForSession(workspace, sessionId);
           } catch (error) {
-            console.warn(`[mpd-team-core] reading the staged plan failed: ${String(error?.message ?? error)}`);
+            rowLogLine("mpd-team-core", `[mpd-team-core] reading the staged plan failed: ${String(error?.message ?? error)}`);
             return { ok: true, workspace, sessionId, plan: null };
           }
         }
       });
     } catch (error) {
-      console.warn(`[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
+      rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
     }
   }
   disposers.push(dsh.registerTool({
@@ -2182,16 +2408,32 @@ function apply(ctx) {
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
         replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
         member: { type: "object", description: "add_member: {name, prompt, description?, role?}. `prompt` is what spawn_teammate receives." },
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside `task`." },
+        owner: { type: "string", description: "create_task: alias of `task.owner`." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement member list." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement task list." },
-        dry_run: { type: "boolean", description: "approve: report exactly what would be created, and create nothing." }
+        dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { plan: { type: "object" }, created: { type: "object" }, stoppedAt: { type: "string" }, archivedTo: { type: "string" }, members: { type: "array", items: { type: "object" } }, tasks: { type: "array", items: { type: "object" } }, hold: { type: "object" }, contracts: { type: "array", items: { type: "object" } } } },
+      schema: {
+        type: "object",
+        properties: {
+          plan: { oneOf: [{ type: "object" }, { type: "null" }] },
+          hold: { oneOf: [{ type: "object" }, { type: "null" }] },
+          team: { oneOf: [{ type: "object" }, { type: "null" }] },
+          summary: { oneOf: [{ type: "object" }, { type: "null" }] },
+          members: { type: "array", items: { type: "object" } },
+          tasks: { type: "array", items: { type: "object" } },
+          contracts: { type: "array", items: { type: "object" } },
+          created: { type: "object" },
+          stoppedAt: { type: "string" },
+          archivedTo: { type: "string" }
+        }
+      },
       render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}` : describePlan(value?.plan))
     },
     execute: async (args, exec) => {
@@ -2212,7 +2454,7 @@ function apply(ctx) {
           team: record ?? null,
           members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
-          summary: record === undefined ? null : summariseTeam(record),
+          summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), [])
         };
       }
@@ -2242,12 +2484,15 @@ function apply(ctx) {
       if (action === "create_task") {
         const { plan } = requirePlan(exec);
         const raw = args?.task ?? {};
+        const blockedBy = stringList(raw.blocked_by ?? raw.blockedBy ?? args?.blocked_by);
+        const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes);
+        const owner = raw.owner ?? args?.owner;
         const next = addTask(plan, {
           subject: String(raw.subject ?? ""),
           description: String(raw.description ?? ""),
-          ...Array.isArray(raw.blocked_by) ? { blockedBy: raw.blocked_by.map(String) } : {},
-          ...Array.isArray(raw.write_scopes) ? { writeScopes: raw.write_scopes.map(String) } : {},
-          ...raw.owner === undefined ? {} : { owner: String(raw.owner) }
+          ...blockedBy === undefined ? {} : { blockedBy },
+          ...writeScopes === undefined ? {} : { writeScopes },
+          ...owner === undefined ? {} : { owner: String(owner) }
         });
         writePlan(workspace, next);
         return { plan: next };
@@ -2424,8 +2669,8 @@ function apply(ctx) {
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
-      render: (_args, value) => text(value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}`).join(`
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
+      render: (_args, value) => text(value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : value?.refused !== undefined ? `refused: ${value.refused}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}`).join(`
 `))
     },
     execute: async (args, exec) => {
@@ -2439,7 +2684,9 @@ function apply(ctx) {
       }
       const hold = readHold(workspace);
       const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId;
-      const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)));
+      const watchdog = teamId === undefined ? { state: "free" } : readWatchdogHold(workspace, sessionIdOf(exec));
+      const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined);
+      const holdNote = watchdog.state === "not-readable" ? `not-readable: ${String(watchdog.reason ?? "the watchdog's hold could not be read")}` : undefined;
       let record = recordFor(workspace, sessionIdOf(exec));
       if (record === undefined)
         return { pairs: [], skipped: [], refused: "no team record in this workspace — approve a plan first" };
@@ -2466,7 +2713,7 @@ function apply(ctx) {
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
         if (pruned.forgotten.length > 0)
           writeLedger(workspace, pruned.ledger);
-        return { ...plan, forgotten: pruned.forgotten };
+        return { ...plan, forgotten: pruned.forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote } };
       }
       let ledger = pruned.ledger;
       const sent = [];
@@ -2484,7 +2731,7 @@ function apply(ctx) {
         }
       }
       writeLedger(workspace, ledger);
-      return { pairs: sent, skipped, forgotten: pruned.forgotten };
+      return { pairs: sent, skipped, forgotten: pruned.forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote } };
     }
   }));
   disposers.push(dsh.registerTool({
@@ -2515,9 +2762,9 @@ function apply(ctx) {
       const self = exec.agent;
       const mailTeam = recordFor(workspace, caller);
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }));
-      const resolve2 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
+      const resolve3 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
       if (args?.action === "send") {
-        const target = resolve2(String(args?.to ?? ""));
+        const target = resolve3(String(args?.to ?? ""));
         if (target === undefined) {
           return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` };
         }
@@ -2540,7 +2787,7 @@ function apply(ctx) {
 ${result.message.body}`, exec.signal);
           markDelivered(workspace, [result.message.id], now());
         } catch (error) {
-          console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
+          rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
         }
         return { message: result.message };
       }
@@ -2551,7 +2798,7 @@ ${result.message.body}`, exec.signal);
         return { summary: summarise(readMailbox(workspace)) };
       }
       const state = readMailbox(workspace);
-      const wanted = args?.member === undefined ? undefined : resolve2(String(args.member));
+      const wanted = args?.member === undefined ? undefined : resolve3(String(args.member));
       const memberId = wanted?.id ?? self?.session?.id ?? caller;
       return {
         messages: unreadOf(state, memberId).map((message) => ({
@@ -2621,7 +2868,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join4(root, ".mpd", "team", "staging");
+      const staging = join5(root, ".mpd", "team", "staging");
       const pending = existsSync4(staging) ? readdirSync3(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {
@@ -2631,9 +2878,9 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
             return { kind: "unavailable", reason: String(error?.message ?? error) };
           }
         })();
-        console.log(`[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
+        rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
       };
-      console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
       reportExecutor();
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
         recordFor: (sessionId) => recordFor(dsh.workspaceRoot(), sessionId),
@@ -2649,10 +2896,10 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
             return;
           }
         },
-        warn: (line) => console.warn(`[mpd-team-core] ${line}`)
+        warn: (line) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`)
       });
       if (mountTeamRoute())
-        console.log(`[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);
+        rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);
       try {
         dsh.onServiceBound(["webServer", "httpServer"], () => {
           mountTeamRoute();

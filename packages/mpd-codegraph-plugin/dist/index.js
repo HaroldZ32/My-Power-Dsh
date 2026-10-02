@@ -1,13 +1,13 @@
 // packages/mpd-codegraph-plugin/src/index.ts
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync as mkdirSync2, readFileSync, rmSync as rmSync2, statSync as statSync2, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { createRequire } from "node:module";
-import { dirname as dirname2, join, resolve as resolve2 } from "node:path";
+import { dirname as dirname2, join as join2, resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -17,6 +17,199 @@ function errorMessage(error) {
 }
 function bundleRootOf(moduleUrl) {
   return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+}
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
 }
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
@@ -46,11 +239,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -63,7 +268,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -214,6 +419,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -279,7 +485,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -567,6 +773,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -1041,7 +1248,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -1060,7 +1267,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1167,15 +1374,15 @@ function packageCodegraphPath() {
   try {
     const req = createRequire(import.meta.url);
     const p = req.resolve("@colbymchenry/codegraph/package.json");
-    const binEntry = JSON.parse(readFileSync(join(dirname2(p), "package.json"), "utf8"));
+    const binEntry = JSON.parse(readFileSync(join2(dirname2(p), "package.json"), "utf8"));
     const bin = typeof binEntry.bin === "string" ? binEntry.bin : binEntry.bin?.codegraph ?? "codegraph";
-    return join(dirname2(p), bin);
+    return join2(dirname2(p), bin);
   } catch {
     return null;
   }
 }
 function toolchainCodegraphPath() {
-  const p = join(bundleRoot(), ".toolchain", "node_modules", ".bin", "codegraph");
+  const p = join2(bundleRoot(), ".toolchain", "node_modules", ".bin", "codegraph");
   return existsSync(p) ? p : null;
 }
 function resolveBinary(config) {
@@ -1193,7 +1400,7 @@ function resolveBinary(config) {
   if (toolchain)
     return toolchain;
   for (const p of (process.env.PATH || "").split(":")) {
-    const f = join(p, "codegraph");
+    const f = join2(p, "codegraph");
     if (existsSync(f))
       return f;
   }
@@ -1202,29 +1409,29 @@ function resolveBinary(config) {
 function resolveProjectRoot(dsh, exec) {
   const override = (process.env.MPD_CODEGRAPH_PROJECT_CWD ?? process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD ?? "").trim();
   if (override.length > 0)
-    return resolve2(override);
-  return resolve2(dsh.workspaceRoot(exec));
+    return resolve3(override);
+  return resolve3(dsh.workspaceRoot(exec));
 }
 function cooldownFresh(cwd, cooldownMs) {
-  const stamp = join(cwd, ".codegraph", "init.cooldown");
+  const stamp = join2(cwd, ".codegraph", "init.cooldown");
   if (!existsSync(stamp))
     return false;
   try {
-    const age = Date.now() - statSync(stamp).mtimeMs;
+    const age = Date.now() - statSync2(stamp).mtimeMs;
     return age < cooldownMs;
   } catch {
     return false;
   }
 }
 function initProject(cwd, binary, timeoutMs) {
-  const marker = join(cwd, ".codegraph", "codegraph.db");
+  const marker = join2(cwd, ".codegraph", "codegraph.db");
   if (existsSync(marker))
     return "marker";
-  const lock = join(cwd, ".codegraph", "init.lock");
-  const lockDir = join(cwd, ".codegraph");
+  const lock = join2(cwd, ".codegraph", "init.lock");
+  const lockDir = join2(cwd, ".codegraph");
   try {
-    mkdirSync(lockDir, { recursive: true });
-    mkdirSync(lock, { recursive: false });
+    mkdirSync2(lockDir, { recursive: true });
+    mkdirSync2(lock, { recursive: false });
   } catch {
     return "locked";
   }
@@ -1235,16 +1442,26 @@ function initProject(cwd, binary, timeoutMs) {
     return r.status === 0 ? "fail-no-marker" : "fail";
   } finally {
     try {
-      rmSync(lock, { recursive: true, force: true });
+      rmSync2(lock, { recursive: true, force: true });
     } catch {}
     try {
-      writeCooldown(join(cwd, ".codegraph"), "init.cooldown");
+      writeCooldown(join2(cwd, ".codegraph"), "init.cooldown");
     } catch {}
   }
 }
 function writeCooldown(dir, file) {
   try {
-    writeFileSync(join(dir, file), String(Date.now()));
+    writeFileSync(join2(dir, file), String(Date.now()));
+  } catch {}
+}
+var openSink = null;
+function logLine(rootOf, text) {
+  try {
+    const root = rootOf();
+    if (openSink === null || openSink.root !== root) {
+      openSink = { root, sink: openLogSink("mpd-codegraph", { roots: [root] }) };
+    }
+    openSink.sink.write(text);
   } catch {}
 }
 function apply(ctx, config = {}) {
@@ -1255,21 +1472,21 @@ function apply(ctx, config = {}) {
   const cwd = resolveProjectRoot(dsh);
   const binary = resolveBinary(config);
   let status;
-  const home = resolve2(homedir());
+  const home = resolve3(homedir());
   if (!binary) {
     status = "no-binary";
-  } else if (existsSync(join(cwd, ".codegraph", "codegraph.db"))) {
+  } else if (existsSync(join2(cwd, ".codegraph", "codegraph.db"))) {
     status = "marker";
   } else if (!autoInit) {
     status = "auto-init-disabled";
-  } else if (resolve2(cwd) === home) {
+  } else if (resolve3(cwd) === home) {
     status = "skipped-home";
   } else if (cooldownFresh(cwd, cooldownMs)) {
     status = "cooldown";
   } else {
     status = initProject(cwd, binary, timeoutMs);
   }
-  console.log("[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""));
+  logLine(() => dsh.workspaceRoot(), "[mpd-codegraph] init status=" + status + " binary=" + (binary ?? "-") + " cwd=" + cwd + (status === "skipped-home" ? " (workspace is the user home; start a session inside a project dir, or set MPD_DSH_CODEGRAPH_PROJECT_CWD, or run /mpd-codegraph there)" : ""));
   dsh.registerCommand({
     name: "mpd-codegraph",
     description: "Initialize/re-run the CodeGraph index (.codegraph/codegraph.db)",
@@ -1278,7 +1495,7 @@ function apply(ctx, config = {}) {
       if (!b)
         return { kind: "error", text: "codegraph binary unavailable: install it or set MPD_DSH_CODEGRAPH_BIN" };
       const target = resolveProjectRoot(dsh, invocation);
-      const s = existsSync(join(target, ".codegraph", "codegraph.db")) ? "marker" : initProject(target, b, timeoutMs);
+      const s = existsSync(join2(target, ".codegraph", "codegraph.db")) ? "marker" : initProject(target, b, timeoutMs);
       return { kind: s === "ok" || s === "marker" ? "success" : "error", text: "mpd-codegraph init: " + s + " (" + target + ")" };
     }
   });

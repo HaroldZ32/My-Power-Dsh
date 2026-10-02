@@ -1,0 +1,16 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.22ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.73ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.32ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches the row log even when the ctx exposes no logger [0.34ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.45ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.21ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [95.04ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.51ms]
+
+ 8 pass
+ 0 fail
+ 29 expect() calls
+Ran 8 tests across 1 file. [116.00ms]

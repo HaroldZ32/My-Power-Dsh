@@ -1,17 +1,215 @@
 // packages/mpd-workmate-plugin/src/index.ts
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { join, resolve as resolve2, sep } from "node:path";
+import { join as join2, resolve as resolve3, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_SUBAGENTS = "subagents";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -39,11 +237,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -56,7 +266,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -207,6 +417,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -272,7 +483,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -560,6 +771,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -1034,7 +1246,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -1053,7 +1265,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1152,7 +1364,7 @@ function resolveDshAdapter(ctx) {
 
 // packages/mpd-workmate-plugin/src/index.ts
 var name = "mpd-workmate";
-var inject = ["tools", "subagents"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
 var PERSONA_CAP = 8 * 1024;
 var MEMORY_CAP = 8 * 1024;
 var NOTE_CAP = 1536;
@@ -1206,7 +1418,7 @@ function homeDir() {
   return process.env.HOME || homedir();
 }
 function workmateRoot() {
-  return join(homeDir(), ".mpd", "workmate");
+  return join2(homeDir(), ".mpd", "workmate");
 }
 var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
 function realUserHome() {
@@ -1227,7 +1439,7 @@ function realUserHome() {
   } catch {}
   try {
     const api = userInfo().homedir;
-    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+    if (api !== "" && resolve3(api) !== resolve3(process.env.HOME ?? api))
       return api;
   } catch {}
   return;
@@ -1242,7 +1454,7 @@ function assertMutationSandboxed(operation) {
   const home = process.env.HOME;
   const realHome = realUserHome();
   const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep);
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
     return;
   throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
@@ -1250,7 +1462,7 @@ function wmDir(name2) {
   const key = sanitizeName(name2);
   if (key === "")
     throw new WorkmateError("invalid-name", "mpd_workmate: empty workmate name — the library root is not an instance", 400);
-  return join(workmateRoot(), key);
+  return join2(workmateRoot(), key);
 }
 function sanitizeName(s) {
   const t = String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
@@ -1267,9 +1479,9 @@ function capText(text, max) {
 }
 function readMeta(dir) {
   try {
-    if (!existsSync(join(dir, "meta.json")))
+    if (!existsSync(join2(dir, "meta.json")))
       return null;
-    const m = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
+    const m = JSON.parse(readFileSync(join2(dir, "meta.json"), "utf8"));
     return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [] };
   } catch {
     return null;
@@ -1281,12 +1493,12 @@ function publicMeta(meta) {
   return out;
 }
 function writeJson(path, value) {
-  mkdirSync(join(path, ".."), { recursive: true });
+  mkdirSync2(join2(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2) + `
 `);
 }
 function indexPath() {
-  return join(workmateRoot(), "index.json");
+  return join2(workmateRoot(), "index.json");
 }
 function readIndex() {
   try {
@@ -1331,14 +1543,14 @@ function restoreIndexEntry(key, entry) {
 }
 function readNote(key) {
   try {
-    return readFileSync(join(wmDir(key), "note.md"), "utf8").trim();
+    return readFileSync(join2(wmDir(key), "note.md"), "utf8").trim();
   } catch {
     return "";
   }
 }
 function readMemory(key, tailBytes = MEMORY_CAP) {
   try {
-    const t = readFileSync(join(wmDir(key), "memory.md"), "utf8").trim();
+    const t = readFileSync(join2(wmDir(key), "memory.md"), "utf8").trim();
     if (t.length <= tailBytes)
       return t;
     return `…[earlier memory trimmed]…
@@ -1349,7 +1561,7 @@ function readMemory(key, tailBytes = MEMORY_CAP) {
 }
 function readPersona(key) {
   try {
-    return readFileSync(join(wmDir(key), "persona.md"), "utf8").trim();
+    return readFileSync(join2(wmDir(key), "persona.md"), "utf8").trim();
   } catch {
     return "";
   }
@@ -1364,7 +1576,7 @@ function autoNote(meta, persona, memory, previous = "") {
   return capText(`${identity} ${task}.${last ? " " + last.replace(/^##\s*/, "") : ""}`, NOTE_CAP);
 }
 function appendMemory(key, entry) {
-  const path = join(wmDir(key), "memory.md");
+  const path = join2(wmDir(key), "memory.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const next = (existing ? existing + `
 
@@ -1392,7 +1604,7 @@ function appendMemory(key, entry) {
   return out;
 }
 function mergePersona(key, revision) {
-  const path = join(wmDir(key), "persona.md");
+  const path = join2(wmDir(key), "persona.md");
   const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
   const merged = capText(existing + (revision ? `
 
@@ -1435,9 +1647,9 @@ function listInstances() {
   const root = workmateRoot();
   if (!existsSync(root))
     return [];
-  return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(root, e.name, "meta.json"))).map((e) => {
+  return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join2(root, e.name, "meta.json"))).map((e) => {
     const key = e.name;
-    const meta = readMeta(join(root, key));
+    const meta = readMeta(join2(root, key));
     return { name: key, meta, note: readNote(key) };
   }).sort((a, b) => b.meta.updatedAt.localeCompare(a.meta.updatedAt));
 }
@@ -1485,13 +1697,13 @@ function busyTeams(key, roots) {
   const scanRoots = roots && roots.length > 0 ? roots : [workspaceRootOf()];
   for (const root of scanRoots) {
     try {
-      const teamRoot = join(root, ".mpd", "team");
+      const teamRoot = join2(root, ".mpd", "team");
       if (!existsSync(teamRoot))
         continue;
       for (const entry of readdirSync(teamRoot, { withFileTypes: true })) {
         if (!entry.isDirectory())
           continue;
-        const file = join(teamRoot, entry.name, "team.json");
+        const file = join2(teamRoot, entry.name, "team.json");
         if (!existsSync(file))
           continue;
         try {
@@ -1503,14 +1715,14 @@ function busyTeams(key, roots) {
       }
     } catch {}
     try {
-      const records = join(root, ".mpd", "team", "teams");
+      const records = join2(root, ".mpd", "team", "teams");
       if (!existsSync(records))
         continue;
       for (const name2 of readdirSync(records)) {
         if (!name2.endsWith(".json"))
           continue;
         try {
-          const team = JSON.parse(readFileSync(join(records, name2), "utf8"));
+          const team = JSON.parse(readFileSync(join2(records, name2), "utf8"));
           if (team?.endedAt !== undefined)
             continue;
           const members = Array.isArray(team?.members) ? team.members : [];
@@ -1554,16 +1766,16 @@ function compactUtcStamp() {
   return new Date().toISOString().replace(/:/g, "").replace(/\.\d+Z$/, "Z");
 }
 function archivePathFor(key) {
-  const archiveRoot = join(workmateRoot(), ".archive");
-  mkdirSync(archiveRoot, { recursive: true });
+  const archiveRoot = join2(workmateRoot(), ".archive");
+  mkdirSync2(archiveRoot, { recursive: true });
   const stamp = compactUtcStamp();
-  let candidate = join(archiveRoot, `${key}-${stamp}`);
+  let candidate = join2(archiveRoot, `${key}-${stamp}`);
   for (let i = 2;lstatOrNull(candidate) != null && i < 1000; i++)
-    candidate = join(archiveRoot, `${key}-${stamp}-${i}`);
+    candidate = join2(archiveRoot, `${key}-${stamp}-${i}`);
   return candidate;
 }
 function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
-  const path = join(dir, "note.md");
+  const path = join2(dir, "note.md");
   let raw;
   try {
     raw = readFileSync(path, "utf8");
@@ -1588,14 +1800,14 @@ function renameWorkmate(nameArg, newNameArg, teamRoots) {
   assertNotBusy([oldKey, newKey], teamRoots);
   const renamedFrom = unique([...meta.renamedFrom, oldKey]).slice(-10);
   const nextMeta = { ...meta, name: newKey, renamedFrom, updatedAt: now() };
-  renameSync(dir, dst);
+  renameSync2(dir, dst);
   try {
-    writeFileSync(join(dst, "meta.json"), JSON.stringify(nextMeta, null, 2) + `
+    writeFileSync(join2(dst, "meta.json"), JSON.stringify(nextMeta, null, 2) + `
 `);
     renameIndexKey(oldKey, newKey, nextMeta);
   } catch (e) {
     try {
-      renameSync(dst, dir);
+      renameSync2(dst, dir);
     } catch {}
     throw new WorkmateError("internal", `mpd_workmate: rename of "${oldKey}" failed (${String(e?.code ?? "error")}) and was rolled back`, 500);
   }
@@ -1618,15 +1830,15 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
   try {
     previous = dropIndexKey(key);
     if (purge) {
-      const stash = join(workmateRoot(), ".archive", `.purging-${key}-${compactUtcStamp()}`);
-      mkdirSync(join(workmateRoot(), ".archive"), { recursive: true });
-      renameSync(dir, stash);
+      const stash = join2(workmateRoot(), ".archive", `.purging-${key}-${compactUtcStamp()}`);
+      mkdirSync2(join2(workmateRoot(), ".archive"), { recursive: true });
+      renameSync2(dir, stash);
       removed = true;
-      rmSync(stash, { recursive: true, force: true });
+      rmSync2(stash, { recursive: true, force: true });
       return { ok: true, name: key, archived: null, purged: true };
     }
     const archived = archivePathFor(key);
-    renameSync(dir, archived);
+    renameSync2(dir, archived);
     removed = true;
     return { ok: true, name: key, archived, purged: false };
   } catch (e) {
@@ -1679,15 +1891,15 @@ function apply(ctx) {
     const dir = wmDir(name2);
     if (existsSync(dir))
       throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
-    mkdirSync(dir, { recursive: true });
+    mkdirSync2(dir, { recursive: true });
     const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
-    writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
+    writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
-    writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
+    writeFileSync(join2(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
 `);
-    writeFileSync(join(dir, "memory.md"), "");
+    writeFileSync(join2(dir, "memory.md"), "");
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
-    writeFileSync(join(dir, "note.md"), note + `
+    writeFileSync(join2(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
     return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
@@ -1804,10 +2016,10 @@ ${capText(outcome, 1200)}`);
       meta.lastTask = task;
       meta.updatedAt = now();
       meta.name = key;
-      writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
+      writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
       const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(key)), NOTE_CAP);
-      writeFileSync(join(wmDir(key), "note.md"), note + `
+      writeFileSync(join2(wmDir(key), "note.md"), note + `
 `);
       writeIndexEntry(key, meta);
       return { name: key, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length };

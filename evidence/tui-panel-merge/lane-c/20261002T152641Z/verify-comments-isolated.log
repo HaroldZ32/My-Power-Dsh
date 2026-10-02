@@ -1,0 +1,10 @@
+# verify:comments — MY two landed files in isolation (the repo-wide run is red on
+# packages/mpd-mcp-shared/log-sink.test.ts, which no lane of mine owns).
+# The gate script is a copy of scripts/verify-comment-coverage.ts with SOURCE_ROOTS narrowed
+# to src/ + test/, so it inspects EXACTLY these files.
+
+# verify-comment-coverage
+
+scanned 2 TypeScript file(s) of 2 in the source set; inspected 176 declaration(s); skipped 68 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

@@ -54,6 +54,7 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
 | `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.ts`, `scripts/vendor-agent-teams.ts`, or an `mpd-delta` region |
 | `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11: what each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip / `--require-docker` policy | you run a verification pass, or a Docker step skipped and you need to know why |
+| `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fourteen `tui*` seams with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
 
 ---
 
@@ -200,7 +201,9 @@ mpd-dsh/
 │   ├── mpd-roster-provider-plugin/ # per-member model routing for OFFICIAL teammates: registers
 │   │                             #   the `mpd-roster` subagent provider the team tool row points at
 │   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
-│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (`ctx.tui*` seams, warn-once)
+│   ├── mpd-tui-adapter-plugin/   # THE MPD<->DSH-TUI contact surface (`mpdTui`): the ONE file that may
+│   │                             #   name a `ctx.tui*` seam, plus the R5 file log sink
+│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (never names a `ctx.tui*` seam)
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster
 ├── extensions/                   # <bundle>/extensions/*/mpd-ext.json + the DISABLED mpd-ext-example
@@ -234,6 +237,7 @@ specification.
 | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
 | **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): the TWO install-time rules — **no `cordis`** in `dependencies` / `peerDependencies` / `optionalDependencies` (by NAME; the optional field is NOT an exemption) and no `preinstall` / `install` / `postinstall` / `prepare` script NAME — the VERSION-COHERENCE rule (`dsh-plugin.json` + `dsh-distribution.json` must carry `package.json`'s version) — plus the packaging contract a one-command install rests on: declared patch files exist, every row module path resolves, the `files` allowlist admits every runtime path, `evidence/` stays out, and **npm's own `npm pack --dry-run` list carries them**. `--self-test`: six arms with clean controls | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
 | **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in the source set (`packages/*/{src,test,self-fix-tests}`, `scripts/`, `skills/*/scripts/`, `docker/`, `tests/`, `templates/`, `extensions/`) has a precise comment above it, and that every NAMED function writes down its parameter and return types | any source edit, and EVERY release sweep |
+| No host override | `node scripts/verify-no-host-override.ts`: fails when ANY shipped patch row id-targets an id a host layer declares; refuses a vacuous PASS; `--self-test` 6 arms + a live seed | any bundle-patch row edit, and EVERY release sweep |
 | Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
@@ -327,6 +331,17 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   plane and the bundle corpus (`packages/mpd-ext-plugin/src/skill-frontmatter.ts`).
   QA proves the surface: `bundle-lifecycle` asserts the row, the boot log line and the probe's
   `ADAPTER_SEAMS`/`ADAPTER_TOOL_CALL=ok`.
+- **DSH-TUI seams go through `mpd-tui-adapter` — binding, the SAME rule on the second plane.** No file
+  outside `packages/mpd-tui-adapter-plugin` may name a `ctx.tui*` service, nor the `commands`/`settings`
+  services that plane uses; resolve it with `resolveTuiAdapter(ctx)` / `createLazyTuiAdapter(ctx,
+  { label })`, binder = ONE deferred `ctx.inject([id], …)` PER SEAM, probe = `ctx.get(id, false)`, and a
+  seam that never binds degrades to `absent` rather than failing the boot. The plane's log sink and the
+  R5 "never fd 1 or fd 2" rule live there too. Two gates pin it: `no-direct-tui-access` (a NEW direct
+  touch) and `no-terminal-writes` (a NEW terminal write). Full contract, the fourteen seams and the
+  declared WEB-plane residual: `agent-references/seam-adapters.md`.
+- **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
+  §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`
+  and `node scripts/set-default-preset.ts`.
 - **The adopted-plugin exception is CLOSED (2026-09-19), and not overstated.** Its SIX bridged files
   (`lib/{index,capabilities,harness-compat,members,command,tools}.js`) route through the facade
   `lib/mpd-adapter-ctx.ts` — an mpd-OWNED module (name rule `lib/mpd-*.js`, healed byte-faithfully from
@@ -425,7 +440,10 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   is flagged STALE even though it looks sanctioned. Three packages used to carry exactly that shape in
   their own `build` scripts (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); T-67 moved
   them to the canonical form above, which now begins with `cd "$(git rev-parse --show-toplevel)"`. Zero
-  runtime deps preferred (type-only imports).
+  runtime deps preferred (type-only imports). **An ADAPTER edit fans out**: `bun build` INLINES every
+  imported module, so touching `packages/{mpd-dsh,mpd-tui}-adapter-plugin/src` changes the emitted
+  bytes of every package that imports it (measured: one adapter edit left 12 of 24 dist targets
+  STALE). Rebuild each dependent with the pinned toolchain — see `agent-references/seam-adapters.md`.
 - **Load/test**: the committed patch names rows as `@mpd-dsh/mpd/packages/...`, which resolve in BOTH
   install layouts (the repo root IS `@mpd-dsh/mpd`, so a checkout install resolves them through the
   link; the packed package through its own name). QA boots it straight from a checkout through the

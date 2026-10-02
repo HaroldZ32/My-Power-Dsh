@@ -1,0 +1,8 @@
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+ 0 pass
+ 3 skip
+ 0 fail
+Ran 3 tests across 1 file. [11.00ms]

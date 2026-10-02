@@ -1892,11 +1892,22 @@ function selfTest(): void {
   check(observe({ text: rendered.replace("confirm    ", "confirm    approve mpd-fixture-1"), boundaryCalls: [] }).approvalHappened === false,
     "pane text alone must never set approvalHappened")
 
-  // The dist really carries the two scene ids, and the package never writes state.
+  // The dist really carries the two scene ids, and the package never writes TEAM STATE.
   /** The built plugin dist's bytes, read so the two scene ids can be asserted present. */
   const dist = readFileSync(TUI_DIST, "utf8")
   check(dist.includes(PLAN_SCENE.id) && dist.includes(TEAM_SCENE.id), "the built dist must carry both scene ids")
-  check(!/writeFileSync|appendFileSync|mkdirSync|rmSync|unlinkSync|cpSync|createWriteStream/.test(dist), "the built dist must carry no filesystem write primitive")
+  // WHAT THIS CHECK GUARDS, restated after requirement R5 moved this plane's diagnostics to a FILE.
+  // The invariant the TUI package owns is "the TUI never writes TEAM STATE directly — every store
+  // access goes through the `mpdWatchdog`/`mpdTeams` services", so this rejects the WATCHDOG STORE
+  // WRITERS by name. It no longer rejects EVERY filesystem primitive: the seam adapter
+  // (`@mpd-dsh/tui-adapter`, this plane's ONE DSH-TUI contact surface) is INLINED into this bundle
+  // by `bun build`, and its declared R5 log sink (`<workspace>/.mpd/logs/mpd-tui.log`) is the one
+  // write this plane is allowed to make. The "the package's OWN sources carry no writer" half of the
+  // invariant lives in `packages/mpd-tui-plugin/test/team-surface.test.ts`, which scans every source
+  // file of that package, so this arm only has to pin the dist's state writers.
+  for (const token of ["writeHold(", "appendIncident(", "clearHold(", "writeWatermarks("]) {
+    check(!dist.includes(token), "the built dist must not carry the watchdog store writer " + token)
+  }
   check(existsSync(ADAPTER_DIST), "the adapter dist must be built")
 
   // The real lane's prerequisite gate: declared in check order, positively probed, and

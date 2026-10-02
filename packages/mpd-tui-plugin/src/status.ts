@@ -9,9 +9,8 @@
 // `ctx.inject(['tuiStatus'], scoped => …)`. Lifecycle is the caller's — the
 // disposer returned by `set()` is handed to `scoped.effect`, so an unload or
 // hot reload cannot leave a stale line behind.
-import type { Disposer, PluginContextLike, SeamOutcome, TuiStatusLike } from "./types.js"
+import type { PluginContextLike, SeamOutcome, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
-import { effectOn, onService } from "./host.js"
 import { readBoardState, statusLine } from "./state.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
@@ -29,17 +28,21 @@ export interface StatusSeam {
 
 /**
  * Activate the keyed status contribution.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as the contribution's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param workspaceRoot - resolves the workspace root per call.
  * @param home - resolves the home directory per call.
  * @param intervalMs - refresh cadence; 0 keeps it manual.
  * @param bridgeNotice - the last settings-bridge outcome, when one is available; a save
  *   with no live session workspace surfaces its notice on the line (§D.2 row 2).
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
  * @returns the seam handle.
  */
 export function registerStatus(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
   workspaceRoot: () => string,
   home: () => string,
@@ -48,78 +51,18 @@ export function registerStatus(
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
 ): StatusSeam {
-  /** The seam result, rewritten when the host accepts the contribution. */
-  let outcome: SeamOutcome = { state: "absent", detail: "tuiStatus was not injected" }
-  /** Publishes the line on demand; a no-op until the seam is active. */
-  let refresh: () => void = (): void => {}
-
-  onService(ctx, "tuiStatus", (scoped, service) => {
-    /** The probed service as the status surface, before `set` is trusted. */
-    const status = service as TuiStatusLike
-    if (typeof status?.set !== "function") {
-      outcome = { state: "refused", detail: "tuiStatus.set is missing" }
-      return
-    }
-    /** The host's handle for the current contribution, replaced on every publish. */
-    let disposer: Disposer | undefined
-    /** The cadence timer, absent in the manual (`intervalMs` 0) mode. */
-    let timer: ReturnType<typeof setInterval> | undefined
-    /** The text last handed to the host, so an identical line is not republished. */
-    let published: string | undefined
-    /** Recomputes the line and publishes it only when it changed. */
-    const publish = (): void => {
-      try {
-        /** The rendered status text, built from a fresh board read. */
-        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.())
-        // Only publish a CHANGED line: the host records every set() as a
-        // `replace status` ledger effect, so a fixed-cadence republish would
-        // churn the ledger (~20 records/minute) for an identical string.
-        if (text === published) return
-        published = text
-        // The scoped context is passed as the contribution's identity so the
-        // effect ledger attributes it to this activation instead of `undeclared`.
-        disposer = status.set(STATUS_KEY, text, scoped)
-      } catch (error) {
-        log.debug(`status refresh failed: ${String((error as Error)?.message ?? error)}`)
-      }
-    }
-    publish()
-    if (intervalMs > 0) {
-      try {
-        timer = setInterval(publish, intervalMs)
-        // Never keep the host process alive for a status line.
-        ;(timer as unknown as { unref?: () => void }).unref?.()
-      } catch {
-        timer = undefined
-      }
-    }
-    effectOn(
-      scoped,
-      () => {
-        if (timer !== undefined) {
-          try {
-            clearInterval(timer)
-          } catch {
-            // already cleared
-          }
-          timer = undefined
-        }
-        try {
-          disposer?.()
-        } catch {
-          // best effort
-        }
-        try {
-          status.set(STATUS_KEY, undefined, scoped)
-        } catch {
-          // best effort
-        }
-      },
-      "mpd-tui status line",
-    )
-    refresh = publish
-    outcome = { state: "requested", detail: "set() has no read-back; key grammar and the 200-cell budget are host-validated" }
+  // The whole contribution — the changed-line suppression, the cadence timer and the cleanup that
+  // clears the key — is owned by the adapter, which also owns the seam's cleanup scope. This file
+  // only says WHAT the line reads; it never touches the status service.
+  /** The adapter's handle for this view: the measured outcome plus the refresh path. */
+  const view = tui.registerStatusView({
+    key: STATUS_KEY,
+    intervalMs,
+    identity: ctx,
+    label: "mpd-tui status line",
+    render: () => statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.()),
+    onError: (error: unknown) => log.debug(`status refresh failed: ${String((error as Error)?.message ?? error)}`),
   })
 
-  return { outcome: () => outcome, refresh: () => refresh() }
+  return { outcome: (): SeamOutcome => view.outcome(), refresh: (): void => view.refresh() }
 }

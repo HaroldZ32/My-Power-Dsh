@@ -1,0 +1,155 @@
+bun test v1.4.2 (744846f84)
+
+test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [1.68ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.27ms]
+(pass) state projection > a team READOUT that throws is reported as a note, not as a crash [0.51ms]
+(pass) state projection > the status line is one bounded line [0.46ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.06ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.02ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.08ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [0.53ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.17ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.36ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.07ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.05ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.20ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.13ms]
+(pass) log-only event registration > a throwing session.append is contained [0.04ms]
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [0.06ms]
+
+test/team-record-source.test.ts:
+(pass) the record is the primary team source > the workflow carries the review fields the official board has no column for [0.56ms]
+(pass) the record is the primary team source > the derived states agree: a blocked review, a running task, a failed repair [0.14ms]
+(pass) the record is the primary team source > phase is the STORED lifecycle, not a guess from the roster [0.17ms]
+(pass) the record is the primary team source > a cycle is REPORTED as a note rather than drawn as if the board were sound [0.09ms]
+(pass) the source selection > readBoardState shows the RECORD even when the official readout is empty [0.12ms]
+(pass) the source selection > an ENDED team does not hide the running one behind it [0.04ms]
+(pass) the source selection > the record read degrades to [] with no service, and never throws [0.05ms]
+
+test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > renders the roster, the task DAG, the counts and the honest blanks [1.41ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the depth walk and the failed-dependency marking match the panel's own semantics [0.28ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.19ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a corrupt / absent / cyclic record renders an empty state and never throws [0.37ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object [0.08ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the board carries the derived team row and never a staged claim [0.21ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.62ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [0.70ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.61ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.44ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [0.73ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [0.82ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [0.92ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.35ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.27ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.12ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team ID cannot reach a rendered row [0.27ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [0.33ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.46ms]
+(pass) package invariants > the built dist carries the two scene ids and no TEAM-STORE writer [0.51ms]
+(pass) package invariants > the retired approval tools are GONE and the surface says why [0.19ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.24ms]
+(pass) the team scene's focus > ↑/↓ moves the focus through the drawing, and the ▶ marker moves with it [1.13ms]
+(pass) the team scene's focus > a focused task lights its DEPENDENCIES and names them in the graph header [0.86ms]
+(pass) the team scene's focus > `esc` UNPINS rather than closing, and closes once nothing is pinned [0.72ms]
+(pass) the team scene's focus > a CLICK pins a task and hovering previews one, without the keyboard [1.28ms]
+(pass) the team scene's focus > a click on BLANK space unpins rather than pinning nothing [0.63ms]
+(pass) the team scene's focus > the wheel scrolls the graph [0.61ms]
+(pass) the team scene's focus > a NARROW terminal falls back to the rail rather than clipping the boxes [0.72ms]
+(pass) the plan scene reads the SHARED projection > the phrase is the SERVED one, not a record-derived lookalike [0.37ms]
+(pass) the plan scene reads the SHARED projection > a STAGED PLAN with no usable record still renders the gate [0.34ms]
+(pass) the plan scene reads the SHARED projection > with NO plan face the scene never INVENTS a plan phrase [0.31ms]
+
+test/graph.test.ts:
+(pass) the dependency chain > is TRANSITIVE and UPSTREAM only, and cannot spin on a cycle [0.09ms]
+(pass) the dependency chain > a cycle in the BOARD is named even when nothing is focused [0.34ms]
+(pass) the boxed layout > draws a MERGE, which is the shape a flat list cannot express [0.40ms]
+(pass) the boxed layout > NEVER exceeds the width it is given, at any width that draws at all [6.36ms]
+(pass) the boxed layout > a box width below the minimum is REFUSED rather than squeezed [0.38ms]
+(pass) the boxed layout > a task shows its marker, id, kind and subject, truncated rather than wrapped [0.23ms]
+(pass) the boxed layout > an empty board draws nothing rather than a bare frame [0.03ms]
+(pass) the focus > lights the task, its DEPENDENCIES and the edges between them; dims the rest [0.41ms]
+(pass) the focus > the edge between two chain members is BRIGHT, and an edge leaving the chain is not [0.32ms]
+(pass) the focus > with NO focus nothing is dimmed and nothing is a chain [0.23ms]
+(pass) the focus > the focus is marked with ▶ so it is findable without colour [0.48ms]
+(pass) the rail fallback > fits any width and never loses a task [0.31ms]
+(pass) the rail fallback > names the EXTRA blockers instead of drawing a second connector [0.07ms]
+(pass) the rail fallback > draws a task reached by no root, so a cycle cannot silently lose a row [0.04ms]
+(pass) the list view > groups by rank and names every blocker [0.10ms]
+(pass) the pointer > resolves to a task by RECTANGLE, and to nothing on blank space [0.26ms]
+(pass) the pointer > uses the SAME geometry the rail drew, so the two cannot drift [0.08ms]
+(pass) the tone table > every tone maps to a dsh-tui THEME KEY, never to a colour literal [0.05ms]
+
+test/two-plugin-ownership.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present: it registers, the TUI skips its fallback and says so [2.74ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present but its registration still pending: the fallback still yields (deterministic owner check) [0.34ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.30ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[mpd-config] settings bridge: degraded — the namespace-registry model is retired in this harness (settings namespace "mpd" is already registered); the knobs are served as this row's config under the entry "mpd-config"
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.38ms]
+
+test/watchdog-frontdoor.test.ts:
+(pass) watchdog front door — notice composition > the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed [2.38ms]
+(pass) watchdog front door — notice composition > watchdogNotice states the live condition and the replay separately; composeNotices joins providers [0.05ms]
+(pass) watchdog front door — notice composition > heldTeams reads the durable hold index through the service, not a cache [0.36ms]
+(pass) watchdog front door — dialog and acknowledge > the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark [0.53ms]
+(pass) watchdog front door — dialog and acknowledge > a second start does not surface an acknowledged incident (the replay is watermark-driven) [0.43ms]
+(pass) watchdog front door — dialog and acknowledge > choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN [0.35ms]
+(pass) watchdog front door — dialog and acknowledge > the attach-time replay runs once, when BOTH the service and the dialog seam are composed [0.27ms]
+(pass) watchdog front door — dialog and acknowledge > no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog) [0.22ms]
+(pass) watchdog front door — dialog and acknowledge > readWatchdogView is a live read through the service (and empty without one) [0.25ms]
+(pass) watchdog front door — the absent-service path > with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw [0.35ms]
+
+test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.02ms]
+(pass) plugin contract > every config key has a default in the schema [0.35ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.11ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.05ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [0.35ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.19ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.21ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [3.13ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [0.45ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.09ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > derives provider / model / effort options from a two-provider catalog [1.65ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh [1.45ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a degraded catalog falls back to the declared option lists [1.43ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a mounted adapter WITHOUT the seam (an older build) degrades to the declared lists [1.37ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the REAL adapter seam (t2) feeds the same projection end to end [1.43ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the section registers EXACTLY once per ns, even when the activation fires twice [1.22ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a DEFERRED register through the injected scope keeps a live non-root caller (the cordis binding late registration relies on) [22.84ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the projection is TOTAL: no catalog, a degraded catalog or a malformed one never yields an empty list [0.20ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.53ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.35ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [1.62ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.25ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [0.19ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.04ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [0.70ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [0.38ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [0.54ms]
+(pass) settings section disclosure (t21) > every row names its mpd.jsonc key, and the SURFACE states the disclosure once [0.13ms]
+(pass) settings section disclosure (t21) > every slot hint LEADS with the knob's human sentence, then its key [0.31ms]
+(pass) settings section disclosure (t21) > the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints [1.55ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.03ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.06ms]
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+mpd-dsh-adapter: llmCatalog degraded — the harness llm service is unavailable
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [0.96ms]
+
+ 120 pass
+ 0 fail
+ 1849 expect() calls
+Ran 120 tests across 7 files. [125.00ms]

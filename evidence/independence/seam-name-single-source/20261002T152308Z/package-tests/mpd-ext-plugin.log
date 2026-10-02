@@ -1,0 +1,8 @@
+(pass) F3: an enumeration failure is reported as an INCOMPLETE observation, never a cacheable empty catalog [1.22ms]
+[mpd-ext] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+(pass) F5: with no cwd a host-wide extension is SERVED, not silently shadowed by a guessed workspace [1.92ms]
+
+ 76 pass
+ 0 fail
+ 563 expect() calls
+Ran 76 tests across 3 files. [1.75s]

@@ -1,5 +1,6 @@
-# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus ONE id-target
-# (the preset-selection registry below).
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY, ZERO id-targets.
+# (The two preset-selection registry id-targets this file used to carry were
+# removed by the strict zero-override decision — see the two blocks below.)
 # Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
 # agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
 # WHOLE stock config and would wipe the stock model list / provider defaults.
@@ -35,53 +36,78 @@
 # not, and a Windows short name carries a tilde (`.../ZHAO%7E1.YIN/...`), so the raw form named a
 # directory that does not exist (measured 2026-09-22, second boot).
 
-# ── preset selection: the deployment default is the mpd preset ──────────────
-# An id-target (replace), not an insert: dsh-web-app's own patch inserts this row
-# with `{ default: standard }`, and a second insert would be a duplicate loader
-# entry id (fatal at boot: cordis-plugin-loader src/config/group.ts). Loader
-# semantics that make the replace safe and COMPLETE: an id-target assigns only the
-# keys this file carries and skips `id`, so the host row's own `disabled`
-# expression survives; a missing id-target is a WARN (`patch: entry ... not
-# found`), never an error, which is what keeps this row harmless in a composition
-# that has no registry row at all. The installed registry declares exactly ONE
-# config key — `default` — so restating it is complete; the retired
-# `roots`/`modeSelectionEnabled` keys the old `@deepseek-ai/dsh-agent-presets` row
-# accepted are NOT fields of this package and schemastery would silently drop
-# them, so they are deliberately absent.
-- id: agent-preset-registry
-  name: '@deepseek-ai/dsh-agent-preset-registry'
-  config:
-    default: mpd
-
-# ── preset selection, dsh-tui plane: the SAME default, for the TUI composition ──
-# MEASURED against `@deepseek-harness-tui/dsh-tui@0.11.1` (the first dsh-tui release whose
-# peer ranges include `0.1.7-rc.2`; 0.10.1 and 0.10.2 stop at `0.1.5-rc.1`): the TUI mints
-# its OWN registry row under the scoped id `dsh-tui-agent-preset-registry`
-# (`name: '@deepseek-ai/dsh-agent-preset-registry'`, config `{ default: standard }`,
-# disabled when an enabled `agent-preset-registry` entry already exists). A `dsh-tui`
-# profile does NOT compose the dsh-web-app layer, so the id-target above is skipped there
-# (`patch: entry agent-preset-registry not found`) and the TUI's row keeps
-# `default: standard` — while NOTHING in that composition declares a `standard` preset
-# (dsh-tui 0.11.1 ships no preset rows and no `presets/standard/`). Left alone, an mpd
-# bundle installed into a TUI profile would therefore default every new session to a
-# preset that does not exist. This id-target restores user decision D10 ("TUI sessions
-# must default to the mpd preset") on the 0.1.7-rc.2 row model.
+# ── preset selection: the deployment default is HOST-OWNED and never id-targeted ──
+# REMOVED (strict zero-override, user decision 2026-10-02). This block used to be
+#   - id: agent-preset-registry
+#     name: '@deepseek-ai/dsh-agent-preset-registry'
+#     config:
+#       default: mpd
+# and that id is declared by a HOST layer, not by us: `@deepseek-ai/dsh-web-app`'s
+# OWN cordis.patch.yml declares id `agent-preset-registry` (name
+# '@deepseek-ai/dsh-agent-preset-registry', config `{ default: standard }`). An
+# id-target REPLACES a host layer's decision, which is exactly what this bundle's
+# policy forbids — a shipped row may add a capability, never overwrite a host's.
+# `node scripts/verify-no-host-override.ts` now fails the build on any future
+# id-target whose id a host layer declares.
 #
-# SAFETY OF THE PAIR is the same argument the retired `agent-presets` /
-# `dsh-tui-agent-presets` pair used: each id exists in exactly ONE composition (the web
-# row comes from dsh-web-app's patch, the TUI row from dsh-tui's own), so the other
-# profile only logs `patch: entry <id> not found` and applies nothing — no duplicate
-# loader entry id is possible in either. Loader semantics that make the id-target safe
-# and COMPLETE: an id-target is a per-key shallow override that skips `id` and assigns
-# only the keys this file carries, so the TUI row's own compiled-DISABLED
-# expression survives untouched (the row still disables itself when the web-plane
-# `agent-preset-registry` is present, which is exactly why this override is harmless in
-# that case); a missing id-target is a WARN, never an error; a duplicate entry id is
-# fatal (cordis-plugin-loader src/config/group.ts).
-- id: dsh-tui-agent-preset-registry
-  name: '@deepseek-ai/dsh-agent-preset-registry'
-  config:
-    default: mpd
+# WHY AN ADDITIVE SECOND REGISTRY ROW IS NOT THE WORKAROUND (the measured reason):
+# two rows mounting the SAME package each call `reflect.provide('agentPresets', …)`,
+# and a duplicate `provide` for one service name is a HARD cordis boot error — an
+# extra registry row would take the whole boot down. There is no additive spelling
+# of "change the deployment default".
+#
+# THE SUPPORTED CHANNEL IS THE USER'S OWN, and it is documented in
+# `docs/preset-default.md` (bilingual pair; the exact steps and their trade-offs):
+#   · web / headless -> the `selectedDefault` volatile field of the
+#     `agent-preset-registry` entry, set from the Settings UI (the registry reads it
+#     for new sessions and prefers it over the deployment `default`). This bundle
+#     writes NOTHING itself.
+#   · dsh-tui -> `/preset mpd` in the TUI, which persists
+#     `{ "preset": "mpd" }` to `~/.dsh-tui/agent-preset.json`; or `DSH_TUI_PRESET=mpd`
+#     in the user's OWN profile patch; or the one-command helper
+#     `node scripts/set-default-preset.ts --yes` (dry-run by default), which writes
+#     exactly that file through the sanctioned channel.
+#
+# CONSEQUENCE, stated so it is never a surprise: without that user action a profile
+# falls back to the HOST default (`standard`), so `mpd` is OPT-IN after this
+# removal, not the default. That regression is the price of the policy, and the doc
+# plus the helper exist to make closing it one step.
+
+# ── preset selection, dsh-tui plane: REMOVED for the same policy ────────────
+# This block used to be
+#   - id: dsh-tui-agent-preset-registry
+#     name: '@deepseek-ai/dsh-agent-preset-registry'
+#     config:
+#       default: mpd
+# MEASURED against the installed `@deepseek-harness-tui/dsh-tui` (0.12.0): the TUI
+# mints its OWN registry row under the scoped id `dsh-tui-agent-preset-registry`
+# (name '@deepseek-ai/dsh-agent-preset-registry', config `{ default: standard }`,
+# disabled when an enabled `agent-preset-registry` entry already exists), declared
+# by the TUI package's OWN cordis.patch.yml. That is a HOST layer again, so
+# id-targeting it is the same forbidden override as the web-plane row above — and
+# a dsh-tui profile composes no dsh-web-app layer, so the two rows never collide;
+# each is skipped in the other's composition (`patch: entry <id> not found`).
+#
+# WHAT IT COST (the honest consequence): a dsh-tui profile now keeps the HOST
+# default `standard`, and dsh-tui 0.12.0 ships no `standard` preset row (its
+# `presets/` carries only `liangshen`), so a session that resolves the default
+# fails to find it — the documented `agent-preset/not-found` — and composes without
+# a preset. The user channel below closes that gap in one step; the failure is
+# exactly why `docs/preset-default.md` exists.
+#
+# THE SUPPORTED CHANNEL IS THE USER'S OWN (see the block above for the shared
+# reasoning and `docs/preset-default.md` for the steps):
+#   · `/preset mpd` inside dsh-tui, which persists `{ "preset": "mpd" }` (written by
+#     dsh-tui's own `writePresetPref`: `JSON.stringify({ preset }, null, 2)`, no
+#     trailing newline) to `~/.dsh-tui/agent-preset.json`;
+#   · `DSH_TUI_PRESET=mpd` in the user's own profile patch, which the TUI's
+#     `config.preset` reads and which WINS over the persisted preference;
+#   · `node scripts/set-default-preset.ts --yes` (dry-run by default), the
+#     one-command helper that writes the same file through the same shape.
+#
+# SAFETY ARGUMENT RETIRED WITH IT: the old "each id exists in exactly ONE
+# composition" argument was correct but is no longer load-bearing here, because
+# this file now declares no id-target at all.
 
 # ── runtime plugin dependency: the sidebar HOST the bundle's GUI needs ──────
 # MEASURED DEFECT (evidence/install-deps/red-baseline/20260920T030832Z/result.json):
@@ -163,9 +189,12 @@
 # rather than that string-op idiom because this scalar is YAML DOUBLE-quoted (the idiom's `\/`
 # would need escaping there) and because a real path is what `fs` is handed.
 # The whole guard is one try/catch that returns TRUE (disabled) on ANY throw, so the
-# worst case is a missing sidebar, never a dead boot. It logs ONE line per distinct
-# decision with the stable prefix `[mpd-better-sidebar] mount guard: ` — that line is
-# how a verifier sees the decision in the boot log. Raw `e.options.disabled` is read
+# worst case is a missing sidebar, never a dead boot. It appends ONE line per distinct
+# decision with the stable prefix `[mpd-better-sidebar] mount guard: ` to the log FILE
+# `<root>/.mpd/logs/mpd-patch-guards.log` — R5: a guard line never goes to the terminal,
+# and `logGuard` mirrors `packages/mpd-mcp-shared/log-sink.ts`'s root chain EXACTLY
+# (MPD_MCP_LOG_DIR -> DSH_WORKSPACE_ROOT -> cwd -> os.tmpdir), because a `!!js` expression
+# has no imports and that module stays the SINGLE owner of the semantics. Raw `e.options.disabled` is read
 # on purpose: reading another entry's EVALUATED `disabled` getter re-enters its own
 # `!!js` expression (measured: mutual recursion, stack overflow).
 - insert:
@@ -184,7 +213,7 @@
       # file:// URL as the row name mounts but then fails the loader's PEER VALIDATION with
       # `name.startsWith is not a function` (measured).
       name: '@mpd-dsh/mpd/packages/mpd-better-sidebar-host/dist/index.js'
-      disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); const hostDirs = [path.join(ownModules, 'dsh-better-sidebar'), path.join(ownModules, '@mpd-dsh', 'mpd', 'node_modules', 'dsh-better-sidebar')]; if (!hostDirs.some((dir) => fs.existsSync(dir))) { say('DISABLED', 'dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+      disabled: !!js "(() => { const logGuard = (text) => { try { const gfs = process.getBuiltinModule('node:fs'); const gpath = process.getBuiltinModule('node:path'); const gos = process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd() } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR, process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of roots) { if (typeof root !== 'string' || root.trim() === '') { continue } try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, { recursive: true }); gfs.appendFileSync(gpath.join(dir, 'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e) {} } } catch (e) {} }; const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; logGuard('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); const hostDirs = [path.join(ownModules, 'dsh-better-sidebar'), path.join(ownModules, '@mpd-dsh', 'mpd', 'node_modules', 'dsh-better-sidebar')]; if (!hostDirs.some((dir) => fs.existsSync(dir))) { say('DISABLED', 'dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
 
 - insert:
     # B8 (wave 2): this row names NO binary path any more. It launches
@@ -214,7 +243,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/launch.ts")'
         toolCallTimeoutMs: 60000
     - id: mcp-lsp
       name: '@deepseek-ai/dsh-mcp-client'
@@ -223,7 +252,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/launch.ts")'
           - mcp
         toolCallTimeoutMs: 60000
     # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
@@ -408,9 +437,39 @@
     # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
     # project/custom/user roots) and removes the version-stamped copies that
     # bundle <= 0.2.6 left in $DSH_HOME/skills + $DSH_HOME/.agent-presets.
-    # The preset side is served by the agent-presets row at the top of this file.
+    # The preset side is served by the `preset-mpd` row in the bundle's SECOND
+    # patch layer, `presets/mpd.patch.yml`.
     - id: mpd-bootstrap
       name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+    # DSH-TUI PLANE ADAPTER (R2/A2.2): the ONE contact surface with the TUI's own
+    # seams. `mpd-tui-plugin` used to name the host's `tui*` services itself; every
+    # one of those touches now goes through this package's `mpdTui` service
+    # (typed seam interface, per-seam deferred `ctx.inject([id], …)` binder,
+    # `ctx.get(id, false)` probe, warn-once degrade, `resolveTuiAdapter` /
+    # `createLazyTuiAdapter`), so a dsh-tui release that renames or reshapes a seam
+    # is absorbed in ONE module. It is a PLAIN INSERT: it declares no id-target and
+    # therefore overrides no row — in particular not any `mpd-tui*` id a host layer
+    # might mint — which is what keeps this file's zero-override property intact.
+    # `config: {}` is restated so a reader sees the row takes no settings.
+    #
+    # MOUNT ORDER: this block sits immediately ABOVE the `mpd-tui` block, the row
+    # that consumes it. The order is not load-bearing for correctness (the consumer
+    # resolves the adapter lazily per call, so a sibling evaluated first still finds
+    # it), but it is kept so the file READS in dependency order.
+    #
+    # BUILD COUPLING, MEASURED rather than assumed: the row resolves
+    # `packages/mpd-tui-adapter-plugin/dist/index.js`, and with that dist ABSENT the
+    # loader does NOT take the boot down — harness 0.2.0-rc.2 prints
+    #   `dsh: warning: 1 entry did not activate`
+    #   `mpd-tui-adapter (@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js): failed to import`
+    # and the session still mounts its preset (isolated web-profile boot; evidence under
+    # evidence/preset-default/preset-conformance/). It is nevertheless a REAL red for the
+    # preset-conformance lane, which counts any non-activating row as a failure, so the
+    # row must still land in the same tree as its built package. As a PATCH it is inert
+    # either way: it overrides nothing.
+    - id: mpd-tui-adapter
+      name: '@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js'
+      config: {}
     # DSH-TUI edition (D1/D2/D6/D10): the TUI-native surface package for this
     # bundle. It binds the host's activation-gated UI service seams (tuiStatus,
     # tuiRenderers, tuiSettingsSections, tuiScenes, tuiCommandTrees,
@@ -539,13 +598,14 @@
 # mount decision, order-independent because it reads only DECLARATIONS already
 # composed): disable when any composed entry IS the dsh-tui host — its `name` is
 # `@deepseek-harness-tui/dsh-tui` or one of its subpaths, or its `id` starts
-# with `dsh-tui`. A guard that throws keeps the row ENABLED and says so on one
-# warning line: a false disable would silently remove the team plane from a
-# working Web profile, which is worse than the loud TUI error this fixes.
+# with `dsh-tui`. A guard that throws keeps the row ENABLED and appends one line to
+# `<root>/.mpd/logs/mpd-patch-guards.log` (R5 — never the terminal): a false disable
+# would silently remove the team plane from a working Web profile, which is worse than
+# the loud TUI error this fixes.
 - insert:
     - id: mpd-agent-team
       name: '@deepseek-ai/dsh-experimental-agent-team'
-      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
+      disabled: !!js "(() => { const logGuard = (text) => { try { const gfs = process.getBuiltinModule('node:fs'); const gpath = process.getBuiltinModule('node:path'); const gos = process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd() } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR, process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of roots) { if (typeof root !== 'string' || root.trim() === '') { continue } try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, { recursive: true }); gfs.appendFileSync(gpath.join(dir, 'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e) {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)') } } catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
       config:
         maxMembers: 16
         maxTasks: 256
@@ -563,8 +623,8 @@
       name: '@deepseek-ai/dsh-experimental-tool-agent-team'
       # The SAME expression, byte for byte, as the row above: both rows are
       # disabled together in a dsh-tui composition, and the warn-once key keeps
-      # that to ONE line whichever row is evaluated first.
-      disabled: !!js "(() => { try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; console.warn('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } } catch (e) {} return true } catch (e) { try { console.warn('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
+      # that to ONE line in `mpd-patch-guards.log` whichever row is evaluated first.
+      disabled: !!js "(() => { const logGuard = (text) => { try { const gfs = process.getBuiltinModule('node:fs'); const gpath = process.getBuiltinModule('node:path'); const gos = process.getBuiltinModule('node:os'); let cwd = ''; try { cwd = process.cwd() } catch (e) {} const roots = [process.env.MPD_MCP_LOG_DIR, process.env.DSH_WORKSPACE_ROOT, cwd, gos.tmpdir()]; for (const root of roots) { if (typeof root !== 'string' || root.trim() === '') { continue } try { const dir = gpath.join(root, '.mpd', 'logs'); gfs.mkdirSync(dir, { recursive: true }); gfs.appendFileSync(gpath.join(dir, 'mpd-patch-guards.log'), text + String.fromCharCode(10)); return } catch (e) {} } } catch (e) {} }; try { const hit = [...ctx.loader.entries()].some((e) => { const o = e && e.options; if (!o) return false; const n = typeof o.name === 'string' ? o.name : ''; const i = typeof o.id === 'string' ? o.id : ''; return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 || i.indexOf('dsh-tui') === 0 }); if (!hit) return false; try { const seen = globalThis.__mpdTuiPlaneGuard || (globalThis.__mpdTuiPlaneGuard = {}); if (seen.said !== true) { seen.said = true; logGuard('[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted (see cordis.patch.yml TUI PLANE)') } } catch (e) {} return true } catch (e) { try { logGuard('[mpd-agent-team] TUI-plane guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays ENABLED; re-check the guard in cordis.patch.yml') } catch (e2) {} return false } })()"
       config:
         # POINT THE OFFICIAL TEAM TOOL AT THE ROSTER PROVIDER: this is the whole redirect. The
         # tool's own `provider` argument is ignored by its implementation, so ROW CONFIG is

@@ -1,0 +1,8 @@
+[host-contract] compared with dsh-better-sidebar @ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/dsh-better-sidebar/lib/index.js
+(pass) the sidebar host contract > the shim's inject list is the HOST's own, checked against the shipped package [61.06ms]
+(pass) the sidebar host contract > the row name this module declares is its own, not the host's [0.02ms]
+
+ 2 pass
+ 0 fail
+ 3 expect() calls
+Ran 2 tests across 1 file. [72.00ms]

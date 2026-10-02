@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { join as join2, resolve as resolve2 } from "node:path";
+import { join as join3, resolve as resolve3 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -198,312 +198,11 @@ function installReadonlyGuard(dsh, options) {
 
 // packages/mpd-roles-plugin/src/session-gate.ts
 import { readdir as readdirFs } from "node:fs/promises";
-import { join } from "node:path";
-var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
-var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
-var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
-var DELIVERABLE_VERB_MIN = 4;
-var ENUMERATED_LINE_MIN = 3;
-var ACTION_VERB_MIN = 3;
-var C_SUBSIGNAL_MIN = 2;
-var PLANS_DIR = [".mpd", "plans"];
-var DEFAULT_GATE_PRESETS = ["mpd"];
-function distinctMatches(text, pattern) {
-  const seen = new Set;
-  for (const match of text.matchAll(pattern))
-    seen.add(match[0].toLowerCase());
-  return seen.size;
-}
-function enumeratedLineCount(text) {
-  let count = 0;
-  for (const line of text.split(`
-`))
-    if (ENUMERATED_LINE_PATTERN.test(line))
-      count += 1;
-  return count;
-}
-function clauseStepCount(text) {
-  let count = 0;
-  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
-    if (CLAUSE_ACTION_PATTERN.test(clause))
-      count += 1;
-  return count;
-}
-function consumeExplicitFlag(text) {
-  const source = String(text ?? "");
-  const trimmed = source.trimStart();
-  const prefix = /^team:\s*/iu.exec(trimmed);
-  if (prefix !== null)
-    return { flagged: true, text: trimmed.slice(prefix[0].length) };
-  if (/!team/iu.test(source))
-    return { flagged: true, text: source.replace(/!team\s*/giu, "") };
-  return { flagged: false, text: source };
-}
-function evaluateComplexityGate(text, input = {}) {
-  const source = String(text ?? "");
-  const signals = [];
-  if (input.explicitFlag === true)
-    signals.push("A");
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
-    signals.push("B");
-  const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN
-  ].filter(Boolean).length;
-  if (cSubSignals >= C_SUBSIGNAL_MIN)
-    signals.push("C");
-  if (input.planArtifact === true)
-    signals.push("D");
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
-}
-async function hasPlanArtifact(workspace, readdirFn) {
-  try {
-    const read = readdirFn ?? readdirFs;
-    const entries = await read(join(String(workspace ?? ""), ...PLANS_DIR));
-    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"));
-  } catch {
-    return false;
-  }
-}
-function messageText(message) {
-  const content = message?.content;
-  if (!Array.isArray(content))
-    return;
-  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
-  return parts.length === 0 ? undefined : parts.join(`
-`);
-}
-function latestUserMessage(candidates) {
-  let fallback;
-  for (let index = candidates.length - 1;index >= 0; index -= 1) {
-    const message = candidates[index];
-    if (message?.role !== "user")
-      continue;
-    const text = messageText(message);
-    if (text === undefined)
-      continue;
-    const source = String(message?.source?.kind ?? "");
-    if (source === "user")
-      return { message, text };
-    fallback ??= { message, text };
-  }
-  return fallback;
-}
-function consumeFlagFromMessage(message, source) {
-  if (!consumeExplicitFlag(source).flagged)
-    return message;
-  let changed = false;
-  const content = (message?.content ?? []).map((block) => {
-    const text = block?.text;
-    if (block?.type !== "text" || typeof text !== "string")
-      return block;
-    const next = consumeExplicitFlag(text);
-    if (next.text === text)
-      return block;
-    changed = true;
-    return { ...block, text: next.text };
-  });
-  return changed ? { ...message, content } : message;
-}
-function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
-  const header = agent?.session?.header;
-  if (header === undefined || header === null)
-    return false;
-  if (header.parentSession !== undefined)
-    return false;
-  const preset = header.agentPreset;
-  if (preset === undefined)
-    return true;
-  return presets.includes(String(preset));
-}
-function advisoryNoticeText(signals, explicit) {
-  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
-- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
-- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
-}
-function gateTrace(line) {
-  try {
-    if (process.env.MPD_ROLES_GATE_TRACE === "1")
-      console.log("[mpd-roles] gate trace: " + line);
-  } catch {}
-}
-function installSessionGate(dsh, options) {
-  const presets = options.presets ?? DEFAULT_GATE_PRESETS;
-  const settled = new Set;
-  const disposers = new Map;
-  const report = (line) => {
-    try {
-      options.log?.(line);
-    } catch {}
-  };
-  const stepHandler = (bound) => async (payload, decision) => {
-    try {
-      gateTrace("step entered bound=" + String(bound?.id ?? "none") + " payloadAgent=" + String(payload?.agent?.id ?? "none") + " kind=" + String(decision?.kind) + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1) + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1));
-      if (decision?.kind === "reject")
-        return;
-      const agent = bound ?? payload?.agent;
-      if (agent === undefined || agent === null)
-        return;
-      if (!sessionQualifies(agent, presets)) {
-        gateTrace("not qualified agent=" + String(agent.id ?? "?"));
-        return;
-      }
-      const agentId = String(agent.id ?? "");
-      if (agentId !== "" && settled.has(agentId))
-        return;
-      const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
-      const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
-      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
-      if (user === undefined) {
-        gateTrace("no user text yet agent=" + agentId);
-        return;
-      }
-      if (agentId !== "")
-        settled.add(agentId);
-      const workspace = dsh.workspaceRoot({ agent });
-      const consumed = consumeExplicitFlag(user.text);
-      const planArtifact = await hasPlanArtifact(workspace, options.readdir);
-      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
-      if (verdict.trigger !== true) {
-        gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
-        return;
-      }
-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0");
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"));
-      const notice = dsh.userMessage({
-        text: advisoryNoticeText(verdict.signals, consumed.flagged),
-        source: { kind: "mpd-roles", reason: "session-start-advisory" }
-      });
-      const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
-      let lastClaimed = -1;
-      for (let at2 = 0;at2 < messages.length; at2 += 1)
-        if (rawClaimed.includes(messages[at2]))
-          lastClaimed = at2;
-      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
-      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
-      return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
-    } catch (error) {
-      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
-      return;
-    }
-  };
-  const release = (agent) => {
-    const dispose = disposers.get(agent);
-    if (dispose === undefined)
-      return;
-    disposers.delete(agent);
-    try {
-      dispose();
-    } catch {}
-  };
-  const register = (agent) => {
-    try {
-      if (agent === undefined || agent === null || disposers.has(agent))
-        return;
-      if (!sessionQualifies(agent, presets))
-        return;
-      const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent));
-      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
-      const preset = agent?.session?.header?.agentPreset;
-      report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)));
-      gateTrace("registered agent=" + String(agent.id ?? "?"));
-    } catch (error) {
-      options.warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
-    }
-  };
-  for (const agent of dsh.liveAgents())
-    register(agent);
-  const subscribe = (event, handler) => {
-    try {
-      dsh.onEvent(event, handler);
-    } catch {}
-  };
-  subscribe("agent/created", (payload) => register(payload?.agent ?? payload));
-  subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
-  return { installed: true, settled, disposers };
-}
-
-// packages/mpd-roles-plugin/src/roster-section.ts
-var ROSTER_SECTION_NAME = "mpd:roster";
-var ROSTER_SECTION_ORDER = 605;
-function functionOf(description) {
-  const text = String(description ?? "");
-  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
-  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
-}
-function rosterSectionText(members) {
-  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
-  return [
-    "## MPD specialist roster",
-    "The specialists this deployment stages as teammates, addressed by NAME:",
-    ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
-  ].join(`
-`);
-}
-function installRosterSection(dsh, options) {
-  const presets = options.presets ?? ["mpd"];
-  const disposers = new Map;
-  const text = rosterSectionText(options.members);
-  const report = (line) => {
-    try {
-      options.log?.(line);
-    } catch {}
-  };
-  const register = (agent) => {
-    try {
-      if (agent === undefined || agent === null || disposers.has(agent))
-        return;
-      if (!sessionQualifies(agent, presets))
-        return;
-      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
-      const dispose = dsh.agentPromptSection(agent, section);
-      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
-      const preset = agent?.session?.header?.agentPreset;
-      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
-    } catch (error) {
-      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
-    }
-  };
-  const release = (agent) => {
-    const dispose = disposers.get(agent);
-    if (dispose === undefined)
-      return;
-    disposers.delete(agent);
-    try {
-      dispose();
-    } catch {}
-  };
-  for (const agent of dsh.liveAgents())
-    register(agent);
-  const subscribe = (event, handler) => {
-    try {
-      if (options.onEvent !== undefined) {
-        options.onEvent(event, handler);
-        return;
-      }
-      dsh.onEvent(event, handler);
-    } catch {}
-  };
-  subscribe("agent/created", (payload) => {
-    register(payload?.agent ?? payload);
-    return;
-  });
-  subscribe("agent/disposed", (payload) => {
-    release(payload?.agent ?? payload);
-    return;
-  });
-  return { installed: true, registered: disposers.size, disposers };
-}
+import { join as join2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -514,7 +213,205 @@ function errorMessage(error) {
 function bundleRootOf(moduleUrl) {
   return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+var DSH_SEAM_SUBAGENTS = "subagents";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -542,11 +439,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -559,7 +468,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -710,6 +619,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -775,7 +685,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -1063,6 +973,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -1537,7 +1448,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -1556,7 +1467,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1671,14 +1582,14 @@ function dshAdapterIdentity(ctx) {
 function createLazyDshAdapter(ctx, options) {
   const warning = (line) => {
     try {
-      (options.warn ?? ((text) => console.log("[" + options.label + "] " + text)))(line);
+      (options.warn ?? ((text) => rowLogLine("mpd-dsh-adapter", "[" + options.label + "] " + text)))(line);
     } catch {}
   };
   let mounted;
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve2 = () => {
+  const resolve3 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -1702,19 +1613,322 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve2();
+      const impl = resolve3();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve2();
+      return property in resolve3();
     }
   });
 }
 
+// packages/mpd-roles-plugin/src/session-gate.ts
+var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var DELIVERABLE_VERB_MIN = 4;
+var ENUMERATED_LINE_MIN = 3;
+var ACTION_VERB_MIN = 3;
+var C_SUBSIGNAL_MIN = 2;
+var PLANS_DIR = [".mpd", "plans"];
+var DEFAULT_GATE_PRESETS = ["mpd"];
+function distinctMatches(text, pattern) {
+  const seen = new Set;
+  for (const match of text.matchAll(pattern))
+    seen.add(match[0].toLowerCase());
+  return seen.size;
+}
+function enumeratedLineCount(text) {
+  let count = 0;
+  for (const line of text.split(`
+`))
+    if (ENUMERATED_LINE_PATTERN.test(line))
+      count += 1;
+  return count;
+}
+function clauseStepCount(text) {
+  let count = 0;
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+    if (CLAUSE_ACTION_PATTERN.test(clause))
+      count += 1;
+  return count;
+}
+function consumeExplicitFlag(text) {
+  const source = String(text ?? "");
+  const trimmed = source.trimStart();
+  const prefix = /^team:\s*/iu.exec(trimmed);
+  if (prefix !== null)
+    return { flagged: true, text: trimmed.slice(prefix[0].length) };
+  if (/!team/iu.test(source))
+    return { flagged: true, text: source.replace(/!team\s*/giu, "") };
+  return { flagged: false, text: source };
+}
+function evaluateComplexityGate(text, input = {}) {
+  const source = String(text ?? "");
+  const signals = [];
+  if (input.explicitFlag === true)
+    signals.push("A");
+  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+    signals.push("B");
+  const cSubSignals = [
+    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
+    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+  ].filter(Boolean).length;
+  if (cSubSignals >= C_SUBSIGNAL_MIN)
+    signals.push("C");
+  if (input.planArtifact === true)
+    signals.push("D");
+  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+}
+async function hasPlanArtifact(workspace, readdirFn) {
+  try {
+    const read = readdirFn ?? readdirFs;
+    const entries = await read(join2(String(workspace ?? ""), ...PLANS_DIR));
+    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"));
+  } catch {
+    return false;
+  }
+}
+function messageText(message) {
+  const content = message?.content;
+  if (!Array.isArray(content))
+    return;
+  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  return parts.length === 0 ? undefined : parts.join(`
+`);
+}
+function latestUserMessage(candidates) {
+  let fallback;
+  for (let index = candidates.length - 1;index >= 0; index -= 1) {
+    const message = candidates[index];
+    if (message?.role !== "user")
+      continue;
+    const text = messageText(message);
+    if (text === undefined)
+      continue;
+    const source = String(message?.source?.kind ?? "");
+    if (source === "user")
+      return { message, text };
+    fallback ??= { message, text };
+  }
+  return fallback;
+}
+function consumeFlagFromMessage(message, source) {
+  if (!consumeExplicitFlag(source).flagged)
+    return message;
+  let changed = false;
+  const content = (message?.content ?? []).map((block) => {
+    const text = block?.text;
+    if (block?.type !== "text" || typeof text !== "string")
+      return block;
+    const next = consumeExplicitFlag(text);
+    if (next.text === text)
+      return block;
+    changed = true;
+    return { ...block, text: next.text };
+  });
+  return changed ? { ...message, content } : message;
+}
+function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.parentSession !== undefined)
+    return false;
+  const preset = header.agentPreset;
+  if (preset === undefined)
+    return true;
+  return presets.includes(String(preset));
+}
+function advisoryNoticeText(signals, explicit) {
+  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
+}
+function gateTrace(line) {
+  try {
+    if (process.env.MPD_ROLES_GATE_TRACE === "1")
+      rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line);
+  } catch {}
+}
+function installSessionGate(dsh, options) {
+  const presets = options.presets ?? DEFAULT_GATE_PRESETS;
+  const settled = new Set;
+  const disposers = new Map;
+  const report = (line) => {
+    try {
+      options.log?.(line);
+    } catch {}
+  };
+  const stepHandler = (bound) => async (payload, decision) => {
+    try {
+      gateTrace("step entered bound=" + String(bound?.id ?? "none") + " payloadAgent=" + String(payload?.agent?.id ?? "none") + " kind=" + String(decision?.kind) + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1) + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1));
+      if (decision?.kind === "reject")
+        return;
+      const agent = bound ?? payload?.agent;
+      if (agent === undefined || agent === null)
+        return;
+      if (!sessionQualifies(agent, presets)) {
+        gateTrace("not qualified agent=" + String(agent.id ?? "?"));
+        return;
+      }
+      const agentId = String(agent.id ?? "");
+      if (agentId !== "" && settled.has(agentId))
+        return;
+      const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
+      const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
+      if (user === undefined) {
+        gateTrace("no user text yet agent=" + agentId);
+        return;
+      }
+      if (agentId !== "")
+        settled.add(agentId);
+      const workspace = dsh.workspaceRoot({ agent });
+      const consumed = consumeExplicitFlag(user.text);
+      const planArtifact = await hasPlanArtifact(workspace, options.readdir);
+      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
+      if (verdict.trigger !== true) {
+        gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
+        return;
+      }
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0");
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"));
+      const notice = dsh.userMessage({
+        text: advisoryNoticeText(verdict.signals, consumed.flagged),
+        source: { kind: "mpd-roles", reason: "session-start-advisory" }
+      });
+      const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
+      let lastClaimed = -1;
+      for (let at2 = 0;at2 < messages.length; at2 += 1)
+        if (rawClaimed.includes(messages[at2]))
+          lastClaimed = at2;
+      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
+      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
+      return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
+    } catch (error) {
+      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
+      return;
+    }
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent));
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)));
+      gateTrace("registered agent=" + String(agent.id ?? "?"));
+    } catch (error) {
+      options.warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => register(payload?.agent ?? payload));
+  subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
+  return { installed: true, settled, disposers };
+}
+
+// packages/mpd-roles-plugin/src/roster-section.ts
+var ROSTER_SECTION_NAME = "mpd:roster";
+var ROSTER_SECTION_ORDER = 605;
+function functionOf(description) {
+  const text = String(description ?? "");
+  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
+  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
+}
+function rosterSectionText(members) {
+  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
+  return [
+    "## MPD specialist roster",
+    "The specialists this deployment stages as teammates, addressed by NAME:",
+    ...lines,
+    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
+  ].join(`
+`);
+}
+function installRosterSection(dsh, options) {
+  const presets = options.presets ?? ["mpd"];
+  const disposers = new Map;
+  const text = rosterSectionText(options.members);
+  const report = (line) => {
+    try {
+      options.log?.(line);
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
+      const dispose = dsh.agentPromptSection(agent, section);
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
+    } catch (error) {
+      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      if (options.onEvent !== undefined) {
+        options.onEvent(event, handler);
+        return;
+      }
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => {
+    register(payload?.agent ?? payload);
+    return;
+  });
+  subscribe("agent/disposed", (payload) => {
+    release(payload?.agent ?? payload);
+    return;
+  });
+  return { installed: true, registered: disposers.size, disposers };
+}
+
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
-var inject = ["tools", "subagents"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
 var READONLY_DENY = [
   "write",
   "edit",
@@ -1768,7 +1982,7 @@ function normalizeRoleKey(key) {
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join2(resolve2(config.personasDir), spec.id + ".md") : join2(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join3(resolve3(config.personasDir), spec.id + ".md") : join3(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -1798,7 +2012,7 @@ function readExtensionPersona(root, file) {
   if (!root || !file)
     return null;
   try {
-    const path = resolve2(root, file);
+    const path = resolve3(root, file);
     if (existsSync(path)) {
       const body = readFileSync(path, "utf8").trim();
       if (body)
@@ -1868,7 +2082,7 @@ function extensionRoles(ctx, exec, warn) {
         refuse('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
       }
-      const personaFile = root === "" ? text(item?.persona) : resolve2(root, text(item?.persona));
+      const personaFile = root === "" ? text(item?.persona) : resolve3(root, text(item?.persona));
       const persona = readExtensionPersona(root, text(item?.persona));
       if (persona === null) {
         refuse("persona file is not readable: " + personaFile);
@@ -1897,13 +2111,13 @@ function apply(ctx, config = {}) {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(message);
       else
-        console.log(message);
+        rowLogLine("mpd-roles", message);
     } catch {}
   };
   const adapterWarn = (line) => {
     const message = "[mpd-roles] " + line;
     try {
-      console.log(message);
+      rowLogLine("mpd-roles", message);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
         ctx.logger.warn(message);
     } catch {}
@@ -2051,7 +2265,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       members: teamMembers(),
       presets: ["mpd"],
       warn: (line) => warnOnce("team-section:" + line, line),
-      log: (line) => console.log("[mpd-roles] " + line)
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line)
     });
     guardOutcome.push("rosterSection=agent-scoped order=605");
   } catch (error) {
@@ -2062,7 +2276,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
     installSessionGate(dsh, {
       presets: ["mpd"],
       warn: (line) => warn(line),
-      log: (line) => console.log("[mpd-roles] " + line)
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line)
     });
     guardOutcome.push("sessionGate=advisory");
   } catch (error) {
@@ -2070,10 +2284,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")");
   }
   try {
-    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "));
+    rowLogLine("mpd-roles", "[mpd-roles] team plane: " + guardOutcome.join(" "));
   } catch {}
   try {
-    console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx));
+    rowLogLine("mpd-roles", "[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx));
   } catch {}
 }
 export {

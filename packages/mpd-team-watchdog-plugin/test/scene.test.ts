@@ -8,7 +8,7 @@ import { buildScene, isoBasic, mailboxUnreadObservable, readScene, writeScene } 
 import { readHold, readIncidents } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
 
-import { agent, sandbox, stubAdapter, teamRecordOf, testConfig, writeTeam, openOutstandingChannel } from "./support"
+import { agent, sandbox, stubAdapter, teamRecordOf, testConfig, writeTeam, openOutstandingChannel, captureRowLog } from "./support"
 
 /** A minimal ctx stub; the engine only ever reads `on` from it in this file. */
 function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
@@ -206,13 +206,16 @@ describe("an unwritable scene location", () => {
   test("degrades LOUDLY, still attempts the hold and still records the incident", async () => {
     // An isolated workspace for this case.
     const box = sandbox()
-    // Console lines captured while the scene location is unwritable.
-    const warnings: string[] = []
+    // R5: the diagnostic must stay OFF the terminal, so that channel is asserted EMPTY below.
+    const terminal: string[] = []
     // The real console.warn, restored in the finally block.
     const originalWarn = console.warn
     console.warn = (...args: unknown[]) => {
-      warnings.push(args.map(String).join(" "))
+      terminal.push(args.map(String).join(" "))
     }
+    // …and the line itself is read from the row log the engine now writes it to, pinned to the
+    // sandbox workspace so the repo's own `.mpd/logs` is never touched.
+    const log = captureRowLog(box.workspace)
     try {
       writeTeam(box, {
         id: "team-a",
@@ -250,11 +253,13 @@ describe("an unwritable scene location", () => {
       expect(held.decisions.map((d) => d.type)).toEqual(["escalate"])
       expect(readHold(box.workspace, box.stateDir, "team-a")).toBeDefined()
 
-      // The warning line naming the failed scene path.
-      const named = warnings.find((line) => line.includes("scene write failed at"))
+      // The warning line naming the failed scene path, read from the row log.
+      const named = log.appended().split("\n").find((line) => line.includes("scene write failed at"))
       expect(named).toBeDefined()
+      expect(terminal).toEqual([])
       expect(readIncidents(box.workspace, box.stateDir).length).toBe(3)
     } finally {
+      log.restore()
       console.warn = originalWarn
       box.cleanup()
     }

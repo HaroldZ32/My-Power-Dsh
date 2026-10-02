@@ -1,0 +1,36 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-mcp-shared/log-sink.test.ts:
+(pass) root resolution and writability > the documented env keys come first, in order [0.16ms]
+(pass) root resolution and writability > blank and duplicate candidates are dropped [0.02ms]
+(pass) root resolution and writability > the first WRITABLE root wins and the log file appears under it [0.52ms]
+(pass) root resolution and writability > an unwritable candidate falls through to the next one [0.15ms]
+(pass) when no root is writable > the sink goes to the ring: no file, no throw, and the lines are kept in memory [0.16ms]
+(pass) size cap and rotation > the log rotates to a single `.1` generation once the cap is crossed [0.39ms]
+(pass) size cap and rotation > a line longer than the per-line cap is truncated with a marker [0.20ms]
+(pass) capture and restore > stderr and the five console methods are replaced, stdout is NOT touched, restore puts them back [3.33ms]
+(pass) the descriptor rebind (POSIX) > a GRANDCHILD's inherited stderr lands in the log, and zero bytes reach the parent's file [27.15ms]
+
+packages/mpd-mcp-shared/bin-resolve.test.ts:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [0.43ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.11ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.12ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.08ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.30ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.12ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.22ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.21ms]
+(pass) ast-grep: win32 resolves the .exe spelling of a candidate [0.17ms]
+(pass) ast-grep: win32 honours the caller's own PATHEXT order [0.13ms]
+(pass) ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one) [0.19ms]
+(pass) ast-grep: POSIX keeps the bare name as the only spelling [0.10ms]
+(pass) ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install [0.12ms]
+(pass) ast-grep: .toolchain still wins over the bundle-root tier [0.12ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.ts -> <bundle> [0.14ms]
+[bin-resolve test] toolchain absent — real-probe assertions skipped
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [0.04ms]
+
+ 25 pass
+ 0 fail
+ 70 expect() calls
+Ran 25 tests across 2 files. [47.00ms]

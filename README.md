@@ -190,10 +190,11 @@ It joins that profile as the **third patch layer**, on top of the TUI package:
 `dsh.profile.bundles` becomes
 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
 `dsh --profile dsh-tui --dump-config` puts the bundle's rows in a layer of their own
-(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`). A TUI session defaults to the
-**mpd** preset when its composition carries the `agent-preset-registry` row the bundle id-targets
-(see *Host row the bundle id-targets* below); a plane without that row keeps its own default and logs
-one patch warning. Start it with the `dsh-tui` launcher (alias `dst`):
+(`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`). The bundle overrides NO host row: it
+ships the **mpd** preset additively, and you make it the default with one user action
+(`/preset mpd` in the TUI, `DSH_TUI_PRESET=mpd`, the Settings `selectedDefault` field, or
+`node scripts/set-default-preset.ts --yes`) — see [docs/preset-default.md](./docs/preset-default.md).
+Start it with the `dsh-tui` launcher (alias `dst`):
 
 ```bash
 dsh-tui            # boot in the current directory
@@ -233,11 +234,12 @@ state.
 ### What the install mounts
 
 Every plugin below is declared by this bundle's two patch files — `cordis.patch.yml`
-(everything tabulated below) and `presets/mpd.patch.yml` (the `preset-mpd` row, see *Host row the
-bundle id-targets*) — and is mounted by the one `dsh plugin add` above. `package.json` lists both as
-the array `dsh.bundle.patch`. The main patch carries **29 `- id:` entries in two kinds**: **28 rows
-this bundle INSERTS** (grouped below) and **1 host row it id-TARGETS (replace, not insert)**.
-`node scripts/verify-rows-parity.ts` keeps these row ids in step with the installer.
+(everything tabulated below) and `presets/mpd.patch.yml` (the `preset-mpd` row, see *No host row is
+overridden*) — and is mounted by the one `dsh plugin add` above. `package.json` lists both as
+the array `dsh.bundle.patch`. The main patch carries **31 `- id:` entries, and every one of them sits
+inside an `insert:` list** (five of them); it id-targets **0** host rows.
+`node scripts/verify-rows-parity.ts` keeps these row ids in step with the installer, and
+`node scripts/verify-no-host-override.ts` fails the moment a host row would be id-targeted.
 
 **Bundle host plugins — 18 inserted rows**
 
@@ -311,18 +313,21 @@ extra the user installs by hand: the row below mounts it, so one install command
 | `mcp-context7` | `context7` | The public Context7 docs service over streamable HTTP (`https://mcp.context7.com/mcp`) |
 | `mcp-grepapp` | `grep_app` | The public grep.app GitHub code-search service over streamable HTTP (`https://mcp.grep.app`) |
 
-**Host row the bundle id-targets (replace, not insert) — 1 row**
+**No host row is overridden — this patch is ADDITIVE-ONLY**
 
-`@deepseek-ai/dsh-agent-preset-registry` holds only the deployment **default** selection, so the
-bundle id-targets the host's own row to point it at `mpd` (the installed registry declares exactly
-one config key, `default`, so restating it is complete). It is a **replacement of a row the host
-itself ships, not an insert**: a second insert with the same loader entry id would collide with the
-host's own row. A composition that carries no such row logs `patch: entry … not found` and keeps its
-own default — a warning, never an error.
+Every row the bundle ships is an `insert:` under its own entry id; it never id-targets a row a host
+layer declares (`dsh-base`, `dsh-web-app`, `dsh-headless`, `dsh-tui`). The gate
+`node scripts/verify-no-host-override.ts` fails if that ever changes, and a run that finds no host
+layer refuses to pass vacuously.
 
-| Row id | Plane | What it configures |
-|---|---|---|
-| `agent-preset-registry` | web / base | `default: mpd` |
+The deployment default preset is a HOST-OWNED setting (the `default` key of the host's own
+`@deepseek-ai/dsh-agent-preset-registry` row), so the bundle does not touch it: it ships the `mpd`
+preset additively and leaves the choice to you — `/preset mpd` in the TUI (persisted to
+`~/.dsh-tui/agent-preset.json`), `DSH_TUI_PRESET=mpd` in your own profile patch, the Settings
+`selectedDefault` field in the Web UI, or `node scripts/set-default-preset.ts --yes`. See
+[docs/preset-default.md](./docs/preset-default.md) for what changes for an EXISTING user (their
+default stops being `mpd` until they run one of those, and a `dsh-tui` profile then falls back to the
+host's `standard`, which that composition does not ship).
 
 The `mpd` preset itself — its persona, the project-instruction convention, its tool rows — is
 declared by the bundle's SECOND patch file, `presets/mpd.patch.yml`, as a **row** rather than a
@@ -898,8 +903,9 @@ need if you intend to change the bundle. A published tarball installs with
 **Does the bundle configure my model credentials?** No. DSH owns credentials and providers; the
 bundle only declares the model routes its roster uses (`Configuration` → the team-model slots).
 
-**Which preset should I pick?** **MPD (Main Working Agent)** — the only preset the bundle ships. It
-is already the default where the host's `agent-preset-registry` row is present.
+**Which preset should I pick?** **MPD (Main Working Agent)** — the only preset the bundle ships. The
+deployment default is a host-owned setting the bundle deliberately does not touch, so make it yours in
+one step ([docs/preset-default.md](./docs/preset-default.md)).
 
 **Where does my data live?** Under each workspace's `.mpd/` directory, plus the user-level workmate
 library at `~/.mpd/workmate/`. The complete list is *Where your state lives*; uninstalling the

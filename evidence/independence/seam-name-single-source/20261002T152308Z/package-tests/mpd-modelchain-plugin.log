@@ -1,0 +1,8 @@
+(pass) resolveRole resolves kebab-case and legacy camelCase keys to the same chain [0.15ms]
+(pass) mpd_modelchain_resolve resolves kebab keys and drops the dead skipped field [0.48ms]
+(pass) modelchain.sisyphus-junior config key is resolved through the mpdConfig service [0.24ms]
+
+ 4 pass
+ 0 fail
+ 39 expect() calls
+Ran 4 tests across 1 file. [13.00ms]

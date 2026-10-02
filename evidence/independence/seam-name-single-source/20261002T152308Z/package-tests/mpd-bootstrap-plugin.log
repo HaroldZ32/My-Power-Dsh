@@ -1,0 +1,8 @@
+(pass) legacy home-copy migration > removes only stamped bundle copies and leaves user content alone [0.66ms]
+[mpd-bootstrap] skill corpus served from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills (provider mpd-bundle, bundle 0.11.6)
+(pass) legacy home-copy migration > never touches an unstamped home (legacy installer copies survive) [0.19ms]
+
+ 6 pass
+ 0 fail
+ 175 expect() calls
+Ran 6 tests across 1 file. [18.00ms]

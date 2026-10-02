@@ -1,17 +1,214 @@
 // packages/mpd-memory-plugin/src/index.ts
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join, resolve as resolve2, sep } from "node:path";
+import { basename, dirname, join as join2, resolve as resolve3, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
+}
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_TOOLS = "tools";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -39,11 +236,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -56,7 +265,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -207,6 +416,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -272,7 +482,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -560,6 +770,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -1034,7 +1245,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -1053,7 +1264,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -1152,7 +1363,7 @@ function resolveDshAdapter(ctx) {
 
 // packages/mpd-memory-plugin/src/index.ts
 var name = "mpd-memory";
-var inject = ["tools"];
+var inject = dshSeamInject(DSH_SEAM_TOOLS);
 function mergedConfig(ctx, config) {
   const svc = ctx.get?.("mpdConfig");
   if (!svc?.get)
@@ -1174,16 +1385,16 @@ function slugOf(config, dsh, exec) {
   return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
 }
 function bumpRoot(config, slug, dsh, exec) {
-  return join(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug);
+  return join2(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug);
 }
 function ensureDirs(config, dsh, exec) {
   const slug = slugOf(config, dsh, exec);
   const root = bumpRoot(config, slug, dsh, exec);
-  const repo = join(root, "repo");
-  const runtime = join(root, "runtime");
-  const memoryDir = join(repo, "memory");
-  mkdirSync(memoryDir, { recursive: true });
-  mkdirSync(runtime, { recursive: true });
+  const repo = join2(root, "repo");
+  const runtime = join2(root, "runtime");
+  const memoryDir = join2(repo, "memory");
+  mkdirSync2(memoryDir, { recursive: true });
+  mkdirSync2(runtime, { recursive: true });
   return { root, repo, runtime, memoryDir, slug };
 }
 function run(cmd, args, cwdDir) {
@@ -1194,7 +1405,7 @@ function run(cmd, args, cwdDir) {
   return { ok: r.status === 0, out };
 }
 function gitEnsure(repo) {
-  if (!existsSync(join(repo, ".git"))) {
+  if (!existsSync(join2(repo, ".git"))) {
     const r = run("git", ["init", "-q"], repo);
     if (!r.ok)
       throw new Error("mpd-memory: git init failed: " + r.out);
@@ -1204,15 +1415,15 @@ function gitEnsure(repo) {
   return "git";
 }
 function svnEnsure(root, repo) {
-  const svnRepo = join(root, "svn-repo");
+  const svnRepo = join2(root, "svn-repo");
   const url = "file://" + svnRepo;
-  if (!existsSync(join(svnRepo, "db"))) {
+  if (!existsSync(join2(svnRepo, "db"))) {
     const r = run("svnadmin", ["create", svnRepo], root);
     if (!r.ok)
       throw new Error("mpd-memory: svnadmin create failed: " + r.out);
   }
-  if (!existsSync(join(repo, ".svn"))) {
-    mkdirSync(dirname(repo), { recursive: true });
+  if (!existsSync(join2(repo, ".svn"))) {
+    mkdirSync2(dirname(repo), { recursive: true });
     const r = run("svn", ["checkout", url, repo], dirname(repo));
     if (!r.ok)
       throw new Error("mpd-memory: svn checkout failed: " + r.out);
@@ -1275,8 +1486,8 @@ function normalizeLogEntry(meta, file, body) {
   return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
 }
 function safeMemoryPath(memoryDir, name2) {
-  const base = resolve2(memoryDir);
-  const target = resolve2(base, name2);
+  const base = resolve3(memoryDir);
+  const target = resolve3(base, name2);
   if (!target.startsWith(base + sep))
     throw new Error("mpd-memory: path escapes memory dir: " + name2);
   return target;
@@ -1286,13 +1497,13 @@ function apply(ctx, config = {}) {
   const cfg = mergedConfig(ctx, config);
   const reflectionEvery = cfg.reflectionEvery ?? 10;
   function statePath(d) {
-    return join(d.runtime, "reflection.json");
+    return join2(d.runtime, "reflection.json");
   }
   function factsPath(d) {
-    return join(d.runtime, "facts.jsonl");
+    return join2(d.runtime, "facts.jsonl");
   }
   function journalPath(d) {
-    return join(d.runtime, "journal.jsonl");
+    return join2(d.runtime, "journal.jsonl");
   }
   function readReflection(d) {
     try {
@@ -1355,7 +1566,7 @@ function apply(ctx, config = {}) {
       const kind = args?.kind ? String(args.kind) : null;
       const query = args?.query ? String(args.query).toLowerCase() : null;
       for (const f of files) {
-        const p = join(d.memoryDir, f);
+        const p = join2(d.memoryDir, f);
         const { meta, body } = parseFrontmatter(p);
         const e = normalizeLogEntry(meta, f, body);
         if (kind && e.kind !== kind)

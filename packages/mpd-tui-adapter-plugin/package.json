@@ -1,0 +1,11 @@
+{
+  "name": "@mpd-dsh/tui-adapter",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Single adapter over every DSH-TUI seam the bundle uses (the fourteen tui* services, tuiPrompt, the harness command registry and the settings provider), with a per-seam deferred binder, a capability probe, warn-once degrade and a file-only diagnostic sink",
+  "scripts": {
+    "test": "bun test"
+  },
+  "license": "SEE LICENSE IN ../../LICENSE.md"
+}
