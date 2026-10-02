@@ -54,11 +54,12 @@ cd My-Power-Dsh
 bun install
 ```
 
-`bun install` 会把声明的运行时依赖落到本地，其中包括 `dsh-better-sidebar`，它的传递依赖
-`node-pty` 需要 `node-gyp`。当 `node-gyp` 不可用时：
+`bun install` 会把声明的运行时依赖落到本地，其中包括 `dsh-better-sidebar`。早期版本会拉入传递依赖
+`node-pty`，它需要 `node-gyp`；`0.24.1` 已不再依赖它（2026-10-02 实测），因此下面这条只在
+`node-gyp` 不可用时才需要：
 
 ```bash
-bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+bun add dsh-better-sidebar@0.24.1 --ignore-scripts
 ```
 
 只有侧边栏的终端面板会降级。

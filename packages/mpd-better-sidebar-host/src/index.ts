@@ -80,7 +80,7 @@ export const name = "mpd-better-sidebar-host"
  * It is restated rather than imported because a static import would have to name a path that exists
  * in BOTH install layouts (the checkout ships the host under `<bundle>/node_modules`, a packed
  * install gets it in the profile's), and the dynamic import that solves that cannot produce a static
- * export. The bundle PINS the host's version (`dsh-better-sidebar@0.19.0-alpha.1`), and
+ * export. The bundle PINS the host's version (`dsh-better-sidebar@0.24.1`), and
  * `test/host-contract.test.ts` compares this list with the shipped package's own whenever that
  * package is resolvable — so a version bump that changes the list fails a test instead of starving
  * the host in silence.

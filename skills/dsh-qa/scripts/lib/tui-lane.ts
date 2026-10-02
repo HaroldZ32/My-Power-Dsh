@@ -7,7 +7,7 @@
 //     plus a `pipe-pane` raw ANSI log;
 //   • a tmux server does not survive across shell invocations, so ONE process owns
 //     the whole lifecycle (spawn, drive, capture, kill);
-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.11.1` needs
+//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.12.0` needs
 //     network on first run, so the lanes take an EXPLICIT sandbox/cache root
 //     (`--sandbox-root`, recorded in every result) and reuse a warm profile instead
 //     of reinstalling: a verification run that is handed a different root proves it
@@ -965,7 +965,7 @@ export interface TuiPrereqOptions {
 /** Declared prerequisites, in check order. */
 export function tuiPrereqs({ sandboxPresent, hostInstallRefusal }: TuiPrereqOptions): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.11.2", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.12.0", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
     // CHECKED BEFORE `absent-fixture`, and it exists because that one LIED. When `--install` ran and
     // the harness REFUSED the host on peer ranges, the run fell through to `requested-absent-fixture`

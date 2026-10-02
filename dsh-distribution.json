@@ -19,7 +19,7 @@
           },
           {
             "id": "host-tui",
-            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.11.6"
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.12.0"
           },
           {
             "id": "bundle",

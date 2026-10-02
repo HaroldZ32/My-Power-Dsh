@@ -1,0 +1,19 @@
+# Extract of the GitHub runner log for run 37015800886 (job 110866225293), 2026-10-02T13:52Z.
+# Fetched with: XDG_CACHE_HOME=<writable> gh run view 37015800886 --log
+# Kept because it is the ONLY artifact that shows the aggregate running ON A RUNNER.
+
+^[[36;1mecho "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the pin this bundle declares)"^[[0m
+installing @deepseek-ai/dsh@0.2.0-rc.2 (the pin this bundle declares)
+^[[36;1mecho "upstream baseline at $(git -C "${RUNNER_TEMP}/upstream" rev-parse HEAD)"^[[0m
+upstream baseline at 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-gates] member vendor: exit=0 PASS - 953ms
+[verify-gates] member dist-fresh: exit=0 PASS - 729ms
+[verify-gates] member rows-parity: exit=0 PASS - 203ms
+[verify-gates] member docs-parity: exit=0 PASS - 180ms
+[verify-gates] member preset-conformance: exit=0 PASS - 504ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 2882ms
+[verify-gates] member comment-coverage: exit=0 PASS - 2672ms
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/runner/work/My-Power-Dsh/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 110ms
+[verify-gates] PASS - 8/8 member gate(s) green

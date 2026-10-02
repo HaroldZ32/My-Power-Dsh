@@ -58,11 +58,12 @@ cd My-Power-Dsh
 bun install
 ```
 
-`bun install` materializes the declared runtime dependencies, including `dsh-better-sidebar`, whose
-transitive `node-pty` needs `node-gyp`. Where `node-gyp` is unavailable:
+`bun install` materializes the declared runtime dependencies, including `dsh-better-sidebar`. Earlier
+releases pulled a transitive `node-pty` that needs `node-gyp`; `0.24.1` no longer depends on it
+(measured 2026-10-02), so this is only needed where `node-gyp` is unavailable:
 
 ```bash
-bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+bun add dsh-better-sidebar@0.24.1 --ignore-scripts
 ```
 
 Only the sidebar's terminal panel degrades.

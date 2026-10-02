@@ -1,0 +1,36 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-oneclick internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.33kB done
+#2 DONE 0.0s
+
+#3 [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04
+#3 ERROR: failed to do request: Head "https://registry-1.docker.io/v2/library/ubuntu/manifests/24.04": read tcp [2408:8210:a834:f070:2a50:8381:afab:8d5e]:39346->[2600:1f18:2148:bc01:a552:ffee:e2bf:3781]:443: read: connection reset by peer
+
+#4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#4 CANCELED
+------
+ > [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04:
+------
+Dockerfile:36
+
+--------------------
+
+  34 |     # no build step of its own.
+
+  35 |     FROM node:24-bookworm AS node-runtime
+
+  36 | >>> FROM ubuntu:24.04
+
+  37 |     # The official Node image's `/usr/local` carries node, npm and npx with their module tree intact, so
+
+  38 |     # nothing has to be re-linked. See the WHY above for what this costs the lane's claim.
+
+--------------------
+
+target mpd-oneclick: failed to solve: ubuntu:24.04: failed to resolve source metadata for docker.io/library/ubuntu:24.04: failed to do request: Head "https://registry-1.docker.io/v2/library/ubuntu/manifests/24.04": read tcp [2408:8210:a834:f070:2a50:8381:afab:8d5e]:39346->[2600:1f18:2148:bc01:a552:ffee:e2bf:3781]:443: read: connection reset by peer
+

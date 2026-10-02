@@ -32,10 +32,10 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.11.2 is the first dsh-tui release
-# whose peer ranges accept BOTH 0.1.7-rc.2 and 0.2.0-rc.1 (0.11.1 stops at 0.1.7-rc.2 and is REFUSED
-# against a 0.2.0-rc.1 harness). Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.11.2}"
+# Same default as docker/entrypoint.sh, and for the same reason: 0.12.0 is the dsh-tui release whose
+# peer ranges cover the whole band this lane runs (up to and including 0.2.0-rc.2), while 0.11.2 stopped
+# at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. Keep the two in step.
+TUI_VERSION="${TUI_VERSION:-0.12.0}"
 
 TUI_DIR="$WORK_DIR/tui"
 mkdir -p "$TUI_DIR"

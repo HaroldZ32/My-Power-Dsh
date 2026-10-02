@@ -49,14 +49,15 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.1.7-rc.2}"
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.11.2 is the first dsh-tui release whose peer ranges include BOTH harness pins
-# this lane is expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1` — so ONE default
-# serves the documented target AND the 0.2.0-rc.1 adaptation run. 0.11.1 stops at 0.1.7-rc.2, and a
-# `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.1 harness is then REFUSED on peer ranges,
-# which aborted this lane (measured 2026-09-29, evidence/docker/client-install/2026-09-29T07-07-01Z).
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.11.2}"
+# The DSH-TUI host. 0.12.0 is the dsh-tui release whose peer ranges cover the WHOLE band this lane is
+# expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2` — so ONE default
+# serves the pinned baseline and any older adaptation run. 0.11.2 stopped at 0.2.0-rc.1, and a
+# `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
+# same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
+# (evidence/docker/client-install/2026-09-29T07-07-01Z).
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.12.0}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
@@ -227,13 +228,16 @@ log "ubuntu image : $(. /etc/os-release; printf '%s %s' "$ID" "$VERSION_ID")"
 log "app dir      : $APP_DIR   (copy of $SRC_DIR)"
 log "HOME         : $HOME"
 log "DSH_HOME     : $DSH_HOME"
-log "pins         : node=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
+# `nodePin`, NOT `node`: this line prints the TARBALL route's pin, and in image mode the node that
+# actually runs is the `node:24-bookworm` one (measured 2026-10-02: the label read `node=24.19.0` while
+# the container ran v24.21.0). The effective version is recorded by `fact node` in BOTH routes below.
+log "pins         : nodePin=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
 
 fact stamp "$STAMP"
 fact entrypoint "docker/entrypoint.sh"
 fact image "$IMAGE"
 fact ubuntuImage "$(. /etc/os-release; printf '%s %s (%s)' "$ID" "$VERSION_ID" "$PRETTY_NAME")"
-fact pins "node=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
+fact pins "nodePin=$NODE_VERSION dsh=$DSH_VERSION pnpm=$PNPM_VERSION"
 fact home "$HOME"
 fact dshHome "$DSH_HOME"
 
@@ -316,6 +320,10 @@ else
   NODE_V="$(node -v 2>/dev/null || true)"
   NPM_V="$(npm -v 2>/dev/null || true)"
   fact nodeSource "image (node:24-bookworm /usr/local)"
+  # The EFFECTIVE version is recorded in the image route too, exactly as the tarball route does it: the
+  # `pins` line above holds the tarball pin, so without this fact an image-mode result.json states no
+  # node version at all (measured 2026-10-02 on the first green run of the multi-stage Dockerfile).
+  fact node "$NODE_V (npm $NPM_V)"
   case "$NODE_V" in
     "v${NODE_VERSION%%.*}"*) [ -n "$NPM_V" ] && record toolchain.node true "node $NODE_V and npm $NPM_V come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org" "$NODE_V npm=$NPM_V" || record toolchain.node false "node runs but npm does not — the copied /usr/local is incomplete" "node=$NODE_V npm=missing" ;;
     *) record toolchain.node false "the image's node is not the pinned major v${NODE_VERSION}" "$NODE_V" ;;

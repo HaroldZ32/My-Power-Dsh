@@ -32,7 +32,7 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.1.7-rc.2` (the default pin — override it with
+5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` (the default pin — override it with
    `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
    `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
@@ -82,9 +82,9 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.11.2` — the first dsh-tui release whose
-    peer ranges accept BOTH harness pins this lane runs (`0.1.7-rc.2` and `0.2.0-rc.1`; `0.11.1` stops
-    at the former, and `dsh plugin --profile dsh-tui add` is then REFUSED on peer ranges). Override it
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.12.0` — the dsh-tui release whose
+    peer ranges cover the whole band this lane runs (`0.1.7-rc.2`, `0.2.0-rc.1` and `0.2.0-rc.2`; `0.11.2`
+    stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui add` is then REFUSED on peer ranges). Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
     patch layer, and records eleven assertions: host install, both `plugin add` calls, composition,
@@ -159,6 +159,26 @@ buildx state under `$DOCKER_CONFIG` (default `~/.docker/buildx`), so a plain `do
 private writable temp directory for every docker child (the caller's own value wins) and removes it at
 the end; the rootless docker context in the real `~/.docker` is still used, and **no credential file is
 copied anywhere**. By hand, `export BUILDX_CONFIG=$(mktemp -d)` before invoking compose.
+
+The build ALSO needs the **daemon** (not the driver) to resolve the two base images — `node:24-bookworm`
+and `ubuntu:24.04` — from Docker Hub, and an empty local image store makes that a hard prerequisite
+rather than a cache hit: when the route is broken the run dies in buildx's `load metadata` step, before
+any layer is built. Measured 2026-10-02 on a host whose IPv6 egress resets every connection while IPv4
+reaches the registry fine: the daemon dialled the AAAA record and three runs in a row died with
+`read: tcp [...]:443: read: connection reset by peer`. The remedy needs no daemon reconfiguration —
+pull both images through a mirror whose host publishes **no AAAA record**, so only IPv4 can be dialled,
+and re-tag them to the canonical names the Dockerfile's `FROM` lines use:
+
+```bash
+# measured against docker.m.daocloud.io; any IPv4-only mirror serves the same purpose
+docker pull docker.m.daocloud.io/library/ubuntu:24.04
+docker tag  docker.m.daocloud.io/library/ubuntu:24.04 ubuntu:24.04
+docker pull docker.m.daocloud.io/library/node:24-bookworm
+docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
+```
+
+`docker compose build` then resolves both `FROM` stages from the local store, and the lane runs
+unchanged.
 
 ## Isolation model
 

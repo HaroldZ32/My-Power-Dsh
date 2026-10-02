@@ -81,6 +81,12 @@ const DECLARED_MEMBERS: readonly Member[] = [
   // Every declaration in the TypeScript source set carries a precise comment and every named
   // function spells out its parameter and return types.
   { id: "comment-coverage", argv: ["node", "./scripts/verify-comment-coverage.ts"] },
+  // Every `.github/workflows/*.yml` must be LOADABLE YAML with a sane job/step shape. This member
+  // exists because the failure it catches is invisible to every other one: GitHub rejects an
+  // unloadable workflow at LOAD time — the run appears, fails in 0 s, creates NO job and no step
+  // logs — so a single bad scalar in the workflow file silently disables this whole table at once
+  // (measured 2026-09-28..2026-10-02: five pushes, zero jobs, no gate able to see it).
+  { id: "workflows", argv: ["node", "./scripts/verify-workflows.ts"] },
 ]
 
 /** The `--help` text: every option, the override rule, the exit codes and the census grammar. */

@@ -72,7 +72,7 @@ one command and uninstalls with one command that leaves no residue.
 
 - **DeepSeek Harness (DSH)** with a `web` or `headless` profile, and model credentials configured in
   DSH. The bundle never configures keys for you. The bundle is built and verified against harness
-  **0.1.7-rc.2**.
+  **0.2.0-rc.2**.
 - **Node.js** and **Bun** (`1.4.0`, the version recorded by the `buildToolchain` field in
   `package.json`) on `PATH` for the repository scripts (`bun` runs the tests and the extension CLI).
 - **git**, for a source install: the primary flow clones this repository and installs from the
@@ -132,11 +132,14 @@ that hosts the Workmates tab) and the three official Agent Teams packages that p
 *What the install mounts*) — so a checkout install materializes the repository's dependencies first.
 A published-package install needs none of this: pnpm resolves those dependencies itself.
 
-If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it), install the
-sidebar without build scripts — only the sidebar's terminal panel degrades:
+If `node-gyp` is unavailable, install the sidebar without build scripts — only the sidebar's terminal
+panel degrades. Earlier sidebar releases needed this because they pulled a transitive `node-pty` whose
+postinstall builds with `node-gyp` (and is what pnpm reports as an ignored build script);
+`dsh-better-sidebar@0.24.1` no longer depends on `node-pty` (measured 2026-10-02: it is absent from its
+`dependencies`), so the flag is belt-and-braces rather than a requirement:
 
 ```bash
-bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+bun add dsh-better-sidebar@0.24.1 --ignore-scripts
 ```
 
 A packed install takes care of this itself (pnpm installs the declared dependencies), see *Install

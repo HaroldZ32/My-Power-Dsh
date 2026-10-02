@@ -86,7 +86,9 @@ Preset selection has **TWO** id-targets, one per plane, both naming the same pac
 The second is not redundant: a `dsh-tui` profile composes no `dsh-web-app` layer, so the first
 target is skipped there (`patch: entry agent-preset-registry not found`) and the TUI's own row would
 keep `default: standard` — while nothing in that composition declares a `standard` preset
-(`@deepseek-harness-tui/dsh-tui@0.11.1` ships no preset rows), so every new TUI session would ask
+(`@deepseek-harness-tui/dsh-tui@0.12.0` declares no `@deepseek-ai/dsh-agent-preset` row at all —
+measured 2026-10-02: its own scoped registry row still carries `default: standard`, while the only
+preset directory that release ships is `presets/liangshen/`), so every new TUI session would ask
 for a preset that does not exist. Each id exists in exactly ONE composition, so the other profile
 only logs a not-found warning and applies nothing; an id-target assigns only the keys this file
 carries and skips `id`, so the TUI row's own compiled-DISABLED expression survives untouched.
