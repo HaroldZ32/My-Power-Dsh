@@ -43,16 +43,51 @@
     "output": "[preset-conformance] FAIL: self-test: dsh is not on PATH — the case cannot verify the installed harness",
     "conclusion": "the harness install step is REQUIRED, not decorative; the row-config gate validates against the INSTALLED packages' schemastery schemas"
   },
+  "theRealThing": {
+    "whyThisSectionExists": "The rehearsal above reproduces the workflow's COMMANDS. It could not observe a LOAD-TIME rejection, and that turned out to be the actual reason CI 'does not run at all': GitHub never created a job, so there was nothing to reproduce step by step.",
+    "rootCause": "`.github/workflows/gates.yml` carried the unquoted step name `Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)`. A `: ` inside an unquoted YAML scalar starts a nested mapping, so the document was invalid and GitHub refused the whole workflow at load time. Measured signature: run conclusion=failure, duration 0 s, ZERO jobs, banner 'This run likely failed because of a workflow file issue' — on every push from 2026-09-28 through 2026-10-02 (four of them on dev/master), i.e. the lockfile and gate-member defects fixed by this PR could never have shown themselves.",
+    "runs": [
+      {
+        "id": 37015137817,
+        "url": "https://github.com/HaroldZ32/My-Power-Dsh/actions/runs/37015137817",
+        "trigger": "pull_request",
+        "conclusion": "success",
+        "job": "Static gates",
+        "duration": "2m4s",
+        "steps": "all 9 green: checkout, setup-node, setup-bun, bun install --frozen-lockfile, install the harness, check out the pinned upstream, static gate aggregate, plugin manifest, declaration comments",
+        "note": "FIRST run in the repository's history with a job at all, let alone a green one"
+      },
+      {
+        "id": 37015424763,
+        "url": "https://github.com/HaroldZ32/My-Power-Dsh/actions/runs/37015424763",
+        "trigger": "pull_request",
+        "conclusion": "success",
+        "job": "Static gates",
+        "duration": "1m15s",
+        "note": "after actions/checkout and actions/setup-node moved v4 -> v7; the earlier run's 'Node.js 20 is deprecated' annotation is gone"
+      }
+    ],
+    "remainingAnnotation": "'The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026' — informational; nothing in this workflow is distribution-version specific"
+  },
+  "theNewGate": {
+    "file": "scripts/verify-workflows.ts",
+    "memberId": "workflows",
+    "why": "an unloadable workflow disables EVERY gate in the aggregate at once, and its failure is silent (load-time, no job, no logs) — so it must redden something that runs OUTSIDE the workflow.",
+    "checks": "real YAML parse; `name`/`on`/non-empty `jobs`; a trigger block that parsed as a boolean; every job's `runs-on` + non-empty `steps`; every step's exactly-one-of uses/run and a STRING name; a zero-subject directory is refused",
+    "parserSource": "resolved from the installed harness (the same route preset-conformance uses for its schemas), with an MPD_WORKFLOW_JS_YAML override and the repository's own node_modules as fallbacks; no parser FAILS by name rather than skipping",
+    "selfTest": "7/7 arms on temp fixtures, the FIRST of which is the exact historical line and asserts the parser REJECTS it",
+    "aggregate": "`bun run verify:gates` now reports 8/8 members green (the member table in scripts/verify-gates.ts is the one declaration point)"
+  },
   "verdict": {
     "ok": true,
-    "stepsGreen": "8/8",
-    "aggregateMembersGreen": "7/7",
+    "stepsGreen": "8/8 (rehearsal) and 9/9 (the real GitHub job, twice)",
+    "aggregateMembersGreen": "8/8 (was 7/7 before the workflows member was added)",
     "artifacts": {
       "rehearsalScript": "rehearsal.sh",
       "fullOutput": "output.log",
       "stepExits": "step-exits.tsv",
       "preRepinStepExits": "step-exits.pre-repin.tsv"
     },
-    "notProvedHere": "GitHub itself: this ran on one Linux host, not on a runner image. The runner-specific risks left open are the two setup actions' own behaviour and the runner's network policy toward registry.npmjs.org and github.com."
+    "notProvedHere": "GitHub's runner image itself is only exercised by the two runs above, which did not cover every future push; the gate this wave adds (scripts/verify-workflows.ts) covers the load-time class, not a runner-specific failure."
   }
 }
