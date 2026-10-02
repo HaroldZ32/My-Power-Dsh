@@ -8,6 +8,13 @@ this tree). `AGENTS.md` §6 carries the binding one-line rule and points here fo
 A host release that renames or reshapes a seam must be absorbed in ONE place per plane. This bundle
 therefore has exactly two contact surfaces:
 
+NOTE ON WORDING (measured by the wave's reviewer): the rule is about ACCESS, not about the word. Eight
+files under `packages/mpd-tui-plugin/src` still spell a seam id in a COMMENT (their header documents
+which seam they route through, e.g. `// Seam 8 — ctx.tuiScenes`); the gate strips comments before
+matching, deliberately, because those headers are what makes the adapter route auditable. A claim of
+the form "no file names a seam" is therefore false as written; the true claim is "no file outside the
+adapter ACCESSES a seam".
+
 | Plane | Package | Row / service | What it owns |
 |---|---|---|---|
 | DSH (harness) | `packages/mpd-dsh-adapter-plugin` | row `mpd-dsh-adapter`, service `mpdDsh` | `ctx.tools`, `ctx.subagents`, `ctx.skills`, `ctx.agentPresets`, `ctx.commands`, `ctx.systemPrompt`, `ctx.on`, `ctx.loader`, the LLM catalog, settings, the team plane (`TeamExecutor`) |
