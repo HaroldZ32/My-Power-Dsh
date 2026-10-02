@@ -68,7 +68,11 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.0"
-      - name: Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)
+      # QUOTED, and the quotes are load-bearing: an unquoted step name containing `: ` is parsed as
+      # a nested mapping, which makes the WHOLE file invalid. GitHub then refuses the workflow
+      # WITHOUT creating a single job ("This run likely failed because of a workflow file issue",
+      # 0 s, no jobs) — measured on every push from 2026-09-28 until this fix.
+      - name: "Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)"
         run: bun install --frozen-lockfile
 
       # The harness the gates validate AGAINST. Its version is READ, never restated: the pin in
