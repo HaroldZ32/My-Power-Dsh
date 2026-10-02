@@ -200,7 +200,7 @@ const EXPECTED: readonly string[] = [
   "tui.pluginAddHost",
   "tui.pluginAddBundle",
   "tui.compose",
-  "tui.registryDefaultMpd",
+  "tui.presetPreference",
   "tui.presetRow",
   "tui.mpdTuiRow",
   "tui.agentTeamRows",
@@ -407,16 +407,19 @@ const result: RunResult = {
     "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
     "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
     "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
-    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
     "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle",
   ],
   // COMPOSITION ONLY = row lists. Kept in its own field so nothing here can be read as a load proof
   // (AGENTS.md §4: --dump-config composes rows and never executes plugin code).
   provesCompositionOnly: [
     "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)",
   ],
   doesNotProve: [
     "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
     "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
     "a packed/tarball install from dist/mpd-package",
     "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used",

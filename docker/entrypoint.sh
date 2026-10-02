@@ -132,6 +132,30 @@ witness() {
   { grep -nE -- "$pattern" "$file" 2>/dev/null | head -n "$max" | tr '\n' ' ' ; } || true
 }
 
+# row_log_line <row> <ere> — the first LINE of an MPD row's OWN file log, naming the file it came from.
+#
+# R5 (AGENTS.md §6, agent-references/seam-adapters.md) moved every MPD runtime diagnostic OUT of the
+# terminal: a row never prints, it appends to `<workspace>/.mpd/logs/<row>.log`. A console grep
+# therefore witnesses NOTHING for these rows — measured 2026-10-02 on the client-install run: the
+# adapter's boot line and the session-gate registration line both recorded false with an EMPTY raw
+# while the boot itself was green (evidence/docker/client-install/2026-10-02T16-14-48Z/result.json).
+#
+# The candidate roots are the two workspaces this lane really has, in resolution order: the boot
+# process's own cwd ($WORK_DIR, the exec-less `rowLogLine` fallback) and the session workspace the
+# `/api/session/create` call named ($WORK_DIR/ws). The FIRST file carrying the line wins and the
+# printed result NAMES it, so the witness can be re-read by hand instead of trusted, and a line
+# absent from every candidate makes the caller record FALSE.
+row_log_line() {
+  local row="$1" pattern="$2" root file line
+  for root in "$WORK_DIR" "$WORK_DIR/ws"; do
+    file="$root/.mpd/logs/$row.log"
+    [ -f "$file" ] || continue
+    line="$(grep -m1 -oE -- "$pattern" "$file" 2>/dev/null || true)"
+    if [ -n "$line" ]; then printf '%s (file=%s)' "$line" "$file"; return 0; fi
+  done
+  return 1
+}
+
 append_step() { # id exit seconds logfile cmd
   printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$STEPS_INDEX"
 }
@@ -661,11 +685,81 @@ for row in mpd-dsh-adapter mpd-bootstrap mpd-web-compat mpd-roles mpd-workmate; 
 done
 DEFAULT_MPD="$(grep -cE "^[[:space:]]*default: ['\"]?mpd['\"]?[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null || true)"
 fact obs.dumpMpdRowIds "$(grep -oE "^[[:space:]]*- id: mpd-[a-z-]+" "$DUMP_TXT" 2>/dev/null | sed 's/^[[:space:]]*- id: //' | sort -u | tr '\n' ',' || true)"
-fact obs.dumpDefaultMpdLines "$DEFAULT_MPD"
-if [ -z "$MISSING_ROWS" ] && [ "${DEFAULT_MPD:-0}" -ge 1 ]; then
-  record compose.mpdRows true "the mpd host rows compose and the default preset selection is mpd" "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x$DEFAULT_MPD"
+# The bundle no longer selects anything by override (strict zero-override, user decision 2026-10-02),
+# so ZERO `default: mpd` lines is the expected shape in the composed tree too. It is an OBSERVATION,
+# not a gate: the gate on that contract is the structural scan of the SHIPPED patch below, which names
+# the offending line — and this read also covers host layers this bundle does not own.
+fact obs.dumpDefaultMpdLines "$DEFAULT_MPD (expected 0: the bundle ships no preset override)"
+
+# ── the SHIPPED patch of the INSTALLED bundle: zero column-0 id-targets ───────────────────────
+# WHY THE INSTALLED TREE and not the checkout: the composition above was produced from THIS tree, so
+# this is the patch a user's harness actually read (a source-mode profile resolves the very same file
+# through its `link:` dependency). An unreadable tree is recorded as a failure below rather than
+# silently compared against a copy somewhere else in the image.
+BUNDLE_DIR=""
+if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/cordis.patch.yml" ]; then BUNDLE_DIR="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"; fi
+# A TOP-LEVEL `- id: <x>` entry is an ID-TARGET (a per-key replacement of a row some host layer
+# declares — the retired `default: mpd` registry override was exactly that); rows inside an `insert:`
+# list are the ones this bundle ADDS, which is what the additive-only contract permits. The rule is
+# therefore structural and needs no host list: at indent 0, every `- id:` is a violation. Two ships
+# two layers (`package.json` dsh.bundle.patch), so both are read.
+ID_TARGET_HITS=""
+ID_TARGET_LAYERS=0
+for layer in cordis.patch.yml presets/mpd.patch.yml; do
+  [ -f "$BUNDLE_DIR/$layer" ] || continue
+  ID_TARGET_LAYERS=$((ID_TARGET_LAYERS + 1))
+  LAYER_HITS="$(grep -nE '^- id: ' "$BUNDLE_DIR/$layer" 2>/dev/null | tr '\n' ';' || true)"
+  if [ -n "$LAYER_HITS" ]; then ID_TARGET_HITS="$ID_TARGET_HITS$layer:$LAYER_HITS"; fi
+done
+# The repo's own gate is a STRONGER witness when it can run: it compares every id-target against the
+# ids the host layers on disk actually declare. Three container facts shape HOW it is invoked:
+#   * the installed bundle can live UNDER node_modules (the oneclick/pnpm layout), where Node refuses
+#     to strip types for a `.ts` file — measured 2026-10-02: the gate died there with no verdict line
+#     and this step aborted the whole run. So the gate's source is COPIED out to a scratch dir
+#     together with the manifest and the very layers under test: the subject stays the INSTALLED
+#     bytes (asserted with `cmp`), only the runner's location changes.
+#   * a container copy can resolve zero host layers, and that ONE condition (a vacuous comparison)
+#     must not redden an arm whose structural read already ran; `--allow-no-host` downgrades exactly
+#     that condition to a NOTE, while a real finding still exits 1.
+#   * the gate's own output is PRINTED (into the step log) instead of only grepped: a witness whose
+#     failure mode cannot be read is not evidence.
+# Classification, so the arm decides on the CONTRACT and never on infrastructure: a verdict line
+# naming a violation fails the assertion, an exit 0 is recorded as the witness, and a gate that
+# could not run at all is named as UNAVAILABLE in the raw while the structural read still decides.
+NO_OVERRIDE_WITNESS="gate=skipped (no node, or the installed tree carries no gate script)"
+NO_OVERRIDE_FINDING=0
+NO_OVERRIDE_CODE=0
+SUBJECT_COPY="not compared"
+if command -v node >/dev/null 2>&1 && [ -f "$BUNDLE_DIR/scripts/verify-no-host-override.ts" ] && [ -f "$BUNDLE_DIR/package.json" ]; then
+  GATE_DIR="$WORK_DIR/no-host-override-subject"
+  rm -rf "$GATE_DIR"
+  mkdir -p "$GATE_DIR"
+  for rel in package.json cordis.patch.yml presets scripts; do
+    cp -a "$BUNDLE_DIR/$rel" "$GATE_DIR/" 2>/dev/null || true
+  done
+  if cmp -s "$BUNDLE_DIR/cordis.patch.yml" "$GATE_DIR/cordis.patch.yml" \
+     && cmp -s "$BUNDLE_DIR/presets/mpd.patch.yml" "$GATE_DIR/presets/mpd.patch.yml"; then
+    SUBJECT_COPY="byte-identical"
+  fi
+  # `|| NO_OVERRIDE_CODE=$?` and NOT `set +e`: this file runs under an ERR trap, which a bare
+  # non-zero command fires even with errexit off (the same trap the TUI step below works around).
+  NO_OVERRIDE_OUT="$(cd "$GATE_DIR" && node scripts/verify-no-host-override.ts --home "$HOME" --allow-no-host 2>&1)" || NO_OVERRIDE_CODE=$?
+  log "----- scripts/verify-no-host-override.ts (subject: a $SUBJECT_COPY copy of the installed patch) -----"
+  printf '%s\n' "$NO_OVERRIDE_OUT"
+  NO_OVERRIDE_TAIL="$(printf '%s\n' "$NO_OVERRIDE_OUT" | grep -E 'PASS:|NOTE|VIOLATION|FAIL' | tail -n 2 | tr '\n' ' ' || true)"
+  if [ "$NO_OVERRIDE_CODE" -eq 0 ]; then
+    NO_OVERRIDE_WITNESS="gate exit=0 subject=$SUBJECT_COPY ${NO_OVERRIDE_TAIL:-<no verdict line>}"
+  elif printf '%s' "$NO_OVERRIDE_TAIL" | grep -qE 'VIOLATION|FAIL'; then
+    NO_OVERRIDE_WITNESS="gate exit=$NO_OVERRIDE_CODE subject=$SUBJECT_COPY ${NO_OVERRIDE_TAIL}(REAL FINDING)"
+    NO_OVERRIDE_FINDING=1
+  else
+    NO_OVERRIDE_WITNESS="gate exit=$NO_OVERRIDE_CODE UNAVAILABLE (this witness decides nothing; the structural read above does) ${NO_OVERRIDE_TAIL:-<no verdict line>}"
+  fi
+fi
+if [ -z "$MISSING_ROWS" ] && [ "$ID_TARGET_LAYERS" -ge 2 ] && [ -z "$ID_TARGET_HITS" ] && [ "$NO_OVERRIDE_FINDING" -eq 0 ]; then
+  record compose.mpdRows true "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's" "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=$ID_TARGET_LAYERS idTargets=0 defaultMpdLines=$DEFAULT_MPD $NO_OVERRIDE_WITNESS"
 else
-  record compose.mpdRows false "composed rows missing: ${MISSING_ROWS:-none}; 'default: mpd' lines: $DEFAULT_MPD" "$(witness "$DUMP_TXT" '^- id: mpd-' 6)"
+  record compose.mpdRows false "the mpd rows did not compose as ADDITIVE-ONLY rows with zero host overrides: rowsMissing=${MISSING_ROWS:-none} bundleLayers=$ID_TARGET_LAYERS/2 column0IdTargets=${ID_TARGET_HITS:-none} bundleDir=${BUNDLE_DIR:-<not installed>} zero-override=$NO_OVERRIDE_WITNESS" "$(witness "$DUMP_TXT" '^- id: mpd-' 6)"
 fi
 
 if has_row preset-mpd; then
@@ -731,10 +825,15 @@ if [ -n "$BOOT_APPLIED" ] && [ -n "$BOOT_DONE" ]; then
 else
   record boot.probeApplied false "the probe never applied — the profile did not mount" "$(witness "$BOOT_LOG" 'Error|error|did not activate|Cannot find module' 4)"
 fi
-if [ -n "$BOOT_SERVICE" ]; then
-  record boot.adapterService true "the mpd-dsh-adapter row applied and provided the mpdDsh service" "[mpd-dsh-adapter] mpdDsh provided"
+# THE WITNESS IS THE ROW'S OWN FILE (R5). BOOT_SERVICE greps the console log the boot was launched
+# with, and since R5 no MPD row prints there at all — so the file is the PRIMARY evidence and the
+# console grep is kept as the secondary one. The assertion still has to be falsifiable in the other
+# direction: a line absent from BOTH witnesses records false, and the raw then names both places.
+SERVICE_LOG_LINE="$(row_log_line mpd-dsh-adapter '\[mpd-dsh-adapter\] mpdDsh provided' || true)"
+if [ -n "$SERVICE_LOG_LINE" ] || [ -n "$BOOT_SERVICE" ]; then
+  record boot.adapterService true "the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)" "${SERVICE_LOG_LINE:-<file log absent>}${BOOT_SERVICE:+ (console witness also present)}"
 else
-  record boot.adapterService false "the adapter row did not provide mpdDsh in the booted profile" "$(witness "$BOOT_LOG" '\[mpd-dsh-adapter\]|adapter' 4)"
+  record boot.adapterService false "the adapter row did not provide mpdDsh in the booted profile: the line is absent from <workspace>/.mpd/logs/mpd-dsh-adapter.log AND from the console log" "console=$(witness "$BOOT_LOG" '\[mpd-dsh-adapter\]|adapter' 2) file-roots=$WORK_DIR,$WORK_DIR/ws"
 fi
 if [ "$PROBE_CALL" = "ok" ] && [ "$PROBE_SERVICE" = "present" ]; then
   record boot.adapterToolCall true "an internal tool call through the adapter answered ok" "[docker-probe] ADAPTER_TOOL_CALL=ok"
@@ -896,22 +995,30 @@ else
 fi
 
 # THE SESSION-GATE LIVENESS PROOF. `mpd-roles-plugin` mounts the session-start complexity gate per
-# qualifying agent and prints one line when the listener is ACTUALLY registered. In v0.10.0 the gate
+# qualifying agent and logs one line when the listener is ACTUALLY registered. In v0.10.0 the gate
 # was MOUNTED BUT NEVER FIRED (three root causes, fixed for v0.10.1), so "the row composed" was never
 # evidence for this contract — only this line is. It is emitted on `agent/created`, i.e. for the agent
 # the session created above, which is exactly the session the gate must cover.
+#
+# TWO PLACES, ONE FACT (R5): `<workspace>/.mpd/logs/mpd-roles.log` is the PRIMARY witness because the
+# row writes there by design; the console log is the secondary one, kept so the arm still passes if a
+# future host ever routes a row's diagnostics back to the terminal. Both are polled, because the line
+# arrives with the created session and neither destination is guaranteed to flush first. A line
+# present in NEITHER is recorded false with both places named.
 GATE_LINE=""
+GATE_LOG_LINE=""
 GATE_DEADLINE=$(( $(date +%s) + 45 ))
 while [ "$(date +%s)" -lt "$GATE_DEADLINE" ]; do
   GATE_LINE="$(grep -m1 -oE '\[mpd-roles\] session gate listener registered for agent "[^"]*" agentPreset=[A-Za-z0-9_-]+' "$BOOT_LOG" 2>/dev/null || true)"
-  [ -n "$GATE_LINE" ] && break
+  GATE_LOG_LINE="$(row_log_line mpd-roles '\[mpd-roles\] session gate listener registered for agent "[^"]*" agentPreset=[A-Za-z0-9_-]+' || true)"
+  if [ -n "$GATE_LINE" ] || [ -n "$GATE_LOG_LINE" ]; then break; fi
   sleep 2
 done
-fact bootSessionGate "${GATE_LINE:-<no gate registration line>}"
-if printf '%s' "$GATE_LINE" | grep -q 'agentPreset=mpd'; then
-  record boot.sessionGateListener true "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)" "$GATE_LINE"
+fact bootSessionGate "${GATE_LOG_LINE:-${GATE_LINE:-<no gate registration line in the row log or on the console>}}"
+if printf '%s' "$GATE_LOG_LINE$GATE_LINE" | grep -q 'agentPreset=mpd'; then
+  record boot.sessionGateListener true "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)" "${GATE_LOG_LINE:-<file log absent>}${GATE_LINE:+ (console witness also present)}"
 else
-  record boot.sessionGateListener false "no '[mpd-roles] session gate listener registered … agentPreset=mpd' line after session creation" "${GATE_LINE:-<absent>} warn-lines=$(witness "$BOOT_LOG" 'session-start gate not registered' 2)"
+  record boot.sessionGateListener false "no '[mpd-roles] session gate listener registered … agentPreset=mpd' line after session creation — absent from <workspace>/.mpd/logs/mpd-roles.log AND from the console log" "${GATE_LOG_LINE:-<no row-log line>} ${GATE_LINE:-<no console line>} warn-lines=$(witness "$BOOT_LOG" 'session-start gate not registered' 2)"
 fi
 
 FATAL_LINES="$(grep -cE 'Cannot find module|did not activate|Unhandled|uncaught|is not a function' "$BOOT_LOG" 2>/dev/null || true)"

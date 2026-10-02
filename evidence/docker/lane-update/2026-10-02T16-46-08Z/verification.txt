@@ -1,0 +1,149 @@
+Docker lane update — verification log
+Task: bring docker/** to the wave's new contract (R5 file logs, additive-only bundle,
+USER-level preset preference) and prove BOTH lanes green on this machine.
+Every command below was run from the repository root on 2026-10-02 (UTC).
+
+================================================================================
+1. RUN 1 (FINAL) — source mode
+================================================================================
+$ node scripts/docker-e2e.ts --mode source --require-docker
+[exit 0]
+[driver] ok=true complete=false passed=52 failed=0 null=1 NULL=[boot.llmTurn]
+[driver] evidence -> evidence/docker/client-install/2026-10-02T16-46-05Z
+
+The four arms the task names, with the RAW WITNESS each recorded:
+  compose.mpdRows            ok=true
+    rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2
+    idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical
+    [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids)
+  boot.adapterService        ok=true
+    [mpd-dsh-adapter] mpdDsh provided (file=/work/.mpd/logs/mpd-dsh-adapter.log)
+  boot.sessionGateListener   ok=true
+    [mpd-roles] session gate listener registered for agent "session-f212be82-…" agentPreset=mpd
+      (file=/work/.mpd/logs/mpd-roles.log)
+  tui.presetPreference       ok=true
+    pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d
+    writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2
+  tui.sessionPreset          ok=true
+    {"found":true,"sessionId":"6c795039-…","agentPreset":"mpd","bytes":687}
+  tui.laneExit               ok=true   records=15
+
+================================================================================
+2. RUN (DIAGNOSTIC, superseded by run 1) — source mode, BEFORE the host-default fix
+================================================================================
+$ node scripts/docker-e2e.ts --mode source --require-docker      (tree at 16:32:53Z)
+[driver] ok=false complete=false passed=50 failed=2 null=1 FAILED=[tui.presetPreference,tui.laneExit]
+evidence/docker/client-install/2026-10-02T16-28-31Z/result.json
+  Why it is kept: it is the run that MEASURED the one wrong clause. The composed TUI registry row
+  carries the HOST's own `config.default: standard` (dsh-tui 0.12.0 cordis.patch.yml line ~401), so
+  asserting "the row carries no default:" was wrong: the right subject is "the row does not carry the
+  BUNDLE's mpd". Everything else was already green in that run, including tui.sessionPreset=true with
+  agentPreset=mpd resolved through the preference.
+
+================================================================================
+3. RUN 2 (FINAL) — oneclick mode, PR BRANCH
+================================================================================
+$ node scripts/docker-e2e.ts --mode oneclick \
+      --spec github:HaroldZ32/My-Power-Dsh#feature/seam-convergence --require-docker
+(see run2.txt in this directory — its console tail and result.json are the evidence)
+
+An earlier oneclick attempt aborted the lane; the cause is named in §5 and fixed.
+
+================================================================================
+4. STATIC GATES (all on the frozen tree)
+================================================================================
+$ bash -n docker/entrypoint.sh && bash -n docker/tui-lane.sh
+entrypoint.sh syntax OK / tui-lane.sh syntax OK
+
+$ node scripts/docker-e2e.ts --self-test
+[self-test] all arms passed (offline: no docker, no network)
+
+$ bun run verify:docs
+[verify-docs-parity] root=… pairs=44 failed=0 violations=0 exempt=22 derived=3 links=437 dead=0 — PASS
+
+$ bun run verify:comments
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun run verify:rows
+[verify-rows-parity] ok: 32 row ids match the 2-file bundle patch layer
+
+$ node scripts/verify-no-host-override.ts
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 204 host-declared row ids)
+
+================================================================================
+5. ROOT CAUSE of the oneclick abort (and the proof of it)
+================================================================================
+Symptom: oneclick run evidence/docker/client-install-oneclick/2026-10-02T16-36-24Z —
+  fact abort = "unexpected shell failure (exit 1) near line 725"; 16 assertions passed (install,
+  git spec, packed `files` allowlist, dist byte-identity) and 30 came back NULL because the lane died.
+
+Cause (reproduced locally, not guessed): in oneclick mode the installed bundle lives UNDER
+node_modules, and Node refuses to strip TypeScript there:
+
+  $ cd <pkg>/node_modules/@mpd-dsh/mpd && node scripts/verify-no-host-override.ts --allow-no-host
+  exit=1
+  node:internal/modules/typescript:189
+      throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
+  ^
+  (no verdict line on stdout)
+
+The old code then piped the gate's output through `grep -E 'PASS:|NOTE|VIOLATION|FAIL'`, which
+matched nothing; under `set -o pipefail` that made the whole assignment non-zero, and this file's
+`trap 'on_error' ERR` turned it into a lane abort. Two independent defects: the gate could not run,
+and the pipeline could not survive a witness that produces no verdict line.
+
+Fix (both halves):
+  * the gate's source is COPIED out of the installed tree into `$WORK_DIR/no-host-override-subject/`
+    together with `package.json` + the two patch layers, and run there; `cmp` asserts the subject is a
+    byte-identical copy of the INSTALLED layers (raw: `subject=byte-identical`);
+  * the verdict is classified — exit 0 = witness, `FAIL:`/`VIOLATION` = REAL FINDING (arm false),
+    no verdict line = UNAVAILABLE (named in the raw, the structural read still decides) — and the
+    gate's own output is PRINTED into the step log instead of only grepped.
+
+================================================================================
+6. LOCAL FALSIFIABILITY CONTROLS (each arm re-run against planted faults)
+================================================================================
+Every block below was extracted VERBATIM from the changed scripts (sed by line range) and driven with
+a scratch workspace — the assertions were shown to redden, not merely to pass.
+
+row_log_line (docker/entrypoint.sh)
+  adapter line in $WORK_DIR/.mpd/logs  -> "[mpd-dsh-adapter] mpdDsh provided (file=/tmp/…/mpd-dsh-adapter.log)"
+  gate line in $WORK_DIR/ws/.mpd/logs  -> matched through the SESSION workspace root
+  absent row / absent line             -> non-zero, caller records FALSE
+
+compose.mpdRows (docker/entrypoint.sh), installed tree under …/node_modules/@mpd-dsh/mpd
+  clean layers                     -> ok=true   gate exit=0 subject=byte-identical PASS: 0 of 0
+  planted column-0 `- id:`         -> ok=false  column0IdTargets=cordis.patch.yml:654:- id: preset-mpd
+  gate crashes (no verdict line)   -> ok=true   gate exit=1 UNAVAILABLE (this witness decides nothing)
+  gate prints FAIL: (real finding) -> ok=false  gate exit=1 … (REAL FINDING)
+  gate script absent               -> ok=true   structural read decides (structural-only path works)
+
+tui.presetPreference (docker/tui-lane.sh), host row block carrying `config: default: standard`
+  positive (YAML and JSON shapes)  -> ok=true   writerParity=identical hostRowDefault=standard
+  composed row default back to mpd -> ok=false  (YAML and JSON shapes both caught)
+  shipped layer re-adds id-target  -> ok=false
+  pref literal mutated to standard -> ok=false
+  expected-hex literal mutated     -> ok=false
+  installed layers unresolvable    -> ok=false  bundleLayers=0/2
+
+Byte contract, measured against the REAL dsh-tui@0.12.0 writer
+  $ node -e '…writePresetPref("mpd", dir)…' && cmp writer/agent-preset.json lane.json
+  PARITY OK
+  od -An -tx1 both files -> 7b0a202022707265736574223a20226d7064220a7d  (21 bytes, no trailing newline)
+  authority read: <dsh-tui>/lib/types/presetPrefs.js
+    writePresetPref(preset, dir = DATA_DIR) -> writeFileSync(join(dir,'agent-preset.json'), JSON.stringify({preset}, null, 2))
+    <dsh-tui>/lib/types/utils/paths.js: DATA_DIR = join(homedir(), '.dsh-tui')
+  consumer read: lib/types/dsh-adapter/plugin.js:1638 `const presetPref = configuredPreset === undefined ? readPresetPref() : undefined`
+
+================================================================================
+7. DISCIPLINE NOTES
+================================================================================
+* No product code was changed. Edits: docker/entrypoint.sh, docker/tui-lane.sh, docker/lib/report.ts,
+  docker/README.md, docker/README.zh-CN.md. `cordis.patch.yml` and `presets/mpd.patch.yml` are
+  byte-unchanged (sha256 90477cc9… / 84b9b348…, equal to the hashes the 16-14-48Z lane run recorded).
+* One accident, fully reverted and independently verified: a negative-control run wrote through a
+  scratch symlink into the real `cordis.patch.yml` (+3 lines). The lines were removed;
+  `sha256sum cordis.patch.yml` = 90477cc96af50dc9931b08444d571b8545f53f5373bfba5fac9cc1dab4022264,
+  byte-identical to the hash the 16-14-48Z run recorded for /opt/mpd/cordis.patch.yml, and both
+  `verify-no-host-override` and `verify:rows` are green again. Later controls used a copy, never a
+  symlink into the repository.

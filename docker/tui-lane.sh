@@ -12,11 +12,11 @@
 #   tui.pluginAddHost    `dsh plugin --profile dsh-tui add <host>` succeeds
 #   tui.pluginAddBundle  `dsh plugin --profile dsh-tui add .` (THIS bundle) succeeds
 #   tui.compose          `dsh --profile dsh-tui --dump-config` composes
-#   tui.registryDefaultMpd  the TUI's OWN scoped registry row is id-targeted to `mpd`
-#                        (harness 0.1.7: a dsh-tui profile composes no dsh-web-app layer,
-#                        so the web-plane target is skipped there; without the second
-#                        id-target the TUI keeps `default: standard` while NOTHING in
-#                        that composition declares a `standard` preset)
+#   tui.presetPreference  the DOCUMENTED USER path is performed and witnessed: the dsh-tui preference
+#                        file (`<HOME>/.dsh-tui/agent-preset.json`) is written byte-exactly — against
+#                        the INSTALLED writer's own output when it is reachable — and the host
+#                        `dsh-tui-agent-preset-registry` row stays UNTOUCHED by the bundle (strict
+#                        zero-override: the bundle id-targets no host row any more)
 #   tui.presetRow        the `preset-mpd` row is composed in the TUI plane
 #   tui.mpdTuiRow        the bundle's `mpd-tui` row is composed
 #   tui.agentTeamRows    the three official Agent Teams rows are composed
@@ -94,14 +94,69 @@ record tui.compose "$([ "$DUMP_EXIT" = 0 ] && echo true || echo false)" \
 row_block() { awk -v id="$1" '$0 ~ "^- id: " id "$" {f=1} f && NR>1 && /^- id: / && $0 !~ "^- id: " id "$" {exit} f' "$TUI_DIR/dump.yml"; }
 
 REG_BLOCK="$(row_block dsh-tui-agent-preset-registry)"
-if printf '%s' "$REG_BLOCK" | grep -qE '^\s+default: mpd$'; then
-  record tui.registryDefaultMpd true \
-    "the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)" \
-    "id=dsh-tui-agent-preset-registry default=mpd"
+# ── THE USER-LEVEL PRESET PREFERENCE (the channel that REPLACED the removed override) ──────────
+# The bundle used to id-target this host row with `config.default: mpd`. That override is GONE by
+# design (strict zero-override, user decision 2026-10-02): a deployment default is the USER's to
+# choose, and dsh-tui's own persisted preference is that channel. This lane therefore PERFORMS the
+# documented user path BEFORE the TUI process starts, and `tui.sessionPreset` further down proves it
+# is what made the session resolve `mpd` — nothing else selects a preset here.
+#
+# THE BYTES ARE THE CONTRACT, not an invention: dsh-tui's `lib/types/presetPrefs.js` persists
+# `JSON.stringify({ preset }, null, 2)` — two-space JSON, NO trailing newline — into
+# `<HOME>/.dsh-tui/agent-preset.json` (docs/preset-default.md, "The exact file format"). Two
+# INDEPENDENT readers witness the written file: its hex (a literal the writer never produces by
+# itself) and, when the installed dsh-tui is reachable, that writer's OWN output in a scratch dir.
+TUI_PREF_DIR="$HOME/.dsh-tui"
+TUI_PREF="$TUI_PREF_DIR/agent-preset.json"
+PREF_EXPECTED_HEX="7b0a202022707265736574223a20226d7064220a7d"
+PREF_WRITER="the installed dsh-tui writer was NOT reachable — the literal byte contract was used"
+PREF_PARITY="not compared"
+mkdir -p "$TUI_PREF_DIR"
+printf '{\n  "preset": "mpd"\n}' >"$TUI_PREF"
+PREF_HEX="$(od -An -tx1 "$TUI_PREF" 2>/dev/null | tr -d ' \n' || true)"
+PREF_WRITER_MODULE="$(find -L "$DSH_HOME/profiles" -path '*/@deepseek-harness-tui/dsh-tui/lib/types/presetPrefs.js' -print -quit 2>/dev/null || true)"
+if [ -n "$PREF_WRITER_MODULE" ] && [ -f "$PREF_WRITER_MODULE" ]; then
+  PREF_WRITER_DIR="$TUI_DIR/preset-pref-writer"
+  # The installed writer is pointed at a scratch data dir; ITS bytes are then compared with the file
+  # this lane wrote, so a shape that drifted inside dsh-tui itself reddens THIS arm instead of passing.
+  node --input-type=module -e '
+    import { pathToFileURL } from "node:url"
+    const [modulePath, dir] = process.argv.slice(1)
+    const mod = await import(pathToFileURL(modulePath).href)
+    if (typeof mod.writePresetPref !== "function") { console.error("writePresetPref absent"); process.exit(1) }
+    if (mod.writePresetPref("mpd", dir) !== true) { console.error("writePresetPref refused"); process.exit(1) }
+  ' "$PREF_WRITER_MODULE" "$PREF_WRITER_DIR" >"$TUI_DIR/preset-pref-writer.log" 2>&1 || true
+  if [ -f "$PREF_WRITER_DIR/agent-preset.json" ]; then
+    PREF_WRITER="dsh-tui@$TUI_VERSION lib/types/presetPrefs.js#writePresetPref"
+    if cmp -s "$PREF_WRITER_DIR/agent-preset.json" "$TUI_PREF"; then PREF_PARITY="identical"; else PREF_PARITY="DIFFERS"; fi
+  else
+    PREF_WRITER="the installed dsh-tui writer was found but refused (see 12-tui step log)"
+  fi
+fi
+# (a) THE HOST ROW IS UNTOUCHED BY THE BUNDLE. The host's OWN dsh-tui patch declares this row with
+# `config.default: standard` (its cordis.patch.yml, "0.1.7 replaces directory discovery"), and the
+# bundle must not replace that decision — which is exactly what the removed id-target did when it
+# forced `mpd` here. So the subject is NOT "the row has no default" (the host's one is expected and
+# must survive) but "the row does not carry the bundle's `mpd`": witness 1 is the composed row, and
+# witness 2 is the SHIPPED layers of the INSTALLED bundle, which must name the id nowhere as a
+# column-0 id-target (an `insert:` child may reuse an id; a column-0 `- id:` is an override).
+TUI_BUNDLE_DIR="$DSH_HOME/profiles/dsh-tui/node_modules/@mpd-dsh/mpd"
+REG_DEFAULT_MPD="$(printf '%s' "$REG_BLOCK" | grep -cE 'default[":[:space:]]*"?mpd' 2>/dev/null || true)"
+REG_DEFAULT_ACTUAL="$(printf '%s' "$REG_BLOCK" | grep -m1 -oE 'default[":[:space:]]*"?[A-Za-z0-9_-]+' 2>/dev/null | sed -E 's/.*default[":[:space:]]*"?//' || true)"
+REG_ID_TARGETS="$(grep -nE '^- id: dsh-tui-agent-preset-registry$' "$TUI_BUNDLE_DIR/cordis.patch.yml" "$TUI_BUNDLE_DIR/presets/mpd.patch.yml" 2>/dev/null | tr '\n' ';' || true)"
+TUI_BUNDLE_LAYERS=0
+for layer in cordis.patch.yml presets/mpd.patch.yml; do
+  if [ -f "$TUI_BUNDLE_DIR/$layer" ]; then TUI_BUNDLE_LAYERS=$((TUI_BUNDLE_LAYERS + 1)); fi
+done
+if [ "$PREF_HEX" = "$PREF_EXPECTED_HEX" ] && [ "$PREF_PARITY" != "DIFFERS" ] && [ "${REG_DEFAULT_MPD:-1}" = "0" ] \
+   && [ -z "$REG_ID_TARGETS" ] && [ "$TUI_BUNDLE_LAYERS" = "2" ]; then
+  record tui.presetPreference true \
+    "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and ${PREF_WRITER} — AND the host registry row is UNTOUCHED by the bundle (its own default reads '${REG_DEFAULT_ACTUAL:-<none>}', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd" \
+    "pref=$TUI_PREF hex=$PREF_HEX writerParity=$PREF_PARITY hostRowDefault=${REG_DEFAULT_ACTUAL:-<none>} bundleForcedMpdLines=0 shippedIdTargets=<none> layers=$TUI_BUNDLE_LAYERS/2"
 else
-  record tui.registryDefaultMpd false \
-    "the TUI registry row does not carry default: mpd, so a dsh-tui session would ask for a preset this composition does not declare" \
-    "$(printf '%s' "$REG_BLOCK" | head -n 3 | tr '\n' ' ')"
+  record tui.presetPreference false \
+    "the user-level preset preference did not hold: hex=${PREF_HEX:-<unreadable>} (expected $PREF_EXPECTED_HEX) writerParity=$PREF_PARITY hostRowDefault=${REG_DEFAULT_ACTUAL:-<none>} hostRowMpdLines=${REG_DEFAULT_MPD:-?} shippedIdTargets=${REG_ID_TARGETS:-<none>} bundleLayers=${TUI_BUNDLE_LAYERS:-0}/2 bundleDir=${TUI_BUNDLE_DIR}" \
+    "writer=$PREF_WRITER pref=$TUI_PREF"
 fi
 
 if grep -qE '^- id: preset-mpd$' "$TUI_DIR/dump.yml"; then
@@ -268,7 +323,13 @@ fi
 TUI_SUMMARY="$(awk '/"name":"tui\./ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
 TUI_TOTAL="${TUI_SUMMARY%% *}"
 TUI_BAD="${TUI_SUMMARY##* }"
-if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 11 ]; then
+# The floor is the number of tui.* records this lane REALLY writes (15 since the
+# R5 / zero-override update: presetPreference replaced registryDefaultMpd and the
+# adapter/session-gate witnesses moved to the row log files). It is pinned so a
+# record that silently disappears from the writer reddens instead of shrinking the
+# lane's coverage (measured 2026-09-27: all eleven assertions green and the lane
+# still reported laneExit=false — the inverse failure).
+if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 15 ]; then
   record tui.laneExit true "the TUI lane ran to completion with every assertion green" "records=$TUI_TOTAL"
   exit 0
 fi

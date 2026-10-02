@@ -2,6 +2,15 @@
 // Repo gate: STRICT ZERO-OVERRIDE — a shipped patch layer of this bundle may ADD rows
 // and may never id-target a row a HOST layer declares.
 //
+// HOW TO RUN IT FROM AN INSTALLED TREE (measured 2026-10-02, the docker one-click lane): Node
+// REFUSES type stripping for any path under `node_modules`
+// (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so
+// `<profile>/node_modules/@mpd-dsh/mpd/scripts/verify-no-host-override.ts` cannot run in place. The
+// Docker lane therefore runs a `cmp`-verified BYTE COPY of the file from a writable directory
+// (identical sha256), which keeps the verdict honest while the gate itself stays a plain `.ts`.
+// The in-container STRUCTURAL check — zero column-0 `- id:` entries in the shipped layers — is the
+// copy-free witness that works everywhere.
+//
 // WHY THIS EXISTS (user decision 2026-10-02, "strict zero-override"): this bundle used to
 // id-target two preset-selection registry rows — `agent-preset-registry` (declared by
 // `@deepseek-ai/dsh-web-app`'s own cordis.patch.yml) and `dsh-tui-agent-preset-registry`

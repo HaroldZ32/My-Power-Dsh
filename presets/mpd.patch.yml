@@ -7,8 +7,14 @@
 # `@deepseek-ai/dsh-agent-preset` with `config.id` plus the inline child plugin
 # list below. This file is that row, and it is the bundle's ONLY declaration of
 # the mpd composition: `package.json` lists it as the second entry of
-# `dsh.bundle.patch`, after the main bundle patch (which id-targets
-# `agent-preset-registry` to `default: mpd`).
+# `dsh.bundle.patch`, after the main bundle patch. That main patch used to
+# id-target `agent-preset-registry` to `default: mpd`; since the strict
+# zero-override decision (2026-10-02) it does NOT — this bundle ships its preset
+# ADDITIVELY and the deployment default stays the HOST's, so making `mpd` the
+# default is a USER action (`/preset mpd` -> ~/.dsh-tui/agent-preset.json,
+# `DSH_TUI_PRESET=mpd`, the Web Settings `selectedDefault`, or
+# `node scripts/set-default-preset.ts --yes`). See docs/preset-default.md and the
+# gate `scripts/verify-no-host-override.ts`.
 #
 # The child list is the former `presets/mpd/agent.cordis.yml`, moved here
 # verbatim (comments included) because a patch layer has no `include:` — the

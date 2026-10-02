@@ -42,13 +42,23 @@ run produced no `result.json` at all, `3` the host has no usable docker.
    real client install: `cd /opt/mpd && dsh plugin --profile web add .`.
 8. Composes the profile with the sanctioned wrapper (`node scripts/dump-config.ts --profile web`)
    and asserts the mpd row ids, the `preset-mpd` row and the three official agent-team rows plus
-   their package names. **This step is COMPOSITION ONLY** — it never executes plugin code.
+   their package names. **This step is COMPOSITION ONLY** — it never executes plugin code. It also
+   asserts the **additive-only contract**: the shipped patch layers of the INSTALLED bundle
+   (`cordis.patch.yml` + `presets/mpd.patch.yml`) carry **zero column-0 `- id:` entries**, i.e. this
+   bundle overrides no host row (the retired `default: mpd` id-targets on the two preset-registry
+   rows are exactly the class this catches), and when node is available
+   `node scripts/verify-no-host-override.ts` must additionally exit 0. That gate is run with
+   `--allow-no-host`, which excuses ONE condition — a container that resolves no host layer to
+   compare against — and never a finding.
 9. **Boots** the installed profile with registration instrumentation (`docker/probe.ts`, inserted
    through `--patch`) and asserts from the boot log that the plugin tree really applied: the probe's
    `apply()` ran, the adapter provided `mpdDsh`, an internal tool call through the adapter answered
    `ok`, every core mpd tool answered from the live tool registry, the official TeamService is mounted
    (`ctx.get("agentTeams")` → class `TeamService`, the service the `mpd-agent-team` row provides), the
-   Web app served HTTP 200, and no fatal apply/module signature appears. The third row,
+   Web app served HTTP 200, and no fatal apply/module signature appears. The adapter's boot line is
+   read from the row's OWN file log — `<workspace>/.mpd/logs/mpd-dsh-adapter.log`, the primary
+   witness under R5 (see **The lane contract** below) — with the console log kept as a secondary
+   witness; the assertion fails only when the line is in neither. The third row,
    `mpd-ui-agent-team`, is a browser-discovered plugin whose host half is a no-op `apply()` — the
    evidence records the strongest server-side facts it has (composed, no apply failure, package
    materialized in the profile with `dsh.client.platform=web`) as an observation instead of implying a
@@ -68,10 +78,12 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     the root read looked like a failure while the tree was healthy. The probe therefore reports the root
     read as an observation and prints one line per agent it sees; the step-10 session supplies the agent,
     and `boot.agentTeamTools` is graded from that agent-scoped line.
-12. **Asserts the session gate is LIVE, not merely mounted.** Once the session exists, the boot log
-    must carry `[mpd-roles] session gate listener registered for agent "…" agentPreset=mpd`
-    (`boot.sessionGateListener`). In v0.10.0 the session-start complexity gate was mounted but never
-    fired — a composed row was never evidence for that contract — so this line, emitted on
+12. **Asserts the session gate is LIVE, not merely mounted.** Once the session exists, the row's own
+    file log `<workspace>/.mpd/logs/mpd-roles.log` must carry
+    `[mpd-roles] session gate listener registered for agent "…" agentPreset=mpd`
+    (`boot.sessionGateListener`), with the console log as the secondary witness; a line absent from
+    BOTH records the assertion false. In v0.10.0 the session-start complexity gate was mounted but
+    never fired — a composed row was never evidence for that contract — so this line, emitted on
     `agent/created` for the session this run creates, is its liveness proof.
 13. Asserts isolation: the sandbox `HOME`/`DSH_HOME` were in force, no harness or toolchain marker
     (`.dsh`, `.mpd`, `.npm`, `.bun`) exists under the real `/root`, and no credential file carries a
@@ -87,12 +99,41 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui add` is then REFUSED on peer ranges). Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
-    patch layer, and records eleven assertions: host install, both `plugin add` calls, composition,
-    **the TUI's own scoped registry row carrying `default: mpd`**, the `preset-mpd` / `mpd-tui` /
-    official-team rows, a real tmux PTY boot reaching the chat screen, no fatal signature, and the
-    preset the created session ACTUALLY ran — read from the harness's own session store
-    (`agentPreset: "mpd"`), never from the pane. A `standard`-preset default would leave the TUI
-    booting a preset that composition does not declare, so this is a real acceptance, not a smoke.
+    patch layer, and records fifteen assertions: host install, both `plugin add` calls, composition,
+    the **USER-level preset preference** (see below), the `preset-mpd` / `mpd-tui` /
+    official-team rows, the `/mpd team` scene drawing its graph on the real terminal, a real tmux PTY
+    boot reaching the chat screen, no fatal signature, and the preset the created session ACTUALLY
+    ran — read from the harness's own session store (`agentPreset: "mpd"`), never from the pane.
+    **The lane performs the documented user path itself**: before the TUI process starts it writes
+    `<HOME>/.dsh-tui/agent-preset.json` byte-exactly as dsh-tui's own `writePresetPref` does (and
+    compares against that installed writer's output when it is reachable), asserts the host
+    `dsh-tui-agent-preset-registry` row is left UNTOUCHED by the bundle, and then lets the session
+    store prove the preference is what resolved `mpd`. Without it the session falls back to
+    `standard`, a preset this composition does not declare — so this is a real acceptance, not a smoke.
+
+## The lane contract
+
+The lane follows the wave's contract, and each half of it is asserted somewhere real:
+
+- **MPD diagnostics are read from FILES, not from the console (R5).** An MPD row never writes to the
+  terminal: `rowLogLine` appends to `<workspace>/.mpd/logs/<row>.log`
+  (`agent-references/seam-adapters.md`). The two liveness arms therefore witness
+  `<workspace>/.mpd/logs/mpd-dsh-adapter.log` and `<workspace>/.mpd/logs/mpd-roles.log` as their
+  PRIMARY evidence, search the boot process's own workspace and the session workspace the run
+  created, and name the file that carried the line in the raw witness. A console grep is kept as a
+  secondary witness, so a host that routes a row's diagnostics back to the terminal still passes —
+  and a line absent from BOTH records the assertion FALSE.
+- **The bundle is ADDITIVE-ONLY.** It adds rows through `insert:` lists and never id-targets a row a
+  host layer declares (strict zero-override, user decision 2026-10-02). `compose.mpdRows` reads the
+  INSTALLED bundle's two shipped patch layers and fails on any column-0 `- id:` entry, and
+  `node scripts/verify-no-host-override.ts` is run as the stronger second witness when node is
+  available.
+- **The default preset is a USER-level setting, and the lane performs it.** This bundle ships the
+  `mpd` preset but selects nothing: the deployment default belongs to the user
+  (`docs/preset-default.md`). The Web plane is exercised through `POST /api/session/create` with an
+  explicit `agentPreset: "mpd"`; the TUI plane through dsh-tui's own persisted preference, written by
+  the lane before boot and asserted byte-exactly. Nothing in this lane relies on an override of a
+  host-owned row.
 
 ## What it proves — and what it does NOT
 
@@ -101,12 +142,16 @@ Proves:
 - a clean `ubuntu:24.04` can obtain a toolchain and install `@deepseek-ai/dsh` at the pin;
 - the bundle installs with ONE command from a **copy of this checkout** (no pack step, no host
   workspace, no prebuilt `dist/` requirement — the dists are rebuilt from source);
-- the installed profile COMPOSES the mpd rows and the official agent-team rows (**composition only** —
-  `result.json` keeps that claim in its own `provesCompositionOnly` field, never mixed with a load proof);
-- the installed profile **MOUNTS**: plugin code executes, the adapter provides its service, the mpd
-  tools are registered, the official TeamService is mounted, the official team tools answer inside an
-  agent scope, the mpd session gate listener registers for a real session, the `mpd` preset activates
-  for a real session, and the Web app serves.
+- the installed profile COMPOSES the mpd rows and the official agent-team rows as ADDS — both shipped
+  patch layers carry zero column-0 id-targets, so nothing host-owned is overridden (**composition
+  only** — `result.json` keeps that claim in its own `provesCompositionOnly` field, never mixed with a
+  load proof);
+- the installed profile **MOUNTS**: plugin code executes, the adapter provides its service (witnessed
+  in its own file log, R5), the mpd tools are registered, the official TeamService is mounted, the
+  official team tools answer inside an agent scope, the mpd session gate listener registers for a real
+  session, the `mpd` preset activates for a real session, and the Web app serves;
+- a real DSH-TUI session resolves `mpd` through the documented USER-level preference while the host
+  preset-registry row stays untouched by the bundle.
 
 Does NOT prove:
 

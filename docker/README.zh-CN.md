@@ -41,12 +41,18 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
    `cd /opt/mpd && dsh plugin --profile web add .`。
 8. 用受认可的封装器组合 profile（`node scripts/dump-config.ts --profile web`），断言 mpd 行 id、
    `preset-mpd` 行，以及三个官方 agent-team 行及其包名。**这一步只是 COMPOSITION（组合）证据**——它不会
-   执行任何插件代码。
+   执行任何插件代码。它同时断言**只做加法（additive-only）契约**：已安装 bundle 的两个随包 patch 层
+   （`cordis.patch.yml` + `presets/mpd.patch.yml`）中，列 0 的 `- id:` 条目数为**零**，即本 bundle 不覆盖任何
+   宿主行（已退役的两个 preset 注册表行上的 `default: mpd` id-target 正是这一类），并且在 node 可用时
+   `node scripts/verify-no-host-override.ts` 还必须退出 0。该门禁以 `--allow-no-host` 运行，它只豁免一种情况
+   ——容器里没有任何可比的宿主层——绝不豁免真实发现。
 9. 通过 `--patch` 插入注册插桩（`docker/probe.ts`）来**启动**已安装的 profile，并从启动日志断言插件树
    确实挂载了：探针的 `apply()` 执行过；适配器提供了 `mpdDsh`；通过适配器发起的一次内部工具调用返回
    `ok`；每一个核心 mpd 工具都从活体工具注册表应答；官方 TeamService 已挂载（`ctx.get("agentTeams")`
    → 类 `TeamService`，即 `mpd-agent-team` 行提供的服务）；官方 agent-team 工具同样从注册表应答；Web 应用
-   返回 HTTP 200；并且没有致命的 apply/模块错误特征。第三行 `mpd-ui-agent-team` 是浏览器侧发现的插件，其
+   返回 HTTP 200；并且没有致命的 apply/模块错误特征。适配器的启动行从该行**自己的文件日志**读出——
+   `<workspace>/.mpd/logs/mpd-dsh-adapter.log`，即 R5 下的首要见证（见下方 **本 lane 遵循的契约**）——控制台
+   日志保留为次要见证；只有当两处都没有该行时，断言才判红。第三行 `mpd-ui-agent-team` 是浏览器侧发现的插件，其
    宿主侧只是一个空的 `apply()`——证据把它能拿到的最强服务端事实（已组合、无 apply 失败、包已在 profile
    中落地且 `dsh.client.platform=web`）记为 observation，而不是暗示一个并不存在的加载证明。
 10. 通过 `POST /api/session/create`（`agentPreset: "mpd"`，沙箱 `cwd`）**创建会话**，并断言
@@ -63,9 +69,11 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     读取返回 `0/9` 是**设计如此**——本 lane 第一次 Docker 运行就测到了这一点：根层读数看起来像失败，而插件树
     其实是健康的。探针因此把根层读数记为 observation，并为它看到的每个 agent 打印一行；第 10 步创建的会话
     提供了那个 agent，`boot.agentTeamTools` 就以该 Agent 作用域的行为准。
-12. **断言会话门是"活的"而不只是"挂着的"。** 会话创建之后，启动日志必须包含
+12. **断言会话门是"活的"而不只是"挂着的"。** 会话创建之后，该行自己的文件日志
+    `<workspace>/.mpd/logs/mpd-roles.log` 必须包含
     `[mpd-roles] session gate listener registered for agent "…" agentPreset=mpd`
-    （`boot.sessionGateListener`）。在 v0.10.0 中，会话启动复杂度门虽然挂载却从未触发——"行已组合"从来不是该契约的
+    （`boot.sessionGateListener`），控制台日志作为次要见证；两处都没有该行时断言判红。在 v0.10.0 中，
+    会话启动复杂度门虽然挂载却从未触发——"行已组合"从来不是该契约的
     证据——因此这一行（在本轮运行创建的会话的 `agent/created` 上打印）才是它的存活证明。
 13. 断言隔离：沙箱 `HOME`/`DSH_HOME` 确实生效；真实 `/root` 下不存在任何 harness 或工具链标记
     （`.dsh`、`.mpd`、`.npm`、`.bun`）；没有任何凭据文件携带形似密钥的**值**（harness 在沙箱 home 中生成的
@@ -77,10 +85,30 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     —— 其 peer 范围覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2`
     只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时 `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
-    profile，并记下十一条断言：宿主安装、两次 `plugin add`、组合、**TUI 自带作用域注册表行携带
-    `default: mpd`**、`preset-mpd` / `mpd-tui` / 官方团队行、真实 tmux PTY 启动并到达聊天界面、无致命签名，
+    profile，并记下十五条断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
+    `preset-mpd` / `mpd-tui` / 官方团队行、`/mpd team` 场景在真实终端上画出依赖图、真实 tmux PTY 启动并到达聊天界面、无致命签名，
     以及所创建会话**实际**运行的预设——从 harness 自己的会话存储读出（`agentPreset: "mpd"`），绝不从界面文本
-    推断。若默认仍是 `standard`，TUI 就会去启动一个该组合并未声明的预设，因此这是一次真正的验收，不是冒烟。
+    推断。**本 lane 自己执行了官方文档里的用户路径**：在 TUI 进程启动之前，它按 dsh-tui 自己的 `writePresetPref`
+    的字节形状写入 `<HOME>/.dsh-tui/agent-preset.json`（当安装好的那个写入器可定位时，直接与它的输出比对），
+    断言宿主 `dsh-tui-agent-preset-registry` 行**未被本 bundle 触碰**，随后让会话存储证明正是该偏好解析出了
+    `mpd`。不写它，会话会回落到 `standard`——一个该组合并未声明的预设——因此这是一次真正的验收，不是冒烟。
+
+## 本 lane 遵循的契约
+
+本 lane 遵循本波次的契约，两半都落在真实的断言上：
+
+- **MPD 诊断从文件读，而不是从控制台读（R5）。** MPD 行从不写终端：`rowLogLine` 追加到
+  `<workspace>/.mpd/logs/<row>.log`（`agent-references/seam-adapters.md`）。两个存活断言因此以
+  `<workspace>/.mpd/logs/mpd-dsh-adapter.log` 与 `<workspace>/.mpd/logs/mpd-roles.log` 作为**首要**证据，
+  同时搜索启动进程自身的工作区与本轮创建的会话工作区，并在 raw 见证里写明是哪一份文件给出了该行。控制台 grep
+  保留为次要见证：某个宿主若把行的诊断重新送回终端，断言仍然通过；而两处都没有该行时，断言记为 FALSE。
+- **本 bundle 只做加法（ADDITIVE-ONLY）。** 它只用 `insert:` 列表添加行，绝不 id-target 任何宿主层声明的行
+  （严格零覆盖，2026-10-02 用户决定）。`compose.mpdRows` 读取**已安装** bundle 的两个随包 patch 层，只要出现列 0 的
+  `- id:` 条目就判红；node 可用时还会运行更强的第二见证 `node scripts/verify-no-host-override.ts`。
+- **默认预设是用户级设置，本 lane 亲自执行它。** 本 bundle 只提供 `mpd` preset，不做任何选择：部署默认属于用户
+  （`docs/preset-default.md`）。Web 侧通过显式 `agentPreset: "mpd"` 的 `POST /api/session/create` 演练；TUI 侧
+  通过 dsh-tui 自带的持久化偏好演练——由本 lane 在启动前写入，并按字节精确断言。本 lane 不依赖对任何宿主行
+  的覆盖。
 
 ## 它证明了什么——以及没有证明什么
 
@@ -89,11 +117,13 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 - 干净的 `ubuntu:24.04` 能获取工具链，并按固定版本安装 `@deepseek-ai/dsh`；
 - bundle 能用**一条命令**从**本检出的副本**安装（无需打包步骤、不依赖宿主机工作区、不要求预构建的
   `dist/`——dist 全部从源码重建）；
-- 已安装的 profile **组合**出了 mpd 行与官方 agent-team 行（**仅组合**——`result.json` 把这一主张单独放在
+- 已安装的 profile **组合**出了 mpd 行与官方 agent-team 行，且都是**新增**的——两个随包 patch 层的列 0
+  id-target 数为零，因此没有覆盖任何宿主自有内容（**仅组合**——`result.json` 把这一主张单独放在
   `provesCompositionOnly` 字段里，绝不与加载证明混在一起）；
-- 已安装的 profile **确实挂载**：插件代码执行了，适配器提供了服务，mpd 工具已注册，官方 TeamService 已挂载，
-  官方团队工具在 Agent 作用域内应答，mpd 会话门监听器为真实会话完成注册，`mpd` preset 能为真实会话激活，
-  Web 应用在提供服务。
+- 已安装的 profile **确实挂载**：插件代码执行了，适配器提供了服务（在其自己的文件日志中见证，R5），mpd 工具已注册，
+  官方 TeamService 已挂载，官方团队工具在 Agent 作用域内应答，mpd 会话门监听器为真实会话完成注册，`mpd` preset
+  能为真实会话激活，Web 应用在提供服务；
+- 一次真实的 DSH-TUI 会话通过官方文档的用户级偏好解析出 `mpd`，而宿主 preset 注册表行未被本 bundle 触碰。
 
 没有证明：
 

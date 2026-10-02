@@ -1,0 +1,11 @@
+== RUN 1 (source) ==
+cmd: node scripts/docker-e2e.ts --mode source --require-docker
+evidence: evidence/docker/client-install/2026-10-02T16-46-05Z
+verdict: ok=true complete=false passed=52 failed=0 null=1 NULL=[boot.llmTurn]
+exitCode: 0
+
+== RUN 2 (oneclick) ==
+cmd: node scripts/docker-e2e.ts --mode oneclick --spec github:HaroldZ32/My-Power-Dsh#feature/seam-convergence --require-docker
+evidence: evidence/docker/client-install-oneclick/2026-10-02T16-49-35Z
+verdict: ok=true complete=false passed=54 failed=0 null=3 NULL=[build.bunInstall,build.dists,boot.llmTurn]
+exitCode: 0
