@@ -1147,6 +1147,7 @@ TUI_STEP=0
 # "STATE_FILE: parameter null or not set" at the lane's first line).
 STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$WORK_DIR" \
   TUI_VERSION="$TUI_VERSION" DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" \
+  OUT_DIR="$OUT_DIR" \
   npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
   bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/12-tui.log" 2>&1 || TUI_STEP=$?
 cat "$STEPS_DIR/12-tui.log" || true
