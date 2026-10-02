@@ -1,0 +1,8 @@
+01-bun-install	0
+02-harness-install	0
+03-harness-version	0
+04-upstream-fetch	0
+05-upstream-checkout	0
+06-verify-gates	0
+07-plugin-manifest	0
+08-comment-coverage	0

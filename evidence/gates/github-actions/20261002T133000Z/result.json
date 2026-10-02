@@ -1,0 +1,58 @@
+{
+  "case": "github-actions-rehearsal",
+  "what": "Every step of .github/workflows/gates.yml, run on this machine in the RUNNER's shape (fresh `bun install --frozen-lockfile`, a globally installed harness at the pin package.json DECLARES, and the pinned upstream checkout the vendor gate reads). Reproduces the workflow's commands, not GitHub itself: actions/checkout, actions/setup-node and oven-sh/setup-bun are replaced by this machine's equivalents, and bun is the WORKFLOW'S PIN (1.4.0) rather than the newest, because verify-dist-fresh compares bytes.",
+  "measuredAt": "2026-10-02T13:34:48Z",
+  "repo": {
+    "revisionUnderTest": "db80fe4efd89966d43c999a1aaf73b6549b769a3 (dev) + the working-tree changes this PR carries",
+    "harnessPinReadFromPackageJson": "0.2.0-rc.2",
+    "sidebarDevPin": "0.24.1",
+    "tuiPinInDockerDefaults": "0.12.0",
+    "bunUnderTest": "1.4.0 (the recorded buildToolchain and the workflow pin)"
+  },
+  "upstreamBaseline": {
+    "slug": "code-yeongyu/oh-my-openagent",
+    "commitSha": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
+    "fetchedBy": "git init + git remote add + git fetch --depth 1 origin <sha> + git checkout FETCH_HEAD",
+    "checkedOutHead": "8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29",
+    "trackedFiles": 9131,
+    "matchesLock": "VENDOR_LOCK.json upstreamStats.trackedFiles = 9131 (the stats arm is a warning, and it did not fire)"
+  },
+  "whyThisCaseExists": {
+    "failureBeforeTheFix": "`bun install --frozen-lockfile` exited 1 with `lockfile had changes, but lockfile is frozen` + `skipped 1 workspace listed in bun.lock but not on disk: \"@mpd-dsh/team-tools-plugin\"`, so EVERY later step was unreachable. The stale entry was created by commit dc4ec92c, which renamed packages/mpd-team-tools-plugin to packages/mpd-team-core-plugin without regenerating bun.lock.",
+    "secondFailureClass": "With the lockfile fixed, two aggregate members still cannot pass on a bare runner: `preset-conformance --self-test` exits 1 with `dsh is not on PATH — the case cannot verify the installed harness` (measured directly, see below), and `vendor` exits 1 with `upstream checkout not found`."
+  },
+  "steps": [
+    { "id": "01-bun-install", "cmd": "bun install --frozen-lockfile", "exit": 0, "note": "RED before this PR (exit 1); the workflow's first step and the one that hid every later one" },
+    { "id": "02-harness-install", "cmd": "npm i -g --prefix <scratch> @deepseek-ai/dsh@$(node -p \"require('./package.json').dependencies['@deepseek-ai/dsh-experimental-agent-team']\")", "exit": 0, "note": "the version is READ from the manifest, never restated in the workflow" },
+    { "id": "03-harness-version", "cmd": "dsh --version", "exit": 0, "note": "0.2.0-rc.2, i.e. the pin the manifest declares" },
+    { "id": "04-upstream-fetch", "cmd": "git -C <scratch> fetch -q --depth 1 origin <VENDOR_LOCK commitSha>", "exit": 0 },
+    { "id": "05-upstream-checkout", "cmd": "git -C <scratch> checkout -q FETCH_HEAD", "exit": 0 },
+    { "id": "06-verify-gates", "cmd": "MPD_UPSTREAM_ROOT=<scratch> bun run verify:gates", "exit": 0, "note": "7/7 members green: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage" },
+    { "id": "07-plugin-manifest", "cmd": "node scripts/verify-plugin-manifest.ts", "exit": 0 },
+    { "id": "08-comment-coverage", "cmd": "node scripts/verify-comment-coverage.ts", "exit": 0 }
+  ],
+  "negativeControl": {
+    "what": "the run BEFORE the wave's single vendor re-pin, on the same tree and the same harness/upstream setup",
+    "file": "step-exits.pre-repin.tsv",
+    "observed": "06-verify-gates exit=1 with `vendor (exit=1)` — the vendor gate really reads the skills corpus treeSha, and the edits under skills/dsh-qa/scripts invalidate it. After `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` (one field: skills.treeSha 2afd61b4… -> 2fd7941f…, fileCount unchanged at 324) the same step exits 0.",
+    "whyItMatters": "a green rehearsal that never saw this step fail would not prove the vendor member is doing anything"
+  },
+  "presetConformanceWithoutHarness": {
+    "cmd": "env -i PATH=/usr/bin:/bin HOME=<scratch> node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+    "exit": 1,
+    "output": "[preset-conformance] FAIL: self-test: dsh is not on PATH — the case cannot verify the installed harness",
+    "conclusion": "the harness install step is REQUIRED, not decorative; the row-config gate validates against the INSTALLED packages' schemastery schemas"
+  },
+  "verdict": {
+    "ok": true,
+    "stepsGreen": "8/8",
+    "aggregateMembersGreen": "7/7",
+    "artifacts": {
+      "rehearsalScript": "rehearsal.sh",
+      "fullOutput": "output.log",
+      "stepExits": "step-exits.tsv",
+      "preRepinStepExits": "step-exits.pre-repin.tsv"
+    },
+    "notProvedHere": "GitHub itself: this ran on one Linux host, not on a runner image. The runner-specific risks left open are the two setup actions' own behaviour and the runner's network policy toward registry.npmjs.org and github.com."
+  }
+}
