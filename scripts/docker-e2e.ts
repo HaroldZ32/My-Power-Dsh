@@ -486,12 +486,17 @@ function selfTest(): void {
   check("the oneclick service selects the oneclick install mode", /MPD_E2E_INSTALL_MODE:\s*oneclick/.test(compose))
   check("the oneclick service names a git spec or the env override", /MPD_E2E_INSTALL_SPEC:/.test(compose) && /MPD_ONECLICK_SPEC/.test(compose))
 
-  // 6. Dockerfile base image + context copy
-  /** The Dockerfile text, scanned for its base image and its context COPY. */
+  // 6. Dockerfile base image + context copy. The RUNTIME image is the LAST stage, never the FIRST
+  //    `FROM` line: node arrives from the official `node:24-bookworm` image through a multi-stage COPY,
+  //    so the first FROM names the helper stage. This arm used to read the first line and reddened on a
+  //    CORRECT Dockerfile while the lane it guards was green (measured 2026-10-02, HEAD db80fe4e).
+  /** The Dockerfile text, scanned for its stages and its context COPY. */
   const dockerfile = readFileSync(DOCKERFILE, "utf8")
-  /** The first FROM line, which must be the pinned ubuntu base. */
-  const fromLine = dockerfile.split("\n").find((line: string) => /^FROM\s/.test(line))
-  check("Dockerfile FROM ubuntu:24.04", fromLine === "FROM ubuntu:24.04", String(fromLine))
+  /** Every stage's `FROM` line in file order; the LAST one is the image the lane actually runs. */
+  const fromLines = dockerfile.split("\n").filter((line: string) => /^FROM\s/.test(line))
+  check("Dockerfile's runtime stage is FROM ubuntu:24.04", fromLines[fromLines.length - 1] === "FROM ubuntu:24.04", JSON.stringify(fromLines))
+  check("Dockerfile declares exactly the node-runtime + ubuntu stages, node first", fromLines.length === 2 && fromLines[0] === "FROM node:24-bookworm AS node-runtime", JSON.stringify(fromLines))
+  check("Dockerfile hands node over with COPY --from (never a bind mount)", dockerfile.includes("COPY --from=node-runtime /usr/local /usr/local"))
   check("Dockerfile copies the context (never a bind mount)", dockerfile.includes("COPY . /src/"))
 
   // 7. the ignore file: it is what keeps host state OUT of the image, and it must not eat the
