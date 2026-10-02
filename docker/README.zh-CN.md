@@ -31,7 +31,7 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 4. 安装 `pnpm`（`npm i -g pnpm@…`）。这不是装饰：`dsh plugin <args>` 会在 profile 目录里转发给
    `pnpm`，缺少它时 harness 会打印 `pnpm was not found; install pnpm and make it available on PATH`。
    没有 pnpm 的机器根本无法安装 bundle。
-5. `npm i -g @deepseek-ai/dsh@0.1.7-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
+5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
    `docker/docker-compose.yml` 负责透传，`docker/entrypoint.sh` 负责读取），然后断言 `dsh --version`
    打印的字符串**完全等于**该版本号。
 6. 把检出复制到 `/opt/mpd`，执行 `bun install`，并按 `AGENTS.md` §6 的规范仓库根命令**从源码重建每一个**
@@ -73,9 +73,9 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.11.2`
-    —— 第一个 peer 范围**同时**接受本 lane 会跑的两个 harness pin（`0.1.7-rc.2` 与 `0.2.0-rc.1`）的
-    dsh-tui 版本；`0.11.1` 只到前者，对上后者时 `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.12.0`
+    —— 其 peer 范围覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2`
+    只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时 `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
     profile，并记下十一条断言：宿主安装、两次 `plugin add`、组合、**TUI 自带作用域注册表行携带
     `default: mpd`**、`preset-mpd` / `mpd-tui` / 官方团队行、真实 tmux PTY 启动并到达聊天界面、无致命签名，
@@ -140,6 +140,23 @@ Dockerfile 把该上下文复制到 `/src`。**磁盘上不存在任何暂存目
 指向一个私有可写临时目录（调用方自己设置的值优先），并在结束时删除；真实 `~/.docker` 中的 rootless docker
 上下文仍被使用，且**不会复制任何凭据文件**。手工执行时，先 `export BUILDX_CONFIG=$(mktemp -d)` 再调用
 compose。
+
+构建还需要**守护进程**（而不是驱动进程）能从 Docker Hub 解析两个基础镜像——`node:24-bookworm` 与
+`ubuntu:24.04`；本地镜像库为空时这就是硬前置条件而非缓存命中：路由不通时运行会在 buildx 的
+`load metadata` 阶段就失败，此时一层都还没构建。2026-10-02 在一台「IPv6 出网全部被重置、IPv4 可达
+registry」的机器上实测：守护进程拨的是 AAAA 记录，连续三次运行都死在
+`read: tcp [...]:443: read: connection reset by peer`。解法不需要改守护进程配置——改从一个**不发布
+AAAA 记录**的镜像源拉取（这样只能走 IPv4），再打回 Dockerfile 中 `FROM` 使用的官方名字：
+
+```bash
+# 实测使用 docker.m.daocloud.io；任何纯 IPv4 镜像源同样可行
+docker pull docker.m.daocloud.io/library/ubuntu:24.04
+docker tag  docker.m.daocloud.io/library/ubuntu:24.04 ubuntu:24.04
+docker pull docker.m.daocloud.io/library/node:24-bookworm
+docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
+```
+
+此后 `docker compose build` 会直接从本地镜像库解析两个 `FROM` 阶段，lane 无需任何改动即可运行。
 
 ## 隔离模型
 

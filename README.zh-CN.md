@@ -68,7 +68,7 @@
 ## 环境要求
 
 - **DeepSeek Harness（DSH）**，使用 `web` 或 `headless` profile，并在 DSH 中配置好模型凭据 ——
-  本 bundle 从不会替你配置密钥。本 bundle 是针对 harness **0.1.7-rc.2** 构建并验证的。
+  本 bundle 从不会替你配置密钥。本 bundle 是针对 harness **0.2.0-rc.2** 构建并验证的。
 - **Node.js** 与 **Bun**（`1.4.0`，即 `package.json` 中 `buildToolchain` 字段记录的版本），需要在
   `PATH` 上，供仓库脚本使用（`bun` 用来跑测试与扩展 CLI）。
 - **git**：源码安装需要它 —— 主要流程就是克隆本仓库并从检出目录安装。
@@ -123,11 +123,13 @@ bun install
 bundle）以及提供团队模式的三个官方 Agent Teams 包（见 *这次安装挂载了哪些插件*）—— 因此检出目录
 安装要先把仓库依赖落到本地。
 
-如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以不带构建脚本安装该侧边栏 ——
-只有侧边栏的终端面板会降级：
+如果 `node-gyp` 不可用，可以不带构建脚本安装该侧边栏 —— 只有侧边栏的终端面板会降级。早期版本需要
+这么做，是因为它会拉入传递依赖 `node-pty`，其 postinstall 依赖 `node-gyp` 构建（也正是 pnpm 报
+「被忽略的构建脚本」的那一个）；`dsh-better-sidebar@0.24.1` 已不再依赖 `node-pty`（2026-10-02 实测：
+其 `dependencies` 中已无该项），因此该开关现在是双保险而不再必需：
 
 ```bash
-bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts
+bun add dsh-better-sidebar@0.24.1 --ignore-scripts
 ```
 
 从打包产物安装时无需这一步（pnpm 会装好声明的依赖），见下方 *从打包产物安装*。

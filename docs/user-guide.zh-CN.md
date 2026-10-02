@@ -27,9 +27,10 @@ cd <repo> && dsh plugin --profile dsh-tui add .    # 终端界面（DSH-TUI）
 cd <repo> && bun install          # 只需一次：把声明的运行时依赖落到仓库 node_modules
 ```
 
-如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以用
-`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` 跳过构建脚本安装 —— 只有侧边栏的
-终端面板会降级。从打包产物安装时无需额外步骤：pnpm 会替你装好声明的依赖（见下方 *打包产物*）。
+如果 `node-gyp` 不可用，可以用
+`bun add dsh-better-sidebar@0.24.1 --ignore-scripts` 跳过构建脚本安装 —— 只有侧边栏的
+终端面板会降级。（当初需要这个开关的传递依赖 `node-pty` 在 `0.24.1` 中已被移除，2026-10-02 实测。）
+从打包产物安装时无需额外步骤：pnpm 会替你装好声明的依赖（见下方 *打包产物*）。
 
 **每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
 停下并提示 `error: required option '--profile <name>' not specified`。profile 名就是你实际运行的
@@ -514,7 +515,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   刷新页面），并确认 profile 中存在侧边栏宿主。bundle 会自行安装它（已声明依赖 +
   `mpd-better-sidebar` 行）；如果 profile 中缺少 `dsh-better-sidebar`，说明安装时没有把该依赖
   落到本地 —— 在检出目录执行 `bun install`（或
-  `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`），然后重新安装 bundle。
+  `bun add dsh-better-sidebar@0.24.1 --ignore-scripts`），然后重新安装 bundle。
   没有宿主时，workmate 页面只打印一条警告且不注册任何内容。
 - 会话头部缺少 Agent Teams 面板 → 它的行是 `mpd-ui-agent-team`
   （`@deepseek-ai/dsh-experimental-client-ui-agent-team`，已声明依赖）；重新安装 bundle 并刷新一次

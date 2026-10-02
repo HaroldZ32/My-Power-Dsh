@@ -660,7 +660,7 @@ function writeManifest(): void {
     // repro is a manifest/relocation check (version: null, min 0.1.13), not a
     // proof about pnpm's linking, and the boot-time fallback above is the missing
     // half. A dependency declared only here, with no row, mounts nothing.
-    dependencies: { "dsh-better-sidebar": "0.19.0-alpha.1" },
+    dependencies: { "dsh-better-sidebar": "0.24.1" },
     // Toolchain binaries stay as optionalDependencies (installed separately):
     //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker
     optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }

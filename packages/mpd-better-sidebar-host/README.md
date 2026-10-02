@@ -43,7 +43,7 @@ None. The row that mounts it is `mpd-better-sidebar` in the bundle patch.
 ## Known limits
 
 - The `inject` list is pinned to the host version the bundle declares
-  (`dsh-better-sidebar@0.19.0-alpha.1`). A version bump that changes the list fails the contract arm
+  (`dsh-better-sidebar@0.24.1`). A version bump that changes the list fails the contract arm
   rather than starving the host in silence.
 - The host is reached by a path computed at runtime; a host installed somewhere else entirely is not
   found, and the row then fails loudly with the path it tried.

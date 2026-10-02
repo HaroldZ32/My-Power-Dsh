@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.11.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.12.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -117,6 +117,10 @@ export interface BootFace {
 /**
  * The dsh-tui host this lane installs into the sandbox profile.
  *
+ * MOVED 0.11.2 -> 0.12.0 (2026-10-02), one step on and for the same reason: 0.11.2's peer lists end
+ * at `|| 0.2.0-rc.1`, so `dsh plugin --profile dsh-tui add` is REFUSED against the 0.2.0-rc.2 harness
+ * this bundle now pins, while 0.12.0's lists end with `|| 0.2.0-rc.2`.
+ *
  * MOVED 0.11.1 -> 0.11.2 (2026-09-30), and the reason is written down in this repository already:
  * `docker/README.md` records that 0.11.2 is "the first dsh-tui release whose peer ranges accept BOTH
  * harness pins this lane runs (0.1.7-rc.2 and 0.2.0-rc.1; 0.11.1 stops at the former, and
@@ -128,7 +132,7 @@ export interface BootFace {
  *
  * The env override matches the Docker lane's knob, so one variable moves both.
  */
-const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.11.2")
+const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.12.0")
 
 /** What the `--install` arm attempted, and where it recorded the attempt. */
 interface InstallAttempt {

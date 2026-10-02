@@ -1,0 +1,849 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": true,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-10-02T13:17:14.000Z",
+  "finishedAt": "2026-10-02T13:21:02.205Z",
+  "durationSeconds": 228,
+  "harness": {
+    "installed": "0.2.0-rc.2",
+    "expected": "0.2.0-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 53,
+    "passed": 52,
+    "failed": 0,
+    "null": 1,
+    "failedNames": [],
+    "nullNames": [
+      "boot.llmTurn"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org",
+      "raw": "v24.21.0 npm=11.19.0"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun 1.4.2 on PATH, installed via official-script",
+      "raw": "1.4.2"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.2.0-rc.2"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed",
+      "raw": "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": true,
+      "reason": "bun install resolved the workspace and the dev/optional dependencies",
+      "raw": "exit=0"
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=23/23"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile",
+      "raw": "exit=0 spec=."
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true,
+      "reason": "the profile links the checkout and keeps the box bundles",
+      "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true,
+      "reason": "the installed bundle resolves inside the profile",
+      "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": true,
+      "reason": "the sanctioned composer exited 0",
+      "raw": "exit=0"
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": true,
+      "reason": "the mpd host rows compose and the default preset selection is mpd",
+      "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate default: mpd x1"
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": true,
+      "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+      "raw": "- id: preset-mpd"
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": true,
+      "reason": "the official agent-team rows compose under the mpd-owned ids (§4 D3)",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": true,
+      "reason": "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition",
+      "raw": "[docker-probe] APPLIED=ok"
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": true,
+      "reason": "the mpd-dsh-adapter row applied and provided the mpdDsh service",
+      "raw": "[mpd-dsh-adapter] mpdDsh provided"
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": true,
+      "reason": "an internal tool call through the adapter answered ok",
+      "raw": "[docker-probe] ADAPTER_TOOL_CALL=ok"
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": true,
+      "reason": "every core mpd tool answered from the live registry",
+      "raw": "CORE_TOOLS=6/6"
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": true,
+      "reason": "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)",
+      "raw": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-cc86a4ae-c377-4354-a2c7-ac0b3a98"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)",
+      "raw": "[mpd-roles] session gate listener registered for agent \"session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d\" agentPreset=mpd"
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": true,
+      "reason": "the official TeamService is mounted in the booted process (its class name is the witness)",
+      "raw": "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership"
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": true,
+      "reason": "the booted Web app answered 200",
+      "raw": "/plugins/mpd-workmate/list -> 200"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+      "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1790947204-14930\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d\",\"agentPreset\":\"mpd\"}}}"
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module signature in the boot log",
+      "raw": "0 matches"
+    },
+    {
+      "name": "isolation.home",
+      "ok": true,
+      "reason": "HOME and DSH_HOME stay on the sandbox paths for every harness command",
+      "raw": "HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh"
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": true,
+      "reason": "no harness/toolchain marker under the real home (/root)",
+      "raw": "absent: .dsh .mpd .npm .bun"
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": true,
+      "reason": "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)",
+      "raw": "inventory=.credentials.yaml(161B),"
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": true,
+      "reason": "the TUI host installs globally and lands on PATH",
+      "raw": "version=0.12.0 bin=/usr/local/bin/dsh-tui"
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": true,
+      "reason": "the TUI host bundle installs into the dsh-tui profile",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": true,
+      "reason": "THIS bundle installs into the dsh-tui profile as the third patch layer",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.compose",
+      "ok": true,
+      "reason": "dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.registryDefaultMpd",
+      "ok": true,
+      "reason": "the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)",
+      "raw": "id=dsh-tui-agent-preset-registry default=mpd"
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": true,
+      "reason": "the mpd preset row is composed in the TUI plane",
+      "raw": "id=preset-mpd"
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": true,
+      "reason": "the bundle's mpd-tui row is composed in the TUI plane",
+      "raw": "id=mpd-tui"
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": true,
+      "reason": "all three official Agent Teams rows are composed in the TUI plane",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "tui.boot",
+      "ok": true,
+      "reason": "the REAL TUI booted on a real PTY and reached its chat screen",
+      "raw": "tmux=new-session-ok ready=chat-screen"
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module/preset signature in the TUI pane or log",
+      "raw": "scanned=pane+pane-log"
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": true,
+      "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+      "raw": "{\"found\":true,\"sessionId\":\"3ae107d1-c882-4280-9016-fa13ee29b5cd\",\"agentPreset\":\"mpd\",\"bytes\":687}"
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.",
+      "raw": "no credentials staged by design"
+    },
+    {
+      "name": "team.route.state",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,team,counts,members,tasks,cycles,executor,problems"
+    },
+    {
+      "name": "team.route.plan",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,plan"
+    },
+    {
+      "name": "team.route.task",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,contracts,hold"
+    },
+    {
+      "name": "team.route.mail",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,messages,records"
+    },
+    {
+      "name": "team.routesAll",
+      "ok": true,
+      "reason": "all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true",
+      "raw": "green=4/4"
+    },
+    {
+      "name": "team.planLookup",
+      "ok": true,
+      "reason": "the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)",
+      "raw": "plan=null session=session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d"
+    },
+    {
+      "name": "tui.teamSceneOpened",
+      "ok": true,
+      "reason": "the /mpd team scene opened on a real terminal",
+      "raw": "chars=2902"
+    },
+    {
+      "name": "tui.teamGraphDrawn",
+      "ok": true,
+      "reason": "the LAYERED BOXES were drawn: a top border, a bottom border, and the subjects inside them",
+      "raw": "graph=boxes"
+    },
+    {
+      "name": "tui.teamGraphEdges",
+      "ok": true,
+      "reason": "the dependency EDGES were drawn with box-drawing junctions",
+      "raw": "junctions=13"
+    },
+    {
+      "name": "tui.teamGraphContent",
+      "ok": true,
+      "reason": "the boxes carry the record's own task ids and subjects",
+      "raw": "ids=T1 subject=build the graph"
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": true,
+      "reason": "the TUI lane ran to completion with every assertion green",
+      "raw": "records=15"
+    }
+  ],
+  "observations": {
+    "rebuildNoSrc": "NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+    "installSpec": ".",
+    "installTail": "+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 345ms using pnpm v11.23.0 ",
+    "dumpMpdRowIds": "mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-ui-agent-team,mpd-ulw,mpd-web-compat,mpd-workmate,",
+    "dumpDefaultMpdLines": "1",
+    "dumpAgentTeamRows": "mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,",
+    "retiredToolsPresent": "<probe did not report>",
+    "teamToolPlane": "root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below",
+    "uiTeamRow": "resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)",
+    "sessionCreate": "http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd",
+    "realHomeMarkers": ".bashrc,.profile,sandbox-dsh,sandbox-home,",
+    "credentialFiles": ".credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)"
+  },
+  "facts": {
+    "stamp": "2026-10-02T13:17:14Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "20",
+    "nodeArch": "amd64 -> linux-x64",
+    "nodeSource": "image (node:24-bookworm /usr/local)",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bunPath": "/opt/toolchain/bun/bin/bun",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.0-rc.2 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.2.0-rc.2",
+    "harnessVersionExpected": "0.2.0-rc.2",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=23",
+    "profileDep": "link:/opt/mpd",
+    "profileBundles": "@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd",
+    "bootCoreTools": "6/6",
+    "bootTeamToolsRootPlane": "0/9",
+    "bootAdapterCaps": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+    "bootAgentTeamsMethods": "listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+    "bootCookieJarLines": "4",
+    "bootCookieExchange": "http=303 tokenPresent=yes",
+    "bootHttp": "/plugins/mpd-workmate/list -> 200",
+    "bootAgentTeamToolsScoped": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-cc86a4ae-c377-4354-a2c7-ac0b3a98",
+    "bootSessionGate": "[mpd-roles] session gate listener registered for agent \"session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d\" agentPreset=mpd",
+    "teamRoutesSession": "session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d",
+    "teamRoutes": " state=200/true plan=200/true task=200/true mail=200/true",
+    "hashesMeasuredAt": "2026-10-02T13:21:02Z",
+    "finishedAt": "2026-10-02T13:21:02Z"
+  },
+  "hashes": [
+    {
+      "sha256": "39242314d17fee37403b7836a87cd80523922a73ba8a51080aebbb57c2b69361",
+      "path": "/opt/mpd/package.json"
+    },
+    {
+      "sha256": "78ba1379b930ae6219fdde857c35c0369dd77401fc2794a853b39d60ffe19fe5",
+      "path": "/opt/mpd/cordis.patch.yml"
+    },
+    {
+      "sha256": "84b9b3487094dbe63732999d14b6ab399dd87f2c866f48619417dadfee6413c6",
+      "path": "/opt/mpd/presets/mpd.patch.yml"
+    },
+    {
+      "sha256": "d6a787c4a59ab8fa0a8b0ac639ed54d7dc0c3ff9085d4aa38e449e06b868c48c",
+      "path": "packages/mpd-better-sidebar-host/dist/index.js"
+    },
+    {
+      "sha256": "16a1892305a1acd721c1368bb9f05d877c2b9fa88ba27099c6d15fdd7da10c33",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js"
+    },
+    {
+      "sha256": "7f535611440ee4c868f6083faeeee75a0bfe7ad7b234ca0ae41bbb57e6d495a4",
+      "path": "packages/mpd-boulder-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d08531906ef3902ac11dc7437388ca5794b6f4f3f47e60578138767e4cd4e5a7",
+      "path": "packages/mpd-bundle-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a4732dde932549876e2861129969123eae114dac9bd9931847412f0f5eac71d4",
+      "path": "packages/mpd-codegraph-plugin/dist/index.js"
+    },
+    {
+      "sha256": "191ac1434c3163218990d8234485d7cd76a873a275a420e006e1b7c8e18db3fe",
+      "path": "packages/mpd-comment-checker-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d9ca1b7d4ae42dad6463dbc43c5873f2ed403b002553479205154d67a5fb4091",
+      "path": "packages/mpd-config-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a57092854a556baf48371f9ea8009a18f74396fc35c61f4cec15733abbf310cd",
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "faeb619802a70a9e63817aeb8ef4aabe54ac1c79df05645876c678365c2f6374",
+      "path": "packages/mpd-ext-plugin/dist/index.js"
+    },
+    {
+      "sha256": "caafcefd1a0927d075f9ecc3756724a5a1e8b45cacbd0651da6b26803c980578",
+      "path": "packages/mpd-hashline-plugin/dist/index.js"
+    },
+    {
+      "sha256": "9c30a3400f7aa6cd8a4df623423c7eb309bd1b992947780b308b9b537d3da60a",
+      "path": "packages/mpd-memory-plugin/dist/index.js"
+    },
+    {
+      "sha256": "affcd1599cdcc2c720ef5cd3fadbc3c58aa64be53661cb42ae59e96085d553f4",
+      "path": "packages/mpd-modelchain-plugin/dist/index.js"
+    },
+    {
+      "sha256": "1900f4dda2e245e86d45271c1d5f121b644901da7dce6a8f61b5f865475d2c6f",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "sha256": "274d9c131347fb6af5a6169c4eb4cbbc6f0a1300edbc0a837287249f2b1e7a5a",
+      "path": "packages/mpd-roles-plugin/dist/index.js"
+    },
+    {
+      "sha256": "ee5602a6cd30bb2124b5ba49665a5b6feb0a6e028e90aa5de617d4fd59e1723b",
+      "path": "packages/mpd-roster-provider-plugin/dist/index.js"
+    },
+    {
+      "sha256": "a0d6f6cb07c9eaf71c66d5c196f5ec0167ca581296458446707d1d9af8d8ef9b",
+      "path": "packages/mpd-team-compact-plugin/dist/index.js"
+    },
+    {
+      "sha256": "36d48333f6bf3b4f1d73f4a916d75b73e1003ecc078b2cd6e17948e67ccd22f4",
+      "path": "packages/mpd-team-core-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b1bf4a6a1b02ccc2efd0edc795c9fc7d72a02226c2408b9a19e7e8b7e1af1abc",
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js"
+    },
+    {
+      "sha256": "239d6b0540c5b0323551fead04c60ff2884df1798e5f957a594b04b767dcdbf0",
+      "path": "packages/mpd-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "92e5f1c025f2b2e7bcfc3dcb2d6d19063b4a328efa701031e0dfa6e81fe8e5b0",
+      "path": "packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "sha256": "f1f6861d8d94ce08eb6f1c8e9ac9b5e091ca71f3194753a52bb381cec3a34d12",
+      "path": "packages/mpd-ulw-plugin/dist/index.js"
+    },
+    {
+      "sha256": "0176ecbb370b3010ccf439cec5e27046d41bd1f339aae79bddd4f90ad6a987bc",
+      "path": "packages/mpd-workmate-plugin/dist/index.js"
+    }
+  ],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 7,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1634,
+      "tail": [
+        "Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:3 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:4 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1318 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:7 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1943 kB]",
+        "Get:8 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:9 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:10 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:11 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1543 kB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2162 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [56.2 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1688 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2127 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Fetched 33.2 MB in 7s (4998 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 13,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 16629,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 8,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 3215,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r-=O#-#   #   #                                                                 \r-=O=#  #   #   #                                                               \r-=O=-#  #    #   #                                                             \r-=O=- #   #   #    #                                                           \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.3%\r                                                                           0.8%\r                                                                           1.2%\r#                                                                          1.7%\r#                                                                          2.4%\r#                                                                          2.7%\r##                                                                         3.4%\r######                                                                     9.7%\r##########                                                                14.4%\r############                                                              17.7%\r###############                                                           22.0%\r###################                                                       27.7%\r#######################                                                   33.0%\r############################                                              40.0%\r###############################                                           44.1%\r####################################                                      51.2%\r#######################################                                   55.3%\r#######################################                                   55.4%\r########################################                                  56.7%\r###############################################                           66.5%\r####################################################                      72.9%\r########################################################                  77.8%\r###########################################################               82.2%\r###########################################################               82.3%\r#################################################################         90.5%\r####################################################################      95.0%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 4,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 4s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 122,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.2.0-rc.2 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1178,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 538 packages in 2m",
+        "",
+        "63 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 0,
+      "seconds": 7,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 397,
+      "tail": [
+        "bun install v1.4.2 (744846f84)",
+        "",
+        "+ @typescript/native-preview@7.0.0-dev.20260707.2",
+        "+ bun-types@1.4.0",
+        "+ dsh-better-sidebar@0.19.0-alpha.1",
+        "+ typescript5@5.9.3",
+        "+ @colbymchenry/codegraph@1.5.0",
+        "+ @deepseek-ai/dsh-experimental-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.1.7-rc.2",
+        "+ @deepseek-ai/dsh-experimental-tool-agent-team@0.1.7-rc.2",
+        "",
+        "292 packages installed [6.63s]",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 3494,
+      "tail": [
+        "[rebuild] OK   packages/mpd-better-sidebar-host/src/index.ts -> packages/mpd-better-sidebar-host/dist/index.js (exit=0 bytes=1110)",
+        "[rebuild] OK   packages/mpd-bootstrap-plugin/src/index.ts -> packages/mpd-bootstrap-plugin/dist/index.js (exit=0 bytes=62837)",
+        "[rebuild] OK   packages/mpd-boulder-plugin/src/index.ts -> packages/mpd-boulder-plugin/dist/index.js (exit=0 bytes=80202)",
+        "[rebuild] OK   packages/mpd-bundle-plugin/src/index.ts -> packages/mpd-bundle-plugin/dist/index.js (exit=0 bytes=61083)",
+        "[rebuild] OK   packages/mpd-codegraph-plugin/src/index.ts -> packages/mpd-codegraph-plugin/dist/index.js (exit=0 bytes=53838)",
+        "[rebuild] OK   packages/mpd-comment-checker-plugin/src/index.ts -> packages/mpd-comment-checker-plugin/dist/index.js (exit=0 bytes=55878)",
+        "[rebuild] OK   packages/mpd-config-plugin/src/index.ts -> packages/mpd-config-plugin/dist/index.js (exit=0 bytes=140014)",
+        "[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=52928)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=184194)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=87076)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=62675)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=55441)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=57010)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=89789)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=100231)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=66458)",
+        "[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=113849)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=180342)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=51492)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=205426)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=74218)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=89451)",
+        "[rebuild] ENTRIES=23",
+        "[rebuild] BUILD_OK=23/23",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-agent-teams-plugin=adopted upstream main code under lib/ (no src/),mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-codegraph=sha-pinned prebuilt vendored at pack time (no local src/),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)",
+        "[rebuild] SKIPPED_SRC=mpd-mcp-astgrep=src/ exists but owns no discoverable build entry,mpd-mcp-gitbash=src/ exists but owns no discoverable build entry,mpd-mcp-lsp=src/ exists but owns no discoverable build entry",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 161,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 345ms using pnpm v11.23.0",
+        ""
+      ]
+    },
+    {
+      "id": "10-dump",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/dump-config.ts --profile web ",
+      "logFile": "10-dump.log",
+      "logBytes": 79223,
+      "tail": [
+        "              provider: claude-code",
+        "              toolName: subagent_claude_code",
+        "              backgroundMode: one-shot",
+        "              maxDepth: provider-managed",
+        "          - id: workflow-ptc",
+        "            name: '@deepseek-ai/dsh-workflow-ptc'",
+        "            config:",
+        "              provider: spawn",
+        "          - id: tool-workflow",
+        "            name: '@deepseek-ai/dsh-tool-workflow'",
+        "          - id: tool-ralph",
+        "            name: '@deepseek-ai/dsh-tool-ralph'",
+        "            config:",
+        "              subagentProvider: spawn",
+        "              maxRounds: 64",
+        "      - id: tool-ask-user",
+        "        name: '@deepseek-ai/dsh-tool-ask-user'",
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+        "      - id: present",
+        "        name: '@deepseek-ai/dsh-tool-present'",
+        "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).",
+        ""
+      ]
+    },
+    {
+      "id": "11-boot",
+      "exit": -1,
+      "seconds": 8,
+      "cmd": "dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)",
+      "logFile": "11-boot.log",
+      "logBytes": 4310,
+      "tail": [
+        "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+        "[mpd-team-core] team workflow plane: staged=0 hold=none registrations=6 (5 tools + the /agent-teams command)",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        "[mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry \"mpd-config\") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.",
+        "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+        "[mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)",
+        "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+        "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+        "[mpd-roster] provider \"mpd-roster\" registered (delegating to \"spawn\"; point the team tool row's freshProvider at it)",
+        "[docker-probe] CORE_TOOLS=6/6",
+        "[docker-probe] CORE_TOOLS_MISSING=",
+        "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+        "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+        "[docker-probe] TEAM_TOOLS_ROOT=0/9",
+        "[docker-probe] AGENTS_AT_APPLY=0",
+        "[docker-probe] RETIRED_TOOLS_PRESENT=",
+        "[docker-probe] ADAPTER_SERVICE=present",
+        "[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister",
+        "[docker-probe] ADAPTER_TOOL_CALL=ok",
+        "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService",
+        "[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+        "[docker-probe] DONE=1",
+        "dsh web: http://127.0.0.1:3197/?token=<redacted>",
+        "[mpd-roles] roster section registered for agent \"session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d\" agentPreset=mpd — mpd:roster order=605",
+        "[mpd-roles] session gate listener registered for agent \"session-cc86a4ae-c377-4354-a2c7-ac0b3a98614d\" agentPreset=mpd",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-cc86a4ae-c377-4354-a2c7-ac0b3a98 scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=97 agent=session-cc86a4ae-c377-4354-a2c7-ac0b3a98",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        "[mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)",
+        ""
+      ]
+    },
+    {
+      "id": "12-tui",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "bash docker/tui-lane.sh",
+      "logFile": "12-tui.log",
+      "logBytes": 1637,
+      "tail": [
+        "[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile",
+        "[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer",
+        "[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+        "[record] tui.registryDefaultMpd=true — the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)",
+        "[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane",
+        "[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane",
+        "[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane",
+        "[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal",
+        "[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: a top border, a bottom border, and the subjects inside them",
+        "[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions",
+        "[record] tui.teamGraphContent=true — the boxes carry the record's own task ids and subjects",
+        "[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its chat screen",
+        "[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log",
+        "[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+        "[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

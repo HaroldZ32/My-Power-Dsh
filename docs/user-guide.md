@@ -29,9 +29,10 @@ so materialize the repository's dependencies first:
 cd <repo> && bun install          # required once: materializes the declared runtime dependencies
 ```
 
-If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it),
-`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` installs the dependency without build
-scripts — only the sidebar's terminal panel degrades. A packed install needs no extra step: pnpm
+If `node-gyp` is unavailable,
+`bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs the dependency without build
+scripts — only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
+for is gone from `0.24.1`, measured 2026-10-02.) A packed install needs no extra step: pnpm
 installs the declared dependency for you (see *Packed package* below).
 
 `--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
@@ -566,7 +567,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   The bundle installs it itself (declared dependency + the `mpd-better-sidebar` row); if
   `dsh-better-sidebar` is absent from the profile, the install did not materialize the dependency —
   run `bun install` in the checkout (or
-  `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`) and reinstall the bundle. Without the
+  `bun add dsh-better-sidebar@0.24.1 --ignore-scripts`) and reinstall the bundle. Without the
   host the workmate page logs one warning and registers nothing.
 - The Agent Teams panel is missing from the conversation header → its row is
   `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);

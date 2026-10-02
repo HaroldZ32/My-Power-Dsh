@@ -4,12 +4,13 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.11.1** and its built-in admission
-profile. 0.11.1 is the first dsh-tui release whose peer ranges include `0.1.7-rc.2` (0.10.1 and
-0.10.2 stop at `0.1.5-rc.1`), so it is the only pin that can boot against the harness this bundle
-targets; the compatibility work below was measured on 0.10.1 and is re-verified in the Docker
-end-to-end test (`docker/tui-lane.sh`), which is the only place the TUI profile can be exercised
-end to end.
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.12.0** and its built-in admission
+profile. 0.12.0 is the dsh-tui release whose peer ranges cover the whole band this bundle's pinned
+harness sits in — its lists run through `0.1.7-rc.2`, `0.2.0-rc.1` and `0.2.0-rc.2`, where 0.11.2
+stopped at `0.2.0-rc.1` (0.10.1 and 0.10.2 stop at `0.1.5-rc.1`), so it is the only pin that can boot
+against the harness this bundle targets; the compatibility work below was measured on 0.10.1 and is
+re-verified in the Docker end-to-end test (`docker/tui-lane.sh`), which is the only place the TUI
+profile can be exercised end to end.
 
 > **Read this first.** This repository has **not** published a conformance claim. The claim
 > artifact of that ecosystem (`schemas/conformance-claim.schema.json`, `claimVersion` `"0.15"`,

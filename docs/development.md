@@ -58,9 +58,9 @@ A local install needs no pack step: the repo root manifest IS the bundle package
 touched `dist/` and restart dsh. Materialize the repository's dependencies first (`bun install`):
 the manifest declares one external runtime dependency, `dsh-better-sidebar` — the community
 sidebar host for the two mpd tabs — and a checkout install reads this repository. Where
-`node-gyp` is unavailable for its transitive `node-pty`,
-`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` installs it without build scripts
-(only the sidebar's terminal panel degrades). A packed install gets it from pnpm.
+`node-gyp` is unavailable, `bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs it without
+build scripts (only the sidebar's terminal panel degrades; the transitive `node-pty` this flag used to
+be needed for is gone from `0.24.1`, measured 2026-10-02). A packed install gets it from pnpm.
 
 MCP servers are built by `node scripts/build-mcp.ts` (offline from in-repo sources).
 
