@@ -11,7 +11,7 @@ import { join } from "node:path"
 import { WatchdogEngine } from "../src/engine"
 import { apply } from "../src/index"
 import { readHeartbeats } from "../src/store"
-import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
+import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel, captureRowLog } from "./support"
 
 /** A ctx stub; the engine only ever reads `on` from it in this file. */
 function stubCtx(dsh?: { onEvent: (event: string, handler: (...args: any[]) => unknown) => (() => void) | undefined }): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
@@ -53,11 +53,14 @@ describe("AC-15 fail-safe", () => {
   test("a throwing tick body is caught and counted, and the tick still returns", async () => {
     // An isolated workspace for this case.
     const box = sandbox()
+    // R5: the diagnostic must stay OFF the terminal, so that channel is asserted EMPTY below.
+    const terminal: string[] = []
     // The real console.warn, restored in the finally block.
     const originalWarn = console.warn
-    // The lines the engine's console channel produced.
-    const warnings: string[] = []
-    console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(" "))
+    console.warn = (...args: unknown[]) => terminal.push(args.map(String).join(" "))
+    // …and the line itself is read from the row log the engine now writes it to, pinned to the
+    // sandbox workspace so the repo's own `.mpd/logs` is never touched.
+    const log = captureRowLog(box.workspace)
     try {
       // The stub adapter the engine is built on.
       const stub = stubAdapter({ workspace: box.workspace })
@@ -71,12 +74,14 @@ describe("AC-15 fail-safe", () => {
       expect(engine.getStats().tickErrors).toBe(1)
       expect(engine.getStats().lastError).toBe("boom")
       expect(result.skipped).toContain("tick error")
-      expect(warnings.some((line) => line.includes("tick threw 1 time(s)"))).toBe(true)
+      expect(log.appended()).toContain("tick threw 1 time(s)")
+      expect(terminal).toEqual([])
       // And the next tick with a working body still runs (the count is not fatal).
       engine.knownRoots = () => []
       expect((await engine.tickOnce(2)).skipped).toBeUndefined()
       expect(engine.getStats().ticks).toBe(2)
     } finally {
+      log.restore()
       console.warn = originalWarn
       box.cleanup()
     }
@@ -163,11 +168,13 @@ describe("AC-15 fail-safe", () => {
   test("an unwritable heartbeat location degrades to a counted failure", () => {
     // An isolated workspace for this case.
     const box = sandbox()
+    // R5: the diagnostic must stay OFF the terminal, so that channel is asserted EMPTY below.
+    const terminal: string[] = []
     // The real console.warn, restored in the finally block.
     const originalWarn = console.warn
-    // The lines the engine's console channel produced.
-    const warnings: string[] = []
-    console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(" "))
+    console.warn = (...args: unknown[]) => terminal.push(args.map(String).join(" "))
+    // …and the line itself is read from the row log, pinned to the sandbox workspace.
+    const log = captureRowLog(box.workspace)
     try {
       writeTeam(box, {
         id: "team-a",
@@ -188,8 +195,10 @@ describe("AC-15 fail-safe", () => {
       expect(stamp.member).toBe("Architect")
       expect(engine.getStats().heartbeatFailures).toBe(1)
       expect(engine.getStats().heartbeatWrites).toBe(0)
-      expect(warnings.some((line) => line.includes("heartbeat write failed at"))).toBe(true)
+      expect(log.appended()).toContain("heartbeat write failed at")
+      expect(terminal).toEqual([])
     } finally {
+      log.restore()
       console.warn = originalWarn
       box.cleanup()
     }

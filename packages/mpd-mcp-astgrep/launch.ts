@@ -14,7 +14,19 @@
 //   actionable BINARY_NOT_FOUND error;
 // - never throw, and never write to stdout (it carries the MCP protocol);
 //   diagnostics, if any, belong on stderr.
+//
+// R5 (lane F): "diagnostics belong on stderr" is NOT enough any more. The harness builds this row as
+// `new StdioClientTransport({ command, args, env, cwd })` with no `stderr` option, and the MCP SDK
+// then spawns this process with `stdio: ["pipe", "pipe", "inherit"]` — so fd 2 here IS the dsh
+// process's fd 2, which in a TUI session is the Ink alternate screen. The sink below takes the
+// terminal writers away before the adopted server is loaded (that import is DYNAMIC on the last line
+// of this file, so the install really does run first — a static import would be hoisted above it).
+import { installTerminalSilence } from "../mpd-mcp-shared/log-sink.ts"
 import { resolveAstGrepBinary } from "../mpd-mcp-shared/bin-resolve.ts"
+
+// The install is the FIRST statement of the module body, so it runs after this file's own
+// chatter-free imports and BEFORE the adopted server's dynamic import on the last line.
+installTerminalSilence("mpd-mcp-astgrep")
 
 if ((process.env.MPD_AST_GREP_SG_PATH ?? "").trim().length === 0) {
   try {

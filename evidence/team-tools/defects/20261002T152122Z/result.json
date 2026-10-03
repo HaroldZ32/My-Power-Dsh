@@ -1,0 +1,77 @@
+{
+  "lane": "E",
+  "domain": "team-tools/defects",
+  "capturedAt": "2026-10-02T15:21:22Z",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "harnessUnderTest": "dsh 0.2.0-rc.2 (installed CLI), dsh-tools 0.2.0-rc.2, dsh-util-values 0.2.0-rc.2",
+  "restartRequired": "T-21: plugin code changes are invisible to a live session until dsh restarts; no live re-check is claimed",
+  "defects": [
+    {
+      "id": "1",
+      "title": "agent_teams_plan action:status returned invalid output",
+      "rootCause": [
+        "packages/mpd-team-core-plugin/src/index.ts (agent_teams_plan output.schema): plan/hold declared {type:'object'} while the status branch returns null for an empty session — live log seq 154",
+        "packages/mpd-team-core-plugin/src/team-store.ts (summariseTeam -> taskDepths, a Map): the status branch returned it raw across the tool boundary, which is not lossless JSON — live log seq 213"
+      ],
+      "fix": [
+        "the declared schema states the nullable shape via exact-one oneOf (the harness schema subset has no type arrays) and declares the previously undeclared team/summary keys",
+        "new losslessSummary() in team-store.ts projects depths to a plain id->depth record at the tool boundary; the mpdTeams service keeps the Map"
+      ],
+      "evidenceCommand": "bun run evidence/team-tools/defects/20261002T152122Z/before-after.ts",
+      "before": "REFUSED: \"value.plan\" must be an object; \"value.hold\" must be an object | REFUSED: value is not lossless JSON",
+      "after": "accepted | accepted",
+      "regressionTest": "packages/mpd-team-core-plugin/test/tool-output-schema.test.ts (every action's value vs its own declared schema + the lossless rule)"
+    },
+    {
+      "id": "2",
+      "title": "session-watchdog-status returned non-lossless JSON",
+      "rootCause": "packages/mpd-team-watchdog-plugin/src/actions.ts (STATUS_TOOL execute): the whole store view crossed the tool boundary raw; the harness refuses a non-lossless value before it validates the schema — live log seq 219",
+      "fix": "packages/mpd-team-watchdog-plugin/src/lossless.ts (losslessJson): a total projection applied at the tool boundary (Map->record, Set->array, Date->ISO, bigint->string, non-finite/-0->JSON's own values, foreign prototypes / symbol / non-enumerable keys rebuilt away, cycles -> null), keeping every human-readable field",
+      "evidenceCommand": "bun run evidence/team-tools/defects/20261002T152122Z/before-after.ts",
+      "before": "live harness: REFUSED (seq 219); mechanism demo: a Map/undefined/-0 value is REFUSED",
+      "after": "mechanism demo: accepted (lossless)",
+      "regressionTest": "packages/mpd-team-watchdog-plugin/test/status-lossless.test.ts (total projection + a JSON round trip of the real status value)",
+      "notVerified": "the exact offending reader is NOT identified: three faithful replays of the pre-fix build (minimal store, real apply with engine+registry, and a copy of the live workspace's .mpd/team state) were all lossless under the installed harness's rule set"
+    },
+    {
+      "id": "3",
+      "title": "dispatch reported a watchdog hold the watchdog did not have",
+      "rootCause": "packages/mpd-team-core-plugin/src/index.ts (watchdogHold): branched on the HoldView OBJECT's truthiness; the real isHeld() always returns a truthy HoldView, so {held:false} refused every pass — live log seq 211 vs seq 237 seq 243",
+      "fix": "readWatchdogHold() + the exported WatchdogHoldRead: ONE authoritative source (the mpdWatchdog service), branching on .held === true per the watchdog's own HOLD_GATE_CALL; absent service = free (its documented fail-open rule); a bad answer = not-readable, reported in holdRead and NOT a hold",
+      "evidenceCommand": "bun run evidence/team-tools/defects/20261002T152122Z/before-after.ts",
+      "before": "HALTED: the team watchdog holds team-20261002153133 (under a {held:false} view)",
+      "after": "no halt (correct)",
+      "regressionTest": "packages/mpd-team-core-plugin/test/team-record.test.ts (held / lifted / absent service / unreadable; the double now models the real HoldView contract)"
+    },
+    {
+      "id": "4+5",
+      "title": "create_task dropped owner (and blocked_by) from the plan->board projection",
+      "rootCause": "packages/mpd-team-core-plugin/src/index.ts (agent_teams_plan, action create_task): read only args.task.owner / args.task.blocked_by while the caller sent them BESIDE task (9 of 10 live calls measured in session-log-quotes.txt), and the parameter schema did not declare them, so the value was dropped in silence",
+      "fix": "both spellings are read (nested wins) and the top-level owner/blocked_by are DECLARED in the parameter schema; blocked_by still resolves subject->id in addTeamTask. Context-budget arm stays green: 4949/5000 characters",
+      "evidenceCommand": "bun run evidence/team-tools/defects/20261002T152122Z/before-after.ts",
+      "before": "[{\"owner\":null,\"blockedBy\":[]},{\"owner\":null,\"blockedBy\":[]}]",
+      "after": "[{\"owner\":\"TuiAdapter Engineer\",\"blockedBy\":[]},{\"owner\":\"PanelScene Worker\",\"blockedBy\":[\"T1\"]}]",
+      "regressionTest": "packages/mpd-team-core-plugin/test/tool-output-schema.test.ts (owner nested + idle, owner while busy, no owner, and the measured top-level spelling reaching plan AND board)"
+    },
+    {
+      "id": "seams",
+      "title": "inject declarations switched onto Lane D's constants",
+      "rootCause": "both rows spelled harness seam names as string literals in export const inject",
+      "fix": "dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS) in mpd-team-core-plugin/src/index.ts and dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS) in mpd-team-watchdog-plugin/src/index.ts; runtime strings unchanged",
+      "regressionTest": "bun test (both packages) + bun run typecheck"
+    }
+  ],
+  "gates": {
+    "bun test packages/mpd-team-core-plugin": "103 pass, 0 fail",
+    "bun test packages/mpd-team-watchdog-plugin": "141 pass, 0 fail",
+    "bun run typecheck": "no error mentions either package (repo-wide exit 1 from other lanes' files)",
+    "bun run verify:comments": "no violation in either package (the remaining violations are other lanes' files; see verify-comments.log for the time of capture)",
+    "node scripts/verify-dist-fresh.ts": "FRESH packages/mpd-team-core-plugin/dist/index.js sha ee6bc8ac5548…, FRESH packages/mpd-team-watchdog-plugin/dist/index.js sha 0b61e1791493…"
+  },
+  "artifacts": {
+    "preFixDistSnapshots": {
+      "evidence/team-tools/defects/20261002T152122Z/before-dist/mpd-team-core-plugin.index.js": "sha256 07d422d238c85fa1e597f53b764dabab98db0021698181d5ad4494a9af3eedec",
+      "evidence/team-tools/defects/20261002T152122Z/before-dist/mpd-team-watchdog-plugin.index.js": "sha256 1ae2b3c13505f6d1373be5358bba0725943d230be613ef898b079c35311eaad8"
+    }
+  }
+}

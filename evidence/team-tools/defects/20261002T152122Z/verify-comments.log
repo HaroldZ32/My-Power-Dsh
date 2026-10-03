@@ -1,0 +1,11 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 373 TypeScript file(s) of 373 in the source set; inspected 29393 declaration(s); skipped 13776 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-tui-adapter-plugin/src/index.ts (1)
+  1139: return-type — <anonymous>
+
+error: script "verify:comments" exited with code 1

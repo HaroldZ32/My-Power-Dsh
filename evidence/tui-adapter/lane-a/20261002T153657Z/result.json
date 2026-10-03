@@ -1,0 +1,92 @@
+{
+  "ok": true,
+  "slug": "tui-adapter-mount-boot",
+  "boot": {
+    "profile": "headless",
+    "patches": [
+      "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui-adapter/lane-a/20261002T153657Z/mpd-tui-adapter.overlay.yml",
+      "<sandbox>/bundle.dev.0.patch.yml",
+      "<sandbox>/bundle.dev.1.patch.yml"
+    ],
+    "exitStatus": 0
+  },
+  "adapterLog": "<sandbox>/ws/.mpd/logs/mpd-tui.log",
+  "adapterDiagnostic": [
+    "[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)",
+    "TUI_SEAMS=(none composed)"
+  ],
+  "aggregateWarnings": 0,
+  "dumpConfigComposed": {
+    "adapterRow": true,
+    "tuiRow": true
+  },
+  "aggregateHits": [],
+  "crashes": [],
+  "foreignCrashes": [
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-codegraph/launch.ts'",
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/dist/cli.js'",
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/launch.ts'",
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-codegraph/launch.ts'",
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/dist/cli.js'",
+    "Error: Cannot find module '/tmp/mpd-seam-adapter-boot-Cg8M8z/profiles/headless/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/launch.ts'"
+  ],
+  "sessionIsolation": {
+    "ok": true,
+    "checked": 1,
+    "keys": [
+      "--tmp-mpd-seam-adapter-boot-Cg8M8z-ws--"
+    ]
+  },
+  "checks": [
+    {
+      "name": "the boot produced a log",
+      "ok": true,
+      "detail": "bytes=18241"
+    },
+    {
+      "name": "the adapter row is COMPOSED (dump-config in the same sandbox)",
+      "ok": true,
+      "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui-adapter/lane-a/20261002T153657Z/dump-config.log"
+    },
+    {
+      "name": "the migrated TUI row is COMPOSED beside it",
+      "ok": true,
+      "detail": "the bundle's own row must still compose"
+    },
+    {
+      "name": "no apply-crash signature for a row this lane owns",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "the adapter PROVIDED the mpdTui service (its own file diagnostic)",
+      "ok": true,
+      "detail": "/tmp/mpd-seam-adapter-boot-Cg8M8z/ws/.mpd/logs/mpd-tui.log"
+    },
+    {
+      "name": "the seam inventory line was written by apply",
+      "ok": true,
+      "detail": "TUI_SEAMS=(none composed)"
+    },
+    {
+      "name": "a headless composition INVENTORIES every seam as absent",
+      "ok": true,
+      "detail": "no tui* service exists in a headless profile; the adapter must stay inert"
+    },
+    {
+      "name": "the migrated TUI row's aggregate line is accounted for",
+      "ok": true,
+      "detail": "hits=0 hits="
+    },
+    {
+      "name": "the adapter never wrote to a terminal fd",
+      "ok": true,
+      "detail": "its lines live in the FILE, not in the child's stdout/stderr"
+    },
+    {
+      "name": "no session landed outside the sandbox",
+      "ok": true,
+      "detail": "{\"ok\":true,\"checked\":1,\"keys\":[\"--tmp-mpd-seam-adapter-boot-Cg8M8z-ws--\"]}"
+    }
+  ]
+}

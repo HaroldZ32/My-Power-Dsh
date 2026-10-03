@@ -1,0 +1,8 @@
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [0.73ms]
+(pass) workmate library root is under HOME and not in cwd [0.22ms]
+(pass) no workmate tool advertises or returns baseId [0.36ms]
+
+ 45 pass
+ 0 fail
+ 544 expect() calls
+Ran 45 tests across 3 files. [419.00ms]

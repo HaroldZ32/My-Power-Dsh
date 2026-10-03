@@ -1,0 +1,16 @@
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+  ok   an INVENTORIED coupling is not reported (no false positive)
+  ok   a NEW cross-package import reddens
+  ok   a SANCTIONED adapter import is exempt, and is PRINTED as sanctioned
+  ok   an INTRA-package import is not a coupling
+  ok   a globalThis WRITE reddens in both spellings on one line
+  ok   ctx.provide("tools") reddens as a harness-service provide
+  ok   ctx.provide("mpdFixture") is allowed and NAMED
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)

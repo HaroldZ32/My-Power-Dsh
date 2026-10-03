@@ -1,0 +1,475 @@
+Static gates	Set up job	﻿2026-10-02T16:10:07.8714298Z Current runner version: '2.337.0'
+Static gates	Set up job	2026-10-02T16:10:07.8740147Z ##[group]Runner Image Provisioner
+Static gates	Set up job	2026-10-02T16:10:07.8741103Z Hosted Compute Agent
+Static gates	Set up job	2026-10-02T16:10:07.8741711Z Version: 20260901.588
+Static gates	Set up job	2026-10-02T16:10:07.8742662Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+Static gates	Set up job	2026-10-02T16:10:07.8743473Z Build Date: 2026-09-01T19:56:44Z
+Static gates	Set up job	2026-10-02T16:10:07.8744181Z Worker ID: {07c53f26-e6a6-4bac-9124-f4c1d6e0cbd1}
+Static gates	Set up job	2026-10-02T16:10:07.8745036Z Azure Region: westcentralus
+Static gates	Set up job	2026-10-02T16:10:07.8745689Z ##[endgroup]
+Static gates	Set up job	2026-10-02T16:10:07.8747339Z ##[group]Operating System
+Static gates	Set up job	2026-10-02T16:10:07.8748030Z Ubuntu
+Static gates	Set up job	2026-10-02T16:10:07.8748548Z 24.04.5
+Static gates	Set up job	2026-10-02T16:10:07.8749127Z LTS
+Static gates	Set up job	2026-10-02T16:10:07.8749696Z ##[endgroup]
+Static gates	Set up job	2026-10-02T16:10:07.8750338Z ##[group]Runner Image
+Static gates	Set up job	2026-10-02T16:10:07.8751023Z Image: ubuntu-24.04
+Static gates	Set up job	2026-10-02T16:10:07.8751632Z Version: 20260927.320.1
+Static gates	Set up job	2026-10-02T16:10:07.8752987Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+Static gates	Set up job	2026-10-02T16:10:07.8754824Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+Static gates	Set up job	2026-10-02T16:10:07.8755871Z ##[endgroup]
+Static gates	Set up job	2026-10-02T16:10:07.8757026Z ##[group]GITHUB_TOKEN Permissions
+Static gates	Set up job	2026-10-02T16:10:07.8758918Z Contents: read
+Static gates	Set up job	2026-10-02T16:10:07.8759592Z Metadata: read
+Static gates	Set up job	2026-10-02T16:10:07.8760403Z ##[endgroup]
+Static gates	Set up job	2026-10-02T16:10:07.8762784Z Secret source: Actions
+Static gates	Set up job	2026-10-02T16:10:07.8763858Z Cache mode: write
+Static gates	Set up job	2026-10-02T16:10:07.8764608Z Prepare workflow directory
+Static gates	Set up job	2026-10-02T16:10:07.9108436Z Prepare all required actions
+Static gates	Set up job	2026-10-02T16:10:07.9156909Z Getting action download info
+Static gates	Set up job	2026-10-02T16:10:08.2556472Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Static gates	Set up job	2026-10-02T16:10:08.3546043Z Download action repository 'actions/setup-node@v7' (SHA:820762786026740c76f36085b0efc47a31fe5020)
+Static gates	Set up job	2026-10-02T16:10:08.4476035Z Download action repository 'oven-sh/setup-bun@v2' (SHA:0c5077e51419868618aeaa5fe8019c62421857d6)
+Static gates	Set up job	2026-10-02T16:10:09.0552252Z Complete job name: Static gates
+Static gates	Check out the repository	﻿2026-10-02T16:10:09.1428971Z ##[group]Run actions/checkout@v7
+Static gates	Check out the repository	2026-10-02T16:10:09.1429948Z with:
+Static gates	Check out the repository	2026-10-02T16:10:09.1430462Z   repository: HaroldZ32/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:09.1434611Z   token: ***
+Static gates	Check out the repository	2026-10-02T16:10:09.1435098Z   ssh-strict: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1435569Z   ssh-user: git
+Static gates	Check out the repository	2026-10-02T16:10:09.1436052Z   persist-credentials: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1436569Z   clean: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1437044Z   sparse-checkout-cone-mode: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1437600Z   fetch-depth: 1
+Static gates	Check out the repository	2026-10-02T16:10:09.1438051Z   fetch-tags: false
+Static gates	Check out the repository	2026-10-02T16:10:09.1438518Z   show-progress: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1438992Z   lfs: false
+Static gates	Check out the repository	2026-10-02T16:10:09.1439485Z   submodules: false
+Static gates	Check out the repository	2026-10-02T16:10:09.1439988Z   set-safe-directory: true
+Static gates	Check out the repository	2026-10-02T16:10:09.1440546Z   allow-unsafe-pr-checkout: false
+Static gates	Check out the repository	2026-10-02T16:10:09.1441381Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.2464706Z Syncing repository: HaroldZ32/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:09.2467549Z ##[group]Getting Git version info
+Static gates	Check out the repository	2026-10-02T16:10:09.2468943Z Working directory is '/home/runner/work/My-Power-Dsh/My-Power-Dsh'
+Static gates	Check out the repository	2026-10-02T16:10:09.2470865Z [command]/usr/bin/git version
+Static gates	Check out the repository	2026-10-02T16:10:09.2540395Z git version 2.55.0
+Static gates	Check out the repository	2026-10-02T16:10:09.2574141Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.2584053Z Temporarily overriding HOME='/home/runner/work/_temp/dbfceb5d-8ad2-4d6e-9a01-e32b79380ca0' before making global git config changes
+Static gates	Check out the repository	2026-10-02T16:10:09.2586901Z Adding repository directory to the temporary git global config as a safe directory
+Static gates	Check out the repository	2026-10-02T16:10:09.2589308Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/My-Power-Dsh/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:09.2657283Z Deleting the contents of '/home/runner/work/My-Power-Dsh/My-Power-Dsh'
+Static gates	Check out the repository	2026-10-02T16:10:09.2660024Z ##[group]Determining repository object format
+Static gates	Check out the repository	2026-10-02T16:10:09.2661767Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.2663439Z ##[group]Initializing the repository
+Static gates	Check out the repository	2026-10-02T16:10:09.2664747Z [command]/usr/bin/git init /home/runner/work/My-Power-Dsh/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:09.2782223Z hint: Using 'master' as the name for the initial branch. This default branch name
+Static gates	Check out the repository	2026-10-02T16:10:09.2784427Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Static gates	Check out the repository	2026-10-02T16:10:09.2786115Z hint: to use in all of your new repositories, which will suppress this warning,
+Static gates	Check out the repository	2026-10-02T16:10:09.2787552Z hint: call:
+Static gates	Check out the repository	2026-10-02T16:10:09.2788287Z hint:
+Static gates	Check out the repository	2026-10-02T16:10:09.2789172Z hint: 	git config --global init.defaultBranch <name>
+Static gates	Check out the repository	2026-10-02T16:10:09.2790253Z hint:
+Static gates	Check out the repository	2026-10-02T16:10:09.2791288Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Static gates	Check out the repository	2026-10-02T16:10:09.2793216Z hint: 'development'. The just-created branch can be renamed via this command:
+Static gates	Check out the repository	2026-10-02T16:10:09.2794683Z hint:
+Static gates	Check out the repository	2026-10-02T16:10:09.2795512Z hint: 	git branch -m <name>
+Static gates	Check out the repository	2026-10-02T16:10:09.2796476Z hint:
+Static gates	Check out the repository	2026-10-02T16:10:09.2797737Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Static gates	Check out the repository	2026-10-02T16:10:09.2800052Z Initialized empty Git repository in /home/runner/work/My-Power-Dsh/My-Power-Dsh/.git/
+Static gates	Check out the repository	2026-10-02T16:10:09.2804405Z [command]/usr/bin/git remote add origin https://github.com/HaroldZ32/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:09.2854624Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.2856895Z ##[group]Disabling automatic garbage collection
+Static gates	Check out the repository	2026-10-02T16:10:09.2858998Z [command]/usr/bin/git config --local gc.auto 0
+Static gates	Check out the repository	2026-10-02T16:10:09.2894349Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.2895919Z ##[group]Setting up auth
+Static gates	Check out the repository	2026-10-02T16:10:09.2896833Z Removing SSH command configuration
+Static gates	Check out the repository	2026-10-02T16:10:09.2899912Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Static gates	Check out the repository	2026-10-02T16:10:09.2934419Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Static gates	Check out the repository	2026-10-02T16:10:09.3319742Z Removing HTTP extra header
+Static gates	Check out the repository	2026-10-02T16:10:09.3325565Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Static gates	Check out the repository	2026-10-02T16:10:09.3360806Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Static gates	Check out the repository	2026-10-02T16:10:09.3579934Z Removing includeIf entries pointing to credentials config files
+Static gates	Check out the repository	2026-10-02T16:10:09.3584356Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Static gates	Check out the repository	2026-10-02T16:10:09.3618209Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Static gates	Check out the repository	2026-10-02T16:10:09.3841364Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Static gates	Check out the repository	2026-10-02T16:10:09.3880955Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git.path /home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Check out the repository	2026-10-02T16:10:09.3915364Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Check out the repository	2026-10-02T16:10:09.3953374Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Check out the repository	2026-10-02T16:10:09.3988512Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Check out the repository	2026-10-02T16:10:09.4019222Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:09.4020568Z ##[group]Fetching the repository
+Static gates	Check out the repository	2026-10-02T16:10:09.4024868Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a60059bb894043c4f2465d5495f4f6cee3d04c98:refs/remotes/pull/2/merge
+Static gates	Check out the repository	2026-10-02T16:10:13.2572206Z From https://github.com/HaroldZ32/My-Power-Dsh
+Static gates	Check out the repository	2026-10-02T16:10:13.2575890Z  * [new ref]           a60059bb894043c4f2465d5495f4f6cee3d04c98 -> pull/2/merge
+Static gates	Check out the repository	2026-10-02T16:10:13.2580574Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:13.2582013Z ##[group]Determining the checkout info
+Static gates	Check out the repository	2026-10-02T16:10:13.2584450Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:13.2585762Z [command]/usr/bin/git sparse-checkout disable
+Static gates	Check out the repository	2026-10-02T16:10:13.2639069Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Static gates	Check out the repository	2026-10-02T16:10:13.2674048Z ##[group]Checking out the ref
+Static gates	Check out the repository	2026-10-02T16:10:13.2749625Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/2/merge
+Static gates	Check out the repository	2026-10-02T16:10:14.2983949Z Updating files:  66% (13607/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3085137Z Updating files:  67% (13663/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3175517Z Updating files:  68% (13867/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3267771Z Updating files:  69% (14071/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3389817Z Updating files:  70% (14275/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3521942Z Updating files:  71% (14479/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3651422Z Updating files:  72% (14683/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3779003Z Updating files:  73% (14887/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.3973930Z Updating files:  74% (15091/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4110321Z Updating files:  75% (15294/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4243463Z Updating files:  76% (15498/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4340255Z Updating files:  77% (15702/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4450666Z Updating files:  78% (15906/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4573070Z Updating files:  79% (16110/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4706249Z Updating files:  80% (16314/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4833843Z Updating files:  81% (16518/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.4921505Z Updating files:  82% (16722/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5082011Z Updating files:  83% (16926/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5293028Z Updating files:  84% (17130/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5615731Z Updating files:  85% (17334/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5767863Z Updating files:  86% (17538/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5870470Z Updating files:  87% (17742/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.5978816Z Updating files:  88% (17945/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.6077513Z Updating files:  89% (18149/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7019927Z Updating files:  90% (18353/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7141639Z Updating files:  91% (18557/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7254882Z Updating files:  92% (18761/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7389187Z Updating files:  93% (18965/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7501141Z Updating files:  94% (19169/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7635629Z Updating files:  95% (19373/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.7856811Z Updating files:  96% (19577/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.8071408Z Updating files:  97% (19781/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.8261475Z Updating files:  98% (19985/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.8412825Z Updating files:  99% (20189/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.8413440Z Updating files: 100% (20392/20392)
+Static gates	Check out the repository	2026-10-02T16:10:14.8413853Z Updating files: 100% (20392/20392), done.
+Static gates	Check out the repository	2026-10-02T16:10:14.8699120Z Note: switching to 'refs/remotes/pull/2/merge'.
+Static gates	Check out the repository	2026-10-02T16:10:14.8699556Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8699982Z You are in 'detached HEAD' state. You can look around, make experimental
+Static gates	Check out the repository	2026-10-02T16:10:14.8700995Z changes and commit them, and you can discard any commits you make in this
+Static gates	Check out the repository	2026-10-02T16:10:14.8701798Z state without impacting any branches by switching back to a branch.
+Static gates	Check out the repository	2026-10-02T16:10:14.8702267Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8702786Z If you want to create a new branch to retain commits you create, you may
+Static gates	Check out the repository	2026-10-02T16:10:14.8703533Z do so (now or later) by using -c with the switch command. Example:
+Static gates	Check out the repository	2026-10-02T16:10:14.8703984Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8704159Z   git switch -c <new-branch-name>
+Static gates	Check out the repository	2026-10-02T16:10:14.8704444Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8704611Z Or undo this operation with:
+Static gates	Check out the repository	2026-10-02T16:10:14.8704870Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8705019Z   git switch -
+Static gates	Check out the repository	2026-10-02T16:10:14.8705178Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8705392Z Turn off this advice by setting config variable advice.detachedHead to false
+Static gates	Check out the repository	2026-10-02T16:10:14.8705706Z 
+Static gates	Check out the repository	2026-10-02T16:10:14.8706065Z HEAD is now at a60059bb Merge d5d8341fe6d095cb84e985b109d1854e7a530989 into 089b0dded2be4b6ffbe6c7452a3fee28a5a3ed19
+Static gates	Check out the repository	2026-10-02T16:10:14.8803365Z ##[endgroup]
+Static gates	Check out the repository	2026-10-02T16:10:14.8851151Z [command]/usr/bin/git log -1 --format=%H
+Static gates	Check out the repository	2026-10-02T16:10:14.8881596Z a60059bb894043c4f2465d5495f4f6cee3d04c98
+Static gates	Set up Node.js	﻿2026-10-02T16:10:14.9170487Z ##[group]Run actions/setup-node@v7
+Static gates	Set up Node.js	2026-10-02T16:10:14.9170780Z with:
+Static gates	Set up Node.js	2026-10-02T16:10:14.9170971Z   node-version: 24
+Static gates	Set up Node.js	2026-10-02T16:10:14.9171179Z   check-latest: false
+Static gates	Set up Node.js	2026-10-02T16:10:14.9173794Z   token: ***
+Static gates	Set up Node.js	2026-10-02T16:10:14.9174020Z   package-manager-cache: true
+Static gates	Set up Node.js	2026-10-02T16:10:14.9174266Z ##[endgroup]
+Static gates	Set up Node.js	2026-10-02T16:10:15.0417092Z Found in cache @ /opt/hostedtoolcache/node/24.21.0/x64
+Static gates	Set up Node.js	2026-10-02T16:10:15.0421021Z ##[group]Environment details
+Static gates	Set up Node.js	2026-10-02T16:10:15.4639198Z node: v24.21.0
+Static gates	Set up Node.js	2026-10-02T16:10:15.4639564Z npm: 11.19.0
+Static gates	Set up Node.js	2026-10-02T16:10:15.4639786Z yarn: 1.22.22
+Static gates	Set up Node.js	2026-10-02T16:10:15.4640388Z ##[endgroup]
+Static gates	Set up Bun	﻿2026-10-02T16:10:15.4803771Z ##[group]Run oven-sh/setup-bun@v2
+Static gates	Set up Bun	2026-10-02T16:10:15.4804081Z with:
+Static gates	Set up Bun	2026-10-02T16:10:15.4804289Z   bun-version: 1.4.0
+Static gates	Set up Bun	2026-10-02T16:10:15.4804508Z   no-cache: false
+Static gates	Set up Bun	2026-10-02T16:10:15.4806889Z   token: ***
+Static gates	Set up Bun	2026-10-02T16:10:15.4807091Z ##[endgroup]
+Static gates	Set up Bun	2026-10-02T16:10:15.8765931Z Cache hit for: bun-tw6RmwqZSA0Bnj0yIUzvSupv0Nk=
+Static gates	Set up Bun	2026-10-02T16:10:17.0516720Z Received 35658631 of 35658631 (100.0%), 35.7 MBs/sec
+Static gates	Set up Bun	2026-10-02T16:10:17.0517643Z Cache Size: ~34 MB (35658631 B)
+Static gates	Set up Bun	2026-10-02T16:10:17.0553565Z [command]/usr/bin/tar -xf /home/runner/work/_temp/f227674c-28a0-429e-80e1-916b8dd5818e/cache.tzst -P -C /home/runner/work/My-Power-Dsh/My-Power-Dsh --use-compress-program unzstd
+Static gates	Set up Bun	2026-10-02T16:10:17.1845681Z Cache restored successfully
+Static gates	Set up Bun	2026-10-02T16:10:17.1867937Z [command]/home/runner/.bun/bin/bun --revision
+Static gates	Set up Bun	2026-10-02T16:10:17.1908746Z 1.4.0+34cbb9a40
+Static gates	Set up Bun	2026-10-02T16:10:17.1929840Z Using a cached version of Bun: 1.4.0+34cbb9a40
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	﻿2026-10-02T16:10:17.2060018Z ##[group]Run bun install --frozen-lockfile
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:17.2060442Z ^[[36;1mbun install --frozen-lockfile^[[0m
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:17.2337817Z shell: /usr/bin/bash -e {0}
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:17.2338125Z ##[endgroup]
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:17.2471112Z bun install v1.4.0 (34cbb9a40)
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0406062Z 
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0407005Z + @typescript/native-preview@7.0.0-dev.20260707.2
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0407605Z + bun-types@1.4.0
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0407882Z + dsh-better-sidebar@0.24.1
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0408162Z + typescript5@5.9.3
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0408447Z + @colbymchenry/codegraph@1.5.0
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0408836Z + @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0409351Z + @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0409875Z + @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0410146Z 
+Static gates	Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)	2026-10-02T16:10:20.0410291Z 289 packages installed [2.79s]
+Static gates	Install the harness the row-config gate validates against	﻿2026-10-02T16:10:20.0488977Z ##[group]Run HARNESS_VERSION="$(node -p "require('./package.json').dependencies['@deepseek-ai/dsh-experimental-agent-team']")"
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0489901Z ^[[36;1mHARNESS_VERSION="$(node -p "require('./package.json').dependencies['@deepseek-ai/dsh-experimental-agent-team']")"^[[0m
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0490646Z ^[[36;1mecho "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the pin this bundle declares)"^[[0m
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0491145Z ^[[36;1mnpm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"^[[0m
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0491459Z ^[[36;1mdsh --version^[[0m
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0553501Z shell: /usr/bin/bash -e {0}
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0553769Z ##[endgroup]
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:20.0934814Z installing @deepseek-ai/dsh@0.2.0-rc.2 (the pin this bundle declares)
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:10:56.1853716Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6090525Z 
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6091220Z added 538 packages in 44s
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6091538Z 
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6092197Z 63 packages are looking for funding
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6093576Z   run `npm fund` for details
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6113637Z npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6115695Z npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6117455Z npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6119323Z npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6121007Z npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6122246Z npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6123379Z npm warn install-scripts
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.6126452Z npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
+Static gates	Install the harness the row-config gate validates against	2026-10-02T16:11:04.7637821Z 0.2.0-rc.2
+Static gates	Check out the pinned upstream baseline	﻿2026-10-02T16:11:04.7742013Z ##[group]Run UPSTREAM_SLUG="$(node -p "require('./VENDOR_LOCK.json').upstream")"
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7743091Z ^[[36;1mUPSTREAM_SLUG="$(node -p "require('./VENDOR_LOCK.json').upstream")"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7743650Z ^[[36;1mUPSTREAM_SHA="$(node -p "require('./VENDOR_LOCK.json').upstreamCommitSha")"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7744092Z ^[[36;1mgit init -q "${RUNNER_TEMP}/upstream"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7744591Z ^[[36;1mgit -C "${RUNNER_TEMP}/upstream" remote add origin "https://github.com/${UPSTREAM_SLUG}"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7745182Z ^[[36;1mgit -C "${RUNNER_TEMP}/upstream" fetch -q --depth 1 origin "${UPSTREAM_SHA}"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7745657Z ^[[36;1mgit -C "${RUNNER_TEMP}/upstream" checkout -q FETCH_HEAD^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7746132Z ^[[36;1mecho "upstream baseline at $(git -C "${RUNNER_TEMP}/upstream" rev-parse HEAD)"^[[0m
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7808004Z shell: /usr/bin/bash -e {0}
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:04.7808281Z ##[endgroup]
+Static gates	Check out the pinned upstream baseline	2026-10-02T16:11:08.9065906Z upstream baseline at 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+Static gates	Static gate aggregate	﻿2026-10-02T16:11:08.9130634Z ##[group]Run bun run verify:gates
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9130974Z ^[[36;1mbun run verify:gates^[[0m
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9192874Z shell: /usr/bin/bash -e {0}
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9193144Z env:
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9193399Z   MPD_UPSTREAM_ROOT: /home/runner/work/_temp/upstream
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9193725Z ##[endgroup]
+Static gates	Static gate aggregate	2026-10-02T16:11:08.9303376Z $ node ./scripts/verify-gates.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:09.0201294Z [verify-gates] running 8 member gate(s) (declared table)
+Static gates	Static gate aggregate	2026-10-02T16:11:09.0203938Z [verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9271112Z [verify-gates] vendor out| [verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9272626Z [verify-gates] vendor out| [verify-vendor] version OK: 5.0.0-beta.20
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9273710Z [verify-gates] vendor out| [verify-vendor] stats OK: 9131 files / 1470231 loc
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9274882Z [verify-gates] vendor out| [verify-vendor] asset OK: skills 324 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9276293Z [verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9278040Z [verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9279507Z [verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9281085Z [verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9282813Z [verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9283832Z [verify-gates] vendor out| [verify-vendor] PASS
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9284514Z [verify-gates] member vendor: exit=0 PASS - 906ms
+Static gates	Static gate aggregate	2026-10-02T16:11:09.9285300Z [verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6686209Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 22ms  <- packages/mpd-better-sidebar-host/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6688950Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha ea055892dde3… 24ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6691319Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 5e722b679522… 27ms  <- packages/mpd-boulder-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6693335Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-bundle-plugin/dist/index.js  sha eda59f4935df… 25ms  <- packages/mpd-bundle-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6694778Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 86a96bf0a50b… 24ms  <- packages/mpd-codegraph-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6696191Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 63e3b48efb73… 23ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6698049Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-config-plugin/dist/index.js  sha 8d09d3ca05d3… 27ms  <- packages/mpd-config-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6699451Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha 9397f95fd33d… 23ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6700740Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/index.js  sha 7f2a30b03fdb… 28ms  <- packages/mpd-ext-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6701949Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 16ms  <- packages/mpd-ext-plugin/src/sdk.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6703593Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 4f12a41e7863… 26ms  <- packages/mpd-hashline-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6704927Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-memory-plugin/dist/index.js  sha 1a873bb2ef65… 25ms  <- packages/mpd-memory-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6706357Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 0b1c34ec21cf… 23ms  <- packages/mpd-modelchain-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6708036Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 92d998276e16… 24ms  <- packages/mpd-qa-roles-probe/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6709504Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-roles-plugin/dist/index.js  sha 6bbd04b1b01f… 26ms  <- packages/mpd-roles-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6710875Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha 136ddb4f4c87… 25ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6712287Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha dc495fccc5f1… 27ms  <- packages/mpd-team-compact-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6713961Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-team-core-plugin/dist/index.js  sha e0d6f18adbd1… 30ms  <- packages/mpd-team-core-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6715349Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha b46f99611a31… 32ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6716651Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-tools-plugin/dist/index.js  sha 27aed1f81742… 24ms  <- packages/mpd-tools-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6717964Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 0c7c288936d3… 18ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6719703Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-plugin/dist/index.js  sha 446ce6ef003d… 33ms  <- packages/mpd-tui-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6721098Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-ulw-plugin/dist/index.js  sha d716a65472d6… 25ms  <- packages/mpd-ulw-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6722937Z [verify-gates] dist-fresh out|   FRESH   packages/mpd-workmate-plugin/dist/index.js  sha cf43718aa962… 27ms  <- packages/mpd-workmate-plugin/src/index.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6724307Z [verify-gates] dist-fresh out| [verify-dist-fresh] root: /home/runner/work/My-Power-Dsh/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6725629Z [verify-gates] dist-fresh out| [verify-dist-fresh] build toolchain: bun 1.4.0 from PATH (bun) · recorded buildToolchain bun@1.4.0
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6726825Z [verify-gates] dist-fresh out| [verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6727927Z [verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6729111Z [verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6730537Z [verify-gates] dist-fresh out|   packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6731721Z [verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6733258Z [verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6734389Z [verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6735539Z [verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6736797Z [verify-gates] dist-fresh out| [verify-dist-fresh] ok: 24/24 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 637ms
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6737731Z [verify-gates] member dist-fresh: exit=0 PASS - 741ms
+Static gates	Static gate aggregate	2026-10-02T16:11:10.6738302Z [verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:10.8622132Z [verify-gates] rows-parity out| [verify-rows-parity] ok: 32 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-web-compat, mpd-workmate, preset-mpd)
+Static gates	Static gate aggregate	2026-10-02T16:11:10.8626686Z [verify-gates] member rows-parity: exit=0 PASS - 192ms
+Static gates	Static gate aggregate	2026-10-02T16:11:10.8627806Z [verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0325861Z [verify-gates] docs-parity out| ok   README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0326714Z [verify-gates] docs-parity out| ok   docs/design.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0327482Z [verify-gates] docs-parity out| ok   docs/development.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0328409Z [verify-gates] docs-parity out| ok   docs/extension-adaptation-report.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0329414Z [verify-gates] docs-parity out| ok   docs/extension-authoring-guide.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0330265Z [verify-gates] docs-parity out| ok   docs/extensions.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0331035Z [verify-gates] docs-parity out| ok   docs/feature-audit.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0331821Z [verify-gates] docs-parity out| ok   docs/independence.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0332743Z [verify-gates] docs-parity out| ok   docs/index.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0333524Z [verify-gates] docs-parity out| ok   docs/preset-default.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0334310Z [verify-gates] docs-parity out| ok   docs/tui-parity.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0335384Z [verify-gates] docs-parity out| ok   docs/tui.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0336212Z [verify-gates] docs-parity out| ok   docs/upstream-parity-ledger.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0337048Z [verify-gates] docs-parity out| ok   docs/user-guide.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0338090Z [verify-gates] docs-parity out| ok   extensions/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0339066Z [verify-gates] docs-parity out| ok   templates/mpd-extension/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0340301Z [verify-gates] docs-parity out| ok   packages/mpd-better-sidebar-host/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0341444Z [verify-gates] docs-parity out| ok   packages/mpd-bootstrap-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0342735Z [verify-gates] docs-parity out| ok   packages/mpd-boulder-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0343781Z [verify-gates] docs-parity out| ok   packages/mpd-bundle/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0344780Z [verify-gates] docs-parity out| ok   packages/mpd-bundle-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0345864Z [verify-gates] docs-parity out| ok   packages/mpd-codegraph-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0346982Z [verify-gates] docs-parity out| ok   packages/mpd-comment-checker-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0348086Z [verify-gates] docs-parity out| ok   packages/mpd-config-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0349182Z [verify-gates] docs-parity out| ok   packages/mpd-dsh-adapter-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0350223Z [verify-gates] docs-parity out| ok   packages/mpd-ext-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0351335Z [verify-gates] docs-parity out| ok   packages/mpd-hashline-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0352832Z [verify-gates] docs-parity out| ok   packages/mpd-mcp-astgrep/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0353828Z [verify-gates] docs-parity out| ok   packages/mpd-mcp-codegraph/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0354842Z [verify-gates] docs-parity out| ok   packages/mpd-mcp-gitbash/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0355827Z [verify-gates] docs-parity out| ok   packages/mpd-mcp-lsp/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0356786Z [verify-gates] docs-parity out| ok   packages/mpd-memory-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0357711Z [verify-gates] docs-parity out| ok   packages/mpd-modelchain-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0358883Z [verify-gates] docs-parity out| ok   packages/mpd-qa-roles-probe/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0359805Z [verify-gates] docs-parity out| ok   packages/mpd-roles-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0360772Z [verify-gates] docs-parity out| ok   packages/mpd-roster-provider-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0361766Z [verify-gates] docs-parity out| ok   packages/mpd-team-compact-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0362953Z [verify-gates] docs-parity out| ok   packages/mpd-team-core-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0363933Z [verify-gates] docs-parity out| ok   packages/mpd-team-watchdog-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0364858Z [verify-gates] docs-parity out| ok   packages/mpd-tools-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0365790Z [verify-gates] docs-parity out| ok   packages/mpd-tui-adapter-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0366706Z [verify-gates] docs-parity out| ok   packages/mpd-tui-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0367564Z [verify-gates] docs-parity out| ok   packages/mpd-ulw-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0368477Z [verify-gates] docs-parity out| ok   packages/mpd-workmate-plugin/README.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0369933Z [verify-gates] docs-parity out| skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0371309Z [verify-gates] docs-parity out| skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0373119Z [verify-gates] docs-parity out| skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0374732Z [verify-gates] docs-parity out| skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0376392Z [verify-gates] docs-parity out| skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0378263Z [verify-gates] docs-parity out| skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0379755Z [verify-gates] docs-parity out| skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0381283Z [verify-gates] docs-parity out| skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0383588Z [verify-gates] docs-parity out| skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0385452Z [verify-gates] docs-parity out| skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0387239Z [verify-gates] docs-parity out| skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0388939Z [verify-gates] docs-parity out| skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0390660Z [verify-gates] docs-parity out| skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0392492Z [verify-gates] docs-parity out| skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0393997Z [verify-gates] docs-parity out| skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0395543Z [verify-gates] docs-parity out| skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0398226Z [verify-gates] docs-parity out| skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0400756Z [verify-gates] docs-parity out| skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0403140Z [verify-gates] docs-parity out| skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0405750Z [verify-gates] docs-parity out| skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0409771Z [verify-gates] docs-parity out| skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0414634Z [verify-gates] docs-parity out| skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0417809Z [verify-gates] docs-parity out| note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0420495Z [verify-gates] docs-parity out| note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0434792Z [verify-gates] docs-parity out| note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.ts: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.ts: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.ts: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.ts: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.ts: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.ts: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.ts: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.ts: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.ts: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.ts: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts: registry 1 id(s), live 1 id(s) — agree
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0448836Z [verify-gates] docs-parity out| note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0454256Z [verify-gates] docs-parity out| [verify-docs-parity] links=437 checked=363 resolved=356 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=30 ignoredAnchorOnly=44 files=107
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0455650Z [verify-gates] docs-parity out| 
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0457477Z [verify-gates] docs-parity out| [verify-docs-parity] root=/home/runner/work/My-Power-Dsh/My-Power-Dsh pairs=44 failed=0 violations=0 exempt=22 derived=3 links=437 dead=0 — PASS
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0458948Z [verify-gates] member docs-parity: exit=0 PASS - 171ms
+Static gates	Static gate aggregate	2026-10-02T16:11:11.0460145Z [verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4850734Z [verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-Qf5aBJ/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-Qf5aBJ/persona-text.patch.yml :: the persona row has no `pref
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4854603Z [verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4856691Z [verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4858444Z [verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-Qf5aBJ (temp); live mtime 1790957414809.841 -> 1790957414809.841
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4860683Z [verify-gates] preset-conformance out| [preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4861930Z [verify-gates] member preset-conformance: exit=0 PASS - 448ms
+Static gates	Static gate aggregate	2026-10-02T16:11:11.4862967Z [verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2434156Z [verify-gates] plugin-manifest out| # verify-plugin-manifest — repository manifest
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2435266Z [verify-gates] plugin-manifest out| 
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2437220Z [verify-gates] plugin-manifest out| ok    cordis-dependency: 5 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2439763Z [verify-gates] plugin-manifest out| ok    cordis-devDependency-note: devDependencies declare no cordis package
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2441379Z [verify-gates] plugin-manifest out| ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2443080Z [verify-gates] plugin-manifest out| ok    version:dsh-plugin.json: version = 0.11.6
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2444301Z [verify-gates] plugin-manifest out| ok    version:dsh-distribution.json: distribution.version = 0.11.6
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2445663Z [verify-gates] plugin-manifest out| ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2447316Z [verify-gates] plugin-manifest out| ok    row-module-paths: 25 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2449585Z [verify-gates] plugin-manifest out| ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2451701Z [verify-gates] plugin-manifest out| ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2454144Z [verify-gates] plugin-manifest out| ok    packed-content: npm pack --dry-run lists 919 file(s); 0 required path(s) absent
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2454808Z [verify-gates] plugin-manifest out| 
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2455635Z [verify-gates] plugin-manifest out| VERDICT: PASS — the install-time rules and the packaging contract hold.
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2456325Z [verify-gates] member plugin-manifest: exit=0 PASS - 2759ms
+Static gates	Static gate aggregate	2026-10-02T16:11:14.2457366Z [verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7955398Z [verify-gates] comment-coverage out| # verify-comment-coverage
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7956250Z [verify-gates] comment-coverage out| 
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7957844Z [verify-gates] comment-coverage out| scanned 376 TypeScript file(s) of 376 in the source set; inspected 29676 declaration(s); skipped 13892 inline callback(s) as out of family
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7958954Z [verify-gates] comment-coverage out| 
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7959981Z [verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7961207Z [verify-gates] member comment-coverage: exit=0 PASS - 2552ms
+Static gates	Static gate aggregate	2026-10-02T16:11:16.7961799Z [verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+Static gates	Static gate aggregate	2026-10-02T16:11:16.8938298Z [verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/runner/work/My-Power-Dsh/My-Power-Dsh/.github/workflows
+Static gates	Static gate aggregate	2026-10-02T16:11:16.8940264Z [verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+Static gates	Static gate aggregate	2026-10-02T16:11:16.8941497Z [verify-gates] member workflows: exit=0 PASS - 98ms
+Static gates	Static gate aggregate	2026-10-02T16:11:16.8942272Z [verify-gates] PASS - 8/8 member gate(s) green
+Static gates	Plugin manifest install-time rules and packaging contract	﻿2026-10-02T16:11:16.9077277Z ##[group]Run node scripts/verify-plugin-manifest.ts
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:16.9077748Z ^[[36;1mnode scripts/verify-plugin-manifest.ts^[[0m
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:16.9139517Z shell: /usr/bin/bash -e {0}
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:16.9139794Z ##[endgroup]
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0039329Z # verify-plugin-manifest — repository manifest
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0040041Z 
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0041173Z ok    cordis-dependency: 5 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0042810Z ok    cordis-devDependency-note: devDependencies declare no cordis package
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0043905Z ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0044835Z ok    version:dsh-plugin.json: version = 0.11.6
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0045660Z ok    version:dsh-distribution.json: distribution.version = 0.11.6
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0046548Z ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0047692Z ok    row-module-paths: 25 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0049690Z ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0050828Z ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0051509Z 
+Static gates	Plugin manifest install-time rules and packaging contract	2026-10-02T16:11:17.0052248Z VERDICT: PASS — the install-time rules and the packaging contract hold.
+Static gates	Declaration comments and explicit signatures	﻿2026-10-02T16:11:17.0157441Z ##[group]Run node scripts/verify-comment-coverage.ts
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:17.0158161Z ^[[36;1mnode scripts/verify-comment-coverage.ts^[[0m
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:17.0225645Z shell: /usr/bin/bash -e {0}
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:17.0225932Z ##[endgroup]
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:19.6020101Z # verify-comment-coverage
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:19.6020386Z 
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:19.6020996Z scanned 376 TypeScript file(s) of 376 in the source set; inspected 29676 declaration(s); skipped 13892 inline callback(s) as out of family
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:19.6021513Z 
+Static gates	Declaration comments and explicit signatures	2026-10-02T16:11:19.6022245Z VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+Static gates	Post Set up Bun	﻿2026-10-02T16:11:19.6304321Z Post job cleanup.
+Static gates	Post Set up Node.js	﻿2026-10-02T16:11:19.8065855Z Post job cleanup.
+Static gates	Post Check out the repository	﻿2026-10-02T16:11:19.9570215Z Post job cleanup.
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0510964Z [command]/usr/bin/git version
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0558794Z git version 2.55.0
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0601718Z Temporarily overriding HOME='/home/runner/work/_temp/9dd5453e-6521-4f31-94c7-c086bb7069fe' before making global git config changes
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0604893Z Adding repository directory to the temporary git global config as a safe directory
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0607873Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/My-Power-Dsh/My-Power-Dsh
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0640785Z Removing SSH command configuration
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0647783Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0684323Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0950440Z Removing HTTP extra header
+Static gates	Post Check out the repository	2026-10-02T16:11:20.0956325Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1001194Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1280473Z Removing includeIf entries pointing to credentials config files
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1297151Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1327128Z includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1328310Z includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git/worktrees/*.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1329146Z includeif.gitdir:/github/workspace/.git.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1330061Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1339310Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1365919Z /home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1376615Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-5dd0b95d\-ba60\-41d9\-9792\-722c52bc64ee\.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1415553Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git/worktrees/*.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1455677Z /home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1465573Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/My-Power-Dsh/My-Power-Dsh/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-5dd0b95d\-ba60\-41d9\-9792\-722c52bc64ee\.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1553644Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1563590Z /github/runner_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1594831Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-5dd0b95d\-ba60\-41d9\-9792\-722c52bc64ee\.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1597890Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1609822Z /github/runner_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1620957Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-5dd0b95d\-ba60\-41d9\-9792\-722c52bc64ee\.config
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1666126Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Static gates	Post Check out the repository	2026-10-02T16:11:20.1935148Z Removing credentials config '/home/runner/work/_temp/git-credentials-5dd0b95d-ba60-41d9-9792-722c52bc64ee.config'
+Static gates	Complete job	﻿2026-10-02T16:11:20.2086439Z Cleaning up orphan processes

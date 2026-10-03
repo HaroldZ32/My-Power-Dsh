@@ -18,7 +18,7 @@
 //   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show
 // There is deliberately NO mpd_ext_reload in v1 — the honest reload is a
 // restart (a plugin-module change is not hot-reloaded anyway).
-import { createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SKILLS, DSH_SEAM_TOOLS, createLazyDshAdapter, dshAdapterIdentity, errorMessage as message, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { MPD_EXT_API_VERSION, type MpdExtLoadError, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
@@ -53,7 +53,11 @@ export const name = "mpd-ext"
 // own seams the same way: mpd-workmate ["tools","subagents"], mpd-bootstrap
 // ["skills"], mpd-tools ["tools"]. The `mpdDsh` service (the adapter) stays LAZY
 // via ctx.get() — only the seams this row registers through are dependencies.
-export const REQUIRED_SEAMS = ["tools", "skills"] as const
+// The two names come from the adapter's constants, and the build keeps this line's
+// `[...REQUIRED_SEAMS]` spelling below: `skills/dsh-qa/scripts/extension-lifecycle.ts`
+// mutates that exact text in the built bundle for its pre-fix negative control (T-55:
+// the anchor is the built LINE, so the spelling here is load-bearing, not stylistic).
+export const REQUIRED_SEAMS = [DSH_SEAM_TOOLS, DSH_SEAM_SKILLS] as const
 // The cordis dependency list: the declared seams above, spread so the two
 // declarations can never drift apart.
 export const inject: string[] = [...REQUIRED_SEAMS]
@@ -269,7 +273,7 @@ export async function apply(ctx: any, config: MpdExtPluginConfig = {}): Promise<
     const line = "[mpd-ext] apply failed: " + message(error)
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(line)
-      else console.log(line)
+      else rowLogLine("mpd-ext", line)
     } catch { /* logging must never fail provisioning */ }
   }
 }
@@ -283,7 +287,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
     // Prefixed once, so every diagnostic is attributable to this row in a shared boot log.
     const text = "[mpd-ext] " + line
     try {
-      console.log(text)
+      rowLogLine("mpd-ext", text)
       if (ctx?.logger && typeof ctx.logger.warn === "function") ctx.logger.warn(text)
     } catch { /* logging must never fail provisioning */ }
   }
@@ -1211,7 +1215,7 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
       + missingTools.join(", ") + ") — the extension interface is NOT usable in this session;"
       + " the row declares inject: " + JSON.stringify([...REQUIRED_SEAMS]) + ", so check the harness seams above")
   } else if (config.quiet !== true) {
-    console.log(
+    rowLogLine("mpd-ext", 
       "[mpd-ext] mpdExtensions provided (apiVersion " + MPD_EXT_API_VERSION + ")"
       + " | adapterIdentity=" + dshAdapterIdentity(ctx)
       + " | tools: " + registeredToolNames.join(", ")

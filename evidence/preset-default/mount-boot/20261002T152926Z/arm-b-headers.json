@@ -1,0 +1,42 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox",
+  "expectProjectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-evidence-preset-default-mount-boot-20261002T152926Z-sandbox-ws--",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "headers": [
+    {
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-evidence-preset-default-mount-boot-20261002T152926Z-sandbox-ws--",
+      "sessionId": "529e3784-4b14-431d-95bc-40c0a1e952a4",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-evidence-preset-default-mount-boot-20261002T152926Z-sandbox-ws--/529e3784-4b14-431d-95bc-40c0a1e952a4/session.v4.jsonl.zstd",
+      "sha256": "sha256:6c8fe896f58f43bb260a7a672b8303a73e1ec5dbe6cc2aee26939a46cfbd123d",
+      "mtimeMs": 1790955295649.8164,
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/ws"
+    }
+  ],
+  "eventTypes": {
+    "session": 1,
+    "permission/preset": 1,
+    "sandbox/mode": 1,
+    "approval/policy": 1
+  },
+  "presetEvents": [
+    {
+      "type": "session",
+      "version": 4,
+      "id": "529e3784-4b14-431d-95bc-40c0a1e952a4",
+      "createdAt": 1790955292881,
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/ws",
+      "isSeeded": false,
+      "delegationDepth": 0,
+      "agentPreset": "mpd"
+    },
+    {
+      "type": "permission/preset",
+      "seq": 0,
+      "time": 1790955292887,
+      "data": {
+        "preset": "workspace-write"
+      }
+    }
+  ]
+}

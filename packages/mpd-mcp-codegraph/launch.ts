@@ -32,8 +32,25 @@
 // instead of dying. The retry runs only while NOTHING has been written to
 // stdout: if the first attempt already emitted MCP bytes, a second attempt would
 // corrupt the stream, so that case is reported and exits 1.
+import { installTerminalSilence } from "../mpd-mcp-shared/log-sink.ts"
 import { resolveCodegraphBinary } from "../mpd-mcp-shared/bin-resolve.ts"
 import { applyDaemonPolicy } from "./daemon-policy.ts"
+
+// R5 (lane F): the terminal writers are taken away BEFORE anything below can use them, and before the
+// adopted server's dynamic import further down. Measured reason: the harness builds this row as
+// `new StdioClientTransport({ command, args, env, cwd })` with NO `stderr` option, and the MCP SDK
+// spawns the child with `stdio: ["pipe", "pipe", this._serverParams.stderr ?? "inherit"]` — so this
+// process's fd 2 IS the dsh process's fd 2 (the TUI's alternate screen). Every `process.stderr.write`
+// below, the adopted server's own `console.*`, and its module-init warnings now land in
+// `<root>/.mpd/logs/mpd-mcp-codegraph.log`.
+//
+// DECLARED BOUND, measured on this host 2026-10-02: the adopted `dist/serve.js` bridge spawns the real
+// codegraph CLI with a HARDCODED `stdio: ["pipe", "pipe", "inherit"]`, so THAT grandchild's stderr goes
+// to the inherited fd 2 and bypasses this replacement. It is inside a sha-pinned prebuilt behind the
+// blocking vendor gate, so the delta is deliberately not taken here; the two open remedies are named in
+// `packages/mpd-mcp-codegraph/README.md` (harness-side `stderr: "pipe"` on the row, or an fd-level
+// wrapper).
+installTerminalSilence("mpd-mcp-codegraph")
 
 /** The narrow surface this launcher uses from the adopted server module. */
 interface ServeModule {

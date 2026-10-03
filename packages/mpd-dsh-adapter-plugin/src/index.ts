@@ -27,6 +27,11 @@
 import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
 import { errorMessage } from "./shared"
+// R5: the ONE log sink every row routes its diagnostics through. The adapter is the sanctioned
+// contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
+// adapter instead of importing the sink itself — which keeps the coupling inventory at ONE entry.
+import { openLogSink } from "../../mpd-mcp-shared/log-sink"
+import type { LogSink } from "../../mpd-mcp-shared/log-sink"
 
 // The pure, harness-free helpers every row uses are re-exported from the ONE module
 // consumers already import, so a row needs a single specifier for both the seam
@@ -38,6 +43,81 @@ export const name = "mpd-dsh-adapter"
 // No hard service dependency: every seam is resolved lazily through ctx.get()
 // so the row mounts in any composition order and in partial installs.
 export const inject: string[] = []
+
+// ── the harness seam-name vocabulary ────────────────────────────────────────────────
+// A row's cordis `inject` array spells harness SERVICE IDS as string literals. Those
+// literals are the coupling: the harness owns the ids, so a rename there used to be an
+// edit in EVERY row that listed one. They are declared HERE — the one file AGENTS.md §6
+// makes the contact surface — and rows build their array with `dshSeamInject`.
+//
+// An id is a cordis DEPENDENCY, not a seam OBJECT: naming one only orders the row against
+// the service. Every seam is still READ through `resolveDshAdapter(ctx)`; a row that names
+// no id is simply inject-free. The values are the harness's own strings and must never be
+// "improved" here — they are compared against ids the harness declares, so a typo is a
+// silently absent dependency rather than a compile error.
+
+/** The `tools` service: the tool registry, guards and the read/execute helpers. */
+export const DSH_SEAM_TOOLS = "tools"
+/** The `subagents` service: the continuable-subagent registry and the spawn seam. */
+export const DSH_SEAM_SUBAGENTS = "subagents"
+/** The `skills` service: the skill registry a provider registers into. */
+export const DSH_SEAM_SKILLS = "skills"
+/** The `agents` service: the live-agent registry (session cwds, the watchdog's stream fold). */
+export const DSH_SEAM_AGENTS = "agents"
+/** The `commands` service: the slash-command registry. */
+export const DSH_SEAM_COMMANDS = "commands"
+/** The `sessions` service: the session store behind the web host. */
+export const DSH_SEAM_SESSIONS = "sessions"
+/** The `webServer` service: the HTTP host a web-plane row mounts its routes onto. */
+export const DSH_SEAM_WEB_SERVER = "webServer"
+/** The `webRuntime` service: the browser-runtime/asset plane of the web host. */
+export const DSH_SEAM_WEB_RUNTIME = "webRuntime"
+/** The `agentPresets` service: the named preset roster a session resolves its preset from. */
+export const DSH_SEAM_AGENT_PRESETS = "agentPresets"
+
+/** Every harness seam id above, in declaration order — one set a gate or a probe can iterate. */
+export const DSH_SEAM_NAMES: readonly string[] = [
+  DSH_SEAM_TOOLS,
+  DSH_SEAM_SUBAGENTS,
+  DSH_SEAM_SKILLS,
+  DSH_SEAM_AGENTS,
+  DSH_SEAM_COMMANDS,
+  DSH_SEAM_SESSIONS,
+  DSH_SEAM_WEB_SERVER,
+  DSH_SEAM_WEB_RUNTIME,
+  DSH_SEAM_AGENT_PRESETS,
+]
+
+/**
+ * One harness seam id: the union of the constants above.
+ *
+ * The type is what makes a row's `inject` array checkable — `dshSeamInject("tool")` is a
+ * compile error rather than a dependency that silently never activates.
+ */
+export type DshSeamName =
+  | typeof DSH_SEAM_TOOLS
+  | typeof DSH_SEAM_SUBAGENTS
+  | typeof DSH_SEAM_SKILLS
+  | typeof DSH_SEAM_AGENTS
+  | typeof DSH_SEAM_COMMANDS
+  | typeof DSH_SEAM_SESSIONS
+  | typeof DSH_SEAM_WEB_SERVER
+  | typeof DSH_SEAM_WEB_RUNTIME
+  | typeof DSH_SEAM_AGENT_PRESETS
+
+/**
+ * Build a row's `inject` array from the seam-name constants.
+ *
+ * A fresh array every call, so two rows can never end up sharing one mutable dependency
+ * list. The returned array holds exactly the ids passed in, unchanged — the bundle's
+ * contract with the loader is byte-identical to the literals this replaced.
+ *
+ * @param names the harness seam ids this row declares a dependency on, in order.
+ * @returns a new `string[]` carrying those ids verbatim.
+ */
+export function dshSeamInject(...names: readonly DshSeamName[]): string[] {
+  return [...names]
+}
 
 /** Object-rooted JSON Schema used whenever a caller omits one. */
 const OBJECT_SCHEMA: Record<string, unknown> = { type: "object", properties: {} }
@@ -988,6 +1068,17 @@ export interface DshAdapter {
    * the exec-less `workspaceRoot()`. For agentless surfaces (web routes) only.
    */
   workspaceRootsAll(): string[]
+  /**
+   * Append one diagnostic line to a ROW's own log file (`<root>/.mpd/logs/<name>.log`).
+   *
+   * R5: rows never print. In a TUI session the host's stdout/stderr IS the Ink alternate screen, so a
+   * row's boot line, warning or trace goes to a file. Total by contract: an unresolvable or unwritable
+   * root drops the line into the sink's bounded ring and NEVER writes to a terminal.
+   *
+   * @param name the log's base name — the row's own `[mpd-…]` prefix without brackets.
+   * @param line the diagnostic text; one newline is appended.
+   */
+  rowLog(name: string, line: string): void
   /** Every live Agent in this process (`[]` when the registry is absent). */
   liveAgents(): DshLiveAgent[]
   /** One live Agent by id, or undefined. */
@@ -1711,6 +1802,46 @@ export function workspaceRootOf(exec?: DshToolExec): string {
 }
 
 /**
+ * One sink per ROW NAME, each remembering the root it was opened against (module scope).
+ *
+ * Keyed by name, not by root, so a host running many rows opens one file (and one fd) per row instead
+ * of reopening on every call. The stored root is re-checked on every use — AGENTS.md §6 forbids caching
+ * a workspace ROOT, so a different session's root replaces the entry. Declared bound: one fd per
+ * distinct row name this process has logged for.
+ */
+const rowLogSinks = new Map<string, { root: string; sink: LogSink }>()
+
+/**
+ * Append one diagnostic line to a ROW's own log file (`<root>/.mpd/logs/<name>.log`).
+ *
+ * R5: an MPD row must never print. In a TUI session the host's stdout/stderr IS the Ink alternate
+ * screen, so a row's boot line, warning or trace goes to a file instead. The module-level form is the
+ * ONE implementation — {@link DshAdapter.rowLog} delegates to it — because a row that has no adapter
+ * instance in scope (a module-level helper, a callback object) still needs the same destination.
+ *
+ * Totality is the contract: an unresolvable root, an unwritable directory or a failed append all DROP
+ * the line (into the sink's bounded in-memory ring) and never write to a terminal.
+ *
+ * @param name the log's base name — the row's own `[mpd-…]` prefix, without brackets.
+ * @param line the diagnostic text; the sink appends exactly one newline.
+ */
+export function rowLogLine(name: string, line: string): void {
+  try {
+    /** The workspace root for this call; an exec-less row resolves DSH_WORKSPACE_ROOT → cwd. */
+    const root = workspaceRootOf(undefined)
+    /** The cached entry for this row name, reused while its root is unchanged. */
+    let entry = rowLogSinks.get(name)
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) }
+      rowLogSinks.set(name, entry)
+    }
+    entry.sink.write(line)
+  } catch {
+    // Never throw and never print: a diagnostic must not take a boot down.
+  }
+}
+
+/**
  * Workspace roots of every live session, deduplicated, registration order.
  * `[]` when the agent registry is absent — the caller then falls back to the
  * exec-less {@link workspaceRootOf}.
@@ -1986,6 +2117,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   /** The union of live session workspaces, read through the registry at call time. */
   const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
 
+  /** The instance form of the module-level row logger: one implementation, two surfaces. */
+  const rowLog = (name: string, line: string): void => rowLogLine(name, line)
+
   // ── live-session plane ────────────────────────────────────────────────────
   // `agents.list()` is the ONLY handle on a member's Agent: the durable team record
   // carries member NAMES and session IDs, not Agents, and a continuable member's Agent
@@ -2084,7 +2218,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     if (llmCatalogWarned) return
     llmCatalogWarned = true
     // A replaced/hostile console must never take a read down (the never-throw contract).
-    try { console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail) } catch { /* seam absent: nothing to report */ }
+    try { rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail) } catch { /* seam absent: nothing to report */ }
   }
 
   /** `name` with the id as fallback, so a caller never renders `undefined`. */
@@ -2500,6 +2634,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── workspace plane ─────────────────────────────────────────────────────
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
 
     // ── live-session plane ──────────────────────────────────────────────────
     liveAgents,
@@ -3246,7 +3381,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // No deferred-inject seam: try once immediately rather than never. SAY SO: this path and
         // the deferred one fail with the SAME sentence downstream ("settings service is
         // unavailable"), and a reader cannot tell a race from a missing seam without this line.
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)")
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)")
         try {
           callback()
         } catch {
@@ -3272,7 +3407,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
               }
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27")
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27")
             }
             callback()
           } catch {
@@ -3533,7 +3668,7 @@ export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions):
   /** Emit one diagnostic line, contained so a hostile sink cannot take the row down. */
   const warning = (line: string): void => {
     try {
-      ;(options.warn ?? ((text: string) => console.log("[" + options.label + "] " + text)))(line)
+      ;(options.warn ?? ((text: string) => rowLogLine("mpd-dsh-adapter", "[" + options.label + "] " + text)))(line)
     } catch { /* logging must never take a row down */ }
   }
   /** The adapter cached after the first STRICT hit; a miss is never cached. */
@@ -3605,6 +3740,6 @@ export function apply(ctx: any, config: { defaultTimeoutMs?: number; quiet?: boo
   // here would under-report. The row logs a stable line and callers read
   // capabilities() at use time (the QA probe prints them from a real boot).
   if (config.quiet !== true) {
-    console.log("[mpd-dsh-adapter] " + SERVICE_NAME + " provided (harness seams resolved lazily, inject-free)")
+    rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] " + SERVICE_NAME + " provided (harness seams resolved lazily, inject-free)")
   }
 }

@@ -12,7 +12,7 @@
 // store; nothing here reaches a harness service directly (AGENTS.md §6). The
 // engine is a plain class so a test or a lane can drive `tickOnce(now)` with an
 // injected clock and a stub adapter, without a boot.
-import { type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { rowLogLine, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { HOLD_TOOL, applyHold, applyResume } from "./actions.js"
 import { ChannelFold, type ChannelView } from "./channel.js"
 import { readWatchdogSection } from "./config-file.js"
@@ -238,7 +238,7 @@ function sessionIdOf(value: unknown): string | null {
 /** One diagnostic line on stderr; never throws. */
 function report(text: string): void {
   try {
-    console.warn("[mpd-team-watchdog] " + text)
+    rowLogLine("mpd-team-watchdog", "[mpd-team-watchdog] " + text)
   } catch {
     // nothing left to report with
   }
@@ -1204,7 +1204,7 @@ export class WatchdogEngine {
     }
     if (this.config.verboseSkips) {
       try {
-        console.log("[" + this.config.logPrefix + "] skipped " + reason)
+        rowLogLine("mpd-team-watchdog", "[" + this.config.logPrefix + "] skipped " + reason)
       } catch {
         // stdout closed
       }
@@ -1571,8 +1571,8 @@ export class WatchdogEngine {
       // a logger that throws must not break a heartbeat
     }
     try {
-      if (level === "warn") console.warn(line)
-      else console.log(line)
+      if (level === "warn") rowLogLine("mpd-team-watchdog", line)
+      else rowLogLine("mpd-team-watchdog", line)
     } catch {
       // stdout closed: nothing left to do
     }

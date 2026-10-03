@@ -1,0 +1,1 @@
+[tui-panels self-test] ok: 7 surfaces asserted, negative controls fail as required

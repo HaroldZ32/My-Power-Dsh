@@ -10,12 +10,12 @@
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
-import { type DshAdapter, type DshCommandInvocation, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, type DshCommandInvocation, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin name; the bundle patch row id is `mpd-ulw`. */
 export const name = "mpd-ulw"
-/** Both seams are declared: the row registers tools and spawns round children. */
-export const inject = ["tools", "subagents"]
+/** Both seams are declared, named by their adapter constants: the row registers tools and spawns round children. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 
 /** The host context this row reads; the adapter owns the real seam surface. */
 type Ctx = { tools: any; subagents: any; get?: (k: string) => any; [k: string]: any }

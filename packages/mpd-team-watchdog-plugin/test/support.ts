@@ -9,7 +9,7 @@
 // adapter's `teamLiveTeams()` (the official Agent Teams readout), so a fixture is registered as a
 // LIVE TEAM VIEW on the stub adapter keyed by the fixture's workspace, and `writeTeam()` keeps its
 // old position in every test: it builds the view from the `TeamFixture` shape and installs it.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DshAdapter, DshTeamTaskView, DshTeamView, DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -37,6 +37,49 @@ export function sandbox(): Sandbox {
     stateDir,
     cleanup: () => rmSync(workspace, { recursive: true, force: true }),
   }
+}
+
+/** A live row-log capture: what one arm's diagnostics appended, and how to unpin the root. */
+export interface RowLogCapture {
+  /** Every line the row log received SINCE this capture was made, verbatim; `""` when none. */
+  appended: () => string
+  /** Put the caller's two log-root env values back (call it from the arm's `finally`). */
+  restore: () => void
+}
+
+/**
+ * Pin the watchdog row's log root to a sandbox workspace for one arm and read what it APPENDS.
+ *
+ * R5 (lane F) moved the engine's own diagnostics OFF `console.warn` and into the row log
+ * `<root>/.mpd/logs/mpd-team-watchdog.log`, so an arm proves what the engine reported by reading the
+ * file a user would — never the repo's own `.mpd/logs`. `rowLogLine` resolves its root from
+ * `DSH_WORKSPACE_ROOT` (falling back to the process cwd) and caches one sink per ROW NAME, so this
+ * pin is what keeps every line of the arm inside the sandbox. `MPD_MCP_LOG_DIR` outranks it in the
+ * sink's documented chain and is pinned too, so no other sink path can leak out of the sandbox.
+ *
+ * @param workspace the sandbox workspace the engine under test was built for.
+ * @returns the reader plus the restore that every arm calls from its `finally`.
+ */
+export function captureRowLog(workspace: string): RowLogCapture {
+  /** The two log-root keys, saved so `restore` can put the caller's own values back. */
+  const saved = { logDir: process.env.MPD_MCP_LOG_DIR, workspace: process.env.DSH_WORKSPACE_ROOT }
+  process.env.MPD_MCP_LOG_DIR = workspace
+  process.env.DSH_WORKSPACE_ROOT = workspace
+  /** This row's log file under the sandbox workspace. */
+  const file = join(workspace, ".mpd", "logs", "mpd-team-watchdog.log")
+  /** The log's byte size BEFORE the arm ran, so only the appended bytes are read back. */
+  let offset = 0
+  try { offset = statSync(file).size } catch { offset = 0 }
+  /** The lines appended since the capture was made. */
+  function appended(): string {
+    try { return readFileSync(file, "utf8").slice(offset) } catch { return "" }
+  }
+  /** Put the caller's two log-root env values back. */
+  function restore(): void {
+    if (saved.logDir === undefined) delete process.env.MPD_MCP_LOG_DIR; else process.env.MPD_MCP_LOG_DIR = saved.logDir
+    if (saved.workspace === undefined) delete process.env.DSH_WORKSPACE_ROOT; else process.env.DSH_WORKSPACE_ROOT = saved.workspace
+  }
+  return { appended, restore }
 }
 
 /** One live-team fixture, in the RETIRED record's vocabulary (what the tests were written in). */

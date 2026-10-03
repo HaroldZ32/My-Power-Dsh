@@ -1,0 +1,8 @@
+# TEMPORARY EXPERIMENT (never a shipped layer): a SECOND, ADDITIVE registry row — the "workaround"
+# docs/preset-default.md rules out. It declares a bundle-private entry id, so it is not an id-target;
+# if the duplicate-service claim is true, the boot must die on it.
+- insert:
+    - id: mpd-second-registry-probe
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: mpd

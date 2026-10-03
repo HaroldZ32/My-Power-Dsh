@@ -1,0 +1,8 @@
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.04ms]
+(pass) truncation keeps head and tail slices plus the banner [0.04ms]
+(pass) truncation passes through outputs within the budget unchanged [0.06ms]
+
+ 8 pass
+ 0 fail
+ 20 expect() calls
+Ran 8 tests across 1 file. [16.00ms]

@@ -175,10 +175,11 @@ dsh plugin --profile dsh-tui add .
 安装后，本 bundle 成为该 profile 的**第三层 patch**，叠在 TUI 包之上：`dsh.profile.bundles`
 变为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
 `dsh --profile dsh-tui --dump-config` 会把我们的行显示在独立的一层里
-（`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`）。当组合携带本 bundle 定向的
-`agent-preset-registry` 行时，TUI 会话默认使用 **mpd**
-preset（见下文 *本 bundle id 定向的宿主行*）；没有该行的平面保留自己的默认值，并记录一条 patch
-警告。用 `dsh-tui` 启动器（别名 `dst`）启动：
+（`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`）。本 bundle **不覆盖任何宿主行**：
+它以**插入**方式提供 **mpd** preset，并由你自己一步把它设为默认（TUI 里 `/preset mpd`、
+`DSH_TUI_PRESET=mpd`、Web 端 Settings 的 `selectedDefault` 字段，或
+`node scripts/set-default-preset.ts --yes`）—— 见 [docs/preset-default.zh-CN.md](./docs/preset-default.zh-CN.md)。
+用 `dsh-tui` 启动器（别名 `dst`）启动：
 
 ```bash
 dsh-tui            # 在当前目录启动
@@ -217,10 +218,11 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 
 下面每一个插件都由本 bundle 的两个 patch 文件声明 —— `cordis.patch.yml`
 （下面所有表格里的行）与 `presets/mpd.patch.yml`（`preset-mpd` 行，见
-*本 bundle id 定向的宿主行*）—— 并被上面那一条 `dsh plugin add` 一次性挂载。`package.json` 把
-这两个文件列为数组 `dsh.bundle.patch`。主 patch 一共写了 **29 个 `- id:` 条目，分两种**：**本
-bundle 插入（insert）的 28 行**（分组如下）与**它 id 定向（id-target，即 replace，不是 insert）的
-1 个宿主行**。`node scripts/verify-rows-parity.ts` 让这些行 id 与安装脚本保持一致。
+*本 bundle 不覆盖任何宿主行*）—— 并被上面那一条 `dsh plugin add` 一次性挂载。`package.json` 把
+这两个文件列为数组 `dsh.bundle.patch`。主 patch 一共写了 **31 个 `- id:` 条目，而且每一个都位于
+`insert:` 列表之内**（共五个 insert 列表）；它 id 定向的宿主行为 **0** 个。
+`node scripts/verify-rows-parity.ts` 让这些行 id 与安装脚本保持一致，而
+`node scripts/verify-no-host-override.ts` 会在任何宿主行被 id 定向的瞬间失败。
 
 **Bundle 宿主插件 —— 18 个 insert 行**
 
@@ -291,16 +293,19 @@ id 即使有一侧被禁用也是致命错误。与那个 profile bundle 不同�
 | `mcp-context7` | `context7` | 公开的 Context7 文档服务，走 streamable HTTP（`https://mcp.context7.com/mcp`） |
 | `mcp-grepapp` | `grep_app` | 公开的 grep.app GitHub 代码检索服务，走 streamable HTTP（`https://mcp.grep.app`） |
 
-**本 bundle id 定向（id-target，即 replace，不是 insert）的宿主行 —— 1 个**
+**本 bundle 不覆盖任何宿主行 —— 这一 patch 是纯增量的**
 
-`@deepseek-ai/dsh-agent-preset-registry` 只保存部署的**默认**选择，因此本 bundle 把宿主自带的这一
-行 id 定向到 `mpd`（已安装的 registry 只声明一个配置键 `default`，所以复述它是完整的）。它是**对宿主
-自带行的替换，而不是插入**：再插入一个同名 loader entry id 的行会与宿主自己的行冲突。不携带该行的
-组合只会记录 `patch: entry … not found` 并保留自己的默认值 —— 这是警告，绝不是错误。
+本 bundle 发布的每一行都是**以自己的 entry id 插入**（`insert:`）；它绝不会 id 定向（id-target）
+任何宿主层（`dsh-base`、`dsh-web-app`、`dsh-headless`、`dsh-tui`）声明的行。门禁
+`node scripts/verify-no-host-override.ts` 会在这一点被破坏时失败，而且当它一个宿主层都找不到时**拒
+绝**给出空洞的通过。
 
-| Row id | 平面 | 配置内容 |
-|---|---|---|
-| `agent-preset-registry` | web / base | `default: mpd` |
+部署默认 preset 是**宿主自己的**设置（宿主 `@deepseek-ai/dsh-agent-preset-registry` 行的 `default`
+键），所以本 bundle 不碰它：它只以插入方式提供 `mpd` preset，把选择权留给你 —— TUI 里 `/preset mpd`
+（写入 `~/.dsh-tui/agent-preset.json`）、在你自己的 profile patch 里设 `DSH_TUI_PRESET=mpd`、Web 端
+Settings 的 `selectedDefault` 字段，或 `node scripts/set-default-preset.ts --yes`。**已有用户**会发生
+什么变化，见 [docs/preset-default.zh-CN.md](./docs/preset-default.zh-CN.md)：在你自己执行上面任一步以
+前，默认值不再是 `mpd`，而 `dsh-tui` 配置会回退到宿主默认的 `standard`（该组合并不提供这个预设行）。
 
 `mpd` preset 本身 —— 它的人设、项目指令约定、它的工具行 —— 由本 bundle 的**第二个** patch 文件
 `presets/mpd.patch.yml` 以**行**（而不是目录）的形式声明：插入一行 `preset-mpd`，其
@@ -828,8 +833,9 @@ tarball 用 `dsh plugin --profile web add dist/mpd-package` 安装即可（见 *
 **bundle 会替我配置模型凭据吗？** 不会。凭据与 provider 由 DSH 管理；本 bundle 只声明它的名册所要
 使用的模型路由（*配置* → 团队模型槽位）。
 
-**应该选哪个 preset？** **MPD（Main Working Agent）** —— 本 bundle 唯一随包提供的 preset。在宿主
-存在 `agent-preset-registry` 行的地方，它已经是默认值。
+**应该选哪个 preset？** **MPD（Main Working Agent）** —— 本 bundle 唯一随包提供的 preset。部署默认
+值是宿主自己的设置，本 bundle 刻意不去碰它，所以请用一步把它设成你的默认
+（见 [docs/preset-default.zh-CN.md](./docs/preset-default.zh-CN.md)）。
 
 **我的数据放在哪里？** 在各工作区的 `.mpd/` 目录下，外加用户级 workmate 库 `~/.mpd/workmate/`。
 完整清单见 *你的状态存放在哪里*；卸载 bundle 永远不会删除它们。

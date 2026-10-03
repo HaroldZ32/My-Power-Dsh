@@ -1,0 +1,8 @@
+[set-default-preset] profile: dsh-tui (TUI plane)
+[set-default-preset] preset:  mpd
+[set-default-preset] home:    /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/home  [sandbox/override]
+[set-default-preset] dshHome: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/home/.dsh  (profile NOT present)
+[set-default-preset] target:  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/home/.dsh-tui/agent-preset.json  [not the real home]
+[set-default-preset] intended bytes (21): "{\n  \"preset\": \"mpd\"\n}"
+[set-default-preset] WRITE /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/preset-default/mount-boot/20261002T152926Z/sandbox/home/.dsh-tui/agent-preset.json
+[set-default-preset] wrote 21 byte(s); a NEW dsh-tui session now resolves "mpd".

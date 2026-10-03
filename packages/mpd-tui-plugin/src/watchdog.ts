@@ -17,8 +17,8 @@
 import type { IncidentRecord } from "../../mpd-team-watchdog-plugin/src/sidecars.js"
 import type { DialogSeam } from "./dialogs.js"
 import type { Log } from "./log.js"
-import { onService } from "./host.js"
-import type { PluginContextLike } from "./types.js"
+import type { PluginContextLike, TuiAdapter } from "./types.js"
+import { onService } from "../../mpd-tui-adapter-plugin/src/index.js"
 
 /** The service id the watchdog package publishes. */
 export const WATCHDOG_SERVICE = "mpdWatchdog"
@@ -158,12 +158,14 @@ export interface WatchdogFrontDoor {
 /**
  * Attach the front door.
  * @param ctx - the plugin context.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param options - workspace resolver, the dialog facade and the post-ack hook.
  * @returns the facade.
  */
 export function attachWatchdogFrontDoor(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
   options: {
     workspaceRoot: () => string
@@ -257,7 +259,7 @@ export function attachWatchdogFrontDoor(
     if (options.replayOnAttach !== false) maybeReplay()
   })
   if (options.replayOnAttach !== false) {
-    onService(ctx, "tuiDialogs", () => {
+    tui.whenBound("dialogs", () => {
       dialogsReady = true
       maybeReplay()
     })

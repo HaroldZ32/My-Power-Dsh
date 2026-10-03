@@ -1,0 +1,36 @@
+# no-terminal-writes
+
+band: 30 package root(s), 123 TypeScript file(s) read; 20 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 10 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-codegraph/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-gitbash/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (14 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (2 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 11 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  - packages/mpd-bootstrap-plugin/src/index.ts: 5/5 hit(s)
+  - packages/mpd-bundle-plugin/src/index.ts: 1/1 hit(s)
+  - packages/mpd-config-plugin/src/index.ts: 1/1 hit(s)
+  - packages/mpd-dsh-adapter-plugin/src/index.ts: 5/5 hit(s)
+  - packages/mpd-ext-plugin/src/index.ts: 3/3 hit(s)
+  - packages/mpd-roles-plugin/src/index.ts: 6/6 hit(s)
+  - packages/mpd-roles-plugin/src/session-gate.ts: 1/1 hit(s)
+  - packages/mpd-roster-provider-plugin/src/index.ts: 3/3 hit(s)
+  - packages/mpd-team-core-plugin/src/index.ts: 7/7 hit(s)
+  - packages/mpd-team-watchdog-plugin/src/engine.ts: 4/4 hit(s)
+  - packages/mpd-team-watchdog-plugin/src/index.ts: 2/2 hit(s)
+
+UNFROZEN TERMINAL WRITES — 2 new write(s) that must go through the log sink:
+  packages/mpd-codegraph-plugin/src/zz-seeded-violation.ts:2 [console.log]
+    console.log("seeded violation")
+  packages/mpd-codegraph-plugin/src/zz-seeded-violation.ts:3 [process.stdout.write]
+    process.stdout.write("seeded\n")
+
+VERDICT: FAIL — route the writes above through `installTerminalSilence`/`openLogSink`.

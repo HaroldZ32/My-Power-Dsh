@@ -24,7 +24,7 @@
 // what makes a migration unreadable.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { createDshAdapter, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
   inboxOf,
   markDelivered,
@@ -73,6 +73,7 @@ import {
   deleteTeam,
   derivePhase,
   listTeams,
+  losslessSummary,
   memberProgress,
   readTeam,
   summariseTeam,
@@ -91,8 +92,9 @@ import {
 export const name = "mpd-team-core"
 // INJECT: the TOOLS and COMMANDS seams (both resolved through the adapter, never on the raw
 // ctx — the D6 gate polices that) and NOT the team plane itself: `ctx.agentTeams` is reached
-// exclusively through `dsh.team*`, so a harness rename lands in the adapter.
-export const inject = ["tools", "commands"]
+// exclusively through `dsh.team*`, so a harness rename lands in the adapter. The two NAMES come
+// from the adapter's seam vocabulary, so a renamed harness service is an edit in ONE file.
+export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS)
 
 /**
  * The service id this row publishes: the bundle's OWN team read surface.
@@ -139,6 +141,21 @@ export interface MpdTeamsService {
 /** A tool result narrow enough for the adapter's renderer. */
 const text = (value: unknown): { type: "text"; text: string }[] => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }]
 
+/**
+ * The watchdog's answer for one session's team.
+ *
+ * THREE STATES, because two cannot be honest: `held` refuses the dispatch pass, `free` lets it
+ * through, and `not-readable` lets it through WHILE SAYING SO — a hold that cannot be read is
+ * reported as `not-readable`, never as a hold, so a broken reader can neither park a team nor lie
+ * about why it did.
+ */
+export interface WatchdogHoldRead {
+  /** What the watchdog service answered. */
+  state: "held" | "free" | "not-readable"
+  /** Why, for `held` and `not-readable`; absent for `free`. */
+  reason?: string
+}
+
 /** The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`. */
 const dispatchPath = (workspace: string): string => join(workspace, ".mpd", "team", "dispatch.json")
 
@@ -165,6 +182,20 @@ function describePlan(plan: StagedPlan | undefined): string {
   /** The plan's lifecycle word, derived in approval-before-discard order so it cannot be both. */
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged"
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`
+}
+
+/**
+ * One list argument as a string array, or `undefined` when the caller sent no list at that key.
+ *
+ * The tool surface reads its arguments defensively (the registered parameter schema is advisory —
+ * the harness's strict argument validation belongs to the typed `defineTool` path, not to the
+ * `tools.register` seam this row uses), so every list is normalised here before it reaches a store.
+ *
+ * @param value - the raw argument at one key, of unknown shape.
+ * @returns the entries as strings, or `undefined` when the key held no array.
+ */
+function stringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.map(String) : undefined
 }
 
 /**
@@ -230,23 +261,38 @@ export function apply(ctx: any): void {
    * team. Reading the record is what makes this possible at all, because only the record says which
    * team this session's dispatch belongs to.
    *
-   * Fail-open: an absent service, an unknown team or a throwing read answers `undefined`, so a
-   * composition without the watchdog dispatches exactly as it did before.
+   * Fail-open: an absent service, an unknown team or a throwing read answers `free` (or
+   * `not-readable`, which is REPORTED and still lets the pass through), so a composition without the
+   * watchdog dispatches exactly as it did before.
    * @param workspace - the workspace the pass runs in.
    * @param sessionId - the Lead session whose team is being dispatched.
-   * @returns the refusal reason, or undefined when no watchdog hold applies.
+   * @returns the discriminated reading; see {@link WatchdogHoldRead}.
    */
-  const watchdogHold = (workspace: string, sessionId: string): string | undefined => {
+  const readWatchdogHold = (workspace: string, sessionId: string): WatchdogHoldRead => {
     try {
       /** This session's team, or undefined when nothing has been approved here. */
       const record = recordFor(workspace, sessionId)
-      if (record === undefined) return undefined
+      if (record === undefined) return { state: "free" }
       /** The watchdog's own service, read defensively: it is another row and may be absent. */
       const watchdog = typeof (ctx as { get?: unknown })?.get === "function" ? (ctx as { get: (id: string) => any }).get("mpdWatchdog") : undefined
-      if (typeof watchdog?.isHeld !== "function") return undefined
-      return watchdog.isHeld(record.teamId, workspace) ? `the team watchdog holds ${record.teamId}` : undefined
-    } catch {
-      return undefined
+      // The ROW IS ABSENT: the watchdog's own FAIL-OPEN RULE applies ("the watchdog can only ever ADD
+      // a decline; it can never keep a team stopped because its own row failed to load"), so this is
+      // `free` — not `not-readable`, which is reserved for a service that answered badly.
+      if (watchdog === undefined || watchdog === null) return { state: "free" }
+      if (typeof watchdog.isHeld !== "function") return { state: "not-readable", reason: "the mpdWatchdog service exposes no isHeld()" }
+      // THE ONLY FIELD A GATE MAY BRANCH ON is `held` (the watchdog's own documented gate call is
+      // `isHeld(teamId, workspace)?.held === true`). Reading the OBJECT for truthiness is the defect
+      // measured on 2026-10-02: every answer is a HoldView object, so `{held: false}` refused every
+      // pass with "the team watchdog holds <team>" while the watchdog's own store said not-held —
+      // while `session-watchdog-resume` and `agent_teams_control resume` both answered "not held".
+      const view = watchdog.isHeld(record.teamId, workspace)
+      if (view === null || typeof view !== "object" || typeof view.held !== "boolean") {
+        return { state: "not-readable", reason: "mpdWatchdog.isHeld() answered without a boolean `held`" }
+      }
+      if (view.held !== true) return { state: "free" }
+      return { state: "held", reason: `the team watchdog holds ${record.teamId}` }
+    } catch (error) {
+      return { state: "not-readable", reason: String((error as Error)?.message ?? error) }
     }
   }
 
@@ -314,13 +360,13 @@ export function apply(ctx: any): void {
           try {
             return planForSession(workspace, sessionId)
           } catch (error) {
-            console.warn(`[mpd-team-core] reading the staged plan failed: ${String((error as Error)?.message ?? error)}`)
+            rowLogLine("mpd-team-core", `[mpd-team-core] reading the staged plan failed: ${String((error as Error)?.message ?? error)}`)
             return { ok: true, workspace, sessionId, plan: null }
           }
         },
       } satisfies MpdTeamsService)
     } catch (error) {
-      console.warn(`[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
+      rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
     }
   }
 
@@ -348,16 +394,39 @@ export function apply(ctx: any): void {
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
         replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
         member: { type: "object", description: "add_member: {name, prompt, description?, role?}. `prompt` is what spawn_teammate receives." },
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}." },
+        // The canonical shape stays in the description because the context budget below is binding:
+        // only the TWO keys a caller really put somewhere else are declared as their own properties.
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside `task`." },
+        owner: { type: "string", description: "create_task: alias of `task.owner`." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement member list." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement task list." },
-        dry_run: { type: "boolean", description: "approve: report exactly what would be created, and create nothing." },
+        dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { plan: { type: "object" }, created: { type: "object" }, stoppedAt: { type: "string" }, archivedTo: { type: "string" }, members: { type: "array", items: { type: "object" } }, tasks: { type: "array", items: { type: "object" } }, hold: { type: "object" }, contracts: { type: "array", items: { type: "object" } } } },
+      // THE DECLARED SHAPE OF EVERY BRANCH, stated honestly rather than loosely: `status` answers
+      // `plan`/`hold`/`team`/`summary` as an OBJECT or as `null` when this session has no staged
+      // plan, no hold and no team (measured 2026-10-02, defect 1: the schema said `object` only, so
+      // the harness rejected the nulls with `"value.plan" must be an object`). The harness's schema
+      // subset has no `type` arrays, so the nullable form is an exact-one `oneOf`.
+      schema: {
+        type: "object",
+        properties: {
+          plan: { oneOf: [{ type: "object" }, { type: "null" }] },
+          hold: { oneOf: [{ type: "object" }, { type: "null" }] },
+          team: { oneOf: [{ type: "object" }, { type: "null" }] },
+          summary: { oneOf: [{ type: "object" }, { type: "null" }] },
+          members: { type: "array", items: { type: "object" } },
+          tasks: { type: "array", items: { type: "object" } },
+          contracts: { type: "array", items: { type: "object" } },
+          created: { type: "object" },
+          stoppedAt: { type: "string" },
+          archivedTo: { type: "string" },
+        },
+      },
       render: (_args: any, value: any) =>
         text(
           value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
@@ -386,7 +455,9 @@ export function apply(ctx: any): void {
           team: record ?? null,
           members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
-          summary: record === undefined ? null : summariseTeam(record),
+          // The summary crosses a TOOL boundary, so it is projected to lossless JSON here: the store's
+          // own `depths` is a Map and a Map cannot survive the harness's snapshot (defect 1).
+          summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), []),
         }
       }
@@ -425,13 +496,23 @@ export function apply(ctx: any): void {
         const { plan } = requirePlan(exec)
         /** The raw task argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.task ?? {}) as Record<string, unknown>
+        // BOTH SPELLINGS, ONE READING (measured 2026-10-02, defects 4 and 5): the caller sent
+        // `owner` and `blocked_by` BESIDE `task` in 9 of 10 live create_task calls, and this branch
+        // read only the nested pair — so the board came back `owner: null, blockedBy: []` while the
+        // call plainly carried both. The nested key wins; the top-level alias is the caller's.
+        /** The blockers, from the nested key or its top-level alias. */
+        const blockedBy = stringList(raw.blocked_by ?? raw.blockedBy ?? args?.blocked_by)
+        /** The write scopes, from the nested key or its top-level alias. */
+        const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes)
+        /** The owning teammate's display name, from the nested key or its top-level alias. */
+        const owner = raw.owner ?? args?.owner
         /** The plan with the task appended (trimmed by the store). */
         const next = addTask(plan, {
           subject: String(raw.subject ?? ""),
           description: String(raw.description ?? ""),
-          ...(Array.isArray(raw.blocked_by) ? { blockedBy: raw.blocked_by.map(String) } : {}),
-          ...(Array.isArray(raw.write_scopes) ? { writeScopes: raw.write_scopes.map(String) } : {}),
-          ...(raw.owner === undefined ? {} : { owner: String(raw.owner) }),
+          ...(blockedBy === undefined ? {} : { blockedBy }),
+          ...(writeScopes === undefined ? {} : { writeScopes }),
+          ...(owner === undefined ? {} : { owner: String(owner) }),
         })
         writePlan(workspace, next)
         return { plan: next }
@@ -657,11 +738,14 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
+      // `refused` and `holdRead` are declared because BOTH really appear: a pass with no team record
+      // is refused, and a watchdog hold that could not be read is REPORTED rather than guessed at.
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
       render: (_args: any, value: any) =>
         text(
           value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
             : value?.halted !== undefined ? `halted: ${value.halted}`
+            : value?.refused !== undefined ? `refused: ${value.refused}`
             : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
             : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}`).join("\n"),
         ),
@@ -685,8 +769,15 @@ export function apply(ctx: any): void {
       // caller reads one sentence whichever hold stopped the pass.
       /** This session's team, which names the team a watchdog hold would apply to. */
       const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId
+      // ONE AUTHORITATIVE SOURCE for the watchdog's hold: its own `mpdWatchdog` service, read through
+      // the gate call the watchdog documents (`isHeld(teamId, workspace)?.held === true`). A hold that
+      // cannot be read is NOT a hold — it is reported as `not-readable` and the pass continues.
+      /** The watchdog's reading for this session's team. */
+      const watchdog = teamId === undefined ? ({ state: "free" } as WatchdogHoldRead) : readWatchdogHold(workspace, sessionIdOf(exec))
       /** The refusal reason, whichever of the two holds applies first. */
-      const holdReason = hold?.reason ?? (teamId === undefined ? undefined : watchdogHold(workspace, sessionIdOf(exec)))
+      const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined)
+      /** The honest note a caller reads when the watchdog's hold could not be read at all. */
+      const holdNote = watchdog.state === "not-readable" ? `not-readable: ${String(watchdog.reason ?? "the watchdog's hold could not be read")}` : undefined
       // THE RECORD IS THE BOARD (W2). Both loops below read mpd's own team, so a dispatch pass
       // works in a composition where the official service cannot mount — which is the whole point
       // of owning the record — and the readiness rule is the store's own OPT-1 rule rather than a
@@ -727,7 +818,7 @@ export function apply(ctx: any): void {
       })
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
         if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
-        return { ...plan, forgotten: pruned.forgotten }
+        return { ...plan, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
       }
       /** The ledger as it will be written: pruned first, then extended by each accepted pairing. */
       let ledger = pruned.ledger
@@ -754,7 +845,7 @@ export function apply(ctx: any): void {
         }
       }
       writeLedger(workspace, ledger)
-      return { pairs: sent, skipped, forgotten: pruned.forgotten }
+      return { pairs: sent, skipped, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
     },
   }))
 
@@ -835,7 +926,7 @@ export function apply(ctx: any): void {
           await executor().send(exec.agent, target.handle, `[${result.message.subject}]\n\n${result.message.body}`, exec.signal)
           markDelivered(workspace, [result.message.id], now())
         } catch (error) {
-          console.warn(`[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+          rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
         }
         return { message: result.message }
       }
@@ -955,9 +1046,9 @@ export function apply(ctx: any): void {
       const reportExecutor = (): void => {
         /** The executor at this instant, contained: the seam is total but a log line must not throw. */
         const view = (() => { try { return executor() } catch (error) { return { kind: "unavailable", reason: String((error as Error)?.message ?? error) } } })()
-        console.log(`[mpd-team-core] team executor: ${view.kind} (${view.reason})`)
+        rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`)
       }
-      console.log(`[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
       reportExecutor()
       // ── THE WEB ROUTE: the mpd team, served to the browser ───────────────────
       // Registered through the adapter's `webServerOf()` (never a raw ctx service read), and
@@ -973,12 +1064,12 @@ export function apply(ctx: any): void {
           return { kind: view.kind, reason: view.reason }
         },
         effect: (fn: () => unknown, label: string) => { try { return ctx?.effect?.(fn, label) } catch { return undefined } },
-        warn: (line: string) => console.warn(`[mpd-team-core] ${line}`),
+        warn: (line: string) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
       })
       // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
       // host's own registry, and a second registration attempt against the SAME server is harmless
       // because the composition only ever has one.
-      if (mountTeamRoute()) console.log(`[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`)
+      if (mountTeamRoute()) rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`)
       try {
         dsh.onServiceBound(["webServer", "httpServer"], () => { mountTeamRoute() })
       } catch { /* an adapter without the seam keeps the single attempt above */ }

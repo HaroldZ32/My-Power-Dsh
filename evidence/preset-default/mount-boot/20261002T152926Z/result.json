@@ -1,0 +1,67 @@
+{
+  "slug": "preset-default/mount-boot",
+  "what": "A MOUNTING boot of the real dsh-tui 0.12.0 in an isolated sandbox (DSH_HOME + HOME + sandboxed workspace cwd), proving the three claims this lane rests on.",
+  "sandbox": {
+    "root": "evidence/preset-default/mount-boot/20261002T152926Z/sandbox",
+    "dsh_home": "<root>/dshhome",
+    "home": "<root>/home (the real ~/.dsh-tui was NEVER written)",
+    "workspace": "<root>/ws (passed explicitly as DSH_TUI_WORKSPACE_TARGET; the session record's cwd proves it took effect)",
+    "profile": "<root>/dshhome/profiles/dsh-tui — a COPY of the real TUI profile with node_modules/@mpd-dsh/mpd re-pointed at this checkout; the real profile was only READ",
+    "host": "@deepseek-harness-tui/dsh-tui 0.12.0, harness @deepseek-ai/dsh 0.2.0-rc.2",
+    "how_booted": "tmux (the TUI refuses a non-TTY stdout) + `tmux pipe-pane` for the raw log; a session created by sending Enter to the session list",
+    "pruned": "The copied profile node_modules (69 MB), the sandbox HOME pnpm/npm .cache (63 MB) and the sandbox .codegraph index were REMOVED after the runs to keep the committed evidence small; every boot artifact (logs, panes, session records, the profile manifest + its cordis.patch.yml + the @mpd-dsh link) is kept. Copy contents: profile-copy-contents.txt."
+  },
+  "arm_a_preset_row_still_registers": {
+    "claim": "After removing the two host-row id-targets, the bundle's `mpd` preset row is composed and a session mounts it.",
+    "witnesses": [
+      "`dsh --profile dsh-tui --dump-config` in the sandbox composes exactly one preset row: `- id: preset-mpd` / `name: '@deepseek-ai/dsh-agent-preset'`",
+      "THE SAME DUMP ALSO SHOWS the host's own `dsh-tui-agent-preset-registry` row still present with `default: standard` — i.e. the host row is untouched by this bundle, which is the point of the removal",
+      "the sandbox TUI boot mounted the bundle rows and rendered its status line `mpd: team - · plans 0 · workmates 0`",
+      "the live preset-conformance run recorded `sessionCreate {\\\"ok\\\":true,\\\"agentPreset\\\":\\\"mpd\\\"}` + `sessionHeader {\\\"ok\\\":true,\\\"agentPreset\\\":\\\"mpd\\\"}` (see evidence/preset-default/preset-conformance/)"
+    ]
+  },
+  "arm_b_mounted_module_absent": {
+    "claim": "The new `mpd-tui-adapter` row is a plain insert and does NOT take the boot down while its dist is unbuilt.",
+    "measured": "`dsh: warning: 1 entry did not activate` + `mpd-tui-adapter (@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js): failed to import` — the TUI still booted and the session still ran. Same line in the web-profile lane (evidence/preset-default/preset-conformance/harness-boot.log lines 17-18).",
+    "correction": "This contradicts the initial assumption that an unresolvable module is a boot-fatal `assertEntriesLoaded` condition; the cordis.patch.yml comment was updated to the measured behaviour.",
+    "note": "This arm is the state DURING lane A build-out; it is superseded by arm_a_after_lane_a_dist above and kept because it is the measurement behind the cordis.patch.yml comment."
+  },
+  "arm_b_user_setting_resolves_mpd": {
+    "claim": "With the user-level setting applied (`~/.dsh-tui/agent-preset.json` inside the sandbox HOME) a NEW TUI session RESOLVES `mpd`.",
+    "how_applied": "THIS LANE'S OWN HELPER: `node scripts/set-default-preset.ts --home <sandbox>/home --profile dsh-tui --yes` wrote 21 bytes `{\\n  \\\"preset\\\": \\\"mpd\\\"\\n}` (see apply-pref.log)",
+    "witness": "the harness's own session record in the sandbox store: `agentPreset: \"mpd\"`, `cwd: <sandbox>/ws`, sessionId 529e3784-4b14-431d-95bc-40c0a1e952a4 (arm-b-headers.json, arm-b-mpd.pane.txt)"
+  },
+  "arm_c_setting_absent_falls_back": {
+    "claim": "With the setting absent, the failure is the documented `agent-preset/not-found` for `standard`.",
+    "witness": "the harness's own session record: `agentPreset: \"standard\"`, `cwd: <sandbox>/ws`, sessionId 182125d0-68ad-427e-88c6-293a3119a8dd — i.e. the session does NOT run mpd, it asks for the host default",
+    "why_that_is_a_not_found": [
+      "`--dump-config` proves this composition declares NO `standard` preset row (its only preset row is `preset-mpd`), and dsh-tui 0.12.0 ships only `presets/liangshen`",
+      "the registry's own `lib/index.js` raises `RemoteError(\"agent-preset/not-found\", \"Unknown agent preset: ${wanted}\")` for an id it has no record for",
+      "dsh-tui's `composePreset` catches that and warns `dsh-tui: agent preset (default) unavailable (<message>) — composing the session without a preset`, which is why the session still starts (without the mpd composition) instead of failing loudly"
+    ],
+    "measurement_limit": "The WARN LINE ITSELF was not captured: it is erased by the TUI's alternate-screen switch and is not written to any file in the sandbox. The two quoted sources plus the recorded `agentPreset: standard` are the evidence; the warn text is quoted from dsh-tui's source, not from a captured log."
+  },
+  "workspace_isolation": {
+    "asserted": "every session record found under <sandbox>/dshhome/sessions is filed under the SANDBOX project key `--home-…-sandbox-ws--`, and its cwd is <sandbox>/ws",
+    "measured_leak_first_run": "the FIRST boot (before DSH_TUI_WORKSPACE_TARGET was set) created sessions under the REAL-repo project key and wrote `<repo>/.mpd/logs` + `<repo>/.codegraph` (gitignored scratch). The sandbox was then reset and every arm re-run with the explicit workspace target.",
+    "what_the_sandbox_isolates": "DSH_HOME (session store), HOME (~/.dsh-tui preference file), workspace state (<sandbox>/ws/.mpd), and the credentials/settings copies the boot needs"
+  },
+  "arm_a_after_lane_a_dist": {
+    "claim": "Re-run once Lane A built packages/mpd-tui-adapter-plugin/dist/index.js: the adapter row ACTIVATES and a new TUI session still resolves mpd.",
+    "measured": "the boot log carries ZERO \"did not activate\" lines (grep count 0, previously 1) and no mpd-tui-adapter import failure, and the session record reads agentPreset: \"mpd\" (sessionId 529e3784-… re-created; see arm-b2-mpd-adapter-active.log)",
+    "artifact": "arm-b2-mpd-adapter-active.log"
+  },
+  "arm_d_second_registry_row_probe": {
+    "claim": "The additive workaround the docs rule out (a SECOND registry row) cannot take over the deployment default.",
+    "how": "a temporary --patch overlay (second-registry.patch.yml, bundle-private entry id mpd-second-registry-probe, name @deepseek-ai/dsh-agent-preset-registry, config.default: mpd) applied to the same sandbox TUI profile; never a shipped layer",
+    "measured": "dsh-tui reports it against the second row: `mpd-second-registry-probe (@deepseek-ai/dsh-agent-preset-registry): Error: service \"agentPresets\" has been registered at <AgentPresetRegistry>` plus a cordis Fiber stack (cordis/lib/index.js:813). The row never activates and the composition continues: the TUI still booted and loaded a session.",
+    "correction": "This is a ROW-level failure, not a whole-boot abort. The docs were corrected from \"hard cordis boot error\" to the measured wording in both languages.",
+    "artifact": "second-registry-probe.log, second-registry.patch.yml"
+  },
+  "doc_reconciliation": {
+    "when": "2026-10-02, after the captain asked for the measured wording",
+    "changed": "both docs now state (a) the session starts and its record reads agentPreset: \"standard\"; (b) no mpd composition is applied; (c) the not-found MESSAGE is source-quoted, not observed, and was NOT captured in four boots (raw byte grep: unavailable/Unknown agent preset/not-found/composing the session = 0 hits each, with positive controls proving the method); (d) the second-registry row fails at ROW level with the quoted cordis error.",
+    "artifacts": "warn-line-capture-attempts.txt"
+  },
+  "concurrency_note": "docs/preset-default.md and .zh-CN.md were rewritten by another writer at 23:38:58 while this lane was finishing (both files, mode 600). This lane then corrected two unverifiable claims in them (the stderr/erase causal story; the hard-boot-error wording) without touching the heading tree; verify:docs stays PASS (pairs=44 failed=0 violations=0 dead=0)."
+}

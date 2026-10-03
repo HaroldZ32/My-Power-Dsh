@@ -1,0 +1,8 @@
+(pass) applying a route to a request > a route with no effort CLEARS an inherited one instead of leaving it behind [0.01ms]
+(pass) applying a route to a request > a request with no agentOptions at all is still routable [0.01ms]
+(pass) applying a route to a request > the label is read from the descriptor first, then the request's own field [0.02ms]
+
+ 13 pass
+ 0 fail
+ 40 expect() calls
+Ran 13 tests across 1 file. [13.00ms]

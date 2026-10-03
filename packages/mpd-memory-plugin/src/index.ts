@@ -8,12 +8,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { basename, dirname, join, resolve, sep } from "node:path"
-import { type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-memory"
-/** The tool registry the five `mpd_memory_*` tools are registered into. */
-export const inject = ["tools"]
+/** The tool registry the five `mpd_memory_*` tools are registered into, named by its adapter constant. */
+export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the optional runtime config service. */
 type Ctx = { tools: any; get?: (k: string) => any }

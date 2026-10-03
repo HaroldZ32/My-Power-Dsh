@@ -1,0 +1,23 @@
+file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:206
+		if (Date.now() >= deadline) throw new Error(`atomic-write: timed out waiting for the writer lock at ${lockPath}`);
+		                                  ^
+
+Error: atomic-write: timed out waiting for the writer lock at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tui-adapter/dshhome/profiles/dsh-tui/package.json.lock
+    at withFileLock (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:206:37)
+    at async runPlugin (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/plugin-BGnVfe_D.js:93:25)
+    at async runCli (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:236:17)
+    at async file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:252:23
+
+Node.js v24.21.0
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd link:../../../..
+
+Done in 26ms using pnpm v12.8.1

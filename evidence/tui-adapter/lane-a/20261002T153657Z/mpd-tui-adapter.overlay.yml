@@ -1,0 +1,3 @@
+    # DSH-TUI plane: the ONE seam adapter every mpd tui*/commands/settings touch goes through.
+    - id: mpd-tui-adapter
+      name: '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js'

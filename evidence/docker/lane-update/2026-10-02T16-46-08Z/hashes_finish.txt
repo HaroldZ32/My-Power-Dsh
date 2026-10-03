@@ -1,0 +1,10 @@
+== hash sandwich (finish) ==
+measured at 2026-10-02T16:53:47Z
+14bfeeded8c4fc784e1ccf1d566d68ff11b5a0a4fd3781af908b031be97a920f  docker/entrypoint.sh
+69306e436f3422d25134fb727b9eddd5bee5491bb592ec11e7725a8888e3a47b  docker/tui-lane.sh
+d5c2b1126dc1540376520fd98026cb217cebeb1be047e35089c455dbe9e9007e  docker/lib/report.ts
+52f41fe055fb0daf6db96d13dd9cf6654228390abe05583429c06af424a36f2a  docker/README.md
+decfa0d59367c8797eb42d198cca63374105cd2a38fddf507eb6727d60583e6c  docker/README.zh-CN.md
+90477cc96af50dc9931b08444d571b8545f53f5373bfba5fac9cc1dab4022264  cordis.patch.yml
+84b9b3487094dbe63732999d14b6ab399dd87f2c866f48619417dadfee6413c6  presets/mpd.patch.yml
+f71b86ba2b63061284ca50501e89eeb0771db5575e33ee3c623cece519951cd2  package.json

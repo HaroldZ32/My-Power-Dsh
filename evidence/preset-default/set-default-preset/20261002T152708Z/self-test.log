@@ -1,0 +1,8 @@
+[set-default-preset] self-test ok   (a) dry-run by default -> exit 0, target printed, NOTHING written — exit 0; exists=false; target line=[set-default-preset] target:  /tmp/mpd-set-default-preset-bPMOZB/tui-home/.dsh-tui/agent-preset.json  [not the real home]
+[set-default-preset] self-test ok   (b) --yes writes the exact dsh-tui shape — exit 0; bytes=21; content="{\n  \"preset\": \"mpd\"\n}"
+[set-default-preset] self-test ok   (c) an id outside dsh-tui's own boundary -> exit 1 and the file UNCHANGED — exit 1; content="{\n  \"preset\": \"mpd\"\n}"
+[set-default-preset] self-test ok   (d) web profile -> exit 0, guidance printed, NOTHING written — exit 0; exists=false
+[set-default-preset] self-test ok   (e) real-home target named, no --yes -> exit 0, printed, real file untouched — exit 0; mark=present; real file unchanged
+[set-default-preset] self-test ok   (f) byte parity with the installed dsh-tui@0.12.0 writer — theirs="{\n  \"preset\": \"mpd\"\n}"; ours="{\n  \"preset\": \"mpd\"\n}"
+[set-default-preset] self-test PASS: dry-run, apply, invalid-id refusal, web no-write, real-home safety, byte parity
+EXIT=0

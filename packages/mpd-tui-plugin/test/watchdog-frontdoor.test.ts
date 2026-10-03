@@ -17,6 +17,7 @@ import { createDialogs } from "../src/dialogs"
 import { createLog } from "../src/log"
 import { STATUS_KEY, registerStatus } from "../src/status"
 import { readBoardState } from "../src/state"
+import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   ACKNOWLEDGE_OPTION,
   EMPTY_WATCHDOG_VIEW,
@@ -33,6 +34,8 @@ import {
 interface Harness {
   /** The context double, in which services are reachable only through `inject`. */
   ctx: Record<string, any>
+  /** The DSH-TUI seam adapter over that same context. */
+  tui: ReturnType<typeof createTuiAdapter>
   /** Every contribution the status double received. */
   statusSet: { key: string; text: string }[]
   /** Every request the dialog double was asked to show. */
@@ -110,8 +113,13 @@ function harness(options: { withDialogs?: boolean; withService?: boolean } = {})
       return {}
     },
   })
+  /** The context double shared by this arm's adapter and its seam calls. */
+  const ctx = build()
   return {
-    ctx: build(),
+    ctx,
+    // The seam adapter the migrated call sites take: it binds through the SAME ctx, so the
+    // double's inject-free invisibility stays what the arms exercise.
+    tui: createTuiAdapter(ctx as never),
     statusSet,
     dialogRequests,
     warnings,
@@ -165,9 +173,9 @@ describe("watchdog front door — notice composition", () => {
       /** A silent logger: this arm asserts the published text and the bytes, not logs. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       /** The status seam, publishing the composed notice. */
-      const status = registerStatus(h.ctx, log, () => h.workspace, () => h.workspace, 0, () =>
+      const status = registerStatus(h.ctx, h.tui, log, () => h.workspace, () => h.workspace, 0, () =>
         composeNotices(undefined, door.notice()),
       )
       expect(door.available()).toBe(true)
@@ -245,9 +253,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** How many times the post-acknowledge hook ran. */
       let acknowledged = 0
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         onAcknowledged: () => {
           acknowledged += 1
         },
@@ -290,9 +298,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door of the first start. */
-      const first = attachWatchdogFrontDoor(h.ctx, log, {
+      const first = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(first.view().unread).toHaveLength(1)
@@ -302,9 +310,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       // A SECOND start: a fresh front door over the same workspace. Nothing unread, no dialog.
       h.dialogRequests.length = 0
       /** The front door of a SECOND start over the same workspace. */
-      const second = attachWatchdogFrontDoor(h.ctx, log, {
+      const second = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(second.view().unread).toEqual([])
@@ -323,9 +331,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       h.answer("later")
@@ -333,9 +341,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       expect(existsSync(watermarkPath(h.workspace, DEFAULT_STATE_DIR))).toBe(false)
       expect(readWatermarks(h.workspace, DEFAULT_STATE_DIR)).toEqual({})
       /** A fresh front door over the same workspace, i.e. a restart. */
-      const restarted = attachWatchdogFrontDoor(h.ctx, log, {
+      const restarted = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(restarted.view().unread).toHaveLength(1)
@@ -353,7 +361,7 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       h.answer("later")
-      attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+      attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       await Promise.resolve()
       await Promise.resolve()
       expect(h.dialogRequests).toHaveLength(1)
@@ -370,9 +378,9 @@ describe("watchdog front door — dialog and acknowledge", () => {
       /** A silent logger for this arm. */
       const log = createLog({ warn: () => {}, info: () => {}, debug: () => {} }, "test")
       /** The front door under test. */
-      const door = attachWatchdogFrontDoor(h.ctx, log, {
+      const door = attachWatchdogFrontDoor(h.ctx, h.tui, log, {
         workspaceRoot: () => h.workspace,
-        dialogs: createDialogs(h.ctx, log),
+        dialogs: createDialogs(h.tui, log),
         replayOnAttach: false,
       })
       expect(await door.offer()).toBeUndefined()
@@ -417,14 +425,14 @@ describe("watchdog front door — the absent-service path", () => {
       /** The front door, when the attach returned one at all. */
       let door: ReturnType<typeof attachWatchdogFrontDoor> | undefined
       try {
-        door = attachWatchdogFrontDoor(h.ctx, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.ctx, log) })
+        door = attachWatchdogFrontDoor(h.ctx, h.tui, log, { workspaceRoot: () => h.workspace, dialogs: createDialogs(h.tui, log) })
       } catch {
         threw = true
       }
       expect(threw).toBe(false)
       expect(door?.available()).toBe(false)
       // The status line stays the plain board line: no watchdog text.
-      const status = registerStatus(h.ctx, log, () => h.workspace, () => h.workspace, 0, () =>
+      const status = registerStatus(h.ctx, h.tui, log, () => h.workspace, () => h.workspace, 0, () =>
         composeNotices(undefined, door?.notice()),
       )
       expect(status).toBeDefined()

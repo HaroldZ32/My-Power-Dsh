@@ -1133,7 +1133,7 @@ import { homedir as homedir3 } from "node:os";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { resolve as resolve2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function isRecord(value) {
@@ -1141,6 +1141,199 @@ function isRecord(value) {
 }
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+// packages/mpd-mcp-shared/log-sink.ts
+import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+var LOG_SUBDIR = join(".mpd", "logs");
+var DEFAULT_MAX_BYTES = 1024 * 1024;
+var DEFAULT_MAX_LINE_BYTES = 8192;
+var DEFAULT_RING_LINES = 64;
+function truncationMarker(droppedBytes) {
+  return ` … [mpd log sink: ${droppedBytes} more byte(s) truncated]`;
+}
+function resolveLogRoots(env = process.env, cwd) {
+  let working = cwd;
+  if (working === undefined) {
+    try {
+      working = process.cwd();
+    } catch {
+      working = undefined;
+    }
+  }
+  const raw = [env.MPD_MCP_LOG_DIR, env.DSH_WORKSPACE_ROOT, working, tmpdir()];
+  const roots = [];
+  const seen = new Set;
+  for (const candidate of raw) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0)
+      continue;
+    let absolute;
+    try {
+      absolute = resolve(candidate);
+    } catch {
+      continue;
+    }
+    if (seen.has(absolute))
+      continue;
+    seen.add(absolute);
+    roots.push(absolute);
+  }
+  return roots;
+}
+function tryOpenRoot(root, name) {
+  try {
+    const dir = join(root, LOG_SUBDIR);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${name}.log`);
+    return { fd: openSync(file, "a"), file };
+  } catch {
+    return null;
+  }
+}
+function owningRoot(roots, file) {
+  for (const root of roots) {
+    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+      return root;
+  }
+  return null;
+}
+var captured = null;
+function openLogSink(name, options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const maxLineBytes = options.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
+  const ringLines = options.ringLines ?? DEFAULT_RING_LINES;
+  const timestamps = options.timestamps ?? true;
+  const roots = options.roots ?? resolveLogRoots(options.env ?? process.env);
+  let open = null;
+  for (const root of roots) {
+    const attempt = tryOpenRoot(root, name);
+    if (attempt !== null) {
+      open = attempt;
+      break;
+    }
+  }
+  let size = 0;
+  if (open !== null) {
+    try {
+      size = statSync(open.file).size;
+    } catch {
+      size = 0;
+    }
+  }
+  let accepted = 0;
+  let droppedCount = 0;
+  let rotations = 0;
+  const ring = [];
+  let undoCapture = null;
+  let rebindOutcome = "skipped";
+  let rebind = null;
+  const remember = (record) => {
+    if (ring.length >= ringLines) {
+      ring.shift();
+      droppedCount += 1;
+    }
+    ring.push(record);
+  };
+  const rotate = () => {
+    if (open === null)
+      return;
+    try {
+      closeSync(open.fd);
+      rmSync(`${open.file}.1`, { force: true });
+      renameSync(open.file, `${open.file}.1`);
+      open = { fd: openSync(open.file, "a"), file: open.file };
+      size = 0;
+      rotations += 1;
+      sink.rebindNow();
+    } catch {
+      try {
+        open = { fd: openSync(open.file, "a"), file: open.file };
+      } catch {
+        open = null;
+      }
+    }
+  };
+  const append = (record) => {
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    const bytes = Buffer.byteLength(record, "utf8");
+    if (size > 0 && size + bytes > maxBytes)
+      rotate();
+    if (open === null) {
+      remember(record);
+      return;
+    }
+    try {
+      writeSync(open.fd, record);
+      size += bytes;
+    } catch {
+      remember(record);
+    }
+  };
+  const acceptedRoot = open === null ? null : owningRoot(roots, open.file);
+  const sink = {
+    name,
+    file: open?.file ?? null,
+    root: acceptedRoot,
+    write(line) {
+      try {
+        const body = line.endsWith(`
+`) ? line.slice(0, -1) : line;
+        const capped = Buffer.byteLength(body, "utf8") > maxLineBytes ? capLine(body, maxLineBytes) : body;
+        const record = `${timestamps ? `[${new Date().toISOString()}] ` : ""}${capped}
+`;
+        accepted += 1;
+        append(record);
+      } catch {}
+    },
+    fd() {
+      return open?.fd ?? null;
+    },
+    written() {
+      return accepted;
+    },
+    dropped() {
+      return droppedCount;
+    },
+    rotations() {
+      return rotations;
+    },
+    ring() {
+      return [...ring];
+    },
+    stderrRebind() {
+      return rebindOutcome;
+    },
+    restore() {
+      if (undoCapture === null)
+        return;
+      undoCapture();
+      undoCapture = null;
+      if (captured === sink)
+        captured = null;
+    }
+  };
+  sink.attachCapture = (undo, onRebind) => {
+    undoCapture = undo;
+    rebind = onRebind;
+  };
+  sink.rebindNow = () => {
+    if (rebind === null)
+      return;
+    rebindOutcome = rebind();
+  };
+  sink.setRebindOutcome = (outcome) => {
+    rebindOutcome = outcome;
+  };
+  return sink;
+}
+function capLine(body, maxLineBytes) {
+  const kept = Buffer.from(body, "utf8").subarray(0, maxLineBytes).toString("utf8");
+  return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
 }
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 var OBJECT_SCHEMA = { type: "object", properties: {} };
@@ -1170,11 +1363,23 @@ function sessionCwdOf(agent) {
 function workspaceRootOf(exec) {
   const session = sessionCwdOf(exec?.agent);
   if (session !== undefined)
-    return resolve(session);
+    return resolve2(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve(override);
+    return resolve2(override);
   return process.cwd();
+}
+var rowLogSinks = new Map;
+function rowLogLine(name, line) {
+  try {
+    const root = workspaceRootOf(undefined);
+    let entry = rowLogSinks.get(name);
+    if (entry === undefined || entry.root !== root) {
+      entry = { root, sink: openLogSink(name, { roots: [root] }) };
+      rowLogSinks.set(name, entry);
+    }
+    entry.sink.write(line);
+  } catch {}
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1187,7 +1392,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve(cwd));
+        roots.add(resolve2(cwd));
     }
     return [...roots];
   } catch {
@@ -1338,6 +1543,7 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
     if (agents === undefined || typeof agents.list !== "function")
@@ -1403,7 +1609,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     llmCatalogWarned = true;
     try {
-      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: llmCatalog degraded — " + detail);
     } catch {}
   }
   function catalogLabel(value, id) {
@@ -1691,6 +1897,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    rowLog,
     liveAgents,
     liveAgent,
     compactionEngineForAgent,
@@ -2165,7 +2372,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     whenSettingsAvailable(callback) {
       if (typeof ctx?.inject !== "function") {
-        console.warn("[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
+        rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] no ctx.inject seam: the settings registration runs immediately (the settings provider may not be mounted yet)");
         try {
           callback();
         } catch {}
@@ -2184,7 +2391,7 @@ function createDshAdapter(ctx, config = {}) {
               } catch {}
             }
             if (scopedSettings === undefined || scopedSettings === null) {
-              console.warn("[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
+              rowLogLine("mpd-dsh-adapter", "[mpd-dsh-adapter] the settings inject fired but the SCOPED ctx yielded no settings service (property and get both empty) — the registration will fail as unavailable; this is the TUI-profile shape measured 2026-09-27");
             }
             callback();
           } catch {}
@@ -2276,21 +2483,24 @@ function createDshAdapter(ctx, config = {}) {
 }
 
 // packages/mpd-tui-plugin/src/log.ts
-function createLog(logger, prefix, env = process.env) {
+function createLog(logger, prefix, env = process.env, sink) {
+  let fallback;
   const emit = (level, message) => {
     const text = `[${prefix}] ${message}`;
     try {
-      const sink = logger?.[level];
-      if (typeof sink === "function") {
-        sink.call(logger, text);
+      const hostSink = logger?.[level];
+      if (typeof hostSink === "function") {
+        hostSink.call(logger, text);
         return;
       }
     } catch {}
     if (level === "debug" && env.DSH_TUI_DEBUG === undefined)
       return;
+    if (sink === undefined)
+      return;
     try {
-      process.stderr.write(`${text}
-`);
+      fallback ??= sink();
+      fallback.write(text);
     } catch {}
   };
   return {
@@ -2300,7 +2510,97 @@ function createLog(logger, prefix, env = process.env) {
   };
 }
 
-// packages/mpd-tui-plugin/src/host.ts
+// packages/mpd-tui-adapter-plugin/src/index.ts
+import { appendFileSync, mkdirSync as mkdirSync2, readFileSync, statSync as statSync2, writeFileSync } from "node:fs";
+import { dirname, join as join2 } from "node:path";
+var TUI_SEAMS = {
+  scenes: "tuiScenes",
+  status: "tuiStatus",
+  renderers: "tuiRenderers",
+  settingsSections: "tuiSettingsSections",
+  shortcuts: "tuiShortcuts",
+  dialogs: "tuiDialogs",
+  commandTrees: "tuiCommandTrees",
+  pluginHost: "tuiPluginHost",
+  toast: "tuiToast",
+  themes: "tuiThemes",
+  pluginStorage: "tuiPluginStorage",
+  messageObserver: "tuiMessageObserver",
+  effectLedger: "tuiEffectLedger",
+  workspaces: "tuiWorkspaces",
+  prompt: "tuiPrompt",
+  commands: "commands",
+  settings: "settings"
+};
+var TUI_SEAM_KEYS = [
+  "scenes",
+  "status",
+  "renderers",
+  "settingsSections",
+  "shortcuts",
+  "dialogs",
+  "commandTrees",
+  "pluginHost",
+  "toast",
+  "themes",
+  "pluginStorage",
+  "messageObserver",
+  "effectLedger",
+  "workspaces",
+  "prompt",
+  "commands",
+  "settings"
+];
+function describeOutcome(outcome) {
+  return outcome.detail === undefined ? `${outcome.id}(${outcome.state})` : `${outcome.id}(${outcome.state}: ${outcome.detail})`;
+}
+function reportOutcomes(sink, outcomes) {
+  const attempted = outcomes.some((outcome) => outcome.state !== "absent");
+  if (!attempted) {
+    sink.warn("no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped");
+    return "warned";
+  }
+  sink.info(`mpd TUI surfaces: ${outcomes.map((outcome) => describeOutcome(outcome)).join(" · ")}`);
+  return "reported";
+}
+var DEFAULT_LOG_NAME = "mpd-tui.log";
+var DEFAULT_LOG_CAP_BYTES = 1048576;
+function defaultLogRoot() {
+  const env = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof env === "string" && env.length > 0)
+    return env;
+  return process.cwd();
+}
+function createFileSink(options) {
+  const fileName = typeof options.name === "string" && options.name.length > 0 ? options.name : DEFAULT_LOG_NAME;
+  const cap = typeof options.capBytes === "number" && options.capBytes > 0 ? options.capBytes : DEFAULT_LOG_CAP_BYTES;
+  const rootOf = () => {
+    try {
+      const resolved = typeof options.root === "function" ? options.root() : options.root;
+      return typeof resolved === "string" && resolved.length > 0 ? resolved : defaultLogRoot();
+    } catch {
+      return defaultLogRoot();
+    }
+  };
+  const pathOf = () => join2(rootOf(), ".mpd", "logs", fileName);
+  return {
+    path: pathOf,
+    write(line) {
+      try {
+        const file = pathOf();
+        mkdirSync2(dirname(file), { recursive: true });
+        try {
+          if (statSync2(file).size > cap) {
+            const existing = readFileSync(file, "utf8");
+            writeFileSync(file, existing.slice(Math.floor(existing.length / 2)), "utf8");
+          }
+        } catch {}
+        appendFileSync(file, `${line}
+`, "utf8");
+      } catch {}
+    }
+  };
+}
 function readableService(scoped, id) {
   if (scoped === undefined || scoped === null)
     return;
@@ -2328,20 +2628,43 @@ function serviceOf(ctx, id) {
     return;
   }
 }
-function onService(ctx, id, setup, onActivated) {
+function newBindingStatus() {
+  return { registered: false, bound: false, pending: [] };
+}
+function bindSeam(ctx, id, status, onBound) {
   if (ctx === undefined || ctx === null || typeof ctx.inject !== "function")
     return;
   try {
     ctx.inject([id], (scoped) => {
+      if (status.bound)
+        return;
       const service = readableService(scoped, id);
       if (service === undefined)
         return;
+      status.service = service;
+      status.scope = scoped;
+      status.bound = true;
+      const queued = status.pending.splice(0);
+      for (const work of queued) {
+        try {
+          work(service, scoped);
+        } catch {}
+      }
       try {
-        setup(scoped, service);
-        onActivated?.();
+        onBound?.();
       } catch {}
     });
-  } catch {}
+    status.registered = true;
+  } catch (error) {
+    status.error = String(error?.message ?? error);
+  }
+}
+function onService(ctx, id, setup, onActivated) {
+  const status = newBindingStatus();
+  status.pending.push((service, scope) => {
+    setup(scope, service);
+  });
+  bindSeam(ctx, id, status, onActivated);
 }
 function effectOn(scoped, cleanup, label) {
   try {
@@ -2349,14 +2672,435 @@ function effectOn(scoped, cleanup, label) {
       scoped.effect(() => cleanup, label);
   } catch {}
 }
-function describeOutcome(id, outcome) {
-  return outcome.detail === undefined ? `${id}(${outcome.state})` : `${id}(${outcome.state}: ${outcome.detail})`;
+function createTuiAdapter(ctx) {
+  const bindings = {};
+  for (const key of TUI_SEAM_KEYS)
+    bindings[key] = newBindingStatus();
+  for (const key of TUI_SEAM_KEYS) {
+    const id = TUI_SEAMS[key];
+    const binding = bindings[key];
+    bindSeam(ctx, id, binding);
+    if (key !== "pluginHost")
+      continue;
+    if (binding.bound || !binding.registered)
+      continue;
+    const probed = serviceOf(ctx, id);
+    if (probed === undefined)
+      continue;
+    binding.service = probed;
+    binding.scope = ctx;
+    binding.bound = true;
+    const queued = binding.pending.splice(0);
+    for (const work of queued) {
+      try {
+        work(probed, ctx);
+      } catch {}
+    }
+  }
+  const fallbackIdentity = ctx;
+  const makeHandle = (key, initialDetail) => {
+    const id = TUI_SEAMS[key];
+    let outcome = { id, state: "absent", detail: initialDetail ?? `${id} was not injected` };
+    return {
+      outcome: () => outcome,
+      bound: () => bindings[key].bound,
+      record: (recorded) => {
+        outcome = recorded.detail === undefined ? { id, state: recorded.state } : { id, state: recorded.state, detail: recorded.detail };
+      }
+    };
+  };
+  const whenBoundInternal = (key, work) => {
+    const binding = bindings[key];
+    if (binding.bound) {
+      work(binding.service, binding.scope ?? ctx);
+      return true;
+    }
+    binding.pending.push(work);
+    return false;
+  };
+  const register = (key, handle, detail, call) => {
+    whenBoundInternal(key, (service) => {
+      try {
+        call(service);
+        handle.record({ state: "requested", detail });
+      } catch (error) {
+        handle.record({ state: "refused", detail: String(error?.message ?? error) });
+      }
+    });
+  };
+  const requestedDetail = (key, what) => `${what} requested for ${TUI_SEAMS[key]} (no host read-back)`;
+  const adapter = {
+    ctx,
+    scenes: () => bindings.scenes.service,
+    status: () => bindings.status.service,
+    renderers: () => bindings.renderers.service,
+    settingsSections: () => bindings.settingsSections.service,
+    shortcuts: () => bindings.shortcuts.service,
+    dialogs: () => bindings.dialogs.service,
+    commandTrees: () => bindings.commandTrees.service,
+    pluginHost: () => bindings.pluginHost.service,
+    toast: () => bindings.toast.service,
+    themes: () => bindings.themes.service,
+    pluginStorage: () => bindings.pluginStorage.service,
+    messageObserver: () => bindings.messageObserver.service,
+    effectLedger: () => bindings.effectLedger.service,
+    workspaces: () => bindings.workspaces.service,
+    prompt: () => bindings.prompt.service,
+    commands: () => bindings.commands.service,
+    settings: () => bindings.settings.service,
+    registerScene(descriptor, identity) {
+      const handle = makeHandle("scenes");
+      whenBoundInternal("scenes", (service) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.scenes}.register is missing` });
+          return;
+        }
+        try {
+          const disposer = registry.register(descriptor, identity ?? fallbackIdentity);
+          if (typeof disposer === "function")
+            effectOn(bindings.scenes.scope ?? ctx, disposer, `mpd-tui scene ${descriptor.id}`);
+          handle.record({ state: "requested", detail: `${descriptor.id} requested (no host read-back)` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return {
+        outcome: handle.outcome,
+        bound: handle.bound,
+        record: handle.record,
+        openScene: (id) => adapter.openScene(id),
+        closeScene: (id) => adapter.closeScene(id)
+      };
+    },
+    openScene(id) {
+      const registry = bindings.scenes.service;
+      if (registry === undefined || typeof registry.open !== "function")
+        return false;
+      try {
+        return registry.open(id) === true;
+      } catch {
+        return false;
+      }
+    },
+    closeScene(id) {
+      const registry = bindings.scenes.service;
+      if (registry === undefined || typeof registry.close !== "function")
+        return false;
+      try {
+        return registry.close(id) === true;
+      } catch {
+        return false;
+      }
+    },
+    setStatus(key, text, identity) {
+      const handle = makeHandle("status");
+      whenBoundInternal("status", (service) => {
+        const status = service;
+        if (typeof status?.set !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.set is missing` });
+          return;
+        }
+        try {
+          const disposer = status.set(key, text, identity ?? fallbackIdentity);
+          if (typeof disposer === "function")
+            effectOn(bindings.status.scope ?? ctx, disposer, `mpd-tui status ${key}`);
+          handle.record({
+            state: "requested",
+            detail: "set() has no read-back; key grammar and the 200-cell budget are host-validated"
+          });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
+    registerStatusView(view) {
+      const handle = makeHandle("status");
+      let refresh = () => {};
+      whenBoundInternal("status", (service, scope) => {
+        const status = service;
+        if (typeof status?.set !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.set is missing` });
+          return;
+        }
+        let disposer;
+        let timer;
+        let published;
+        const publish = () => {
+          try {
+            const text = view.render();
+            if (text === published)
+              return;
+            published = text;
+            disposer = status.set(view.key, text, view.identity ?? fallbackIdentity);
+          } catch (error) {
+            view.onError?.(error);
+          }
+        };
+        publish();
+        const intervalMs = typeof view.intervalMs === "number" ? view.intervalMs : 0;
+        if (intervalMs > 0) {
+          try {
+            timer = setInterval(publish, intervalMs);
+            timer.unref?.();
+          } catch {
+            timer = undefined;
+          }
+        }
+        effectOn(scope, () => {
+          if (timer !== undefined) {
+            try {
+              clearInterval(timer);
+            } catch {}
+            timer = undefined;
+          }
+          try {
+            disposer?.();
+          } catch {}
+          try {
+            status.set(view.key, undefined, view.identity ?? fallbackIdentity);
+          } catch {}
+        }, view.label ?? `mpd-tui status ${view.key}`);
+        refresh = publish;
+        handle.record({
+          state: "requested",
+          detail: "set() has no read-back; key grammar and the 200-cell budget are host-validated"
+        });
+      });
+      return { outcome: handle.outcome, bound: handle.bound, record: handle.record, refresh: () => refresh() };
+    },
+    registerRenderer(type, renderer, identity) {
+      const handle = makeHandle("renderers");
+      whenBoundInternal("renderers", (service) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` });
+          return;
+        }
+        try {
+          const disposer = registry.register(type, renderer, identity ?? fallbackIdentity);
+          if (typeof disposer === "function")
+            effectOn(bindings.renderers.scope ?? ctx, disposer, `mpd-tui renderer ${type}`);
+          handle.record({
+            state: "requested",
+            detail: `${type} requested (no host read-back; a refusal also returns a disposer)`
+          });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
+    registerSettingsSection(section, identity) {
+      const handle = makeHandle("settingsSections");
+      whenBoundInternal("settingsSections", (service) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.settingsSections}.register is missing` });
+          return;
+        }
+        const commit = (resolved) => {
+          try {
+            registry.register(resolved);
+            handle.record({
+              state: "requested",
+              detail: `section ${resolved.ns} requested (no host read-back)`
+            });
+          } catch (error) {
+            handle.record({ state: "refused", detail: String(error?.message ?? error) });
+          }
+        };
+        if (typeof section !== "function") {
+          commit(section);
+          return;
+        }
+        handle.record({ state: "requested", detail: "section requested (awaiting the lazy section resolver)" });
+        try {
+          Promise.resolve(section()).then(commit, (error) => {
+            handle.record({ state: "refused", detail: String(error?.message ?? error) });
+          });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
+    registerShortcut(combo, options, identity) {
+      const handle = makeHandle("shortcuts");
+      whenBoundInternal("shortcuts", (service) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.shortcuts}.register is missing` });
+          return;
+        }
+        try {
+          const disposer = registry.register(combo, options, identity ?? fallbackIdentity);
+          if (typeof disposer === "function")
+            effectOn(bindings.shortcuts.scope ?? ctx, disposer, `mpd-tui shortcut ${combo}`);
+          handle.record({ state: "requested", detail: `${combo} requested` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
+    registerCommandTree(provider) {
+      const handle = makeHandle("commandTrees");
+      register("commandTrees", handle, requestedDetail("commandTrees", `provider for /${provider.root}`), (service) => {
+        if (typeof service?.register !== "function")
+          throw new Error(`${TUI_SEAMS.commandTrees}.register is missing`);
+        const disposer = service.register(provider);
+        if (typeof disposer === "function")
+          effectOn(bindings.commandTrees.scope ?? ctx, disposer, `mpd-tui command tree ${provider.root}`);
+      });
+      return handle;
+    },
+    requestDecisionEvent(event, listener, options = {}) {
+      let supported = false;
+      let granted;
+      let disposerReturned = false;
+      let error;
+      let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
+      whenBoundInternal("pluginHost", (service, scope) => {
+        const host = service;
+        const identity = options.identity ?? fallbackIdentity;
+        if (typeof host?.subscribeDecision !== "function") {
+          outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
+          return;
+        }
+        supported = true;
+        try {
+          const facade = host.grants;
+          if (facade !== undefined && typeof facade.allows === "function")
+            granted = facade.allows(identity, event, options.scope ?? event) === true;
+        } catch {
+          granted = undefined;
+        }
+        try {
+          const disposer = host.subscribeDecision(identity, event, listener, {
+            ...options.scope === undefined ? {} : { scope: options.scope },
+            ...options.order === undefined ? {} : { order: options.order }
+          });
+          disposerReturned = typeof disposer === "function";
+          if (disposerReturned)
+            effectOn(scope, disposer, `mpd-tui decision ${event}`);
+        } catch (caught) {
+          error = String(caught?.message ?? caught).replace(/\s+/gu, " ").trim().slice(0, 160);
+          disposerReturned = false;
+        }
+        if (error !== undefined)
+          outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: error };
+        else if (!disposerReturned)
+          outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: "subscribeDecision returned no disposer" };
+        else if (granted === true)
+          outcome = { id: TUI_SEAMS.pluginHost, state: "confirmed", detail: `${event} subscribed and authorised` };
+        else if (granted === false)
+          outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `no grant for ${event}` };
+        else
+          outcome = { id: TUI_SEAMS.pluginHost, state: "requested", detail: "grant state not queryable in this composition" };
+      });
+      return {
+        supported: () => supported,
+        granted: () => granted,
+        disposerReturned: () => disposerReturned,
+        error: () => error,
+        outcome: () => outcome
+      };
+    },
+    grantsAllows(permission, scope, identity) {
+      const host = bindings.pluginHost.service;
+      try {
+        const facade = host?.grants;
+        if (facade === undefined || typeof facade.allows !== "function")
+          return;
+        return facade.allows(identity ?? fallbackIdentity, permission, scope) === true;
+      } catch {
+        return;
+      }
+    },
+    registerCommand(definition) {
+      const handle = makeHandle("commands");
+      register("commands", handle, `/${definition.name} requested (no host read-back at apply time)`, (service) => {
+        if (typeof service?.register !== "function")
+          throw new Error(`${TUI_SEAMS.commands}.register is missing`);
+        const disposer = service.register(definition);
+        if (typeof disposer === "function")
+          effectOn(bindings.commands.scope ?? ctx, disposer, `mpd-tui command /${definition.name}`);
+      });
+      return handle;
+    },
+    registerSettingsNamespace(ns, schema, options) {
+      const handle = makeHandle("settings");
+      register("settings", handle, `namespace ${ns} requested (no host read-back)`, (service) => {
+        if (typeof service?.register !== "function")
+          throw new Error(`${TUI_SEAMS.settings}.register is missing`);
+        service.register(ns, schema, options);
+      });
+      return handle;
+    },
+    whenBound(key, setup) {
+      const handle = makeHandle(key);
+      whenBoundInternal(key, (service, scope) => {
+        handle.record({ state: "available", detail: "bound through the deferred inject form" });
+        setup(service, scope, handle);
+      });
+      return handle;
+    },
+    skipped(key, detail) {
+      const handle = makeHandle(key, detail);
+      return handle;
+    },
+    capabilities() {
+      const seams = {};
+      let bound = 0;
+      for (const key of TUI_SEAM_KEYS) {
+        const live = bindings[key].bound;
+        seams[key] = live;
+        if (live)
+          bound += 1;
+      }
+      return { seams, bound, total: TUI_SEAM_KEYS.length };
+    },
+    seamOutcomes() {
+      return TUI_SEAM_KEYS.map((key) => {
+        const binding = bindings[key];
+        const id = TUI_SEAMS[key];
+        if (binding.bound)
+          return { id, state: "available", detail: "bound through the deferred inject form" };
+        if (binding.error !== undefined)
+          return { id, state: "refused", detail: binding.error };
+        return { id, state: "absent", detail: "not composed in this profile" };
+      });
+    },
+    diagnosticSink(options = {}) {
+      const root = options.root ?? defaultLogRoot;
+      return createFileSink({
+        root,
+        ...options.name === undefined ? {} : { name: options.name },
+        ...options.capBytes === undefined ? {} : { capBytes: options.capBytes }
+      });
+    }
+  };
+  return adapter;
+}
+var SERVICE_NAME = "mpdTui";
+function resolveTuiAdapter(ctx) {
+  const get = ctx !== undefined && ctx !== null && typeof ctx.get === "function" ? ctx.get : undefined;
+  if (get !== undefined) {
+    try {
+      const mounted = get.call(ctx, SERVICE_NAME);
+      if (mounted !== undefined && mounted !== null)
+        return mounted;
+    } catch {}
+  }
+  return createTuiAdapter(ctx);
 }
 
 // packages/mpd-tui-plugin/src/state.ts
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync as readFileSync2, readdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join as join3 } from "node:path";
 
 // packages/mpd-tui-plugin/src/sanitize.ts
 var CONTROL = /[\u0000-\u001f\u007f-\u009f]/gu;
@@ -2420,7 +3164,7 @@ var MAX_WORKMATES = 200;
 var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
 function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
+  return JSON.parse(readFileSync2(path, "utf8"));
 }
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -2514,7 +3258,7 @@ function readRecordTeam(record) {
   };
 }
 function readBoulder(root, problems) {
-  const path = join(root, ".mpd", "boulder.json");
+  const path = join3(root, ".mpd", "boulder.json");
   let document;
   try {
     document = readJson(path);
@@ -2548,7 +3292,7 @@ function readBoulder(root, problems) {
   return summary;
 }
 function readPlans(root) {
-  const dir = join(root, ".mpd", "plans");
+  const dir = join3(root, ".mpd", "plans");
   try {
     const names = readdirSync(dir).filter((name) => name.endsWith(".md")).sort();
     return { count: names.length, newest: scalarText(names[names.length - 1], 120) };
@@ -2557,13 +3301,13 @@ function readPlans(root) {
   }
 }
 function readWorkmates(home) {
-  const dir = join(home, ".mpd", "workmate");
+  const dir = join3(home, ".mpd", "workmate");
   try {
     const names = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => entry.name).slice(0, MAX_WORKMATES);
     const present = [];
     for (const name of names) {
       try {
-        const meta = readJson(join(dir, name, "meta.json"));
+        const meta = readJson(join3(dir, name, "meta.json"));
         const label = isRecord(meta) ? scalarText(meta.name ?? name, 60) : undefined;
         present.push(label ?? scalarText(name, 60) ?? "?");
       } catch {}
@@ -2657,63 +3401,22 @@ function boardLines(state, holds = []) {
 
 // packages/mpd-tui-plugin/src/status.ts
 var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
-  let outcome = { state: "absent", detail: "tuiStatus was not injected" };
-  let refresh = () => {};
-  onService(ctx, "tuiStatus", (scoped, service) => {
-    const status = service;
-    if (typeof status?.set !== "function") {
-      outcome = { state: "refused", detail: "tuiStatus.set is missing" };
-      return;
-    }
-    let disposer;
-    let timer;
-    let published;
-    const publish = () => {
-      try {
-        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.());
-        if (text === published)
-          return;
-        published = text;
-        disposer = status.set(STATUS_KEY, text, scoped);
-      } catch (error) {
-        log.debug(`status refresh failed: ${String(error?.message ?? error)}`);
-      }
-    };
-    publish();
-    if (intervalMs > 0) {
-      try {
-        timer = setInterval(publish, intervalMs);
-        timer.unref?.();
-      } catch {
-        timer = undefined;
-      }
-    }
-    effectOn(scoped, () => {
-      if (timer !== undefined) {
-        try {
-          clearInterval(timer);
-        } catch {}
-        timer = undefined;
-      }
-      try {
-        disposer?.();
-      } catch {}
-      try {
-        status.set(STATUS_KEY, undefined, scoped);
-      } catch {}
-    }, "mpd-tui status line");
-    refresh = publish;
-    outcome = { state: "requested", detail: "set() has no read-back; key grammar and the 200-cell budget are host-validated" };
+function registerStatus(ctx, tui, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
+  const view = tui.registerStatusView({
+    key: STATUS_KEY,
+    intervalMs,
+    identity: ctx,
+    label: "mpd-tui status line",
+    render: () => statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.()),
+    onError: (error) => log.debug(`status refresh failed: ${String(error?.message ?? error)}`)
   });
-  return { outcome: () => outcome, refresh: () => refresh() };
+  return { outcome: () => view.outcome(), refresh: () => view.refresh() };
 }
-
 // packages/mpd-tui-plugin/src/registration.ts
 import { createRequire } from "node:module";
 import { readdirSync as readdirSync2 } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
+import { join as join4 } from "node:path";
 import { fileURLToPath } from "node:url";
 var BOARD_OPENED_EVENT = "mpd-tui/board-opened";
 function candidateAnchors(env = process.env, home = homedir2()) {
@@ -2727,13 +3430,13 @@ function candidateAnchors(env = process.env, home = homedir2()) {
   const homes = [];
   if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
     homes.push(env.DSH_HOME);
-  homes.push(join2(home, ".dsh"), join2(home, ".dsh-tui"));
+  homes.push(join4(home, ".dsh"), join4(home, ".dsh-tui"));
   for (const root of homes) {
-    const profiles = join2(root, "profiles");
+    const profiles = join4(root, "profiles");
     try {
       for (const entry of readdirSync2(profiles, { withFileTypes: true })) {
         if (entry.isDirectory())
-          anchors.push(join2(profiles, entry.name, "package.json"));
+          anchors.push(join4(profiles, entry.name, "package.json"));
       }
     } catch {}
   }
@@ -2855,12 +3558,11 @@ var TRANSCRIPT_RENDERERS = {
     return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] };
   }
 };
-function registerRenderers(ctx, log) {
-  let outcome = { state: "absent", detail: "tuiRenderers was not injected" };
-  onService(ctx, "tuiRenderers", (scoped, service) => {
-    const renderers = service;
-    if (typeof renderers?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiRenderers.register is missing" };
+function registerRenderers(ctx, tui, log) {
+  const seam = tui.whenBound("renderers", (_service, _scope, handle) => {
+    const registry = tui.renderers();
+    if (typeof registry?.register !== "function") {
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` });
       return;
     }
     let requested = 0;
@@ -2869,31 +3571,28 @@ function registerRenderers(ctx, log) {
       const render = TRANSCRIPT_RENDERERS[type];
       if (render === undefined)
         continue;
-      try {
-        const disposer = renderers.register(type, (payload) => {
-          try {
-            const result = render(payload);
-            if (result === undefined)
-              return;
-            const title = scalarText(result.title, 120);
-            return { ...title === undefined ? {} : { title }, lines: scalarLines(result.lines, 100, 400) };
-          } catch {
+      const registration = tui.registerRenderer(type, (payload) => {
+        try {
+          const result = render(payload);
+          if (result === undefined)
             return;
-          }
-        }, scoped);
-        if (typeof disposer === "function") {
-          requested += 1;
-          const release = disposer;
-          effectOn(scoped, () => release(), `mpd-tui renderer ${type}`);
+          const title = scalarText(result.title, 120);
+          return { ...title === undefined ? {} : { title }, lines: scalarLines(result.lines, 100, 400) };
+        } catch {
+          return;
         }
-      } catch (error) {
+      }, ctx);
+      const measured = registration.outcome();
+      if (measured.state === "requested")
+        requested += 1;
+      else if (measured.state === "refused") {
         threw += 1;
-        log.debug(`transcript renderer ${type} refused: ${String(error?.message ?? error)}`);
+        log.debug(`transcript renderer ${type} refused: ${measured.detail ?? "unknown"}`);
       }
     }
-    outcome = requested === 0 ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` } : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` };
+    handle.record(requested === 0 ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` } : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` });
   });
-  return { outcome: () => outcome };
+  return { outcome: () => seam.outcome() };
 }
 
 // packages/mpd-config-plugin/src/settings-schema.ts
@@ -3150,80 +3849,58 @@ function resolveCatalogReader(ctx) {
   } catch {}
   return createDshAdapter(ctx);
 }
-function registerSettingsSection(ctx, log, adapterOverride) {
+function registerSettingsSection(ctx, tui, log, adapterOverride) {
   let namespace = { state: "absent", detail: "settings was not injected" };
-  let section = { state: "absent", detail: "tuiSettingsSections was not injected" };
-  let registrationStarted = false;
+  let section;
   const catalogReader = adapterOverride ?? resolveCatalogReader(ctx);
-  onService(ctx, "settings", (_scoped, service) => {
+  tui.whenBound("settings", (service, _scope, handle) => {
     const provider = service;
     if (typeof provider?.register !== "function") {
       namespace = { state: "refused", detail: "settings.register is missing" };
+      handle.record(namespace);
       return;
     }
     if (configPluginPresent(ctx)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` };
       log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`);
+      handle.record(namespace);
       return;
     }
     if (isServed(provider)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` };
       log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`);
+      handle.record(namespace);
       return;
     }
-    try {
-      provider.register(SETTINGS_NS, SettingsSchema, { applies: "restart" });
-      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` };
-    } catch (error) {
-      namespace = { state: "refused", detail: String(error?.message ?? error) };
+    const registered = tui.registerSettingsNamespace(SETTINGS_NS, SettingsSchema, { applies: "restart" });
+    const measured = registered.outcome();
+    namespace = measured.state === "requested" ? { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` } : { state: measured.state, detail: measured.detail };
+    handle.record(namespace);
+    if (namespace.state === "refused")
       log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`);
-    }
   });
-  onService(ctx, "tuiSettingsSections", (_scoped, service) => {
-    const sections = service;
-    if (typeof sections?.register !== "function") {
-      section = { state: "refused", detail: "tuiSettingsSections.register is missing" };
-      return;
-    }
-    if (registrationStarted)
-      return;
-    registrationStarted = true;
-    if (typeof catalogReader.llmCatalog !== "function") {
-      completeRegistration(sections, teamModelOptionLists(undefined), undefined);
-      return;
-    }
-    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (awaiting the model catalog for the slot options)` };
-    readCatalogThenRegister(sections);
-  });
-  async function readCatalogThenRegister(sections) {
+  const sectionHandle = tui.registerSettingsSection(async () => {
+    let catalog;
     try {
-      let catalog;
-      try {
-        catalog = await catalogReader.llmCatalog?.();
-      } catch {
-        catalog = undefined;
-      }
-      completeRegistration(sections, teamModelOptionLists(catalog), catalog);
-    } catch (error) {
-      section = { state: "refused", detail: String(error?.message ?? error) };
-      log.warn(`/settings section refused: ${section.detail ?? ""}`);
+      catalog = await catalogReader.llmCatalog?.();
+    } catch {
+      catalog = undefined;
     }
-  }
-  function completeRegistration(sections, lists, catalog) {
-    try {
-      log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
-      sections.register({ ...SETTINGS_SECTION, fields: settingsFields(lists) });
-      section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
-    } catch (error) {
-      section = { state: "refused", detail: String(error?.message ?? error) };
-      log.warn(`/settings section refused: ${section.detail ?? ""}`);
-    }
-  }
+    const lists = teamModelOptionLists(catalog);
+    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
+    return { ...SETTINGS_SECTION, fields: settingsFields(lists) };
+  }, ctx);
   return {
-    outcome: () => ({
-      state: section.state,
-      detail: `${section.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`
-    })
+    outcome: () => {
+      const measured = sectionHandle.outcome();
+      const chosen = measured.state === "refused" ? { state: "refused", detail: measured.detail } : section ?? { state: measured.state, detail: measured.detail };
+      return {
+        id: measured.id,
+        state: chosen.state,
+        detail: `${chosen.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`
+      };
+    }
   };
 }
 
@@ -3610,6 +4287,76 @@ function readRecordWorkflow(workspace, holds, record) {
     problems: problems.slice(0, MAX_PROBLEMS2)
   };
 }
+function teamWorkflowLines(workflow) {
+  if (workflow.team === undefined)
+    return ["team       (none in this workspace)"];
+  const team = workflow.team;
+  const lines = [];
+  lines.push(`team       ${team.name} (${team.id})`);
+  lines.push(`phase      ${team.phase}`);
+  if (team.staged && team.planReviewState !== undefined)
+    lines.push(`plan       ${team.planReviewState}`);
+  if (team.captainSessionId !== undefined)
+    lines.push(`captain    ${team.captainSessionId}`);
+  if (team.staged && team.stagedAt !== undefined)
+    lines.push(`staged     ${team.stagedAt}`);
+  if (workflow.holds.includes(team.id))
+    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
+  lines.push("");
+  lines.push("roster");
+  if (workflow.members.length === 0)
+    lines.push("  (no members)");
+  for (const member of workflow.members) {
+    const parts = [member.name];
+    if (member.role !== undefined)
+      parts.push(member.role);
+    if (member.route !== undefined)
+      parts.push(member.route);
+    parts.push(member.status);
+    let row = `  ${parts.join(" · ")}`;
+    row += ` · ${member.done}/${member.total}`;
+    if (member.currentTask !== undefined)
+      row += ` · ${member.currentTask}`;
+    if (member.unread !== null && member.unread > 0)
+      row += ` · ${member.unread} unread`;
+    lines.push(row);
+  }
+  lines.push("");
+  lines.push("tasks");
+  if (workflow.tasks.length === 0)
+    lines.push("  (no tasks)");
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12));
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
+    if (task.assignee !== undefined)
+      row += ` @${task.assignee}`;
+    if (task.attempt !== undefined)
+      row += ` attempt ${task.attempt}`;
+    if (task.round !== undefined)
+      row += ` r${task.round}`;
+    if (task.verdict !== undefined)
+      row += ` verdict ${task.verdict}`;
+    if (task.dependencies.length > 0)
+      row += ` deps=${task.dependencies.join(",")}`;
+    for (const failed of task.failedDependencies)
+      row += ` failed-dep=${failed}`;
+    if (task.visual === "blocked")
+      row += " BLOCKED";
+    lines.push(row);
+  }
+  lines.push("");
+  const tasks = workflow.counts;
+  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
+  for (const message of workflow.mail.captainInbox)
+    lines.push(`  ${message.from}: ${message.content}`);
+  if (workflow.problems.length > 0) {
+    lines.push("");
+    for (const problem of workflow.problems)
+      lines.push(`note       ${problem}`);
+  }
+  return lines;
+}
 function planProjectionLines(workflow) {
   if (workflow.team === undefined)
     return ["no staged plan for team (none)"];
@@ -3988,11 +4735,302 @@ function hitTest(view, row, col) {
   return;
 }
 
+// packages/mpd-tui-plugin/src/subagent-scene.ts
+var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
+var SUBAGENT_SCENE_TITLE = "MPD subagents + team";
+var MERGED_ROW_MAX_CELLS = 4000;
+var FALLBACK_COLS = 100;
+var REFRESH_MS = 2000;
+var KNOWN_STATUSES = ["starting", "running", "completed", "failed", "cancelled", "unknown"];
+var KNOWN_MODES = ["one-shot", "continuable", "unknown"];
+var SUBAGENT_GLYPHS = {
+  live: "\uD83D\uDFE1",
+  unknown: "⚪",
+  failed: "\uD83D\uDD34",
+  completed: "\uD83D\uDFE2"
+};
+function noopSubscribe() {
+  return () => {};
+}
+function safeRow(value) {
+  const type = typeof value;
+  if (type !== "string" && type !== "number" && type !== "boolean")
+    return "";
+  if (type === "number" && !Number.isFinite(value))
+    return "";
+  const raw = type === "string" ? value : String(value);
+  return clampCells(stripControl(raw), MERGED_ROW_MAX_CELLS);
+}
+function isoInstant(value) {
+  if (typeof value !== "number" || !Number.isFinite(value))
+    return;
+  if (Math.abs(value) > 8640000000000000)
+    return;
+  return new Date(value).toISOString();
+}
+function hostKit(React, ui) {
+  if (React === null || React === undefined || ui === null || ui === undefined)
+    return;
+  if (typeof React.createElement !== "function")
+    return;
+  const kit = ui;
+  if (typeof kit.Box !== "function" || typeof kit.Text !== "function")
+    return;
+  return { React, ui };
+}
+function measureTerminal(ui) {
+  if (typeof ui.useTerminalSize !== "function")
+    return { size: "", cols: FALLBACK_COLS };
+  let columns = "?";
+  let rows = "?";
+  const measured = ui.useTerminalSize();
+  if (measured !== null && measured !== undefined) {
+    columns = measured.columns ?? "?";
+    rows = measured.rows ?? "?";
+  }
+  const cols = Number(columns);
+  return {
+    size: `${String(columns)}x${String(rows)}`,
+    cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS
+  };
+}
+function subagentRowView(entry) {
+  if (entry === null || typeof entry !== "object")
+    return;
+  const row = entry;
+  const status = typeof row.status === "string" && KNOWN_STATUSES.includes(row.status) ? row.status : "unknown";
+  const mode = typeof row.mode === "string" && KNOWN_MODES.includes(row.mode) ? row.mode : "unknown";
+  const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined;
+  const startedAt = isoInstant(row.startedAt);
+  const endedAt = isoInstant(row.endedAt ?? row.completedAt);
+  return {
+    ...agentId === undefined ? {} : { agentId },
+    description: safeRow(row.description) || "(no description)",
+    mode,
+    status,
+    ...startedAt === undefined ? {} : { startedAt },
+    ...endedAt === undefined ? {} : { endedAt },
+    live: status === "running" || status === "starting",
+    failed: status === "failed" || status === "cancelled"
+  };
+}
+function subagentRows(channel) {
+  try {
+    const raw = channel?.subagents;
+    if (!Array.isArray(raw))
+      return [];
+    const rows = [];
+    for (const entry of raw) {
+      const view = subagentRowView(entry);
+      if (view !== undefined)
+        rows.push(view);
+    }
+    return rows;
+  } catch {
+    return [];
+  }
+}
+function glyphOf(row) {
+  if (row.live)
+    return SUBAGENT_GLYPHS.live;
+  if (row.failed)
+    return SUBAGENT_GLYPHS.failed;
+  if (row.status === "unknown")
+    return SUBAGENT_GLYPHS.unknown;
+  return SUBAGENT_GLYPHS.completed;
+}
+function subagentRowLine(row) {
+  const parts = [row.description, row.mode, row.status];
+  if (row.startedAt !== undefined)
+    parts.push(`started ${row.startedAt}`);
+  if (row.endedAt !== undefined)
+    parts.push(`ended ${row.endedAt}`);
+  return safeRow(`${glyphOf(row)} ${parts.join(" · ")}`);
+}
+function subagentSectionRows(channel) {
+  const rows = subagentRows(channel);
+  let live = 0;
+  let completed = 0;
+  let failed = 0;
+  for (const row of rows) {
+    if (row.live)
+      live += 1;
+    if (row.status === "completed")
+      completed += 1;
+    if (row.failed)
+      failed += 1;
+  }
+  const section = [
+    { text: `subagents  ${rows.length} total · ${live} running · ${completed} completed · ${failed} failed`, header: true }
+  ];
+  if (rows.length === 0) {
+    section.push({ text: `${SUBAGENT_GLYPHS.unknown} No subagents in the current session`, dim: true });
+    section.push({ text: "  Subagents appear here once the main agent starts Task delegations", dim: true });
+    return section;
+  }
+  for (let index = 0;index < rows.length; index += 1)
+    section.push({ text: subagentRowLine(rows[index]), rowIndex: index });
+  return section;
+}
+function graphTasksOf(workflow) {
+  return workflow.tasks.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    ...task.kind === undefined ? {} : { kind: task.kind },
+    visual: task.visual,
+    ...task.assignee === undefined ? {} : { assignee: task.assignee },
+    dependencies: task.dependencies,
+    depth: task.depth,
+    ...task.attempt === undefined ? {} : { attempt: task.attempt }
+  }));
+}
+function teamGraphView(workflow, cols) {
+  if (workflow === undefined || workflow.tasks.length === 0)
+    return;
+  try {
+    return layoutGraph(graphTasksOf(workflow), cols);
+  } catch {
+    return;
+  }
+}
+function interruptSubagent(channel, agentId) {
+  try {
+    const control = channel?.subagentControl;
+    if (control === null || control === undefined || typeof control.interrupt !== "function")
+      return false;
+    return control.interrupt(agentId) === true;
+  } catch {
+    return false;
+  }
+}
+function createSubagentSceneComponent(readWorkflow) {
+  return function MpdTuiSubagents(props) {
+    const kit = hostKit(props?.React, props?.ui);
+    if (kit === undefined) {
+      return null;
+    }
+    const React = kit.React;
+    const ui = kit.ui;
+    const close = typeof props.close === "function" ? props.close : () => {};
+    const channel = props?.channel;
+    const workflowState = React.useState(undefined);
+    const workflow = workflowState[0];
+    const setWorkflow = workflowState[1];
+    const focusState = React.useState(0);
+    const focus = focusState[0];
+    const setFocus = focusState[1];
+    const noticeState = React.useState("");
+    const notice = noticeState[0];
+    const setNotice = noticeState[1];
+    const refresh = () => {
+      let next;
+      try {
+        next = readWorkflow();
+      } catch {
+        next = undefined;
+      }
+      setWorkflow(next);
+    };
+    React.useEffect(() => {
+      refresh();
+      let timer;
+      try {
+        timer = setInterval(() => refresh(), REFRESH_MS);
+      } catch {
+        timer = undefined;
+      }
+      return () => {
+        if (timer !== undefined) {
+          try {
+            clearInterval(timer);
+          } catch {}
+        }
+      };
+    }, []);
+    const subscribe = typeof channel?.subscribe === "function" ? (listener) => channel.subscribe(listener) : noopSubscribe;
+    const getSnapshot = typeof channel?.version === "number" ? () => channel.version : () => 0;
+    if (typeof React.useSyncExternalStore === "function") {
+      try {
+        React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+      } catch {}
+    }
+    const measured = measureTerminal(ui);
+    const rows = subagentRows(channel);
+    const selectedIndex = rows.length === 0 ? -1 : Math.min(Math.max(focus, 0), rows.length - 1);
+    const selected = selectedIndex === -1 ? undefined : rows[selectedIndex];
+    if (typeof ui.useInput === "function") {
+      ui.useInput((input, key) => {
+        if (key?.escape === true || input === "q") {
+          close();
+          return;
+        }
+        if (key?.upArrow === true) {
+          setFocus(Math.max(0, selectedIndex - 1));
+          return;
+        }
+        if (key?.downArrow === true) {
+          setFocus(Math.max(0, Math.min(selectedIndex, rows.length - 1) + 1));
+          return;
+        }
+        if (input === "r" && key?.ctrl !== true) {
+          refresh();
+          return;
+        }
+        if (input === "i" && key?.ctrl !== true) {
+          if (selected === undefined || selected.agentId === undefined) {
+            setNotice("interrupt: no subagent row is selected");
+            return;
+          }
+          if (!selected.live) {
+            setNotice(`interrupt: ${selected.description} is ${selected.status}, not running`);
+            return;
+          }
+          setNotice(interruptSubagent(channel, selected.agentId) ? `interrupt requested for ${selected.description}` : "interrupt: this composition exposes no subagent control");
+        }
+      });
+    }
+    const children = [];
+    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeRow(`${SUBAGENT_SCENE_TITLE}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    const section = subagentSectionRows(channel);
+    for (let index = 0;index < section.length; index += 1) {
+      const row = section[index];
+      children.push(React.createElement(ui.Text, {
+        key: `sub-${index}`,
+        ...row.header === true ? { bold: true } : {},
+        ...row.dim === true ? { dimColor: true } : {},
+        ...row.rowIndex !== undefined && row.rowIndex === selectedIndex ? { bold: true } : {}
+      }, safeRow(row.text)));
+    }
+    children.push(React.createElement(ui.Text, { key: "sep" }, safeRow("")));
+    let teamLines;
+    try {
+      teamLines = workflow === undefined ? ["team state unreadable"] : teamWorkflowLines(workflow);
+    } catch {
+      teamLines = ["team state unreadable"];
+    }
+    for (let index = 0;index < teamLines.length; index += 1) {
+      children.push(React.createElement(ui.Text, { key: `team-${index}` }, safeRow(teamLines[index])));
+    }
+    const view = teamGraphView(workflow, measured.cols);
+    if (view !== undefined) {
+      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
+      for (let index = 0;index < view.lines.length; index += 1) {
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+        children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+      }
+    }
+    if (notice !== "")
+      children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeRow(notice)));
+    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeRow("esc/q close · ↑↓ select · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board")));
+    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+  };
+}
+
 // packages/mpd-tui-plugin/src/scenes.ts
 var BOARD_SCENE_ID = "mpd-tui-board";
 var TEAM_SCENE_ID = "mpd-tui-team";
 var PLAN_SCENE_ID = "mpd-tui-plan";
-var FALLBACK_COLS = 100;
+var FALLBACK_COLS2 = 100;
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
 var SCENE_ROW_MAX_CELLS = 4000;
@@ -4002,7 +5040,7 @@ var UNAVAILABLE_PLAN_ACTIONS = {
   approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
   discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE })
 };
-function noopSubscribe() {
+function noopSubscribe2() {
   return () => {};
 }
 function safeLine(value) {
@@ -4059,9 +5097,9 @@ function wrapCells(value, cols) {
     out.push(line);
   return out;
 }
-function measureTerminal(ui) {
+function measureTerminal2(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", cols: FALLBACK_COLS, window: 20 };
+    return { size: "", cols: FALLBACK_COLS2, window: 20 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -4074,7 +5112,7 @@ function measureTerminal(ui) {
   const terminalCols = Number(columns);
   return {
     size,
-    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS2,
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
@@ -4125,7 +5163,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
       });
     }
     const channel = props?.channel;
-    const subscribe = typeof channel?.subscribe === "function" ? (listener) => channel.subscribe(listener) : noopSubscribe;
+    const subscribe = typeof channel?.subscribe === "function" ? (listener) => channel.subscribe(listener) : noopSubscribe2;
     const getSnapshot = typeof channel?.version === "number" ? () => channel.version : () => 0;
     let sessionRows = 0;
     if (typeof React.useSyncExternalStore === "function") {
@@ -4136,7 +5174,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
         sessionRows = 0;
       }
     }
-    const measured = measureTerminal(ui);
+    const measured = measureTerminal2(ui);
     const size = measured.size;
     const header = `MPD board — ${rows.length} line(s)${size === "" ? "" : ` · ${size}`}`;
     const children = [
@@ -4213,7 +5251,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       ...task.attempt === undefined ? {} : { attempt: task.attempt }
     }));
     const focus = hover ?? pinned;
-    const measured = measureTerminal(ui);
+    const measured = measureTerminal2(ui);
     const graphWidth = Math.max(20, measured.cols - 4);
     const view = layoutGraph(graphTasks, graphWidth, focus);
     if (viewRef !== undefined && viewRef !== null)
@@ -4553,7 +5591,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     if (usable)
       for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? ""))
         body.push(row);
-    const measured = measureTerminal(ui);
+    const measured = measureTerminal2(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
     const settled = message !== "";
@@ -4579,45 +5617,40 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords) {
-  let outcome = { state: "absent", detail: "tuiScenes was not injected" };
-  let scenes;
+function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords) {
   const nav = { planFromTeam: false };
   const openScene = (id) => {
-    if (scenes === undefined) {
-      log.debug(`scene open(${id}) skipped: tuiScenes was not injected`);
+    if (!tui.openScene(id)) {
+      log.debug(`scene open(${id}) skipped: this composition does not serve the scene seam or the id`);
       return false;
     }
-    try {
-      const opened = scenes.open(id);
-      if (opened !== true)
-        log.debug(`scene open(${id}) returned ${String(opened)}`);
-      return opened === true;
-    } catch (error) {
-      log.debug(`scene open(${id}) failed: ${String(error?.message ?? error)}`);
-      return false;
-    }
+    return true;
   };
-  onService(ctx, "tuiScenes", (scoped, service) => {
-    const runtime = service;
+  const seam = tui.whenBound("scenes", (_service, _scope, handle) => {
+    const runtime = tui.scenes();
     if (typeof runtime?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiScenes.register is missing" };
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.scenes}.register is missing` });
       return;
     }
-    scenes = runtime;
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, scoped);
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, scoped);
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, scoped);
-      outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` };
+      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, ctx);
+      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, ctx);
+      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, ctx);
+      tui.registerScene({
+        id: SUBAGENT_SCENE_ID,
+        title: SUBAGENT_SCENE_TITLE,
+        component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+      }, ctx);
+      handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
     } catch (error) {
-      outcome = { state: "refused", detail: String(error?.message ?? error) };
-      log.debug(`scene registration refused: ${outcome.detail ?? ""}`);
+      const detail = String(error?.message ?? error);
+      handle.record({ state: "refused", detail });
+      log.debug(`scene registration refused: ${detail}`);
     }
   });
   const open = () => openScene(BOARD_SCENE_ID);
   return {
-    outcome: () => outcome,
+    outcome: () => seam.outcome(),
     open,
     openScene,
     openTeam: () => {
@@ -4629,7 +5662,8 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
       nav.planFromTeam = options?.returnToTeam === true;
       nav.planTeamId = options?.teamId;
       return openScene(PLAN_SCENE_ID);
-    }
+    },
+    openSubagents: () => openScene(SUBAGENT_SCENE_ID)
   };
 }
 function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
@@ -4642,112 +5676,96 @@ function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
 
 // packages/mpd-tui-plugin/src/command-trees.ts
 var COMMAND_ROOT = "mpd";
-var COMMAND_ACTIONS = ["board", "team", "plan", "workmates", "status"];
+var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "workmates", "status"];
 var COMMAND_CHILDREN = [
   { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板" } },
   { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板" } },
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划" } },
+  { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行" } }
 ];
-function registerCommandTrees(ctx, log) {
-  let outcome = { state: "absent", detail: "tuiCommandTrees was not injected" };
-  onService(ctx, "tuiCommandTrees", (_scoped, service) => {
-    const trees = service;
-    if (typeof trees?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiCommandTrees.register is missing" };
-      return;
-    }
-    try {
-      trees.register({
-        root: COMMAND_ROOT,
-        descriptions: { zh: "MPD 面板与状态" },
-        children: (canonicalPath) => canonicalPath.length <= 1 ? COMMAND_CHILDREN : []
-      });
-      outcome = { state: "requested", detail: `provider for /${COMMAND_ROOT} requested (no host read-back)` };
-    } catch (error) {
-      outcome = { state: "refused", detail: String(error?.message ?? error) };
-      log.debug(`tuiCommandTrees registration refused: ${outcome.detail ?? ""}`);
-    }
+function registerCommandTrees(tui) {
+  const handle = tui.registerCommandTree({
+    root: COMMAND_ROOT,
+    descriptions: { zh: "MPD 面板与状态" },
+    children: (canonicalPath) => canonicalPath.length <= 1 ? COMMAND_CHILDREN : []
   });
-  return { outcome: () => outcome };
+  return { outcome: () => handle.outcome() };
 }
 
 // packages/mpd-tui-plugin/src/shortcuts.ts
 var SHORTCUT_BINDINGS = [
   { combo: "alt+m", description: "mpd: open the board", action: "openBoard" },
+  { combo: "alt+a", description: "mpd: open the subagents + team panel", action: "openSubagents" },
   { combo: "alt+t", description: "mpd: open the team workflow", action: "openTeam" },
   { combo: "alt+w", description: "mpd: pick a workmate", action: "pickWorkmate" },
   { combo: "alt+r", description: "mpd: refresh the status line", action: "refreshStatus" }
 ];
-function registerShortcuts(ctx, log, actions) {
-  let outcome = { state: "absent", detail: "tuiShortcuts was not injected" };
-  onService(ctx, "tuiShortcuts", (scoped, service) => {
-    const shortcuts = service;
-    if (typeof shortcuts?.register !== "function") {
-      outcome = { state: "refused", detail: "tuiShortcuts.register is missing" };
+function registerShortcuts(ctx, tui, log, actions) {
+  const seam = tui.whenBound("shortcuts", (_service, _scope, handle) => {
+    const registry = tui.shortcuts();
+    if (typeof registry?.register !== "function") {
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.shortcuts}.register is missing` });
       return;
     }
-    const disposers = [];
+    let requested = 0;
     for (const binding of SHORTCUT_BINDINGS) {
-      try {
-        const disposer = shortcuts.register(binding.combo, {
-          description: binding.description,
-          handler: () => {
-            try {
-              if (binding.action === "openBoard")
-                actions.openBoard("shortcut");
-              else if (binding.action === "openTeam")
-                actions.openTeam();
-              else if (binding.action === "refreshStatus")
-                actions.refreshStatus();
-              else
-                actions.pickWorkmate();
-            } catch (error) {
-              log.debug(`shortcut ${binding.combo} handler failed: ${String(error?.message ?? error)}`);
-            }
+      const registration = tui.registerShortcut(binding.combo, {
+        description: binding.description,
+        handler: () => {
+          try {
+            if (binding.action === "openBoard")
+              actions.openBoard("shortcut");
+            else if (binding.action === "openSubagents")
+              actions.openSubagents();
+            else if (binding.action === "openTeam")
+              actions.openTeam();
+            else if (binding.action === "refreshStatus")
+              actions.refreshStatus();
+            else
+              actions.pickWorkmate();
+          } catch (error) {
+            log.debug(`shortcut ${binding.combo} handler failed: ${String(error?.message ?? error)}`);
           }
-        }, scoped);
-        if (typeof disposer === "function") {
-          const release = disposer;
-          disposers.push(release);
-          effectOn(scoped, () => release(), `mpd-tui shortcut ${binding.combo}`);
         }
-      } catch (error) {
-        log.debug(`shortcut ${binding.combo} refused: ${String(error?.message ?? error)}`);
-      }
+      }, ctx);
+      const measured = registration.outcome();
+      if (measured.state === "requested")
+        requested += 1;
+      else if (measured.state === "refused")
+        log.debug(`shortcut ${binding.combo} refused: ${measured.detail ?? "unknown"}`);
     }
     let listed;
-    if (typeof shortcuts.list === "function") {
+    if (typeof registry.list === "function") {
       try {
-        listed = shortcuts.list() ?? [];
+        listed = registry.list() ?? [];
       } catch {
         listed = undefined;
       }
     }
     if (listed === undefined) {
-      outcome = { state: "requested", detail: `${disposers.length} binding(s) requested; the host exposes no list() read-back` };
+      handle.record({ state: "requested", detail: `${requested} binding(s) requested; the host exposes no list() read-back` });
       return;
     }
     const confirmed = SHORTCUT_BINDINGS.filter((binding) => listed?.some((entry) => entry.description === binding.description)).map((binding) => binding.combo);
-    outcome = confirmed.length === 0 ? { state: "refused", detail: `list() shows none of our bindings — every combo was refused (reserved or duplicate): ${disposers.length} no-op disposer(s)` } : confirmed.length === SHORTCUT_BINDINGS.length ? { state: "confirmed", detail: `${confirmed.join(", ")} confirmed via tuiShortcuts.list()` } : { state: "requested", detail: `${confirmed.join(", ")} confirmed; ${SHORTCUT_BINDINGS.length - confirmed.length} not visible in list()` };
+    handle.record(confirmed.length === 0 ? { state: "refused", detail: `list() shows none of our bindings — every combo was refused (reserved or duplicate): ${requested} no-op disposer(s)` } : confirmed.length === SHORTCUT_BINDINGS.length ? { state: "confirmed", detail: `${confirmed.join(", ")} confirmed via ${TUI_SEAMS.shortcuts}.list()` } : { state: "requested", detail: `${confirmed.join(", ")} confirmed; ${SHORTCUT_BINDINGS.length - confirmed.length} not visible in list()` });
   });
-  return { outcome: () => outcome };
+  return { outcome: () => seam.outcome() };
 }
 
 // packages/mpd-tui-plugin/src/dialogs.ts
-function createDialogs(ctx, log, defaultTimeoutMs = 30000) {
+function createDialogs(tui, log, defaultTimeoutMs = 30000) {
   let dialogs;
-  let outcome = { state: "absent", detail: "tuiDialogs was not injected" };
-  onService(ctx, "tuiDialogs", (_scoped, service) => {
+  const seam = tui.whenBound("dialogs", (service, _scope, handle) => {
     const runtime = service;
     const usable = runtime !== undefined && runtime !== null && typeof runtime.select === "function" && typeof runtime.confirm === "function" && typeof runtime.input === "function";
     if (!usable) {
-      outcome = { state: "refused", detail: "tuiDialogs is missing select/confirm/input" };
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.dialogs} is missing select/confirm/input` });
       return;
     }
     dialogs = runtime;
-    outcome = { state: "available", detail: "request-based seam; nothing to register" };
+    handle.record({ state: "available", detail: "request-based seam; nothing to register" });
   });
   const available = () => dialogs !== undefined;
   const select = async (title, options, timeoutMs = defaultTimeoutMs) => {
@@ -4770,7 +5788,7 @@ function createDialogs(ctx, log, defaultTimeoutMs = 30000) {
       return;
     }
   };
-  return { available, outcome: () => outcome, select, confirm };
+  return { available, outcome: () => seam.outcome(), select, confirm };
 }
 
 // packages/mpd-tui-plugin/src/watchdog.ts
@@ -4817,7 +5835,7 @@ function watchdogDialog(view) {
     ]
   };
 }
-function attachWatchdogFrontDoor(ctx, log, options) {
+function attachWatchdogFrontDoor(ctx, tui, log, options) {
   let service;
   let dialogsReady = false;
   let warnedAbsent = false;
@@ -4879,7 +5897,7 @@ function attachWatchdogFrontDoor(ctx, log, options) {
       maybeReplay();
   });
   if (options.replayOnAttach !== false) {
-    onService(ctx, "tuiDialogs", () => {
+    tui.whenBound("dialogs", () => {
       dialogsReady = true;
       maybeReplay();
     });
@@ -4895,101 +5913,87 @@ var DECISION_EVENTS = [
   { event: "tui/compact", permission: "session.compact.intercept" }
 ];
 var DECISION_ORDER = "mpd-tui";
-function attemptDecisionEvents(ctx, log) {
-  const attempts = [];
-  let outcome = { state: "absent", detail: "tuiPluginHost was not injected" };
-  onService(ctx, "tuiPluginHost", (scoped, service) => {
-    const host = service;
-    if (typeof host?.subscribeDecision !== "function") {
-      outcome = { state: "refused", detail: "tuiPluginHost.subscribeDecision is missing" };
+function attemptDecisionEvents(ctx, tui, log) {
+  const subs = DECISION_EVENTS.map(({ event, permission }) => ({
+    event,
+    permission,
+    sub: tui.requestDecisionEvent(event, () => {
       return;
-    }
-    const disposers = [];
-    for (const { event, permission } of DECISION_EVENTS) {
-      let granted;
-      const facade = host.grants;
-      if (facade !== undefined && typeof facade.allows === "function") {
-        try {
-          granted = facade.allows(scoped, permission, event) === true;
-        } catch {
-          granted = undefined;
-        }
-      }
-      try {
-        const disposer = host.subscribeDecision(scoped, event, () => {
-          return;
-        }, { scope: event, order: DECISION_ORDER });
-        if (typeof disposer !== "function") {
-          attempts.push({ event, state: "refused", reason: "subscribeDecision returned no disposer" });
-          continue;
-        }
-        if (granted === true) {
-          const release = disposer;
-          disposers.push(release);
-          effectOn(scoped, () => release(), `mpd-tui decision ${event}`);
-          attempts.push({ event, state: "confirmed", reason: `${permission} granted` });
-        } else if (granted === false) {
-          const release = disposer;
-          effectOn(scoped, () => release(), `mpd-tui decision ${event} (refused)`);
-          attempts.push({ event, state: "refused", reason: `no grant for ${permission}@${event}` });
-        } else {
-          const release = disposer;
-          effectOn(scoped, () => release(), `mpd-tui decision ${event} (unconfirmed)`);
-          attempts.push({ event, state: "requested", reason: "grant state not queryable in this composition" });
-        }
-      } catch (error) {
-        attempts.push({ event, state: "refused", reason: shortReason(error) });
-      }
-    }
-    const confirmed = attempts.filter((attempt) => attempt.state === "confirmed");
-    const refused = attempts.filter((attempt) => attempt.state === "refused");
-    const first = refused[0] ?? attempts[0];
-    outcome = confirmed.length > 0 ? { state: "confirmed", detail: `${confirmed.length}/${attempts.length} intercept point(s) registered` } : refused.length === attempts.length ? { state: "refused", detail: `${refused.length}/${attempts.length} refused — ${first?.reason ?? "unknown"}` } : { state: "requested", detail: `unconfirmed — ${first?.reason ?? "unknown"}` };
+    }, { scope: event, order: DECISION_ORDER, identity: ctx })
+  }));
+  const unsupported = () => subs.find(({ sub }) => sub.outcome().state !== "absent" && !sub.supported());
+  const unbound = () => subs.every(({ sub }) => sub.outcome().state === "absent");
+  const attempts = () => {
+    if (unsupported() !== undefined || unbound())
+      return [];
+    return subs.map(({ event, permission, sub }) => {
+      const thrown = sub.error();
+      if (thrown !== undefined)
+        return { event, state: "refused", reason: thrown };
+      if (!sub.disposerReturned())
+        return { event, state: "refused", reason: "subscribeDecision returned no disposer" };
+      const granted = sub.granted();
+      if (granted === true)
+        return { event, state: "confirmed", reason: `${permission} granted` };
+      if (granted === false)
+        return { event, state: "refused", reason: `no grant for ${permission}@${event}` };
+      return { event, state: "requested", reason: "grant state not queryable in this composition" };
+    });
+  };
+  const outcome = () => {
+    const missing = unsupported();
+    if (missing !== undefined)
+      return { id: missing.sub.outcome().id, state: "refused", detail: `${missing.sub.outcome().detail ?? "subscribeDecision is missing"}` };
+    if (unbound())
+      return { id: subs[0]?.sub.outcome().id ?? "", state: "absent", detail: "the mediated plugin host was not injected" };
+    const measured = attempts();
+    const confirmed = measured.filter((attempt) => attempt.state === "confirmed");
+    const refused = measured.filter((attempt) => attempt.state === "refused");
+    const first = refused[0] ?? measured[0];
+    const id = subs[0]?.sub.outcome().id ?? "";
+    if (confirmed.length > 0)
+      return { id, state: "confirmed", detail: `${confirmed.length}/${measured.length} intercept point(s) registered` };
+    if (refused.length === measured.length)
+      return { id, state: "refused", detail: `${refused.length}/${measured.length} refused — ${first?.reason ?? "unknown"}` };
+    return { id, state: "requested", detail: `unconfirmed — ${first?.reason ?? "unknown"}` };
+  };
+  const disclose = () => {
+    const measured = attempts();
+    if (measured.length === 0)
+      return;
+    const confirmed = measured.filter((attempt) => attempt.state === "confirmed");
     if (confirmed.length > 0) {
       log.info(`decision-event seam ACTIVE for ${confirmed.length} intercept point(s); handlers express no opinion`);
-    } else {
-      log.warn("decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused " + `(first refusal: ${first?.reason ?? "unknown"}). No input/rewind/session-switch/compact interception is claimed.`);
+      return;
     }
+    const first = measured.find((attempt) => attempt.state === "refused") ?? measured[0];
+    log.warn("decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused " + `(first refusal: ${first?.reason ?? "unknown"}). No input/rewind/session-switch/compact interception is claimed.`);
+    return first?.reason;
+  };
+  tui.whenBound("pluginHost", () => {
+    disclose();
   });
-  return { outcome: () => outcome, attempts: () => attempts };
-}
-function shortReason(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/\s+/gu, " ").trim().slice(0, 160);
+  return { outcome, attempts };
 }
 
 // packages/mpd-tui-plugin/src/commands.ts
 var USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`;
-function registerCommands(ctx, log, actions) {
-  let outcome = { state: "absent", detail: "commands was not injected" };
-  onService(ctx, "commands", (_scoped, service) => {
-    const commands = service;
-    if (typeof commands?.register !== "function") {
-      outcome = { state: "refused", detail: "commands.register is missing" };
-      return;
-    }
-    try {
-      commands.register({
-        name: COMMAND_ROOT,
-        description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
-        handler: async (invocation) => {
-          const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : "";
-          const session = invocation?.agent?.session;
-          if (raw === "") {
-            const picked = await actions.pickAction();
-            return runAction(picked ?? "board", actions, session);
-          }
-          const head = raw.split(/\s+/u)[0] ?? "";
-          return runAction(head, actions, session);
-        }
-      });
-      outcome = { state: "requested", detail: `/${COMMAND_ROOT} requested (no host read-back at apply time)` };
-    } catch (error) {
-      outcome = { state: "refused", detail: String(error?.message ?? error) };
-      log.debug(`/${COMMAND_ROOT} registration refused: ${outcome.detail ?? ""}`);
+function registerCommands(tui, actions) {
+  const handle = tui.registerCommand({
+    name: COMMAND_ROOT,
+    description: "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+    handler: async (invocation) => {
+      const raw = typeof invocation?.rawInput === "string" ? invocation.rawInput.trim().toLowerCase() : "";
+      const session = invocation?.agent?.session;
+      if (raw === "") {
+        const picked = await actions.pickAction();
+        return runAction(picked ?? "board", actions, session);
+      }
+      const head = raw.split(/\s+/u)[0] ?? "";
+      return runAction(head, actions, session);
     }
   });
-  return { outcome: () => outcome };
+  return { outcome: () => handle.outcome() };
 }
 function runAction(action, actions, session) {
   if (action === "board") {
@@ -5003,6 +6007,9 @@ function runAction(action, actions, session) {
     return { kind: "success", text: clamp(actions.statusText()) };
   if (action === "team") {
     return actions.openTeam() ? { kind: "success" } : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" };
+  }
+  if (action === "subagents") {
+    return actions.openSubagents() ? { kind: "success" } : { kind: "error", text: "mpd: the subagents + team panel is not available in this composition" };
   }
   if (action === "plan") {
     return actions.openPlan() ? { kind: "success" } : { kind: "error", text: "mpd: the plan approval scene is not available in this composition" };
@@ -5130,9 +6137,10 @@ function homeDir() {
 }
 function apply(ctx, config = {}) {
   const resolved = resolveConfig(config);
-  const log = createLog(ctx?.logger, resolved.logPrefix);
   const adapter = resolveAdapter(ctx);
+  const tui = resolveTuiAdapter(ctx);
   const workspaceRoot = workspaceResolver(ctx, adapter);
+  const log = createLog(ctx?.logger, resolved.logPrefix, process.env, () => tui.diagnosticSink({ root: workspaceRoot }));
   const home = () => homeDir();
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
   let teamsService;
@@ -5143,16 +6151,18 @@ function apply(ctx, config = {}) {
   const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
-  const record = (id, outcome) => {
-    outcomes.push({ id, outcome });
+  const record = (handle) => {
+    const measured = handle.outcome();
+    outcomes.push({ id: measured.id, outcome: measured });
   };
+  const skipped = (key, detail) => tui.skipped(key, detail);
   let configHandle;
   const bridgeRead = () => {
     try {
-      const skipped = configHandle?.states?.()?.writeback?.skipped;
-      if (skipped === "no-live-session")
+      const skipped2 = configHandle?.states?.()?.writeback?.skipped;
+      if (skipped2 === "no-live-session")
         return NO_LIVE_SESSION_NOTICE;
-      if (skipped === "ambiguous-multi-root")
+      if (skipped2 === "ambiguous-multi-root")
         return AMBIGUOUS_MULTI_ROOT_NOTICE;
       return;
     } catch {
@@ -5162,40 +6172,43 @@ function apply(ctx, config = {}) {
   onService(ctx, "mpdConfig", (_scoped, service) => {
     configHandle = service;
   });
-  const dialogs = createDialogs(ctx, log);
+  const dialogs = createDialogs(tui, log);
   let status = {
-    outcome: () => ({ state: "absent", detail: "not wired yet" }),
+    ...tui.skipped("status", "not wired yet"),
     refresh: () => {}
   };
-  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, log, {
+  const watchdogFrontDoor = attachWatchdogFrontDoor(ctx, tui, log, {
     workspaceRoot,
     dialogs,
     onAcknowledged: () => status.refresh()
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
-  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords) : {
-    outcome: () => ({ state: "absent", detail: "disabled by config" }),
+  status = resolved.statusLine ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { ...skipped("status", "disabled by config"), refresh: () => {} };
+  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords) : {
+    ...skipped("scenes", "disabled by config"),
     open: () => false,
     openScene: () => false,
     openTeam: () => false,
-    openPlan: () => false
+    openPlan: () => false,
+    openSubagents: () => false
   };
-  const renderers = resolved.renderers ? registerRenderers(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
-  const settings = resolved.settingsSection ? registerSettingsSection(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
-  const trees = resolved.commandTrees ? registerCommandTrees(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
-  const shortcuts = resolved.shortcuts ? registerShortcuts(ctx, log, {
+  const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config");
+  const settings = resolved.settingsSection ? registerSettingsSection(ctx, tui, log) : skipped("settingsSections", "disabled by config");
+  const trees = resolved.commandTrees ? registerCommandTrees(tui) : skipped("commandTrees", "disabled by config");
+  const shortcuts = resolved.shortcuts ? registerShortcuts(ctx, tui, log, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
+    openSubagents: () => scene.openSubagents(),
     refreshStatus: () => status.refresh(),
     pickWorkmate: () => {
       pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords);
     }
-  }) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
-  const commands = resolved.commands ? registerCommands(ctx, log, {
+  }) : skipped("shortcuts", "disabled by config");
+  const commands = resolved.commands ? registerCommands(tui, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
     openPlan: () => scene.openPlan(),
+    openSubagents: () => scene.openSubagents(),
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
       const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
@@ -5207,23 +6220,18 @@ function apply(ctx, config = {}) {
         return;
       appendBoardOpened(session, sessionEventTypeKnown, via, "board", log);
     }
-  }) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
-  const decisions = resolved.decisionEvents ? attemptDecisionEvents(ctx, log) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), attempts: () => [] };
-  record("tuiStatus", status.outcome());
-  record("tuiRenderers", renderers.outcome());
-  record("tuiSettingsSections", settings.outcome());
-  record("tuiScenes", scene.outcome());
-  record("tuiCommandTrees", trees.outcome());
-  record("tuiShortcuts", shortcuts.outcome());
-  record("tuiDialogs", dialogs.outcome());
-  record("commands", commands.outcome());
-  record("decisionEvents", decisions.outcome());
-  const attempted = outcomes.filter((entry) => entry.outcome.state !== "absent");
-  if (attempted.length === 0) {
-    log.warn("no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped");
-  } else {
-    log.info(`mpd TUI surfaces: ${outcomes.map((entry) => describeOutcome(entry.id, entry.outcome)).join(" · ")}`);
-  }
+  }) : skipped("commands", "disabled by config");
+  const decisions = resolved.decisionEvents ? attemptDecisionEvents(ctx, tui, log) : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] };
+  record(status);
+  record(renderers);
+  record(settings);
+  record(scene);
+  record(trees);
+  record(shortcuts);
+  record(dialogs);
+  record(commands);
+  outcomes.push({ id: "decisionEvents", outcome: decisions.outcome() });
+  reportOutcomes(log, outcomes.map((entry) => entry.outcome));
   log.debug(`session event type ${BOARD_OPENED_EVENT}: ${sessionEventTypeKnown ? "verified known" : "NOT verified (records will be skipped)"}`);
   return { outcomes, sessionEventTypeKnown };
 }
@@ -5234,6 +6242,7 @@ async function pickAction(log, dialogs) {
     { id: "board", label: "Board", description: "team, tasks, boulder, plans, workmates" },
     { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
+    { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" }
   ]);

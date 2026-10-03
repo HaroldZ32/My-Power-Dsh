@@ -34,7 +34,7 @@
 // available (an unregistered namespace is rendered as unavailable by design).
 // `z` comes from the bundle's already-vendored schemastery copy. Same directory
 // specifier rule as `index.ts`.
-import type { PluginContextLike, SeamOutcome, SettingsProviderLike, TuiSettingsFieldLike, TuiSettingsSectionLike, TuiSettingsSectionsLike } from "./types.js"
+import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, TuiAdapter, TuiSettingsFieldLike, TuiSettingsSectionLike } from "./types.js"
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
@@ -42,7 +42,7 @@ import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SET
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { Log } from "./log.js"
-import { onService, serviceOf } from "./host.js"
+import { serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 
 export { SETTINGS_NS }
 
@@ -344,7 +344,8 @@ function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Prom
 
 /**
  * Activate the settings namespace and the `/settings` section.
- * @param ctx - the plugin context.
+ * @param ctx - the plugin context; the host records it as each registration's identity.
+ * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @param adapterOverride - the adapter to read the model catalog through; when omitted the
  *   mounted `mpdDsh` is resolved here, with a standalone adapter over the same ctx as the
@@ -354,16 +355,14 @@ function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Prom
  */
 export function registerSettingsSection(
   ctx: PluginContextLike,
+  tui: TuiAdapter,
   log: Log,
   adapterOverride?: { llmCatalog?: () => Promise<DshLlmCatalog> },
 ): { outcome(): SeamOutcome } {
   /** The namespace registration result, folded into the section outcome. */
-  let namespace: SeamOutcome = { state: "absent", detail: "settings was not injected" }
-  /** The section registration result, the outcome the caller reads. */
-  let section: SeamOutcome = { state: "absent", detail: "tuiSettingsSections was not injected" }
-  // ONE register call per section, whatever the activation path does: the host throws
-  // `TUI settings section "mpd" is already registered` on a second one.
-  let registrationStarted = false
+  let namespace: { state: SeamState; detail?: string } = { state: "absent", detail: "settings was not injected" }
+  /** The section result this file measured; `undefined` until a path decides it. */
+  let section: { state: SeamState; detail?: string } | undefined
   /** The adapter whose `llmCatalog()` supplies the slot options. */
   const catalogReader = adapterOverride ?? resolveCatalogReader(ctx)
 
@@ -372,11 +371,12 @@ export function registerSettingsSection(
   //    namespace is genuinely unserved — duplicate registration fails loud on this host
   //    (`dsh-settings` `register()` throws `settings namespace "<ns>" is already registered`), so
   //    the probe below is the guard that keeps the two owners from colliding.
-  onService(ctx, "settings", (_scoped, service) => {
-    /** The probed service as the settings provider, before `register` is trusted. */
+  tui.whenBound("settings", (service, _scope, handle) => {
+    /** The bound service as the settings provider, before `register` is trusted. */
     const provider = service as SettingsProviderLike
     if (typeof provider?.register !== "function") {
       namespace = { state: "refused", detail: "settings.register is missing" }
+      handle.record(namespace)
       return
     }
     // DETERMINISTIC owner check first: `mpd-config` provides the `mpdConfig` service, and a service
@@ -388,20 +388,25 @@ export function registerSettingsSection(
     if (configPluginPresent(ctx)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` }
       log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`)
+      handle.record(namespace)
       return
     }
     if (isServed(provider)) {
       namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` }
       log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`)
+      handle.record(namespace)
       return
     }
-    try {
-      provider.register(SETTINGS_NS, SettingsSchema, { applies: "restart" })
-      namespace = { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` }
-    } catch (error) {
-      namespace = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)
-    }
+    /** The adapter's handle for this one registration; the host call itself happened there. */
+    const registered = tui.registerSettingsNamespace(SETTINGS_NS, SettingsSchema, { applies: "restart" })
+    /** What that registration measured. */
+    const measured = registered.outcome()
+    namespace =
+      measured.state === "requested"
+        ? { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` }
+        : { state: measured.state, detail: measured.detail }
+    handle.record(namespace)
+    if (namespace.state === "refused") log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)
   })
 
   // 2) Section: the mpd.jsonc fields. The twelve team-model slot knobs carry CATALOG-DERIVED
@@ -412,75 +417,43 @@ export function registerSettingsSection(
   //    registry is built for exactly this: `register()`/`subscribe()` are its
   //    late-registration seam ("a plugin (un)loading mid-session changes the list") and the
   //    screen re-reads the section list on every change event.
-  onService(ctx, "tuiSettingsSections", (_scoped, service) => {
-    /** The probed service as the section registry, before `register` is trusted. */
-    const sections = service as TuiSettingsSectionsLike
-    if (typeof sections?.register !== "function") {
-      section = { state: "refused", detail: "tuiSettingsSections.register is missing" }
-      return
-    }
-    if (registrationStarted) return
-    registrationStarted = true
-    // NO catalog seam (an older mounted adapter, or a composition without one): the declared
-    // lists are the only possible source, so register HERE and SYNCHRONOUSLY — exactly as
-    // this section did before the feature — instead of paying a deferral that could only
-    // risk the registration.
-    if (typeof catalogReader.llmCatalog !== "function") {
-      completeRegistration(sections, teamModelOptionLists(undefined), undefined)
-      return
-    }
-    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (awaiting the model catalog for the slot options)` }
-    void readCatalogThenRegister(sections)
-  })
-
-  /**
-   * Read the catalog and register with the projected options.
-   *
-   * TOTAL by construction: every failure — a rejecting `llmCatalog()`, a refused
-   * registration — is reported through {@link section} and the log, never as a rejected
-   * promise, because this runs detached from `apply`.
-   */
-  async function readCatalogThenRegister(sections: TuiSettingsSectionsLike): Promise<void> {
+  //
+  //    The adapter resolves this THUNK when the seam binds, which is what keeps the read from
+  //    racing the frozen option list; this file still owns WHAT the section says.
+  /** The section seam handle; its id is the adapter's, so this file names no seam. */
+  const sectionHandle = tui.registerSettingsSection(async (): Promise<TuiSettingsSectionLike> => {
+    /** The catalog the slot options are derived from; undefined means the declared fallback. */
+    let catalog: DshLlmCatalog | undefined
     try {
-      /** The catalog this registration is based on; undefined means the declared fallback. */
-      let catalog: DshLlmCatalog | undefined
-      try {
-        catalog = await catalogReader.llmCatalog?.()
-      } catch {
-        // A reader that throws is the same as an unavailable catalog: declared fallback.
-        catalog = undefined
-      }
-      completeRegistration(sections, teamModelOptionLists(catalog), catalog)
-    } catch (error) {
-      section = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`/settings section refused: ${section.detail ?? ""}`)
+      catalog = await catalogReader.llmCatalog?.()
+    } catch {
+      // A reader that throws is the same as an unavailable catalog: declared fallback.
+      catalog = undefined
     }
-  }
-
-  /** ONE `register()` call, with the A4 branch line logged immediately before it. */
-  function completeRegistration(
-    sections: TuiSettingsSectionsLike,
-    lists: TeamModelOptionLists,
-    catalog: DshLlmCatalog | undefined,
-  ): void {
-    try {
-      // The A4 measurement line: WHICH branch produced each leaf's option list.
-      log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
-        + ` model=${lists.source.model}(${lists.model.length})`
-        + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
-        + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
-      sections.register({ ...SETTINGS_SECTION, fields: settingsFields(lists) })
-      section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
-    } catch (error) {
-      section = { state: "refused", detail: String((error as Error)?.message ?? error) }
-      log.warn(`/settings section refused: ${section.detail ?? ""}`)
-    }
-  }
+    /** The projected option lists, plus which branch produced each leaf. */
+    const lists = teamModelOptionLists(catalog)
+    // The A4 measurement line: WHICH branch produced each leaf's option list.
+    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
+      + ` model=${lists.source.model}(${lists.model.length})`
+      + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
+      + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
+    return { ...SETTINGS_SECTION, fields: settingsFields(lists) }
+  }, ctx)
 
   return {
-    outcome: () => ({
-      state: section.state,
-      detail: `${section.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`,
-    }),
+    outcome: (): SeamOutcome => {
+      /** What the adapter measured for the section seam (its own id and, on a refusal, its reason). */
+      const measured = sectionHandle.outcome()
+      // A REFUSAL always wins: it is the registration's measured truth, while `section` may still
+      // hold the pre-registration state this file recorded.
+      /** The section state this outcome reports. */
+      const chosen = measured.state === "refused" ? { state: "refused" as const, detail: measured.detail } : (section ?? { state: measured.state, detail: measured.detail })
+      return {
+        id: measured.id,
+        state: chosen.state,
+        detail: `${chosen.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`,
+      }
+    },
   }
 }

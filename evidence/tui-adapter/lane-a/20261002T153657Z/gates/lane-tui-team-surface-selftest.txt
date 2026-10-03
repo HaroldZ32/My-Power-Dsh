@@ -1,0 +1,2 @@
+[tui-team-surface self-test] FAIL: 1 check(s)
+  - the built dist must carry no filesystem write primitive

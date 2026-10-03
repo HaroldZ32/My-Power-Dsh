@@ -36,7 +36,7 @@
 //   * never a thrown boot failure — a missing optional seam degrades with a warning;
 //   * the harness contact goes through the ADAPTER only (AGENTS.md §6).
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
-import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
@@ -54,8 +54,11 @@ export const name = "mpd-team-watchdog"
  * captain's own turn is the wedged one) and needs the live-session workspace list;
  * every harness profile that can run a session mounts `dsh-agent`, which is the
  * service's owner, so this inject cannot park the row.
+ *
+ * Both NAMES come from the adapter's seam vocabulary, so a harness rename of either service is an
+ * edit in ONE file (the adapter) rather than in every row that lists the id.
  */
-export const inject: string[] = ["tools", "agents"]
+export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_AGENTS)
 
 /** Configurable knobs; every key has a default in BOTH the schema and the resolver. */
 export type Config = {
@@ -165,7 +168,7 @@ export function resolveConfig(config: Config = {}): EngineConfig {
 /** One line on stderr, never a throw. */
 function warn(prefix: string, text: string): void {
   try {
-    console.warn("[" + prefix + "] " + text)
+    rowLogLine("mpd-team-watchdog", "[" + prefix + "] " + text)
   } catch {
     // nothing left to report with
   }
@@ -334,7 +337,7 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
   for (const issue of issues) warn(resolved.logPrefix, "knob " + issue.path + ": " + issue.problem + " — using " + JSON.stringify(issue.fallback))
   // The boot log line a mount lane greps: proof the row APPLIED (not merely composed).
   try {
-    console.log(
+    rowLogLine("mpd-team-watchdog", 
       "[mpd-team-watchdog] applied: enabled=" + engine.getKnobs().enabled +
         " warnSilenceMs=" + engine.getKnobs().warnSilenceMs +
         " tickIntervalMs=" + intervalMs +

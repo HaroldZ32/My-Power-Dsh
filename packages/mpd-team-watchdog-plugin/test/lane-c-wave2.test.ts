@@ -52,6 +52,8 @@ const ADOPTED_DEPS = join(REPO, "packages", "mpd-agent-teams-plugin", "_deps")
 const WATCHDOG_SRC = join(REPO, "packages", "mpd-team-watchdog-plugin", "src")
 // The adapter sources, mirrored at the same depth so the copy can import them.
 const ADAPTER_SRC = join(REPO, "packages", "mpd-dsh-adapter-plugin", "src")
+// The shared MCP library, mirrored at the same depth for the adapter's `../../mpd-mcp-shared` import.
+const SHARED_SRC = join(REPO, "packages", "mpd-mcp-shared")
 // The production state directory, so paths resolve as in a real session.
 const STATE_DIR = join(".mpd", "team")
 // The fixture team id every arm works on.
@@ -79,7 +81,9 @@ function scratchTree(): { libDir: string; root: string; cleanup: () => void } {
  * The sibling adapter package is mirrored at the SAME depth, because the row resolves its shared
  * helpers through `../../mpd-dsh-adapter-plugin/src/index` (AGENTS.md §6: one contact surface):
  * a scratch tree that copied only this package would fail to import for a reason the control is
- * not about, and the failure would look like a real red.
+ * not about, and the failure would look like a real red. The shared MCP library is mirrored for the
+ * same reason one level down: R5 added `../../mpd-mcp-shared/log-sink` to the adapter, which the
+ * scratch copy must resolve from the SAME relative depth.
  */
 function scratchWatchdogSrc(): { srcDir: string; cleanup: () => void } {
   // A fresh scratch root for the source copy.
@@ -92,6 +96,10 @@ function scratchWatchdogSrc(): { srcDir: string; cleanup: () => void } {
   const adapterDir = join(root, "packages", "mpd-dsh-adapter-plugin", "src")
   mkdirSync(adapterDir, { recursive: true })
   cpSync(ADAPTER_SRC, adapterDir, { recursive: true })
+  // The shared library the adapter's own R5 log-sink import resolves through.
+  const sharedDir = join(root, "packages", "mpd-mcp-shared")
+  mkdirSync(sharedDir, { recursive: true })
+  cpSync(SHARED_SRC, sharedDir, { recursive: true })
   return { srcDir: dir, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 

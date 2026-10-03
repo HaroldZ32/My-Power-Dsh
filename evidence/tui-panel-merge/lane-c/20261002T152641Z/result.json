@@ -1,0 +1,92 @@
+{
+  "domain": "tui-panel-merge",
+  "slug": "lane-c",
+  "lane": "W2-T3 Lane C — merge the MPD team panel into the dsh-tui subagent surface",
+  "requirements_covered": ["A3.2"],
+  "evidence_bound_truth": ["A3.1"],
+  "measured_at_utc": "2026-10-02T15:45:00Z",
+  "host_under_test": "@deepseek-harness-tui/dsh-tui 0.12.0 (installed profile dsh-tui)",
+  "deliverable": {
+    "scene_id": "mpd-tui-subagents",
+    "scene_title": "MPD subagents + team",
+    "files_added": [
+      "packages/mpd-tui-plugin/src/subagent-scene.ts",
+      "packages/mpd-tui-plugin/test/subagent-scene.test.ts"
+    ],
+    "files_wired": [
+      "packages/mpd-tui-plugin/src/scenes.ts",
+      "packages/mpd-tui-plugin/src/shortcuts.ts",
+      "packages/mpd-tui-plugin/src/command-trees.ts",
+      "packages/mpd-tui-plugin/src/commands.ts",
+      "packages/mpd-tui-plugin/src/index.ts",
+      "packages/mpd-tui-plugin/test/team-surface.test.ts"
+    ],
+    "files_rebuilt": ["packages/mpd-tui-plugin/dist/index.js"],
+    "entry_points": {
+      "shortcut": "alt+a",
+      "command": "/mpd subagents",
+      "picker": "/mpd (bare) -> Subagents",
+      "completion": "/mpd <TAB> -> subagents"
+    },
+    "never_bound": ["ctrl+a"]
+  },
+  "commands": [
+    {
+      "command": "bun test (cwd packages/mpd-tui-plugin)",
+      "exit": 0,
+      "verdict": "131 pass / 0 fail / 1898 expect() calls across 8 files",
+      "log": "test-output.log"
+    },
+    {
+      "command": "npx tsgo --noEmit",
+      "exit": 2,
+      "verdict": "0 errors under packages/ (the only 4 errors are pre-existing, in skills/programming/scripts/typescript/check-no-excuse-rules.ts, a skill file this wave never touched)",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 1,
+      "verdict": "1 violation repo-wide: packages/mpd-mcp-shared/log-sink.test.ts:201 (another lane's R5 sink test — `const fd` has no comment). MY two files PASS in isolation (176 declarations).",
+      "log": "verify-comments-repo.log",
+      "isolated_log": "verify-comments-isolated.log"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exit": 0,
+      "verdict": "Bundled 26 modules; dist/index.js 246.47 KB (sha256 65ad268685ef78e37e0e9f1a…)",
+      "note": "pinned bun 1.4.0 from .toolchain, NOT the PATH bun 1.4.2"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "verdict": "MY target FRESH: packages/mpd-tui-plugin/dist/index.js sha 65ad268685ef… (and the adapter's too). Repo-wide FAIL 21/24 STALE is the OTHER lanes' src edits whose dists are not rebuilt yet.",
+      "log": "dist-fresh.log",
+      "my_target_log": "dist-fresh-mytarget.log"
+    },
+    {
+      "command": "bun packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts",
+      "exit": 0,
+      "verdict": "PASS (0 findings) over 25 packages / 114 .ts files — the wiring reintroduced no direct tui* touch",
+      "log": "no-direct-tui-access.log"
+    },
+    {
+      "command": "node combo-probe.mjs (imports the INSTALLED dsh-tui 0.12.0 utils/keymap.js)",
+      "exit": 0,
+      "verdict": "alt+a accepted / alt+s REFUSED (host action `star`) / ctrl+a REFUSED (host dashboard + editor line-start) / alt+up REFUSED",
+      "log": "combo-probe.log"
+    }
+  ],
+  "acceptance": {
+    "scene_renders_subagent_rows_above_team_rows": "test/subagent-scene.test.ts — 'every subagent row is drawn before the first team row'",
+    "empty_subagent_list_still_renders_team": "test/subagent-scene.test.ts — 'an empty subagent list still renders the team panel, above it the host's own empty tone'",
+    "absent_subagentControl_does_not_throw": "test/subagent-scene.test.ts — 'an absent subagentControl does not throw, and the interrupt gesture says so'",
+    "hostile_string_sanitized": "test/subagent-scene.test.ts — 'a hostile description is sanitized before it reaches a row' + 'a non-scalar field is dropped rather than stringified onto the screen'"
+  },
+  "human_verification": "manual-recipe.md",
+  "honesty": "honesty-note.md",
+  "open_items": [
+    "verify:comments is red on packages/mpd-mcp-shared/log-sink.test.ts:201 (another lane's file; one comment line fixes it).",
+    "verify-dist-fresh is red repo-wide because other lanes' src edits have no rebuilt dist yet; this lane's target is FRESH.",
+    "team-surface.test.ts's scene-id arm was amended (captain-approved) from a frozen 3-id literal to containment + uniqueness, because A3.2 adds a scene BY DESIGN."
+  ]
+}

@@ -1,0 +1,8 @@
+(pass) leavesFromSection > only declared paths become leaves, and absent paths are skipped [0.05ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated leaf key is WRITTEN (last occurrence) and the per-root result carries the loud note [0.22ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated INTERMEDIATE is still refused byte-untouched [0.17ms]
+
+ 89 pass
+ 0 fail
+ 603 expect() calls
+Ran 89 tests across 6 files. [52.00ms]

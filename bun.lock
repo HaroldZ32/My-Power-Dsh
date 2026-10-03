@@ -117,6 +117,10 @@
       "name": "@mpd-dsh/tools",
       "version": "0.2.3",
     },
+    "packages/mpd-tui-adapter-plugin": {
+      "name": "@mpd-dsh/tui-adapter",
+      "version": "0.1.0",
+    },
     "packages/mpd-tui-plugin": {
       "name": "@mpd-dsh/mpd-tui",
       "version": "0.1.0",
@@ -436,6 +440,8 @@
     "@mpd-dsh/team-watchdog-plugin": ["@mpd-dsh/team-watchdog-plugin@workspace:packages/mpd-team-watchdog-plugin"],
 
     "@mpd-dsh/tools": ["@mpd-dsh/tools@workspace:packages/mpd-tools-plugin"],
+
+    "@mpd-dsh/tui-adapter": ["@mpd-dsh/tui-adapter@workspace:packages/mpd-tui-adapter-plugin"],
 
     "@mpd-dsh/ulw": ["@mpd-dsh/ulw@workspace:packages/mpd-ulw-plugin"],
 

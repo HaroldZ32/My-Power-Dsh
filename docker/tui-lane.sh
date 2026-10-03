@@ -12,17 +12,35 @@
 #   tui.pluginAddHost    `dsh plugin --profile dsh-tui add <host>` succeeds
 #   tui.pluginAddBundle  `dsh plugin --profile dsh-tui add .` (THIS bundle) succeeds
 #   tui.compose          `dsh --profile dsh-tui --dump-config` composes
-#   tui.registryDefaultMpd  the TUI's OWN scoped registry row is id-targeted to `mpd`
-#                        (harness 0.1.7: a dsh-tui profile composes no dsh-web-app layer,
-#                        so the web-plane target is skipped there; without the second
-#                        id-target the TUI keeps `default: standard` while NOTHING in
-#                        that composition declares a `standard` preset)
+#   tui.presetPreference  the DOCUMENTED USER path is performed and witnessed: the dsh-tui preference
+#                        file (`<HOME>/.dsh-tui/agent-preset.json`) is written byte-exactly — against
+#                        the INSTALLED writer's own output when it is reachable — and the host
+#                        `dsh-tui-agent-preset-registry` row stays UNTOUCHED by the bundle (strict
+#                        zero-override: the bundle id-targets no host row any more)
 #   tui.presetRow        the `preset-mpd` row is composed in the TUI plane
 #   tui.mpdTuiRow        the bundle's `mpd-tui` row is composed
 #   tui.agentTeamRows    the three official Agent Teams rows are composed
+#   tui.teamSceneOpened  the /mpd team scene opens on a real terminal
+#   tui.teamGraphDrawn   the team DAG boxes are DRAWN on a real terminal
+#   tui.teamGraphEdges   the dependency edges are drawn with box-drawing junctions
+#   tui.teamGraphContent the boxes carry the record's own task ids and subjects
+#   tui.mergedPanelOpens the MPD combo (alt+a / `M-a`) opens the MERGED panel: its own title, the
+#                        host's subagent section, AND the team body the team-scene arm proves
+#   tui.mergedPanelOrder on the CAPTURED pane, the subagent section sits ABOVE the team section
+#                        (the host's empty-state line when this session has no subagent row)
+#   tui.hostDashboardKeyIntact  Ctrl+A still reaches the HOST's own subagent dashboard — proving the
+#                        merged panel took nothing from the host's key (negative form when the host
+#                        dashboard cannot be witnessed in this container: Ctrl+A opened the MPD
+#                        panel nowhere, while alt+a is what opens it)
+#   tui.noDirectTuiSeam  the wave's own D6 gate (no file outside the TUI adapter names a `ctx.tui*`
+#                        seam) runs on a byte-verified copy of the INSTALLED tree — or is recorded as
+#                        an unmade measurement, never as a pass
 #   tui.boot             the REAL TUI reaches its chat screen on a real PTY (tmux)
 #   tui.noFatalSignatures  the pane/log carries no apply/module/preset failure
 #   tui.sessionPreset    the session the TUI created records agentPreset=mpd
+#
+# EVERY pane an assertion judges is ALSO written into the run's evidence dir (`$OUT_DIR/tui-panes/`,
+# one raw text file per captured step), so a reader re-reads the exact screen instead of the verdict.
 #
 # Usage (env from the entrypoint's sandbox):
 #   bash docker/tui-lane.sh
@@ -39,6 +57,13 @@ TUI_VERSION="${TUI_VERSION:-0.12.0}"
 
 TUI_DIR="$WORK_DIR/tui"
 mkdir -p "$TUI_DIR"
+# The panes this lane asserts on are EVIDENCE, so every capture lands in the RUN's own evidence dir
+# as well as in the scratch tree: the screen an assertion judged must be re-readable without
+# rerunning the container. `OUT_DIR` is handed over by docker/entrypoint.sh (it is the mounted /out);
+# a lane run by hand falls back to a directory beside its own scratch files.
+EVIDENCE_DIR="${OUT_DIR:-$TUI_DIR}"
+PANE_DIR="$EVIDENCE_DIR/tui-panes"
+mkdir -p "$PANE_DIR"
 
 json_escape() {
   local s="$1"
@@ -62,6 +87,33 @@ on_err() {
   exit "$code"
 }
 trap 'on_err' ERR
+
+# capture_pane <step> — snapshot the WHOLE pane (wrapped lines joined, so a row reads as one line)
+# to the scratch file AND to the run's evidence dir: the captured text IS the artifact the assertions
+# below judge, so it has to outlive the container. A capture that returns nothing leaves an empty
+# file and the assertion reading it reddens on its own — this helper never fails the lane itself.
+capture_pane() {
+  local step="$1"
+  tmux -S "$SOCK" capture-pane -p -J -t tui >"$TUI_DIR/pane-$step.txt" 2>/dev/null || true
+  cp "$TUI_DIR/pane-$step.txt" "$PANE_DIR/pane-$step.txt" 2>/dev/null || true
+}
+
+# pane_line_of <ERE> <file> — the 1-based line of the FIRST match, or 0 when the pattern is absent,
+# so a MISSING marker can never be compared as a line number and pass an order arm by accident.
+pane_line_of() {
+  local found
+  found="$(grep -n -m1 -E "$1" "$2" 2>/dev/null | cut -d: -f1 || true)"
+  printf '%s' "${found:-0}"
+}
+
+# pane_hits <ERE> <file> — how many lines match, or 0 for a missing file or no match.
+# `|| true` and NOT `|| echo 0`: `grep -c` already PRINTS its count on a no-match exit, so an
+# `echo 0` fallback would append a SECOND value and every numeric test below would then fail.
+pane_hits() {
+  local count
+  count="$(grep -cE "$1" "$2" 2>/dev/null || true)"
+  printf '%s' "${count:-0}"
+}
 
 # ── 1. the TUI host ────────────────────────────────────────────────────────────
 npm i -g "@deepseek-harness-tui/dsh-tui@$TUI_VERSION" >"$TUI_DIR/install-host.log" 2>&1
@@ -94,14 +146,69 @@ record tui.compose "$([ "$DUMP_EXIT" = 0 ] && echo true || echo false)" \
 row_block() { awk -v id="$1" '$0 ~ "^- id: " id "$" {f=1} f && NR>1 && /^- id: / && $0 !~ "^- id: " id "$" {exit} f' "$TUI_DIR/dump.yml"; }
 
 REG_BLOCK="$(row_block dsh-tui-agent-preset-registry)"
-if printf '%s' "$REG_BLOCK" | grep -qE '^\s+default: mpd$'; then
-  record tui.registryDefaultMpd true \
-    "the TUI's OWN scoped registry row is id-targeted to the mpd preset (user decision D10 on the 0.1.7 row model)" \
-    "id=dsh-tui-agent-preset-registry default=mpd"
+# ── THE USER-LEVEL PRESET PREFERENCE (the channel that REPLACED the removed override) ──────────
+# The bundle used to id-target this host row with `config.default: mpd`. That override is GONE by
+# design (strict zero-override, user decision 2026-10-02): a deployment default is the USER's to
+# choose, and dsh-tui's own persisted preference is that channel. This lane therefore PERFORMS the
+# documented user path BEFORE the TUI process starts, and `tui.sessionPreset` further down proves it
+# is what made the session resolve `mpd` — nothing else selects a preset here.
+#
+# THE BYTES ARE THE CONTRACT, not an invention: dsh-tui's `lib/types/presetPrefs.js` persists
+# `JSON.stringify({ preset }, null, 2)` — two-space JSON, NO trailing newline — into
+# `<HOME>/.dsh-tui/agent-preset.json` (docs/preset-default.md, "The exact file format"). Two
+# INDEPENDENT readers witness the written file: its hex (a literal the writer never produces by
+# itself) and, when the installed dsh-tui is reachable, that writer's OWN output in a scratch dir.
+TUI_PREF_DIR="$HOME/.dsh-tui"
+TUI_PREF="$TUI_PREF_DIR/agent-preset.json"
+PREF_EXPECTED_HEX="7b0a202022707265736574223a20226d7064220a7d"
+PREF_WRITER="the installed dsh-tui writer was NOT reachable — the literal byte contract was used"
+PREF_PARITY="not compared"
+mkdir -p "$TUI_PREF_DIR"
+printf '{\n  "preset": "mpd"\n}' >"$TUI_PREF"
+PREF_HEX="$(od -An -tx1 "$TUI_PREF" 2>/dev/null | tr -d ' \n' || true)"
+PREF_WRITER_MODULE="$(find -L "$DSH_HOME/profiles" -path '*/@deepseek-harness-tui/dsh-tui/lib/types/presetPrefs.js' -print -quit 2>/dev/null || true)"
+if [ -n "$PREF_WRITER_MODULE" ] && [ -f "$PREF_WRITER_MODULE" ]; then
+  PREF_WRITER_DIR="$TUI_DIR/preset-pref-writer"
+  # The installed writer is pointed at a scratch data dir; ITS bytes are then compared with the file
+  # this lane wrote, so a shape that drifted inside dsh-tui itself reddens THIS arm instead of passing.
+  node --input-type=module -e '
+    import { pathToFileURL } from "node:url"
+    const [modulePath, dir] = process.argv.slice(1)
+    const mod = await import(pathToFileURL(modulePath).href)
+    if (typeof mod.writePresetPref !== "function") { console.error("writePresetPref absent"); process.exit(1) }
+    if (mod.writePresetPref("mpd", dir) !== true) { console.error("writePresetPref refused"); process.exit(1) }
+  ' "$PREF_WRITER_MODULE" "$PREF_WRITER_DIR" >"$TUI_DIR/preset-pref-writer.log" 2>&1 || true
+  if [ -f "$PREF_WRITER_DIR/agent-preset.json" ]; then
+    PREF_WRITER="dsh-tui@$TUI_VERSION lib/types/presetPrefs.js#writePresetPref"
+    if cmp -s "$PREF_WRITER_DIR/agent-preset.json" "$TUI_PREF"; then PREF_PARITY="identical"; else PREF_PARITY="DIFFERS"; fi
+  else
+    PREF_WRITER="the installed dsh-tui writer was found but refused (see 12-tui step log)"
+  fi
+fi
+# (a) THE HOST ROW IS UNTOUCHED BY THE BUNDLE. The host's OWN dsh-tui patch declares this row with
+# `config.default: standard` (its cordis.patch.yml, "0.1.7 replaces directory discovery"), and the
+# bundle must not replace that decision — which is exactly what the removed id-target did when it
+# forced `mpd` here. So the subject is NOT "the row has no default" (the host's one is expected and
+# must survive) but "the row does not carry the bundle's `mpd`": witness 1 is the composed row, and
+# witness 2 is the SHIPPED layers of the INSTALLED bundle, which must name the id nowhere as a
+# column-0 id-target (an `insert:` child may reuse an id; a column-0 `- id:` is an override).
+TUI_BUNDLE_DIR="$DSH_HOME/profiles/dsh-tui/node_modules/@mpd-dsh/mpd"
+REG_DEFAULT_MPD="$(printf '%s' "$REG_BLOCK" | grep -cE 'default[":[:space:]]*"?mpd' 2>/dev/null || true)"
+REG_DEFAULT_ACTUAL="$(printf '%s' "$REG_BLOCK" | grep -m1 -oE 'default[":[:space:]]*"?[A-Za-z0-9_-]+' 2>/dev/null | sed -E 's/.*default[":[:space:]]*"?//' || true)"
+REG_ID_TARGETS="$(grep -nE '^- id: dsh-tui-agent-preset-registry$' "$TUI_BUNDLE_DIR/cordis.patch.yml" "$TUI_BUNDLE_DIR/presets/mpd.patch.yml" 2>/dev/null | tr '\n' ';' || true)"
+TUI_BUNDLE_LAYERS=0
+for layer in cordis.patch.yml presets/mpd.patch.yml; do
+  if [ -f "$TUI_BUNDLE_DIR/$layer" ]; then TUI_BUNDLE_LAYERS=$((TUI_BUNDLE_LAYERS + 1)); fi
+done
+if [ "$PREF_HEX" = "$PREF_EXPECTED_HEX" ] && [ "$PREF_PARITY" != "DIFFERS" ] && [ "${REG_DEFAULT_MPD:-1}" = "0" ] \
+   && [ -z "$REG_ID_TARGETS" ] && [ "$TUI_BUNDLE_LAYERS" = "2" ]; then
+  record tui.presetPreference true \
+    "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and ${PREF_WRITER} — AND the host registry row is UNTOUCHED by the bundle (its own default reads '${REG_DEFAULT_ACTUAL:-<none>}', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd" \
+    "pref=$TUI_PREF hex=$PREF_HEX writerParity=$PREF_PARITY hostRowDefault=${REG_DEFAULT_ACTUAL:-<none>} bundleForcedMpdLines=0 shippedIdTargets=<none> layers=$TUI_BUNDLE_LAYERS/2"
 else
-  record tui.registryDefaultMpd false \
-    "the TUI registry row does not carry default: mpd, so a dsh-tui session would ask for a preset this composition does not declare" \
-    "$(printf '%s' "$REG_BLOCK" | head -n 3 | tr '\n' ' ')"
+  record tui.presetPreference false \
+    "the user-level preset preference did not hold: hex=${PREF_HEX:-<unreadable>} (expected $PREF_EXPECTED_HEX) writerParity=$PREF_PARITY hostRowDefault=${REG_DEFAULT_ACTUAL:-<none>} hostRowMpdLines=${REG_DEFAULT_MPD:-?} shippedIdTargets=${REG_ID_TARGETS:-<none>} bundleLayers=${TUI_BUNDLE_LAYERS:-0}/2 bundleDir=${TUI_BUNDLE_DIR}" \
+    "writer=$PREF_WRITER pref=$TUI_PREF"
 fi
 
 if grep -qE '^- id: preset-mpd$' "$TUI_DIR/dump.yml"; then
@@ -144,7 +251,7 @@ for _ in $(seq 1 60); do
   if printf '%s' "$PANE" | grep -qE '❯|esc to interrupt|按 Esc'; then READY=1; break; fi
 done
 sleep 4
-tmux -S "$SOCK" capture-pane -p -J -t tui >"$TUI_DIR/pane-boot.txt" 2>/dev/null || true
+capture_pane boot
 
 # ── THE TEAM SCENE, on a real terminal (W3) ──────────────────────────────────
 # The graph is this wave's visual centrepiece and until now only unit arms had ever drawn it: the
@@ -179,7 +286,7 @@ printf '{"version":1,"active":{}}' >"$WORK_DIR/ws/.mpd/team/teams.json"
 
 tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
 sleep 6
-tmux -S "$SOCK" capture-pane -p -J -t tui >"$TUI_DIR/pane-team.txt" 2>/dev/null || true
+capture_pane team
 TEAM_PANE="$(cat "$TUI_DIR/pane-team.txt" 2>/dev/null || true)"
 record tui.teamSceneOpened "$(printf '%s' "$TEAM_PANE" | grep -q 'task dependency graph' && echo true || echo false)" \
   "the /mpd team scene opened on a real terminal" "chars=$(printf '%s' "$TEAM_PANE" | wc -c)"
@@ -190,6 +297,166 @@ record tui.teamGraphEdges "$(printf '%s' "$TEAM_PANE" | grep -qE '┬|┴|│' &
 record tui.teamGraphContent "$(printf '%s' "$TEAM_PANE" | grep -q 'T1' && printf '%s' "$TEAM_PANE" | grep -q 'build the graph' && echo true || echo false)" \
   "the boxes carry the record's own task ids and subjects" "ids=T1 subject=build the graph"
 
+# ── 4b. THE MERGED PANEL: the host's own subagent rows ABOVE the MPD team body ──
+# WHAT OPENS IT, AND WHAT MUST NOT — two arms below pin the split:
+#   * `alt+a` is the MPD-owned combo (`packages/mpd-tui-plugin/src/shortcuts.ts`, SHORTCUT_BINDINGS:
+#     `{ combo: "alt+a", … action: "openSubagents" }`, which the plugin refuses to move onto the
+#     host's key);
+#   * `Ctrl+A` is the HOST's own subagent dashboard (`dsh-tui` 0.12.0 `utils/keymap.js`:
+#     `{ id: 'dashboard', defaults: ['ctrl+a'] }`) and must keep working.
+# On a real terminal the combo is `M-a`, and the scene is CLOSED FIRST — not for convenience: the
+# host's own shortcut registry documents that "overlays (pickers, dialogs, scenes, the session
+# browser) own the keyboard while open; shortcuts match only in the plain chat state"
+# (`lib/types/dsh-adapter/shortcuts.js`), so the combo is sent from the CHAT state. The team scene's
+# `Escape` closes it because nothing is pinned (`scenes.ts`: the escape arm unpins only while a task
+# IS pinned, and closes otherwise).
+tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+sleep 2
+capture_pane teamClosed
+tmux -S "$SOCK" send-keys -t tui M-a 2>/dev/null || true
+sleep 5
+capture_pane merged
+MERGED_PANE="$TUI_DIR/pane-merged.txt"
+
+# (1) THE PANEL OPENED — and it is the MERGED one, not the team scene it came from: its own title
+# line, the subagent section this scene exists to add (the section header always renders; without a
+# host subagent row the panel also carries the host's own empty-state line), and the team body's
+# record markers `tui.teamGraphContent` above already proves are drawn.
+MERGED_TITLE_HITS="$(pane_hits 'MPD subagents \+ team' "$MERGED_PANE")"
+MERGED_SUB_HITS="$(pane_hits 'subagents +[0-9]+ total|No subagents in the current session' "$MERGED_PANE")"
+MERGED_TEAM_HITS="$(pane_hits 'build the graph|task dependency graph' "$MERGED_PANE")"
+if [ "$MERGED_TITLE_HITS" -gt 0 ] && [ "$MERGED_SUB_HITS" -gt 0 ] && [ "$MERGED_TEAM_HITS" -gt 0 ]; then
+  record tui.mergedPanelOpens true \
+    "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal: the pane carries the scene's own title, its subagent section, and the team body the /mpd team arm proves is drawn" \
+    "title=\"MPD subagents + team\" titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0)"
+else
+  record tui.mergedPanelOpens false \
+    "the MPD combo did NOT open the merged panel: titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS (each must be > 0) — the pane is the screen alt+a produced after Escape closed the team scene" \
+    "pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) head=$(head -c 200 "$MERGED_PANE" 2>/dev/null | tr '\n' ' ' | tr -d '"\\')"
+fi
+
+# (2) THE ROW ORDER on the CAPTURED pane: the subagent section above the team section. The branch
+# actually measured is stated in the record, because the two are different screens: a session with no
+# host subagent row renders the host's own EMPTY-STATE line, and one with a row renders the row.
+# Whichever branch it is, the marker's line index must be > 0 and BELOW the team body's first marker.
+MERGED_SUB_HEAD_LINE="$(pane_line_of 'subagents +[0-9]+ total' "$MERGED_PANE")"
+MERGED_SUB_EMPTY_LINE="$(pane_line_of 'No subagents in the current session' "$MERGED_PANE")"
+MERGED_TEAM_LINE="$(pane_line_of 'task dependency graph|build the graph' "$MERGED_PANE")"
+if [ "$MERGED_SUB_EMPTY_LINE" -gt 0 ]; then
+  MERGED_SUB_LINE="$MERGED_SUB_EMPTY_LINE"
+  MERGED_SUB_BRANCH="the host's own empty-state line (this session carries NO host subagent row)"
+else
+  MERGED_SUB_LINE="$MERGED_SUB_HEAD_LINE"
+  MERGED_SUB_BRANCH="the subagent section header (this session carries at least one host subagent row)"
+fi
+MERGED_ORDER_RAW="subagentMarker=line ${MERGED_SUB_LINE:-0} [${MERGED_SUB_BRANCH}] teamMarker=line ${MERGED_TEAM_LINE:-0} header=line ${MERGED_SUB_HEAD_LINE:-0} emptyState=line ${MERGED_SUB_EMPTY_LINE:-0} pane=pane-merged.txt"
+if [ "${MERGED_SUB_LINE:-0}" -gt 0 ] && [ "${MERGED_TEAM_LINE:-0}" -gt 0 ] && [ "${MERGED_SUB_LINE:-0}" -lt "${MERGED_TEAM_LINE:-0}" ]; then
+  record tui.mergedPanelOrder true \
+    "the captured pane holds the subagent section ABOVE the team section — measured marker: ${MERGED_SUB_BRANCH}, at line ${MERGED_SUB_LINE}, above the team body's first marker at line ${MERGED_TEAM_LINE}" \
+    "$MERGED_ORDER_RAW"
+else
+  record tui.mergedPanelOrder false \
+    "the subagent section is NOT above the team section on the captured pane (or a marker is missing, which compares as line 0): ${MERGED_ORDER_RAW}" \
+    "$MERGED_ORDER_RAW"
+fi
+
+# ── 4c. THE HOST'S OWN KEY: `Ctrl+A` must still reach the host's subagent dashboard ──
+# The control this wave needs: MPD's merged panel must not have taken the host's key. The pane the
+# combo acts on is re-captured first, because a control run on the wrong screen proves nothing: if
+# `Escape` did not close the merged panel, this arm records FALSE with that reason instead of
+# reading the leftover MPD title as "MPD took Ctrl+A".
+tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+sleep 2
+capture_pane mergedClosed
+MERGED_AFTER_CLOSE="$(pane_hits 'MPD subagents \+ team' "$TUI_DIR/pane-mergedClosed.txt")"
+tmux -S "$SOCK" send-keys -t tui C-a 2>/dev/null || true
+sleep 3
+capture_pane hostkey
+# The host's dashboard title is i18n (`subagent-dashboard-title`): English " Subagent Dashboard " and
+# Chinese " 子代理面板 ". The lane boots `env -i` with NO LANG, and dsh-tui's own detectLocaleLang()
+# returns 'zh' for an ABSENT locale — so BOTH spellings are the host's title, and matching only the
+# English one would call a working host dashboard broken.
+HOST_DASH_HITS="$(pane_hits 'Subagent Dashboard|子代理面板' "$TUI_DIR/pane-hostkey.txt")"
+HOSTKEY_MPD_HITS="$(pane_hits 'MPD subagents \+ team' "$TUI_DIR/pane-hostkey.txt")"
+if [ "${MERGED_AFTER_CLOSE:-0}" -gt 0 ]; then
+  record tui.hostDashboardKeyIntact false \
+    "the CONTROL COULD NOT BE RUN: Escape left the merged panel on screen, so the pane Ctrl+A acted on is not the chat screen — this arm proves nothing about the host's key and must not be read as a pass" \
+    "afterEscape=merged-panel-still-open mpdTitleHits=$MERGED_AFTER_CLOSE pane=pane-mergedClosed.txt"
+elif [ "${HOST_DASH_HITS:-0}" -gt 0 ]; then
+  record tui.hostDashboardKeyIntact true \
+    "Ctrl+A still opens the HOST's own subagent dashboard on a real terminal: the pane carries the host dashboard's own title, so the MPD merged panel (alt+a) took nothing from the host's key" \
+    "hostDashboard=opened ctrlA=host-dashboard ctrlAOpenedMpdPanel=no title=<the host's own subagent-dashboard-title, EN or zh> hits=$HOST_DASH_HITS pane=pane-hostkey.txt"
+elif [ "${HOSTKEY_MPD_HITS:-0}" -eq 0 ]; then
+  record tui.hostDashboardKeyIntact true \
+    "NEGATIVE FORM (the host dashboard could not be witnessed in this container): Ctrl+A did NOT open the MPD merged panel — its title is absent from the pane Ctrl+A produced, on a chat screen Escape provably restored — while alt+a IS what opens that panel (tui.mergedPanelOpens above). MPD therefore did not take Ctrl+A; what this container cannot show is the host's own dashboard answering it" \
+    "hostDashboard=not-witnessed ctrlA=neither-surface ctrlAOpenedMpdPanel=no mpdTitleHitsInCtrlAPane=$HOSTKEY_MPD_HITS pane=pane-hostkey.txt"
+else
+  record tui.hostDashboardKeyIntact false \
+    "MPD TOOK THE HOST'S KEY: Ctrl+A produced the merged panel (its title is in the pane Ctrl+A produced), so the host's own subagent dashboard is unreachable by its own key" \
+    "ctrlA=mpd-merged-panel mpdTitleHits=$HOSTKEY_MPD_HITS hostDashboardTitleHits=${HOST_DASH_HITS:-0} pane=pane-hostkey.txt"
+fi
+
+# ── 4d. THE WAVE'S OWN D6 GATE, on a byte-verified copy of the INSTALLED tree ───
+# `packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts` is the executable form of
+# "no file outside the TUI adapter may name a `ctx.tui*` seam". It scans `packages/mpd-*/src/**`
+# from the ROOT IT IS RUN OUT OF (`resolve(import.meta.url, "..", "..", "..")`), and in a container
+# the installed bundle can sit UNDER node_modules, where node refuses to strip types — so the SUBJECT
+# is copied to a scratch root and every copied byte is compared before the gate runs, the same move
+# docker/entrypoint.sh makes for verify-no-host-override ("the subject stays the INSTALLED bytes,
+# only the runner's location changes"). A subject that cannot be verified is NEVER reported as a pass.
+SEAM_GATE_REL="packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts"
+SEAM_GATE_SRC=""
+for candidate in "$TUI_BUNDLE_DIR" "$APP_DIR"; do
+  if [ -f "$candidate/$SEAM_GATE_REL" ]; then SEAM_GATE_SRC="$candidate"; break; fi
+done
+SEAM_SUBJECT="not compared"
+SEAM_CODE=0
+SEAM_OUT=""
+if [ -n "$SEAM_GATE_SRC" ] && command -v node >/dev/null 2>&1; then
+  SEAM_DIR="$TUI_DIR/seam-gate-subject"
+  rm -rf "$SEAM_DIR"
+  mkdir -p "$SEAM_DIR/packages/mpd-tui-adapter-plugin/test"
+  for pkg in "$SEAM_GATE_SRC"/packages/mpd-*; do
+    [ -d "$pkg/src" ] || continue
+    mkdir -p "$SEAM_DIR/packages/$(basename "$pkg")"
+    cp -RL "$pkg/src" "$SEAM_DIR/packages/$(basename "$pkg")/src" 2>/dev/null || true
+  done
+  cp "$SEAM_GATE_SRC/$SEAM_GATE_REL" "$SEAM_DIR/$SEAM_GATE_REL" 2>/dev/null || true
+  SEAM_DRIFT=""
+  while IFS= read -r rel; do
+    if [ ! -f "$SEAM_GATE_SRC/packages/$rel" ]; then SEAM_DRIFT="$SEAM_DRIFT missing:$rel"
+    elif ! cmp -s "$SEAM_GATE_SRC/packages/$rel" "$SEAM_DIR/packages/$rel"; then SEAM_DRIFT="$SEAM_DRIFT differs:$rel"; fi
+  done < <(cd "$SEAM_DIR/packages" && find . -type f -name '*.ts' | sed 's#^\./##' | sort)
+  if [ -z "$SEAM_DRIFT" ] && cmp -s "$SEAM_GATE_SRC/$SEAM_GATE_REL" "$SEAM_DIR/$SEAM_GATE_REL"; then
+    SEAM_SUBJECT="byte-identical (cmp over every copied .ts and the gate file itself)"
+  else
+    SEAM_SUBJECT="DRIFTED:${SEAM_DRIFT:- <gate file>}"
+  fi
+  SEAM_OUT="$(node "$SEAM_DIR/$SEAM_GATE_REL" 2>&1)" || SEAM_CODE=$?
+fi
+SEAM_VERDICT="$(printf '%s\n' "$SEAM_OUT" | grep -m1 -E '^RESULT: (PASS|FAIL)' || true)"
+SEAM_SCANNED="$(printf '%s\n' "$SEAM_OUT" | grep -m1 -E '^scanned: ' || true)"
+SEAM_FINDING="$(printf '%s\n' "$SEAM_OUT" | grep -m1 -E '^[^ ].*:[0-9]+ ' || true)"
+if [ -z "$SEAM_GATE_SRC" ] || ! command -v node >/dev/null 2>&1; then
+  record tui.noDirectTuiSeam null \
+    "the D6 seam gate was NOT RUN: ${SEAM_GATE_SRC:-no bundle dir carries $SEAM_GATE_REL}$(command -v node >/dev/null 2>&1 && echo '' || echo ' and node is not on PATH') — an unmade measurement, deliberately not a pass" \
+    "gate=not-run source=${SEAM_GATE_SRC:-none} node=$(command -v node 2>/dev/null || echo none)"
+elif [ "$SEAM_SUBJECT" != "byte-identical (cmp over every copied .ts and the gate file itself)" ]; then
+  record tui.noDirectTuiSeam null \
+    "the D6 seam gate ran on a copy that is NOT byte-identical to the installed tree, so its verdict would not be about the installed bytes — recorded as an unmade measurement, never as a pass" \
+    "gate=not-run subject=$SEAM_SUBJECT source=$SEAM_GATE_SRC"
+elif [ "$SEAM_CODE" -eq 0 ] && printf '%s' "$SEAM_VERDICT" | grep -q 'RESULT: PASS'; then
+  record tui.noDirectTuiSeam true \
+    "the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types" \
+    "gate exit=0 subject=$SEAM_SUBJECT source=$SEAM_GATE_SRC ${SEAM_SCANNED:-<no scanned line>} ${SEAM_VERDICT}"
+else
+  record tui.noDirectTuiSeam false \
+    "the D6 gate named a violation in the installed tree (exit=$SEAM_CODE): ${SEAM_VERDICT:-<no verdict line>} ${SEAM_FINDING}" \
+    "gate exit=$SEAM_CODE subject=$SEAM_SUBJECT source=$SEAM_GATE_SRC ${SEAM_SCANNED:-<no scanned line>} ${SEAM_FINDING:-<no finding line>}"
+fi
+
+tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+sleep 1
 tmux -S "$SOCK" send-keys -t tui "/quit" Enter 2>/dev/null || true
 sleep 2
 tmux -S "$SOCK" kill-server 2>/dev/null || true
@@ -268,7 +535,13 @@ fi
 TUI_SUMMARY="$(awk '/"name":"tui\./ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
 TUI_TOTAL="${TUI_SUMMARY%% *}"
 TUI_BAD="${TUI_SUMMARY##* }"
-if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 11 ]; then
+# The floor is the number of tui.* records this lane REALLY writes BEFORE this exit record (19 since
+# the merged-panel group landed: the closed R5/zero-override set of 15 plus mergedPanelOpens,
+# mergedPanelOrder, hostDashboardKeyIntact and noDirectTuiSeam — counted from the writers, not
+# guessed). It is pinned so a record that silently disappears from the writer reddens instead of
+# shrinking the lane's coverage (measured 2026-09-27: all eleven assertions green and the lane
+# still reported laneExit=false — the inverse failure).
+if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 19 ]; then
   record tui.laneExit true "the TUI lane ran to completion with every assertion green" "records=$TUI_TOTAL"
   exit 0
 fi

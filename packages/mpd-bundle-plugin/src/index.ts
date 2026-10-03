@@ -96,7 +96,7 @@ function webServerOf(dsh: any, ctx: any): any {
   return undefined
 }
 
-import { resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /**
  * Register the watchdog routes when a web server exists, and re-register them on every later bind.
@@ -129,7 +129,7 @@ function apply(ctx: any): void {
     })
     if (!result.state) {
       // A refusal stays retryable: a later rebind may accept the same routes.
-      console.warn("[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
+      rowLogLine("mpd-bundle", "[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
       return false
     }
     registered = true
