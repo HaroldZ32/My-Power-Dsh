@@ -164,22 +164,22 @@ export const EXEMPT_FILES: readonly ExemptFile[] = [
     requires: "process.stderr.write",
   },
   {
-    path: "packages/mpd-mcp-astgrep/launch.ts",
+    path: "packages/mpd-mcp-astgrep/src/launch.ts",
     reason: "silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured",
     requires: 'installTerminalSilence("mpd-mcp-astgrep")',
   },
   {
-    path: "packages/mpd-mcp-codegraph/launch.ts",
+    path: "packages/mpd-mcp-codegraph/src/launch.ts",
     reason: "silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1)",
     requires: 'installTerminalSilence("mpd-mcp-codegraph")',
   },
   {
-    path: "packages/mpd-mcp-gitbash/launch.ts",
+    path: "packages/mpd-mcp-gitbash/src/launch.ts",
     reason: "silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured",
     requires: 'installTerminalSilence("mpd-mcp-gitbash")',
   },
   {
-    path: "packages/mpd-mcp-lsp/launch.ts",
+    path: "packages/mpd-mcp-lsp/src/launch.ts",
     reason: "silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured",
     requires: 'installTerminalSilence("mpd-mcp-lsp")',
   },
@@ -622,7 +622,7 @@ export function selfTest(): SelfTestResult {
     // The declared exempt sink: its own hits are out of band BECAUSE the anchor holds.
     seed("packages/mpd-mcp-shared/log-sink.ts", "process.stderr.write(\"the sink\")\n// process.stderr.write anchor\n")
     // A second declared exempt path WITHOUT its anchor: the exemption must NOT hold for it.
-    seed("packages/mpd-mcp-lsp/launch.ts", "console.log(\"no sink here\")\n")
+    seed("packages/mpd-mcp-lsp/src/launch.ts", "console.log(\"no sink here\")\n")
     // An inventoried file with MORE hits than its frozen ceiling: the ceiling must bite.
     seed("packages/mpd-bundle-plugin/src/index.ts", "console.warn(\"a\")\nconsole.warn(\"b\")\nconsole.warn(\"c\")\n")
     // The other inventoried files are absent from the fixture, so their entries must read as STALE.
@@ -670,9 +670,9 @@ export function selfTest(): SelfTestResult {
     )
     check(
       "the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt",
-      seeded.staleExempt.includes("packages/mpd-mcp-lsp/launch.ts") &&
-        !seeded.exempt.some((finding) => finding.file === "packages/mpd-mcp-lsp/launch.ts") &&
-        seeded.unfrozen.some((finding) => finding.file === "packages/mpd-mcp-lsp/launch.ts"),
+      seeded.staleExempt.includes("packages/mpd-mcp-lsp/src/launch.ts") &&
+        !seeded.exempt.some((finding) => finding.file === "packages/mpd-mcp-lsp/src/launch.ts") &&
+        seeded.unfrozen.some((finding) => finding.file === "packages/mpd-mcp-lsp/src/launch.ts"),
       `staleExempt=${JSON.stringify(seeded.staleExempt)}`,
     )
     // The inventory was EMPTIED by phase 2, so the two failure directions it used to prove (a file over

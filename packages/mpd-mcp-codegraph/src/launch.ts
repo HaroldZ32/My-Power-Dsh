@@ -32,9 +32,9 @@
 // instead of dying. The retry runs only while NOTHING has been written to
 // stdout: if the first attempt already emitted MCP bytes, a second attempt would
 // corrupt the stream, so that case is reported and exits 1.
-import { installTerminalSilence } from "../mpd-mcp-shared/log-sink.ts"
-import { resolveCodegraphBinary } from "../mpd-mcp-shared/bin-resolve.ts"
-import { applyDaemonPolicy } from "./daemon-policy.ts"
+import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
+import { resolveCodegraphBinary } from "../../mpd-mcp-shared/bin-resolve.ts"
+import { applyDaemonPolicy } from "../daemon-policy.ts"
 
 // R5 (lane F): the terminal writers are taken away BEFORE anything below can use them, and before the
 // adopted server's dynamic import further down. Measured reason: the harness builds this row as
@@ -164,7 +164,10 @@ try {
   // `dist/serve.js` is a sha-pinned prebuilt with no declaration file, so a literal specifier
   // makes TypeScript resolve it and fail with TS7016; widening the specifier to `string` keeps
   // the runtime specifier untouched and leaves the module's shape to the cast below.
-  serve = (await import("./dist/serve.js" as string)) as ServeModule
+// See the cli.js note above: a LITERAL specifier would be bundled into this launcher.
+/** The adopted codegraph server entry, resolved at runtime beside the built launcher. */
+const ADOPTED_SERVE_ENTRY: string = "./serve.js"
+  serve = (await import(ADOPTED_SERVE_ENTRY)) as ServeModule
 } catch (error) {
   // The documented degrade (zero tools, alive, exit 0): see serveUnavailable above.
   await serveUnavailable(stderrText(error))

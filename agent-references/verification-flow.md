@@ -32,6 +32,40 @@ Two lanes, one flag apart:
 |---|---|---|
 | `node scripts/docker-e2e.ts --mode source` | checkout install | `dsh plugin --profile web add .` works from a clone |
 | `node scripts/docker-e2e.ts --mode oneclick` | published package | the packed artifact installs through pnpm's git resolver — the path `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` takes for a user |
+| `node scripts/docker-e2e.ts --mode all` | both, in sequence | one command answers the whole "does this run everywhere" question; each mode is its own child process with its own evidence dir, and the parent reports the WORST child exit code |
+
+### The surfaces a run covers
+
+One non-skipped run drives **every plane this bundle ships**, and each plane's verdict is read from the
+harness's own session store (`docker/lib/live-verdict.ts`) — never from the model's prose:
+
+| Plane | How it is driven | The assertions it owns |
+|---|---|---|
+| **Web, agent** | a real `POST /api/session/prompt` against the RUNNING Web app | `live.web.*` — a turn started, reached `turn/end reason=completed`, every tool-call payload parsed, an `mpd_*` tool ran, the assistant produced text |
+| **Web, GUI** | Chromium opens the app, types into the composer, presses send, waits for the answer to render, then opens Settings→MPD and the Agent Teams sidebar | `ui.*` — the page loads, the composer accepts input, the prompt is sent, the reply renders, the MPD settings card renders, the team panel renders, **zero console/page errors** |
+| **TUI** | the real `dsh-tui` on a real PTY under tmux; the prompt is TYPED into the pane | `live.tui.*` plus the pre-existing `tui.*` scene/panel/boot group |
+| **Headless** | `dsh --profile headless <prompt>` in a scratch workspace | `live.headless.*`, `boot.llmTurn`, `live.teamRecord`, `live.nativeExecutor`, `live.headlessPresetRow` |
+
+`live.<plane>.noMalformedToolJson` is the arm that catches a **model-output** defect: when the model
+streams a tool-call payload that is not valid JSON, the harness raises `MALFORMED_RESPONSE`, and because
+that code is absent from `DEFAULT_RETRYABLE_CODES` the whole turn is aborted. The failing call leaves NO
+`tool/call` record — the abort happens before the assistant message is committed — so the reader also
+scans the `assistant/attempt` stream records. An audit that reads only `tool/call` reports zero findings
+on a session that actually died.
+
+### Flags that decide what a run MUST prove
+
+| Flag | Meaning |
+|---|---|
+| `--live` | stage the provider credential in the SANDBOX home **before the boot** and run the live arms on all three planes. The key is forwarded by NAME (`docker compose run -e DEEPSEEK_API_KEY`) and deleted before the report is written. Asking for `--live` without a key in the environment is a **hard error (exit 3)**, never a silent null |
+| `--no-browser` | skip the Chromium lane (it downloads a browser). Its `ui.*` rows then record NULL with the reason |
+| `--require-docker` | a skipped lane exits 3 instead of 0 |
+
+**The required-arm gate.** A NULL row means "not attempted", which is the honest shape for an OPTIONAL
+arm. It is the wrong shape for an arm the caller asked for: after the run, every `null` whose name starts
+with a required prefix (`live.`/`boot.llmTurn` under `--live`, `ui.` when the browser lane is on) is
+reported as `UNMEASURED` and turns the exit code into **3**. This is what stops the lane from greening by
+not running the thing it was asked to verify.
 
 ### Rootless, skip, and when the step is fatal
 
@@ -49,10 +83,18 @@ steps before it. Everything above it still had to pass. The notice names the sta
 override, and the command to re-run, so "not verified here" is never mistaken for "verified".
 
 A non-skipped run is graded by the container's own report: `ok`, `passed`, `failed`, and the `null`
-list, where a NULL means an assertion that was deliberately **not attempted** (a live LLM turn needs
-provider credentials the container does not stage) or is **not applicable** in that mode (in one-click
-mode the package ships its own built `dist/`, so there is no in-container build to assert). Read the
-NULLs with their printed reasons; never read `complete=false` as a failure.
+list. Read every NULL with its printed reason; never read `complete=false` as a failure — but never read
+a NULL in a REQUIRED arm as a pass either (see the required-arm gate above).
+
+### What a live arm needs from the credential
+
+The credential is staged ONCE, before the Web app boots, in `$DSH_HOME/.credentials.yaml` as
+`version: 1` + a nested `refs:` mapping. Two measured traps: the harness's reader REFUSES the
+pre-release flat layout by name, and staging the key AFTER the boot leaves the running Web server (and
+therefore the Web and TUI planes) credential-less, so their turns fail with `MISSING_CREDENTIAL` while
+the headless plane — a fresh process — works. Three further rows make the staging auditable:
+`live.credentialStaged`, `live.credentialScoped` (sandbox path, mode 0600, reader-shaped) and
+`live.credentialRemoved` (deleted before the report).
 
 ## Evidence layout
 
@@ -74,5 +116,21 @@ Three failure classes are invisible to every other gate, and each was measured i
 - a dependency set that pnpm refuses on a clean machine (`ERR_PNPM_IGNORED_BUILDS`) even though the
   same tree installs fine on a developer box that already has the build outputs.
 
+Two more were measured later, and both are the reason the lane now drives real turns instead of
+stopping at the mount:
+
+- **a model-output defect that no composition assertion can see.** A turn died with
+  `DeepSeek Messages stream: tool input is invalid JSON` (`MALFORMED_RESPONSE`) while a credential-free
+  run reported 52 of 53 assertions passing and `boot.llmTurn: null`. The failure exists only inside an
+  SSE stream and the abort discards it, so the fix was to drive a real turn on every plane and grade
+  the session store — and to make "the live arm was not attempted" a FAILURE when the caller asked for
+  it, rather than the NULL that had been quietly acceptable.
+- **a live verdict that graded another lane's artifact.** The headless arm's team-record lookup took
+  whatever `find … -print -quit` returned first; after the TUI lane landed that was a FIXTURE named
+  `tui-scene.json`, so two assertions recorded a PASS for a turn they had never measured while a third
+  failed against the fixture's own empty handles. The lookup is now the newest record by mtime with a
+  hard requirement that it postdate the step, and every other verdict is scoped by session + `--since`.
+  A verdict must be about THIS run's artifact or say so.
+
 `verify-plugin-manifest --pack` covers the packaging half of that list statically; only the container
-covers the mount half.
+covers the mount half — and only a driven turn covers the behavioural half.

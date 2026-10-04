@@ -458,7 +458,7 @@ function cpAssets(): void {
   // binary bundle-relatively and hands it to the adopted server. A packed bundle
   // that omits a launcher — OR any module the launcher imports statically — ships a
   // row that cannot start while `npm run pack` still exits 0 (measured: the packed
-  // `mpd-mcp-codegraph/launch.ts:36` imports `./daemon-policy.ts`, which the packed
+  // `mpd-mcp-codegraph/src/launch.ts` imports `../daemon-policy.ts`, which the packed
   // tree lacked; `node --input-type=module -e "import('…/launch.ts')"` then failed
   // ERR_MODULE_NOT_FOUND while pack had exited 0). So the closure is walked, not
   // guessed: every statically imported RELATIVE module comes along, recursively, and

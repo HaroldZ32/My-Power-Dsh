@@ -135,7 +135,7 @@ function selfTest(): void {
   for (const entry of rewrites) {
     if (entry.text.includes("typeof baseUrl") || entry.text.includes("@mpd-dsh/mpd/")) { console.error("[preset-register self-test] FAIL: devFlavor left the packed @mpd-dsh/mpd operand or a baseUrl concat in " + entry.source); process.exit(1) }
   }
-  for (const mcp of ["mpd-mcp-astgrep/launch.ts", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/launch.ts"]) {
+  for (const mcp of ["mpd-mcp-astgrep/dist/launch.js", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/dist/launch.js"]) {
     /** The checkout-relative launcher the rewritten main patch must point at. */
     const target = join(repoRoot, "packages", mcp)
     if (!existsSync(target)) { console.error("[preset-register self-test] FAIL: MCP launcher missing on disk: " + mcp); process.exit(1) }

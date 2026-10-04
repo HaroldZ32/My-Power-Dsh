@@ -1,0 +1,91 @@
+{
+  "task": "diagnose the Web-plane failure `DeepSeek Messages stream: tool input is invalid JSON` and explain why the Docker real-machine lane never caught it",
+  "userRequestVerbatim": "该plugin在web界面运行时报错：DeepSeek Messages stream: tool input is invalid JSON,完全无法运行，我不知道docker实机验证为什么没验出来，给我一个原因，再出方案修改",
+  "verdict": "NOT a plugin-code defect. The DeepSeek model streamed one syntactically invalid tool-call argument; the harness classifies that as MALFORMED_RESPONSE, MALFORMED_RESPONSE is absent from the provider's default retryableCodes, so dsh-llm-retry declines and the agent loop aborts the whole turn. The Docker lane never observed it because its only model-dependent assertion (boot.llmTurn) recorded null in every recorded run — no credential was staged, so no model token was ever produced.",
+  "measuredAt": "2026-10-03T16:20:33Z",
+  "failingSubject": {
+    "session": "session-2ad7e148-b3c1-47d5-b596-5afb3b51da8b",
+    "sessionHeader": { "agentPreset": "standard (header) — agent-preset/selected = mpd at seq 4", "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh" },
+    "route": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoningEffort": "max" },
+    "surface": "Web GUI session — the user message arrived with an rpcId and clientTimeZone (Asia/Shanghai)",
+    "turn": 1,
+    "step": 52,
+    "tool": "ask_user_question",
+    "callId": "call_00_SNqTKgDUaVtUJRsRCYO58821",
+    "argumentsBytes": 3416,
+    "parseFailureOffset": 586,
+    "parseError": "Expected ',' or '}' after property value in JSON at position 586 (line 1 column 587)",
+    "offendingBytes": "让\\\"这条依赖链\"与非链边\"一眼可分。 — the OPENING quote is escaped (\\\\\\\"), the CLOSING quote is a bare ASCII 0x22, which terminates the JSON string early",
+    "offendingCodepoints": "closing quote U+0022 at the reported offset; surrounded by CJK U+4F9D U+8D56 U+94FE / U+4E0E U+975E",
+    "turnEnd": { "seq": 361, "reason": { "kind": "error", "error": { "message": "DeepSeek Messages stream: tool input is invalid JSON", "code": "MALFORMED_RESPONSE" } } },
+    "collateral": "two background subagents (d166cce4-a012-405b-9ca0-93b2e05febb6, dd1c9e0d-4f39-4088-96df-2ef48792dbac) were started at step 51 and orphaned when step 52 aborted the turn"
+  },
+  "rootCauseChain": [
+    "dsh-llm-deepseek/lib/index.js `translate()` — at `message_stop` it JSON.parse()s every tool-call block's accumulated `input_json_delta` text (the block.json accumulation happens at the `content_block_stop` branch: `if (block.content.type === \"tool-call\" && block.json.length > 0) block.content.arguments = block.json`).",
+    "A JSON.parse throw there becomes `malformed(\"tool input is invalid JSON\")` -> `new LlmError(..., \"MALFORMED_RESPONSE\")`.",
+    "The error reaches the agent loop; dsh-llm-retry's `recover()` listener reads `payload.retryPolicy` and does `else if (!policy.retryableCodes.includes(failure.code)) return next();`.",
+    "DEFAULT_RETRYABLE_CODES in @deepseek-ai/dsh-llm is Object.freeze([EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT]) — MALFORMED_RESPONSE is NOT in it.",
+    "No listener returns {kind:'retry'} => the step is not re-attempted => the turn ends with reason.kind='error'. One unescaped byte costs the entire turn.",
+    "MALFORMED_RESPONSE is referenced ONLY inside dsh-llm-deepseek (5 sites) — no other harness package classifies, retries or repairs it (grep over all @deepseek-ai packages)."
+  ],
+  "triggerPressure": {
+    "toolDefinitionsInOneRequest": 97,
+    "toolSchemaBytesInOneRequest": 73643,
+    "mpdContributedTools": 39,
+    "mpdContributedSchemaBytes": 20841,
+    "systemPromptBytes": 23047,
+    "workspaceInstructionReminderBytes": 66202,
+    "note": "the model was asked to emit a deeply nested CJK JSON inside a request already carrying >160 KB of prompt + 73 KB of tool schema"
+  },
+  "whyDockerMissedIt": {
+    "assertionInQuestion": "boot.llmTurn (docker/entrypoint.sh, step 13)",
+    "mechanism": "opt-in: the step only runs when the caller stages DEEPSEEK_API_KEY (`docker compose run -e DEEPSEEK_API_KEY`); otherwise it records `null` with reason 'not attempted: a live LLM turn needs provider credentials and this container stages none'",
+    "observed": "every recorded Docker run reports boot.llmTurn = null",
+    "evidence": [
+      { "path": "evidence/docker/client-install/2026-10-02T13-34-44Z/result.json", "summary": { "total": 53, "passed": 52, "failed": 0, "null": 1, "nullNames": ["boot.llmTurn"] } },
+      { "path": "evidence/docker/client-install-oneclick/2026-10-02T17-16-14Z/result.json", "summary": { "total": 61, "passed": 58, "failed": 0, "null": 3, "nullNames": ["build.bunInstall", "build.dists", "boot.llmTurn"] } },
+      { "path": "evidence/docker/client-install/2026-10-02T13-02-58Z/result.json", "summary": { "total": 53, "passed": 52, "failed": 0, "null": 1, "nullNames": ["boot.llmTurn"] } }
+    ],
+    "structuralReasons": [
+      "The 52-58 passing assertions are composition/mount/HTTP facts (rows applied, tools registered, HTTP 200, POST /api/session/create -> agentPreset=mpd, TUI on a real PTY). None of them reads a model-emitted tool argument, so the class is invisible to them by construction.",
+      "The defect exists only INSIDE an SSE stream, before any durable record — and the harness aborts before committing the assistant message, so even the session store keeps no tool/call record for it (measured: 2962 recorded tool calls across this workspace, 0 malformed arguments, while exactly 1 turn died of this error).",
+      "Even with a key staged, the live arm runs `dsh --profile headless` (docker/entrypoint.sh step 13) — not the `web` profile the user runs — with a three-sentence English prompt whose verdict is a FILESYSTEM artifact (a .mpd/team/teams/*.json record after an approve). A long, deeply nested, CJK-quoted tool argument is not reachable from that prompt.",
+      "Net: install+mount green does NOT imply a model turn survives. The lane proves the plugin is MOUNTED, never that it RAN a turn."
+    ]
+  },
+  "measuredRates": {
+    "sessionsWithToolCalls": 24,
+    "recordedToolCalls": 2962,
+    "malformedToolCallsVisibleInToolCallRecords": 0,
+    "malformedToolCallsVisibleInAssistantAttemptStreams": 1,
+    "erroredTurns": 3,
+    "erroredTurnBreakdown": { "MALFORMED_RESPONSE": 1, "MISSING_CREDENTIAL": 2 }
+  },
+  "reproducer": {
+    "path": "evidence/web/malformed-tool-json/20261003T162033Z/extract-malformed-tool-input.ts",
+    "usage": "node extract-malformed-tool-input.ts --store <DSH_HOME>/sessions [--json]",
+    "whyAssistantAttempt": "the audit MUST read `assistant/attempt` stream records, not `tool/call` records — the abort discards the call, so a tool/call audit reports zero findings on a session that actually died",
+    "observed": "scanned 30 session container(s); malformed tool input: 1; terminal turn failures: 3"
+  },
+  "fixLevers": {
+    "retryInsteadOfAbort": {
+      "knob": "retryPolicy.retryableCodes for provider deepseek-official (add \"MALFORMED_RESPONSE\")",
+      "plumbing": "dsh-base/cordis.patch.yml declares the row `id: llm-deepseek` (name @deepseek-ai/dsh-llm-deepseek-api-key); that plugin registers the provider with settingsNs = the row id and settingsPath = [] (dsh-llm-deepseek-api-key/lib/index.js:52-57), so the `llm-deepseek:` settings section reaches the same Config, which includes retryPolicy (deepSeekConfigFields).",
+      "bundleConstraint": "the bundle may NOT id-target that row — cordis.patch.yml:4-6 states the policy and scripts/verify-no-host-override.ts enforces it dynamically. The settings plane is the route.",
+      "retrySafety": "the failed attempt produced nothing durable — the abort happens at message_stop, before `finish`, so the assistant message is never committed and no tool was dispatched. This is exactly the harness's own stated reason for making EMPTY_RESPONSE retryable by default."
+    },
+    "bundleOwnedAlternatively": {
+      "seam": "mpd-dsh-adapter `onEvent(event, handler)` forwards ctx.on (capabilities().events); dsh-llm-retry's own listener proves `agent/request-error` is a waterfall whose return value decides",
+      "caveat": "a bundle-owned listener returning {kind:'retry'} bypasses the host retry plugin's counters/backoff unless it delegates via next(); it needs its own bounded counter."
+    },
+    "promptMitigation": "mpd registers prompt sections through the adapter (registerPromptSection); a JSON-hygiene rule for tool-argument string values (no bare ASCII quote inside a CJK value) reduces the trigger rate.",
+    "upstreamAsk": "classify MALFORMED_RESPONSE as retryable by default in @deepseek-ai/dsh-llm, and/or salvage the malformed argument payload; the tool with the most free-form CJK text (ask_user_question) is a host tool the bundle cannot reshape."
+  },
+  "gatesToRunForTheFix": [
+    "bun run verify:gates",
+    "bun run verify:manifest",
+    "bun run verify:comments",
+    "bun run verify:docs (the fix adds a doc pair)",
+    "node scripts/docker-e2e.ts --mode source --require-docker (and oneclick) — plus the new --require-live arm so a null boot.llmTurn cannot be reported as a pass"
+  ]
+}

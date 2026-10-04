@@ -89,6 +89,6 @@ bundle patch 行的配置：
     serverName: codegraph
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-codegraph/launch.ts]
+    args: [<bundle>/packages/mpd-mcp-codegraph/dist/launch.js]
     toolCallTimeoutMs: 60000
 ```

@@ -30,7 +30,7 @@ Offline-built MCP server exposing **ast-grep** structural code search/rewrite as
     serverName: ast_grep
     transport: stdio
     command: node
-    args: [<bundle>/packages/mpd-mcp-astgrep/launch.ts]
+    args: [<bundle>/packages/mpd-mcp-astgrep/dist/launch.js]
     toolCallTimeoutMs: 60000
 ```
 

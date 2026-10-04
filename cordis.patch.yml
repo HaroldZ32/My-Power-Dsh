@@ -217,7 +217,7 @@
 
 - insert:
     # B8 (wave 2): this row names NO binary path any more. It launches
-    # packages/mpd-mcp-astgrep/launch.ts, which resolves the binary
+    # packages/mpd-mcp-astgrep/dist/launch.js, which resolves the binary
     # bundle-relatively (env pin -> $MPD_AST_GREP_BIN_DIR -> createRequire of the
     # optionalDependency -> <bundle>/.toolchain/node_modules/.bin/ast-grep|sg) and
     # sets MPD_AST_GREP_SG_PATH only when the caller left it unset, before the
@@ -231,7 +231,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.ts")'
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -243,7 +243,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/launch.ts")'
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")'
         toolCallTimeoutMs: 60000
     - id: mcp-lsp
       name: '@deepseek-ai/dsh-mcp-client'
@@ -252,11 +252,11 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/launch.ts")'
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js")'
           - mcp
         toolCallTimeoutMs: 60000
     # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
-    # launches packages/mpd-mcp-codegraph/launch.ts, which resolves the binary
+    # launches packages/mpd-mcp-codegraph/dist/launch.js, which resolves the binary
     # bundle-relatively (env pin -> createRequire of the optionalDependency ->
     # <bundle>/.toolchain/node_modules/.bin/codegraph) and sets MPD_CODEGRAPH_BIN
     # only when the caller left it unset, then calls runCodegraphServe() (serve.js
@@ -271,7 +271,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts")'
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/launch.js")'
         toolCallTimeoutMs: 60000
     # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
     # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)

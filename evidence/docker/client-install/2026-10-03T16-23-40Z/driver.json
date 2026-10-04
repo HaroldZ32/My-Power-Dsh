@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-10-03T16:23:40.208Z",
+  "finishedAt": "2026-10-03T16:27:46.939Z",
+  "docker": "Docker version 29.8.2, build 7fc2dff",
+  "compose": "Docker Compose version v5.5.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 416,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-Oam3fO",
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=true passed=58 failed=1 null=0 FAILED=[live.nativeExecutor]",
+  "exitCode": 1
+}

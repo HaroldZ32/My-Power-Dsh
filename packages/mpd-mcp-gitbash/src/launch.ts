@@ -9,7 +9,7 @@
 // HOOKUP STATE (honest): the row must name THIS file in `args[0]` instead of `dist/cli.js`.
 // `cordis.patch.yml` is lane B's write scope, so that one-line repoint is handed to the captain; until
 // it lands the row still starts `dist/cli.js` and this launcher is not yet in the path. The launcher
-// itself is proven working — `node packages/mpd-mcp-gitbash/launch.ts bogus` writes the adopted
+// itself is proven working — `node packages/mpd-mcp-gitbash/dist/launch.js bogus` writes the adopted
 // server's usage line into `<root>/.mpd/logs/mpd-mcp-gitbash.log` and zero bytes to stderr.
 //
 // The measured reason the silence is needed at all: the harness builds every stdio MCP row as
@@ -21,7 +21,7 @@
 // reads its command word from `argv.slice(2)` (defaulting to `mcp`), and resolves `stderr` from
 // `node:process` to the `process.stderr` OBJECT — so its `stderr.write(...)` calls do a property lookup
 // at call time and hit the replacement installed below.
-import { installTerminalSilence } from "../mpd-mcp-shared/log-sink.ts"
+import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
 
 // The install is the FIRST statement of the module body: this file's own import above is
 // `log-sink.ts` (node builtins only, chatter-free), and the adopted entry is imported DYNAMICALLY
@@ -30,4 +30,13 @@ installTerminalSilence("mpd-mcp-gitbash")
 
 // The adopted CLI is a built artifact with no declaration file; widening the specifier to `string`
 // keeps the runtime specifier untouched while TypeScript stops resolving it (TS7016).
-await import("./dist/cli.js" as string)
+// The adopted server is a built artifact with no declaration file, so the specifier is typed as a
+// plain string (TS7016). IT IS ALSO A NAMED CONSTANT ON PURPOSE: `bun build` follows a LITERAL
+// dynamic import and would INLINE the whole adopted server into this launcher (measured 2026-10-03 on
+// the ast-grep twin: the bundle ended in `init_cli()` and every adopted byte was duplicated). A
+// non-literal specifier is left alone, and the path resolves at RUNTIME beside THIS MODULE'S BUILT
+// LOCATION (packages/mpd-mcp-<x>/dist/launch.js) — which is why it reads `./cli.js` rather than a
+// path relative to this source file.
+/** The adopted server entry, resolved at runtime beside the built launcher. */
+const ADOPTED_ENTRY: string = "./cli.js"
+await import(ADOPTED_ENTRY)

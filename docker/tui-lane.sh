@@ -54,6 +54,12 @@ WORK_DIR="${WORK_DIR:?}"
 # peer ranges cover the whole band this lane runs (up to and including 0.2.0-rc.2), while 0.11.2 stopped
 # at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. Keep the two in step.
 TUI_VERSION="${TUI_VERSION:-0.12.0}"
+# The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
+# over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
+# turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.
+LIB_DIR="${LIB_DIR:-/opt/mpd-e2e/lib}"
+LIVE="${LIVE:-0}"
+LIVE_BUDGET_MS="${MPD_E2E_LIVE_BUDGET_MS:-300000}"
 
 TUI_DIR="$WORK_DIR/tui"
 mkdir -p "$TUI_DIR"
@@ -453,6 +459,37 @@ else
   record tui.noDirectTuiSeam false \
     "the D6 gate named a violation in the installed tree (exit=$SEAM_CODE): ${SEAM_VERDICT:-<no verdict line>} ${SEAM_FINDING}" \
     "gate exit=$SEAM_CODE subject=$SEAM_SUBJECT source=$SEAM_GATE_SRC ${SEAM_SCANNED:-<no scanned line>} ${SEAM_FINDING:-<no finding line>}"
+fi
+
+# ── 4c. a LIVE turn on the TUI plane, typed into the real PTY ─────────────────
+# WHY HERE, AND NOT AFTER THIS LANE EXITS: the block below quits the app and kills the tmux server, so
+# a turn driven afterwards would have no terminal to type into. Typing the prompt into the pane is the
+# only way to prove the TUI's OWN input path (keystrokes -> agent -> store) rather than an API.
+#
+# The verdict is read from the session store, scoped by `--since`, exactly like the Web and headless
+# arms (AGENTS.md §7: a real artifact, never the pane's narration). The pane is captured on both sides
+# of the turn, because a pane that never echoed the prompt is the first thing a human wants to see.
+if [ "$LIVE" = "1" ]; then
+  TUI_LIVE_SINCE="$(date +%s%3N)"
+  capture_pane live-before
+  tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+  sleep 1
+  # The prompt asks for ONE MPD tool so `live.tui.mpdToolCalled` is a statement about this bundle's
+  # tool plane inside the TUI, not about the model's mood.
+  TUI_PROMPT="Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
+  tmux -S "$SOCK" send-keys -t tui "$TUI_PROMPT" Enter 2>/dev/null || true
+  sleep 2
+  capture_pane live-sent
+  if command -v node >/dev/null 2>&1; then
+    node "$LIB_DIR/live-verdict.ts" --dsh-home "$DSH_HOME" --workspace "$WORK_DIR/ws" --label tui \
+      --state "$STATE_FILE" --since "$TUI_LIVE_SINCE" --wait "$LIVE_BUDGET_MS" || true
+  else
+    record live.tui.turnStarted null "node is not on PATH, so the TUI live verdict could not be read — an unmade measurement, never a pass" "node=absent"
+  fi
+  capture_pane live-after
+else
+  node "$LIB_DIR/live-verdict.ts" --label tui --state "$STATE_FILE" \
+    --unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum" || true
 fi
 
 tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
