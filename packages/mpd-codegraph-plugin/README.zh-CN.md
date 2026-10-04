@@ -46,4 +46,4 @@ CodeGraph（仓库/代码智能索引）集成：解析 `codegraph` 二进制，
 
 ## 用法
 
-没有模型工具；MCP 伴生行 `mcp-codegraph` 暴露 `mcp__codegraph__*`。`codegraph` MCP 行的 `command` env 使用 `MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/launch.ts`；launcher（B8）自行解析二进制，且仅在未设置时写入 `MPD_CODEGRAPH_BIN`，因此本插件与 MCP 行共享同一套解析规则。
+没有模型工具；MCP 伴生行 `mcp-codegraph` 暴露 `mcp__codegraph__*`。`codegraph` MCP 行的 `command` env 使用 `MPD_DSH_CODEGRAPH_CLI || <pkg>/packages/mpd-mcp-codegraph/dist/launch.js`；launcher（B8）自行解析二进制，且仅在未设置时写入 `MPD_CODEGRAPH_BIN`，因此本插件与 MCP 行共享同一套解析规则。

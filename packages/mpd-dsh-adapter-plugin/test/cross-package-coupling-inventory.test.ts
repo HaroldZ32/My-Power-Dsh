@@ -190,6 +190,18 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // importer outside the MCP packages instead of eleven.
   "packages/mpd-dsh-adapter-plugin/src/index.ts :: import { openLogSink } from \"../../mpd-mcp-shared/log-sink\"",
   "packages/mpd-dsh-adapter-plugin/src/index.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink\"",
+  // THE FOUR MCP LAUNCHERS, visible to this scan only since 2026-10-03. They have imported the shared
+  // sink and the shared binary resolver since wave 2 — the coupling is NOT new; what changed is that
+  // the launchers moved from `packages/mpd-mcp-<x>/launch.ts` (outside the scanned band, which is
+  // `packages/mpd-*/src/**`) into `src/` so they could be BUILT, because a `.ts` file under
+  // node_modules cannot be run at all (ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING). Recorded here
+  // because a coupling this gate cannot see is a coupling nobody counts.
+  "packages/mpd-mcp-astgrep/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-astgrep/src/launch.ts :: import { resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
+  "packages/mpd-mcp-codegraph/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-codegraph/src/launch.ts :: import { resolveCodegraphBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   // THE PINNED DEBT (docs/independence.md §4): four live files import the RETIRED adopted body's
   // vendored schemastery tree. Re-homing it before the body is deleted would duplicate a 92 KB
   // third-party library, so the debt is NAMED with a follow-up instead of fixed twice.

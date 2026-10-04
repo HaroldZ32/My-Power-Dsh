@@ -183,6 +183,7 @@ const EXPECTED: readonly string[] = [
   "boot.adapterService",
   "boot.adapterToolCall",
   "boot.mpdTools",
+  "boot.mcpTools",
   "boot.agentTeamTools",
   "boot.sessionGateListener",
   "boot.agentTeamService",
@@ -215,7 +216,49 @@ const EXPECTED: readonly string[] = [
   "tui.boot",
   "tui.noFatalSignatures",
   "tui.sessionPreset",
+  // ── the LIVE arms: one seven-name block per plane (docker/lib/live-verdict.ts) ────────────────
+  // These are the rows that can only be produced by a REAL model turn, read from the harness's own
+  // session store. They are declared HERE so a plane whose arm did not run is reported as `null`
+  // ("not reached") instead of vanishing — the 2026-10-03 defect hid behind exactly that gap, when
+  // `boot.llmTurn` was the only live name and every recorded run reported it as null.
+  "live.credentialStaged",
+  "live.credentialScoped",
+  "live.credentialRemoved",
+  "live.web.turnStarted",
+  "live.web.turnCompleted",
+  "live.web.noErrorTurns",
+  "live.web.noMalformedToolJson",
+  "live.web.toolCallsParsed",
+  "live.web.mpdToolCalled",
+  "live.web.assistantReplied",
+  "live.tui.turnStarted",
+  "live.tui.turnCompleted",
+  "live.tui.noErrorTurns",
+  "live.tui.noMalformedToolJson",
+  "live.tui.toolCallsParsed",
+  "live.tui.mpdToolCalled",
+  "live.tui.assistantReplied",
+  "live.headless.turnStarted",
+  "live.headless.turnCompleted",
+  "live.headless.noErrorTurns",
+  "live.headless.noMalformedToolJson",
+  "live.headless.toolCallsParsed",
+  "live.headless.mpdToolCalled",
+  "live.headless.assistantReplied",
+  "live.teamRecord",
+  "live.nativeExecutor",
+  "live.headlessPresetRow",
   "boot.llmTurn",
+  // ── the REAL BROWSER (docker/lib/browser-lane.ts): the GUI a person actually uses ─────────────
+  "boot.workspaceRegistered",
+  "ui.loads",
+  "ui.workspaceSelected",
+  "ui.composerPresent",
+  "ui.promptSent",
+  "ui.replyRendered",
+  "ui.mpdSettingsSection",
+  "ui.teamPanel",
+  "ui.noConsoleErrors",
 ]
 
 /**

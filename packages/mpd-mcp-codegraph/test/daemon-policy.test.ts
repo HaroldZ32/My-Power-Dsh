@@ -100,11 +100,11 @@ test("the default emits exactly ONE informational line (never stdout)", () => {
  */
 test("launch.ts applies the policy before importing the vendored serve.js", () => {
   /** The shipped launcher's source text, which the ordering is asserted on. */
-  const src = readFileSync(join(pkgDir, "launch.ts"), "utf8")
+  const src = readFileSync(join(pkgDir, "src", "launch.ts"), "utf8")
   /** Where the daemon policy is applied. */
   const policyAt = src.indexOf("applyDaemonPolicy(")
-  /** Where the adopted server module is imported (the specifier is widened for typing). */
-  const importAt = src.indexOf('import("./dist/serve.js"')
+  /** Where the adopted server module is imported, through the runtime-resolved constant name. */
+  const importAt = src.indexOf("import(ADOPTED_SERVE_ENTRY)")
   expect(policyAt).toBeGreaterThan(-1)
   expect(importAt).toBeGreaterThan(-1)
   expect(policyAt).toBeLessThan(importAt)

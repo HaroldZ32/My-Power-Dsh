@@ -215,7 +215,7 @@ broken regex. Evidence: `evidence/tui/composition/20260915T072139Z-zh-mirror-pas
   `evidence/tui/packaging/20260915T064658Z/{BY-DESIGN-AUDIT.md,raw/by-design-audit.json}` (the five
   by-design items re-derived on the current revision).
 - The packed-tree closure class is walked class-wide and has exactly **two** members
-  (`mpd-mcp-astgrep/launch.ts`, `mpd-mcp-codegraph/launch.ts`, both importing
+  (`mpd-mcp-astgrep/dist/launch.js`, `mpd-mcp-codegraph/dist/launch.js`, both importing
   `../mpd-mcp-shared/bin-resolve.ts`, the second also `./daemon-policy.ts`); `mpd-mcp-gitbash` and
   `mpd-mcp-lsp` ship no launcher and exec `dist/cli.js`, already shipped by `cpDist()`.
 - **Review history, unsmoothed**: t28's first round failed prematurely because the auto-created repair

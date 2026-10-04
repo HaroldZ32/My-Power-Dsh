@@ -21,8 +21,8 @@
 // process's fd 2, which in a TUI session is the Ink alternate screen. The sink below takes the
 // terminal writers away before the adopted server is loaded (that import is DYNAMIC on the last line
 // of this file, so the install really does run first — a static import would be hoisted above it).
-import { installTerminalSilence } from "../mpd-mcp-shared/log-sink.ts"
-import { resolveAstGrepBinary } from "../mpd-mcp-shared/bin-resolve.ts"
+import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
+import { resolveAstGrepBinary } from "../../mpd-mcp-shared/bin-resolve.ts"
 
 // The install is the FIRST statement of the module body, so it runs after this file's own
 // chatter-free imports and BEFORE the adopted server's dynamic import on the last line.
@@ -38,6 +38,13 @@ if ((process.env.MPD_AST_GREP_SG_PATH ?? "").trim().length === 0) {
   }
 }
 
-// The adopted CLI is a built artifact with no declaration file; widening the specifier to
-// `string` keeps the runtime specifier untouched while TypeScript stops resolving it (TS7016).
-await import("./dist/cli.js" as string)
+// The adopted CLI is a built artifact with no declaration file, so the specifier is typed as a plain
+// string (TS7016). IT IS ALSO A NAMED CONSTANT ON PURPOSE: `bun build` follows a LITERAL dynamic
+// import and would INLINE the 96 KB adopted server into this launcher (measured 2026-10-03: the
+// bundle ended in `init_cli()` and every adopted byte was duplicated). A non-literal specifier is
+// left alone, and the path is resolved at RUNTIME relative to THIS MODULE'S BUILT LOCATION
+// (packages/mpd-mcp-<x>/dist/launch.js) — which is why it reads `./cli.js` rather than a path
+// relative to this source file.
+/** The adopted server entry, resolved at runtime beside the built launcher. */
+const ADOPTED_ENTRY: string = "./cli.js"
+await import(ADOPTED_ENTRY)

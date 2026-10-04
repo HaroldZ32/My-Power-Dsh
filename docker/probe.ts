@@ -100,6 +100,18 @@ const CORE_TOOLS: readonly string[] = [
   "mpd_memory_status",
 ]
 
+// The three ACTIVE `@deepseek-ai/dsh-mcp-client` rows this bundle mounts, named by the tool each
+// server exposes. The row's `serverName` is the MIDDLE segment of its tool names
+// (`mcp__<serverName>__<tool>`), so these three are the row→capability proof: a server whose child
+// process fails to spawn leaves the session without the tool while every composition assertion stays
+// green, which is the gap this arm closes. `mcp-gitbash` is deliberately absent: that row ships
+// `disabled: true` because its upstream is Windows-only.
+const MCP_TOOLS: readonly string[] = [
+  "mcp__ast_grep__search",
+  "mcp__lsp__status",
+  "mcp__codegraph__codegraph_explore",
+]
+
 // The OFFICIAL agent-team tool surface (docs/plan-0.1.7-adaptation.md §2.2), mounted by the
 // `mpd-tool-agent-team` row (§4 D3).
 //
@@ -207,6 +219,13 @@ export async function apply(ctx: ProbeContext): Promise<void> {
     const core = await settle(has, CORE_TOOLS, 30000)
     console.log("[docker-probe] CORE_TOOLS=" + core.present + "/" + core.total)
     console.log("[docker-probe] CORE_TOOLS_MISSING=" + core.missing.join(","))
+
+    // The MCP capability surface. Waited for longer than the core rows on purpose: each MCP tool
+    // appears only after its stdio child has spawned AND completed the MCP handshake, so a short
+    // budget would report a slow-but-healthy server as missing.
+    const mcp = await settle(has, MCP_TOOLS, 60000)
+    console.log("[docker-probe] MCP_TOOLS=" + mcp.present + "/" + mcp.total)
+    console.log("[docker-probe] MCP_TOOLS_MISSING=" + mcp.missing.join(","))
 
     // The ROOT-plane read of the team tools, reported as an OBSERVATION: the official plugin
     // registers them per agent, so 0/9 here is the documented shape, not a failure.
