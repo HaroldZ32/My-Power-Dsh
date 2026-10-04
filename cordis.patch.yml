@@ -338,6 +338,28 @@
       # defined (verified on a real boot: describe() went 18 -> 19 entries, `include:mpd-config`
       # among them).
       config: {}
+    # Persisted GOAL as the durable basis of continuous execution. The harness already ships
+    # the goal domain (dsh-goal), the model tools (dsh-tool-goal) and the round driver
+    # (dsh-goal-round-driver), and the `mpd` preset mounts tool-goal + command-goal — but no
+    # row INVOKED them, so a long run (a heavy ULW run, a plan-bound boulder work) ended with
+    # the turn and left nothing for the driver to continue. This row adds `mpd_goal_status` /
+    # `mpd_goal_anchor` / `mpd_goal_finish`, provides the `mpdGoal` service those two rows
+    # consume, and AUTO-anchors a goal around a long run (`goal.autoAnchor`, mpd.jsonc).
+    # POSITION: after mpd-config (its `goal.*` keys are read through the mpdConfig service) and
+    # above its two consumers, mpd-ulw and mpd-boulder. Row order is documentation only for the
+    # consumption direction: both consumers resolve `mpdGoal` lazily per call (`ctx.get`), so a
+    # composition without this row degrades to "no durable goal" instead of failing.
+    # Every mutation goes through the harness GOAL TOOLS, never `ctx.goals`: the tools carry
+    # the authorisation (a direct human turn for create/edit/pause/resume, the configured
+    # consecutive-round count for `blocked`), and a row that wrote the service directly could
+    # arm a goal the model itself could not. Anchors are recorded in
+    # `<workspace>/.mpd/goal/anchors.json`, so a later run never completes a goal it did not arm.
+    - id: mpd-goal
+      name: '@mpd-dsh/mpd/packages/mpd-goal-plugin/dist/index.js'
+      config:
+        enabled: true
+        autoAnchor: true
+        autoRounds: 32
     # Team watchdog (w3 core): per-step/per-tool heartbeat store for members AND the
     # captain, the configurable WARN→ESCALATE machine over the `mpd` namespace's
     # watchdog.* knobs, the atomic restorable scene snapshot, and the durable

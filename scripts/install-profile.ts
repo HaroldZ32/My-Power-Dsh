@@ -361,6 +361,13 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // The persisted-GOAL bridge (C8): `mpd_goal_*`, the `mpdGoal` service that mpd-ulw and
+      // mpd-boulder consume, and the `goal.*` auto-anchor knobs. It mirrors the bundle patch row
+      // value-for-value and sits beside its mpd.jsonc source (mpd-config), above its consumers.
+      id: "mpd-goal", name: p("packages/mpd-goal-plugin/dist/index.js"),
+      config: { enabled: true, autoAnchor: true, autoRounds: 32 },
+    },
+    {
       id: "mpd-comment-checker", name: p("packages/mpd-comment-checker-plugin/dist/index.js"),
       config: { autoCheck: false }
     },

@@ -258,6 +258,20 @@ const PLUGIN_PKGS: readonly string[] = [
   // evidence/extensions/extension-lifecycle/2026-09-16T04-43-51.532Z/output.log:97).
   // Adding the entry is the whole fix; R11 (see above) covers the class.
   "mpd-team-watchdog-plugin",
+  // mpd-tui-adapter-plugin is MOUNTED by the bundle patch (row `mpd-tui-adapter`, the ONE contact
+  // surface with the DSH-TUI seams) and was absent from this list on `dev` — found 2026-10-04 by
+  // `node scripts/pack-mpd.ts --out <tmp>` while wiring the `mpd-goal` row, i.e. a PRE-EXISTING
+  // instance of the same silent-omission class, not something the goal wave introduced. The packed
+  // tree omitted the package while the pack exited 0 until the positive closure check below was
+  // reached; adding the entry is the whole fix.
+  "mpd-tui-adapter-plugin",
+  // mpd-goal-plugin is MOUNTED by the bundle patch (row `mpd-goal`): the persisted-goal bridge
+  // (`mpd_goal_*` plus the `mpdGoal` service ULW/boulder consume). The FIFTH occurrence of the
+  // silent-omission class this list keeps recording, caught by the positive closure check below the
+  // moment the row landed — `[pack-mpd] FAIL: cordis.patch.yml mounts
+  // packages/mpd-goal-plugin/dist/index.js but the packed tree has no such file` (measured
+  // 2026-10-04 while wiring the row). Adding the entry is the whole fix.
+  "mpd-goal-plugin",
   "mpd-bundle-plugin"
 ]
 /** The MCP server packages whose launcher modules and assets ship in the packed tree. */

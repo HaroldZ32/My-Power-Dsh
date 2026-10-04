@@ -171,7 +171,7 @@ dsh plugin --profile web add .
 ```
 
 The repository root is the bundle package, so this single command installs every plugin row, the
-`mpd` preset, the 18-skill corpus and the extension root — no pack step, no copy step. Then restart
+`mpd` preset, the 19-skill corpus and the extension root — no pack step, no copy step. Then restart
 `dsh` and pick the **MPD (Main Working Agent)** preset in a session:
 
 ```bash

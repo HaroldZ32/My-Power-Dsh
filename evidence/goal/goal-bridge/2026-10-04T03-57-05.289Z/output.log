@@ -1,0 +1,34 @@
+Both calls succeeded. Here is the self-test result:
+
+1. **`mpd_goal_anchor` outcome:** `ok=true`, `created=true` — a new persisted goal was anchored (not a pre-existing one kept).
+2. **`mpd_goal_status` (readback):**
+
+| Field | Value |
+|---|---|
+| Goal id | `goal-14c3bdac-f4b9-4266-b730-5986560b4830` |
+| Objective | `ship the goal bridge` |
+| Phase | `active` |
+| Max goal rounds | `5` |
+| Rounds started | `0` |
+| Revision | `1` |
+| Activation | `armed` |
+
+Service flags: `enabled=true`, `autoAnchor=true`.
+
+The anchor's returned goal object and the independent status readback agree on id, objective, and phase, so the goal-bridge round trip is verified. Note the goal is **armed** with a 5-round cap, so the harness will keep this session working on "ship the goal bridge" across automatic continuation rounds unless it is finished or paused — say the word and I'll mark it complete (it's a test objective) or pause it.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks a simple self-test: call mpd_goal_anchor with objective 'ship the goal bridge' and maxRounds 5; then mpd_goal_status; report anchor outcome (ok/created) and goal id, objective, phase.
+
+Let me do it.
+dsh: reasoning:
+Now call mpd_goal_status.
+dsh: reasoning:
+Report. Note: the goal is now armed — since it's a self-test, should I finish it? The user asked just to report. But leaving an active armed goal would trigger automatic continuation rounds. The instruction says mark complete only when objective achieved. The objective "ship the goal bridge" isn't really achieved — but this is a self-test of the bridge. Hmm. The user asked only to report anchor outcome and status. Leaving the goal armed means the harness will keep continuing rounds. That could be undesirable but also it's what was asked. I should report and mention the goal is armed; possibly offer to finish. Actually, the bridge self-test objective is complete in the sense that the anchor worked. But mpd_goal_anchor created a persistent goal; if I finish it, that's a clean state. However, mpd_goal_finish needs "complete admitted on a human turn or inside current goal round" — we're on a human turn, so it would work.
+
+The user's task is a self-test; the goal "ship the goal bridge" is a test objective. I think it's reasonable to leave it as asked but flag it. Actually, leaving an armed goal will cause automatic continuation rounds where the agent will try to "ship the goal bridge" which is meaningless. Better to complete it now to avoid runaway. But the user didn't ask. Hmm — "Mark complete only when the objective is actually achieved." The objective of the self-test — verifying the bridge — is achieved by the anchor+status round trip. Yet the objective text is different.
+
+I'll report the results and note the goal remains armed, and ask/offer. Actually, as an agent, minimizing runaway loops is good; but the user explicitly designed this as a goal self-test, likely testing that the bridge makes the session continue. They may want it armed. I'll report and note I can finish it on request. Keep it concise.
+
+No need for teams here. Just the final answer.

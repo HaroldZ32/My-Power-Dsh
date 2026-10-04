@@ -948,6 +948,22 @@ export interface DshCapabilities {
    * + `list`; the two are reported apart because the methods carry different contracts).
    */
   subagentsProviderRegister: boolean
+  /**
+   * `ctx.get("goals")` answered with the goal service's own `get()` — the DURABLE read
+   * {@link DshAdapter.goalState} performs. It is deliberately separate from
+   * {@link DshCapabilities.goalTools}: the service is host-plane and always there in a
+   * web/base boot, while the tools a WRITE must go through are preset-plane rows a
+   * composition can omit, and a caller must be able to tell the two halves apart.
+   */
+  goals: boolean
+  /**
+   * The three harness goal tools (`get_goal` / `create_goal` / `update_goal`) all
+   * resolve, at the host plane or inside a live agent's own scope — i.e.
+   * {@link DshAdapter.goalControl} can actually run. A preset that mounts only
+   * `tool-goal` reports true; one whose rows are disabled reports false and the caller
+   * degrades to the durable read.
+   */
+  goalTools: boolean
 }
 
 /**
@@ -969,6 +985,80 @@ export interface DshLiveAgent {
   ctx?: unknown
   /** The host's maintenance hook, when this build exposes one. */
   runMaintenance?: unknown
+}
+
+/**
+ * One persisted session goal, projected for a plugin caller.
+ *
+ * The durable half mirrors the harness `goalValue` shape (`id`, `revision`,
+ * `objective`, `phase`, `roundsStarted`, `maxGoalRounds`, optional `blockedReason`);
+ * `activation` is PROCESS-LOCAL and present only when the read came through the
+ * harness tool set, which is the only surface that observes it.
+ */
+export interface DshGoalSnapshot {
+  /** Stable goal identity — the compare-and-set id a mutation has to name. */
+  id: string
+  /** Positive revision; every durable mutation increments it. */
+  revision: number
+  /** The human-requested completion objective. */
+  objective: string
+  /** Durable lifecycle phase. */
+  phase: "active" | "paused" | "blocked" | "complete"
+  /** Highest admitted goal round; absent when the read could not see the counter. */
+  roundsStarted?: number
+  /** Total admitted automatic-continuation round cap. */
+  maxGoalRounds: number
+  /** Present exactly while `phase` is `blocked`. */
+  blockedReason?: { code: string; message: string }
+  /** Whether THIS process may auto-continue the goal; `undefined` when unobserved. */
+  activation?: "armed" | "disarmed"
+}
+
+/** One goal operation {@link DshAdapter.goalControl} can drive for one agent. */
+export interface DshGoalControlInput {
+  /**
+   * The live calling agent. `get_goal`/`create_goal`/`update_goal` authenticate it as
+   * the registry's exact instance inside an active driver, so a hand-built Agent-like
+   * object is refused by the harness — same rule as
+   * {@link DshAdapter.executeTool}'s `agent`.
+   */
+  agent?: unknown
+  /** The operation; `read` is `get_goal` and every other action mutates through the tools. */
+  action: "read" | "create" | "edit" | "pause" | "resume" | "complete" | "blocked"
+  /** Completion objective: required by `create`, optional replacement for `edit`. */
+  objective?: string
+  /** Round cap for `create` / replacement cap for `edit`; the service default applies when omitted. */
+  maxGoalRounds?: number
+  /** Exact goal id from a prior read; read on demand when a ref-taking action omits it. */
+  goalId?: string
+  /** Exact revision from a prior read; read on demand when a ref-taking action omits it. */
+  revision?: number
+  /** Required by `blocked`: the concrete condition that persisted across goal rounds. */
+  blockedReason?: string
+  /** Traceability id for the underlying tool call; one is minted when omitted. */
+  callId?: string
+  /** Cancellation forwarded to the tool call. */
+  signal?: AbortSignal
+  /** Per-call timeout in milliseconds; the adapter's configured default applies when omitted. */
+  timeoutMs?: number
+}
+
+/** What one {@link DshAdapter.goalControl} call produced. */
+export interface DshGoalControlResult {
+  /** Whether the operation was admitted; a POLICY refusal is `ok:false`, never a throw. */
+  ok: boolean
+  /** Whether the harness marked the underlying tool result an error. */
+  isError: boolean
+  /** The goal after the operation; `null` when the session has none. */
+  goal?: DshGoalSnapshot | null
+  /** The activation the tool observed after the call, when it reported one. */
+  activation?: "armed" | "disarmed"
+  /** The harness's own refusal/failure text when the call did not succeed. */
+  error?: unknown
+  /** Which registry answered: the agent's own scope, the host plane, or the service. */
+  via?: "agent-scope" | "host-plane" | "service"
+  /** The harness's raw tool result, forwarded for diagnostics. */
+  raw?: unknown
 }
 
 /**
@@ -1094,6 +1184,30 @@ export interface DshAdapter {
   compactionEngineForAgent(agentId: string): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
+  /**
+   * Read ONE agent's current persisted goal through the host-plane goal service.
+   *
+   * NEVER throws, and the two empty answers mean different things on purpose: `null` is
+   * "this session has no current goal", `undefined` is "this composition could not tell"
+   * (no `goals` service, or the service refused the agent because it is not the live
+   * registry instance). Reported by `capabilities().goals`.
+   */
+  goalState(agent: unknown): DshGoalSnapshot | null | undefined
+  /**
+   * Drive ONE goal operation for one agent through the HARNESS GOAL TOOLS.
+   *
+   * WHY THE TOOLS AND NOT THE SERVICE: the goal domain's authorisation lives in
+   * `@deepseek-ai/dsh-tool-goal` — `create`/`edit`/`pause`/`resume` require a direct
+   * human turn on a top-level agent, `blocked` requires the configured consecutive-round
+   * threshold, and every call requires the exact live calling agent inside its active
+   * driver. Writing `ctx.goals` directly would make this bundle a policy-free authority
+   * over goal state, so the seam deliberately cannot reach the mutating service methods:
+   * it forwards to the tools and hands their refusal back verbatim.
+   *
+   * NEVER throws and never rejects: a policy refusal is `{ok:false, error}`, and a
+   * composition without the tools reports `capabilities().goalTools === false`.
+   */
+  goalControl(input: DshGoalControlInput): Promise<DshGoalControlResult>
   /**
    * The host's live model catalog, read ONLY through `ctx.llm`
    * (`listProviders` / `listModels` / `resolveModelInfo`) and projected as
@@ -1869,14 +1983,77 @@ export function workspaceRootsOf(agents: any): string[] {
 function noop(): void { /* seam absent: nothing was registered */ }
 
 /**
- * Build one {@link DshAgentScope} from the RAW `agent.ctx`, or `undefined` when that
- * context does not expose every member the scope promises.
+ * The three harness goal tools this adapter drives, in the order the goal seam reads them.
  *
- * ALL-OR-NOTHING is deliberate: a scope whose `tools.restrict` (or `on`, or `effect`)
- * would throw on use is worse than the caller's own raw-context fallback, because it
- * turns a feature-detectable absence into a runtime `TypeError` at an arbitrary later
- * moment. The probe is contained (a throwing getter or a proxy context is a miss,
- * never a crash — the adapter's never-crash-at-construction contract).
+ * Exported because they are part of the seam contract: `capabilities().goalTools` reports whether
+ * THEY resolve, and a caller that pre-flights a composition should not re-spell the list.
+ */
+export const GOAL_TOOL_NAMES: readonly string[] = ["get_goal", "create_goal", "update_goal"]
+
+/**
+ * Normalize one harness goal object into {@link DshGoalSnapshot}.
+ *
+ * Accepts BOTH shapes the harness exposes: a `GoalView` from `ctx.goals.get(agent)`
+ * (which carries `roundsStarted` and the process-local `activation`) and the cropped
+ * `goal` member of a tool value (same durable fields, activation spelled beside it).
+ * @param view - the service view, or the tool value's `goal` member.
+ * @returns the snapshot, or undefined when the object carries no usable goal identity.
+ */
+function goalSnapshotOf(view: unknown): DshGoalSnapshot | undefined {
+  if (view === null || view === undefined || typeof view !== "object") return undefined
+  /** The goal object viewed as the loose record it is at the harness boundary. */
+  const raw = view as Record<string, unknown>
+  if (typeof raw.id !== "string" || raw.id === "") return undefined
+  /** The normalized snapshot, filled field by field so no unvalidated value crosses. */
+  const snapshot: DshGoalSnapshot = {
+    id: raw.id,
+    revision: typeof raw.revision === "number" ? raw.revision : 0,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    phase: raw.phase === "paused" || raw.phase === "blocked" || raw.phase === "complete" ? raw.phase : "active",
+    maxGoalRounds: typeof raw.maxGoalRounds === "number" ? raw.maxGoalRounds : 0,
+  }
+  if (typeof raw.roundsStarted === "number") snapshot.roundsStarted = raw.roundsStarted
+  if (raw.activation === "armed" || raw.activation === "disarmed") snapshot.activation = raw.activation
+  /** The blocking policy record, present exactly while the phase is `blocked`. */
+  const reason = raw.blockedReason
+  if (reason !== null && typeof reason === "object") {
+    /** The stable policy code, accepted only as a non-empty string. */
+    const code = (reason as { code?: unknown }).code
+    /** The human-readable explanation, accepted only as a non-empty string. */
+    const message = (reason as { message?: unknown }).message
+    if (typeof code === "string" && code !== "" && typeof message === "string" && message !== "") {
+      snapshot.blockedReason = { code, message }
+    }
+  }
+  return snapshot
+}
+
+/**
+ * Read one goal TOOL VALUE (`{ goal: {...} | null, activation }`) into a snapshot pair.
+ * @param value - the tool result value, or anything else that arrived.
+ * @returns the goal (null when the session has none) and the observed activation.
+ */
+function goalValueOf(value: unknown): { goal: DshGoalSnapshot | null; activation?: "armed" | "disarmed" } {
+  if (value === null || value === undefined || typeof value !== "object") return { goal: null }
+  /** The tool value viewed as the record it is at the harness boundary. */
+  const raw = value as Record<string, unknown>
+  /** The activation the tool reported beside the goal, or undefined when it said nothing. */
+  const activation = raw.activation === "armed" || raw.activation === "disarmed" ? raw.activation : undefined
+  /** The normalized goal; absent members mean the session has no current goal. */
+  const goal = goalSnapshotOf(raw.goal)
+  if (goal === undefined) return activation === undefined ? { goal: null } : { goal: null, activation }
+  // The tool spells activation BESIDE the goal; move it onto the snapshot so callers read one object.
+  if (activation !== undefined) goal.activation = activation
+  return activation === undefined ? { goal } : { goal, activation }
+}
+
+/**
+ * The agent-scope context probe shared by this adapter: `agent.ctx`, all-or-nothing.
+ *
+ * A cordis scope is only usable when EVERY member the adapter forwards exists, because a
+ * partially-shaped context turns a feature-detectable absence into a `TypeError` at an
+ * arbitrary later moment. The probe is contained (a throwing getter or a proxy context is a
+ * miss, never a crash — the adapter's never-crash-at-construction contract).
  *
  * The returned `context` is the SAME object (`agent.ctx`), and each member is a
  * forwarder that binds the raw receiver, so the host's own scoped cordis semantics
@@ -2529,6 +2706,124 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     }
   }
 
+  // ── goal plane helpers ────────────────────────────────────────────────────
+  //
+  // The goal DOMAIN (its state machine, its authorisation) is the harness's. These
+  // helpers only find the right registry and normalize what comes back.
+
+  /**
+   * The tool registry inside ONE agent's own scope, when that scope exposes one.
+   *
+   * The agent's scope is the view that resolves PRESET-plane rows (the goal trio lives
+   * there in an mpd session); the host-plane registry is a different view and may not
+   * carry them at all. All-or-nothing, contained: a throwing getter is a miss.
+   * @param agent - the live Agent, or anything that arrived.
+   * @returns the registry, or undefined when this agent exposes none.
+   */
+  function scopedToolRegistry(agent: unknown): any {
+    /** The agent's own scope, or undefined when it does not expose every member. */
+    const scope = scopeOfAgentContext(agent)
+    if (scope === undefined) return undefined
+    try {
+      /** That scope context's own `tools`, probed for the one method execution needs. */
+      const tools = (scope.context as { tools?: unknown } | undefined)?.tools
+      return typeof (tools as { execute?: unknown } | undefined)?.execute === "function" ? tools : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Whether one tool name resolves at the HOST plane or inside any live agent's scope.
+   * @param name - the registered tool name to look for.
+   * @returns true when some reachable registry answers with a definition.
+   */
+  function toolReachable(name: string): boolean {
+    try {
+      /** The host-plane registry's own view of this name. */
+      const hostView = service("tools") as { get?: (toolName: string) => unknown } | undefined
+      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined) return true
+    } catch { /* fall through to the per-agent scopes */ }
+    return liveAgents().some((candidate) => {
+      /** That agent's own scoped registry, when it exposes one. */
+      const scoped = scopedToolRegistry(candidate)
+      if (scoped === undefined) return false
+      try {
+        return scoped.get(name) !== undefined
+      } catch {
+        return false
+      }
+    })
+  }
+
+  /**
+   * Project one raw harness tool result onto {@link DshToolCallResult}.
+   * @param raw - whatever the registry's `execute()` resolved with.
+   * @returns the normalized result; an error result carries the harness's own message.
+   */
+  function projectToolResult(raw: unknown): DshToolCallResult {
+    /** The harness result viewed as the loose record it is at that boundary. */
+    const record = raw as DshPostResult | undefined
+    if (record?.isError === true) {
+      /** The error the tool reported, read for its message. */
+      const error = record.error
+      return { ok: false, isError: true, error: (error as { message?: unknown } | undefined)?.message ?? error ?? "tool error", raw }
+    }
+    return { ok: true, isError: false, value: record?.value, raw }
+  }
+
+  /**
+   * Execute ONE tool for ONE agent, preferring that agent's own scoped registry.
+   *
+   * The order matters and is the whole reason this helper exists: an agent-scoped row's
+   * tools (the goal trio) resolve in `agent.ctx.tools`, and a host-plane registry would
+   * answer "unknown tool" for them even though the model can call them.
+   * @param input - the tool name, arguments, the calling agent and the call's call id/signal/timeout.
+   * @returns the projected result plus which registry answered.
+   */
+  async function executeToolForAgent(input: {
+    name: string
+    arguments?: unknown
+    agent?: unknown
+    callId?: string
+    signal?: AbortSignal
+    timeoutMs?: number
+  }): Promise<{ result: DshToolCallResult; via: "agent-scope" | "host-plane" }> {
+    /** A traceability id for this call, minted when the caller supplied none. */
+    const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10)
+    /** The cancellation this call runs under, defaulted to a per-call timeout. */
+    const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs)
+    /** The agent's own scoped registry, when it exposes one. */
+    const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent)
+    if (scoped !== undefined) {
+      try {
+        /** The harness's own result, from the agent-scoped registry. */
+        const raw = await scoped.execute({
+          name: input.name,
+          arguments: input.arguments ?? {},
+          callId,
+          ...(signal === undefined ? {} : { signal }),
+          ...(input.agent === undefined ? {} : { agent: input.agent }),
+        })
+        return { result: projectToolResult(raw), via: "agent-scope" }
+      } catch (error) {
+        // A scoped registry that throws is NOT retried at the host plane: the throw is this
+        // call's outcome, and a silent second attempt could run the same mutation twice.
+        return { result: { ok: false, isError: true, error: errorMessage(error) }, via: "agent-scope" }
+      }
+    }
+    /** The host-plane path: the same normalization `executeTool` exposes. */
+    const result = await adapter.executeTool({
+      name: input.name,
+      arguments: input.arguments ?? {},
+      callId,
+      ...(signal === undefined ? {} : { signal }),
+      ...(input.agent === undefined ? {} : { agent: input.agent }),
+      ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
+    })
+    return { result, via: "host-plane" }
+  }
+
   /** The frozen adapter surface, assembled once from the primitives above. */
   const adapter: DshAdapter = {
     /** Probe every seam once and report one boolean per contract; see {@link DshCapabilities}. */
@@ -2553,6 +2848,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const systemPrompt = service("systemPrompt")
       /** The official Agent Teams service snapshot. */
       const agentTeams = service("agentTeams")
+      /** The host-plane goal service snapshot, read for the durable goal read. */
+      const goalService = service("goals")
       /** One live Agent, the sample every live-registry flag is probed against. */
       const sample = liveAgents()[0]
       /** That Agent's own scoped context, probed for the per-agent flags. */
@@ -2628,6 +2925,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof (agentTeams as any)?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        // ── the goal plane (one flag per HALF, because a composition can carry the
+        // durable service without the preset-plane tools, and the read and the write
+        // then degrade differently) ──────────────────────────────────────────────
+        goals: typeof goalService?.get === "function",
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
       }
     },
 
@@ -2642,6 +2944,93 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+
+    // ── goal plane (AGENTS.md §6: the ONE place `ctx.goals` and the goal tools are named) ──
+    goalState(agent: unknown): DshGoalSnapshot | null | undefined {
+      // The service READ is deliberate and safe: reading a goal mutates nothing, and the
+      // service's own guard (a non-live agent makes `get` throw) is preserved as "cannot
+      // tell" rather than being papered over with a fabricated empty answer.
+      /** The host-plane goal service, absent in a composition without `@deepseek-ai/dsh-goal`. */
+      const goals = service("goals")
+      if (goals === undefined || typeof goals.get !== "function") return undefined
+      try {
+        /** The service's own view for this agent, or undefined when no goal is current. */
+        const view = goals.get(agent)
+        return goalSnapshotOf(view) ?? null
+      } catch {
+        return undefined
+      }
+    },
+
+    /** Drive one goal operation through the harness goal tools; a refusal is returned, never thrown. */
+    async goalControl(input: DshGoalControlInput): Promise<DshGoalControlResult> {
+      if (input === null || typeof input !== "object" || typeof input.action !== "string") {
+        return { ok: false, isError: true, error: "goalControl requires an action" }
+      }
+      if (input.agent === undefined) return { ok: false, isError: true, error: "goal tools require a calling agent" }
+      // A mutation names an EXACT revision, so a ref the caller did not supply is read
+      // first — through the tool, which reports the same numbers the model would see.
+      /** The ref this call will mutate, resolved below for every non-create action. */
+      let goalId = input.goalId
+      /** The revision half of that ref. */
+      let revision = input.revision
+      /** Set for the non-create actions, which all go through `update_goal`. */
+      const needsRef = input.action !== "create" && input.action !== "read"
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        /** The current goal, read on demand so a caller may pass only the action. */
+        const current = await executeToolForAgent({ name: "get_goal", agent: input.agent, callId: input.callId, signal: input.signal, timeoutMs: input.timeoutMs })
+        if (!current.result.ok) return { ok: false, isError: true, error: current.result.error, via: current.via, raw: current.result.raw }
+        /** The tool's own view of the current goal, or null when the session has none. */
+        const read = goalValueOf(current.result.value)
+        if (read.goal === null) return { ok: false, isError: true, error: "no current goal", via: current.via, raw: current.result.raw }
+        goalId = goalId ?? read.goal.id
+        revision = revision ?? read.goal.revision
+      }
+      // Argument names are the HARNESS tool contract (`max_goal_rounds`, `goal_id`,
+      // `blocked_reason`); keeping them verbatim is what lets a refusal read the same as
+      // it would for the model.
+      /** The tool to call for this action. */
+      const toolName = input.action === "read" ? "get_goal" : input.action === "create" ? "create_goal" : "update_goal"
+      /** The tool arguments for this action. */
+      const toolArguments: Record<string, unknown> = input.action === "read"
+        ? {}
+        : input.action === "create"
+          ? { objective: input.objective, ...(input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds }) }
+          : {
+              goal_id: goalId,
+              revision,
+              action: input.action,
+              ...(input.objective === undefined ? {} : { objective: input.objective }),
+              ...(input.maxGoalRounds === undefined ? {} : { max_goal_rounds: input.maxGoalRounds }),
+              ...(input.blockedReason === undefined ? {} : { blocked_reason: input.blockedReason }),
+            }
+      if (input.action === "create" && (typeof input.objective !== "string" || input.objective.trim() === "")) {
+        return { ok: false, isError: true, error: "goalControl create requires a non-empty objective" }
+      }
+      if (needsRef && (goalId === undefined || revision === undefined)) {
+        return { ok: false, isError: true, error: "goalControl " + input.action + " requires an exact goal id and revision" }
+      }
+      /** The harness's answer for this call and the registry that produced it. */
+      const call = await executeToolForAgent({
+        name: toolName,
+        arguments: toolArguments,
+        agent: input.agent,
+        callId: input.callId,
+        signal: input.signal,
+        timeoutMs: input.timeoutMs,
+      })
+      if (!call.result.ok) return { ok: false, isError: call.result.isError, error: call.result.error, via: call.via, raw: call.result.raw }
+      /** The goal the tool reported after the call (`null` when the session has none). */
+      const value = goalValueOf(call.result.value)
+      return {
+        ok: true,
+        isError: false,
+        goal: value.goal,
+        ...(value.activation === undefined ? {} : { activation: value.activation }),
+        via: call.via,
+        raw: call.result.raw,
+      }
+    },
 
     // ── llm plane: the two thin reads the agent-teams bridge forwards ───────
     // Both are THIN and both THROW synchronously on a missing seam: the raw
@@ -2912,14 +3301,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           // absent stays absent, so no existing call site changes meaning.
           ...(input.agent === undefined ? {} : { agent: input.agent }),
         })
-        /** Whether the harness marked the result an error. */
-        const isError = (raw as DshPostResult | undefined)?.isError === true
-        if (isError) {
-          /** The error the tool reported, read for its message. */
-          const error = (raw as DshPostResult)?.error
-          return { ok: false, isError: true, error: (error as { message?: string })?.message ?? error ?? "tool error", raw }
-        }
-        return { ok: true, isError: false, value: (raw as DshPostResult)?.value, raw }
+        /** The normalized outcome: the shared projection keeps one error contract for both paths. */
+        return projectToolResult(raw)
       } catch (error) {
         return { ok: false, isError: true, error: errorMessage(error) }
       }

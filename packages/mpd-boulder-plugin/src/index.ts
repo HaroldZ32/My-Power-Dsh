@@ -30,6 +30,23 @@ type Ctx = { tools: any; get?: (k: string) => any }
 /** Row config: `boulderDir` is an explicit state-root override that outranks workspace resolution. */
 type Config = { boulderDir?: string }
 
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`); a
+ * source import would add a cross-package coupling the independence inventory may only SHRINK, and
+ * the two rows talk through a SERVICE at runtime anyway. Without that row the lookup answers
+ * `undefined` and a boulder work simply has no durable goal behind it.
+ */
+type GoalBridge = {
+  /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
+  autoAnchor(): boolean
+  /** Put a durable goal in place, keeping any unfinished goal already current. */
+  anchor(exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish a goal this plugin anchored; a goal it did not anchor is left to the model and the user. */
+  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+}
+
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
 function mergedConfig(ctx: Ctx, config: Config): Config {
   // The mpdConfig service, present only when mpd-config-plugin is mounted in the same composition.
@@ -55,6 +72,66 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const merged = mergedConfig(ctx, config)
   // Per-call state root: the calling session's workspace, unless an explicit override is configured.
   const root = (exec?: any): string => boulderRoot(merged, dsh, exec)
+
+  /**
+   * The durable-goal bridge provided by the `mpd-goal` row, resolved PER CALL.
+   *
+   * @returns the service, or undefined when that row is not mounted in this composition.
+   */
+  function goalBridge(): GoalBridge | undefined {
+    // Lazy on purpose: the row may be mounted after this one, and a composition without it must
+    // leave the ledger working exactly as before rather than fail this plugin's apply.
+    return ctx.get?.("mpdGoal") as GoalBridge | undefined
+  }
+
+  /**
+   * Anchor a persisted goal for a plan-bound work, so the ledger and the goal describe the same
+   * long-running objective instead of the ledger being the only durable trace of it.
+   *
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param planPath - the plan this work is bound to, named in the objective.
+   * @param workId - the work the anchor belongs to, named in the objective.
+   * @returns the goal id when a goal is in place, else null; a refusal is logged, never thrown.
+   */
+  async function anchorGoal(exec: any, planPath: string, workId: string): Promise<string | null> {
+    try {
+      // The bridge probe is INSIDE the try for the same reason the call is: a half-shaped service that
+      // throws must never take the boulder work down with it.
+      /** The goal bridge, absent in a composition without the mpd-goal row. */
+      const bridge = goalBridge()
+      if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
+      /** The anchor outcome; an unfinished goal already current is KEPT by the service. */
+      const outcome = await bridge.anchor(exec, { objective: "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence.", source: "boulder" })
+      if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+      if (outcome?.ok === false) dsh.rowLog("mpd-boulder", "goal anchor refused: " + String(outcome.error ?? "unknown"))
+      return null
+    } catch (error: any) {
+      // The goal is an ADDITION to the ledger: a bridge that throws must never fail the work.
+      dsh.rowLog("mpd-boulder", "goal anchor failed: " + String(error?.message ?? error))
+      return null
+    }
+  }
+
+  /**
+   * Complete the goal this row anchored for a finished work; a goal this row did not anchor is
+   * left to the model and the user (the service enforces that, and reports the refusal).
+   *
+   * @param exec - the tool exec carrying the calling agent.
+   */
+  async function finishGoal(exec: any): Promise<void> {
+    /** The goal bridge, absent in a composition without the mpd-goal row. */
+    const bridge = goalBridge()
+    if (bridge === undefined) return
+    try {
+      /** The finish outcome, reported in the row log when the harness refused the transition. */
+      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder" })
+      if (outcome?.ok === false && String(outcome.error ?? "").includes("not the one mpd-goal anchored") === false) {
+        dsh.rowLog("mpd-boulder", "goal finish refused: " + String(outcome.error ?? "unknown"))
+      }
+    } catch (error: any) {
+      dsh.rowLog("mpd-boulder", "goal finish failed: " + String(error?.message ?? error))
+    }
+  }
 
   dsh.registerTool({
     name: "mpd_boulder_status",
@@ -115,6 +192,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const wid = next.active_work_id
       // Effective lifecycle, defaulting to `active` for a work whose status field is unset.
       const status = wid ? next.works?.[wid]?.status ?? "active" : "active"
+      // A plan-bound work is the case that OUTLIVES its turn, so it anchors a persisted goal: from
+      // here the durable goal — not this tool call — is what the harness keeps working on.
+      await anchorGoal(exec, planPath, String(wid ?? "?"))
       return { workId: wid ?? "?", status, stateFile: join(dir, ".mpd", "boulder.json") }
     }
   })
@@ -134,6 +214,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const workId = args?.workId ?? state.active_work_id ?? "?"
       // Record re-read from disk, the source of the status and elapsed_ms reported back.
       const work = getWorkById(dir, workId)
+      // The ledger is done, so the goal this row anchored for it is done too; a goal anchored by
+      // anyone else is left alone by the service, which is why this never "completes" a user's goal.
+      await finishGoal(exec)
       return { workId, status: work?.status ?? "completed", elapsedMs: work?.elapsed_ms ?? 0 }
     }
   })

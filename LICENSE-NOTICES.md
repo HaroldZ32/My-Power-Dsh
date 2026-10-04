@@ -104,3 +104,27 @@ is the npm package `@code-yeongyu/comment-checker` 0.8.0
 (https://github.com/code-yeongyu/go-claude-code-comment-checker), distributed under
 the MIT License. It is not redistributed in this repository; it is installed on
 demand into `.toolchain` (installer flag `--with-comment-checker`).
+
+## DeepSeek Harness 创造模式 skills (MIT) — adapted into `skills/cordis-dev`
+
+The `cordis-dev` skill shipped in this repository's served skill corpus is an
+adaptation, written for this bundle, of the four skills the DeepSeek Harness
+ships with its `cordis` agent preset (创造模式 / creation mode):
+`cordis-plugin-development` (+ its `references/` and `templates/`),
+`editing-cordis-compositions`, `cordis-composition-reference` (+ its generated
+`references/packages.md`) and `agent-experience`. Those files ship inside the
+npm package `@deepseek-ai/dsh-agent-preset`
+(https://github.com/deepseek-ai/deepseek-harness), distributed under the MIT
+License, Copyright (c) 2026 DeepSeek — the same licence as the rest of the
+`@deepseek-ai/*` harness packages this bundle already references.
+
+What that means concretely: the knowledge transferred is the Loader patch
+dialect, the plugin forms (Host / Web UI client / configuration-only MCP
+bundle), the practices and the verification discipline; the wording here is this
+repository's, and every section that is specific to this bundle (the adapter
+seam rule, the mounting contract, the gate table, the goal plane) is ours. The
+upstream files are NOT redistributed: this bundle references the installed
+harness packages instead, and a reader who wants the upstream text verbatim can
+read it at
+`<dsh>/node_modules/@deepseek-ai/dsh-agent-preset/skills/` (the path the
+`cordis-dev` skill names for its templates).

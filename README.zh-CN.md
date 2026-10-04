@@ -156,7 +156,7 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 dsh plugin --profile web add .
 ```
 
-仓库根目录就是 bundle 包本身，所以这一条命令会同时安装全部插件行、`mpd` preset、18 个 skill 的
+仓库根目录就是 bundle 包本身，所以这一条命令会同时安装全部插件行、`mpd` preset、19 个 skill 的
 语料库与扩展根目录 —— 不需要打包步骤，也不需要复制步骤。之后重启 `dsh`，在会话中选择
 **MPD（Main Working Agent）** preset：
 

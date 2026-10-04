@@ -43,9 +43,9 @@ const realContext = (): DrivenContext => new Context() as unknown as DrivenConte
 /** The vendored host message constructor, compared field by field against this adapter's own. */
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
 import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.ts"
-import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock, userMessage } from "../src/index"
+import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, GOAL_TOOL_NAMES, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
-/** A recording double of the FULL harness: ten services, the event bus and provide(). */
+/** A recording double of the FULL harness: eleven services (the goal domain included), the event bus and provide(). */
 function fakeHarness(overrides: Record<string, unknown> = {}): {
   /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   ctx: {
@@ -103,7 +103,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   const tools = {
     register: (definition: any) => { registered.push(definition); return () => { registered.pop() } },
     guard: (guard: any) => { guards.push(guard); return () => { guards.pop() } },
-    get: (name: string) => (name === "mcp__wave_mcp__prepare_session" ? { name } : undefined),
+    get: (name: string) => (name === "mcp__wave_mcp__prepare_session" || GOAL_TOOL_NAMES.includes(name) ? { name } : undefined),
     execute: async (exec: any) => {
       executed.push(exec)
       if (exec.name === "boom") throw new Error("tool exploded")
@@ -225,9 +225,14 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   }
   /** The live-session registry: one agent, reachable by list and by get. */
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
+  // additive (goal plane): the host-plane goal domain. A full web/base harness mounts
+  // `@deepseek-ai/dsh-goal`, so the fixture carries its `get`, and the three goal tools resolve in
+  // the tool registry — which is what makes BOTH goal flags read true on a full harness. The
+  // adapter's goal BEHAVIOUR is owned by test/adapter-goal-surface.test.ts.
+  const goals = { get: () => undefined }
   /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt, goals } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)

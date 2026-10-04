@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/goal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Persisted-goal bridge and continuous-execution anchors (mpd_goal_*)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

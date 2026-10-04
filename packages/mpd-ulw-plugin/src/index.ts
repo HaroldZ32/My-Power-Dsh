@@ -22,6 +22,24 @@ type Ctx = { tools: any; subagents: any; get?: (k: string) => any; [k: string]: 
 /** The row config keys, all optional because the resolver defaults every one. */
 type Config = { maxRounds?: number; planDir?: string; stateDir?: string; provider?: string; model?: string; reviewerModel?: string; maxReReviews?: number }
 
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`).
+ * A source import would add a cross-package coupling the independence inventory may only SHRINK
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`), and the two
+ * rows talk through a SERVICE at runtime anyway. A composition without the goal row leaves
+ * `ctx.get("mpdGoal")` undefined, and this row degrades to "no durable goal".
+ */
+type GoalBridge = {
+  /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
+  autoAnchor(): boolean
+  /** Put a durable goal in place, keeping any unfinished goal already current. */
+  anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish a goal this plugin anchored; a goal it did not anchor is left to the model and the user. */
+  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+}
+
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
 function mergedConfig(ctx: Ctx, config: Config): Config {
   // The mpdConfig service, absent in a composition that does not mount it.
@@ -196,6 +214,70 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // How many times a rejected plan or verification may be re-reviewed.
   const maxReReviews = cfg.maxReReviews ?? 2
 
+  /**
+   * The durable-goal bridge provided by the `mpd-goal` row, resolved PER CALL.
+   *
+   * @returns the service, or undefined when that row is not mounted in this composition.
+   */
+  function goalBridge(): GoalBridge | undefined {
+    // Lazy on purpose: the row may be mounted after this one, and a composition without it must
+    // degrade to "no durable goal" rather than fail this plugin's apply.
+    return ctx.get?.("mpdGoal") as GoalBridge | undefined
+  }
+
+  /**
+   * Anchor a persisted goal for a long run, so the DURABLE GOAL — not this tool call — is the
+   * basis of continuous execution once the turn ends.
+   *
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param objective - the run's objective, used as the goal objective.
+   * @returns the goal id when a goal is in place, else null; a refusal is logged, never thrown.
+   */
+  async function anchorGoal(exec: any, objective: string): Promise<string | null> {
+    try {
+      // No row, or auto-anchoring switched off in mpd.jsonc: the run proceeds without a goal. The
+      // bridge probe sits INSIDE the try because it is part of the same contract — a bridge that
+      // throws (a half-shaped service) must never take the run down.
+      const bridge = goalBridge()
+      if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
+      /** The anchor outcome; an existing unfinished goal is KEPT by the service, never replaced. */
+      const outcome = await bridge.anchor(exec, { objective, source: "ulw" })
+      if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+      if (outcome?.ok === false) dsh.rowLog("mpd-ulw", "goal anchor refused: " + String(outcome.error ?? "unknown"))
+      return null
+    } catch (error: any) {
+      // The goal is an ADDITION to the run: a bridge that throws must never take the run down.
+      dsh.rowLog("mpd-ulw", "goal anchor failed: " + String(error?.message ?? error))
+      return null
+    }
+  }
+
+  /**
+   * Close the durable goal this run anchored, matching the run's own outcome.
+   *
+   * `complete` completes it; `blocked` ATTEMPTS blocked and tolerates the harness's refusal before
+   * its consecutive-round threshold; anything else (`max-rounds`) leaves the goal ACTIVE on
+   * purpose — that is the case the goal exists for: the engine stopped inside this turn, the
+   * driver carries the objective on across turns.
+   *
+   * @param exec - the tool exec carrying the calling agent.
+   * @param status - the run's final status (`complete` | `blocked` | `max-rounds`).
+   * @param reason - the blocker text, for a blocked attempt.
+   */
+  async function finishGoal(exec: any, status: string, reason: string): Promise<void> {
+    if (status !== "complete" && status !== "blocked") return
+    // Same lazy resolution as the anchor; an absent row is a silent no-op here.
+    const bridge = goalBridge()
+    if (bridge === undefined) return
+    try {
+      /** The finish outcome, reported in the row log when the harness refused the transition. */
+      const outcome = await bridge.finish(exec, { outcome: status === "blocked" ? "blocked" : "complete", source: "ulw", ...(status === "blocked" ? { reason } : {}) })
+      if (outcome?.ok === false) dsh.rowLog("mpd-ulw", "goal finish (" + status + ") refused: " + String(outcome.error ?? "unknown"))
+    } catch (error: any) {
+      dsh.rowLog("mpd-ulw", "goal finish failed: " + String(error?.message ?? error))
+    }
+  }
+
   /** Spawn one child round/role through the adapter and return its result. */
   async function spawnChild(opts: { label: string; prompt: string; schema: any; persona?: string; parent: any; signal?: any; model?: string; maxDepth?: number }): Promise<any> {
     // Role personas are prompt TEXT, not DSH preset ids: fold them into the
@@ -289,6 +371,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // The durable run state, rewritten after every mutation.
       const state: any = { id, objective, tier, plan, hyperplan, strictReview, rounds, planFile: null, verdict: null, criteria: [], wave: 0, fruitlessWaves: 0 }
       writeJson(stateFile, state)
+
+      // A PLAN-BOUND RUN OUTLIVES ITS TURN, so it anchors a persisted goal (mpd-goal row): from
+      // here the durable goal — not this tool call — is the basis of continuous execution, and the
+      // harness's round driver keeps the objective going if this run stops short of it.
+      const goalId = plan ? await anchorGoal(exec, objective) : null
+      if (goalId !== null) {
+        // Recorded in the run's own state document, so a later reader sees which goal carried it.
+        state.goalId = goalId
+        writeJson(stateFile, state)
+      }
 
       // The distilled hyperplan insights, capped below.
       let insights: string[] = []
@@ -443,6 +535,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       state.status = status
       state.verdict = verdict
       writeJson(stateFile, state)
+      // The run's own outcome decides the goal's fate; see finishGoal for why `max-rounds` KEEPS it armed.
+      await finishGoal(exec, status, finalReport.trim().slice(-400))
       // `planFile` is emitted ONLY when a plan file exists. The harness's output validator
       // accepts ONE scalar `type` per property (it rejects `type: [..., "null"]` with
       // "type arrays are not supported"), and `planFile` is deliberately absent from the

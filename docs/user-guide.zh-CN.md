@@ -125,6 +125,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。第四个家族 `mcp__git_bash__*` **默认不可用**：它的行自带 `disabled: true`（上游服务器仅支持原生 Windows），因此普通会话里不会出现这类工具 —— 想启用就在 `cordis.patch.yml` 中把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
+| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行或绑定 plan 的 boulder 工作会自动 anchor 一个（`goal.autoAnchor`），而当 turn 内引擎提前停下时它会保持启用 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性子智能体；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
@@ -387,6 +388,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 | `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册表文件 |
 | `commentChecker.*` | mpd-comment-checker | autoCheck、二进制、超时 |
 | `ulw.*` | mpd-ulw | 轮数、计划/状态目录、provider/model 路由 |
+| `goal.enabled`、`goal.autoAnchor`、`goal.autoRounds` | mpd-goal | 持久化 goal 桥：总开关、长任务是否自行 anchor goal、自动 anchor 的轮次上限（默认 `true` / `true` / `32`）。见 §13.10 |
 | `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §10） |
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
@@ -418,6 +420,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 | `hashline.*` | mpd-hashline | 挂载时 | `dsh` 重启后 |
 | `commentChecker.*` | mpd-comment-checker | 挂载时 | 重启后 |
 | `ulw.*` | mpd-ulw | 挂载时 | 重启后 |
+| `goal.*` | mpd-goal | 挂载时 | 重启后 |
 | `memory.*` | mpd-memory | 挂载时 | 重启后 |
 | `boulder.dir` | mpd-boulder | 挂载时 | 重启后 |
 | `modelchain.*` | mpd-modelchain | 挂载时 | 重启后 |
@@ -720,6 +723,40 @@ send_message { "target": "lead", "message": "task-5 完成：`bun run verify:doc
 报告你改了什么，而不是依赖那份范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队
 （`wait_agent`，然后重新读状态），并在作答前核对 diff。
 
+### 13.10 持久化 goal（持续化执行）
+
+长目标会活过一个 turn。harness 的 **goal** 就是这件事的持久表达：它写在会话日志里，重启后仍在，
+其轮次驱动器会以自动续行轮次持续推进会话，直到 goal 完成（或被阻塞，或轮次上限用尽）。本 bundle
+补上了它的插件侧：`mpd-goal` 行。
+
+```text
+# 读取当前会话的 goal（无需 driver 在运行）
+mpd_goal_status {}
+
+# 为长目标 anchor 一个：包含"未完成 goal 检查 + create + 归属 sidecar"三件事。
+# 若已有未完成的 goal 则保留它，绝不替换。
+mpd_goal_anchor { "objective": "交付 cordis-dev skill 及其证据", "maxRounds": 24 }
+
+# 目标真正达成时收尾
+mpd_goal_finish { "outcome": "complete" }
+```
+
+**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 ULW 运行
+（`mpd_ultrawork` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
+为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。运行
+结束时：
+
+- `complete` → 完成 goal 并删除 anchor 记录；
+- `blocked` → 尝试标记阻塞，harness 可能因其连续轮次阈值而拒绝（拒绝只记日志、绝不致命）；
+- `max-rounds` → goal **故意保持启用**：turn 内的引擎停了，由轮次驱动器在后续 turn 接着推进该目标。
+
+归属按会话记录在 `<workspace>/.mpd/goal/anchors.json`，因此一次运行只会收尾它自己 anchor 的
+goal：你用 `/goal` 或 `create_goal` 建的 goal 不会被它动。
+
+两条边界值得知道：harness 自身的规则依然生效 —— create / edit / pause / resume 需要顶层 agent 上的
+**直接人类轮次**，所以 agent 无法替自己发明工作再无人值守地继续；而 `goal.*` 在行挂载时读取，因此
+改 `.mpd/mpd.jsonc` 需要 `dsh` 重启后生效（§9.1）。
+
 ## 14. 这些能力的来源
 
 给使用者看的归属事实，说清楚哪些是别人的工作、哪些是本项目的。带完整许可证正文的权威记录是
@@ -730,7 +767,7 @@ send_message { "target": "lead", "message": "task-5 完成：`bun run verify:doc
 | 团队模式 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_*` 任务板与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 已退役的内置 `agent-teams` 主体（保留，未挂载） | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它** | `LICENSE-NOTICES.md`；许可证正文在 `packages/mpd-agent-teams-plugin/LICENSE` |
 | 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20） | SUL-1.0 —— 本仓库继承的许可证 | `LICENSE-NOTICES.md` §1；`VENDOR_LOCK.json` |
-| 随包服务的技能语料（18 个技能、326 个有指纹的文件） | 从上游 oh-my-openagent 整体搬运 | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
+| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 上游技能从 oh-my-openagent 整体搬运；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | 语料为 SUL-1.0；MIT 材料为引用、不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |

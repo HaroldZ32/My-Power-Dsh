@@ -1,0 +1,23 @@
+Both calls succeeded.
+
+**Anchor outcome:** `ok=true, created=true` — the goal bridge anchored a new goal successfully.
+
+**Status result:**
+| Field | Value |
+|---|---|
+| Goal id | `goal-e6b672bb-191b-42c4-b5bf-3665012e063b` |
+| Objective | `ship the goal bridge` |
+| Phase | `active` |
+| Revision | 1 |
+| Max goal rounds | 5 |
+| Rounds started | 0 |
+| Activation | `armed` |
+| Enabled / autoAnchor | true / true |
+
+The id, objective, and phase from the status result match the anchor result exactly, so the goal-bridge persist/read round-trip is consistent.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The task is a straightforward self-test: call mpd_goal_anchor and mpd_goal_status, report results. No teammates needed. Let me just do it.
+dsh: reasoning:
+Now call mpd_goal_status.
