@@ -206,9 +206,10 @@ const EXPECTED: readonly string[] = [
   "tui.mpdTuiRow",
   "tui.agentTeamRows",
   // The MERGED-PANEL group (the host's own subagent rows above the MPD team body): the scene is
-  // opened by MPD's own combo (`alt+a`, never the host's `Ctrl+A`), its ROW ORDER is measured on the
-  // captured pane, the host's own dashboard key is the control, and the D6 seam gate runs on a
-  // byte-verified copy of the installed tree.
+  // opened by MPD's own combo (`alt+a`), its ROW ORDER is measured on the captured pane, the
+  // `Ctrl+A` SPLIT is measured in two phases (team present -> MPD's panel; team record removed ->
+  // the key no longer opens it), and the D6 seam gate runs on a byte-verified copy of the installed
+  // tree.
   "tui.mergedPanelOpens",
   "tui.mergedPanelOrder",
   "tui.hostDashboardKeyIntact",
