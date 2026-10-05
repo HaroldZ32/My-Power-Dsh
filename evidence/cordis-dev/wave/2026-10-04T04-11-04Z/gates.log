@@ -64,3 +64,12 @@ spec: github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
    CAUSE: a new workspace package (packages/mpd-goal-plugin) must be registered in bun.lock — the derived workspace row + its @mpd-dsh/goal@workspace: resolution.
    FIX: .toolchain/bun/bin/bun install (6-line lock diff) -> commit 125f0af7.
 -- run 37263231579: PASS in 58s.
+
+== Docker real-machine WITH LIVE CREDENTIALS (--live, key forwarded BY NAME) ==
+-- source: node scripts/docker-e2e.ts --mode source --live --require-docker
+   ok=true complete=true passed=94 failed=0 null=0 scrubbed=true (every live arm ran: web/TUI/headless turns, real approval -> team record, native executor member, credential staged/removed)
+   evidence -> evidence/docker/client-install/2026-10-05T04-37-15Z
+-- oneclick: node scripts/docker-e2e.ts --mode oneclick --live --require-docker --spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+   ok=true passed=96 failed=0 null=2 (the two NULL are 'not applicable in one-click mode' BUILD arms: the published package ships its dists)
+   evidence -> evidence/docker/client-install-oneclick/2026-10-05T04-41-37Z
+-- independent scrub check: 0 token-shaped files in either evidence tree; only the KEY NAME appears (staging/scoping records)

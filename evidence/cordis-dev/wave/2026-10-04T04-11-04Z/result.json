@@ -27,7 +27,10 @@
     "test:qa": "44/47 self-test arms pass; 3 PRE-EXISTING reds NOT caused by this wave: preset-register (`pending (waiting for service: agentPresets)` \u2014 the same failure is recorded in evidence/dsh-qa/preset-register/2026-09-27T21-25-03.591Z before this branch existed), bundle-lifecycle (pnpm store operation lock on a read-only filesystem), extension-lifecycle (live sessions exit 1 / pack exit 1).",
     "live goal-bridge": "PASS \u2014 evidence/goal/goal-bridge/2026-10-04T04-10-36.316Z",
     "docker-source": "PASS \u2014 evidence/docker/client-install/2026-10-05T04-11-58Z (66 assertions passed, 0 failed, 28 credential-gated NULL, 285 s)",
-    "docker-oneclick": "PASS \u2014 evidence/docker/client-install-oneclick/2026-10-05T04-17-02Z (68 passed, 0 failed, 30 credential-gated NULL, 221 s; spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill)"
+    "docker-oneclick": "PASS \u2014 evidence/docker/client-install-oneclick/2026-10-05T04-17-02Z (68 passed, 0 failed, 30 credential-gated NULL, 221 s; spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill)",
+    "docker-source-live": "PASS \u2014 94/94, null=0, scrubbed=true; evidence/docker/client-install/2026-10-05T04-37-15Z",
+    "docker-oneclick-live": "PASS \u2014 96 passed, 0 failed, 2 not-applicable NULL (build arms); evidence/docker/client-install-oneclick/2026-10-05T04-41-37Z; spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill",
+    "docker-live-scope": "The credential was forwarded BY NAME (compose -e DEEPSEEK_API_KEY, never in argv), staged ONCE into the container's sandbox home at mode 0600 and deleted before the report; an independent grep of both evidence trees finds 0 token-shaped files."
   },
   "review": {
     "reviewer": "one-shot Reviewer specialist (read-only), findings vs dispositions",
@@ -64,5 +67,6 @@
     "branch": "feature/cordis-dev-skill",
     "remote": "origin",
     "pushedAt": "2026-10-04T04:11:39Z"
-  }
+  },
+  "incident": "While extracting the credential for the live run, one diagnostic command printed the DEEPSEEK_API_KEY VALUE into this session's tool output (the harness session log). The key was NOT committed, NOT written to evidence, and NOT placed in any argv; the value-reading command since reads the file inside the same shell substitution so only its LENGTH is ever printed. Recommended action: ROTATE that key."
 }
