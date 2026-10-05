@@ -1,6 +1,8 @@
 // packages/mpd-tui-adapter-plugin/src/index.ts
-import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 var name = "mpd-tui-adapter";
 var inject = [];
 var TUI_SEAMS = {
@@ -91,6 +93,110 @@ function createFileSink(options) {
     }
   };
 }
+var HOST_PACKAGE_PATH = ["node_modules", "@deepseek-harness-tui", "dsh-tui"];
+var HOST_UI_MODULE = "lib/types/ui.js";
+var HOST_ROOT_ENV = "MPD_DSH_TUI_HOST_ROOT";
+var HOST_HOME_DIRS = [".dsh", ".dsh-tui"];
+var HOST_ANCHOR_LEVELS = 8;
+var HOST_LIVE_CONTEXT_MARKER = "internal_querier";
+function readHostStdinValue(value) {
+  try {
+    if (typeof value !== "object" || value === null)
+      return { detail: "the host stdin hook answered no context value" };
+    const record = value;
+    const marker = HOST_LIVE_CONTEXT_MARKER in record ? record[HOST_LIVE_CONTEXT_MARKER] : undefined;
+    if (marker === undefined || marker === null) {
+      return {
+        detail: `the host hook resolved the StdinContext DEFAULT (no ${HOST_LIVE_CONTEXT_MARKER}) — the host module instance is not the one the TUI runs; the take-over stays absent`
+      };
+    }
+    const emitter = record.internal_eventEmitter;
+    if (emitter === undefined || emitter === null)
+      return { detail: "the host stdin context carries no input emitter" };
+    const bus = emitter;
+    if (typeof bus.prependListener !== "function")
+      return { detail: "the host input emitter has no prependListener" };
+    if (typeof bus.removeListener !== "function")
+      return { detail: "the host input emitter has no removeListener" };
+    if (typeof bus.on !== "function")
+      return { detail: "the host input emitter has no on" };
+    return { emitter: bus };
+  } catch (error) {
+    return { detail: `the host stdin context could not be read: ${String(error?.message ?? error)}` };
+  }
+}
+function hostRootCandidates(env = process.env, home = homedir()) {
+  const pinned = env[HOST_ROOT_ENV];
+  if (typeof pinned === "string" && pinned.length > 0)
+    return [pinned];
+  const roots = [];
+  const anchors = [];
+  try {
+    anchors.push(dirname(fileURLToPath(import.meta.url)));
+  } catch {}
+  const argv1 = process.argv[1];
+  if (typeof argv1 === "string" && argv1.length > 0)
+    anchors.push(dirname(argv1));
+  for (const anchor of anchors) {
+    let dir = anchor;
+    for (let level = 0;level < HOST_ANCHOR_LEVELS; level += 1) {
+      roots.push(join(dir, ...HOST_PACKAGE_PATH));
+      const parent = dirname(dir);
+      if (parent === dir)
+        break;
+      dir = parent;
+    }
+  }
+  const homes = [];
+  if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
+    homes.push(env.DSH_HOME);
+  for (const name2 of HOST_HOME_DIRS)
+    homes.push(join(home, name2));
+  for (const root of homes) {
+    let entries = [];
+    try {
+      entries = readdirSync(join(root, "profiles"), { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory())
+        roots.push(join(root, "profiles", entry.name, ...HOST_PACKAGE_PATH));
+    }
+  }
+  return [...new Set(roots)];
+}
+async function probeHostInput(candidates) {
+  let skew = "";
+  if (candidates.length === 0)
+    return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` };
+  for (const root of candidates) {
+    const file = join(root, HOST_UI_MODULE);
+    try {
+      if (!statSync(file).isFile())
+        continue;
+    } catch {
+      continue;
+    }
+    try {
+      const mod = await import(pathToFileURL(file).href);
+      const hook = mod.useStdin;
+      if (typeof hook !== "function") {
+        skew = `${file} carries no useStdin export`;
+        continue;
+      }
+      return { input: { useStdin: () => hook() }, root };
+    } catch (error) {
+      skew = `${file}: ${String(error?.message ?? error)}`;
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_UI_MODULE} (${candidates.length} probed)` };
+}
+function defaultHostInputLog(line) {
+  try {
+    createFileSink({ root: defaultLogRoot }).write(line);
+  } catch {}
+}
 function readableService(scoped, id) {
   if (scoped === undefined || scoped === null)
     return;
@@ -162,7 +268,7 @@ function effectOn(scoped, cleanup, label) {
       scoped.effect(() => cleanup, label);
   } catch {}
 }
-function createTuiAdapter(ctx) {
+function createTuiAdapter(ctx, options = {}) {
   const bindings = {};
   for (const key of TUI_SEAM_KEYS)
     bindings[key] = newBindingStatus();
@@ -188,6 +294,33 @@ function createTuiAdapter(ctx) {
     }
   }
   const fallbackIdentity = ctx;
+  let hostContact = options.hostInput;
+  let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
+  const hostWaiters = [];
+  let rememberedHook;
+  const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
+  const wakeHostWaiters = () => {
+    const waiting = hostWaiters.splice(0);
+    const input = currentHostInput();
+    for (const listener of waiting) {
+      try {
+        listener(input);
+      } catch {}
+    }
+  };
+  const settleHostContact = (result) => {
+    hostContact = result.input;
+    hostState = result.input === undefined ? { state: "absent", ...result.root === undefined ? {} : { root: result.root }, detail: result.detail ?? "the installed DSH-TUI was not reachable" } : { state: "bound", kit: "probed", ...result.root === undefined ? {} : { root: result.root }, detail: "the host's own useStdin was loaded by file URL" };
+    wakeHostWaiters();
+    try {
+      (options.hostInputLog ?? defaultHostInputLog)(result.input === undefined ? `[mpd-tui-adapter] host contact ABSENT: ${hostState.detail ?? ""} — the surfaces that need it stay inactive` : `[mpd-tui-adapter] host contact bound: ${hostState.root ?? "?"} (${HOST_UI_MODULE})`);
+    } catch {}
+  };
+  if (options.hostInput === undefined && options.probeHostContact === true) {
+    probeHostInput(hostRootCandidates()).then(settleHostContact, (error) => {
+      settleHostContact({ detail: `host contact probe failed: ${String(error?.message ?? error)}` });
+    });
+  }
   const makeHandle = (key, initialDetail) => {
     const id = TUI_SEAMS[key];
     let outcome = { id, state: "absent", detail: initialDetail ?? `${id} was not injected` };
@@ -238,6 +371,62 @@ function createTuiAdapter(ctx) {
     prompt: () => bindings.prompt.service,
     commands: () => bindings.commands.service,
     settings: () => bindings.settings.service,
+    hostInput: () => currentHostInput(),
+    rememberHostKit(kit) {
+      const hook = typeof kit === "object" && kit !== null ? kit.useStdin : undefined;
+      if (typeof hook !== "function")
+        return false;
+      const first = rememberedHook === undefined;
+      rememberedHook = hook;
+      hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" };
+      Promise.resolve().then(wakeHostWaiters);
+      if (!first)
+        return true;
+      try {
+        (options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`);
+      } catch {}
+      return true;
+    },
+    whenHostInput(listener) {
+      if (hostState.state !== "pending") {
+        try {
+          listener(currentHostInput());
+        } catch {}
+        return () => {};
+      }
+      hostWaiters.push(listener);
+      return () => {
+        const at = hostWaiters.indexOf(listener);
+        if (at >= 0)
+          hostWaiters.splice(at, 1);
+      };
+    },
+    registerStatusComponent(view) {
+      const handle = makeHandle("status");
+      whenBoundInternal("status", (service, scope) => {
+        const status = service;
+        if (typeof status?.registerView !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.registerView is missing on this host build` });
+          return;
+        }
+        try {
+          const disposer = status.registerView({
+            key: view.key,
+            component: view.component,
+            ...view.maxRows === undefined ? {} : { maxRows: view.maxRows }
+          }, scope);
+          if (typeof disposer !== "function") {
+            handle.record({ state: "refused", detail: `the host refused view ${view.key} (see its own warning for the reason)` });
+            return;
+          }
+          effectOn(scope, disposer, view.label ?? `mpd-tui status view ${view.key}`);
+          handle.record({ state: "requested", detail: `view ${view.key} requested (no host read-back)` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
     registerScene(descriptor, identity) {
       const handle = makeHandle("scenes");
       whenBoundInternal("scenes", (service) => {
@@ -285,14 +474,14 @@ function createTuiAdapter(ctx) {
     },
     setStatus(key, text, identity) {
       const handle = makeHandle("status");
-      whenBoundInternal("status", (service) => {
+      whenBoundInternal("status", (service, scope) => {
         const status = service;
         if (typeof status?.set !== "function") {
           handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.set is missing` });
           return;
         }
         try {
-          const disposer = status.set(key, text, identity ?? fallbackIdentity);
+          const disposer = status.set(key, text, scope);
           if (typeof disposer === "function")
             effectOn(bindings.status.scope ?? ctx, disposer, `mpd-tui status ${key}`);
           handle.record({
@@ -323,7 +512,7 @@ function createTuiAdapter(ctx) {
             if (text === published)
               return;
             published = text;
-            disposer = status.set(view.key, text, view.identity ?? fallbackIdentity);
+            disposer = status.set(view.key, text, scope);
           } catch (error) {
             view.onError?.(error);
           }
@@ -349,7 +538,7 @@ function createTuiAdapter(ctx) {
             disposer?.();
           } catch {}
           try {
-            status.set(view.key, undefined, view.identity ?? fallbackIdentity);
+            status.set(view.key, undefined, scope);
           } catch {}
         }, view.label ?? `mpd-tui status ${view.key}`);
         refresh = publish;
@@ -416,7 +605,7 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    registerShortcut(combo, options, identity) {
+    registerShortcut(combo, options2, identity) {
       const handle = makeHandle("shortcuts");
       whenBoundInternal("shortcuts", (service) => {
         const registry = service;
@@ -425,7 +614,7 @@ function createTuiAdapter(ctx) {
           return;
         }
         try {
-          const disposer = registry.register(combo, options, identity ?? fallbackIdentity);
+          const disposer = registry.register(combo, options2, identity ?? fallbackIdentity);
           if (typeof disposer === "function")
             effectOn(bindings.shortcuts.scope ?? ctx, disposer, `mpd-tui shortcut ${combo}`);
           handle.record({ state: "requested", detail: `${combo} requested` });
@@ -446,7 +635,7 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    requestDecisionEvent(event, listener, options = {}) {
+    requestDecisionEvent(event, listener, options2 = {}) {
       let supported = false;
       let granted;
       let disposerReturned = false;
@@ -454,7 +643,7 @@ function createTuiAdapter(ctx) {
       let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
       whenBoundInternal("pluginHost", (service, scope) => {
         const host = service;
-        const identity = options.identity ?? fallbackIdentity;
+        const identity = options2.identity ?? fallbackIdentity;
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
           return;
@@ -463,14 +652,14 @@ function createTuiAdapter(ctx) {
         try {
           const facade = host.grants;
           if (facade !== undefined && typeof facade.allows === "function")
-            granted = facade.allows(identity, event, options.scope ?? event) === true;
+            granted = facade.allows(identity, event, options2.scope ?? event) === true;
         } catch {
           granted = undefined;
         }
         try {
           const disposer = host.subscribeDecision(identity, event, listener, {
-            ...options.scope === undefined ? {} : { scope: options.scope },
-            ...options.order === undefined ? {} : { order: options.order }
+            ...options2.scope === undefined ? {} : { scope: options2.scope },
+            ...options2.order === undefined ? {} : { order: options2.order }
           });
           disposerReturned = typeof disposer === "function";
           if (disposerReturned)
@@ -520,12 +709,12 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    registerSettingsNamespace(ns, schema, options) {
+    registerSettingsNamespace(ns, schema, options2) {
       const handle = makeHandle("settings");
       register("settings", handle, `namespace ${ns} requested (no host read-back)`, (service) => {
         if (typeof service?.register !== "function")
           throw new Error(`${TUI_SEAMS.settings}.register is missing`);
-        service.register(ns, schema, options);
+        service.register(ns, schema, options2);
       });
       return handle;
     },
@@ -550,7 +739,7 @@ function createTuiAdapter(ctx) {
         if (live)
           bound += 1;
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length };
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } };
     },
     seamOutcomes() {
       return TUI_SEAM_KEYS.map((key) => {
@@ -563,12 +752,12 @@ function createTuiAdapter(ctx) {
         return { id, state: "absent", detail: "not composed in this profile" };
       });
     },
-    diagnosticSink(options = {}) {
-      const root = options.root ?? defaultLogRoot;
+    diagnosticSink(options2 = {}) {
+      const root = options2.root ?? defaultLogRoot;
       return createFileSink({
         root,
-        ...options.name === undefined ? {} : { name: options.name },
-        ...options.capBytes === undefined ? {} : { capBytes: options.capBytes }
+        ...options2.name === undefined ? {} : { name: options2.name },
+        ...options2.capBytes === undefined ? {} : { capBytes: options2.capBytes }
       });
     }
   };
@@ -625,7 +814,7 @@ function createLazyTuiAdapter(ctx, options) {
   });
 }
 function apply(ctx, config = {}) {
-  const adapter = createTuiAdapter(ctx);
+  const adapter = createTuiAdapter(ctx, { probeHostContact: true });
   try {
     const provide = ctx.provide;
     if (typeof provide === "function")
@@ -642,6 +831,10 @@ function apply(ctx, config = {}) {
 export {
   DEFAULT_LOG_CAP_BYTES,
   DEFAULT_LOG_NAME,
+  HOST_LIVE_CONTEXT_MARKER,
+  HOST_PACKAGE_PATH,
+  HOST_ROOT_ENV,
+  HOST_UI_MODULE,
   SERVICE_NAME,
   TUI_SEAMS,
   TUI_SEAM_KEYS,
@@ -652,9 +845,12 @@ export {
   defaultLogRoot,
   describeOutcome,
   effectOn,
+  hostRootCandidates,
   inject,
   name,
   onService,
+  probeHostInput,
+  readHostStdinValue,
   readableService,
   reportOutcomes,
   resolveTuiAdapter,

@@ -270,8 +270,13 @@ revision `b246411` the public `admit()` throws, `admitInternal` is gated by a mo
 and the exported production accessor has zero callers — so identity is never granted and the
 registration is refused before any policy question. The plugin therefore attempts the mediated
 registration for its four intercept points, treats the refusal as the expected outcome, warns
-**once**, registers nothing, and never uses the test-only token or fakes an identity. **No input,
-rewind, session-switch or compact interception is claimed.** The manifest declares the seam as an
+**once**, registers nothing, and never uses the test-only token or fakes an identity. **No
+DECISION-EVENT input, rewind, session-switch or compact interception is claimed through this seam.**
+(One key IS taken over since 2026-10-05, and by a different mechanism entirely: the host's built-in
+`dashboard` action owns `Ctrl+A`, so `packages/mpd-tui-adapter-plugin` obtains the host's own
+`useStdin` by file URL and a zero-row status view pre-empts that key on the host's input bus — see §7's
+"Host input bus" row. It is a key re-point, not a decision-event subscription, and it fires only while
+the workspace's team projection holds a team with at least one task.) The manifest declares the seam as an
 optional requirement with a fallback, and the upstream fix that would make admission reachable is
 documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 
@@ -407,6 +412,7 @@ converges.* This is the one place where the two doors can legitimately disagree 
 | Package name | `@mpd-dsh/mpd-tui` | Keeps this bundle's namespace; the ecosystem uses its own naming. |
 | Licence | SUL-1.0 (`LICENSE.md`) | Unchanged by this edition; no artifact claims a licence change. |
 | Manifests | **ONE** bundle-level `dsh-plugin.json`, never 25 per-package manifests | The bundle installs as one unit; the manifest's host facet points at the one TUI plugin module. |
+| Host input bus | ONE counted contact outside the seams: the adapter resolves the INSTALLED host root and dynamic-imports `<hostRoot>/lib/types/ui.js` **by file URL** to obtain the host's own `useStdin` | `Ctrl+A` is a host built-in action that no contribution kind can reach, so the alternative was dropping the requirement. The contact is confined to `mpd-tui-adapter-plugin`, patches no host file, and depends on module identity by URL. Measured on 0.12.0, that import is a FOREIGN instance whose `useStdin()` answers nothing, so the adapter also stores the live kit a SCENE render receives and prefers it — which is why the take-over arms after the session has rendered any MPD panel or scene, and stays inert before that. Two further host rules are obeyed inside the adapter: a status registration's identity must be the CALLING ACTIVATION (the injected scope), and no DSH-TUI file is written. The real-PTY lane `tui-deps-ctrla` is the falsifier. |
 
 ## 8. Per-package compatibility ledger
 
@@ -493,7 +499,8 @@ separate sections on purpose.
 Nothing in this section is a working feature.
 
 1. **decision-event seam** — blocked by host admission unreachability (§6.1). Ready but not
-   activated; no interception is claimed.
+   activated; no interception is claimed THROUGH THAT SEAM. (The separate `Ctrl+A` key re-point of §7
+   is not this seam and makes no decision-event claim.)
 2. **Identity-gated services** — `storage.local`, `messages.observe` and the mediated
    `registerCommand` path need the same verified Component identity; the effect ledger therefore
    attributes our surface as `undeclared` today.

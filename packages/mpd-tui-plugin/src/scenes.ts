@@ -34,7 +34,7 @@ import { boardLines, readBoardState, statusLine } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
-import { GRAPH_THEME, hitTest, layoutGraph, type GraphTask } from "./graph.js"
+import { GRAPH_THEME, hitTest, layoutGraph, legendLines, type GraphTask } from "./graph.js"
 import { SUBAGENT_SCENE_ID, SUBAGENT_SCENE_TITLE, createSubagentSceneComponent } from "./subagent-scene.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -299,6 +299,7 @@ function createBoardComponent(
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -312,6 +313,11 @@ function createBoardComponent(
       // than crash the reconciler.
       return null
     }
+    // THE KIT IS THE ONE LIVE HOST CONTACT. A scene is the only surface the host hands its own
+    // `ui` namespace to, and that object's `useStdin` resolves the LIVE context value where an
+    // imported module's does not (measured, dsh-tui 0.12.0) — so every scene reports it once per
+    // render and the adapter keeps the newest one.
+    onHostKit?.(ui)
 
     /** Reads the board rows, degrading to one explicit line when the read fails. */
     const read = (): string[] => {
@@ -426,6 +432,7 @@ function createTeamComponent(
   openScene: (id: string) => boolean,
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
@@ -435,6 +442,8 @@ function createTeamComponent(
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
+    // The live host kit, reported per render (see the board factory's note).
+    onHostKit?.(ui)
 
     /** The projection this render draws, or undefined before the first successful read. */
     const workflowState = React.useState(undefined as TeamWorkflow | undefined)
@@ -640,6 +649,20 @@ function createTeamComponent(
           if (delta !== 0) setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)))
         },
       }, graphRows))
+      // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
+      // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
+      // one legend cannot claim more cells than the drawing above it used. `graph.ts` owns the
+      // content and its clamp; a drawing module that refuses costs the legend, never the surface.
+      /** The legend lines the drawing module offers for this width. */
+      let legend: string[] = []
+      try {
+        legend = legendLines(graphWidth)
+      } catch {
+        legend = []
+      }
+      for (let index = 0; index < legend.length; index += 1) {
+        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeLine(legend[index])))
+      }
       // The detail pane: the focused task's contract, which is what a reader needs after finding it.
       /** The focused task's row, when there is one. */
       const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus)
@@ -714,7 +737,9 @@ function createPlanComponent(
   actions: PlanActions,
   planFor?: (sessionId: string) => MpdPlanView["plan"] | undefined,
   teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecord[],): unknown {
+  teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
+): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
     /** The host's own React instance; every hook and element must use it. */
     const React = props?.React
@@ -723,6 +748,8 @@ function createPlanComponent(
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : () => {}
     if (!usableKit(React, ui)) return null
+    // The live host kit, reported per render (see the board factory's note).
+    onHostKit?.(ui)
 
     // ── THE SESSION ID COMES FROM THE LIVE CHANNEL ────────────────────────────
     // A staged plan is SESSION-scoped (`.mpd/team/staging/<sessionId>.json`) while every other read
@@ -1100,6 +1127,9 @@ function createPlanComponent(
  * @param planReader - the shared plan reader, per session.
  * @param teamViews - the official team readout, resolved per call.
  * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @param onHostKit - receives the host's own `ui` kit on every scene render, so the adapter can keep
+ *   the one `useStdin` that resolves the LIVE input context (see `subagent-scene.ts`); optional, and
+ *   a caller that omits it loses only the Ctrl+A take-over's ability to arm.
  * @returns the seam handle.
  */
 export function registerScene(
@@ -1113,6 +1143,7 @@ export function registerScene(
   planReader?: (sessionId: string) => MpdPlanView["plan"] | undefined,
   teamViews?: () => readonly DshTeamView[],
   teamRecords?: () => readonly TeamRecord[],
+  onHostKit?: (ui: unknown) => unknown,
 ): SceneSeam {
   /** Navigation shared by the three components, mutated only by their own handlers. */
   const nav: SceneNav = { planFromTeam: false }
@@ -1137,9 +1168,9 @@ export function registerScene(
       return
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, ctx)
-      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, ctx)
-      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, ctx)
+      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx)
       // The MERGED PANEL rides the SAME seam: the host's own subagent rows on top, the MPD team
       // body below them. It gets the SAME `readWorkflow` closure the team scene uses, so the two
       // surfaces cannot describe one team differently. MPD's own key opens it; `Ctrl+A` — the
@@ -1148,7 +1179,7 @@ export function registerScene(
         {
           id: SUBAGENT_SCENE_ID,
           title: SUBAGENT_SCENE_TITLE,
-          component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords)),
+          component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit),
         },
         ctx,
       )

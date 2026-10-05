@@ -1,0 +1,132 @@
+{
+  "slug": "tui-deps-ctrla",
+  "ok": true,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "2b031732b222a6d0d71679acbe87040768d832275728c7468763bf6608836b50",
+    "bytes": 277005,
+    "mtimeLocal": "2026-10-05T08:10:10.857Z",
+    "mtimeUtc": "2026-10-05T08:10:10.857Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "2b031732b222a6d0d71679acbe87040768d832275728c7468763bf6608836b50",
+    "after": "2b031732b222a6d0d71679acbe87040768d832275728c7468763bf6608836b50",
+    "reason": "unchanged across the run"
+  },
+  "revisionFile": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/REVISION.json",
+  "arms": [
+    {
+      "capture": "panel-baseline",
+      "label": "alt+a opened MPD's merged panel and it drew the dependency graph with its arrow",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 3205,
+      "ok": true
+    },
+    {
+      "capture": "ctrla-team",
+      "label": "with a live team, Ctrl+A opened MPD's merged panel and it drew the dependency graph",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 3205,
+      "ok": true
+    },
+    {
+      "capture": "ctrla-host",
+      "label": "with no team in the workspace, Ctrl+A still opened the HOST subagent dashboard",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 3821,
+      "ok": true
+    },
+    {
+      "capture": "settings-ctrla",
+      "label": "with the host's settings screen open, Ctrl+A opened NEITHER panel (the take-over lives on the plain chat screen)",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 9748,
+      "ok": true
+    }
+  ],
+  "hostContact": {
+    "ok": true,
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tui-dep-lane/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "reason": "bound to the launched profile copy: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tui-dep-lane/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui"
+  },
+  "teamFixture": {
+    "file": ".qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json",
+    "sha256": "38b9af2c788e8f2e54708f1e5e9d31fee087eab8b4a280c4e25fea58789f168b",
+    "recordsRemoved": [
+      ".qa-tmp/tui-dep-lane/ws/.mpd/team/teams/mpd-fixture-1.json"
+    ]
+  },
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "lifecycleFailures": [],
+  "panes": [
+    {
+      "name": "boot",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/boot.pane.txt",
+      "chars": 2585
+    },
+    {
+      "name": "settle",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/settle.pane.txt",
+      "chars": 2592
+    },
+    {
+      "name": "panel-baseline",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/panel-baseline.pane.txt",
+      "chars": 3205
+    },
+    {
+      "name": "close-baseline",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/close-baseline.pane.txt",
+      "chars": 3140
+    },
+    {
+      "name": "ctrla-team",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/ctrla-team.pane.txt",
+      "chars": 3205
+    },
+    {
+      "name": "close-panel",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/close-panel.pane.txt",
+      "chars": 3152
+    },
+    {
+      "name": "ctrla-host",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/ctrla-host.pane.txt",
+      "chars": 3821
+    },
+    {
+      "name": "close-host",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/close-host.pane.txt",
+      "chars": 3812
+    },
+    {
+      "name": "settings-open",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/settings-open.pane.txt",
+      "chars": 9748
+    },
+    {
+      "name": "settings-ctrla",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/settings-ctrla.pane.txt",
+      "chars": 9748
+    },
+    {
+      "name": "settings-close",
+      "file": "evidence/tui/lanes/2026-10-05T08-11-36.890Z/settings-close.pane.txt",
+      "chars": 10046
+    }
+  ],
+  "sandboxRoot": ".qa-tmp/tui-dep-lane"
+}

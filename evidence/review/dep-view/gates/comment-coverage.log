@@ -1,0 +1,13 @@
+# verify-comment-coverage
+
+scanned 383 TypeScript file(s) of 383 in the source set; inspected 30399 declaration(s); skipped 14215 inline callback(s) as out of family
+
+VERDICT: FAIL — 4 violation(s) across 1 file(s).
+
+skills/dsh-qa/scripts/tui-deps-ctrla.ts (4)
+  356: comment — control
+  357: comment — controlFailedAsRequired
+  361: comment — delta
+  362: comment — revisionFile
+
+EXIT=1

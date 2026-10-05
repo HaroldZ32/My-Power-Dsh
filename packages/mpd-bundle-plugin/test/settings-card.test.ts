@@ -484,7 +484,7 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.ts"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's twenty-five fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
+  test("the card's twenty-six fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
     // Both front doors read the same knob list — the TUI imports it, the card MIRRORS it — so this
     // compares the card against that single source at RUNTIME (the twelve team-model rows are built
     // from slot ids and labels in the declaration, which no source-text grep can follow).
@@ -492,10 +492,11 @@ describe("isolation and front-door parity", () => {
     // declaration the card exports, so it needs the transpiled text too.
     const { FIELDS } = (0, eval)("(" + CARD_JS + ")")((name: "react" | "locales") => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 25 = the shared list after the twelve team-model slot leaves joined it (13 scalar knobs + 12
-    // leaves); the element-wise loop below is what makes this a no-drift pin, not a magic number.
-    expect(FIELDS).toHaveLength(25)
-    expect(SETTINGS_KNOBS).toHaveLength(25)
+    // 26 = the shared list after the twelve team-model slot leaves joined it (13 scalar knobs + 12
+    // leaves) plus the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle); the
+    // element-wise loop below is what makes this a no-drift pin, not a magic number.
+    expect(FIELDS).toHaveLength(26)
+    expect(SETTINGS_KNOBS).toHaveLength(26)
     expect(FIELDS.map((field: CardField) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
     for (const [index, field] of FIELDS.entries()) {
       /** The shared declaration's knob at the same index. */

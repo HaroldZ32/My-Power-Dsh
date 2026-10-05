@@ -1,0 +1,9 @@
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.91ms]
+
+ 14 pass
+ 0 fail
+ 72 expect() calls
+Ran 14 tests across 2 files. [1128.00ms]
+EXIT=0

@@ -270,6 +270,21 @@ function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldL
   }
 }
 
+// ── the ONE TUI-owned knob: the Ctrl+A takeover (W2) ────────────────────────────────────────────
+//
+// The knob is DECLARED in the shared schema (`mpd-config-plugin/src/settings-schema.ts`), which is the
+// single source for the namespace schema and for the list BOTH front doors render: `SETTINGS_KNOBS`
+// carries `tui.dashboardKey` (boolean, `hint` = the semantics sentence), `SettingsSchema` carries its
+// L0 default (true), and this package renders it through the SAME `declaredField` path as every other
+// row — so there is no locally-declared lookalike for the same path, and no count this file can drift
+// from. The write path is unchanged: the section is keyed by the config ENTRY (`SETTINGS_ENTRY`), a
+// save stores the leaf in the entry's section, the bridge writes it into the workspace's
+// `.mpd/mpd.jsonc` as `tui.dashboardKey`, and the takeover reads it back through the `mpdConfig`
+// service with the TUI row's own config (`dashboardKey`, default true) as the floor.
+
+/** The mpd.jsonc key of the Ctrl+A takeover toggle, in its dotted form (the shared knob's own path). */
+export const DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey"
+
 /** The declared field list: every knob with its declared options (the pre-catalog baseline). */
 export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.map(declaredField)
 

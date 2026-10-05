@@ -1,0 +1,82 @@
+======================================================================
+A. ONE EDGE: does the arrowhead exist, where, and what row is it on?
+======================================================================
+ 0|┌────────────────────────────────┐|
+ 1|│ ○ P WRK subject of P           │|
+ 2|└────────────────┬───────────────┘|
+ 3|                 │|
+ 4|                 │|
+ 5|                 ▼|
+ 6|┌────────────────┴───────────────┐|
+ 7|│ ○ C WRK subject of C           │|
+ 8|└────────────────────────────────┘|
+parent.row=0 rowEnd=2  child.row=6 rowEnd=8
+▼ columns on row child.row-1 = [17]  (count=1)
+row directly above child top border === child.row-1: true
+child top border row contains ┴ : true
+parent bottom border row contains ┬ : true
+is the ▼ cell inside ANY hit rectangle (i.e. did the arrow move the click targets)? false
+
+======================================================================
+B. FAN-IN: how many arrowheads for two blockers converging on one dependent?
+======================================================================
+ 0|┌────────────────────────────────┐   ┌────────────────────────────────┐|
+ 1|│ ○ P1 WRK subject of P1         │   │ ○ P2 WRK subject of P2         │|
+ 2|└────────────────┬───────────────┘   └────────────────┬───────────────┘|
+ 3|                 │                                    │|
+ 4|                 ├────────────────────────────────────┘|
+ 5|                 ▼|
+ 6|┌────────────────┴───────────────┐|
+ 7|│ ○ C WRK subject of C           │|
+ 8|└────────────────────────────────┘|
+total ▼ in the whole drawing = 1
+
+======================================================================
+C. WIDTH BOUND + span collapse, at the same widths the lane asserts
+======================================================================
+cols= 24 mode=rail  rows=9 widestRow=24 <=cols:true spansCollapsed:false trailingBlankCell:true ▼count=0 ▸count=7
+cols= 40 mode=rail  rows=9 widestRow=40 <=cols:true spansCollapsed:false trailingBlankCell:false ▼count=0 ▸count=7
+cols= 70 mode=boxes rows=21 widestRow=69 <=cols:true spansCollapsed:true trailingBlankCell:false ▼count=7 ▸count=0
+cols=100 mode=boxes rows=21 widestRow=99 <=cols:true spansCollapsed:true trailingBlankCell:false ▼count=7 ▸count=0
+
+======================================================================
+D. LEGEND HONESTY: what the legend claims vs what the drawing shows
+======================================================================
+cols=   0 mode=rail  legendLines=0 linesOverWidth=0 legendMentions▼=false drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=   3 mode=rail  legendLines=0 linesOverWidth=0 legendMentions▼=false drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=   7 mode=rail  legendLines=0 linesOverWidth=0 legendMentions▼=false drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=   8 mode=rail  legendLines=1 linesOverWidth=0 legendMentions▼=true drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=  16 mode=rail  legendLines=1 linesOverWidth=0 legendMentions▼=true drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=  24 mode=rail  legendLines=1 linesOverWidth=0 legendMentions▼=true drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=  40 mode=rail  legendLines=1 linesOverWidth=0 legendMentions▼=true drawingHas▼=false drawingHas▸=true legendMentions▸=false
+cols=  70 mode=boxes legendLines=2 linesOverWidth=0 legendMentions▼=true drawingHas▼=true drawingHas▸=false legendMentions▸=false
+cols= 100 mode=boxes legendLines=2 linesOverWidth=0 legendMentions▼=true drawingHas▼=true drawingHas▸=false legendMentions▸=false
+cols= 200 mode=boxes legendLines=2 linesOverWidth=0 legendMentions▼=true drawingHas▼=true drawingHas▸=false legendMentions▸=false
+cols= NaN mode=rail  legendLines=0 linesOverWidth=0 legendMentions▼=false drawingHas▼=false drawingHas▸=true legendMentions▸=false
+
+legend at 100 cols:
+  [0] "▼ blocker above → dependent below · ▶ focus lights its chain"
+  [1] "✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled"
+legend at 24 cols:
+  [0] "▼ arrow · ▶ focus"
+legend at 16 cols:
+  [0] "▼ arrow"
+legend at 8 cols:
+  [0] "▼ arrow"
+
+======================================================================
+E. LEGEND GLYPH HONESTY: does every state the legend keys actually appear in the drawing?
+======================================================================
+  drawing contains ✓: true
+  drawing contains ◐: true
+  drawing contains ✗: true
+  drawing contains ○: true
+  drawing contains ⊘: true
+  drawing contains ▶: false
+  drawing contains ▼: false
+
+======================================================================
+F. POINTER GEOMETRY: does hitTest still cover every box row and nothing else?
+======================================================================
+hit rectangles=9 mismatches over their own rows: 0
+hitTest on the row ABOVE a box (an arrow row) returns: undefined

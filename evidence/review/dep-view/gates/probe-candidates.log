@@ -1,0 +1,4 @@
+HOME = /tmp/mpd-review-no-such-sandbox  DSH_HOME = /tmp/mpd-review-no-such-sandbox
+candidates (1):
+  /tmp/mpd-review-no-such-sandbox/nothing-here
+probe result: bound=false root=undefined detail=no candidate carried a readable lib/types/ui.js (1 probed)

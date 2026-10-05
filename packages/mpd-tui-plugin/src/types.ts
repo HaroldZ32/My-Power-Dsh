@@ -12,6 +12,8 @@ export type {
   CommandsLike,
   DiagnosticSink,
   Disposer,
+  HostInputEmitterLike,
+  HostStdinValue,
   LoggerLike,
   PluginContextLike,
   SceneRegistrationHandle,
