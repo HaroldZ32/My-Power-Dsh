@@ -58,3 +58,9 @@ NULL arms (credential-gated): live.credentialStaged,live.credentialScoped,live.c
 ok=True duration=221s assertions=98 passed=68 failed=0 null=30
 spec: github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
 -- the new row inside both lanes: mpd-goal is in the composed row set and packages/mpd-goal-plugin/dist/index.js rebuilt from source in-container (exit=0)
+
+== CI (GitHub Actions 'gates' workflow) ==
+-- run 37263148325: FAIL at 'bun install --frozen-lockfile' ("lockfile had changes, but lockfile is frozen")
+   CAUSE: a new workspace package (packages/mpd-goal-plugin) must be registered in bun.lock — the derived workspace row + its @mpd-dsh/goal@workspace: resolution.
+   FIX: .toolchain/bun/bin/bun install (6-line lock diff) -> commit 125f0af7.
+-- run 37263231579: PASS in 58s.
