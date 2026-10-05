@@ -25,13 +25,42 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (READ-ONLY, 0.1.7) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and states that no approval flow exists on the official Agent Teams plane; the retired type-the-phrase / `Ctrl+X` approval and the `Ctrl+D` discard are gone with the tools that served them (`agent_teams_approve`, `agent_teams_delete` are registered by no row) |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion |
-| Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+w` workmate picker · `alt+r` refresh the status line |
+| Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
+| Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: open with `alt+a`, or with **`Ctrl+A`** whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
+| `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
 | Decision events | `tuiPluginHost.subscribeDecision` | attempted, expected to be refused, **not activated** (see below) |
 
 Supporting surfaces (not one of the seven seams): the `/mpd` command on the
 harness command registry, the `mpd` settings namespace registration, and the
 log-only `mpd-tui/board-opened` session record.
+
+### The dependency graph: arrows, the legend and the `Ctrl+A` take-over
+
+`src/graph.ts` draws the board three ways and picks the widest one the terminal fits: `boxes` (a layered
+DAG whose vertical axis is the longest dependency path, so a chain reads top to bottom), `rail` (an
+indented forest for a narrow terminal) and `list` (a rank-grouped table for a very dense board). Every
+DRAWN dependency edge ends in a directional arrowhead — `▼` in `boxes`, `▸` in `rail` — pointing INTO the
+dependent, and a fan-in of several blockers still shows exactly ONE arrow: the merged entry is written as
+text rather than as a junction, because no direction bit can say "…and the dependency points into this
+box". Both callers (the team scene and the merged panel) render `legendLines(width)` directly under the
+drawing; it names both marks, the five state glyphs (read from the same table the drawing paints) and the
+focus marker, and it drops a sentence rather than cutting one when the terminal is narrow.
+
+`Ctrl+A` opens the merged panel — the host's own subagent rows with their counts, the team body and that
+DAG — whenever the workspace's team projection holds a team with at least one task. The host's built-in
+`dashboard` action owns that key and no contribution kind can reach its component, so the adapter loads
+the host's own `useStdin` (see `packages/mpd-tui-adapter-plugin`) and a zero-row status view prepends a
+listener that consumes the key first. With no team the listener touches nothing, and every failure — an
+unreachable host module, a version-skewed one, the `tui.dashboardKey` knob off — degrades to exactly
+today's behaviour. `skills/dsh-qa/scripts/tui-deps-ctrla.ts` proves both arms (and the settings-screen
+control) on a real PTY.
+
+ONE HOST CONSTRAINT, stated because it changes what you see: the live input context is only ever handed
+to a SCENE render, so the take-over arms itself from the first MPD panel or scene you open in a session
+(`alt+a`, `alt+t`, `alt+m`, `/mpd board`, …). Before that — and on any host that answers a plugin's own
+import with a foreign module instance — the hook attaches nothing and `Ctrl+A` opens the host dashboard
+exactly as it does without this bundle. Opening the panel once is enough for the rest of the session.
 
 ### Team-model slot fields are catalog-driven selections
 
@@ -116,6 +145,7 @@ soft probe, which is the host's documented idiom.
 | `commandTrees` | `true` | register the `/mpd` completion tree |
 | `commands` | `true` | register the `/mpd` command (the board's opening path) |
 | `shortcuts` | `true` | register the key bindings |
+| `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12) |
 | `dialogs` | `true` | enable the mediated dialog facade |
 | `sessionEvents` | `true` | append the log-only `mpd-tui/board-opened` record, and only after the event type is verified known to a reachable `dsh-session` copy |
 | `decisionEvents` | `true` | attempt the mediated decision-event registration (expected: refused) |
@@ -195,6 +225,29 @@ only when no logger exists to `stderr`, with `debug` gated behind
 6. **Host-internal gates are not our conformance.** The host's own
    `verify:plugin-*` suite validates the host's plugin subsystem; even a green
    run would not be a conformance verdict on this plugin.
+7. **The `Ctrl+A` take-over is a KEY RE-POINT, not a merge into the host's dashboard.** No host file
+   is patched and the host's own dashboard rendering is not extended: the panel you land on is
+   `mpd-tui-subagents`, which renders the host's `channel.subagents` rows itself. While a team holds
+   at least one task, `Ctrl+A` no longer opens the host dashboard at all — turn `tui.dashboardKey`
+   off to get the host's behaviour back.
+8. **It keys off the KEY, not off the host's current `dashboard` binding.** If you remap that action
+   in `/settings`, `Ctrl+A` still opens the merged panel while a team exists: the hook watches the
+   host's default combo. Nothing is remapped for you and the host's own binding table is untouched.
+9. **It fires on the plain chat screen only.** The hook rides a status-view component, and every
+   exclusive host surface (a dialog, `/settings`, the session tree, the supervisor, a plugin scene,
+   the host dashboard itself) unmounts it — the `tui-deps-ctrla` lane's settings arm proves that on a
+   real pane, rather than inferring it from the host's branch order.
+10. **Cross-rank dependency edges are not drawn in the `boxes` view.** A task whose blocker sits two
+    or more ranks up shows no connector for that blocker (pre-existing layout rule: only the rank
+    immediately above is wired). The `rail` view names the extras inline (`⇠ T4+T6`).
+11. **A merged entry's arrowhead takes the DEPENDENT's tone, not the edge's.** One cell cannot carry
+    several parents' tones, so a dimmed edge can end in an arrowhead drawn in the child's own colour.
+12. **The `Ctrl+A` take-over ARMS once the host has handed MPD its own ui kit** — i.e. after any MPD
+    scene or panel has rendered in the session (`alt+a`, `alt+t`, `alt+m`, `/mpd board`) — because the
+    host module a plugin can resolve by file URL is NOT the instance the running host renders with
+    (measured on dsh-tui 0.12.0: that import's `useStdin()` answers nothing, while the kit a scene
+    receives returns the live context). Until then the contact falls back to that module and `Ctrl+A`
+    keeps its current behaviour. Nothing is claimed about a host whose kit never arrives.
 
 ## Build and test
 

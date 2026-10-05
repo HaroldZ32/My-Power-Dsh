@@ -37,6 +37,7 @@ import {
   type PlanActions,
 } from "../src/scenes"
 import { approvalPhrase, mailboxKey, planProjectionLines, readTeamWorkflow, taskDepths, teamWorkflowLines } from "../src/team-state"
+import { legendLines } from "../src/graph"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState } from "../src/state"
 
@@ -397,6 +398,8 @@ interface Kit {
   press(input: string, key?: Record<string, unknown>): void
   /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
+  /** The last tree `text` flattened — the drawn elements, so a part of the surface is assertable. */
+  last(): unknown
   /** How many times a rendered scene called its own `close` — the scene's exit, counted. */
   closes: number
   /**
@@ -544,6 +547,7 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       rows(tree)
       return out.join("\n")
     },
+    last: () => lastTree,
   }
 }
 
@@ -994,6 +998,72 @@ describe("package invariants", () => {
 // you can ask it about ONE task. Two input paths answer that question — the keyboard, which is the
 // primary one and must always work, and the pointer, which is additive and inert on a host without
 // mouse tracking — and they must agree about what "the focused task" means.
+//
+// WHY THE ASSERTIONS BELOW ASK `graphText`, AND NOT THE WHOLE SCENE. The DAG is followed by a LEGEND
+// that must NAME the marks it explains — including the focus marker `▶` — so a scene-wide scan for
+// `▶` answers the legend instead of the drawing and reddens while the behaviour is still correct
+// (measured: the legend landed and four of these arms failed on that alone). The arm's intent is
+// "no TASK is drawn focused", which is a question about the graph BOX, so that is what it asks.
+
+/**
+ * Visit every element of a rendered tree, parents before children — the double's own shape.
+ * @param node - the tree (or one element/child list of it), of unknown shape.
+ * @param visit - called once per element, in draw order.
+ * @returns nothing; the walk is for its side effects.
+ */
+function walkElements(node: unknown, visit: (element: Element) => void): void {
+  if (node === null || node === undefined || typeof node !== "object") return
+  if (Array.isArray(node)) {
+    for (const child of node) walkElements(child, visit)
+    return
+  }
+  /** This node as an element — every rendered node is one. */
+  const element = node as Element
+  visit(element)
+  for (const child of element.children ?? []) walkElements(child, visit)
+}
+
+/**
+ * One drawn element by its React key.
+ * @param tree - the tree the kit last flattened.
+ * @param key - the key to look for.
+ * @returns the element, or undefined when this render drew no such node.
+ */
+function elementByKey(tree: unknown, key: string): Element | undefined {
+  /** The element found, when the walk reaches it. */
+  let found: Element | undefined
+  walkElements(tree, (element) => {
+    if (found === undefined && element.props?.key === key) found = element
+  })
+  return found
+}
+
+/**
+ * Everything the DAG BOX itself drew, its spans joined — the drawing, WITHOUT the legend under it.
+ *
+ * The legend is a SIBLING row: it explains the drawing rather than being part of it, so this helper
+ * scopes a "is anything drawn focused" question to the graph Box the scene keys as `graph` (and to
+ * the exact cells the pointer geometry is resolved against).
+ * @param tree - the tree the kit last flattened.
+ * @returns the drawing's characters; empty when this render drew no graph at all.
+ */
+function graphText(tree: unknown): string {
+  /** The graph element, found by the key the scene gives it. */
+  const graph = elementByKey(tree, "graph")
+  if (graph === undefined) return ""
+  /** Every character inside one node, spans joined with nothing — the kit's own flattening rule. */
+  const inline = (node: unknown): string => {
+    if (node === null || node === undefined) return ""
+    if (typeof node === "string") return node
+    if (typeof node === "number") return String(node)
+    if (Array.isArray(node)) return node.map(inline).join("")
+    /** This node as an element, the only shape left after the guards. */
+    const element = node as Element
+    return inline(element.props?.children) + inline(element.children ?? [])
+  }
+  return inline(graph.children ?? [])
+}
+
 describe("the team scene's focus", () => {
   /** A fixture with a three-task chain, so a focus has something to light. */
   const chained = (): Record<string, unknown> => ({
@@ -1016,7 +1086,8 @@ describe("the team scene's focus", () => {
     /** The scene under test. */
     const scene = components[TEAM_SCENE_ID]
     // Nothing is focused on the first render, so no task carries the marker.
-    expect(render(kit, scene)).not.toContain("▶")
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
     // The first ↓ focuses the FIRST task in drawing order — rank order, so `a` (a root).
     expect(pressAndRender(kit, scene, "", { downArrow: true })).toContain("▶ a")
     // The next walks to the following task, and ↑ walks back.
@@ -1057,8 +1128,10 @@ describe("the team scene's focus", () => {
     render(kit, scene)
     pressAndRender(kit, scene, "", { downArrow: true })
     expect(kit.closes).toBe(0)
-    // The first Escape clears the pin and does NOT close.
-    expect(pressAndRender(kit, scene, "", { escape: true })).not.toContain("▶")
+    // The first Escape clears the pin and does NOT close. The drawing is asked, not the whole scene:
+    // the legend under it names the marker on purpose.
+    pressAndRender(kit, scene, "", { escape: true })
+    expect(graphText(kit.last())).not.toContain("▶")
     expect(kit.closes).toBe(0)
     // The second Escape, with nothing pinned, closes as it always did.
     pressAndRender(kit, scene, "", { escape: true })
@@ -1081,7 +1154,8 @@ describe("the team scene's focus", () => {
     expect(hovered).toContain("▶ a")
     // HOVER IS TRANSIENT: leaving the box clears it, so the drawing returns to nothing focused.
     expect(kit.pointer("onMouseLeave", {})).toBe(true)
-    expect(render(kit, scene)).not.toContain("▶")
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
     // A CLICK pins, and the pin SURVIVES the pointer leaving — that is the difference between the
     // two gestures, and the reason both exist.
     expect(kit.pointer("onClick", { localRow: 1, localCol: 4 })).toBe(true)
@@ -1093,7 +1167,8 @@ describe("the team scene's focus", () => {
     // moves the pointer away before asking whether anything is focused at all.
     kit.pointer("onClick", { localRow: 1, localCol: 4 })
     kit.pointer("onMouseLeave", {})
-    expect(render(kit, scene)).not.toContain("▶")
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
   })
 
   test("a click on BLANK space unpins rather than pinning nothing", () => {
@@ -1108,7 +1183,8 @@ describe("the team scene's focus", () => {
     expect(render(kit, scene)).toContain("▶ a")
     // A row far below the drawing is blank space, and clicking it clears the pin.
     kit.pointer("onClick", { localRow: 99, localCol: 4 })
-    expect(render(kit, scene)).not.toContain("▶")
+    render(kit, scene)
+    expect(graphText(kit.last())).not.toContain("▶")
   })
 
   test("the wheel scrolls the graph", () => {
@@ -1166,6 +1242,46 @@ describe("the team scene's focus", () => {
     /** This arm's kit at a width the boxes fit. */
     const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
     expect(render(wide.kit, wide.components[TEAM_SCENE_ID])).toContain("┌")
+  })
+})
+
+// ── W3: the legend under the DAG ────────────────────────────────────────────
+//
+// The merged panel and the team scene must draw the SAME legend under the DAG they just laid out
+// (`graph.ts`'s frozen `legendLines(cols)`), in the width the graph itself was laid out for. This arm
+// pins the team scene's half: the lines are drawn, they sit AFTER the drawing, and they are DIMMED —
+// and it is the arm that keeps the legend present at all, which the focus arms above now depend on
+// for the reason stated at their section header.
+describe("the team scene's legend", () => {
+  test("the legend is drawn under the DAG, in the width the graph was laid out for", () => {
+    /** This arm's fixture workspace: the same three-task chain the focus arms use. */
+    const workspace = teamFixture({
+      id: "focus-1",
+      name: "Focus",
+      phase: "running",
+      members: [],
+      tasks: [
+        { id: "a", subject: "root", status: "completed", dependencies: [] },
+        { id: "b", subject: "middle", status: "in_progress", dependencies: ["a"] },
+        { id: "c", subject: "leaf", status: "pending", dependencies: ["b"] },
+      ],
+    })
+    /** This arm's kit and the registered components. */
+    const { kit, components } = mountScenes(workspace)
+    /** The rendered scene text. */
+    const text = render(kit, components[TEAM_SCENE_ID])
+    // The scene lays the graph out for `max(20, columns - 4)`; the kit measures 100 columns.
+    /** The legend the frozen interface offers for that width. */
+    const legend = legendLines(96)
+    expect(legend.length).toBeGreaterThan(0)
+    for (const line of legend) expect(text).toContain(line)
+    /** The drawing's own characters, so the legend's position is measured against the DAG itself. */
+    const drawing = graphText(kit.last())
+    expect(drawing.length).toBeGreaterThan(0)
+    // DIRECTLY UNDER THE DAG: the legend starts where the drawing ends, and nothing of the scene's
+    // own content sits between them.
+    expect(text.indexOf(legend[0])).toBe(text.indexOf(drawing) + drawing.length)
+    expect(elementByKey(kit.last(), "legend-0")?.props?.dimColor).toBe(true)
   })
 })
 

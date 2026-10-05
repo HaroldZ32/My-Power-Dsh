@@ -22,9 +22,12 @@ import {
   layoutGraph,
   layoutList,
   layoutRail,
+  legendLines,
+  type GraphHit,
   type GraphTask,
   type GraphSpan,
 } from "../src/graph"
+import { cellWidth } from "../src/sanitize"
 
 /** One task, with the fields a fixture cares about and sane defaults for the rest. */
 function task(id: string, depth: number, dependencies: string[] = [], extra: Partial<GraphTask> = {}): GraphTask {
@@ -59,6 +62,26 @@ const linesOf = (view: { lines: GraphSpan[][] }): string[] => view.lines.map(fla
 
 /** Every tone used anywhere in a drawing. */
 const tonesOf = (view: { lines: GraphSpan[][] }): Set<string> => new Set(view.lines.flat().map((span) => span.tone))
+
+/** The CENTRE column of a task's box, derived from the rectangle the drawing itself recorded. */
+function centreOf(view: { hits: GraphHit[] }, id: string): number {
+  /** This task's rectangle; a drawn task has exactly one. */
+  const hit = view.hits.find((entry) => entry.taskId === id) as GraphHit
+  return hit.col + Math.floor((hit.colEnd - hit.col + 1) / 2)
+}
+
+/** The cell column of the first `glyph` in a row, or -1 when the row does not carry it. */
+function colOf(spans: readonly GraphSpan[], glyph: string): number {
+  /** Cells consumed by the spans already read. */
+  let at = 0
+  for (const span of spans) {
+    /** Where the glyph sits inside this span, or -1 when it is in another one. */
+    const index = span.text.indexOf(glyph)
+    if (index >= 0) return at + cellWidth(span.text.slice(0, index))
+    at += cellWidth(span.text)
+  }
+  return -1
+}
 
 describe("the dependency chain", () => {
   test("is TRANSITIVE and UPSTREAM only, and cannot spin on a cycle", () => {
@@ -139,6 +162,66 @@ describe("the boxed layout", () => {
   })
 })
 
+describe("the arrowheads", () => {
+  test("an edge ENDS in a ▼ on the dependent's centre, in the cell above its box", () => {
+    /** One blocker and one dependent: the smallest board that draws an edge at all. */
+    const board = [task("P", 0), task("C", 1, ["P"])]
+    /** The drawing. */
+    const view = layoutBoxes(board, 60) as NonNullable<ReturnType<typeof layoutBoxes>>
+    /** The rows as plain text, the form the arrow is asserted in. */
+    const lines = linesOf(view)
+    /** The blocker's rectangle, whose bottom border the edge leaves from. */
+    const parent = view.hits.find((hit) => hit.taskId === "P") as GraphHit
+    /** The dependent's rectangle, which fixes where its entry cell is. */
+    const child = view.hits.find((hit) => hit.taskId === "C") as GraphHit
+    // The entry cell is the connector cell immediately above the child's top border, and it sits on
+    // the child's CENTRE column: the arrow arrives where the box is entered, not beside it.
+    expect(colOf(view.lines[child.row - 1], "▼")).toBe(centreOf(view, "C"))
+    // Direction is top to bottom. The blocker is drawn ABOVE — its bottom border carries the `┬` the
+    // stub leaves from — and the row under the arrow is the child's top border, whose `┴` receives it.
+    expect(lines[parent.rowEnd]).toContain("┬")
+    expect(lines[child.row]).toContain("┴")
+    expect(parent.rowEnd).toBeLessThan(child.row)
+  })
+
+  test("a FAN-IN of three blockers still shows exactly ONE ▼", () => {
+    /** Three roots converging on one dependent: the shape a second arrowhead would ruin. */
+    const board = [task("P1", 0), task("P2", 0), task("P3", 0), task("C", 1, ["P1", "P2", "P3"])]
+    /** The drawing. */
+    const view = layoutBoxes(board, 90) as NonNullable<ReturnType<typeof layoutBoxes>>
+    /** The drawing as text. */
+    const text = linesOf(view).join("\n")
+    expect((text.match(/▼/g) ?? []).length).toBe(1)
+    /** The dependent's rectangle. */
+    const child = view.hits.find((hit) => hit.taskId === "C") as GraphHit
+    expect(colOf(view.lines[child.row - 1], "▼")).toBe(centreOf(view, "C"))
+  })
+
+  test("a rank that no edge reaches draws no arrowhead", () => {
+    /** Two ranks and NO dependency between them: a board a flat list could draw just as well. */
+    const board = [task("A", 0), task("B", 1)]
+    expect(linesOf(layoutBoxes(board, 60) as never).join("\n")).not.toContain("▼")
+  })
+
+  test("every drawn row fits its width, keeps no trailing blank, and collapses same-tone runs", () => {
+    for (const cols of [24, 40, 70, 100]) {
+      /** The view the preference picks at this width: boxes when they fit, the rail otherwise. */
+      const view = layoutGraph(BOARD, cols)
+      for (const line of linesOf(view)) expect(cellWidth(line)).toBeLessThanOrEqual(cols)
+      // A drawing's right edge is its last glyph: padding a row out to the viewport is what makes a
+      // scene's copy/paste and its hover rectangles disagree with what is on screen.
+      for (const line of linesOf(view)) expect(line === "" || /\s$/u.test(line)).toBe(false)
+      // The run-collapse step is what keeps a mostly-background row from becoming ~100 host elements
+      // on every re-render, so two ADJACENT spans of one tone mean the collapse stopped working.
+      // Only the boxes view runs that step; the rail assembles its own three spans per row.
+      if (view.mode !== "boxes") continue
+      for (const line of view.lines) {
+        for (let at = 1; at < line.length; at++) expect(line[at].tone).not.toBe(line[at - 1].tone)
+      }
+    }
+  })
+})
+
 describe("the focus", () => {
   test("lights the task, its DEPENDENCIES and the edges between them; dims the rest", () => {
     /** The drawing with T9 focused. */
@@ -215,6 +298,21 @@ describe("the rail fallback", () => {
     expect(text).toContain("⇠ T7+T8")
   })
 
+  test("the connector points INTO the task, and keeps naming the extra blockers", () => {
+    /** One blocker with two dependents, so the rail draws both an elbow and a tee. */
+    const board = [task("P", 0), task("A", 1, ["P"]), task("B", 1, ["P"])]
+    /** The rail as text. */
+    const text = linesOf(layoutRail(board, 60)).join("\n")
+    expect(text).toContain("├─▸")
+    expect(text).toContain("└─▸")
+    // The arrow must not have displaced the inline extra-blocker marker: T9 has two blockers and the
+    // rail names the one it does not hang under.
+    /** The full board's rail, whose T9 has two blockers. */
+    const wide = linesOf(layoutRail(BOARD, 90)).join("\n")
+    expect(wide).toContain("└─▸")
+    expect(wide).toContain("⇠ T7+T8")
+  })
+
   test("draws a task reached by no root, so a cycle cannot silently lose a row", () => {
     /** A board whose only tasks block each other. */
     const cyclic = [task("A", 0, ["B"]), task("B", 0, ["A"])]
@@ -232,6 +330,45 @@ describe("the list view", () => {
     expect(text).toContain("rank 0")
     expect(text).toContain("rank 3")
     expect(text).toContain("⇠T7,T8")
+  })
+})
+
+describe("the legend", () => {
+  test("names both directional marks, the five states and the focus marker, in two lines", () => {
+    /** The legend at a width the team scene actually gets. */
+    const lines = legendLines(100)
+    expect(lines.length).toBe(2)
+    // The arrow sentence, pinned: it names BOTH marks — the boxes `▼` and the rail `▸` — because
+    // which view draws is a fact about the WIDTH, so a rail reader must not meet an undescribed
+    // marker. The focus marker rides on the same line.
+    expect(lines[0]).toBe("▼/▸ blocker above → dependent below · ▶ focus lights its chain")
+    // The state key, read out of the GLYPH table — the drawing's own marks, not a second spelling.
+    for (const pair of ["✓ completed", "◐ running", "○ open", "✗ failed", "⊘ cancelled"]) expect(lines[1]).toContain(pair)
+  })
+
+  test("shortens rather than cutting a sentence, naming BOTH marks on every rung", () => {
+    for (const cols of [12, 20, 40, 60, 70, 100]) {
+      /** The legend at this width. */
+      const lines = legendLines(cols)
+      expect(lines.length).toBeGreaterThan(0)
+      expect(lines.length).toBeLessThanOrEqual(2)
+      // Whichever rung this width selected, the arrow line still names the boxes arrow AND the rail
+      // marker: the rail is the view a 24-cell scene actually draws.
+      expect(lines[0]).toContain("▼")
+      expect(lines[0]).toContain("▸")
+      for (const line of lines) expect(cellWidth(line)).toBeLessThanOrEqual(cols)
+    }
+    // The ladder SHORTENS as the scene narrows: less is said, nothing is cut mid-sentence. At 60 the
+    // full rung (62 cells) no longer fits, which is exactly what the next rung is for.
+    expect(legendLines(100)[0]).toContain("focus lights its chain")
+    expect(legendLines(20)[0]).toBe("▼/▸ arrow · ▶ focus")
+    // The guard is 8 cells, but even the tersest rung needs 9 — below that there is no honest legend
+    // at all, because a lone mark would be a riddle rather than a key.
+    expect(legendLines(9)[0]).toBe("▼/▸ arrow")
+    expect(legendLines(8)).toEqual([])
+    expect(legendLines(4)).toEqual([])
+    expect(legendLines(0)).toEqual([])
+    expect(legendLines(Number.NaN)).toEqual([])
   })
 })
 

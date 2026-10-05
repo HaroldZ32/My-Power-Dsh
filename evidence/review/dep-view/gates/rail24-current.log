@@ -1,0 +1,9 @@
+ 0|✓ T1 REQ subject o  lead| len=24 endsWithSpace=false spans=3 tones=completed/completed/completed
+ 1|├─▸ ◐ T3 WRK subject of| len=23 endsWithSpace=false spans=2 tones=running/running
+ 2|│  ├─▸ ○ T7 REV subject| len=23 endsWithSpace=false spans=2 tones=open/open
+ 3|│  │  └─▸ ○ T9 INT subje| len=24 endsWithSpace=false spans=2 tones=open/open
+ 4|│  └─▸ ○ T8 REV subject| len=23 endsWithSpace=false spans=2 tones=open/open
+ 5|└─▸ ○ T5 WRK subject of| len=23 endsWithSpace=false spans=2 tones=blocked/blocked
+ 6|✓ T2 REQ subject o  lead| len=24 endsWithSpace=false spans=3 tones=completed/completed/completed
+ 7|└─▸ ○ T4 WRK subject of| len=23 endsWithSpace=false spans=2 tones=open/open
+ 8|   └─▸ ✗ T6 FIX subject| len=23 endsWithSpace=false spans=2 tones=failed/failed

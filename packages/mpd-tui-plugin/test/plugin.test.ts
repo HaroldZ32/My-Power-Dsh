@@ -25,6 +25,7 @@ import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
+import { registerScene } from "../src/scenes"
 import { DECISION_EVENTS } from "../src/decisions"
 
 /** What a registration returns: a cleanup, or nothing at all. */
@@ -141,6 +142,7 @@ function allServices(overrides: Record<string, any> = {}): {
     namespaces: [],
     commands: [],
     decisions: [],
+    views: [],
   }
   /** How many times a recorded disposer was called. */
   const disposed = { count: 0 }
@@ -159,6 +161,11 @@ function allServices(overrides: Record<string, any> = {}): {
       /** Records the contribution and returns the shared no-op disposer. */
       set(key: string, text: unknown): () => void {
         calls.statusSet.push({ key, text })
+        return disposer
+      },
+      /** The rich companion (host `registerView`): records the descriptor and returns the disposer. */
+      registerView(descriptor: { key: string; maxRows?: number; component: unknown }): () => void {
+        calls.views.push(descriptor)
         return disposer
       },
     },
@@ -282,6 +289,9 @@ describe("plugin contract", () => {
       commands: true,
       shortcuts: true,
       dialogs: true,
+      // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
+      // row) outranks it per press, so this stays true for every composition that never saves one.
+      dashboardKey: true,
       sessionEvents: true,
       decisionEvents: true,
       logPrefix: "mpd-tui",
@@ -381,11 +391,12 @@ describe("full composition (every service injected)", () => {
     // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
-    // 25 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
-    // thirteen original mpd knobs plus the twelve team-model slot leaves (4 slots x provider /
-    // model / reasoningEffort). The per-field assertions below are the other half of the
-    // no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(25)
+    // 26 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // thirteen original mpd knobs, the twelve team-model slot leaves (4 slots x provider / model /
+    // reasoningEffort) and the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle,
+    // which this section renders through the SAME declaredField path as every other row). The
+    // per-field assertions below are the other half of the no-drift pair.
+    expect(calls.sections[0].fields).toHaveLength(26)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       // The disclosure is stated ONCE on the surface (the section's own description), never per row.
@@ -736,6 +747,183 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     expect(junk.provider.length).toBeGreaterThan(0)
     expect(junk.model).toEqual(declared("model"))
     expect(junk.source.model).toBe("declared")
+  })
+})
+
+/**
+ * A minimal host kit double for the scene render.
+ *
+ * It carries exactly the members a scene body touches plus `useStdin` — the one member the scene
+ * wiring exists to hand the adapter. Hooks are index-free stubs (state is not re-read in this arm)
+ * and elements are plain records, so a render is a pure function call with no reconciler.
+ * @returns the React instance and the ui kit a scene receives.
+ */
+function sceneKitDouble(): { React: Record<string, unknown>; ui: Record<string, unknown>; stdin: unknown } {
+  /** The value the kit's own `useStdin` answers; the adapter keeps whatever this kit exposes. */
+  const stdin = { internal_querier: {}, internal_eventEmitter: {} }
+  /** The React double: enough for a single render of any scene body. */
+  const React: Record<string, unknown> = {
+    /** Builds an element record instead of a real element. */
+    createElement: (type: unknown, props: Record<string, unknown> | null, ...children: unknown[]): unknown => ({ type, props: props ?? {}, children }),
+    /** A state pair whose setter is inert: no re-render happens in this arm. */
+    useState: (initial: unknown): [unknown, () => void] => [typeof initial === "function" ? (initial as () => unknown)() : initial, () => {}],
+    /** Runs the effect once and drops its cleanup. */
+    useEffect: (effect: () => unknown): void => {
+      effect()
+    },
+    /** A fresh ref object. */
+    useRef: (initial: unknown): { current: unknown } => ({ current: initial }),
+    /** Compares nothing: a fresh value per render is fine for one pass. */
+    useMemo: (factory: () => unknown): unknown => factory(),
+    /** Returns the factory as-is. */
+    useCallback: (callback: unknown): unknown => callback,
+    /** Reads the snapshot, ignoring the subscription. */
+    useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown): unknown => snapshot(),
+  }
+  /** The ui kit double: the members a scene body uses, plus the hook under test. */
+  const ui: Record<string, unknown> = {
+    /** An element record. */
+    Box: (props: Record<string, unknown>) => ({ type: "Box", props, children: [] }),
+    /** An element record. */
+    Text: (props: Record<string, unknown>) => ({ type: "Text", props, children: [] }),
+    /** Accepts the scene's key handler and drops it. */
+    useInput: () => {},
+    /** A fixed terminal size. */
+    useTerminalSize: (): { columns: number; rows: number } => ({ columns: 120, rows: 40 }),
+    /** THE MEMBER THIS ARM IS ABOUT: the host's own stdin hook travels with the kit. */
+    useStdin: (): unknown => stdin,
+  }
+  return { React, ui, stdin }
+}
+
+describe("the Ctrl+A takeover wiring (W2)", () => {
+  test("apply registers the zero-row keyhook view and reports its outcome under its own name", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The keyhook's own view registration, out of every rich view the host received. */
+    const hook = calls.views.find((view) => view.key === "mpd-tui-keyhook")
+    expect(hook).toBeDefined()
+    // 1 row, not 0: the host's own validator refuses 0 (it requires an integer 1..3), so the ZERO is
+    // rendered by the empty Box the component returns.
+    expect(hook?.maxRows).toBe(1)
+    expect(typeof hook?.component).toBe("function")
+    expect(outcomeOf(report, "dashboardKey").state).toBe("requested")
+    // …and it is reported as its OWN role, riding the status seam that the entry above reports.
+    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
+  })
+
+  test("with the row config off, no view is registered and the absence says why", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the takeover. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, dashboardKey: false })
+    expect(calls.views).toHaveLength(0)
+    /** The skip's own record: `absent`, with the reason a reader needs. */
+    const skipped = outcomeOf(report, "dashboardKey")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("dashboardKey: false")
+  })
+})
+
+describe("the Ctrl+A takeover wiring (W2)", () => {
+  test("apply registers the zero-row keyhook view and reports its outcome under its own name", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The keyhook's own view registration, out of every rich view the host received. */
+    const hook = calls.views.find((view) => view.key === "mpd-tui-keyhook")
+    expect(hook).toBeDefined()
+    // 1 row, not 0: the host's own validator refuses 0 (it requires an integer 1..3), so the ZERO is
+    // rendered by the empty Box the component returns.
+    expect(hook?.maxRows).toBe(1)
+    expect(typeof hook?.component).toBe("function")
+    expect(outcomeOf(report, "dashboardKey").state).toBe("requested")
+    // …and it is reported as its OWN role, riding the status seam that the entry above reports.
+    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
+  })
+
+  test("with the row config off, no view is registered and the absence says why", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the takeover. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, dashboardKey: false })
+    expect(calls.views).toHaveLength(0)
+    /** The skip's own record: `absent`, with the reason a reader needs. */
+    const skipped = outcomeOf(report, "dashboardKey")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("dashboardKey: false")
+  })
+
+  test("every registered SCENE reports the host kit it received (the contact's arming path)", () => {
+    // The take-over can only attach where a LIVE `useStdin` is reachable, and on dsh-tui 0.12.0 that
+    // reachable one arrives with the kit a scene render receives (the module resolved at load answers
+    // nothing). This arm therefore pins the WHOLE hand-off: `registerScene` threads the callback into
+    // every factory, and every factory reports the kit it was handed.
+    /** The kits the callback received, in call order. */
+    const reported: unknown[] = []
+    /** The scene descriptors the fake adapter captured, in registration order. */
+    const registered: { id: string; component: unknown }[] = []
+    /** The handle a registration returns; the scenes only read its `record`. */
+    const handle = { record: () => {} }
+    /** The fake adapter: only the four members `registerScene` touches. */
+    const tui = {
+      /** Fires the setup immediately, as a bound seam does, with a fake scene registry. */
+      whenBound: (_key: string, setup: (service: unknown, scope: unknown, registration: typeof handle) => void) => {
+        setup({ register: () => () => {} }, { scope: true }, handle)
+        return { ...handle, outcome: () => ({ id: "tuiScenes", state: "requested" }), bound: () => true }
+      },
+      /** The bound scene registry, whose `register` is only checked for being callable. */
+      scenes: () => ({ register: () => () => {} }),
+      /** Records the descriptor; the handle methods are never used by this arm. */
+      registerScene: (descriptor: { id: string; component: unknown }) => {
+        registered.push(descriptor)
+        return { ...handle, outcome: () => ({ id: "tuiScenes", state: "requested" }), bound: () => true, openScene: () => true, closeScene: () => false }
+      },
+      /** Scene opens are not part of this arm. */
+      openScene: () => true,
+    }
+    /** A log double: the scenes only debug-log a refused open. */
+    const log = { info: () => {}, warn: () => {}, debug: () => {} }
+    registerScene(
+      {} as never,
+      tui as never,
+      log,
+      () => "/tmp/mpd-scenes",
+      () => "/tmp/mpd-home",
+      () => [],
+      undefined,
+      undefined,
+      () => [],
+      () => [],
+      (ui: unknown) => {
+        reported.push(ui)
+        return true
+      },
+    )
+    expect(registered.map((descriptor) => descriptor.id)).toEqual(["mpd-tui-board", "mpd-tui-team", "mpd-tui-plan", "mpd-tui-subagents"])
+    /** The host kit double: identity-stable, and the hook the adapter is expected to remember. */
+    const kit = sceneKitDouble()
+    for (const descriptor of registered) {
+      /** The scene component the factory built. */
+      const component = descriptor.component as (props: unknown) => unknown
+      // Each scene renders ONCE here. The arm is about the kit hand-off, which every factory performs
+      // after the kit check and BEFORE its first read, so a body that later bails on the fake
+      // workspace cannot mask it — and the report count below is asserted against the scene count.
+      component({ React: kit.React, ui: kit.ui, close: () => {} })
+    }
+    expect(reported).toHaveLength(registered.length)
+    for (const ui of reported) expect(ui).toBe(kit.ui)
   })
 })
 

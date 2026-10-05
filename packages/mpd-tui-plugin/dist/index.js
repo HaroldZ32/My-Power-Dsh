@@ -1129,7 +1129,7 @@ var require_lib = __commonJS(function(exports, module) {
 
 // packages/mpd-tui-plugin/src/index.ts
 var import_schemastery2 = __toESM(require_lib(), 1);
-import { homedir as homedir3 } from "node:os";
+import { homedir as homedir4 } from "node:os";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -2678,8 +2678,10 @@ function createLog(logger, prefix, env = process.env, sink) {
 }
 
 // packages/mpd-tui-adapter-plugin/src/index.ts
-import { appendFileSync, mkdirSync as mkdirSync2, readFileSync, statSync as statSync2, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync as mkdirSync2, readdirSync, readFileSync, statSync as statSync2, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join as join2 } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 var TUI_SEAMS = {
   scenes: "tuiScenes",
   status: "tuiStatus",
@@ -2768,6 +2770,110 @@ function createFileSink(options) {
     }
   };
 }
+var HOST_PACKAGE_PATH = ["node_modules", "@deepseek-harness-tui", "dsh-tui"];
+var HOST_UI_MODULE = "lib/types/ui.js";
+var HOST_ROOT_ENV = "MPD_DSH_TUI_HOST_ROOT";
+var HOST_HOME_DIRS = [".dsh", ".dsh-tui"];
+var HOST_ANCHOR_LEVELS = 8;
+var HOST_LIVE_CONTEXT_MARKER = "internal_querier";
+function readHostStdinValue(value) {
+  try {
+    if (typeof value !== "object" || value === null)
+      return { detail: "the host stdin hook answered no context value" };
+    const record = value;
+    const marker = HOST_LIVE_CONTEXT_MARKER in record ? record[HOST_LIVE_CONTEXT_MARKER] : undefined;
+    if (marker === undefined || marker === null) {
+      return {
+        detail: `the host hook resolved the StdinContext DEFAULT (no ${HOST_LIVE_CONTEXT_MARKER}) — the host module instance is not the one the TUI runs; the take-over stays absent`
+      };
+    }
+    const emitter = record.internal_eventEmitter;
+    if (emitter === undefined || emitter === null)
+      return { detail: "the host stdin context carries no input emitter" };
+    const bus = emitter;
+    if (typeof bus.prependListener !== "function")
+      return { detail: "the host input emitter has no prependListener" };
+    if (typeof bus.removeListener !== "function")
+      return { detail: "the host input emitter has no removeListener" };
+    if (typeof bus.on !== "function")
+      return { detail: "the host input emitter has no on" };
+    return { emitter: bus };
+  } catch (error) {
+    return { detail: `the host stdin context could not be read: ${String(error?.message ?? error)}` };
+  }
+}
+function hostRootCandidates(env = process.env, home = homedir()) {
+  const pinned = env[HOST_ROOT_ENV];
+  if (typeof pinned === "string" && pinned.length > 0)
+    return [pinned];
+  const roots = [];
+  const anchors = [];
+  try {
+    anchors.push(dirname(fileURLToPath(import.meta.url)));
+  } catch {}
+  const argv1 = process.argv[1];
+  if (typeof argv1 === "string" && argv1.length > 0)
+    anchors.push(dirname(argv1));
+  for (const anchor of anchors) {
+    let dir = anchor;
+    for (let level = 0;level < HOST_ANCHOR_LEVELS; level += 1) {
+      roots.push(join2(dir, ...HOST_PACKAGE_PATH));
+      const parent = dirname(dir);
+      if (parent === dir)
+        break;
+      dir = parent;
+    }
+  }
+  const homes = [];
+  if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
+    homes.push(env.DSH_HOME);
+  for (const name of HOST_HOME_DIRS)
+    homes.push(join2(home, name));
+  for (const root of homes) {
+    let entries = [];
+    try {
+      entries = readdirSync(join2(root, "profiles"), { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory())
+        roots.push(join2(root, "profiles", entry.name, ...HOST_PACKAGE_PATH));
+    }
+  }
+  return [...new Set(roots)];
+}
+async function probeHostInput(candidates) {
+  let skew = "";
+  if (candidates.length === 0)
+    return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` };
+  for (const root of candidates) {
+    const file = join2(root, HOST_UI_MODULE);
+    try {
+      if (!statSync2(file).isFile())
+        continue;
+    } catch {
+      continue;
+    }
+    try {
+      const mod = await import(pathToFileURL(file).href);
+      const hook = mod.useStdin;
+      if (typeof hook !== "function") {
+        skew = `${file} carries no useStdin export`;
+        continue;
+      }
+      return { input: { useStdin: () => hook() }, root };
+    } catch (error) {
+      skew = `${file}: ${String(error?.message ?? error)}`;
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_UI_MODULE} (${candidates.length} probed)` };
+}
+function defaultHostInputLog(line) {
+  try {
+    createFileSink({ root: defaultLogRoot }).write(line);
+  } catch {}
+}
 function readableService(scoped, id) {
   if (scoped === undefined || scoped === null)
     return;
@@ -2839,7 +2945,7 @@ function effectOn(scoped, cleanup, label) {
       scoped.effect(() => cleanup, label);
   } catch {}
 }
-function createTuiAdapter(ctx) {
+function createTuiAdapter(ctx, options = {}) {
   const bindings = {};
   for (const key of TUI_SEAM_KEYS)
     bindings[key] = newBindingStatus();
@@ -2865,6 +2971,33 @@ function createTuiAdapter(ctx) {
     }
   }
   const fallbackIdentity = ctx;
+  let hostContact = options.hostInput;
+  let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
+  const hostWaiters = [];
+  let rememberedHook;
+  const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
+  const wakeHostWaiters = () => {
+    const waiting = hostWaiters.splice(0);
+    const input = currentHostInput();
+    for (const listener of waiting) {
+      try {
+        listener(input);
+      } catch {}
+    }
+  };
+  const settleHostContact = (result) => {
+    hostContact = result.input;
+    hostState = result.input === undefined ? { state: "absent", ...result.root === undefined ? {} : { root: result.root }, detail: result.detail ?? "the installed DSH-TUI was not reachable" } : { state: "bound", kit: "probed", ...result.root === undefined ? {} : { root: result.root }, detail: "the host's own useStdin was loaded by file URL" };
+    wakeHostWaiters();
+    try {
+      (options.hostInputLog ?? defaultHostInputLog)(result.input === undefined ? `[mpd-tui-adapter] host contact ABSENT: ${hostState.detail ?? ""} — the surfaces that need it stay inactive` : `[mpd-tui-adapter] host contact bound: ${hostState.root ?? "?"} (${HOST_UI_MODULE})`);
+    } catch {}
+  };
+  if (options.hostInput === undefined && options.probeHostContact === true) {
+    probeHostInput(hostRootCandidates()).then(settleHostContact, (error) => {
+      settleHostContact({ detail: `host contact probe failed: ${String(error?.message ?? error)}` });
+    });
+  }
   const makeHandle = (key, initialDetail) => {
     const id = TUI_SEAMS[key];
     let outcome = { id, state: "absent", detail: initialDetail ?? `${id} was not injected` };
@@ -2915,6 +3048,62 @@ function createTuiAdapter(ctx) {
     prompt: () => bindings.prompt.service,
     commands: () => bindings.commands.service,
     settings: () => bindings.settings.service,
+    hostInput: () => currentHostInput(),
+    rememberHostKit(kit) {
+      const hook = typeof kit === "object" && kit !== null ? kit.useStdin : undefined;
+      if (typeof hook !== "function")
+        return false;
+      const first = rememberedHook === undefined;
+      rememberedHook = hook;
+      hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" };
+      Promise.resolve().then(wakeHostWaiters);
+      if (!first)
+        return true;
+      try {
+        (options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`);
+      } catch {}
+      return true;
+    },
+    whenHostInput(listener) {
+      if (hostState.state !== "pending") {
+        try {
+          listener(currentHostInput());
+        } catch {}
+        return () => {};
+      }
+      hostWaiters.push(listener);
+      return () => {
+        const at = hostWaiters.indexOf(listener);
+        if (at >= 0)
+          hostWaiters.splice(at, 1);
+      };
+    },
+    registerStatusComponent(view) {
+      const handle = makeHandle("status");
+      whenBoundInternal("status", (service, scope) => {
+        const status = service;
+        if (typeof status?.registerView !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.registerView is missing on this host build` });
+          return;
+        }
+        try {
+          const disposer = status.registerView({
+            key: view.key,
+            component: view.component,
+            ...view.maxRows === undefined ? {} : { maxRows: view.maxRows }
+          }, scope);
+          if (typeof disposer !== "function") {
+            handle.record({ state: "refused", detail: `the host refused view ${view.key} (see its own warning for the reason)` });
+            return;
+          }
+          effectOn(scope, disposer, view.label ?? `mpd-tui status view ${view.key}`);
+          handle.record({ state: "requested", detail: `view ${view.key} requested (no host read-back)` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return handle;
+    },
     registerScene(descriptor, identity) {
       const handle = makeHandle("scenes");
       whenBoundInternal("scenes", (service) => {
@@ -2962,14 +3151,14 @@ function createTuiAdapter(ctx) {
     },
     setStatus(key, text, identity) {
       const handle = makeHandle("status");
-      whenBoundInternal("status", (service) => {
+      whenBoundInternal("status", (service, scope) => {
         const status = service;
         if (typeof status?.set !== "function") {
           handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.set is missing` });
           return;
         }
         try {
-          const disposer = status.set(key, text, identity ?? fallbackIdentity);
+          const disposer = status.set(key, text, scope);
           if (typeof disposer === "function")
             effectOn(bindings.status.scope ?? ctx, disposer, `mpd-tui status ${key}`);
           handle.record({
@@ -3000,7 +3189,7 @@ function createTuiAdapter(ctx) {
             if (text === published)
               return;
             published = text;
-            disposer = status.set(view.key, text, view.identity ?? fallbackIdentity);
+            disposer = status.set(view.key, text, scope);
           } catch (error) {
             view.onError?.(error);
           }
@@ -3026,7 +3215,7 @@ function createTuiAdapter(ctx) {
             disposer?.();
           } catch {}
           try {
-            status.set(view.key, undefined, view.identity ?? fallbackIdentity);
+            status.set(view.key, undefined, scope);
           } catch {}
         }, view.label ?? `mpd-tui status ${view.key}`);
         refresh = publish;
@@ -3093,7 +3282,7 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    registerShortcut(combo, options, identity) {
+    registerShortcut(combo, options2, identity) {
       const handle = makeHandle("shortcuts");
       whenBoundInternal("shortcuts", (service) => {
         const registry = service;
@@ -3102,7 +3291,7 @@ function createTuiAdapter(ctx) {
           return;
         }
         try {
-          const disposer = registry.register(combo, options, identity ?? fallbackIdentity);
+          const disposer = registry.register(combo, options2, identity ?? fallbackIdentity);
           if (typeof disposer === "function")
             effectOn(bindings.shortcuts.scope ?? ctx, disposer, `mpd-tui shortcut ${combo}`);
           handle.record({ state: "requested", detail: `${combo} requested` });
@@ -3123,7 +3312,7 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    requestDecisionEvent(event, listener, options = {}) {
+    requestDecisionEvent(event, listener, options2 = {}) {
       let supported = false;
       let granted;
       let disposerReturned = false;
@@ -3131,7 +3320,7 @@ function createTuiAdapter(ctx) {
       let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
       whenBoundInternal("pluginHost", (service, scope) => {
         const host = service;
-        const identity = options.identity ?? fallbackIdentity;
+        const identity = options2.identity ?? fallbackIdentity;
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
           return;
@@ -3140,14 +3329,14 @@ function createTuiAdapter(ctx) {
         try {
           const facade = host.grants;
           if (facade !== undefined && typeof facade.allows === "function")
-            granted = facade.allows(identity, event, options.scope ?? event) === true;
+            granted = facade.allows(identity, event, options2.scope ?? event) === true;
         } catch {
           granted = undefined;
         }
         try {
           const disposer = host.subscribeDecision(identity, event, listener, {
-            ...options.scope === undefined ? {} : { scope: options.scope },
-            ...options.order === undefined ? {} : { order: options.order }
+            ...options2.scope === undefined ? {} : { scope: options2.scope },
+            ...options2.order === undefined ? {} : { order: options2.order }
           });
           disposerReturned = typeof disposer === "function";
           if (disposerReturned)
@@ -3197,12 +3386,12 @@ function createTuiAdapter(ctx) {
       });
       return handle;
     },
-    registerSettingsNamespace(ns, schema, options) {
+    registerSettingsNamespace(ns, schema, options2) {
       const handle = makeHandle("settings");
       register("settings", handle, `namespace ${ns} requested (no host read-back)`, (service) => {
         if (typeof service?.register !== "function")
           throw new Error(`${TUI_SEAMS.settings}.register is missing`);
-        service.register(ns, schema, options);
+        service.register(ns, schema, options2);
       });
       return handle;
     },
@@ -3227,7 +3416,7 @@ function createTuiAdapter(ctx) {
         if (live)
           bound += 1;
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length };
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } };
     },
     seamOutcomes() {
       return TUI_SEAM_KEYS.map((key) => {
@@ -3240,12 +3429,12 @@ function createTuiAdapter(ctx) {
         return { id, state: "absent", detail: "not composed in this profile" };
       });
     },
-    diagnosticSink(options = {}) {
-      const root = options.root ?? defaultLogRoot;
+    diagnosticSink(options2 = {}) {
+      const root = options2.root ?? defaultLogRoot;
       return createFileSink({
         root,
-        ...options.name === undefined ? {} : { name: options.name },
-        ...options.capBytes === undefined ? {} : { capBytes: options.capBytes }
+        ...options2.name === undefined ? {} : { name: options2.name },
+        ...options2.capBytes === undefined ? {} : { capBytes: options2.capBytes }
       });
     }
   };
@@ -3265,8 +3454,8 @@ function resolveTuiAdapter(ctx) {
 }
 
 // packages/mpd-tui-plugin/src/state.ts
-import { readFileSync as readFileSync2, readdirSync } from "node:fs";
-import { homedir } from "node:os";
+import { readFileSync as readFileSync2, readdirSync as readdirSync2 } from "node:fs";
+import { homedir as homedir2 } from "node:os";
 import { join as join3 } from "node:path";
 
 // packages/mpd-tui-plugin/src/sanitize.ts
@@ -3461,7 +3650,7 @@ function readBoulder(root, problems) {
 function readPlans(root) {
   const dir = join3(root, ".mpd", "plans");
   try {
-    const names = readdirSync(dir).filter((name) => name.endsWith(".md")).sort();
+    const names = readdirSync2(dir).filter((name) => name.endsWith(".md")).sort();
     return { count: names.length, newest: scalarText(names[names.length - 1], 120) };
   } catch {
     return { count: 0 };
@@ -3470,7 +3659,7 @@ function readPlans(root) {
 function readWorkmates(home) {
   const dir = join3(home, ".mpd", "workmate");
   try {
-    const names = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => entry.name).slice(0, MAX_WORKMATES);
+    const names = readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => entry.name).slice(0, MAX_WORKMATES);
     const present = [];
     for (const name of names) {
       try {
@@ -3485,7 +3674,7 @@ function readWorkmates(home) {
     return { count: 0, names: [] };
   }
 }
-function readBoardState(workspace, home = homedir(), views = [], records = []) {
+function readBoardState(workspace, home = homedir2(), views = [], records = []) {
   const problems = [];
   const state = {
     workspace,
@@ -3581,15 +3770,15 @@ function registerStatus(ctx, tui, log, workspaceRoot, home, intervalMs, bridgeNo
 }
 // packages/mpd-tui-plugin/src/registration.ts
 import { createRequire } from "node:module";
-import { readdirSync as readdirSync2 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
+import { readdirSync as readdirSync3 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
 import { join as join4 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 var BOARD_OPENED_EVENT = "mpd-tui/board-opened";
-function candidateAnchors(env = process.env, home = homedir2()) {
+function candidateAnchors(env = process.env, home = homedir3()) {
   const anchors = [];
   try {
-    anchors.push(fileURLToPath(import.meta.url));
+    anchors.push(fileURLToPath2(import.meta.url));
   } catch {}
   const argv1 = process.argv[1];
   if (typeof argv1 === "string" && argv1.length > 0)
@@ -3601,7 +3790,7 @@ function candidateAnchors(env = process.env, home = homedir2()) {
   for (const root of homes) {
     const profiles = join4(root, "profiles");
     try {
-      for (const entry of readdirSync2(profiles, { withFileTypes: true })) {
+      for (const entry of readdirSync3(profiles, { withFileTypes: true })) {
         if (entry.isDirectory())
           anchors.push(join4(profiles, entry.name, "package.json"));
       }
@@ -3805,7 +3994,8 @@ var SettingsSchema = import_schemastery.default.object({
     actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: import_schemastery.default.number().default(900000),
     holdTtlMs: import_schemastery.default.number().default(900000)
-  })
+  }),
+  tui: import_schemastery.default.object({ dashboardKey: import_schemastery.default.boolean().default(true) })
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
@@ -3892,7 +4082,8 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS
+  ...TEAM_MODEL_KNOBS,
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", hint: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" }
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
@@ -3993,6 +4184,7 @@ function declaredField(knob) {
     ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
   };
 }
+var DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey";
 var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
@@ -4071,6 +4263,381 @@ function registerSettingsSection(ctx, tui, log, adapterOverride) {
   };
 }
 
+// packages/mpd-tui-plugin/src/graph.ts
+var GRAPH_THEME = Object.freeze({
+  completed: "success",
+  running: "activity",
+  failed: "error",
+  blocked: "warning",
+  cancelled: "inactive",
+  open: "subtle",
+  focus: "accentShimmer",
+  dim: "inactive",
+  edge: "promptBorder",
+  chain: "accent",
+  blank: "text"
+});
+var GLYPH = Object.freeze({
+  completed: "✓",
+  running: "◐",
+  failed: "✗",
+  blocked: "○",
+  cancelled: "⊘",
+  open: "○"
+});
+var KIND_ABBREV = Object.freeze({
+  requirement: "REQ",
+  work: "WRK",
+  review: "REV",
+  repair: "FIX",
+  integration: "INT"
+});
+var ARROW_DOWN = "▼";
+var ARROW_RIGHT = "▸";
+var FOCUS_MARKER = "▶";
+var LEGEND_ENTRY = Object.freeze([
+  `${ARROW_DOWN}/${ARROW_RIGHT} blocker above → dependent below · ${FOCUS_MARKER} focus lights its chain`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} blocker → dependent · ${FOCUS_MARKER} focus`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} arrow · ${FOCUS_MARKER} focus`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} arrow`
+]);
+var LEGEND_STATES = Object.freeze(["completed", "running", "open", "failed", "cancelled"]);
+var LEGEND_SHORT = Object.freeze({
+  completed: "done",
+  running: "run",
+  open: "open",
+  failed: "fail",
+  cancelled: "cancel"
+});
+var LEGEND_KEY = Object.freeze([
+  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${state}`).join(" · "),
+  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${LEGEND_SHORT[state] ?? state}`).join(" · ")
+]);
+var LEGEND_LINES = Object.freeze([LEGEND_ENTRY, LEGEND_KEY]);
+var MIN_LEGEND_COLS = 8;
+function legendLines(cols) {
+  const width = Number.isFinite(cols) ? Math.floor(cols) : 0;
+  if (width < MIN_LEGEND_COLS)
+    return [];
+  const lines = [];
+  for (const variants of LEGEND_LINES) {
+    const wording = variants.find((variant) => cellWidth(variant) <= width);
+    if (wording !== undefined)
+      lines.push(clampCells(wording, width));
+  }
+  return lines;
+}
+var MIN_NODE_WIDTH = 16;
+var NODE_GAP = 3;
+var MAX_NODE_WIDTH = 34;
+var MAX_BOX_RANKS = 12;
+var UP = 1;
+var DOWN = 2;
+var LEFT = 4;
+var RIGHT = 8;
+var JUNCTION = Object.freeze({
+  0: " ",
+  [UP]: "│",
+  [DOWN]: "│",
+  [UP | DOWN]: "│",
+  [LEFT]: "─",
+  [RIGHT]: "─",
+  [LEFT | RIGHT]: "─",
+  [DOWN | RIGHT]: "┌",
+  [DOWN | LEFT]: "┐",
+  [UP | RIGHT]: "└",
+  [UP | LEFT]: "┘",
+  [UP | DOWN | RIGHT]: "├",
+  [UP | DOWN | LEFT]: "┤",
+  [UP | LEFT | RIGHT]: "┴",
+  [DOWN | LEFT | RIGHT]: "┬",
+  [UP | DOWN | LEFT | RIGHT]: "┼"
+});
+function clampSpans(spans, cols) {
+  const kept = [];
+  let used = 0;
+  for (const span of spans) {
+    if (used >= cols)
+      break;
+    const room = cols - used;
+    if (cellWidth(span.text) <= room) {
+      kept.push(span);
+      used += cellWidth(span.text);
+      continue;
+    }
+    kept.push({ text: clampCells(span.text, room), tone: span.tone });
+    used = cols;
+  }
+  return kept;
+}
+function labelOf(task, focus) {
+  const marker = task.id === focus ? FOCUS_MARKER : GLYPH[task.visual] ?? "?";
+  const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
+  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ");
+}
+function toneOf(task, focus, chain) {
+  if (task.id === focus)
+    return "focus";
+  if (chain === undefined) {
+    const visual = task.visual;
+    return visual === "completed" || visual === "running" || visual === "failed" || visual === "blocked" || visual === "cancelled" ? visual : "open";
+  }
+  return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim";
+}
+function dependencyChain(tasks, id) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const seen = new Set;
+  const stack = [...byId.get(id)?.dependencies ?? []];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (seen.has(current) || !byId.has(current))
+      continue;
+    seen.add(current);
+    for (const next of byId.get(current)?.dependencies ?? [])
+      if (!seen.has(next))
+        stack.push(next);
+  }
+  return seen;
+}
+function ranksOf(tasks) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks) {
+    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0;
+    ranks[rank].push(task);
+  }
+  return ranks;
+}
+function cycleIds(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const onStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    onStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    onStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function layoutBoxes(tasks, cols, focus) {
+  if (tasks.length === 0) {
+    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] };
+    if (focus !== undefined)
+      empty.focus = focus;
+    return empty;
+  }
+  const ranks = ranksOf(tasks);
+  if (ranks.length > MAX_BOX_RANKS)
+    return;
+  const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
+  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest));
+  if (nodeWidth < MIN_NODE_WIDTH)
+    return;
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
+  const column = new Map;
+  for (const rank of ranks) {
+    const ordered = rank.map((task, index) => {
+      const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id));
+      return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length };
+    }).sort((left, right) => left.key - right.key || left.index - right.index);
+    ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)));
+  }
+  const mask = [];
+  const text = [];
+  const tone = [];
+  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
+  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
+  const grow = (row) => {
+    while (mask.length <= row) {
+      mask.push(new Array(width).fill(0));
+      text.push(new Array(width).fill(null));
+      tone.push(new Array(width).fill(null));
+    }
+  };
+  const link = (row, col, dir, at) => {
+    if (col < 0 || col >= width || row < 0)
+      return;
+    grow(row);
+    mask[row][col] |= dir;
+    const current = toneAt(row, col);
+    if (current === undefined || order.indexOf(at) > order.indexOf(current))
+      tone[row][col] = at;
+  };
+  const label = (row, col, char, at) => {
+    if (col < 0 || col >= width)
+      return;
+    grow(row);
+    text[row][col] = char;
+    tone[row][col] = at;
+  };
+  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
+  const RANK_STRIDE = 6;
+  const hits = [];
+  for (let rank = 0;rank < ranks.length; rank++) {
+    const top = rank * RANK_STRIDE;
+    for (const task of ranks[rank]) {
+      const left = column.get(task.id) ?? 0;
+      const right = left + nodeWidth - 1;
+      const at = toneOf(task, focus, chain);
+      for (let col = left + 1;col < right; col++)
+        link(top, col, LEFT | RIGHT, at);
+      link(top, left, RIGHT | DOWN, at);
+      link(top, right, LEFT | DOWN, at);
+      link(top + 1, left, UP | DOWN, at);
+      link(top + 1, right, UP | DOWN, at);
+      const body = labelOf(task, focus);
+      let cursor = left + 1;
+      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) {
+        label(top + 1, cursor, char, at);
+        cursor += cellWidth(char);
+      }
+      for (let col = left + 1;col < right; col++)
+        link(top + 2, col, LEFT | RIGHT, at);
+      link(top + 2, left, RIGHT | UP, at);
+      link(top + 2, right, LEFT | UP, at);
+      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
+        link(top + 2, centreOf(task.id), DOWN, at);
+      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right });
+    }
+    if (rank + 1 >= ranks.length)
+      break;
+    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5;
+    for (const child of ranks[rank + 1]) {
+      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
+      if (parents.length === 0)
+        continue;
+      const centre = centreOf(child.id);
+      const entryTone = toneOf(child, focus, chain);
+      link(top + 6, centre, UP, entryTone);
+      label(stubBottom, centre, ARROW_DOWN, entryTone);
+      for (const id of parents) {
+        const from = centreOf(id);
+        const edgeTone = focus === undefined ? "edge" : (id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true) ? "chain" : "dim";
+        link(stubTop, from, UP | DOWN, edgeTone);
+        if (from === centre) {
+          link(bus, from, UP | DOWN, edgeTone);
+          continue;
+        }
+        link(bus, from, UP, edgeTone);
+        link(bus, centre, DOWN, edgeTone);
+        for (let col = Math.min(from, centre) + 1;col < Math.max(from, centre); col++)
+          link(bus, col, LEFT | RIGHT, edgeTone);
+        link(bus, Math.min(from, centre), RIGHT, edgeTone);
+        link(bus, Math.max(from, centre), LEFT, edgeTone);
+      }
+    }
+  }
+  const lines = [];
+  for (let row = 0;row < mask.length; row++) {
+    const cells = [];
+    let run = null;
+    for (let col = 0;col < width; col++) {
+      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
+      const at = toneAt(row, col) ?? "blank";
+      if (run !== null && run.tone === at)
+        run.text += char;
+      else {
+        run = { text: char, tone: at };
+        cells.push(run);
+      }
+    }
+    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
+      cells.pop();
+    lines.push(clampSpans(cells, width));
+  }
+  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
+    lines.pop();
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutRail(tasks, cols, focus) {
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const children = new Map;
+  for (const task of tasks) {
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0];
+    if (parent === undefined)
+      continue;
+    if (!children.has(parent))
+      children.set(parent, []);
+    children.get(parent).push(task);
+  }
+  const drawn = [];
+  const seen = new Set;
+  const walk = (task, prefix, leaf, depth) => {
+    if (seen.has(task.id))
+      return;
+    seen.add(task.id);
+    drawn.push({ task, prefix, leaf, depth });
+    const kids = children.get(task.id) ?? [];
+    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1));
+  };
+  for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0))
+    walk(root, "", true, 0);
+  for (const task of tasks)
+    walk(task, "", true, 0);
+  const lines = [];
+  const hits = [];
+  drawn.forEach((entry, index) => {
+    const at = toneOf(entry.task, focus, chain);
+    const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
+    const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`;
+    const elbow = entry.leaf ? "└─" : "├─";
+    const connector = entry.depth === 0 ? "" : `${entry.prefix}${elbow}${ARROW_RIGHT} `;
+    const label = labelOf(entry.task, focus);
+    const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
+    const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
+    const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
+    const shown = clampCells(stripControl(label), labelRoom).trimEnd();
+    const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : "";
+    lines.push(clampSpans([
+      { text: connector, tone: at },
+      { text: shown + gap, tone: at },
+      ...useTail ? [{ text: "  " + tail, tone: at }] : []
+    ], cols));
+    hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
+  });
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutGraph(tasks, cols, focus) {
+  const width = Math.max(8, Math.floor(cols));
+  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus);
+}
+function hitTest(view, row, col) {
+  for (const hit of view.hits) {
+    if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd)
+      return hit.taskId;
+  }
+  return;
+}
+
 // packages/mpd-tui-plugin/src/team-state.ts
 var MAX_TEAMS2 = 20;
 var MAX_TASKS2 = 5000;
@@ -4134,7 +4701,7 @@ function taskDepths(tasks) {
     depthOf(task.id);
   return depths;
 }
-function cycleIds(tasks) {
+function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
   const stack = [];
@@ -4259,7 +4826,7 @@ function readTeamWorkflow(workspace, holds = [], views = []) {
   }
   const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
   tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
-  const cycle = cycleIds(tasks);
+  const cycle = cycleIds2(tasks);
   if (cycle.length > 0)
     problems.push(`cycle ${cycle.join(",")}`);
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
@@ -4350,6 +4917,9 @@ function readPlanView(teams, workspace, sessionId) {
     return;
   }
 }
+function principalRecord(records) {
+  return records.find((record) => record.endedAt === undefined) ?? records[0];
+}
 function mpdTeamRecords(teams, workspace) {
   try {
     const list = teams?.list;
@@ -4385,7 +4955,7 @@ function readRecordWorkflow(workspace, holds, record) {
   }
   const order = new Map(tasks.map((task, index) => [task.id, index]));
   tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
-  const cycle = cycleIds(tasks);
+  const cycle = cycleIds2(tasks);
   if (cycle.length > 0)
     problems.push(`cycle ${cycle.join(",")}`);
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
@@ -4564,350 +5134,15 @@ function planProjectionLines(workflow) {
   return lines;
 }
 
-// packages/mpd-tui-plugin/src/graph.ts
-var GRAPH_THEME = Object.freeze({
-  completed: "success",
-  running: "activity",
-  failed: "error",
-  blocked: "warning",
-  cancelled: "inactive",
-  open: "subtle",
-  focus: "accentShimmer",
-  dim: "inactive",
-  edge: "promptBorder",
-  chain: "accent",
-  blank: "text"
-});
-var GLYPH = Object.freeze({
-  completed: "✓",
-  running: "◐",
-  failed: "✗",
-  blocked: "○",
-  cancelled: "⊘",
-  open: "○"
-});
-var KIND_ABBREV = Object.freeze({
-  requirement: "REQ",
-  work: "WRK",
-  review: "REV",
-  repair: "FIX",
-  integration: "INT"
-});
-var MIN_NODE_WIDTH = 16;
-var NODE_GAP = 3;
-var MAX_NODE_WIDTH = 34;
-var MAX_BOX_RANKS = 12;
-var UP = 1;
-var DOWN = 2;
-var LEFT = 4;
-var RIGHT = 8;
-var JUNCTION = Object.freeze({
-  0: " ",
-  [UP]: "│",
-  [DOWN]: "│",
-  [UP | DOWN]: "│",
-  [LEFT]: "─",
-  [RIGHT]: "─",
-  [LEFT | RIGHT]: "─",
-  [DOWN | RIGHT]: "┌",
-  [DOWN | LEFT]: "┐",
-  [UP | RIGHT]: "└",
-  [UP | LEFT]: "┘",
-  [UP | DOWN | RIGHT]: "├",
-  [UP | DOWN | LEFT]: "┤",
-  [UP | LEFT | RIGHT]: "┴",
-  [DOWN | LEFT | RIGHT]: "┬",
-  [UP | DOWN | LEFT | RIGHT]: "┼"
-});
-function clampSpans(spans, cols) {
-  const kept = [];
-  let used = 0;
-  for (const span of spans) {
-    if (used >= cols)
-      break;
-    const room = cols - used;
-    if (cellWidth(span.text) <= room) {
-      kept.push(span);
-      used += cellWidth(span.text);
-      continue;
-    }
-    kept.push({ text: clampCells(span.text, room), tone: span.tone });
-    used = cols;
-  }
-  return kept;
-}
-function labelOf(task, focus) {
-  const marker = task.id === focus ? "▶" : GLYPH[task.visual] ?? "?";
-  const kind = KIND_ABBREV[task.kind ?? ""] ?? "";
-  return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ");
-}
-function toneOf(task, focus, chain) {
-  if (task.id === focus)
-    return "focus";
-  if (chain === undefined) {
-    const visual = task.visual;
-    return visual === "completed" || visual === "running" || visual === "failed" || visual === "blocked" || visual === "cancelled" ? visual : "open";
-  }
-  return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim";
-}
-function dependencyChain(tasks, id) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const seen = new Set;
-  const stack = [...byId.get(id)?.dependencies ?? []];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (seen.has(current) || !byId.has(current))
-      continue;
-    seen.add(current);
-    for (const next of byId.get(current)?.dependencies ?? [])
-      if (!seen.has(next))
-        stack.push(next);
-  }
-  return seen;
-}
-function ranksOf(tasks) {
-  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0);
-  const ranks = Array.from({ length: deepest + 1 }, () => []);
-  for (const task of tasks) {
-    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0;
-    ranks[rank].push(task);
-  }
-  return ranks;
-}
-function cycleIds2(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const done = new Set;
-  const stack = [];
-  const onStack = new Set;
-  const cyclic = new Set;
-  const visit = (id) => {
-    if (done.has(id))
-      return;
-    if (onStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
-        cyclic.add(entry);
-      return;
-    }
-    const task = byId.get(id);
-    if (task === undefined)
-      return;
-    onStack.add(id);
-    stack.push(id);
-    for (const dependency of task.dependencies)
-      if (byId.has(dependency))
-        visit(dependency);
-    stack.pop();
-    onStack.delete(id);
-    done.add(id);
-  };
-  for (const task of tasks)
-    visit(task.id);
-  return [...cyclic].sort();
-}
-function layoutBoxes(tasks, cols, focus) {
-  if (tasks.length === 0) {
-    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] };
-    if (focus !== undefined)
-      empty.focus = focus;
-    return empty;
-  }
-  const ranks = ranksOf(tasks);
-  if (ranks.length > MAX_BOX_RANKS)
-    return;
-  const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
-  const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest));
-  if (nodeWidth < MIN_NODE_WIDTH)
-    return;
-  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
-  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
-  const column = new Map;
-  for (const rank of ranks) {
-    const ordered = rank.map((task, index) => {
-      const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id));
-      return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length };
-    }).sort((left, right) => left.key - right.key || left.index - right.index);
-    ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)));
-  }
-  const mask = [];
-  const text = [];
-  const tone = [];
-  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
-  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
-  const grow = (row) => {
-    while (mask.length <= row) {
-      mask.push(new Array(width).fill(0));
-      text.push(new Array(width).fill(null));
-      tone.push(new Array(width).fill(null));
-    }
-  };
-  const link = (row, col, dir, at) => {
-    if (col < 0 || col >= width || row < 0)
-      return;
-    grow(row);
-    mask[row][col] |= dir;
-    const current = toneAt(row, col);
-    if (current === undefined || order.indexOf(at) > order.indexOf(current))
-      tone[row][col] = at;
-  };
-  const label = (row, col, char, at) => {
-    if (col < 0 || col >= width)
-      return;
-    grow(row);
-    text[row][col] = char;
-    tone[row][col] = at;
-  };
-  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
-  const RANK_STRIDE = 6;
-  const hits = [];
-  for (let rank = 0;rank < ranks.length; rank++) {
-    const top = rank * RANK_STRIDE;
-    for (const task of ranks[rank]) {
-      const left = column.get(task.id) ?? 0;
-      const right = left + nodeWidth - 1;
-      const at = toneOf(task, focus, chain);
-      for (let col = left + 1;col < right; col++)
-        link(top, col, LEFT | RIGHT, at);
-      link(top, left, RIGHT | DOWN, at);
-      link(top, right, LEFT | DOWN, at);
-      link(top + 1, left, UP | DOWN, at);
-      link(top + 1, right, UP | DOWN, at);
-      const body = labelOf(task, focus);
-      let cursor = left + 1;
-      for (const char of clampCells(stripControl(" " + body), nodeWidth - 2)) {
-        label(top + 1, cursor, char, at);
-        cursor += cellWidth(char);
-      }
-      for (let col = left + 1;col < right; col++)
-        link(top + 2, col, LEFT | RIGHT, at);
-      link(top + 2, left, RIGHT | UP, at);
-      link(top + 2, right, LEFT | UP, at);
-      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
-        link(top + 2, centreOf(task.id), DOWN, at);
-      hits.push({ taskId: task.id, row: top, rowEnd: top + 2, col: left, colEnd: right });
-    }
-    if (rank + 1 >= ranks.length)
-      break;
-    const stubTop = top + 3, bus = top + 4, stubBottom = top + 5;
-    for (const child of ranks[rank + 1]) {
-      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
-      if (parents.length === 0)
-        continue;
-      const centre = centreOf(child.id);
-      link(top + 6, centre, UP, toneOf(child, focus, chain));
-      link(stubBottom, centre, UP | DOWN, toneOf(child, focus, chain));
-      for (const id of parents) {
-        const from = centreOf(id);
-        const edgeTone = focus === undefined ? "edge" : (id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true) ? "chain" : "dim";
-        link(stubTop, from, UP | DOWN, edgeTone);
-        if (from === centre) {
-          link(bus, from, UP | DOWN, edgeTone);
-          continue;
-        }
-        link(bus, from, UP, edgeTone);
-        link(bus, centre, DOWN, edgeTone);
-        for (let col = Math.min(from, centre) + 1;col < Math.max(from, centre); col++)
-          link(bus, col, LEFT | RIGHT, edgeTone);
-        link(bus, Math.min(from, centre), RIGHT, edgeTone);
-        link(bus, Math.max(from, centre), LEFT, edgeTone);
-      }
-    }
-  }
-  const lines = [];
-  for (let row = 0;row < mask.length; row++) {
-    const cells = [];
-    let run = null;
-    for (let col = 0;col < width; col++) {
-      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
-      const at = toneAt(row, col) ?? "blank";
-      if (run !== null && run.tone === at)
-        run.text += char;
-      else {
-        run = { text: char, tone: at };
-        cells.push(run);
-      }
-    }
-    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
-      cells.pop();
-    lines.push(clampSpans(cells, width));
-  }
-  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
-    lines.pop();
-  const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList };
-  if (focus !== undefined)
-    view.focus = focus;
-  return view;
-}
-function layoutRail(tasks, cols, focus) {
-  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const children = new Map;
-  for (const task of tasks) {
-    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0];
-    if (parent === undefined)
-      continue;
-    if (!children.has(parent))
-      children.set(parent, []);
-    children.get(parent).push(task);
-  }
-  const drawn = [];
-  const seen = new Set;
-  const walk = (task, prefix, leaf, depth) => {
-    if (seen.has(task.id))
-      return;
-    seen.add(task.id);
-    drawn.push({ task, prefix, leaf, depth });
-    const kids = children.get(task.id) ?? [];
-    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1));
-  };
-  for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0))
-    walk(root, "", true, 0);
-  for (const task of tasks)
-    walk(task, "", true, 0);
-  const lines = [];
-  const hits = [];
-  drawn.forEach((entry, index) => {
-    const at = toneOf(entry.task, focus, chain);
-    const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : "";
-    const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`;
-    const connector = entry.depth === 0 ? "" : `${entry.prefix}${entry.leaf ? "└─" : "├─"} `;
-    const label = labelOf(entry.task, focus);
-    const tailWidth = tail === "" ? 0 : cellWidth(tail) + 2;
-    const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10;
-    const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0));
-    const shown = clampCells(stripControl(label), labelRoom);
-    const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : "";
-    lines.push(clampSpans([
-      { text: connector, tone: at },
-      { text: shown + gap, tone: at },
-      ...useTail ? [{ text: "  " + tail, tone: at }] : []
-    ], cols));
-    hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
-  });
-  const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList };
-  if (focus !== undefined)
-    view.focus = focus;
-  return view;
-}
-function layoutGraph(tasks, cols, focus) {
-  const width = Math.max(8, Math.floor(cols));
-  return layoutBoxes(tasks, width, focus) ?? layoutRail(tasks, width, focus);
-}
-function hitTest(view, row, col) {
-  for (const hit of view.hits) {
-    if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd)
-      return hit.taskId;
-  }
-  return;
-}
-
 // packages/mpd-tui-plugin/src/subagent-scene.ts
 var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
 var SUBAGENT_SCENE_TITLE = "MPD subagents + team";
 var MERGED_ROW_MAX_CELLS = 4000;
 var FALLBACK_COLS = 100;
 var REFRESH_MS = 2000;
+var DETAIL_TAIL_LINES = 12;
+var DETAIL_LABEL_WIDTH = 12;
+var DETAIL_TOOL_NAMES = 8;
 var KNOWN_STATUSES = ["starting", "running", "completed", "failed", "cancelled", "unknown"];
 var KNOWN_MODES = ["one-shot", "continuable", "unknown"];
 var SUBAGENT_GLYPHS = {
@@ -4961,6 +5196,14 @@ function measureTerminal(ui) {
     cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS
   };
 }
+function isReturn(input, key) {
+  if (key?.isPasted === true)
+    return false;
+  const modified = key?.ctrl === true || key?.meta === true || key?.shift === true || key?.super === true;
+  if (modified)
+    return false;
+  return key?.return === true || /^[\r\n]+$/u.test(input);
+}
 function subagentRowView(entry) {
   if (entry === null || typeof entry !== "object")
     return;
@@ -4981,21 +5224,24 @@ function subagentRowView(entry) {
     failed: status === "failed" || status === "cancelled"
   };
 }
-function subagentRows(channel) {
+function subagentRowEntries(channel) {
   try {
     const raw = channel?.subagents;
     if (!Array.isArray(raw))
       return [];
-    const rows = [];
+    const pairs = [];
     for (const entry of raw) {
       const view = subagentRowView(entry);
       if (view !== undefined)
-        rows.push(view);
+        pairs.push({ view, entry });
     }
-    return rows;
+    return pairs;
   } catch {
     return [];
   }
+}
+function subagentRows(channel) {
+  return subagentRowEntries(channel).map((pair) => pair.view);
 }
 function glyphOf(row) {
   if (row.live)
@@ -5013,6 +5259,99 @@ function subagentRowLine(row) {
   if (row.endedAt !== undefined)
     parts.push(`ended ${row.endedAt}`);
   return safeRow(`${glyphOf(row)} ${parts.join(" · ")}`);
+}
+function counterOf(value) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+    return;
+  return Math.floor(value);
+}
+function subagentDetailFacts(entry) {
+  const row = subagentRowView(entry);
+  if (row === undefined)
+    return;
+  const raw = entry;
+  const provider = safeRow(raw.provider);
+  const model = safeRow(raw.model);
+  const usage = raw.tokens !== null && typeof raw.tokens === "object" ? raw.tokens : undefined;
+  const inputTokens = counterOf(usage?.input);
+  const outputTokens = counterOf(usage?.output);
+  const totalTokens = counterOf(usage?.total);
+  const calls = Array.isArray(raw.toolCalls) ? raw.toolCalls : undefined;
+  const output = Array.isArray(raw.outputEvents) ? raw.outputEvents : Array.isArray(raw.output) ? raw.output : undefined;
+  const toolNames = [];
+  if (calls !== undefined) {
+    for (const call of calls) {
+      if (call === null || typeof call !== "object")
+        continue;
+      const name = safeRow(call.name);
+      if (name !== "")
+        toolNames.push(name);
+    }
+  }
+  let outputLines;
+  if (output !== undefined) {
+    outputLines = [];
+    for (const line of output) {
+      const text = line !== null && typeof line === "object" ? safeRow(line.text) : safeRow(line);
+      if (text !== "")
+        outputLines.push(text);
+    }
+  }
+  return {
+    row,
+    ...provider === "" ? {} : { provider },
+    ...model === "" ? {} : { model },
+    tokens: {
+      ...inputTokens === undefined ? {} : { input: inputTokens },
+      ...outputTokens === undefined ? {} : { output: outputTokens },
+      ...totalTokens === undefined ? {} : { total: totalTokens }
+    },
+    ...calls === undefined ? {} : { toolCallCount: calls.length },
+    toolNames,
+    ...outputLines === undefined ? {} : { outputLines }
+  };
+}
+function subagentDetailRows(facts, scroll) {
+  const rows = [{ text: facts.row.description, title: true }];
+  const pair = (label, value) => ({ text: safeRow(`${label.padEnd(DETAIL_LABEL_WIDTH)}${value}`) });
+  rows.push(pair("status", facts.row.status));
+  rows.push(pair("mode", facts.row.mode));
+  if (facts.model !== undefined)
+    rows.push(pair("model", facts.model));
+  if (facts.provider !== undefined)
+    rows.push(pair("provider", facts.provider));
+  if (facts.row.startedAt !== undefined)
+    rows.push(pair("started", facts.row.startedAt));
+  if (facts.row.endedAt !== undefined)
+    rows.push(pair("ended", facts.row.endedAt));
+  const tokenParts = [];
+  if (facts.tokens.input !== undefined)
+    tokenParts.push(`in ${facts.tokens.input}`);
+  if (facts.tokens.output !== undefined)
+    tokenParts.push(`out ${facts.tokens.output}`);
+  if (facts.tokens.total !== undefined)
+    tokenParts.push(`total ${facts.tokens.total}`);
+  if (tokenParts.length > 0)
+    rows.push(pair("tokens", tokenParts.join(" · ")));
+  if (facts.toolCallCount !== undefined) {
+    const shown = facts.toolNames.slice(0, DETAIL_TOOL_NAMES);
+    const hidden = facts.toolNames.length - shown.length;
+    rows.push(pair("tool calls", `${facts.toolCallCount}${shown.length === 0 ? "" : ` · ${shown.join(", ")}${hidden > 0 ? `, +${hidden} more` : ""}`}`));
+  }
+  if (facts.outputLines !== undefined) {
+    const lines = facts.outputLines;
+    rows.push(pair("output", `${lines.length} line(s)`));
+    const wanted = Number.isFinite(scroll) ? Math.floor(scroll) : 0;
+    const at = Math.max(0, Math.min(wanted, Math.max(0, lines.length - DETAIL_TAIL_LINES)));
+    const end = lines.length - at;
+    const start = Math.max(0, end - DETAIL_TAIL_LINES);
+    if (lines.length > DETAIL_TAIL_LINES) {
+      rows.push({ text: safeRow(`showing ${start + 1}-${end} of ${lines.length} · ↑↓ scroll`), dim: true });
+    }
+    for (let index = start;index < end; index += 1)
+      rows.push({ text: safeRow(`  ${lines[index]}`) });
+  }
+  return rows;
 }
 function subagentSectionRows(channel) {
   const rows = subagentRows(channel);
@@ -5035,6 +5374,10 @@ function subagentSectionRows(channel) {
     section.push({ text: "  Subagents appear here once the main agent starts Task delegations", dim: true });
     return section;
   }
+  section.push({
+    text: `${SUBAGENT_GLYPHS.live} ${live} running · ${SUBAGENT_GLYPHS.completed} ${completed} completed · ${SUBAGENT_GLYPHS.failed} ${failed} failed`,
+    dim: true
+  });
   for (let index = 0;index < rows.length; index += 1)
     section.push({ text: subagentRowLine(rows[index]), rowIndex: index });
   return section;
@@ -5070,12 +5413,13 @@ function interruptSubagent(channel, agentId) {
     return false;
   }
 }
-function createSubagentSceneComponent(readWorkflow) {
+function createSubagentSceneComponent(readWorkflow, onHostKit) {
   return function MpdTuiSubagents(props) {
     const kit = hostKit(props?.React, props?.ui);
     if (kit === undefined) {
       return null;
     }
+    onHostKit?.(props?.ui);
     const React = kit.React;
     const ui = kit.ui;
     const close = typeof props.close === "function" ? props.close : () => {};
@@ -5089,6 +5433,12 @@ function createSubagentSceneComponent(readWorkflow) {
     const noticeState = React.useState("");
     const notice = noticeState[0];
     const setNotice = noticeState[1];
+    const detailState = React.useState(undefined);
+    const detailAgentId = detailState[0];
+    const setDetailAgentId = detailState[1];
+    const detailScrollState = React.useState(0);
+    const detailScroll = detailScrollState[0];
+    const setDetailScroll = detailScrollState[1];
     const refresh = () => {
       let next;
       try {
@@ -5122,11 +5472,67 @@ function createSubagentSceneComponent(readWorkflow) {
       } catch {}
     }
     const measured = measureTerminal(ui);
-    const rows = subagentRows(channel);
+    const pairs = subagentRowEntries(channel);
+    const rows = pairs.map((pair) => pair.view);
     const selectedIndex = rows.length === 0 ? -1 : Math.min(Math.max(focus, 0), rows.length - 1);
     const selected = selectedIndex === -1 ? undefined : rows[selectedIndex];
+    const detailAt = detailAgentId === undefined ? -1 : pairs.findIndex((pair) => pair.view.agentId === detailAgentId);
+    const detailOpen = detailAt >= 0;
+    const detailRow = detailOpen ? rows[detailAt] : undefined;
+    const detailFacts = detailOpen ? subagentDetailFacts(pairs[detailAt].entry) : undefined;
+    const detailLines = detailFacts?.outputLines?.length ?? 0;
+    const detailMaxScroll = Math.max(0, detailLines - DETAIL_TAIL_LINES);
+    const detailGone = detailAgentId !== undefined && !detailOpen;
+    const noticeLine = detailGone ? "details: that subagent is no longer in the channel" : notice;
+    const interrupt = (row) => {
+      if (row === undefined || row.agentId === undefined) {
+        setNotice("interrupt: no subagent row is selected");
+        return;
+      }
+      if (!row.live) {
+        setNotice(`interrupt: ${row.description} is ${row.status}, not running`);
+        return;
+      }
+      setNotice(interruptSubagent(channel, row.agentId) ? `interrupt requested for ${row.description}` : "interrupt: this composition exposes no subagent control");
+    };
+    const openDetail = () => {
+      if (selected === undefined) {
+        setNotice("details: no subagent row is selected");
+        return;
+      }
+      if (selected.agentId === undefined) {
+        setNotice("details: this row carries no agent id to re-read");
+        return;
+      }
+      setNotice("");
+      setDetailScroll(0);
+      setDetailAgentId(selected.agentId);
+    };
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
+        if (detailOpen) {
+          if (key?.escape === true || key?.backspace === true || input === "q") {
+            setDetailAgentId(undefined);
+            setDetailScroll(0);
+            setNotice("");
+            return;
+          }
+          if (key?.upArrow === true) {
+            setDetailScroll(Math.min(detailMaxScroll, detailScroll + 1));
+            return;
+          }
+          if (key?.downArrow === true) {
+            setDetailScroll(Math.max(0, detailScroll - 1));
+            return;
+          }
+          if (input === "r" && key?.ctrl !== true) {
+            refresh();
+            return;
+          }
+          if (input === "i" && key?.ctrl !== true)
+            interrupt(detailRow);
+          return;
+        }
         if (key?.escape === true || input === "q") {
           close();
           return;
@@ -5139,58 +5545,208 @@ function createSubagentSceneComponent(readWorkflow) {
           setFocus(Math.max(0, Math.min(selectedIndex, rows.length - 1) + 1));
           return;
         }
+        if (isReturn(input, key)) {
+          openDetail();
+          return;
+        }
         if (input === "r" && key?.ctrl !== true) {
           refresh();
           return;
         }
-        if (input === "i" && key?.ctrl !== true) {
-          if (selected === undefined || selected.agentId === undefined) {
-            setNotice("interrupt: no subagent row is selected");
-            return;
-          }
-          if (!selected.live) {
-            setNotice(`interrupt: ${selected.description} is ${selected.status}, not running`);
-            return;
-          }
-          setNotice(interruptSubagent(channel, selected.agentId) ? `interrupt requested for ${selected.description}` : "interrupt: this composition exposes no subagent control");
-        }
+        if (input === "i" && key?.ctrl !== true)
+          interrupt(selected);
       });
     }
     const children = [];
     children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeRow(`${SUBAGENT_SCENE_TITLE}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
-    const section = subagentSectionRows(channel);
-    for (let index = 0;index < section.length; index += 1) {
-      const row = section[index];
-      children.push(React.createElement(ui.Text, {
-        key: `sub-${index}`,
-        ...row.header === true ? { bold: true } : {},
-        ...row.dim === true ? { dimColor: true } : {},
-        ...row.rowIndex !== undefined && row.rowIndex === selectedIndex ? { bold: true } : {}
-      }, safeRow(row.text)));
-    }
-    children.push(React.createElement(ui.Text, { key: "sep" }, safeRow("")));
-    let teamLines;
-    try {
-      teamLines = workflow === undefined ? ["team state unreadable"] : teamWorkflowLines(workflow);
-    } catch {
-      teamLines = ["team state unreadable"];
-    }
-    for (let index = 0;index < teamLines.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `team-${index}` }, safeRow(teamLines[index])));
-    }
-    const view = teamGraphView(workflow, measured.cols);
-    if (view !== undefined) {
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
-      for (let index = 0;index < view.lines.length; index += 1) {
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
-        children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+    if (detailOpen) {
+      const detailRows = detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll);
+      for (let index = 0;index < detailRows.length; index += 1) {
+        const row = detailRows[index];
+        children.push(React.createElement(ui.Text, {
+          key: `detail-${index}`,
+          ...row.title === true ? { bold: true } : {},
+          ...row.dim === true ? { dimColor: true } : {}
+        }, safeRow(row.text)));
+      }
+    } else {
+      const section = subagentSectionRows(channel);
+      for (let index = 0;index < section.length; index += 1) {
+        const row = section[index];
+        const emphasis = {
+          ...row.header === true ? { bold: true } : {},
+          ...row.dim === true ? { dimColor: true } : {},
+          ...row.rowIndex !== undefined && row.rowIndex === selectedIndex ? { bold: true } : {}
+        };
+        if (row.rowIndex === undefined) {
+          children.push(React.createElement(ui.Text, { key: `sub-${index}`, ...emphasis }, safeRow(row.text)));
+          continue;
+        }
+        const clicked = row.rowIndex;
+        children.push(React.createElement(ui.Box, { key: `sub-${index}`, onClick: () => setFocus(clicked) }, React.createElement(ui.Text, { key: "row", ...emphasis }, safeRow(row.text))));
+      }
+      children.push(React.createElement(ui.Text, { key: "sep" }, safeRow("")));
+      let teamLines;
+      try {
+        teamLines = workflow === undefined ? ["team state unreadable"] : teamWorkflowLines(workflow);
+      } catch {
+        teamLines = ["team state unreadable"];
+      }
+      for (let index = 0;index < teamLines.length; index += 1) {
+        children.push(React.createElement(ui.Text, { key: `team-${index}` }, safeRow(teamLines[index])));
+      }
+      const view = teamGraphView(workflow, measured.cols);
+      if (view !== undefined) {
+        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
+        for (let index = 0;index < view.lines.length; index += 1) {
+          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+          children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+        }
+        let legend = [];
+        try {
+          legend = legendLines(measured.cols);
+        } catch {
+          legend = [];
+        }
+        for (let index = 0;index < legend.length; index += 1) {
+          children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow(legend[index])));
+        }
       }
     }
-    if (notice !== "")
-      children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeRow(notice)));
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeRow("esc/q close · ↑↓ select · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board")));
+    if (noticeLine !== "")
+      children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeRow(noticeLine)));
+    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeRow(detailOpen ? "esc/backspace/q back to the list · ↑↓ scroll the output · i interrupt the selected run · r refresh" : "esc/q close · ↑↓ select · enter detail · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board")));
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
+}
+
+// packages/mpd-tui-plugin/src/dashboard-key.ts
+var DASHBOARD_KEY_VIEW = "mpd-tui-keyhook";
+var DASHBOARD_KEY_MAX_ROWS = 1;
+function reactHooksOf(value) {
+  if (value === undefined || value === null)
+    return;
+  const candidate = value;
+  if (typeof candidate.useState !== "function")
+    return;
+  if (typeof candidate.useEffect !== "function")
+    return;
+  if (typeof candidate.createElement !== "function")
+    return;
+  return candidate;
+}
+function readHostInputBus(tui) {
+  try {
+    return readHostStdinValue(tui.hostInput()?.useStdin());
+  } catch (error) {
+    return { detail: `the host stdin hook threw: ${String(error?.message ?? error)}` };
+  }
+}
+function interceptDashboardKey(event, deps) {
+  const candidate = event;
+  if (candidate === undefined || candidate === null)
+    return false;
+  if (candidate.input !== "a")
+    return false;
+  const key = candidate.key;
+  if (key === undefined || key === null)
+    return false;
+  if (key.ctrl !== true || key.meta === true)
+    return false;
+  if (!deps.enabled())
+    return false;
+  if (!deps.mergedSceneAvailable())
+    return false;
+  const workflow = deps.readWorkflow();
+  if (workflow === undefined || workflow.team === undefined || workflow.tasks.length === 0)
+    return false;
+  const stop = candidate.stopImmediatePropagation;
+  if (typeof stop !== "function")
+    return false;
+  stop.call(event);
+  const opened = deps.openMergedScene();
+  deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
+  return true;
+}
+function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
+  try {
+    let holdIds = [];
+    try {
+      holdIds = holds() ?? [];
+    } catch {
+      holdIds = [];
+    }
+    let records = [];
+    try {
+      records = teamRecords?.() ?? [];
+    } catch {
+      records = [];
+    }
+    const principal = principalRecord(records);
+    if (principal !== undefined)
+      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
+    let views = [];
+    try {
+      views = teamViews?.() ?? [];
+    } catch {
+      views = [];
+    }
+    return readTeamWorkflow(workspaceRoot(), holdIds, views);
+  } catch {
+    return;
+  }
+}
+function createDashboardKeyComponent(tui, deps) {
+  return function MpdTuiDashboardKey(props) {
+    const React = reactHooksOf(props?.React);
+    if (React === undefined) {
+      return null;
+    }
+    const ui = props?.ui;
+    const armed = React.useState(0);
+    const setArmed = armed[1];
+    React.useEffect(() => tui.whenHostInput(() => setArmed((previous) => previous + 1)), []);
+    const bus = readHostInputBus(tui);
+    const emitter = bus.emitter;
+    const unavailable = bus.detail;
+    React.useEffect(() => {
+      if (emitter === undefined) {
+        if (unavailable !== undefined)
+          deps.log.debug(`Ctrl+A takeover: ${unavailable}`);
+        return;
+      }
+      const listener = (event) => {
+        try {
+          interceptDashboardKey(event, deps);
+        } catch (error) {
+          deps.log.debug(`Ctrl+A takeover handler failed: ${String(error?.message ?? error)}`);
+        }
+      };
+      try {
+        emitter.prependListener("input", listener);
+      } catch {
+        return;
+      }
+      return () => {
+        try {
+          emitter.removeListener("input", listener);
+        } catch {}
+      };
+    }, [emitter, unavailable]);
+    if (typeof ui?.Box !== "function")
+      return null;
+    return React.createElement(ui.Box, {}, null);
+  };
+}
+function registerDashboardKey(ctx, tui, deps) {
+  const view = tui.registerStatusComponent({
+    key: DASHBOARD_KEY_VIEW,
+    component: createDashboardKeyComponent(tui, deps),
+    maxRows: DASHBOARD_KEY_MAX_ROWS,
+    identity: ctx,
+    label: "mpd-tui Ctrl+A keyhook"
+  });
+  return { outcome: () => view.outcome() };
 }
 
 // packages/mpd-tui-plugin/src/scenes.ts
@@ -5283,7 +5839,7 @@ function measureTerminal2(ui) {
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -5291,6 +5847,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     if (!usableKit(React, ui)) {
       return null;
     }
+    onHostKit?.(ui);
     const read = () => {
       try {
         return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds());
@@ -5355,13 +5912,14 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
+    onHostKit?.(ui);
     const workflowState = React.useState(undefined);
     const workflow = workflowState[0];
     const setWorkflow = workflowState[1];
@@ -5515,6 +6073,15 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
             setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)));
         }
       }, graphRows));
+      let legend = [];
+      try {
+        legend = legendLines(graphWidth);
+      } catch {
+        legend = [];
+      }
+      for (let index = 0;index < legend.length; index += 1) {
+        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeLine(legend[index])));
+      }
       const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus);
       if (detail !== undefined) {
         children.push(React.createElement(ui.Text, { key: "detail", bold: true }, safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)));
@@ -5547,13 +6114,14 @@ function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords, onHostKit) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
     if (!usableKit(React, ui))
       return null;
+    onHostKit?.(ui);
     const channelSession = () => {
       const live = props?.channel;
       const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
@@ -5784,7 +6352,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords) {
+function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit) {
   const nav = { planFromTeam: false };
   const openScene = (id) => {
     if (!tui.openScene(id)) {
@@ -5800,13 +6368,13 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
       return;
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords) }, ctx);
-      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords) }, ctx);
-      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords) }, ctx);
+      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx);
       tui.registerScene({
         id: SUBAGENT_SCENE_ID,
         title: SUBAGENT_SCENE_TITLE,
-        component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords))
+        component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit)
       }, ctx);
       handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
     } catch (error) {
@@ -6214,6 +6782,7 @@ var Config = import_schemastery2.default.object({
   commands: import_schemastery2.default.boolean().default(true),
   shortcuts: import_schemastery2.default.boolean().default(true),
   dialogs: import_schemastery2.default.boolean().default(true),
+  dashboardKey: import_schemastery2.default.boolean().default(true),
   sessionEvents: import_schemastery2.default.boolean().default(true),
   decisionEvents: import_schemastery2.default.boolean().default(true),
   logPrefix: import_schemastery2.default.string().default("mpd-tui")
@@ -6231,6 +6800,7 @@ function resolveConfig(config = {}) {
     commands: bool(config.commands, true),
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
+    dashboardKey: bool(config.dashboardKey, true),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui"
@@ -6297,7 +6867,7 @@ function homeDir() {
   if (typeof env === "string" && env.length > 0)
     return env;
   try {
-    return homedir3();
+    return homedir4();
   } catch {
     return "";
   }
@@ -6351,7 +6921,7 @@ function apply(ctx, config = {}) {
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
   status = resolved.statusLine ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { ...skipped("status", "disabled by config"), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords) : {
+  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui)) : {
     ...skipped("scenes", "disabled by config"),
     open: () => false,
     openScene: () => false,
@@ -6359,6 +6929,21 @@ function apply(ctx, config = {}) {
     openPlan: () => false,
     openSubagents: () => false
   };
+  const dashboardKeyEnabled = () => {
+    try {
+      const live = configHandle?.get?.(DASHBOARD_TAKEOVER_KNOB);
+      if (typeof live === "boolean")
+        return live;
+    } catch {}
+    return resolved.dashboardKey;
+  };
+  const dashboardKey = resolved.dashboardKey ? registerDashboardKey(ctx, tui, {
+    enabled: dashboardKeyEnabled,
+    mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    openMergedScene: () => scene.openSubagents(),
+    log
+  }) : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)");
   const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config");
   const settings = resolved.settingsSection ? registerSettingsSection(ctx, tui, log) : skipped("settingsSections", "disabled by config");
   const trees = resolved.commandTrees ? registerCommandTrees(tui) : skipped("commandTrees", "disabled by config");
@@ -6393,6 +6978,7 @@ function apply(ctx, config = {}) {
   record(renderers);
   record(settings);
   record(scene);
+  outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });
   record(trees);
   record(shortcuts);
   record(dialogs);

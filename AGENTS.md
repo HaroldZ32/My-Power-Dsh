@@ -353,6 +353,21 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   R5 "never fd 1 or fd 2" rule live there too. Two gates pin it: `no-direct-tui-access` (a NEW direct
   touch) and `no-terminal-writes` (a NEW terminal write). Full contract, the fourteen seams and the
   declared WEB-plane residual: `agent-references/seam-adapters.md`.
+- **ONE DSH-TUI contact is NOT a seam, is COUNTED, and lives in that same adapter (2026-10-05).** The
+  host's built-in `dashboard` action owns `Ctrl+A` and no contribution kind can reach it, so the
+  adapter resolves the INSTALLED host root and dynamic-imports `<root>/lib/types/ui.js` **by file URL**
+  (a package specifier is refused: the host's `exports` map has no `./lib/*` subpath) to obtain the
+  host's own `useStdin`, exposing it as `hostInput()`. Module-instance identity is the whole point —
+  Node caches ESM by resolved URL, so the hook is supposed to read the SAME React context the host
+  does; MEASURED on dsh-tui 0.12.0 it does NOT (the import is a foreign instance whose `useStdin()`
+  answers nothing), so the adapter ALSO stores the live kit a SCENE render receives
+  (`rememberHostKit`) and prefers it — which is why a take-over built on this contact arms only after
+  the session has rendered an MPD scene, and stays inert before that. Two further host rules bind
+  here: a STATUS registration's identity must be the CALLING ACTIVATION (the injected scope, not the
+  consumer's ctx — the host's `assertCallerContext` refuses the latter), and no DSH-TUI file is
+  patched, vendored or written; every failure (no candidate, import error, a `ui.js` without
+  `useStdin`) degrades to `hostInput() === undefined` + ONE line with the take-over simply absent.
+  Route any future host-internals need through this same adapter — never a second contact site.
 - **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
   §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`
   and `node scripts/set-default-preset.ts`.

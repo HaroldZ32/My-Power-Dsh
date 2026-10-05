@@ -24,12 +24,36 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（0.1.7 起**只读**） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并说明官方 Agent Teams 平面上不存在批准流程；原先“逐字输入短语 + `Ctrl+X` 批准 / `Ctrl+D` 丢弃”的交互已随其工具（`agent_teams_approve`、`agent_teams_delete`，现已无任何行注册）一同移除 |
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全 |
-| 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
+| 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
+| 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：`alt+a` 打开，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
+| `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
 | 决策事件 | `tuiPluginHost.subscribeDecision` | 已尝试注册、预期被拒绝、**未激活**（见下） |
 
 支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
 命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
+
+### 依赖图：箭头、图例与 `Ctrl+A` 接管
+
+`src/graph.ts` 用三种画法绘制看板，并选择终端放得下的最宽的一种：`boxes`（分层 DAG，纵轴是最长
+依赖路径，因此一条链自上而下阅读）、`rail`（窄终端的缩进森林）、`list`（看板过密时的按 rank 分组表格）。
+每一条**已绘制**的依赖边都以方向箭头收尾——`boxes` 里是 `▼`，`rail` 里是 `▸`——指向**依赖方**；多个阻塞者
+汇聚时仍然只显示**一个**箭头：合并入口是写成**文本**而不是交叉字符的，因为没有任何方向位能表达"……并且这条
+依赖指向这个盒子内部"。两个调用方（团队场景与合并面板）都在图下方渲染 `legendLines(width)`；它同时说明两种
+箭头标记、五个状态字形（直接取自绘制所用的同一张表）以及焦点标记，并在终端过窄时**丢弃**一整句而不是把句子
+截断。
+
+当工作区的团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板——宿主自己的子代理行及计数、团队
+正文、以及该 DAG。这个键归宿主的**内建** `dashboard` 动作所有，且没有任何贡献类型能触达它的组件，因此适配器
+加载宿主自己的 `useStdin`（见 `packages/mpd-tui-adapter-plugin`），再由一个零行状态视图把一个监听器
+prepend 到输入总线最前面，抢先消费该键。没有团队时该监听器什么都不碰；任何失败——宿主模块不可达、版本偏移、
+`tui.dashboardKey` 关闭——都降级为今天的行为。`skills/dsh-qa/scripts/tui-deps-ctrla.ts` 在真机 PTY 上
+证明了两条路径（外加设置界面那条对照）。
+
+**一条宿主约束**（它直接影响你看到的现象）：宿主只在**场景渲染**时把活的输入上下文交给插件，因此接管会在你本次
+会话打开任意一个 MPD 面板或场景之后自行就绪（`alt+a`、`alt+t`、`alt+m`、`/mpd board` 等）。在那之前——以及
+在任何"插件自行 import 得到的是另一份模块实例"的宿主上——钩子什么都不挂，`Ctrl+A` 与没有本 bundle 时完全
+一样地打开宿主 dashboard。本次会话打开过一次即可。
 
 ### 团队模型槽位字段：由模型目录驱动的选择项
 
@@ -104,6 +128,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `commandTrees` | `true` | 注册 `/mpd` 补全树 |
 | `commands` | `true` | 注册 `/mpd` 命令（面板的打开入口） |
 | `shortcuts` | `true` | 注册快捷键 |
+| `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条） |
 | `dialogs` | `true` | 启用托管对话框门面 |
 | `sessionEvents` | `true` | 追加 log-only 的 `mpd-tui/board-opened` 记录，且仅在事件类型已验证被可达的 `dsh-session` 副本认识之后 |
 | `decisionEvents` | `true` | 尝试托管式决策事件注册（预期被拒绝） |
@@ -165,6 +190,24 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    引擎进行，而非该修订。
 6. **宿主内部门禁不等于本插件的合规结论。** 宿主自带的 `verify:plugin-*` 套件验证
    的是宿主的插件子系统；即便全绿也不构成对本插件的合规判定。
+7. **`Ctrl+A` 接管是按键改指，不是并入宿主 dashboard。** 不补丁任何宿主文件，也不扩展宿主 dashboard 的
+   渲染：你落到的是 `mpd-tui-subagents`，它自己渲染宿主的 `channel.subagents` 行。只要团队里还有至少一项
+   任务，`Ctrl+A` 就完全不再打开宿主 dashboard——把 `tui.dashboardKey` 关掉即可恢复宿主行为。
+8. **它盯的是按键本身，而不是宿主当前对 `dashboard` 的绑定。** 如果你在 `/settings` 里重映射了该动作，只要
+   存在团队，`Ctrl+A` 仍会打开合并面板：钩子监视的是宿主的默认组合键。我们不会替你重映射，宿主自己的绑定表
+   也未被改动。
+9. **只在纯聊天界面生效。** 钩子寄居在一个状态视图组件上，而每一个独占式宿主界面（对话框、`/settings`、会话
+   树、supervisor、插件场景、宿主 dashboard 自身）都会让它卸载——`tui-deps-ctrla` 用例的设置界面臂在真机
+   pane 上证明了这一点，而不是从宿主的分支顺序推断。
+10. **`boxes` 视图不绘制跨 rank 依赖边。** 阻塞者位于两层或更多层之上的任务不会为它画出连线（既有布局规则：
+    只连接紧邻上一层）。`rail` 视图会把额外的阻塞者内联写出（`⇠ T4+T6`）。
+11. **合并入口的箭头取的是依赖方的色调，而不是边的色调。** 一个单元格无法同时承载多个父节点的色调，因此一条
+    被压暗的边可能以子节点自身颜色的箭头收尾。
+12. **`Ctrl+A` 接管是在"场景渲染"时就绪的，而不是启动时。** 在 dsh-tui 0.12.0 上实测：活的输入上下文只能
+    通过宿主交给**场景**的 kit（`props.ui`）拿到；插件自行按文件 URL 导入宿主 `ui.js` 得到的是另一份模块
+    实例，它的 `useStdin()` 什么也不返回。因此钩子会保存它收到的第一份 kit：你在本次会话里打开过任意 MPD
+    面板或场景（`alt+a`、`alt+t`、`alt+m`、`/mpd board`）之后接管即生效；在那之前 `Ctrl+A` 保持宿主原
+    有行为。对于 kit 从不送达的宿主，本包不做任何声明。
 
 ## 构建与测试
 
