@@ -19,7 +19,7 @@
 | plan mode | 仅规划模式 | ✅ | DSH 原生 plan-mode |
 | delegate / multi-model | delegate-task 带 fallback chains | 🟡 | subagent 工具 + mpd_modelchain_resolve（11 roles，2-3 层 DeepSeek chains）。上游 model-core 更丰富的 variant/effort 映射未移植 |
 | 后台 agent | 并行后台任务 | ✅ | DSH jobs + tool-jobs |
-| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（18 个目录，含 `svn-master` 与本仓库自有的 `dsh-qa`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
+| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev` —— 后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
 | Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
 | 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git_bash（win-gated）、lsp（8 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
 | Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + `/mpd-codegraph`、ULW 命令对 `/ulw` + `/ultrawork`（等价；目标即参数）+ TUI 的 `/mpd` 命令树；ULW 引擎同时以工具交付（`mpd_ultrawork`、`mpd_ulw` 轻量别名）。没有 `/team`，也没有 `/agent-teams` —— 团队工作由官方工具驱动 |

@@ -127,6 +127,17 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   official tools, through the adapter) when the work warrants one, loops to
   completion, fixes defects on sight, and closes out through the verification and quality gates
   before reporting done.
+- **The persisted GOAL is the basis of continuous execution (C8).** The harness ships the goal domain
+  (`dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`) and the `mpd` preset mounts its tool and
+  command rows; `mpd-goal-plugin` is what INVOKES them: `mpd_goal_status` / `mpd_goal_anchor` /
+  `mpd_goal_finish`, the `mpdGoal` service, and the auto-anchor contract by which a heavy ULW run or a
+  plan-bound `mpd_boulder_start` anchors a persisted goal (`goal.enabled` / `goal.autoAnchor` /
+  `goal.autoRounds` in `mpd.jsonc`). A run that ends `max-rounds` deliberately LEAVES ITS GOAL ARMED —
+  that is the handoff from the in-turn engine to the harness's round driver. Mutations go through the
+  harness goal TOOLS, never `ctx.goals`, so the authorisation stays the harness's (a direct human turn
+  for create/edit/pause/resume; the consecutive-round count for `blocked`); ownership is recorded per
+  session in `<workspace>/.mpd/goal/anchors.json`. Evidence:
+  `evidence/goal/goal-bridge/<ts>/` and the `goal-bridge` QA case.
 - **The session-start complexity gate ADVISES — it never pre-stages a team.** The frozen predicate
   `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's first
   pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`, but a triggered
@@ -187,7 +198,9 @@ mpd-dsh/
 │   │                             # the MCP servers: AST search, code graph, git-bash, LSP, shared libs
 │   ├── mpd-tools-plugin/         # B1: write guard, output truncation, edit-error recovery
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendored hashline-core)
-│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state)
+│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state); anchors a goal
+│   ├── mpd-goal-plugin/          # C8: the persisted-GOAL bridge — mpd_goal_* + the `mpdGoal` service
+│   │                             #   ULW/boulder auto-anchor from (`goal.*`, the anchors sidecar)
 │   ├── mpd-config-plugin/        # C7: the mpd.jsonc runtime config layer (read by the plugins above)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + the reflection state machine
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
@@ -207,7 +220,8 @@ mpd-dsh/
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster
 ├── extensions/                   # <bundle>/extensions/*/mpd-ext.json + the DISABLED mpd-ext-example
-├── skills/                       # dsh-qa + 16 ported upstream skills + svn-master (SERVED by reference)
+├── skills/                       # dsh-qa + our own cordis-dev + 16 ported upstream skills + svn-master
+│                                 #   (SERVED by reference; cordis-dev adapts the harness's 创造模式 skills)
 ├── templates/                    # plugin/extension scaffolds shipped by the packer
 ├── tests/                        # overlays/ (keep empty when rows live in the bundle) + golden/
 ├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN); hub is docs/index.md

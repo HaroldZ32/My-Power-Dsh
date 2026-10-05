@@ -65,6 +65,10 @@
       "name": "@mpd-dsh/ext",
       "version": "0.9.0",
     },
+    "packages/mpd-goal-plugin": {
+      "name": "@mpd-dsh/goal",
+      "version": "0.1.0",
+    },
     "packages/mpd-hashline-plugin": {
       "name": "@mpd-dsh/hashline",
       "version": "0.2.3",
@@ -412,6 +416,8 @@
     "@mpd-dsh/dsh-bundle": ["@mpd-dsh/dsh-bundle@workspace:packages/mpd-bundle"],
 
     "@mpd-dsh/ext": ["@mpd-dsh/ext@workspace:packages/mpd-ext-plugin"],
+
+    "@mpd-dsh/goal": ["@mpd-dsh/goal@workspace:packages/mpd-goal-plugin"],
 
     "@mpd-dsh/hashline": ["@mpd-dsh/hashline@workspace:packages/mpd-hashline-plugin"],
 

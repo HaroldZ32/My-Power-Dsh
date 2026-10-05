@@ -137,6 +137,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
+| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | one-shot subagents; read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
@@ -428,6 +429,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `hashline.*` | mpd-hashline | guard flag, diff cap, registry file |
 | `commentChecker.*` | mpd-comment-checker | autoCheck, binary, timeouts |
 | `ulw.*` | mpd-ulw | rounds, plan/state dirs, provider/model routes |
+| `goal.enabled`, `goal.autoAnchor`, `goal.autoRounds` | mpd-goal | the persisted-goal bridge: master switch, whether long runs anchor a goal by themselves, and the round cap an auto-anchored goal is created with (defaults `true` / `true` / `32`). See §13.10 |
 | `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §10) |
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
@@ -460,6 +462,7 @@ Two things do not wait for that restart, and both are useful:
 | `hashline.*` | mpd-hashline | at mount | after a `dsh` restart |
 | `commentChecker.*` | mpd-comment-checker | at mount | after a restart |
 | `ulw.*` | mpd-ulw | at mount | after a restart |
+| `goal.*` | mpd-goal | at mount | after a restart |
 | `memory.*` | mpd-memory | at mount | after a restart |
 | `boulder.dir` | mpd-boulder | at mount | after a restart |
 | `modelchain.*` | mpd-modelchain | at mount | after a restart |
@@ -787,6 +790,44 @@ and never authorize a write, so report what you changed in the task description 
 than relying on the scope list. A result is not accepted because a teammate says so: the Lead waits
 for the team (`wait_agent`, then re-read) and verifies the diff before answering.
 
+### 13.10 The persisted goal (continuous execution)
+
+A long objective outlives one turn. The harness's **goal** is how that is expressed durably: it
+lives in the session log, survives a restart, and its round driver keeps the session working in
+automatic continuation rounds until the goal is completed (or blocked, or its round cap runs out).
+The bundle adds the plugin side of that: the `mpd-goal` row.
+
+```text
+# read the goal of the current session (works with no driver running)
+mpd_goal_status {}
+
+# anchor one for a long objective: what an unfinished-goal check, a create and the
+# ownership sidecar amount to. An unfinished goal already current is KEPT, never replaced.
+mpd_goal_anchor { "objective": "ship the cordis-dev skill and its evidence", "maxRounds": 24 }
+
+# close it when the objective is actually achieved
+mpd_goal_finish { "outcome": "complete" }
+```
+
+**You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy ULW run
+(`mpd_ultrawork` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
+goal for their own objective before they start, so the run's objective — not the tool call — is the
+basis of continuous execution. When the run ends:
+
+- `complete` → the goal is completed and the anchor record is dropped;
+- `blocked` → a blocked transition is attempted, and the harness may refuse it before its
+  consecutive-round threshold (the refusal is logged, never fatal);
+- `max-rounds` → the goal **stays armed on purpose**: the in-turn engine stopped, and the round
+  driver carries the objective on in the next turns.
+
+Ownership is recorded per session in `<workspace>/.mpd/goal/anchors.json`, so a run only ever
+finishes a goal it anchored: a goal you created with `/goal` or `create_goal` is left alone.
+
+Two boundaries worth knowing: the harness's own rules still apply — creating, editing, pausing and
+resuming a goal need a **direct human turn** on the top-level agent, so an agent cannot invent work
+for itself and then continue it unattended; and `goal.*` is read when the row mounts, so a change to
+`.mpd/mpd.jsonc` takes effect after a `dsh` restart (§9.1).
+
 ## 14. Where these capabilities come from
 
 The attribution facts a user needs, so it is clear which parts are this project's work and which are
@@ -798,7 +839,7 @@ other people's. The authoritative record, with the full licence texts, is
 | Team mode — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, the `team_task_*` board and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
 | The retired vendored `agent-teams` body (kept, not mounted) | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounts it since 0.1.7-rc.2 | `LICENSE-NOTICES.md`; licence text at `packages/mpd-agent-teams-plugin/LICENSE` |
 | The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) | SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |
-| The served skill corpus (18 skills, 326 fingerprinted files) | vendored from upstream oh-my-openagent | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
+| The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the upstream skills are vendored from **oh-my-openagent**; `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | SUL-1.0 for the corpus; MIT material referenced, not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
