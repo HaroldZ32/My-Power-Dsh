@@ -25,7 +25,9 @@
     "goal-bridge self-test": "PASS",
     "typecheck": "PRE-EXISTING RED on dev: skills/programming/scripts/typescript/check-no-excuse-rules.ts cannot resolve 'typescript/unstable/*' (no top-level `typescript` package; the repo pins typescript5 + @typescript/native-preview). No error in any file this wave touched.",
     "test:qa": "44/47 self-test arms pass; 3 PRE-EXISTING reds NOT caused by this wave: preset-register (`pending (waiting for service: agentPresets)` \u2014 the same failure is recorded in evidence/dsh-qa/preset-register/2026-09-27T21-25-03.591Z before this branch existed), bundle-lifecycle (pnpm store operation lock on a read-only filesystem), extension-lifecycle (live sessions exit 1 / pack exit 1).",
-    "live goal-bridge": "PASS \u2014 evidence/goal/goal-bridge/2026-10-04T04-10-36.316Z"
+    "live goal-bridge": "PASS \u2014 evidence/goal/goal-bridge/2026-10-04T04-10-36.316Z",
+    "docker-source": "PASS \u2014 evidence/docker/client-install/2026-10-05T04-11-58Z (66 assertions passed, 0 failed, 28 credential-gated NULL, 285 s)",
+    "docker-oneclick": "PASS \u2014 evidence/docker/client-install-oneclick/2026-10-05T04-17-02Z (68 passed, 0 failed, 30 credential-gated NULL, 221 s; spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill)"
   },
   "review": {
     "reviewer": "one-shot Reviewer specialist (read-only), findings vs dispositions",
@@ -57,5 +59,10 @@
     "VENDOR_LOCK.json": "5e67c9eca782a7dff037f7e71493019ac16d51be2638c0685e68137e3296c192",
     "AGENTS.md": "bbabe836da2e0b3dc110e799c3851a2a4120ddf668fed2c7dcdd08d17d70c6af",
     "LICENSE-NOTICES.md": "ca904d3e93369c861f42cf0f1e3a5dd4b00f1d3729890c3a07b4cad38228eb8d"
+  },
+  "push": {
+    "branch": "feature/cordis-dev-skill",
+    "remote": "origin",
+    "pushedAt": "2026-10-04T04:11:39Z"
   }
 }

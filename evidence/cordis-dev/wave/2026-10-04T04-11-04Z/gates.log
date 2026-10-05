@@ -49,3 +49,12 @@ error: script "typecheck" exited with code 1
 
 == node scripts/verify-pack-closure.ts (after re-pack) ==
 [verify-pack-closure] ok: 22 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 23 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (406 asset files); agent references 3/3; root files 1/1; declared packages 27/27 present in the artifact; content bytes: 1226 file(s) compared, 1226 identical, 0 drift, 0 expected-after-pack; completeness: 442 declared source file(s) compared, 441 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-04T04:11:29.290Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+
+== Docker real-machine (LAST step, AGENTS.md §4/§11) ==
+-- source: node scripts/docker-e2e.ts --mode source --require-docker
+ok=True duration=285s assertions=94 passed=66 failed=0 null=28
+NULL arms (credential-gated): live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns ...
+-- oneclick: node scripts/docker-e2e.ts --mode oneclick --require-docker --spec github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+ok=True duration=221s assertions=98 passed=68 failed=0 null=30
+spec: github:HaroldZ32/My-Power-Dsh#feature/cordis-dev-skill
+-- the new row inside both lanes: mpd-goal is in the composed row set and packages/mpd-goal-plugin/dist/index.js rebuilt from source in-container (exit=0)
