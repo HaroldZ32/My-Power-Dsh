@@ -1,0 +1,33 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/graph.test.ts:
+(pass) the dependency chain > is TRANSITIVE and UPSTREAM only, and cannot spin on a cycle [0.39ms]
+(pass) the dependency chain > a cycle in the BOARD is named even when nothing is focused [1.50ms]
+(pass) the boxed layout > draws a MERGE, which is the shape a flat list cannot express [0.80ms]
+(pass) the boxed layout > NEVER exceeds the width it is given, at any width that draws at all [5.41ms]
+(pass) the boxed layout > a box width below the minimum is REFUSED rather than squeezed [0.44ms]
+(pass) the boxed layout > a task shows its marker, id, kind and subject, truncated rather than wrapped [0.27ms]
+(pass) the boxed layout > an empty board draws nothing rather than a bare frame [0.03ms]
+(pass) the arrowheads > an edge ENDS in a ▼ on the dependent's centre, in the cell above its box [0.20ms]
+(pass) the arrowheads > a FAN-IN of three blockers still shows exactly ONE ▼ [0.21ms]
+(pass) the arrowheads > a rank that no edge reaches draws no arrowhead [0.07ms]
+(pass) the arrowheads > every drawn row fits its width, keeps no trailing blank, and collapses same-tone runs [0.70ms]
+(pass) the focus > lights the task, its DEPENDENCIES and the edges between them; dims the rest [0.41ms]
+(pass) the focus > the edge between two chain members is BRIGHT, and an edge leaving the chain is not [0.31ms]
+(pass) the focus > with NO focus nothing is dimmed and nothing is a chain [0.26ms]
+(pass) the focus > the focus is marked with ▶ so it is findable without colour [0.42ms]
+(pass) the rail fallback > fits any width and never loses a task [0.26ms]
+(pass) the rail fallback > names the EXTRA blockers instead of drawing a second connector [0.07ms]
+(pass) the rail fallback > the connector points INTO the task, and keeps naming the extra blockers [0.08ms]
+(pass) the rail fallback > draws a task reached by no root, so a cycle cannot silently lose a row [0.03ms]
+(pass) the list view > groups by rank and names every blocker [0.08ms]
+(pass) the legend > names the arrow, the five states and the focus marker, in at most two lines [0.09ms]
+(pass) the legend > shortens rather than cutting a sentence, and says NOTHING when there is no room [0.10ms]
+(pass) the pointer > resolves to a task by RECTANGLE, and to nothing on blank space [0.24ms]
+(pass) the pointer > uses the SAME geometry the rail drew, so the two cannot drift [0.08ms]
+(pass) the tone table > every tone maps to a dsh-tui THEME KEY, never to a colour literal [0.06ms]
+
+ 25 pass
+ 0 fail
+ 914 expect() calls
+Ran 25 tests across 1 file. [88.00ms]

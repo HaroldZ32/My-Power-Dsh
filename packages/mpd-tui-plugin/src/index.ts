@@ -52,6 +52,8 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
+import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
+import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
@@ -89,6 +91,12 @@ export type Config = {
   shortcuts?: boolean
   /** Enable the mediated dialog facade. */
   dialogs?: boolean
+  /**
+   * Enable the Ctrl+A takeover: with a team that has at least one task, Ctrl+A opens MPD's merged
+   * panel instead of the host's own subagent dashboard; with no team the key passes through. This is
+   * the FLOOR of the toggle — a saved `tui.dashboardKey` (the /settings row) outranks it per press.
+   */
+  dashboardKey?: boolean
   /** Append the log-only board-opened session record (only when verified safe). */
   sessionEvents?: boolean
   /** Attempt the mediated DecisionEvents registration (expected: refused). */
@@ -112,6 +120,7 @@ export const Config: Schemastery<Config> = z.object({
   commands: z.boolean().default(true),
   shortcuts: z.boolean().default(true),
   dialogs: z.boolean().default(true),
+  dashboardKey: z.boolean().default(true),
   sessionEvents: z.boolean().default(true),
   decisionEvents: z.boolean().default(true),
   logPrefix: z.string().default("mpd-tui"),
@@ -137,6 +146,8 @@ export interface ResolvedConfig {
   shortcuts: boolean
   /** Whether the mediated dialog facade is enabled. */
   dialogs: boolean
+  /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
+  dashboardKey: boolean
   /** Whether the log-only board-opened record may be appended. */
   sessionEvents: boolean
   /** Whether the mediated decision-event registration is attempted. */
@@ -165,6 +176,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     commands: bool(config.commands, true),
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
+    dashboardKey: bool(config.dashboardKey, true),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui",
@@ -390,7 +402,11 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // a save with no live session workspace stays in settings and says so on screen. `mpdConfig`
   // is another plugin's service, so it is reached with the deferred inject form (a one-shot
   // probe cannot see it, and a declared dependency would park this entry).
-  let configHandle: { states?: () => { writeback?: { skipped?: string } | null } } | undefined
+  /**
+   * The `mpdConfig` service's two members this row reads: the bridge's state (for the status-line
+   * notice) and the resolved-config read (for the Ctrl+A toggle, which the settings section writes).
+   */
+  let configHandle: { states?: () => { writeback?: { skipped?: string } | null }; get?: (key?: string) => unknown } | undefined
   /** The settings-bridge notice for the status line, when a save could not be written. */
   const bridgeRead = (): string | undefined => {
     try {
@@ -406,7 +422,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     }
   }
   onService(ctx, "mpdConfig", (_scoped: PluginContextLike, service: unknown) => {
-    configHandle = service as { states?: () => { writeback?: { skipped?: string } | null } }
+    configHandle = service as { states?: () => { writeback?: { skipped?: string } | null }; get?: (key?: string) => unknown }
   })
 
   // The watchdog front door's notice is composed into the SAME status value as the bridge notice
@@ -435,7 +451,24 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords)
+    ? registerScene(
+        ctx,
+        tui,
+        log,
+        workspaceRoot,
+        home,
+        () => watchdogFrontDoor.view().holds,
+        createPlanActions(adapter, log),
+        planReader,
+        teamViews,
+        teamRecords,
+        // THE KIT CLOSES THE MODULE-IDENTITY GAP. The host hands its own `ui` namespace only to a
+        // scene, and THAT object's `useStdin` is the one resolving the live input context (measured
+        // on dsh-tui 0.12.0: the module we can import by file URL answers nothing). Every scene
+        // reports the kit per render and the adapter prefers it — so the Ctrl+A take-over arms once
+        // an MPD scene has rendered in the session and stays inert before that.
+        (ui: unknown) => tui.rememberHostKit(ui),
+      )
     : {
         ...skipped("scenes", "disabled by config"),
         open: () => false,
@@ -444,6 +477,37 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openPlan: () => false,
         openSubagents: () => false,
       }
+  // ── the Ctrl+A takeover (W2) ─────────────────────────────────────────────
+  // The hook rides the SAME status seam and the SAME read path as the scenes; it mounts an empty-Box
+  // view inside the Chat screen, prepends a listener on the host's own input bus through the adapter's
+  // host contact, and intercepts Ctrl+A ONLY while MPD has a team with at least one task — otherwise
+  // the key is left untouched and the host's dashboard opens exactly as it does today.
+  //
+  // THE TOGGLE IS READ PER PRESS, not at apply: the row config (`dashboardKey`, default true) is the
+  // FLOOR, and a saved `tui.dashboardKey` (the /settings row -> the entry config -> `.mpd/mpd.jsonc`)
+  // outranks it through the same `mpdConfig` service the bridge writes into. So a user can turn the
+  // takeover off without a restart, and a composition that never saves keeps it on.
+  /** Whether the takeover may intercept right now. */
+  const dashboardKeyEnabled = (): boolean => {
+    try {
+      /** The live value from the resolved config layers, when the config row is composed. */
+      const live = configHandle?.get?.(DASHBOARD_TAKEOVER_KNOB)
+      if (typeof live === "boolean") return live
+    } catch {
+      // An unreadable config layer leaves the row config's own value in charge.
+    }
+    return resolved.dashboardKey
+  }
+  /** The hook's registration, or the explicit skip that says why the takeover is absent. */
+  const dashboardKey = resolved.dashboardKey
+    ? registerDashboardKey(ctx, tui, {
+        enabled: dashboardKeyEnabled,
+        mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
+        readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+        openMergedScene: () => scene.openSubagents(),
+        log,
+      })
+    : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)")
   /** The renderer seam result, or a config-disabled stub. */
   const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config")
   /** The settings-section seam result, or a config-disabled stub. */
@@ -496,6 +560,9 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   record(renderers)
   record(settings)
   record(scene)
+  // The takeover ROLE is reported under its own name (it rides the status seam, which reports
+  // separately above), so the aggregate line names it instead of hiding a second `status` entry.
+  outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() })
   record(trees)
   record(shortcuts)
   record(dialogs)

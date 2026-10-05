@@ -28,10 +28,12 @@
 #                        host's subagent section, AND the team body the team-scene arm proves
 #   tui.mergedPanelOrder on the CAPTURED pane, the subagent section sits ABOVE the team section
 #                        (the host's empty-state line when this session has no subagent row)
-#   tui.hostDashboardKeyIntact  Ctrl+A still reaches the HOST's own subagent dashboard — proving the
-#                        merged panel took nothing from the host's key (negative form when the host
-#                        dashboard cannot be witnessed in this container: Ctrl+A opened the MPD
-#                        panel nowhere, while alt+a is what opens it)
+#   tui.hostDashboardKeyIntact  the Ctrl+A SPLIT, both phases in ONE session: with the seeded team
+#                        present Ctrl+A opens the MPD merged panel, and after the team record is
+#                        REMOVED the same key no longer opens it (the hook re-reads the projection
+#                        per press). An unconditional take-over fails the second phase; a take-over
+#                        that never happens fails the first. The host dashboard's own title is
+#                        recorded as an observation, because this container does not always render it
 #   tui.noDirectTuiSeam  the wave's own D6 gate (no file outside the TUI adapter names a `ctx.tui*`
 #                        seam) runs on a byte-verified copy of the INSTALLED tree — or is recorded as
 #                        an unmade measurement, never as a pass
@@ -366,40 +368,59 @@ else
     "$MERGED_ORDER_RAW"
 fi
 
-# ── 4c. THE HOST'S OWN KEY: `Ctrl+A` must still reach the host's subagent dashboard ──
-# The control this wave needs: MPD's merged panel must not have taken the host's key. The pane the
-# combo acts on is re-captured first, because a control run on the wrong screen proves nothing: if
-# `Escape` did not close the merged panel, this arm records FALSE with that reason instead of
-# reading the leftover MPD title as "MPD took Ctrl+A".
+# ── 4c. THE `Ctrl+A` SPLIT (the user's 2026-10-05 decision, measured in TWO phases) ──
+# This replaces the pre-wave contract "MPD must never take the host's key". The user asked for the
+# opposite in ONE case and for the host's behaviour in every other, so the arm now measures BOTH
+# halves in the SAME session and is green only when both hold:
+#   PHASE A — a team IS present (`tui-scene.json` seeded above, 3 tasks): `Ctrl+A` MUST open MPD's
+#             merged panel. A take-over that never happens fails here.
+#   PHASE B — the team record REMOVED, nothing else changed: `Ctrl+A` MUST NOT open that panel any
+#             more (the hook re-reads the projection at KEYPRESS time). An UNCONDITIONAL take-over
+#             fails here.
+# The host's own dashboard title is recorded as an OBSERVATION in phase B: this container does not
+# always render it (the pre-wave lane documented the same limit), so its absence is information and
+# never a silent pass — phase B's falsifier is its own pane, where the MPD title must be ABSENT.
 tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
 sleep 2
 capture_pane mergedClosed
 MERGED_AFTER_CLOSE="$(pane_hits 'MPD subagents \+ team' "$TUI_DIR/pane-mergedClosed.txt")"
 tmux -S "$SOCK" send-keys -t tui C-a 2>/dev/null || true
 sleep 3
-capture_pane hostkey
+capture_pane ctrlATeam
 # The host's dashboard title is i18n (`subagent-dashboard-title`): English " Subagent Dashboard " and
 # Chinese " 子代理面板 ". The lane boots `env -i` with NO LANG, and dsh-tui's own detectLocaleLang()
 # returns 'zh' for an ABSENT locale — so BOTH spellings are the host's title, and matching only the
 # English one would call a working host dashboard broken.
-HOST_DASH_HITS="$(pane_hits 'Subagent Dashboard|子代理面板' "$TUI_DIR/pane-hostkey.txt")"
-HOSTKEY_MPD_HITS="$(pane_hits 'MPD subagents \+ team' "$TUI_DIR/pane-hostkey.txt")"
+PHASE_A_PANE="$TUI_DIR/pane-ctrlATeam.txt"
+PHASE_A_MPD_HITS="$(pane_hits 'MPD subagents \+ team' "$PHASE_A_PANE")"
+PHASE_A_HOST_HITS="$(pane_hits 'Subagent Dashboard|子代理面板' "$PHASE_A_PANE")"
+# PHASE B: remove the record and press the SAME key again, from the chat screen.
+tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+sleep 2
+rm -f "$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" "$WORK_DIR/ws/.mpd/team/teams.json"
+sleep 3
+tmux -S "$SOCK" send-keys -t tui C-a 2>/dev/null || true
+sleep 3
+capture_pane ctrlANoTeam
+PHASE_B_PANE="$TUI_DIR/pane-ctrlANoTeam.txt"
+PHASE_B_MPD_HITS="$(pane_hits 'MPD subagents \+ team' "$PHASE_B_PANE")"
+PHASE_B_HOST_HITS="$(pane_hits 'Subagent Dashboard|子代理面板' "$PHASE_B_PANE")"
 if [ "${MERGED_AFTER_CLOSE:-0}" -gt 0 ]; then
   record tui.hostDashboardKeyIntact false \
-    "the CONTROL COULD NOT BE RUN: Escape left the merged panel on screen, so the pane Ctrl+A acted on is not the chat screen — this arm proves nothing about the host's key and must not be read as a pass" \
+    "the CONTROL COULD NOT BE RUN: Escape left the merged panel on screen, so the pane Ctrl+A acted on is not the chat screen — this arm proves nothing about the split and must not be read as a pass" \
     "afterEscape=merged-panel-still-open mpdTitleHits=$MERGED_AFTER_CLOSE pane=pane-mergedClosed.txt"
-elif [ "${HOST_DASH_HITS:-0}" -gt 0 ]; then
+elif [ "${PHASE_A_MPD_HITS:-0}" -gt 0 ] && [ "${PHASE_B_MPD_HITS:-0}" -eq 0 ]; then
   record tui.hostDashboardKeyIntact true \
-    "Ctrl+A still opens the HOST's own subagent dashboard on a real terminal: the pane carries the host dashboard's own title, so the MPD merged panel (alt+a) took nothing from the host's key" \
-    "hostDashboard=opened ctrlA=host-dashboard ctrlAOpenedMpdPanel=no title=<the host's own subagent-dashboard-title, EN or zh> hits=$HOST_DASH_HITS pane=pane-hostkey.txt"
-elif [ "${HOSTKEY_MPD_HITS:-0}" -eq 0 ]; then
-  record tui.hostDashboardKeyIntact true \
-    "NEGATIVE FORM (the host dashboard could not be witnessed in this container): Ctrl+A did NOT open the MPD merged panel — its title is absent from the pane Ctrl+A produced, on a chat screen Escape provably restored — while alt+a IS what opens that panel (tui.mergedPanelOpens above). MPD therefore did not take Ctrl+A; what this container cannot show is the host's own dashboard answering it" \
-    "hostDashboard=not-witnessed ctrlA=neither-surface ctrlAOpenedMpdPanel=no mpdTitleHitsInCtrlAPane=$HOSTKEY_MPD_HITS pane=pane-hostkey.txt"
+    "the Ctrl+A split holds on a real terminal: with the seeded team present Ctrl+A opened MPD's merged panel AND the host dashboard title is absent from that pane; after REMOVING the team record the SAME key no longer opened it (the hook re-reads the projection per press). The host dashboard title in the second pane is recorded as an observation only" \
+    "phaseA=mpd-merged-panel mpdTitleHits=$PHASE_A_MPD_HITS hostDashboardTitleHits=$PHASE_A_HOST_HITS phaseB=team-record-removed mpdTitleHits=$PHASE_B_MPD_HITS hostDashboardTitleHits=$PHASE_B_HOST_HITS pane=pane-ctrlATeam.txt,pane-ctrlANoTeam.txt"
+elif [ "${PHASE_A_MPD_HITS:-0}" -eq 0 ]; then
+  record tui.hostDashboardKeyIntact false \
+    "the TAKE-OVER DID NOT HAPPEN: with the seeded team present Ctrl+A did not open MPD's merged panel (mpdTitleHits=$PHASE_A_MPD_HITS), while alt+a is what opens that panel (tui.mergedPanelOpens above). Either the host contact never armed in this container or the hook declined a team it should have served" \
+    "phaseA=no-mpd-panel mpdTitleHits=$PHASE_A_MPD_HITS hostDashboardTitleHits=$PHASE_A_HOST_HITS phaseB mpdTitleHits=$PHASE_B_MPD_HITS pane=pane-ctrlATeam.txt"
 else
   record tui.hostDashboardKeyIntact false \
-    "MPD TOOK THE HOST'S KEY: Ctrl+A produced the merged panel (its title is in the pane Ctrl+A produced), so the host's own subagent dashboard is unreachable by its own key" \
-    "ctrlA=mpd-merged-panel mpdTitleHits=$HOSTKEY_MPD_HITS hostDashboardTitleHits=${HOST_DASH_HITS:-0} pane=pane-hostkey.txt"
+    "UNCONDITIONAL TAKE-OVER: after the team record was REMOVED, Ctrl+A still produced the merged panel — the key no longer follows the team projection (an empty workspace must keep the host's own behaviour)" \
+    "phaseA mpdTitleHits=$PHASE_A_MPD_HITS phaseB=no-team mpdTitleHits=$PHASE_B_MPD_HITS hostDashboardTitleHits=$PHASE_B_HOST_HITS pane=pane-ctrlANoTeam.txt"
 fi
 
 # ── 4d. THE WAVE'S OWN D6 GATE, on a byte-verified copy of the INSTALLED tree ───

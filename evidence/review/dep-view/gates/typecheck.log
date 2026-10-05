@@ -1,0 +1,6 @@
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(36,31): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(39,34): error TS2307: Cannot find module 'typescript/unstable/async' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(41,34): error TS2307: Cannot find module 'typescript/unstable/ast' or its corresponding type declarations.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(265,47): error TS7006: Parameter 'm' implicitly has an 'any' type.
+error: script "typecheck" exited with code 1
+EXIT=1

@@ -19,6 +19,13 @@
 // That is what makes a horizontal bus running under another column render `┼` instead of being
 // overwritten by whichever edge was painted last.
 //
+// EDGES ARE ARROWED, NEVER MERELY JOINED. A junction can say a cell is connected but never WHICH WAY
+// the dependency runs, so every drawn edge ENDS in a `▼` on the dependent's entry cell — the row
+// directly above the child's top border, at the child's centre column. It is written as TEXT rather
+// than as a mask direction because no direction bit can say "and this one points INTO the box"; and
+// because every converging parent writes that ONE cell, a fan-in still shows exactly one arrowhead.
+// The rail carries the same reading in its own geometry, as a `▸` on a non-root row's connector.
+//
 // OPT-1 (user decision, 2026-09-13) — DO NOT "FIX" THE BLOCKED RULE. A FAILED dependency does NOT
 // block its dependents: they stay `open` and dispatchable, and the failure is reported beside the
 // state (`failedDependencies`) rather than folded into it. `team-store.ts` and `team-state.ts` carry
@@ -130,6 +137,82 @@ const KIND_ABBREV: Readonly<Record<string, string>> = Object.freeze({
   requirement: "REQ", work: "WRK", review: "REV", repair: "FIX", integration: "INT",
 })
 
+/** The arrowhead every drawn edge ENDS in, at the dependent's entry cell. */
+const ARROW_DOWN = "▼"
+/** The rail's directional marker, the same "into this task" reading in the rail's own geometry. */
+const ARROW_RIGHT = "▸"
+/** The marker a FOCUSED task draws instead of its state glyph; the legend must name the same one. */
+const FOCUS_MARKER = "▶"
+
+/**
+ * THE LEGEND'S ARROW SENTENCE, roomiest wording first.
+ *
+ * A narrow scene DROPS DOWN this ladder rather than cutting a sentence in half — the same choice the
+ * rail makes when it drops its tail — so a legend never reads as a truncated falsehood. EVERY rung
+ * names BOTH directional marks, because which view is on screen is a fact about the WIDTH: a 24-cell
+ * scene draws the rail's `▸`, and a legend that explained only `▼` would leave the mark in front of
+ * the reader undescribed. Both are interpolated from the constants the drawing paints, so the legend
+ * cannot drift from the marks.
+ */
+const LEGEND_ENTRY: readonly string[] = Object.freeze([
+  `${ARROW_DOWN}/${ARROW_RIGHT} blocker above → dependent below · ${FOCUS_MARKER} focus lights its chain`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} blocker → dependent · ${FOCUS_MARKER} focus`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} arrow · ${FOCUS_MARKER} focus`,
+  `${ARROW_DOWN}/${ARROW_RIGHT} arrow`,
+])
+
+/** The states the legend keys, in the order it prints them and in the drawing's own vocabulary. */
+const LEGEND_STATES: readonly string[] = Object.freeze(["completed", "running", "open", "failed", "cancelled"])
+
+/** The one-word fallback names the terse state line uses when the full names do not fit. */
+const LEGEND_SHORT: Readonly<Record<string, string>> = Object.freeze({
+  completed: "done", running: "run", open: "open", failed: "fail", cancelled: "cancel",
+})
+
+/**
+ * THE LEGEND'S STATE KEY, roomiest first.
+ *
+ * Every mark is read out of {@link GLYPH}, never re-typed: a legend that spells its own glyphs is a
+ * second source of truth for what the drawing means, and the two would drift the first time a state
+ * glyph changed.
+ */
+const LEGEND_KEY: readonly string[] = Object.freeze([
+  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${state}`).join(" · "),
+  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${LEGEND_SHORT[state] ?? state}`).join(" · "),
+])
+
+/** The legend's lines, in print order: the arrow sentence first, because the drawing exists for it. */
+const LEGEND_LINES: readonly (readonly string[])[] = Object.freeze([LEGEND_ENTRY, LEGEND_KEY])
+
+/** The narrowest row that can still carry a legend; below it a lone `▼` would be a riddle, not a key. */
+const MIN_LEGEND_COLS = 8
+
+/**
+ * THE LEGEND: what the drawing's marks mean, rendered under the graph.
+ *
+ * The SIGNATURE is the contract: two callers (the team scene in `scenes.ts` and the merged subagent
+ * panel in `subagent-scene.ts`) render these lines under the DAG they just laid out, so the shape is
+ * `string[]`, the lines carry no tone of their own, and the width bound belongs to the CALLER's
+ * viewport. It answers exactly three questions — which way an edge runs, what each state mark means,
+ * and what the focus marker is — because those are the marks a reader cannot recover from the
+ * drawing alone.
+ * @param cols - the cells available on the scene row.
+ * @returns 1..2 plain unstyled lines, each clamped to `cols` cells; empty when nothing honest fits.
+ */
+export function legendLines(cols: number): string[] {
+  /** The cells available; a width that is not a finite number says nothing about the viewport. */
+  const width = Number.isFinite(cols) ? Math.floor(cols) : 0
+  if (width < MIN_LEGEND_COLS) return []
+  /** The lines whose tersest wording still fits; a line that cannot be said is DROPPED, not cut. */
+  const lines: string[] = []
+  for (const variants of LEGEND_LINES) {
+    /** The roomiest wording that fits this viewport, undefined when even the tersest one would not. */
+    const wording = variants.find((variant) => cellWidth(variant) <= width)
+    if (wording !== undefined) lines.push(clampCells(wording, width))
+  }
+  return lines
+}
+
 /** The smallest box that can still hold `◐ T12 WRK …`; below this the rail is drawn instead. */
 const MIN_NODE_WIDTH = 16
 /** The gap between two boxes in one rank. */
@@ -193,7 +276,7 @@ function clampSpans(spans: readonly GraphSpan[], cols: number): GraphSpan[] {
  */
 function labelOf(task: GraphTask, focus: string | undefined): string {
   /** The marker: the focus outranks the state glyph, because where you ARE beats what it is. */
-  const marker = task.id === focus ? "▶" : (GLYPH[task.visual] ?? "?")
+  const marker = task.id === focus ? FOCUS_MARKER : (GLYPH[task.visual] ?? "?")
   /** The kind abbreviation, absent when the record carries no kind. */
   const kind = KIND_ABBREV[task.kind ?? ""] ?? ""
   return (kind === "" ? [marker, task.id, task.subject] : [marker, task.id, kind, task.subject]).join(" ")
@@ -403,8 +486,13 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
       if (parents.length === 0) continue
       /** This child's centre column. */
       const centre = centreOf(child.id)
-      link(top + 6, centre, UP, toneOf(child, focus, chain))
-      link(stubBottom, centre, UP | DOWN, toneOf(child, focus, chain))
+      /** This child's tone: its state, or the chain/dim treatment when something is focused. */
+      const entryTone = toneOf(child, focus, chain)
+      link(top + 6, centre, UP, entryTone)
+      // The edge ENDS here, in the arrowhead. Every converging parent writes this SAME cell, so a
+      // fan-in still shows exactly ONE `▼`; it is text rather than a junction because a mask bit can
+      // say "connected", never "…and the dependency points INTO this box".
+      label(stubBottom, centre, ARROW_DOWN, entryTone)
       for (const id of parents) {
         /** The parent's centre column. */
         const from = centreOf(id)
@@ -511,8 +599,10 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
     const extra = entry.task.dependencies.length > 1 ? `  ⇠ ${entry.task.dependencies.join("+")}` : ""
     /** The right-hand facts, which are what the row is scanned for. */
     const tail = `${at === "dim" ? "" : entry.task.assignee ?? ""}${entry.task.attempt === undefined ? "" : ` a${entry.task.attempt}`}${extra}`
-    /** The connector this row hangs from. */
-    const connector = entry.depth === 0 ? "" : `${entry.prefix}${entry.leaf ? "└─" : "├─"} `
+    /** The elbow this row hangs from: the last child gets `└`, the others `├`. */
+    const elbow = entry.leaf ? "└─" : "├─"
+    /** The connector, arrowed INTO this task so the rail states its direction without a bus. */
+    const connector = entry.depth === 0 ? "" : `${entry.prefix}${elbow}${ARROW_RIGHT} `
     /** The label: marker, glyph, id, kind and subject. */
     const label = labelOf(entry.task, focus)
     // THE LABEL OUTRANKS THE TAIL. A row with no id is unreadable, while a row without its
@@ -524,8 +614,8 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
     const useTail = tailWidth > 0 && cols - cellWidth(connector) - tailWidth >= 10
     /** The cells the label may occupy. */
     const labelRoom = Math.max(0, cols - cellWidth(connector) - (useTail ? tailWidth : 0))
-    /** The visible label, truncated to that room. */
-    const shown = clampCells(stripControl(label), labelRoom)
+    /** The visible label, truncated to that room; a cut mid-text must not leave a trailing blank. */
+    const shown = clampCells(stripControl(label), labelRoom).trimEnd()
     /** The padding that puts the tail at the right edge, or nothing when the tail was dropped. */
     const gap = useTail ? " ".repeat(Math.max(0, labelRoom - cellWidth(shown))) : ""
     lines.push(clampSpans([

@@ -39,8 +39,11 @@
 // to carry. This package therefore writes its own diagnostics (the provider boot line and the
 // seam inventory) to a FILE sink under `<workspace>/.mpd/logs/`, and {@link createFileSink} is the
 // sink every consumer's fallback uses. Nothing in this module writes to fd 1 or fd 2.
-import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { appendFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import type { Dirent } from "node:fs"
+import { homedir } from "node:os"
 import { dirname, join } from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 // ── the seam id table (the ONE place a DSH-TUI service NAME appears) ────────────────────────────
 
@@ -288,6 +291,276 @@ export function createFileSink(options: FileSinkOptions): DiagnosticSink & { pat
   }
 }
 
+// ── the host contact (the ONE load-time reach into the installed DSH-TUI) ───────────────────────
+//
+// WHY THIS IS ALSO THIS PACKAGE'S JOB. Everything else here wraps a seam the host OFFERS to plugins.
+// There is one host capability a plugin cannot be granted: the host's OWN input bus. The Chat screen
+// reads Ctrl+A from `useInput`, whose listener sits on the `internal_eventEmitter` of the host's
+// `StdinContext`, and the host exposes no seam for that emitter. Measured on dsh-tui 0.12.0:
+//   * `lib/types/ui.js` re-exports `useStdin` (`useContext(StdinContext)`), so a component the host
+//     renders reads the LIVE context value — the SAME emitter `App.js` emits `input` on;
+//   * the host package `exports` map has NO `./lib/*` subpath, so a PACKAGE-specifier import of a
+//     host internal is refused. The absolute FILE URL is the only route, and it is also what makes
+//     the import return the SAME module instance the host uses: Node caches ESM by resolved URL, and
+//     a second instance would read a DIFFERENT React context object — i.e. the context DEFAULT, an
+//     emitter that never receives input. That silent failure is why the probe verifies the shape and
+//     why a consumer must never copy this logic.
+// The probe is therefore EAGER (at row load), CACHED (one probe per adapter), and DEGRADING: every
+// failure — no candidate, an unreadable candidate, an import error, a module without `useStdin` —
+// leaves `hostInput()` undefined plus ONE diagnostic line, and a boot that never had the contact
+// simply behaves as it did before this capability existed.
+
+/**
+ * The host package directory, relative to an install prefix.
+ *
+ * A candidate root is VALID only when `<root>/lib/types/ui.js` exists AND that module exports a
+ * usable `useStdin`: a directory that merely looks like an install is not a contact.
+ */
+export const HOST_PACKAGE_PATH: readonly string[] = ["node_modules", "@deepseek-harness-tui", "dsh-tui"]
+
+/** The host module the contact is loaded from, relative to a host package root. */
+export const HOST_UI_MODULE = "lib/types/ui.js"
+
+/** The env key that PINS the host root. A pin is EXCLUSIVE: see {@link hostRootCandidates}. */
+export const HOST_ROOT_ENV = "MPD_DSH_TUI_HOST_ROOT"
+
+/** Home roots whose `profiles/<name>` directories may hold an installed host. */
+const HOST_HOME_DIRS: readonly string[] = [".dsh", ".dsh-tui"]
+
+/** How many ancestor levels one anchor walks while looking for a `node_modules` install. */
+const HOST_ANCHOR_LEVELS = 8
+
+/**
+ * The host's own input contact, as this adapter hands it to a consumer.
+ *
+ * `useStdin` is the HOST module's function, never a re-implementation: it reads the host's
+ * `StdinContext` through the host's React instance, which is why a component the host renders gets
+ * the LIVE context value. It is a React hook, so a consumer may call it only during a render.
+ */
+export interface TuiHostInput {
+  /** The host's `useStdin` hook; its result is host-shaped and narrowed by the caller. */
+  useStdin(): unknown
+}
+
+/** Where the host contact stands, as the capability read-out reports it. */
+export interface HostInputState {
+  /** `pending` until the contact settles, then `bound` or `absent`. */
+  state: "pending" | "bound" | "absent"
+  /** Which source armed the contact: the kit a scene render handed us, or the module resolved at load. */
+  kit?: "remembered" | "probed"
+  /** The host root the contact came from, when one was bound by the probe. */
+  root?: string
+  /** The ONE reason the contact is absent, or how it bound; never a fabricated success. */
+  detail?: string
+}
+
+/**
+ * The host's per-App input bus, as a consumer uses it (Node EventEmitter semantics).
+ *
+ * Declared HERE rather than by a consumer because the emitter is a host object reached through the
+ * host's React context: the shape belongs to the contact surface, and a consumer only calls it.
+ */
+export interface HostInputEmitterLike {
+  /** Registers a listener at the FRONT of the bus, ahead of every listener already attached. */
+  prependListener(event: "input", listener: (event: unknown) => void): unknown
+  /** Removes that listener again, so an unload leaves the bus exactly as it was found. */
+  removeListener(event: "input", listener: (event: unknown) => void): unknown
+  /** The ordinary registration form, proved present so a foreign object is never mistaken for a bus. */
+  on(event: "input", listener: (event: unknown) => void): unknown
+}
+
+/**
+ * The private field that tells a LIVE `StdinContext` value apart from the context DEFAULT.
+ *
+ * MEASURED on dsh-tui 0.12.0: `App.js` puts `internal_querier: this.querier` (never null) into the
+ * context value it provides, while the context's own default — what a consumer reads when nothing
+ * provides it, or when React module identity differs — carries `internal_querier: null` and a FRESH
+ * `EventEmitter` that no `App` ever feeds. Both shapes look like a working emitter, so a listener
+ * attached to the default is attached to nothing, with no error anywhere. This field is the cheapest
+ * structural discriminator between the two, and it is WHY the takeover can report its own absence.
+ */
+export const HOST_LIVE_CONTEXT_MARKER = "internal_querier"
+
+/** What one read of the host's stdin context produced: the live input bus, or the ONE reason it is not. */
+export interface HostStdinValue {
+  /** The host's input bus, present only for a value that is the LIVE provider's. */
+  emitter?: HostInputEmitterLike
+  /** Why no bus can be used, as one line; absent when `emitter` is present. */
+  detail?: string
+}
+
+/**
+ * Decide whether one `useStdin()` result is the LIVE host context value, and read its input bus.
+ *
+ * The read is intentionally narrow: the live-provider marker, the emitter field, and the three
+ * emitter members. Nothing else of the host's context is touched, a getter that throws is contained,
+ * and every refusal returns ONE sentence a consumer can log verbatim (the absence of the takeover
+ * has no other symptom).
+ * @param value - the value the host's own `useStdin` hook returned, or anything else.
+ * @returns the bus, or the one reason it cannot be used.
+ */
+export function readHostStdinValue(value: unknown): HostStdinValue {
+  try {
+    if (typeof value !== "object" || value === null) return { detail: "the host stdin hook answered no context value" }
+    /** The context value viewed as a record; only the two fields below are ever read. */
+    const record = value as Record<string, unknown>
+    /** The live-provider marker, absent (or null) on the context DEFAULT. */
+    const marker = HOST_LIVE_CONTEXT_MARKER in record ? record[HOST_LIVE_CONTEXT_MARKER] : undefined
+    if (marker === undefined || marker === null) {
+      return {
+        detail: `the host hook resolved the StdinContext DEFAULT (no ${HOST_LIVE_CONTEXT_MARKER}) — the host module instance is not the one the TUI runs; the take-over stays absent`,
+      }
+    }
+    /** The bus the host's `App` publishes input on. */
+    const emitter = record.internal_eventEmitter
+    if (emitter === undefined || emitter === null) return { detail: "the host stdin context carries no input emitter" }
+    /** The bus viewed structurally; all three members must be callable before it is handed out. */
+    const bus = emitter as Partial<HostInputEmitterLike>
+    if (typeof bus.prependListener !== "function") return { detail: "the host input emitter has no prependListener" }
+    if (typeof bus.removeListener !== "function") return { detail: "the host input emitter has no removeListener" }
+    if (typeof bus.on !== "function") return { detail: "the host input emitter has no on" }
+    return { emitter: bus as HostInputEmitterLike }
+  } catch (error) {
+    return { detail: `the host stdin context could not be read: ${String((error as Error)?.message ?? error)}` }
+  }
+}
+
+/** What one host-contact probe found. */
+export interface HostInputProbeResult {
+  /** The host contact, when a candidate carried a usable `useStdin`. */
+  input?: TuiHostInput
+  /** The host root the contact was loaded from. */
+  root?: string
+  /** The reason no contact was bound, as one line, when none was. */
+  detail?: string
+}
+
+/**
+ * Candidate host roots, most specific first.
+ *
+ * The anchor list follows the bundle's existing live-install resolution
+ * (`packages/mpd-tui-plugin/src/registration.ts` `candidateAnchors`): the module's OWN location (in a
+ * profile install the bundle sits inside `<profile>/node_modules`, so walking up finds the host next
+ * to it), the running script (`process.argv[1]` — the dsh bin lives in the same profile), and every
+ * installed profile under `$DSH_HOME`, `~/.dsh` and `~/.dsh-tui`.
+ * @param env - environment (testing); `MPD_DSH_TUI_HOST_ROOT` PINS one root.
+ * @param home - home directory (testing).
+ * @returns deduplicated candidate roots; a candidate that does not exist is simply skipped later.
+ */
+export function hostRootCandidates(env: Record<string, string | undefined> = process.env, home: string = homedir()): string[] {
+  /** The explicit override. A PIN IS EXCLUSIVE — no discovered anchor is probed — so a QA lane that
+   *  stages one install proves exactly that install, and a pinned root that is wrong reports its own
+   *  path instead of silently binding some other profile's host. */
+  const pinned = env[HOST_ROOT_ENV]
+  if (typeof pinned === "string" && pinned.length > 0) return [pinned]
+  /** The candidate roots, in probe order, deduplicated before they are returned. */
+  const roots: string[] = []
+  /** The directories the install is discovered from: this module and the running script. */
+  const anchors: string[] = []
+  try {
+    anchors.push(dirname(fileURLToPath(import.meta.url)))
+  } catch {
+    // A non-file module URL (a bundled embedder): the remaining anchors still apply.
+  }
+  /** The script path node was started with, the bundle's second anchor. */
+  const argv1 = process.argv[1]
+  if (typeof argv1 === "string" && argv1.length > 0) anchors.push(dirname(argv1))
+  for (const anchor of anchors) {
+    /** The anchor directory this walk is at, moved one level up per iteration. */
+    let dir = anchor
+    for (let level = 0; level < HOST_ANCHOR_LEVELS; level += 1) {
+      roots.push(join(dir, ...HOST_PACKAGE_PATH))
+      /** The parent directory; equal to `dir` at the filesystem root, which ends the walk. */
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
+  }
+  /** The DSH home roots whose installed profiles may hold the host. */
+  const homes: string[] = []
+  if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0) homes.push(env.DSH_HOME)
+  for (const name of HOST_HOME_DIRS) homes.push(join(home, name))
+  for (const root of homes) {
+    /** This home's profile entries; empty when it has no profiles directory to probe. */
+    let entries: Dirent[] = []
+    try {
+      entries = readdirSync(join(root, "profiles"), { withFileTypes: true })
+    } catch {
+      entries = []
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) roots.push(join(root, "profiles", entry.name, ...HOST_PACKAGE_PATH))
+    }
+  }
+  return [...new Set(roots)]
+}
+
+/**
+ * Load the host's input contact from the FIRST candidate that carries a usable `useStdin`.
+ *
+ * Never throws and never fails a boot: an unreadable candidate is skipped, an import that throws is
+ * skipped, and a candidate whose `ui.js` carries no `useStdin` function is a version-skew host —
+ * remembered as the reason, and the probe keeps looking at the remaining candidates.
+ * @param candidates - the candidate host roots, in probe order.
+ * @returns the bound contact plus its root, or the ONE reason no contact bound.
+ */
+export async function probeHostInput(candidates: readonly string[]): Promise<HostInputProbeResult> {
+  /** The last candidate that existed but could not provide the contact, for the one-line reason. */
+  let skew = ""
+  if (candidates.length === 0) return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` }
+  for (const root of candidates) {
+    /** The host module file this candidate would be loaded from. */
+    const file = join(root, HOST_UI_MODULE)
+    try {
+      if (!statSync(file).isFile()) continue
+    } catch {
+      // Not this candidate; an unreadable path is a miss, never an error.
+      continue
+    }
+    try {
+      // The import is by ABSOLUTE FILE URL: the host's `exports` map has no `./lib/*` subpath, and a
+      // package specifier would also risk a second module instance (a different React context).
+      /** The host module namespace, loaded from this candidate. */
+      const mod = (await import(pathToFileURL(file).href)) as { useStdin?: unknown }
+      /** The host's own hook, accepted only when it is callable. */
+      const hook = mod.useStdin
+      if (typeof hook !== "function") {
+        skew = `${file} carries no useStdin export`
+        continue
+      }
+      // Called with no receiver: the host exports it as a module-level arrow function, so binding a
+      // receiver would add nothing while a `this`-dependent export would still be its own module's.
+      return { input: { useStdin: (): unknown => (hook as () => unknown)() }, root }
+    } catch (error) {
+      skew = `${file}: ${String((error as Error)?.message ?? error)}`
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_UI_MODULE} (${candidates.length} probed)` }
+}
+
+/** Write the probe's ONE degradation line to the file sink (never a terminal, requirement R5). */
+function defaultHostInputLog(line: string): void {
+  try {
+    createFileSink({ root: defaultLogRoot }).write(line)
+  } catch {
+    // A diagnostic must never break a boot; the capability read-out is the authority anyway.
+  }
+}
+
+/** Options of {@link createTuiAdapter}: the host-contact wiring plus the test seams. */
+export interface TuiAdapterOptions {
+  /** The host contact to use instead of probing (unit tests, embedders). */
+  hostInput?: TuiHostInput
+  /**
+   * Run the load-time host probe. Deliberately OPT-IN, and only the mounted adapter ROW passes it:
+   * a row-private fallback adapter is a degraded composition, and every extra probe would repeat
+   * filesystem work and emit its own line for the same missing host.
+   */
+  probeHostContact?: boolean
+  /** Where the probe's ONE degradation line goes; defaults to the file sink. */
+  hostInputLog?: (line: string) => void
+}
+
 // ── the host service shapes (moved here from the TUI plugin's types.ts) ─────────────────────────
 
 /** A cleanup function; every seam registration returns one. */
@@ -322,10 +595,31 @@ export interface PluginContextLike {
   [key: string]: unknown
 }
 
-/** `ctx.tuiStatus` — keyed status-line contributions. */
+/** `ctx.tuiStatus` — keyed status-line contributions plus the bounded rich companion. */
 export interface TuiStatusLike {
   /** Publishes this key's contribution, or clears it with `undefined`; returns its handle. */
   set(key: string, text: string | number | boolean | undefined, identity?: unknown): Disposer | undefined
+  /**
+   * Registers one compact React view above the prompt (host `TuiStatusViewDescriptor`).
+   *
+   * OPTIONAL member: a host build without it refuses the rich form by ABSENCE, which is exactly how
+   * this adapter reports it. The host validates the key against the same grammar as `set`, requires
+   * `maxRows` to be an INTEGER FROM 1 TO 3 (0 is rejected), requires `component` to be a function,
+   * refuses a key already registered by text or by view, and applies a six-row aggregate budget.
+   * A refusal returns `undefined` (the host warns on its own logger); a success returns the
+   * registration's disposer.
+   */
+  registerView?(descriptor: TuiStatusViewDescriptorLike, identity?: unknown): Disposer | undefined
+}
+
+/** One rich status view, as the host accepts it (the shape `registerStatusComponent` takes). */
+export interface TuiStatusViewDescriptorLike {
+  /** The view key: the host key grammar, shared with the text namespace of `set`. */
+  key: string
+  /** The component the host renders with `{React, ui}`; the host clips its rows. */
+  component: unknown
+  /** Rows the host reserves and clips the view to; the host accepts 1..3 and defaults to 1. */
+  maxRows?: number
 }
 
 /** What a transcript renderer returns (host `TuiEntryRenderResult`). */
@@ -793,7 +1087,14 @@ export interface TuiStatusView {
   render(): string | number | boolean | undefined
   /** Refresh cadence in ms; 0 (the default) keeps the view manual. */
   intervalMs?: number
-  /** The consumer context handed to the host as the contribution's identity. */
+  /**
+   * Retained for source compatibility; the adapter does NOT forward it.
+   *
+   * A status registration's identity must be the CALLING ACTIVATION (the bound injected scope), and
+   * the host refuses any other value — so this field cannot be honoured, even though the host's own
+   * documentation calls the trailing identity "attribution only" (MEASURED: doc and implementation
+   * disagree, and the implementation wins).
+   */
   identity?: unknown
   /** The effect label the injected scope records. */
   label?: string
@@ -803,6 +1104,28 @@ export interface TuiStatusView {
 
 /** Options of {@link TuiAdapter.registerSettingsSection}'s lazy section resolver. */
 export type TuiSectionResolver = () => TuiSettingsSectionLike | Promise<TuiSettingsSectionLike>
+
+/**
+ * One rich status VIEW a consumer registers through {@link TuiAdapter.registerStatusComponent}.
+ *
+ * The component form is how a surface gets a component rendered INSIDE the host's Chat screen with
+ * no visible content of its own: an empty `ui.Box` costs zero rendered rows while still mounting,
+ * which is what a listener-only hook needs (the host mounts every registered view whenever no image
+ * preview is open). The host's own descriptor shape stays private to this adapter — a consumer
+ * states the key, the component and (optionally) the row budget.
+ */
+export interface TuiStatusComponentView {
+  /** The view key the host validates against its key grammar (shared with the text namespace). */
+  key: string
+  /** The component the host renders with `{React, ui}`; the host clips it to `maxRows`. */
+  component: unknown
+  /** Rows the host reserves for the view: an integer 1..3 (the host rejects 0); defaults to 1. */
+  maxRows?: number
+  /** The consumer context handed to the host as the contribution's identity. */
+  identity?: unknown
+  /** The effect label the injected scope records. */
+  label?: string
+}
 
 /** Options one mediated decision subscription is registered with. */
 export interface TuiDecisionOptions {
@@ -836,6 +1159,12 @@ export interface TuiCapabilities {
   bound: number
   /** How many seams the adapter knows about (the fixed table size). */
   total: number
+  /**
+   * The host-contact probe's state. NOT a seam: it is the ONE load-time reach into the installed
+   * DSH-TUI (see {@link TuiHostInput}), reported here so QA can see whether the contact bound
+   * without guessing from a consumer's behaviour.
+   */
+  hostInput: HostInputState
 }
 
 /** The DSH-TUI seam adapter: typed members, registrations and the capability/outcome readouts. */
@@ -876,13 +1205,56 @@ export interface TuiAdapter {
   commands(): CommandsLike | undefined
   /** The bound harness settings provider, or undefined when the seam never bound. */
   settings(): SettingsProviderLike | undefined
+  /**
+   * The host's own input contact, when the load-time probe bound one.
+   *
+   * Undefined is a NORMAL outcome (a web/headless composition, a host build without the module, a
+   * probe that has not settled yet, or a row-private adapter that never probed). A consumer that
+   * needs certainty about WHEN the answer is final subscribes with {@link whenHostInput} instead of
+   * polling this member from a render.
+   */
+  hostInput(): TuiHostInput | undefined
+  /**
+   * Take the host kit a SCENE render receives (`props.ui`) as the preferred input contact.
+   *
+   * WHY THIS EXISTS. The module this adapter can import by file URL is not always the instance the
+   * running host renders with: MEASURED on dsh-tui 0.12.0, `hostInput()?.useStdin()` answered nothing
+   * from inside a status view while the very same call on the kit the host handed a scene resolved the
+   * live `StdinContext` value. A kit whose `useStdin` is callable is therefore remembered and
+   * PREFERRED; every other value is ignored and the method reports whether it took one.
+   *
+   * THE CONSEQUENCE, stated plainly: the take-over arms once the host has handed us its kit — i.e.
+   * after any MPD scene or panel render in the session — and until then the contact falls back to the
+   * probed module, which this host answers with nothing. A consumer must therefore treat "no contact"
+   * as normal on a fresh session, and `capabilities().hostInput.kit` says which source is in force.
+   * @param kit - the `ui` object a scene component received; anything without a callable `useStdin` is refused.
+   * @returns whether the kit was taken.
+   */
+  rememberHostKit(kit: unknown): boolean
+  /**
+   * Subscribe to the host contact's settlement.
+   *
+   * The callback runs EXACTLY ONCE: immediately when the contact is already settled (bound or
+   * absent), otherwise at the settle. This is what lets a consumer component attach its listener on
+   * a later render instead of racing the probe. The returned disposer cancels a still-waiting
+   * subscription and is a no-op afterwards.
+   */
+  whenHostInput(listener: (input: TuiHostInput | undefined) => void): Disposer
+  /** Registers one rich status view (the rich companion of {@link TuiAdapter.setStatus}). */
+  registerStatusComponent(view: TuiStatusComponentView): SeamBindingHandle
   /** Registers one full-screen scene. */
   registerScene(descriptor: TuiSceneDescriptor, identity?: unknown): SceneRegistrationHandle
   /** Opens a registered scene; false when the seam is absent or the host does not know the id. */
   openScene(id: string): boolean
   /** Closes a scene; false when this host build exposes no close member. */
   closeScene(id: string): boolean
-  /** Publishes one status-line value now (or as soon as the seam binds). */
+  /**
+   * Publishes one status-line value now (or as soon as the seam binds).
+   *
+   * `identity` is retained for source compatibility and NOT forwarded: a status registration's
+   * identity must be the CALLING ACTIVATION, which this adapter supplies (the bound injected scope),
+   * because the host's `assertCallerContext` refuses the consumer's ctx.
+   */
   setStatus(key: string, text: string | number | boolean | undefined, identity?: unknown): SeamBindingHandle
   /** Publishes a status line from a renderer, with an optional refresh cadence. */
   registerStatusView(view: TuiStatusView): StatusViewHandle
@@ -930,10 +1302,13 @@ export interface TuiAdapter {
  *
  * It writes NOTHING anywhere: the boot lines belong to {@link apply}, so a row-private fallback
  * created inside a unit test — or inside a consumer resolving the mounted adapter — is silent.
+ * The ONE exception is the opted-in host-contact probe ({@link TuiAdapterOptions.probeHostContact}),
+ * whose absence is reported by ONE line because a missing takeover has no other symptom.
  * @param ctx - the plugin context whose seams are bound.
+ * @param options - the host-contact wiring (probe opt-in, an injected contact, the diagnostic sink).
  * @returns the adapter.
  */
-export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
+export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOptions = {}): TuiAdapter {
   /** One mutable binding record per seam key. */
   const bindings = {} as Record<TuiSeamKey, BindingStatus>
   for (const key of TUI_SEAM_KEYS) bindings[key] = newBindingStatus()
@@ -972,6 +1347,72 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
 
   /** The consumer context handed to the host as `identity` when a caller supplies none. */
   const fallbackIdentity: unknown = ctx
+
+  // ── the host contact: probed ONCE here, never on a render path ──────────────────────────────────
+  /** The bound host contact, when the caller injected one or the probe finds one. */
+  let hostContact: TuiHostInput | undefined = options.hostInput
+  /** Where the contact stands right now, sampled by `capabilities()`. */
+  let hostState: HostInputState = options.hostInput !== undefined
+    // An injected contact SUBSTITUTES for the module import, so the capability read-out names it the
+    // same way: it is a caller-supplied hook, not the kit a scene render handed us.
+    ? { state: "bound", kit: "probed", detail: "injected by the caller" }
+    : options.probeHostContact === true
+      ? { state: "pending" }
+      : { state: "absent", detail: "this adapter did not probe for the host contact" }
+  /** Listeners waiting for the contact; each runs once and is then dropped. */
+  const hostWaiters: ((input: TuiHostInput | undefined) => void)[] = []
+  /**
+   * The `useStdin` hook of the host kit a SCENE render handed us (see `rememberHostKit`).
+   *
+   * MEASURED on dsh-tui 0.12.0: the module we can import by file URL is NOT the instance the host
+   * renders with, so ITS hook answers nothing from inside a status view, while the kit the host
+   * itself passes to a scene resolves the live context value. The kit therefore OUTRANKS the probed
+   * module wherever both exist.
+   */
+  let rememberedHook: (() => unknown) | undefined
+  /** The host contact in force right now: the remembered kit first, the probed module second. */
+  const currentHostInput = (): TuiHostInput | undefined =>
+    rememberedHook === undefined ? hostContact : { useStdin: (): unknown => rememberedHook?.() }
+  /** Wake every waiter once, handing it the contact in force at that moment. */
+  const wakeHostWaiters = (): void => {
+    /** The waiters present right now; a listener added later is served immediately instead. */
+    const waiting = hostWaiters.splice(0)
+    /** The contact this wake hands out, sampled once so every listener sees the same one. */
+    const input = currentHostInput()
+    for (const listener of waiting) {
+      try {
+        listener(input)
+      } catch {
+        // A consumer's listener must never break the probe (or the boot that is waiting on it).
+      }
+    }
+  }
+  /** Publish the probe's answer: record it, wake every waiter, and report the outcome once. */
+  const settleHostContact = (result: HostInputProbeResult): void => {
+    hostContact = result.input
+    hostState = result.input === undefined
+      ? { state: "absent", ...(result.root === undefined ? {} : { root: result.root }), detail: result.detail ?? "the installed DSH-TUI was not reachable" }
+      : { state: "bound", kit: "probed", ...(result.root === undefined ? {} : { root: result.root }), detail: "the host's own useStdin was loaded by file URL" }
+    wakeHostWaiters()
+    // ONE line, either way: a bound contact is what a QA lane greps for to prove the takeover
+    // armed, and an absent one is the only symptom a missing takeover has. It goes to the file sink
+    // (never a terminal, R5) and is never allowed to break a boot.
+    try {
+      ;(options.hostInputLog ?? defaultHostInputLog)(
+        result.input === undefined
+          ? `[mpd-tui-adapter] host contact ABSENT: ${hostState.detail ?? ""} — the surfaces that need it stay inactive`
+          : `[mpd-tui-adapter] host contact bound: ${hostState.root ?? "?"} (${HOST_UI_MODULE})`,
+      )
+    } catch {
+      // A diagnostic must never break a boot.
+    }
+  }
+  if (options.hostInput === undefined && options.probeHostContact === true) {
+    // Fire-and-forget: the probe never blocks the boot, and every failure path ends in `absent`.
+    void probeHostInput(hostRootCandidates()).then(settleHostContact, (error: unknown) => {
+      settleHostContact({ detail: `host contact probe failed: ${String((error as Error)?.message ?? error)}` })
+    })
+  }
 
   /** Build a handle over one seam key, with the `absent` detail the vocabulary uses before a bind. */
   const makeHandle = (key: TuiSeamKey, initialDetail?: string): SeamBindingHandle => {
@@ -1054,6 +1495,94 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
     commands: () => bindings.commands.service as CommandsLike | undefined,
     settings: () => bindings.settings.service as SettingsProviderLike | undefined,
 
+    /** The host's own input contact, or undefined while it is unprobed / absent. */
+    hostInput: (): TuiHostInput | undefined => currentHostInput(),
+
+    /** Takes the host kit a scene render received; see {@link TuiAdapter.rememberHostKit}. */
+    rememberHostKit(kit: unknown): boolean {
+      /** The kit's own hook, accepted only when it is callable — anything else is ignored. */
+      const hook = typeof kit === "object" && kit !== null ? (kit as { useStdin?: unknown }).useStdin : undefined
+      if (typeof hook !== "function") return false
+      /** Whether this call is the FIRST to bind a kit (the only case that earns a diagnostic line). */
+      const first = rememberedHook === undefined
+      rememberedHook = hook as () => unknown
+      hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" }
+      // THE WAKE IS DEFERRED BY ONE MICROTASK. `rememberHostKit` runs INSIDE a scene's React render,
+      // and waking a status view synchronously would call another component's setState from that
+      // render — exactly what React forbids. A microtask lands after the render's commit.
+      void Promise.resolve().then(wakeHostWaiters)
+      if (!first) return true
+      try {
+        ;(options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`)
+      } catch {
+        // A diagnostic must never break a boot.
+      }
+      return true
+    },
+
+    /** Wakes `listener` once, now when the contact is already settled, else at the settle. */
+    whenHostInput(listener: (input: TuiHostInput | undefined) => void): Disposer {
+      // A listener that throws is contained on BOTH paths: it must never break the probe dispatch
+      // (which runs inside the adapter's promise chain) nor the caller's render.
+      if (hostState.state !== "pending") {
+        try {
+          listener(currentHostInput())
+        } catch {
+          // The listener's own failure is not the adapter's to propagate.
+        }
+        return () => {}
+      }
+      hostWaiters.push(listener)
+      return () => {
+        /** The index of the still-waiting listener; -1 when it already ran. */
+        const at = hostWaiters.indexOf(listener)
+        if (at >= 0) hostWaiters.splice(at, 1)
+      }
+    },
+
+    /** Registers one rich status view: an empty Box costs no rows while still mounting. */
+    registerStatusComponent(view: TuiStatusComponentView): SeamBindingHandle {
+      /** The registration's handle. */
+      const handle = makeHandle("status")
+      whenBoundInternal("status", (service, scope) => {
+        /** The bound status service, before its rich form is trusted. */
+        const status = service as TuiStatusLike
+        if (typeof status?.registerView !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.status}.registerView is missing on this host build` })
+          return
+        }
+        // The host validates the key grammar, requires an integer 1..3, refuses a duplicate key and
+        // enforces a six-row aggregate budget; a refusal is `undefined`, never a throw.
+        try {
+          /** The host's handle for this view, absent when the host refused the registration. */
+          const disposer = status.registerView(
+            {
+              key: view.key,
+              component: view.component,
+              ...(view.maxRows === undefined ? {} : { maxRows: view.maxRows }),
+            },
+            // THE IDENTITY IS THE CALLING ACTIVATION, NOT THE CONSUMER'S CTX. The host runs
+            // `assertCallerContext(caller, identity, …)` and the caller it sees is the service shadow
+            // bound to THIS injected scope, so a consumer's ctx is a different fiber and every
+            // registration is refused (MEASURED on dsh-tui 0.12.0: `registerView` returned undefined
+            // for one fresh key with no identity, with `view.identity`, and with the consumer ctx —
+            // and returned a real disposer when the bound scope was passed). `view.identity` is kept
+            // in the consumer API for source compatibility only; it is deliberately NOT forwarded.
+            scope,
+          )
+          if (typeof disposer !== "function") {
+            handle.record({ state: "refused", detail: `the host refused view ${view.key} (see its own warning for the reason)` })
+            return
+          }
+          effectOn(scope, disposer, view.label ?? `mpd-tui status view ${view.key}`)
+          handle.record({ state: "requested", detail: `view ${view.key} requested (no host read-back)` })
+        } catch (error) {
+          handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
+        }
+      })
+      return handle
+    },
+
     /** Registers one full-screen scene; the handle also opens and closes it. */
     registerScene(descriptor: TuiSceneDescriptor, identity?: unknown): SceneRegistrationHandle {
       /** The registration's handle. */
@@ -1111,7 +1640,7 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
     setStatus(key: string, text: string | number | boolean | undefined, identity?: unknown): SeamBindingHandle {
       /** The registration's handle. */
       const handle = makeHandle("status")
-      whenBoundInternal("status", (service) => {
+      whenBoundInternal("status", (service, scope) => {
         /** The bound status service, before `set` is trusted. */
         const status = service as TuiStatusLike
         if (typeof status?.set !== "function") {
@@ -1119,8 +1648,13 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
           return
         }
         try {
+          // THE IDENTITY IS THE CALLING ACTIVATION (the bound injected scope), never the consumer's
+          // ctx: the host's `assertCallerContext` compares it against the caller it resolved for THIS
+          // activation and refuses anything else — which is why the keyed STATUS LINE never rendered
+          // on dsh-tui 0.12.0 (MEASURED). The `identity` parameter is kept for source compatibility
+          // only and is deliberately NOT forwarded; see `registerStatusComponent` for the full rule.
           /** The host's contribution handle, owned for cleanup only. */
-          const disposer = status.set(key, text, identity ?? fallbackIdentity)
+          const disposer = status.set(key, text, scope)
           if (typeof disposer === "function") effectOn(bindings.status.scope ?? ctx, disposer, `mpd-tui status ${key}`)
           handle.record({
             state: "requested",
@@ -1164,7 +1698,8 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
             published = text
             // The consumer's context is the contribution's identity, so the effect ledger
             // attributes it to the activating row.
-            disposer = status.set(view.key, text, view.identity ?? fallbackIdentity)
+            // Same identity rule as `setStatus`: the bound injected scope IS the calling activation.
+            disposer = status.set(view.key, text, scope)
           } catch (error) {
             view.onError?.(error)
           }
@@ -1198,7 +1733,8 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
               // best effort
             }
             try {
-              status.set(view.key, undefined, view.identity ?? fallbackIdentity)
+              // The clearing write carries the same activation identity as the publish above.
+              status.set(view.key, undefined, scope)
             } catch {
               // best effort
             }
@@ -1454,7 +1990,7 @@ export function createTuiAdapter(ctx: PluginContextLike): TuiAdapter {
         seams[key] = live
         if (live) bound += 1
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length }
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } }
     },
 
     /** One outcome per seam key, in table order: `available` when bound, `absent` otherwise. */
@@ -1606,7 +2142,9 @@ export function apply(
   config: { quiet?: boolean; logRoot?: string | (() => string) } = {},
 ): void {
   /** The adapter instance every later `ctx.get("mpdTui")` resolves. */
-  const adapter = createTuiAdapter(ctx)
+  // THIS is the one construction that probes for the host contact: the mounted row owns the single
+  // load-time reach into the installed DSH-TUI, and a row-private fallback adapter stays silent.
+  const adapter = createTuiAdapter(ctx, { probeHostContact: true })
   try {
     /** The context's `provide`, when this composition exposes one. */
     const provide = (ctx as { provide?: unknown }).provide

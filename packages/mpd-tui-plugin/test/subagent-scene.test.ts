@@ -11,7 +11,17 @@
 // defensive rendering, sanitization) and never the team reader — `team-surface.test.ts` and
 // `team-record-source.test.ts` own the real `.mpd/team` reads.
 import { describe, expect, test } from "bun:test"
-import { createSubagentSceneComponent, subagentRows, subagentSectionRows } from "../src/subagent-scene"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import {
+  createSubagentSceneComponent,
+  subagentDetailFacts,
+  subagentDetailRows,
+  subagentRows,
+  subagentSectionRows,
+  teamGraphView,
+} from "../src/subagent-scene"
+import { legendLines } from "../src/graph"
 import type { TeamWorkflow } from "../src/team-state"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -33,6 +43,40 @@ const DONE_ROW = {
   status: "completed",
   startedAt: Date.UTC(2026, 9, 2, 15, 21, 0),
   completedAt: Date.UTC(2026, 9, 2, 15, 22, 30),
+}
+
+/**
+ * A subagent carrying EVERY fact the detail view can draw — the "nothing is omitted" arm's entry.
+ *
+ * It is shaped exactly like the host's own `SubagentState` (`dsh-tui` 0.12.0,
+ * `adapter/ports/channel-view`): the detail view may draw these fields and nothing else.
+ */
+const DETAIL_ROW = {
+  agentId: "agent-detail",
+  description: "Panel Engineer",
+  mode: "continuable",
+  status: "completed",
+  provider: "deepseek",
+  model: "deepseek-flash",
+  startedAt: Date.UTC(2026, 9, 2, 15, 20, 9),
+  endedAt: Date.UTC(2026, 9, 2, 15, 22, 30),
+  tokens: { input: 120, output: 340, total: 460 },
+  toolCalls: [{ name: "read" }, { name: "bash" }, { name: "edit" }],
+  outputEvents: [{ text: "line one" }, { text: "line two" }, { text: "line three" }],
+}
+
+/** The same row while its run is STILL LIVE — the arm that interrupts it from inside the detail. */
+const LIVE_DETAIL_ROW = {
+  agentId: "agent-live-detail",
+  description: "Live Engineer",
+  mode: "continuable",
+  status: "running",
+  provider: "deepseek",
+  model: "deepseek-flash",
+  startedAt: Date.UTC(2026, 9, 2, 15, 20, 9),
+  tokens: { input: 10, output: 20 },
+  toolCalls: [{ name: "read" }],
+  outputEvents: [{ text: "working" }],
 }
 
 /**
@@ -106,6 +150,8 @@ interface Kit {
   press(input: string, key?: Record<string, unknown>): void
   /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
+  /** The last tree `text` flattened — the drawn elements, so props (a click handler) are assertable. */
+  last(): unknown
   /** How many times a rendered scene called its own `close` — the scene's exit, counted. */
   closes: number
 }
@@ -236,6 +282,7 @@ function makeKit(channel?: unknown): Kit {
       rows(tree)
       return out.join("\n")
     },
+    last: () => lastTree,
   }
 }
 
@@ -270,6 +317,76 @@ function render(kit: Kit, component: unknown): string {
 function pressAndRender(kit: Kit, component: unknown, input: string, key: Record<string, unknown> = {}): string {
   kit.press(input, key)
   return render(kit, component)
+}
+
+// ── the drawn tree (props the flattened text cannot show) ───────────────────
+
+/**
+ * Visit every element of a rendered tree, parents before children — the double's own shape.
+ * @param node - the tree (or one element/child list of it), of unknown shape.
+ * @param visit - called once per element, in draw order.
+ * @returns nothing; the walk is for its side effects.
+ */
+function walkElements(node: unknown, visit: (element: Element) => void): void {
+  if (node === null || node === undefined || typeof node !== "object") return
+  if (Array.isArray(node)) {
+    for (const child of node) walkElements(child, visit)
+    return
+  }
+  /** This node as an element — every rendered node is one. */
+  const element = node as Element
+  visit(element)
+  for (const child of element.children ?? []) walkElements(child, visit)
+}
+
+/**
+ * The React keys of one rendered tree, in draw order.
+ * @param tree - the tree the kit last flattened.
+ * @returns the string keys of every element that carries one, in draw order.
+ */
+function drawnKeys(tree: unknown): string[] {
+  /** The keys seen so far, in draw order. */
+  const keys: string[] = []
+  walkElements(tree, (element) => {
+    if (typeof element.props?.key === "string") keys.push(element.props.key)
+  })
+  return keys
+}
+
+/**
+ * One drawn element by its React key.
+ * @param tree - the tree the kit last flattened.
+ * @param key - the key to look for.
+ * @returns the element, or undefined when this render drew no such node.
+ */
+function elementByKey(tree: unknown, key: string): Element | undefined {
+  /** The element found, when the walk reaches it. */
+  let found: Element | undefined
+  walkElements(tree, (element) => {
+    if (found === undefined && element.props?.key === key) found = element
+  })
+  return found
+}
+
+/**
+ * Every CLICKABLE drawn row of one render, in draw order.
+ *
+ * A clickable row is exactly a subagent row: the scene wraps those in a `Box` carrying `onClick`
+ * (a `Text` cannot take one), so this walk is also the assertion that the header, the counts row
+ * and the empty state are NOT click targets.
+ * @param tree - the tree the kit last flattened.
+ * @returns each row's React key and whether its own text element is drawn selected (bold).
+ */
+function clickableRows(tree: unknown): Array<{ key: string; selected: boolean }> {
+  /** The clickable rows, in draw order. */
+  const rows: Array<{ key: string; selected: boolean }> = []
+  walkElements(tree, (element) => {
+    if (typeof element.props?.onClick !== "function" || typeof element.props?.key !== "string") return
+    /** The row's own text element; its `bold` flag is the selection, made visible in props. */
+    const label = (element.children ?? [])[0] as Element | undefined
+    rows.push({ key: element.props.key, selected: label?.props?.bold === true })
+  })
+  return rows
 }
 
 // ── the ordering contract (the reason this scene exists) ────────────────────
@@ -428,5 +545,313 @@ describe("the merged panel never trusts the host's shapes", () => {
     // A channel that is not even an object is as hostile as a missing one, and is not a throw.
     expect(render(makeKit(42), mergedComponent())).toContain("No subagents in the current session")
     expect(subagentRows(null)).toEqual([])
+  })
+})
+
+// ── the host dashboard's summary row (parity item 1) ────────────────────────
+
+describe("the merged panel carries the host dashboard's summary row", () => {
+  test("the counts row tallies the host's own statuses, and an unknown one is not a completion", () => {
+    /** One row per state this file knows, plus one it does NOT know. */
+    const rows = [
+      LIVE_ROW,
+      DONE_ROW,
+      { agentId: "a-fail", description: "Failed run", mode: "one-shot", status: "failed", startedAt: 0 },
+      { agentId: "a-odd", description: "Odd run", status: "paused" },
+    ]
+    /** The rendered surface. */
+    const text = render(makeKit(channelFixture(rows)), mergedComponent())
+    expect(text).toContain("4 total · 1 running · 1 completed · 1 failed")
+    expect(text).toContain("🟡 1 running · 🟢 1 completed · 🔴 1 failed")
+    // The unrecognized status stays `unknown`: it is drawn as such, and counted as NO completion.
+    expect(text).toContain("⚪ Odd run · unknown · unknown")
+    expect(text).not.toContain("2 completed")
+  })
+
+  test("a cancelled run is counted as failed, exactly as the host's own card draws it", () => {
+    /** The rendered surface for one cancelled row. */
+    const text = render(makeKit(channelFixture([{ agentId: "a-cancel", description: "Cancelled run", status: "cancelled" }])), mergedComponent())
+    // The counts row is asserted WHOLE: the team section prints its own, unrelated tallies.
+    expect(text).toContain("🟡 0 running · 🟢 0 completed · 🔴 1 failed")
+    expect(text).toContain("🔴 Cancelled run · unknown · cancelled")
+  })
+})
+
+// ── the detail view (parity item 2) ─────────────────────────────────────────
+
+describe("ENTER opens a detail view of the selected subagent", () => {
+  test("a `super`-modified return does NOT open the detail view (the host's own guard)", () => {
+    /** The kit with one fully-populated subagent. */
+    const kit = makeKit(channelFixture([DETAIL_ROW]))
+    /** The component under test. */
+    const component = mergedComponent()
+    render(kit, component)
+    // Cmd+Enter arrives as `super` on kitty-CSI-u / xterm-modifyOtherKeys terminals, and the host's
+    // own dashboard REFUSES it — a mode that opened here would be a parity bug, not a bonus. The
+    // detail's own footer is the mode marker, so the assertion cannot be satisfied by the list's text.
+    /** The surface after Cmd+Enter. */
+    const afterSuper = pressAndRender(kit, component, "", { return: true, super: true })
+    expect(afterSuper).not.toContain("esc/backspace/q back to the list")
+    expect(afterSuper).toContain("enter detail")
+    // CONTROL: the same fixture with a plain Enter DOES open it, so the arm above is not passing
+    // because the detail view is unreachable at all.
+    expect(pressAndRender(kit, component, "", { return: true })).toContain("esc/backspace/q back to the list")
+  })
+
+  test("a raw CRLF chunk opens the detail view, and a PASTED one does not", () => {
+    /** The kit with one fully-populated subagent. */
+    const kit = makeKit(channelFixture([DETAIL_ROW]))
+    /** The component under test. */
+    const component = mergedComponent()
+    render(kit, component)
+    // Windows ConPTY's fallback carries no `return` flag: the CHUNK is the key, and the host accepts
+    // any run of line breaks — so `"\r\n"` must open the detail view rather than fall on the floor.
+    expect(pressAndRender(kit, component, "\r\n", {})).toContain("esc/backspace/q back to the list")
+    // Back to the list, then the SAME bytes as a bracketed paste: content, never a key press.
+    pressAndRender(kit, component, "", { escape: true })
+    /** The surface after a pasted CRLF chunk. */
+    const pasted = pressAndRender(kit, component, "\r\n", { isPasted: true })
+    expect(pasted).not.toContain("esc/backspace/q back to the list")
+    expect(pasted).toContain("enter detail")
+  })
+
+  test("the detail draws every fact the host reported and steps back without closing the scene", () => {
+    /** The kit with one fully-populated subagent. */
+    const kit = makeKit(channelFixture([DETAIL_ROW]))
+    /** The component under test. */
+    const component = mergedComponent()
+    expect(render(kit, component)).toContain("subagents  1 total · 0 running · 1 completed · 0 failed")
+    /** The detail surface ENTER draws. */
+    const detail = pressAndRender(kit, component, "", { return: true })
+    expect(detail).toContain("Panel Engineer")
+    expect(detail).toContain("status      completed")
+    expect(detail).toContain("mode        continuable")
+    expect(detail).toContain("model       deepseek-flash")
+    expect(detail).toContain("provider    deepseek")
+    expect(detail).toContain("started     2026-10-02T15:20:09.000Z")
+    expect(detail).toContain("ended       2026-10-02T15:22:30.000Z")
+    expect(detail).toContain("tokens      in 120 · out 340 · total 460")
+    expect(detail).toContain("tool calls  3 · read, bash, edit")
+    expect(detail).toContain("output      3 line(s)")
+    expect(detail).toContain("  line three")
+    // The two LIST sections are gone while the detail owns the body, and the mode says which keys
+    // answer to it — `esc` included, which must step back rather than close the scene.
+    expect(detail).not.toContain("task dependency graph")
+    expect(detail).toContain("esc/backspace/q back to the list")
+    expect(pressAndRender(kit, component, "", { escape: true })).toContain("task dependency graph")
+    expect(kit.closes).toBe(0)
+    // Backspace and q do the same, and only the LIST's q is the exit.
+    pressAndRender(kit, component, "", { return: true })
+    expect(pressAndRender(kit, component, "\u007f", { backspace: true })).toContain("task dependency graph")
+    expect(kit.closes).toBe(0)
+    pressAndRender(kit, component, "", { return: true })
+    expect(pressAndRender(kit, component, "q")).toContain("task dependency graph")
+    expect(kit.closes).toBe(0)
+    pressAndRender(kit, component, "q")
+    expect(kit.closes).toBe(1)
+  })
+
+  test("the projection omits what the host did not report — no instant, no bucket, no duration", () => {
+    /** A row whose run the host has barely described. */
+    const bare = { agentId: "a-bare", description: "Bare", status: "running" }
+    /** Its projection. */
+    const facts = subagentDetailFacts(bare)
+    expect(facts).toBeDefined()
+    expect(facts?.row.startedAt).toBeUndefined()
+    expect(facts?.row.endedAt).toBeUndefined()
+    expect(facts?.tokens).toEqual({})
+    expect(facts?.toolCallCount).toBeUndefined()
+    expect(facts?.outputLines).toBeUndefined()
+    expect(subagentDetailRows(facts!, 0).map((row) => row.text)).toEqual(["Bare", "status      running", "mode        unknown"])
+    // A PARTIAL bucket keeps only the buckets the host filled…
+    /** The same row with one token bucket and one instant. */
+    const partial = subagentDetailFacts({ ...bare, tokens: { input: 7 }, endedAt: Date.UTC(2026, 9, 2, 15, 22, 30) })
+    expect(partial?.tokens).toEqual({ input: 7 })
+    /** Its drawn body. */
+    const partialLines = subagentDetailRows(partial!, 0).map((row) => row.text)
+    expect(partialLines).toContain("tokens      in 7")
+    expect(partialLines).toContain("ended       2026-10-02T15:22:30.000Z")
+    expect(partialLines.some((line) => line.includes("out "))).toBe(false)
+    expect(partialLines.some((line) => line.includes("total"))).toBe(false)
+    // …and NO duration is derived from the two instants the host did report.
+    expect(partialLines.some((line) => /duration|elapsed/.test(line))).toBe(false)
+    // An entry that is not an object has nothing to show at all.
+    expect(subagentDetailFacts(null)).toBeUndefined()
+    expect(subagentDetailFacts("agent-detail")).toBeUndefined()
+  })
+
+  test("the output tail pages with ↑/↓ and never invents a line", () => {
+    /** A run with 20 output lines — longer than one detail window. */
+    const chatty = {
+      agentId: "agent-chatty",
+      description: "Chatty",
+      status: "running",
+      startedAt: Date.UTC(2026, 9, 2, 15, 0, 0),
+      outputEvents: Array.from({ length: 20 }, (_unused, index) => ({ text: `out-${String(index + 1).padStart(2, "0")}` })),
+    }
+    /** The kit with that run. */
+    const kit = makeKit(channelFixture([chatty]))
+    /** The component under test. */
+    const component = mergedComponent()
+    render(kit, component)
+    /** The detail surface, showing the NEWEST tail of the output. */
+    const detail = pressAndRender(kit, component, "", { return: true })
+    expect(detail).toContain("output      20 line(s)")
+    expect(detail).toContain("out-20")
+    expect(detail).not.toContain("out-01")
+    /** The window the panel reports for itself, so the arms below need no window constant. */
+    const shown = /showing (\d+)-(\d+) of 20/.exec(detail)
+    expect(shown).not.toBeNull()
+    /** The first window's oldest line index. */
+    const start = Number(shown?.[1])
+    /** The first window's newest line index. */
+    const end = Number(shown?.[2])
+    expect(end).toBe(20)
+    /** The window's size, stable at every offset. */
+    const size = end - start + 1
+    // One ↑ walks the window back by exactly one line, and one ↓ walks it forward again.
+    /** The surface after one scroll back. */
+    const up = pressAndRender(kit, component, "", { upArrow: true })
+    expect(up).toContain(`showing ${start - 1}-${end - 1} of 20`)
+    expect(up).toContain("out-19")
+    expect(pressAndRender(kit, component, "", { downArrow: true })).toContain(`showing ${start}-${end} of 20`)
+    // Scrolling past the oldest line CLAMPS there: the first line the host wrote is reachable…
+    /** The last surface the scroll-back loop drew, i.e. the clamped one. */
+    let oldest = ""
+    for (let press = 0; press < 25; press += 1) oldest = pressAndRender(kit, component, "", { upArrow: true })
+    expect(oldest).toContain(`showing 1-${size} of 20`)
+    expect(oldest).toContain("out-01")
+    // …and scrolling past the newest clamps back onto it, with the newest line still the tail.
+    /** The last surface the scroll-forward loop drew, i.e. the clamped one. */
+    let newest = ""
+    for (let press = 0; press < 25; press += 1) newest = pressAndRender(kit, component, "", { downArrow: true })
+    expect(newest).toContain(`showing ${20 - size + 1}-20 of 20`)
+    expect(newest).toContain("out-20")
+  })
+
+  test("the interrupt gesture keeps working, on the DETAIL's own row", () => {
+    /** Every agent id the host double was asked to interrupt. */
+    const interrupted: string[] = []
+    /** The host's control facade double. */
+    const control = {
+      interrupt: (id: string): boolean => {
+        interrupted.push(id)
+        return true
+      },
+    }
+    /** The kit with a live row and a settled one. */
+    const kit = makeKit(channelFixture([LIVE_DETAIL_ROW, DONE_ROW], control))
+    /** The component under test. */
+    const component = mergedComponent()
+    render(kit, component)
+    /** The detail surface for the first (live) row. */
+    const detail = pressAndRender(kit, component, "", { return: true })
+    expect(detail).toContain("Live Engineer")
+    /** The same surface after the gesture. */
+    const after = pressAndRender(kit, component, "i")
+    expect(interrupted).toEqual(["agent-live-detail"])
+    expect(after).toContain("interrupt requested for Live Engineer")
+    // Still the detail, and still on the row the gesture acted on.
+    expect(after).toContain("tokens      in 10 · out 20")
+  })
+
+  test("a selected entry that leaves the channel degrades to a notice, never a throw", () => {
+    /** The host's own array, kept so this arm can remove the row the detail was opened on. */
+    const subagents = [DETAIL_ROW]
+    /** The kit over it. */
+    const kit = makeKit(channelFixture(subagents))
+    /** The component under test. */
+    const component = mergedComponent()
+    render(kit, component)
+    expect(pressAndRender(kit, component, "", { return: true })).toContain("tokens      in 120 · out 340 · total 460")
+    // The row disappears between two renders — what a settled child or a channel reset does.
+    subagents.length = 0
+    /** The surface the next render draws. */
+    const after = render(kit, component)
+    expect(after).toContain("details: that subagent is no longer in the channel")
+    expect(after).toContain("No subagents in the current session")
+    // And the scene answers keys as a LIST again: `q` is the exit, because the mode is gone.
+    kit.press("q")
+    render(kit, component)
+    expect(kit.closes).toBe(1)
+  })
+})
+
+// ── the pointer (parity item 3) ─────────────────────────────────────────────
+
+describe("a click selects what the arrow keys would have selected", () => {
+  test("clicking a row's own Box sets the selection, and only a subagent row is clickable", () => {
+    /** The keyboard path: one `↓` from the top selects the second row. */
+    const keyboardKit = makeKit(channelFixture([LIVE_ROW, DONE_ROW]))
+    /** The keyboard arm's component. */
+    const keyboardComponent = mergedComponent()
+    render(keyboardKit, keyboardComponent)
+    pressAndRender(keyboardKit, keyboardComponent, "", { downArrow: true })
+    /** What the keyboard selected, as the drawn rows' emphasis. */
+    const byKeyboard = clickableRows(keyboardKit.last())
+    // Exactly the two subagent rows are click targets: the header, the counts row and the team
+    // section carry no handler, so a click can never "select" a row that does not exist.
+    expect(byKeyboard).toHaveLength(2)
+    expect(byKeyboard.map((row) => row.selected)).toEqual([false, true])
+    /** The pointer path, from the SAME starting state and with no key pressed at all. */
+    const pointerKit = makeKit(channelFixture([LIVE_ROW, DONE_ROW]))
+    /** The pointer arm's component. */
+    const pointerComponent = mergedComponent()
+    render(pointerKit, pointerComponent)
+    // Nothing is pressed in this arm: the selection is the scene's own default (the first row).
+    expect(clickableRows(pointerKit.last()).map((row) => row.selected)).toEqual([true, false])
+    /** The second row's own Box, found by the key THIS render drew. */
+    const second = elementByKey(pointerKit.last(), clickableRows(pointerKit.last())[1].key)
+    expect(typeof second?.props?.onClick).toBe("function")
+    ;(second?.props?.onClick as (() => void) | undefined)?.()
+    render(pointerKit, pointerComponent)
+    // EXACTLY the keyboard's result: the same rows in the same order, selected the same way.
+    expect(clickableRows(pointerKit.last())).toEqual(byKeyboard)
+  })
+})
+
+// ── the legend (parity item 5) ──────────────────────────────────────────────
+
+describe("the merged panel draws the graph legend under its DAG", () => {
+  test("the legend sits directly under the DAG, in the width the graph was laid out for", () => {
+    /** The kit with one host row and the fixture team. */
+    const kit = makeKit(channelFixture([LIVE_ROW]))
+    /** The rendered surface. */
+    const text = render(kit, mergedComponent())
+    /** The keys this render drew, in draw order. */
+    const keys = drawnKeys(kit.last())
+    /** The DAG the merged panel lays out for the measured 100 columns. */
+    const graph = teamGraphView(workflowFixture(), 100)
+    expect(graph).toBeDefined()
+    /** How many rows that DAG has, so the drawing itself is pinned beside the legend. */
+    const graphRows = graph?.lines.length ?? 0
+    expect(graphRows).toBeGreaterThan(0)
+    expect(keys.filter((key) => /^graph-\d+$/.test(key))).toHaveLength(graphRows)
+    /** The legend the frozen interface returns for the same width — lane W1 owns its content. */
+    const legend = legendLines(100)
+    expect(keys.filter((key) => /^legend-\d+$/.test(key))).toHaveLength(legend.length)
+    for (const line of legend) expect(text).toContain(line)
+    if (legend.length > 0) {
+      // DIRECTLY UNDER THE DAG: the first legend row is drawn after the last graph row, and it is
+      // dimmed — a legend explains the drawing, it never competes with it.
+      /** Where the first legend row sits in draw order. */
+      const firstLegend = keys.findIndex((key) => /^legend-\d+$/.test(key))
+      /** Where the last DAG row sits in draw order. */
+      const lastGraph = keys.reduce((at, key, index) => (/^graph-\d+$/.test(key) ? index : at), -1)
+      expect(firstLegend).toBeGreaterThan(lastGraph)
+      expect(elementByKey(kit.last(), "legend-0")?.props?.dimColor).toBe(true)
+    }
+  })
+
+  test("both scenes consume the frozen legend interface with their own width budget", () => {
+    // The CONTENT of the legend belongs to `graph.ts` and may legitimately be empty while that work
+    // lands, so the WIRING is pinned here: both scenes call the frozen interface with the width their
+    // own DAG was laid out for, and the merged panel draws it under the DAG it just drew.
+    /** The merged panel's source. */
+    const merged = readFileSync(join(import.meta.dir, "..", "src", "subagent-scene.ts"), "utf8")
+    /** The team scene's source. */
+    const team = readFileSync(join(import.meta.dir, "..", "src", "scenes.ts"), "utf8")
+    expect(merged).toContain("legendLines(measured.cols)")
+    expect(team).toContain("legendLines(graphWidth)")
   })
 })

@@ -82,6 +82,60 @@ this package and fails naming file + line for any of the fifteen `tui*` ids in a
 non-`.ts` file under a scanned `src/` is printed in a loud NOT COVERED section instead of passing
 silently. It ships `--self-test` over a seeded fixture tree (seven arms, five seeded violations).
 
+### The HOST-INPUT contact — the ONE counted exception (2026-10-05)
+
+The requirement was that `Ctrl+A` open MPD's merged panel (the host's own subagent rows plus the
+dependency graph) in a workspace that holds a team. The host owns that key: `dashboard` is one of its
+built-in actions (default `ctrl+a`), `Chat.js` consumes it before any plugin binding, and the three
+contribution kinds (`workspace.provider`, `tui.settings-section`, `tui.scene`) cannot place content
+inside the host's own `SubagentDashboard` — a Chat-local early return with fixed props. No seam
+reaches that key.
+
+This package therefore carries the ONE contact that does, and names it here instead of hiding it:
+
+- `hostRootCandidates(env, home)` — the candidate roots of an INSTALLED host, most specific first:
+  `MPD_DSH_TUI_HOST_ROOT` (the QA/test override), the module's own directory, the running `dsh-tui`
+  bin (`process.argv[1]`), every `<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`,
+  `~/.dsh/profiles/*/…` and `~/.dsh-tui/profiles/*/…`. A candidate counts only when
+  `<root>/lib/types/ui.js` exists.
+- `probeHostInput(candidates)` — dynamic-imports that module by FILE URL and accepts it only when it
+  exports a `useStdin` function; a package-SPECIFIER import cannot serve here, because the host's
+  `exports` map has no `./lib/*` subpath.
+- `hostInput()` on the adapter — the cached `{ useStdin }`, or `undefined` plus ONE diagnostic line.
+  A host whose `ui.js` exists but carries no `useStdin` is reported as version SKEW, never as absent.
+
+WHY THE FILE URL IS THE POINT: Node caches an ES module by its resolved URL, so importing
+`<hostRoot>/lib/types/ui.js` this way hands back the SAME module instance the host itself uses, and
+its `useStdin` reads the SAME React context object (`StdinContext`). A second copy of that module
+would resolve to the context DEFAULT — an emitter that never receives a keystroke, and therefore a
+takeover that silently never fires. The adapter does not leave that to chance: `readHostStdinValue()`
+classifies one `useStdin()` result and REFUSES the context default (it requires the live provider's
+own `internal_querier` marker), so a consumer that gets a refusal attaches nothing and logs ONE line
+instead of arming on a dead bus. The PTY lane `skills/dsh-qa/scripts/tui-deps-ctrla.ts` then proves the
+positive on a real terminal: it re-reads the adapter's own `host contact bound: <root>` line out of the
+workspace log and requires that root to be the profile copy the lane itself launched.
+
+The discipline around the contact: no DSH-TUI file is patched, vendored or written; a missing host,
+an import error or a skewed module degrades to `hostInput() === undefined` with the takeover simply
+ABSENT (`alt+a` still opens the panel); the contact lives in THIS package, so the A2.2 gate's scope is
+unchanged; and the consumer contract is deliberately narrow — a mounted component calls `useStdin()`
+and `prependListener("input", …)`, which is what makes the ordering deterministic (the host emits to
+the listener list front-first, so the plugin sees the key before the host's own handler consumes it).
+
+TWO MEASURED HOST CONSTRAINTS this contact obeys (dsh-tui 0.12.0, both established on a real PTY):
+
+- **The identity a STATUS registration carries is the CALLING ACTIVATION, not the consumer's ctx.**
+  The host's `assertCallerContext` refuses a `tuiStatus.registerView`/`set` whose identity belongs to
+  another fiber, and the caller it sees is the service shadow bound to the adapter's injected scope.
+  Every status registration therefore passes that bound `scope`; passing the consumer's ctx made the
+  host refuse silently (the rich view never mounted, and the `mpd:` status line never rendered).
+- **Only a SCENE render carries the live input kit.** `rememberHostKit()` stores the kit a scene
+  component received in `props.ui`, and `hostInput()` prefers that remembered hook over the imported
+  module's — because the imported one is a foreign instance whose `useStdin()` answers nothing on this
+  host. `capabilities().hostInput` names which source armed, so QA can tell them apart. The practical
+  consequence is one bootstrap: a take-over built on this contact works from the moment the session has
+  rendered an MPD scene, and stays inert (host behaviour, nothing claimed) before that.
+
 ## The diagnostic file sink
 
 A live DSH-TUI session OWNS the terminal: one write to fd 1 or fd 2 corrupts the rendered frame.

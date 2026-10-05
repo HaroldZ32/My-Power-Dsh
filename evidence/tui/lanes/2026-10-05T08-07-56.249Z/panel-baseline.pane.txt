@@ -1,0 +1,50 @@
+
+   MPD subagents + team · 216x48
+   subagents  0 total · 0 running · 0 completed · 0 failed    
+   ⚪ No subagents in the current session                                                                          
+     Subagents appear here once the main agent starts Task delegations                                            
+   team       Fixture Team (mpd-fixture-1)                                                                     
+   phase      staged                                                                                              
+   captain    fixture-captain-session                                                                              
+   staged     2026-10-05T08:06:56.250Z
+   roster                                                                                                         
+     Architect · architecture review · deepseek-official/deepseek-v4-flash · inactive · 1/1                  
+     Senior Engineer · primary implementation · deepseek-official/deepseek-v4-flash · inactive · 0/1              
+   tasks                                                                                                          
+   t1 [work] freeze the contract · completed @Architect attempt 1 r1 verdict pass                                 
+     t2 [work] build it · pending @Senior Engineer attempt 0 r1 deps=t1
+   tasks      2 total · 1 completed · 0 in progress · 1 pending · 0 claimed · 0 failed                          
+   mail       (not observable on the official team plane)                                               
+   task dependency graph
+   ┌────────────────────────────────┐
+   │ ✓ t1 WRK freeze the contract   │
+   └────────────────┬───────────────┘
+                    │                                                                       
+                    │
+                    ▼
+   ┌────────────────┴───────────────┐
+   │ ○ t2 WRK build it              │
+   └────────────────────────────────┘
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   esc/q close · ↑↓ select · enter detail · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board
+
+
+
+
+
+
+
+
+
+
+
+
+                                                      
+                                                                                                                                                                                                                         
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                            
+
+

@@ -70,6 +70,51 @@ harness settings provider 的 mpd 插件都经由本适配器调用，因此 dsh
 逐条给出文件名、行号与**原始**行文本。匹配前先剥离注释，被扫描 `src/` 下的所有非 `.ts` 文件在醒目的
 NOT COVERED 段落里打印，而不是静默放过。闸门自带 `--self-test`（七条断言、五处植入违规的夹具树）。
 
+### 宿主输入接触面——唯一一处被计数的例外（2026-10-05）
+
+需求是：当工作区里存在团队时，按 `Ctrl+A` 打开 MPD 的合并面板（宿主自己的子代理行 + 依赖图）。这个键归宿主
+所有：`dashboard` 是宿主的内建动作（默认 `ctrl+a`），`Chat.js` 在任何插件绑定之前就把它消费掉，而三种贡献
+类型（`workspace.provider`、`tui.settings-section`、`tui.scene`）都无法把内容放进宿主自己的
+`SubagentDashboard`——它是 Chat 内的早退组件，props 固定。没有任何接缝能拿到这个键。
+
+因此本包承载唯一能拿到它的接触面，并在此**明写**而不是藏起来：
+
+- `hostRootCandidates(env, home)`——**已安装**宿主的候选根，最具体者优先：`MPD_DSH_TUI_HOST_ROOT`
+  （QA/测试覆盖开关）、模块自身目录、正在运行的 `dsh-tui` bin（`process.argv[1]`）、每个
+  `<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`、`~/.dsh/profiles/*/…` 与
+  `~/.dsh-tui/profiles/*/…`。只有 `<root>/lib/types/ui.js` 存在的候选才算数。
+- `probeHostInput(candidates)`——以**文件 URL**动态 import 该模块，且只在其导出 `useStdin` 函数时接受；
+  这里不能用**包说明符**导入，因为宿主的 `exports` 映射没有 `./lib/*` 子路径。
+- 适配器上的 `hostInput()`——缓存下来的 `{ useStdin }`，或 `undefined` 外加**一行**诊断。`ui.js` 存在但
+  不带 `useStdin` 的宿主上报为版本**偏移（skew）**，绝不当作“不存在”。
+
+**为什么文件 URL 是关键**：Node 按解析后的 URL 缓存 ES 模块，所以这样 import
+`<hostRoot>/lib/types/ui.js` 拿回的是宿主自己用的**同一个模块实例**，它的 `useStdin` 读到的是**同一个**
+React context 对象（`StdinContext`）。若拿到的是第二份副本，`useContext` 会解析到 context 的**默认值**
+——一个永远收不到按键的 emitter，于是接管会**静默失效**。适配器不把这件事交给运气：`readHostStdinValue()`
+会对一次 `useStdin()` 的返回值做判定，并**拒绝** context 默认值（它要求存在真实 provider 自己的
+`internal_querier` 标记），因此拿到拒绝的消费方**什么都不挂**并只输出**一行**日志，而不是把监听器挂在一条
+死总线上。真机 PTY 用例 `skills/dsh-qa/scripts/tui-deps-ctrla.ts` 再从正面证明：它从工作区日志里读回适配器
+自己写的 `host contact bound: <root>` 一行，并要求那个根目录**正是该用例启动的那份 profile 副本**。
+
+接触面周围的纪律：不补丁、不 vendor、不写入任何 DSH-TUI 文件；宿主缺失、import 失败或模块偏移都降级为
+`hostInput() === undefined`，接管**直接缺席**（`alt+a` 仍能打开面板）；接触面只存在于**本包**，因此 A2.2
+闸门的范围不变；消费方契约刻意收窄——挂载中的组件调用 `useStdin()` 并
+`prependListener("input", …)`，这正是让顺序确定的原因（宿主从前向后遍历监听器列表，插件因此在宿主自己的
+处理器消费按键**之前**看到它）。
+
+**该接触面遵守的两条实测宿主约束**（dsh-tui 0.12.0，均在真机 PTY 上确认）：
+
+- **状态类注册携带的 identity 必须是"正在调用它的激活"，而不是消费方的 ctx。** 宿主的
+  `assertCallerContext` 会拒绝 identity 属于另一 fiber 的 `tuiStatus.registerView`/`set`，而宿主看到的
+  调用者正是绑定在适配器注入 scope 上的服务影子。因此每个状态注册都传该绑定的 `scope`；传消费方的 ctx 会
+  被宿主**静默拒绝**（富视图从不挂载，`mpd:` 状态行也从不渲染）。
+- **只有场景渲染会携带活的输入 kit。** `rememberHostKit()` 保存场景组件通过 `props.ui` 收到的那份 kit，
+  而 `hostInput()` 优先使用这份记忆中的钩子、而不是自行 import 到的那份——因为后者是另一份模块实例，在本
+  宿主上 `useStdin()` 什么也不返回。`capabilities().hostInput` 会写明最终是哪一路就绪的，QA 可据此区分。
+  由此带来的实际后果是一次 bootstrap：基于本接触面的接管在"本次会话渲染过任一 MPD 场景"之后就绪，在那之前
+  保持惰性（宿主原有行为，不做任何声明）。
+
 ## 诊断文件 sink
 
 活跃的 DSH-TUI 会话**占有**终端：写一次 fd 1 或 fd 2 就会毁掉渲染帧。因此适配器把自己的启动行写入**文件**

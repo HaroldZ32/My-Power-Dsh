@@ -552,7 +552,7 @@
     }
   }))
 
-  /** The thirteen scalar knobs and the twelve slot leaves, in the order the card renders them. */
+  /** The thirteen scalar knobs, the twelve slot leaves and the TUI surface's own knob, in the order the card renders them. */
   const FIELDS: FieldDescriptor[] = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -575,6 +575,10 @@
     // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
     // exactly as the shared declaration states it (a test compares the two element-wise).
     ...SLOT_FIELDS,
+    // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
+    // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
+    // two watchdog rows above.
+    { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", semantics: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" },
   ]
 
   // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what

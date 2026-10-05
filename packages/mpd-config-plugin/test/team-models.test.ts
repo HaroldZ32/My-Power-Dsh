@@ -101,7 +101,10 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
   const slotKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")
 
   test("exactly twelve new rows, after the original thirteen", () => {
-    expect(SETTINGS_KNOBS).toHaveLength(25)
+    // 26 = the thirteen original knobs + the twelve slot leaves + the TUI surface's own
+    // `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file keeps its
+    // meaning). Updated deliberately with that one shared-schema addition — see the W2 lane report.
+    expect(SETTINGS_KNOBS).toHaveLength(26)
     expect(slotKnobs).toHaveLength(12)
     expect(SETTINGS_KNOBS.slice(0, 13).map((knob) => [...knob.path])).toEqual([
       ["hashline", "maxDiffChars"],

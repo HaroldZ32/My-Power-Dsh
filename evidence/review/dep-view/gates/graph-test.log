@@ -1,0 +1,21 @@
+Expected: not "completed"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/graph.test.ts:214:76)
+(fail) the arrowheads > every drawn row fits its width, and adjacent same-tone cells stay ONE span [0.82ms]
+(pass) the focus > lights the task, its DEPENDENCIES and the edges between them; dims the rest [0.40ms]
+(pass) the focus > the edge between two chain members is BRIGHT, and an edge leaving the chain is not [0.32ms]
+(pass) the focus > with NO focus nothing is dimmed and nothing is a chain [0.25ms]
+(pass) the focus > the focus is marked with ▶ so it is findable without colour [0.41ms]
+(pass) the rail fallback > fits any width and never loses a task [0.30ms]
+(pass) the rail fallback > names the EXTRA blockers instead of drawing a second connector [0.07ms]
+(pass) the rail fallback > draws a task reached by no root, so a cycle cannot silently lose a row [0.03ms]
+(pass) the list view > groups by rank and names every blocker [0.10ms]
+(pass) the pointer > resolves to a task by RECTANGLE, and to nothing on blank space [0.25ms]
+(pass) the pointer > uses the SAME geometry the rail drew, so the two cannot drift [0.11ms]
+(pass) the tone table > every tone maps to a dsh-tui THEME KEY, never to a colour literal [0.07ms]
+
+ 19 pass
+ 3 fail
+ 641 expect() calls
+Ran 22 tests across 1 file. [88.00ms]
+EXIT=1

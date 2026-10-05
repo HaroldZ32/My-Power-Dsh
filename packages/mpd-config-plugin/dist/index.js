@@ -2700,7 +2700,8 @@ var SettingsSchema = import_schemastery.default.object({
     actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: import_schemastery.default.number().default(900000),
     holdTtlMs: import_schemastery.default.number().default(900000)
-  })
+  }),
+  tui: import_schemastery.default.object({ dashboardKey: import_schemastery.default.boolean().default(true) })
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
@@ -2805,7 +2806,8 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS
+  ...TEAM_MODEL_KNOBS,
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", hint: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" }
 ];
 
 // packages/mpd-config-plugin/src/index.ts

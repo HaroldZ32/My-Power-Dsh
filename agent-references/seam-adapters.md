@@ -48,6 +48,41 @@ BINDING DISCIPLINE — measured, not assumed:
 - Re-export the dsh-tui prop/channel TYPES from the adapter, so a scene component's contract has one
   statement.
 
+### The ONE contact that is not a seam: the host input bus (2026-10-05)
+
+`Ctrl+A` is a built-in HOST action (`dashboard`, default `ctrl+a`); `Chat.js` consumes it before any
+plugin binding, and the contribution kinds (`workspace.provider`, `tui.settings-section`, `tui.scene`)
+cannot place content inside the host's own `SubagentDashboard` (a Chat-local early return with fixed
+props). The user requirement "Ctrl+A opens MPD's panel + dependency graph" therefore needed a contact
+OUTSIDE the fourteen seams, and it is declared here rather than hidden:
+
+- The adapter resolves the INSTALLED host root (`MPD_DSH_TUI_HOST_ROOT`, its own module dir,
+  `process.argv[1]`, `<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`, `~/.dsh`,
+  `~/.dsh-tui`) and dynamic-imports `<root>/lib/types/ui.js` by FILE URL — a package-specifier import
+  is refused by the host's `exports` map (no `./lib/*` subpath) — accepting it only when it exports
+  `useStdin`. The result is cached and exposed as `hostInput()`.
+- The FILE URL is what makes it correct: Node caches an ES module by resolved URL, so the returned
+  `useStdin` is supposed to read the SAME `StdinContext` the host's own `Chat.js` reads. MEASURED on
+  dsh-tui 0.12.0 (real PTY, `evidence/tui/lanes/`): that import is a FOREIGN module instance whose
+  `useStdin()` answers NOTHING, while the kit the host hands a SCENE (`props.ui.useStdin()`) returns the
+  live context. The adapter therefore also stores the first scene kit (`rememberHostKit`) and prefers
+  it, and `capabilities().hostInput` names which source armed. Consequence, documented rather than
+  hidden: the take-over arms after the session has rendered any MPD scene and stays inert before that.
+- Two further host rules the contact obeys, both learned by measurement: a STATUS registration's
+  identity must be the CALLING ACTIVATION (the injected scope the service shadow was reached through —
+  the consumer's ctx is refused by `assertCallerContext`, which is also why the `mpd:` status line
+  never rendered before this fix), and the `readHostStdinValue()` canary still refuses the context
+  DEFAULT, so a wrong instance attaches nothing and logs ONE line instead of arming on a dead bus.
+- The consumer is a ZERO-ROW status view (`ctx.tuiStatus.registerView`, maxRows 1) whose component
+  calls `useStdin()` and `prependListener("input", …)`, then opens `mpd-tui-subagents` on `ctrl+a`
+  only when the workspace's team projection has a team with ≥1 task and the `/settings` toggle is on.
+  `prependListener` is the ordering guarantee (the host emits front-first and stops at
+  `stopImmediatePropagation`), which is what makes the takeover deterministic rather than a race.
+- Discipline: no DSH-TUI file is patched, vendored or written; every failure (no candidate, unreadable
+  candidate, import error, version-skewed `ui.js` without `useStdin`) degrades to `hostInput() ===
+  undefined` plus ONE diagnostic line, and the takeover is simply absent — `alt+a` still opens the
+  panel. The A2.2 gate's scope is unchanged: the contact lives inside `mpd-tui-adapter-plugin`.
+
 ## R5 — no MPD diagnostic may reach the terminal
 
 An MPD plugin, MCP server or spawned child must never write to fd 1 or fd 2 while a TUI session is
@@ -114,9 +149,14 @@ in `screens/Chat.js` with only `{ subagents, onClose, onSelect }` props; the thr
 are `workspace.provider`, `tui.settings-section`, `tui.scene`). MPD therefore renders its own scene
 whose TOP section is the host's own `channel.subagents` feed (the same source `Ctrl+A` shows — MPD
 teammates are real continuable subagents, so the data-level merge already exists) and whose lower
-section is the team DAG; it opens on MPD's own combo (`alt+a`), and `Ctrl+A` is never bound.
+section is the team DAG. It still opens on MPD's own combo (`alt+a`), and since 2026-10-05 `Ctrl+A`
+opens the SAME panel whenever the workspace's team projection holds a team with ≥1 task — through the
+host-input contact above, never by patching the host dashboard, and never at all when there is no team
+(the key then keeps its default meaning). The host dashboard's own rendering is NOT extended: this is a
+key re-point plus MPD's own panel, which is why the upstream ask below still stands.
 
 The upstream ask that would make the merge literal — a panel/section contribution kind, a
 `TuiSceneDescriptor.slot`, or an exported dashboard row hook — is drafted in
 `agent-references/upstream-dsh-tui-seam-request.md`. Upstream `main` already carries an unreleased
-`ctx.tuiPanels`, but it is a RIGHT-SIDEBAR panel and still cannot enter the dashboard.
+`ctx.tuiPanels`, but it is a RIGHT-SIDEBAR panel and still cannot enter the dashboard. A granted seam
+would let the bundle DELETE the host-input contact rather than keep it.

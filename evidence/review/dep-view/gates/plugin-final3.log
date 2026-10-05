@@ -1,0 +1,245 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [1.39ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.23ms]
+(pass) state projection > a team READOUT that throws is reported as a note, not as a crash [0.51ms]
+(pass) state projection > the status line is one bounded line [0.47ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.10ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.02ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.08ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [0.62ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.19ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.29ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.08ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.06ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.23ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.15ms]
+(pass) log-only event registration > a throwing session.append is contained [0.03ms]
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [0.07ms]
+
+packages/mpd-tui-plugin/test/subagent-scene.test.ts:
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > every subagent row is drawn before the first team row [3.62ms]
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > each row carries the host's own description, mode, status and start instant [0.39ms]
+(pass) the merged panel degrades honestly > an empty subagent list still renders the team panel, above it the host's own empty tone [0.24ms]
+(pass) the merged panel degrades honestly > a scene handed no channel at all still renders the team panel [0.23ms]
+(pass) the merged panel degrades honestly > a missing team projection renders the team section's own unreadable line [0.12ms]
+(pass) the merged panel degrades honestly > an unreadable status is drawn as unknown — never guessed into completed [0.24ms]
+(pass) the merged panel never trusts the host's shapes > an absent subagentControl does not throw, and the interrupt gesture says so [0.49ms]
+(pass) the merged panel never trusts the host's shapes > the interrupt reaches the host's own control for a LIVE row only [0.76ms]
+(pass) the merged panel never trusts the host's shapes > a hostile description is sanitized before it reaches a row [0.21ms]
+(pass) the merged panel never trusts the host's shapes > a non-scalar field is dropped rather than stringified onto the screen [0.17ms]
+(pass) the merged panel never trusts the host's shapes > a channel missing every field it may carry degrades to the empty state [0.28ms]
+(pass) the merged panel carries the host dashboard's summary row > the counts row tallies the host's own statuses, and an unknown one is not a completion [0.26ms]
+(pass) the merged panel carries the host dashboard's summary row > a cancelled run is counted as failed, exactly as the host's own card draws it [0.20ms]
+(pass) ENTER opens a detail view of the selected subagent > the detail draws every fact the host reported and steps back without closing the scene [1.16ms]
+(pass) ENTER opens a detail view of the selected subagent > the projection omits what the host did not report — no instant, no bucket, no duration [0.18ms]
+(pass) ENTER opens a detail view of the selected subagent > the output tail pages with ↑/↓ and never invents a line [2.05ms]
+(pass) ENTER opens a detail view of the selected subagent > the interrupt gesture keeps working, on the DETAIL's own row [0.53ms]
+(pass) ENTER opens a detail view of the selected subagent > a selected entry that leaves the channel degrades to a notice, never a throw [0.53ms]
+(pass) a click selects what the arrow keys would have selected > clicking a row's own Box sets the selection, and only a subagent row is clickable [0.90ms]
+(pass) the merged panel draws the graph legend under its DAG > the legend sits directly under the DAG, in the width the graph was laid out for [2.39ms]
+(pass) the merged panel draws the graph legend under its DAG > both scenes consume the frozen legend interface with their own width budget [0.37ms]
+
+packages/mpd-tui-plugin/test/team-record-source.test.ts:
+(pass) the record is the primary team source > the workflow carries the review fields the official board has no column for [1.14ms]
+(pass) the record is the primary team source > the derived states agree: a blocked review, a running task, a failed repair [0.13ms]
+(pass) the record is the primary team source > phase is the STORED lifecycle, not a guess from the roster [0.20ms]
+(pass) the record is the primary team source > a cycle is REPORTED as a note rather than drawn as if the board were sound [0.11ms]
+(pass) the source selection > readBoardState shows the RECORD even when the official readout is empty [0.17ms]
+(pass) the source selection > an ENDED team does not hide the running one behind it [0.05ms]
+(pass) the source selection > the record read degrades to [] with no service, and never throws [0.08ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > renders the roster, the task DAG, the counts and the honest blanks [1.55ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the depth walk and the failed-dependency marking match the panel's own semantics [0.26ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.25ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a corrupt / absent / cyclic record renders an empty state and never throws [0.35ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object [0.08ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the board carries the derived team row and never a staged claim [0.20ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [0.68ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [0.69ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [0.91ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.39ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [0.62ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [0.59ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [0.88ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.36ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.26ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.12ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team ID cannot reach a rendered row [0.25ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [0.33ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.45ms]
+(pass) package invariants > the built dist carries the two scene ids and no TEAM-STORE writer [0.53ms]
+(pass) package invariants > the retired approval tools are GONE and the surface says why [0.13ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.21ms]
+(pass) the team scene's focus > ↑/↓ moves the focus through the drawing, and the ▶ marker moves with it [1.25ms]
+(pass) the team scene's focus > a focused task lights its DEPENDENCIES and names them in the graph header [0.89ms]
+(pass) the team scene's focus > `esc` UNPINS rather than closing, and closes once nothing is pinned [0.79ms]
+(pass) the team scene's focus > a CLICK pins a task and hovering previews one, without the keyboard [1.19ms]
+(pass) the team scene's focus > a click on BLANK space unpins rather than pinning nothing [0.63ms]
+(pass) the team scene's focus > the wheel scrolls the graph [0.65ms]
+(pass) the team scene's focus > a NARROW terminal falls back to the rail rather than clipping the boxes [0.72ms]
+(pass) the team scene's legend > the legend is drawn under the DAG, in the width the graph was laid out for [0.41ms]
+(pass) the plan scene reads the SHARED projection > the phrase is the SERVED one, not a record-derived lookalike [0.45ms]
+(pass) the plan scene reads the SHARED projection > a STAGED PLAN with no usable record still renders the gate [0.37ms]
+(pass) the plan scene reads the SHARED projection > with NO plan face the scene never INVENTS a plan phrase [0.41ms]
+
+packages/mpd-tui-plugin/test/graph.test.ts:
+(pass) the dependency chain > is TRANSITIVE and UPSTREAM only, and cannot spin on a cycle [0.08ms]
+(pass) the dependency chain > a cycle in the BOARD is named even when nothing is focused [0.32ms]
+(pass) the boxed layout > draws a MERGE, which is the shape a flat list cannot express [0.43ms]
+(pass) the boxed layout > NEVER exceeds the width it is given, at any width that draws at all [6.60ms]
+(pass) the boxed layout > a box width below the minimum is REFUSED rather than squeezed [0.48ms]
+(pass) the boxed layout > a task shows its marker, id, kind and subject, truncated rather than wrapped [0.26ms]
+(pass) the boxed layout > an empty board draws nothing rather than a bare frame [0.03ms]
+(pass) the arrowheads > an edge ENDS in a ▼ on the dependent's centre, in the cell above its box [0.17ms]
+(pass) the arrowheads > a FAN-IN of three blockers still shows exactly ONE ▼ [0.15ms]
+(pass) the arrowheads > a rank that no edge reaches draws no arrowhead [0.11ms]
+(pass) the arrowheads > every drawn row fits its width, keeps no trailing blank, and collapses same-tone runs [0.71ms]
+(pass) the focus > lights the task, its DEPENDENCIES and the edges between them; dims the rest [0.40ms]
+(pass) the focus > the edge between two chain members is BRIGHT, and an edge leaving the chain is not [0.29ms]
+(pass) the focus > with NO focus nothing is dimmed and nothing is a chain [0.24ms]
+(pass) the focus > the focus is marked with ▶ so it is findable without colour [0.43ms]
+(pass) the rail fallback > fits any width and never loses a task [0.26ms]
+(pass) the rail fallback > names the EXTRA blockers instead of drawing a second connector [0.06ms]
+(pass) the rail fallback > the connector points INTO the task, and keeps naming the extra blockers [0.10ms]
+(pass) the rail fallback > draws a task reached by no root, so a cycle cannot silently lose a row [0.04ms]
+(pass) the list view > groups by rank and names every blocker [0.09ms]
+(pass) the legend > names both directional marks, the five states and the focus marker, in two lines [0.04ms]
+(pass) the legend > shortens rather than cutting a sentence, naming BOTH marks on every rung [0.11ms]
+(pass) the pointer > resolves to a task by RECTANGLE, and to nothing on blank space [0.23ms]
+(pass) the pointer > uses the SAME geometry the rail drew, so the two cannot drift [0.11ms]
+(pass) the tone table > every tone maps to a dsh-tui THEME KEY, never to a colour literal [0.06ms]
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present: it registers, the TUI skips its fallback and says so [3.12ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present but its registration still pending: the fallback still yields (deterministic owner check) [0.37ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.28ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.35ms]
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+(pass) watchdog front door — notice composition > the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed [1.61ms]
+(pass) watchdog front door — notice composition > watchdogNotice states the live condition and the replay separately; composeNotices joins providers [0.04ms]
+(pass) watchdog front door — notice composition > heldTeams reads the durable hold index through the service, not a cache [0.34ms]
+(pass) watchdog front door — dialog and acknowledge > the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark [0.47ms]
+(pass) watchdog front door — dialog and acknowledge > a second start does not surface an acknowledged incident (the replay is watermark-driven) [0.41ms]
+(pass) watchdog front door — dialog and acknowledge > choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN [0.30ms]
+(pass) watchdog front door — dialog and acknowledge > the attach-time replay runs once, when BOTH the service and the dialog seam are composed [0.25ms]
+(pass) watchdog front door — dialog and acknowledge > no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog) [0.21ms]
+(pass) watchdog front door — dialog and acknowledge > readWatchdogView is a live read through the service (and empty without one) [0.21ms]
+(pass) watchdog front door — the absent-service path > with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw [0.32ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.02ms]
+270 |     expect(typeof mod.Config).toBe("function")
+271 |     expect((mod as Record<string, unknown>).default).toBeUndefined()
+272 |   })
+273 | 
+274 |   test("every config key has a default in the schema", () => {
+275 |     expect(mod.Config({})).toEqual({
+                                 ^
+error: expect(received).toEqual(expected)
+
+  {
+    "commandTrees": true,
+    "commands": true,
++   "dashboardKey": true,
+    "decisionEvents": true,
+    "dialogs": true,
+    "logPrefix": "mpd-tui",
+    "renderers": true,
+    "scene": true,
+    "sessionEvents": true,
+    "settingsSection": true,
+    "shortcuts": true,
+    "statusIntervalMs": 3000,
+    "statusLine": true,
+  }
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/plugin.test.ts:275:28)
+(fail) plugin contract > every config key has a default in the schema [0.59ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.14ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.10ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [1.76ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.17ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.19ms]
+383 |     expect(calls.sections[0].ns).toBe("mpd-config")
+384 |     // 25 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+385 |     // thirteen original mpd knobs plus the twelve team-model slot leaves (4 slots x provider /
+386 |     // model / reasoningEffort). The per-field assertions below are the other half of the
+387 |     // no-drift pair.
+388 |     expect(calls.sections[0].fields).toHaveLength(25)
+                                           ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 25
+Received length: 26
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/plugin.test.ts:388:38)
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [2.61ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [0.52ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.10ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > derives provider / model / effort options from a two-provider catalog [1.73ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh [1.57ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a degraded catalog falls back to the declared option lists [1.50ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a mounted adapter WITHOUT the seam (an older build) degrades to the declared lists [1.48ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the REAL adapter seam (t2) feeds the same projection end to end [1.46ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the section registers EXACTLY once per ns, even when the activation fires twice [1.24ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a DEFERRED register through the injected scope keeps a live non-root caller (the cordis binding late registration relies on) [22.94ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the projection is TOTAL: no catalog, a degraded catalog or a malformed one never yields an empty list [0.25ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.53ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.17ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.19ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.19ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [0.26ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.04ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [2.20ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [0.52ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [0.56ms]
+(pass) settings section disclosure (t21) > every row names its mpd.jsonc key, and the SURFACE states the disclosure once [0.12ms]
+938 |     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
+939 |     expect(String(slotFields[3].hint)).not.toContain("Architect")
+940 |     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
+941 |     // the thirteen scalar rows carry their key alone (they have no invented copy)
+942 |     for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
+943 |       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "mpd.jsonc tui.dashboardKey"
+Received: "enabled by default: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged panel (the host's subagent rows plus the dependency graph) instead of the host's own subagent dashboard, and with no team the key keeps its host behaviour (mpd.jsonc tui.dashboardKey)"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/plugin.test.ts:943:26)
+(fail) settings section disclosure (t21) > every slot hint LEADS with the knob's human sentence, then its key [0.46ms]
+947 |   test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {
+948 |     /** The call log, after the catalog read settled. */
+949 |     const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
+950 |     /** The one registered section. */
+951 |     const section = calls.sections[0]
+952 |     expect(section.fields).toHaveLength(SETTINGS_KNOBS.length)
+                                 ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 25
+Received length: 26
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/plugin.test.ts:952:28)
+(fail) settings section disclosure (t21) > the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints [1.52ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.03ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.09ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [0.91ms]
+
+4 tests failed:
+(fail) plugin contract > every config key has a default in the schema [0.59ms]
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [2.61ms]
+(fail) settings section disclosure (t21) > every slot hint LEADS with the knob's human sentence, then its key [0.46ms]
+(fail) settings section disclosure (t21) > the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints [1.52ms]
+
+ 145 pass
+ 4 fail
+ 1986 expect() calls
+Ran 149 tests across 8 files. [217.00ms]

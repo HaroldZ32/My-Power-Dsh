@@ -1,0 +1,40 @@
+HEAD baseline (git show HEAD:packages/mpd-tui-plugin/src/graph.ts) — same measurements
+cols= 24 mode=rail  rows=9 widestRow=24 <=cols:true spansCollapsed:false trailingBlankCell:false ▼count=0 ▸count=0
+cols= 40 mode=rail  rows=9 widestRow=40 <=cols:true spansCollapsed:false trailingBlankCell:false ▼count=0 ▸count=0
+cols= 70 mode=boxes rows=21 widestRow=69 <=cols:true spansCollapsed:true trailingBlankCell:false ▼count=0 ▸count=0
+cols=100 mode=boxes rows=21 widestRow=99 <=cols:true spansCollapsed:true trailingBlankCell:false ▼count=0 ▸count=0
+  repeated tone at cols=24 row=0 spanIndex=1 tone=completed prev="" cur="✓ T1 REQ subject o"
+  repeated tone at cols=24 row=0 spanIndex=2 tone=completed prev="✓ T1 REQ subject o" cur="  lead"
+  repeated tone at cols=24 row=1 spanIndex=1 tone=running prev="├─ " cur="◐ T3 WRK subject of T"
+  repeated tone at cols=24 row=2 spanIndex=1 tone=open prev="│  ├─ " cur="○ T7 REV subject o"
+  repeated tone at cols=24 row=3 spanIndex=1 tone=open prev="│  │  └─ " cur="○ T9 INT subjec"
+  repeated tone at cols=24 row=4 spanIndex=1 tone=open prev="│  └─ " cur="○ T8 REV subject o"
+  repeated tone at cols=24 row=5 spanIndex=1 tone=blocked prev="└─ " cur="○ T5 WRK subject of T"
+  repeated tone at cols=24 row=6 spanIndex=1 tone=completed prev="" cur="✓ T2 REQ subject o"
+  repeated tone at cols=24 row=6 spanIndex=2 tone=completed prev="✓ T2 REQ subject o" cur="  lead"
+  repeated tone at cols=24 row=7 spanIndex=1 tone=open prev="└─ " cur="○ T4 WRK subject of T"
+  repeated tone at cols=24 row=8 spanIndex=1 tone=failed prev="   └─ " cur="✗ T6 FIX subject o"
+  repeated tone at cols=40 row=0 spanIndex=1 tone=completed prev="" cur="✓ T1 REQ subject of T1            "
+  repeated tone at cols=40 row=0 spanIndex=2 tone=completed prev="✓ T1 REQ subject of T1            " cur="  lead"
+  repeated tone at cols=40 row=1 spanIndex=1 tone=running prev="├─ " cur="◐ T3 WRK subject "
+  repeated tone at cols=40 row=1 spanIndex=2 tone=running prev="◐ T3 WRK subject " cur="  Senior Engineer a2"
+  repeated tone at cols=40 row=2 spanIndex=1 tone=open prev="│  ├─ " cur="○ T7 REV subject of T7"
+  repeated tone at cols=40 row=3 spanIndex=1 tone=open prev="│  │  └─ " cur="○ T9 INT subject of "
+  repeated tone at cols=40 row=3 spanIndex=2 tone=open prev="○ T9 INT subject of " cur="    ⇠ T7+T8"
+  repeated tone at cols=40 row=4 spanIndex=1 tone=open prev="│  └─ " cur="○ T8 REV subject of T8"
+  repeated tone at cols=40 row=5 spanIndex=1 tone=blocked prev="└─ " cur="○ T5 WRK subject of T5"
+  repeated tone at cols=40 row=6 spanIndex=1 tone=completed prev="" cur="✓ T2 REQ subject of T2            "
+  repeated tone at cols=40 row=6 spanIndex=2 tone=completed prev="✓ T2 REQ subject of T2            " cur="  lead"
+  repeated tone at cols=40 row=7 spanIndex=1 tone=open prev="└─ " cur="○ T4 WRK subject of T4"
+  repeated tone at cols=40 row=8 spanIndex=1 tone=failed prev="   └─ " cur="✗ T6 FIX subject of T6"
+baseline box geometry: one edge
+ 0|┌────────────────────────────────┐|
+ 1|│ ○ P WRK subject of P           │|
+ 2|└────────────────┬───────────────┘|
+ 3|                 │|
+ 4|                 │|
+ 5|                 │|
+ 6|┌────────────────┴───────────────┐|
+ 7|│ ○ C WRK subject of C           │|
+ 8|└────────────────────────────────┘|
+baseline hits=2 hitTest mismatches=0

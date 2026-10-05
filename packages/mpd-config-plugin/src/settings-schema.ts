@@ -99,6 +99,12 @@ export const SettingsSchema = z.object({
     toolInFlightMaxMs: z.number().default(900000),
     holdTtlMs: z.number().default(900000),
   }),
+  // The DSH-TUI surface's own knob. It lives in THIS schema because this file is the single source
+  // for the namespace schema and for the knob list both front doors render — a knob declared only
+  // inside the TUI section would be drift. `dashboardKey` is the L0 default of the Ctrl+A takeover:
+  // ON, i.e. the takeover applies whenever MPD's team projection has a team with at least one task,
+  // and with no team the key keeps its host behaviour.
+  tui: z.object({ dashboardKey: z.boolean().default(true) }),
 })
 
 /** The two-part disclosure every surface must be able to show (§D.2, and the "not lost" clause). */
@@ -370,7 +376,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The twenty-five knobs, in display order: the original thirteen, then the twelve team-model slot leaves. */
+/** The twenty-six knobs, in display order: the original thirteen, the twelve team-model slot leaves, then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -386,4 +392,8 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
+  // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
+  // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", hint: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" },
 ]
