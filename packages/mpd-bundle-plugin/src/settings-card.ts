@@ -578,7 +578,7 @@
     // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
     // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
     // two watchdog rows above.
-    { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view", zh: "Ctrl+A 依赖视图", kind: "boolean", semantics: "while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard" },
+    { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", semantics: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
   ]
 
   // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what

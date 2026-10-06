@@ -28,7 +28,22 @@ import type { Log } from "./log.js"
 import { scalarText } from "./sanitize.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
 import { COMMAND_ACTIONS, COMMAND_ROOT, MODEL_COMMAND, MODEL_COMMAND_DESCRIPTION } from "./command-trees.js"
+import type { PanelOutcome } from "./panel.js"
+import { panelStatusLine } from "./panel.js"
 import { t } from "./i18n.js"
+
+/**
+ * How one routed panel open ended, plus the id it went to.
+ *
+ * `outcome` is the panel surface's own three-state answer (see `panel.ts`), carried through the
+ * command layer unchanged so the two entry points cannot disagree about which surface opened.
+ */
+export interface PanelRoute {
+  /** The surface the routed open ended on. */
+  readonly outcome: PanelOutcome
+  /** The final host panel id, when one was discovered. */
+  readonly id: string | undefined
+}
 
 /** What the command needs from the rest of the plugin. */
 export interface CommandActions {
@@ -38,7 +53,13 @@ export interface CommandActions {
   openTeam(): boolean
   /** Open the merged panel: the host's own subagent rows above the MPD team body. */
   openSubagents(): boolean
-  /** Open the plan-approval surface (frozen §3.2). */
+  /**
+   * Open the SIDEBAR panel, or the full-screen merged scene when this host has no usable panel seam.
+   * Returns how the routed open ended, so the printed line names the surface the user is looking at
+   * instead of claiming the panel opened when the scene did.
+   */
+  openPanel(): PanelRoute
+  /** The plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
   statusText(): string
@@ -118,6 +139,14 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     return actions.openSubagents()
       ? { kind: "success" }
       : { kind: "error", text: t("command.subagentsMissing") }
+  }
+  if (action === "panel") {
+    // `/mpd panel` always PRINTS which surface it reached (frozen clause R4 + the wave's status-line
+    // requirement): a routed open that fell back to the full-screen scene must not read as a panel
+    // that opened, and a host without the seam must say so rather than stay silent.
+    /** How the routed open ended, and the discovered host panel id. */
+    const route = actions.openPanel()
+    return { kind: "success", text: clamp(panelStatusLine(route.outcome, route.id)) }
   }
   if (action === "plan") {
     return actions.openPlan()

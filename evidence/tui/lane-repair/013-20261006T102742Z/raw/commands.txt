@@ -1,0 +1,33 @@
+=== tui-mount
+DSH_TUI_NO_LAUNCHPAD=1 bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root .mpd/recon/tui-013
+EXIT=0
+[tui-mount] launchpad gate DSH_TUI_NO_LAUNCHPAD=1
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=[] inherited=["--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--"]
+[tui-mount] preset=mpd session=1653b690-d4c1-4c54-a824-423b3b699461 isolationOffenders=0
+[tui-mount] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-06T10-27-42.389Z
+[tui-mount] PASS: third layer mounted, 12 session record(s) decoded, zero apply-crash signatures
+=== tui-panels
+DSH_TUI_NO_LAUNCHPAD=1 bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root .mpd/recon/tui-013
+EXIT=1
+[tui-panels] harness command records THIS run: [{"sessionId":"835705e3-8c39-497e-8b97-7eda66e63f5d","commandId":"cmd-e8a2c783-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"835705e3-8c39-497e-8b97-7eda66e63f5d","commandId":"cmd-e8a2c783-2","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"},{"sessionId":"835705e3-8c39-497e-8b97-7eda66e63f5d","commandId":"cmd-e8a2c783-3","kind":"success"}]
+[tui-panels] surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+[tui-panels] panel registration id=act1:team ok=true
+[tui-panels] negative control ok=false (must be false)
+[tui-panels] board-opened events in the sandbox store=4 scene-reported transcript rows=0
+[tui-panels] renderer cross-check: the plugin APPENDED its log-only event (proven in the session store) but the host projected NO row: the Channel's own row count and the captured transcript are both empty, so this is a PROJECTION gap, not a registration one
+[tui-panels] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-06T10-27-53.571Z
+[tui-panels] FAIL: [{"surface":"tuiRenderers","step":"renderer","source":"pane","keys":["Escape"],"waitMs":6000,"pattern":"/board opened via/","label":"the log-only event rendered a transcript row","requiredPatterns":["/board opened via/"],"missingPatterns":["/board opened via/"],"missingProof":[],"rendered":false,"sourceChars":54,"paneChars":5054,"judgedChars":5054}]
+=== tui-deps-ctrla
+DSH_TUI_NO_LAUNCHPAD=1 bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --sandbox-root .mpd/recon/tui-013
+EXIT=0
+[tui-deps-ctrla] dsh-tui home fixture=.mpd/recon/tui-013/home/.dsh-tui/onboarding.json, .mpd/recon/tui-013/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-deps-ctrla] seeded team fixture at .mpd/recon/tui-013/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] records removed for the control arm: .mpd/recon/tui-013/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] host contact: bound to the launched profile copy: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+[tui-deps-ctrla] store arm: ok=true id=act1:team
+[tui-deps-ctrla] panel body bound: on a host with the tuiPanels seam the merged view is the SIDEBAR panel: a host-accepted open changed ZERO bytes of the captured pane, and both MPD entry points route to it — so this lane proves the registration and the accepted open, and does NOT claim the panel body (or its arrow) renders
+[tui-deps-ctrla] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-06T10-28-57.807Z
+[tui-deps-ctrla] PASS: the host's Ctrl+A stayed INERT (its own dashboard opened) and /mpd panel proved the sidebar registration + accepted open

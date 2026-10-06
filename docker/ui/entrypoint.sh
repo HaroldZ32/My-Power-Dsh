@@ -149,9 +149,9 @@ cp -f /opt/mpd-e2e/run-capture.sh "$LOG_DIR/run-capture.sh" 2>/dev/null || true
 # restart cannot change the language under a reviewer.
 # A second sandbox HOME so a TUI boot can never disturb the Web profile, and its own DSH_HOME.
 log "starting the TUI inside tmux (socket /data/tui.sock)"
-npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.12.0}" >>"$LOG_DIR/tui-install.log" 2>&1
+npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.13.0}" >>"$LOG_DIR/tui-install.log" 2>&1
 DSH_HOME=/data/dsh-tui HOME=/data/home-tui mkdir -p /data/dsh-tui /data/home-tui /data/ws
-DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.12.0}" >>"$LOG_DIR/tui-add.log" 2>&1
+DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.13.0}" >>"$LOG_DIR/tui-add.log" 2>&1
 ( cd /src && DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add . >>"$LOG_DIR/tui-add.log" 2>&1 )
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true

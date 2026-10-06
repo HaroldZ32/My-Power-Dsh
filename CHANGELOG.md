@@ -16,6 +16,54 @@ Further reading:
 
 ## Unreleased — the gate contract is stated, not drifted
 
+### DSH-TUI 0.13.0: the sidebar panel seam, and a `Ctrl+A` that is now version-gated
+
+**Changed.**
+
+- **The DSH-TUI edition is adapted to `@deepseek-harness-tui/dsh-tui` 0.13.0, and the adapter adopted
+  the release's new sidebar panel seam as the FIFTEENTH `tui*` seam.** 0.13.0 adds `ctx.tuiPanels` (host
+  row `dsh-tui-panels`, export `@deepseek-harness-tui/dsh-tui/panels`) and renames the host's own
+  `dsh-ecosystem-spec/` directory to `tui-profile/`; the move touched every carrier in one wave — the
+  global package and the `dsh-tui` profile, the distribution pin (`dsh-distribution.json`'s `host-tui`
+  ref is `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0` now) and the QA host spec (`docker/tui-lane.sh`,
+  `docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC`,
+  `skills/dsh-qa/scripts/install-dependencies.ts`'s remedy, all defaulting to `0.13.0`).
+  `TUI_SEAMS.panels` is bound, probed and degraded like every other seam, and
+  `packages/mpd-tui-plugin/src/panel.ts` registers ONE right-sidebar panel whose body is the MERGED view
+  — the host's curated subagent snapshot rows first, then the MPD dependency DAG — under a FROZEN
+  descriptor: slug `team`, title `MPD`, `minColumns` 32, `order` 10, and **no** `compact`, because
+  0.13.0 validates and stores a descriptor's `compact` slot but does not mount its render slot, so
+  declaring one would claim a surface that cannot render. The final panel id is DISCOVERED from the
+  host's own `list()` read-back (measured `act1:team`), never composed. `alt+a` and the new `/mpd panel`
+  subcommand route through `tuiPanels.open()` while the seam is bound and FALL BACK to the existing
+  full-screen merged scene (`mpd-tui-subagents`) on any refusal — the one-open-per-plugin-per-5000 ms
+  rate limit, an id the host no longer owns, or no live panel consumer — never a silent no-op. The
+  legacy `Ctrl+A` host-input takeover is now VERSION-GATED: on a host that offers the panel seam it
+  stays INERT and `Ctrl+A` keeps the host's own dashboard meaning, while a host WITHOUT the seam keeps
+  the old arming rule (`tui.dashboardKey` on and the workspace team holding ≥1 task); `tui.dashboardKey`
+  stays in the config schema and the `/settings` row, documented as meaningful on OLD hosts only.
+  `docs/tui.md` and `docs/tui.zh-CN.md` carry all of it in both languages — including a new §11.3
+  amendment, with the 0.12.0-era sentences kept readable as history rather than silently rewritten.
+  Real-PTY evidence on 0.13.0: mount lane PASS (`evidence/tui/lanes/2026-10-06T10-27-42.389Z/`), the
+  surfaces lane with 7 of its 8 surfaces rendered — status line, `/mpd` completion, the `/mpd workmates`
+  command, the sidebar panel registration + open, the board scene, the `/settings` section with its
+  disclosure, and the managed dialog — with its negative control red as required
+  (`…/2026-10-06T10-27-53.571Z/`), and the `Ctrl+A` lane PASS (`…/2026-10-06T10-28-57.807Z/`); the full
+  lane report is `evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`. **The bounds are
+  stated, not glossed:** (a) the panel's BODY is not observable in a tmux pane capture on this host — a
+  320×50 capture was byte-identical before and after a host-ACCEPTED open, so the lane proves
+  registration + `open()` + the discovered id, NOT a render (recorded as `panelBodyBound`); (b)
+  `tuiRenderers` is still MISSING — the surfaces lane exits 1 on that required surface — a pre-existing
+  structural gap already declared in `evidence/tui/EVIDENCE-INDEX.md`, not caused by this wave; (c) no
+  0.12.0 PTY arm was obtained in this wave (a clean 0.12.0 sandbox needs `dsh plugin add`, blocked here
+  by the read-only pnpm store lock, and the fixture that exists is a mixed-version composition that
+  never reaches a chat screen), so the old-host arming path rests on unit arms — `takeoverArmed` in
+  `packages/mpd-tui-plugin/test/panel.test.ts` (16 pass / 0 fail on this revision) together with BOTH
+  version-gate arms in `packages/mpd-tui-plugin/test/plugin.test.ts` ("the contact stays INERT" and
+  "the contact arms", green in the canonical per-package run `bun test packages/mpd-tui-plugin` =
+  220 pass / 0 fail; only the explicit FILE-filtered form cannot load them, on a pre-existing vendored
+  `_deps` module-resolution error in the retired adopted plugin).
+
 **Changed.**
 
 - **The session-start complexity gate's contract is written down where the model reads it.** The gate

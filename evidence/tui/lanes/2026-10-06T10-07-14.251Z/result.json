@@ -1,0 +1,266 @@
+{
+  "slug": "tui-panels",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "bytes": 305525,
+    "mtimeLocal": "2026-10-06T10:02:32.194Z",
+    "mtimeUtc": "2026-10-06T10:02:32.194Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "after": "d88641e86d47f066ef98a48c6b068b6b9561813a3a5f273e7c1e15231a2a9b66",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "01a64a7a37d74b31fa4eed5f55d39cc735d6fbbe26e2f0333bea925afa7d26bc",
+  "steps": {
+    "surfaces": [
+      {
+        "surface": "tuiStatus",
+        "step": "boot",
+        "source": "pane",
+        "keys": [],
+        "waitMs": 0,
+        "pattern": "/mpd:\\s+team /",
+        "label": "keyed status line above the prompt",
+        "requiredPatterns": [
+          "/mpd:\\s+team /"
+        ],
+        "missingPatterns": [
+          "/mpd:\\s+team /"
+        ],
+        "rendered": false,
+        "sourceChars": 3994,
+        "paneChars": 3994
+      },
+      {
+        "surface": "tuiCommandTrees",
+        "step": "cmd-tree",
+        "source": "pane",
+        "keys": [
+          "/mpd "
+        ],
+        "post": [
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace",
+          "BSpace"
+        ],
+        "waitMs": 5000,
+        "pattern": "/\\u5217\\u51FA workmate|List the durable workmate library|\\u6253\\u5F00 MPD \\u9762\\u677F|Open the mpd board scene/",
+        "label": "/mpd completion advertised the tree child description",
+        "requiredPatterns": [
+          "/\\u5217\\u51FA workmate|List the durable workmate library|\\u6253\\u5F00 MPD \\u9762\\u677F|Open the mpd board scene/"
+        ],
+        "missingPatterns": [],
+        "rendered": true,
+        "sourceChars": 4436,
+        "paneChars": 4436
+      },
+      {
+        "surface": "commands",
+        "step": "cmd-workmates",
+        "source": "store",
+        "keys": [
+          "/mpd workmates",
+          "Enter"
+        ],
+        "waitMs": 7000,
+        "pattern": "/mpd workmates \\(/",
+        "label": "the command really ran (command/done text recorded by the harness)",
+        "requiredPatterns": [
+          "/mpd workmates \\(/"
+        ],
+        "missingPatterns": [
+          "/mpd workmates \\(/"
+        ],
+        "rendered": false,
+        "sourceChars": 0,
+        "paneChars": 8702
+      },
+      {
+        "surface": "tuiScenes",
+        "step": "scene",
+        "source": "pane",
+        "keys": [
+          "/mpd board",
+          "Enter"
+        ],
+        "waitMs": 8000,
+        "pattern": "/MPD board/",
+        "label": "the board scene opened (title rendered)",
+        "requiredPatterns": [
+          "/MPD board/"
+        ],
+        "missingPatterns": [],
+        "rendered": true,
+        "sourceChars": 8755,
+        "paneChars": 8755
+      },
+      {
+        "surface": "tuiRenderers",
+        "step": "renderer",
+        "source": "pane",
+        "keys": [
+          "Escape"
+        ],
+        "waitMs": 6000,
+        "pattern": "/board opened via/",
+        "label": "the log-only event rendered a transcript row",
+        "requiredPatterns": [
+          "/board opened via/"
+        ],
+        "missingPatterns": [
+          "/board opened via/"
+        ],
+        "rendered": false,
+        "sourceChars": 9707,
+        "paneChars": 9707
+      },
+      {
+        "surface": "tuiSettingsSections",
+        "step": "settings",
+        "source": "pane",
+        "keys": [
+          "/settings",
+          "Enter"
+        ],
+        "waitMs": 8000,
+        "pattern": "/MPD \\u63D2\\u4EF6\\u5305|MPD bundle/",
+        "allPatterns": [
+          {},
+          {},
+          {},
+          {}
+        ],
+        "label": "the /settings section rendered WITH its bridge+restart+never-lost disclosure",
+        "requiredPatterns": [
+          "/MPD \\u63D2\\u4EF6\\u5305|MPD bundle/",
+          "/a save writes <workspace>\\/\\.mpd\\/mpd\\.jsonc for the live session workspace\\(s\\)/",
+          "/takes effect for the mpd plugins after a restart/",
+          "/never lost/"
+        ],
+        "missingPatterns": [
+          "/never lost/"
+        ],
+        "rendered": false,
+        "sourceChars": 10197,
+        "paneChars": 10197
+      },
+      {
+        "surface": "tuiDialogs",
+        "step": "dialog",
+        "source": "pane",
+        "pre": [
+          "Escape"
+        ],
+        "keys": [
+          "M-w"
+        ],
+        "waitMs": 8000,
+        "pattern": "/mpd workmates/",
+        "label": "the managed select dialog appeared",
+        "requiredPatterns": [
+          "/mpd workmates/"
+        ],
+        "missingPatterns": [],
+        "rendered": true,
+        "sourceChars": 10564,
+        "paneChars": 10564
+      }
+    ],
+    "negativeControl": {
+      "ok": false,
+      "results": [
+        {
+          "surface": "negative-control",
+          "step": "boot",
+          "source": "pane",
+          "pattern": "/MPD-PANELS-CONTROL-CANNOT-APPEAR/",
+          "label": "impossible expectation on the real pane",
+          "requiredPatterns": [
+            "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+          ],
+          "missingPatterns": [
+            "/MPD-PANELS-CONTROL-CANNOT-APPEAR/"
+          ],
+          "rendered": false,
+          "sourceChars": 3994,
+          "paneChars": 3994
+        }
+      ]
+    }
+  },
+  "surfaces": [
+    {
+      "surface": "tuiStatus",
+      "source": "pane",
+      "rendered": false,
+      "label": "keyed status line above the prompt"
+    },
+    {
+      "surface": "tuiCommandTrees",
+      "source": "pane",
+      "rendered": true,
+      "label": "/mpd completion advertised the tree child description"
+    },
+    {
+      "surface": "commands",
+      "source": "store",
+      "rendered": false,
+      "label": "the command really ran (command/done text recorded by the harness)"
+    },
+    {
+      "surface": "tuiScenes",
+      "source": "pane",
+      "rendered": true,
+      "label": "the board scene opened (title rendered)"
+    },
+    {
+      "surface": "tuiRenderers",
+      "source": "pane",
+      "rendered": false,
+      "label": "the log-only event rendered a transcript row"
+    },
+    {
+      "surface": "tuiSettingsSections",
+      "source": "pane",
+      "rendered": false,
+      "label": "the /settings section rendered WITH its bridge+restart+never-lost disclosure"
+    },
+    {
+      "surface": "tuiDialogs",
+      "source": "pane",
+      "rendered": true,
+      "label": "the managed select dialog appeared"
+    }
+  ],
+  "commandRecords": {
+    "dones": [],
+    "runs": [],
+    "baselineCommandIds": []
+  },
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "noModelEcho": {
+    "ok": true,
+    "checked": 0,
+    "offenders": [],
+    "failureMode": "a user/message record carrying the command text proves the harness sent the slash command to the model (the plugin did not handle it)"
+  },
+  "rendererCrossCheck": {
+    "eventType": "mpd-tui/board-opened",
+    "eventsInSandboxStore": 0,
+    "storeSessions": [],
+    "sceneReportedTranscriptRows": 24,
+    "interpretation": "no event of this type reached the sandbox store — the plugin's iron-rule registration gate refused the append"
+  },
+  "sandboxRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+  "sessions": 4
+}

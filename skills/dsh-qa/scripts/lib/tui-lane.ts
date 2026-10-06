@@ -7,7 +7,7 @@
 //     plus a `pipe-pane` raw ANSI log;
 //   • a tmux server does not survive across shell invocations, so ONE process owns
 //     the whole lifecycle (spawn, drive, capture, kill);
-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.12.0` needs
+//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.13.0` needs
 //     network on first run, so the lanes take an EXPLICIT sandbox/cache root
 //     (`--sandbox-root`, recorded in every result) and reuse a warm profile instead
 //     of reinstalling: a verification run that is handed a different root proves it
@@ -285,6 +285,39 @@ interface SessionContentPart {
   readonly text?: unknown
 }
 
+/**
+ * The store file of ONE session directory, with its container VERSION DISCOVERED rather than assumed.
+ *
+ * The harness names this container `session.v<N>.jsonl.zstd` and the version moves with the harness
+ * (0.1.7-rc.2 wrote v3; 0.2.0-rc.1 writes v4). A reader that SPELLS a version is making a claim about
+ * the HARNESS, and such a claim expires silently: three readers in this module pinned `v3` and so
+ * reported "no records at all" on the current harness. Measured 2026-10-06 on a 0.13.0 sandbox boot —
+ * the store was `session.v4.jsonl.zstd` carrying 94 records, among them the `command/run` +
+ * `command/done` pair and the `mpd-tui/board-opened` event two lanes reported as ABSENT.
+ * @param sessionDir Absolute path of one `<sessions>/<projectKey>/<sessionId>` directory.
+ * @returns Absolute path of the newest-version store file, or `undefined` when the directory carries none.
+ */
+function discoverSessionStore(sessionDir: string): string | undefined {
+  /** The store files present, newest container version first so a v4 beats a leftover v3 beside it. */
+  let stores: string[] = []
+  try { stores = readdirSync(sessionDir) } catch { return undefined }
+  /** The store file names this reader recognises, NEWEST CONTAINER VERSION first. */
+  const candidates = stores
+    .filter((name) => /^session\.v\d+\.jsonl\.zstd$/.test(name))
+    // The version is compared NUMERICALLY, never lexicographically: a plain `.sort()` would rank a
+    // future `session.v10…` BELOW a `session.v4…` and silently read the older store (a risk the wave's
+    // reviewer named). The file name breaks ties, so the order stays total.
+    .sort((left, right) => {
+      /** The container version parsed out of one store file name (`0` when it has none). */
+      const versionOf = (name: string): number => Number(/^session\.v(\d+)\./.exec(name)?.[1] ?? 0)
+      return versionOf(right) - versionOf(left) || right.localeCompare(left)
+    })
+  if (candidates.length === 0) return undefined
+  /** The chosen store file, which the existence check below turns into `undefined` if it raced away. */
+  const file = join(sessionDir, candidates[0])
+  return existsSync(file) ? file : undefined
+}
+
 /** Session-event types the sandbox store carries, with the raw line count. */
 export function readUserMessages(root: string, limit: number = 200): UserMessageRecord[] {
   /** The sandbox-keyed session store directory this run's boot writes. */
@@ -294,9 +327,9 @@ export function readUserMessages(root: string, limit: number = 200): UserMessage
   if (!existsSync(dir)) return messages
   // Every session store under the sandbox key is scanned in readdir order.
   for (const id of readdirSync(dir)) {
-    /** The store file of one session; a session without a v3 store is skipped. */
-    const file = join(dir, id, "session.v3.jsonl.zstd")
-    if (!existsSync(file)) continue
+    /** The store file of one session; a session with no store at all is skipped. */
+    const file = discoverSessionStore(join(dir, id))
+    if (file === undefined) continue
     // Walk the decoded JSONL lines; only `user/message` records are considered.
     for (const line of decompressAllFrames(file).split("\n")) {
       if (!line.startsWith('{"type":"user/message"')) continue
@@ -514,6 +547,14 @@ export function sandboxEnv(root: string, extra: Env = {}): Env {
     XDG_DATA_HOME: join(root, "data"),
     TERM: "xterm-256color",
     NO_COLOR: "1",
+    // THE 0.13.0 LAUNCHPAD GATE, neutralised like the other two (measured, not assumed): an ordinary
+    // launch shows the launchpad instead of the chat screen unless a resume target / initial prompt is
+    // given OR this key is set (host `isLandingLaunch` in `lib/types/dsh-adapter/plugin.js`). A lane
+    // that did not set it would judge a splash screen and report every seam surface as absent. The key
+    // is set by DEFAULT here because every TUI lane boots for the CHAT screen; a caller that needs the
+    // landing behaviour passes its own value through `extra`. Unknown to a pre-0.13.0 host, where an
+    // unread env key is inert — so this is safe on both hosts.
+    DSH_TUI_NO_LAUNCHPAD: "1",
     ...extra,
   }
 }
@@ -563,6 +604,103 @@ export function profileState(root: string): ProfileState {
     bundles: Array.isArray(bundles) ? bundles : [],
     hasHost: (bundles ?? []).includes("@deepseek-harness-tui/dsh-tui"),
     hasBundle: (bundles ?? []).includes("@mpd-dsh/mpd"),
+  }
+}
+
+/** The two host preference files a sandbox HOME needs before a dsh-tui boot reaches a chat session. */
+export interface TuiHomeFixture {
+  /** The onboarding payload written: the first-run wizard's skip flag. */
+  readonly onboarding: { readonly completed: boolean; readonly version: number }
+  /** The preset every session in this sandbox HOME must run, i.e. `mpd`. */
+  readonly preset: string
+  /** Repo-relative paths of the two files, for the evidence record. */
+  readonly evidence: readonly string[]
+}
+
+/**
+ * Provision the sandbox HOME's `dsh-tui` preference files — the lane's OWN fixture step.
+ *
+ * A 0.13.0 boot reaches a real chat session only with BOTH neutralised, and both are measured, not
+ * inferred from the source alone:
+ *   • the FIRST-RUN WIZARD fires unless `<sandbox HOME>/.dsh-tui/onboarding.json` is
+ *     `{"completed":true,"version":1}` (host `lib/types/onboardingPrefs.js`, `shouldOfferOnboarding`);
+ *   • the AGENT PRESET: without `.dsh-tui/agent-preset.json` the session runs the host's own default
+ *     preset (`standard`) and the MPD surfaces never mount, so the lane would judge an empty plane.
+ * The LAUNCHPAD gate is the third, and it is an env key rather than a file: see {@link sandboxEnv}.
+ *
+ * Doing this here (instead of requiring a pre-provisioned root) is what makes the lane work on a
+ * FRESH sandbox without hand-holding; a warm root is left byte-identical when the files already agree.
+ * @param root The sandbox root whose `home/` becomes the child's HOME.
+ * @param preset The preset id every session must run; `mpd` is the bundle's only shipped preset.
+ * @returns The payload and paths written, recorded in the lane's evidence.
+ */
+export function provisionTuiHome(root: string, preset: string = "mpd"): TuiHomeFixture {
+  /** The host's own preference directory under the sandbox HOME. */
+  const dir = join(root, "home", ".dsh-tui")
+  mkdirSync(dir, { recursive: true })
+  /** The first-run wizard's skip flag, in the schema the host's `shouldOfferOnboarding` reads. */
+  const onboarding = { completed: true, version: 1 }
+  writeFileSync(join(dir, "onboarding.json"), JSON.stringify(onboarding, null, 2) + "\n")
+  writeFileSync(join(dir, "agent-preset.json"), JSON.stringify({ preset }, null, 2) + "\n")
+  return {
+    onboarding,
+    preset,
+    evidence: [join(dir, "onboarding.json").replace(REPO + "/", ""), join(dir, "agent-preset.json").replace(REPO + "/", "")],
+  }
+}
+
+/** What the sandbox profile's HOST package exposes about the 0.13.0 `tuiPanels` sidebar seam. */
+export interface HostPanelSeam {
+  /** True when the launched host declares the seam — the version-conditional branch every lane takes. */
+  readonly present: boolean
+  /** Absolute path of the host package the boot loads from this profile. */
+  readonly hostRoot: string
+  /** The host package's own declared version, `undefined` when its manifest is unreadable. */
+  readonly hostVersion: string | undefined
+  /** True when the host's OWN bundle patch declares the `dsh-tui-panels` row. */
+  readonly rowDeclared: boolean
+  /** True when the seam's module (`lib/types/dsh-adapter/panels.js`) is present in the payload. */
+  readonly modulePresent: boolean
+  /** One sentence explaining which reading decided the branch, for the evidence file. */
+  readonly reason: string
+}
+
+/**
+ * Probe the LAUNCHED host copy for the 0.13.0 sidebar-panel seam.
+ *
+ * This is the whole version condition of this wave: with the seam the legacy `Ctrl+A` contact must be
+ * INERT (the host keeps its own dashboard meaning and `/mpd panel` is MPD's entry point); without it
+ * the contact arms under `tui.dashboardKey`. Two independent readings are taken from the SAME payload
+ * the boot imports, because either one alone could be a leftover file: the host's own bundle patch
+ * must DECLARE the `dsh-tui-panels` row, AND the seam module must be present.
+ * @param profileDir The sandbox's `dsh-tui` profile directory (the boot's own baseUrl).
+ * @returns The probe, resting on the launched copy and never on the installed global package.
+ */
+export function hostPanelSeam(profileDir: string): HostPanelSeam {
+  /** The host package directory the profile's rows resolve to. */
+  const hostRoot = join(profileDir, "node_modules", "@deepseek-harness-tui", "dsh-tui")
+  /** The host's own patch layer, which declares every row it owns. */
+  const patch = join(hostRoot, "cordis.patch.yml")
+  /** The seam's payload module, the runtime half of the same claim. */
+  const module = join(hostRoot, "lib", "types", "dsh-adapter", "panels.js")
+  /** The host's manifest, read only for the version the evidence quotes. */
+  const manifest = join(hostRoot, "package.json")
+  /** The declared version, `undefined` when the manifest is missing or malformed. */
+  let hostVersion: string | undefined
+  try { hostVersion = (JSON.parse(readFileSync(manifest, "utf8")) as { version?: string }).version } catch { hostVersion = undefined }
+  /** True when the host's bundle patch names the panel row it would mount. */
+  const rowDeclared = existsSync(patch) && readFileSync(patch, "utf8").includes("id: dsh-tui-panels")
+  /** True when the seam's own module ships in this payload. */
+  const modulePresent = existsSync(module)
+  return {
+    present: rowDeclared && modulePresent,
+    hostRoot,
+    hostVersion,
+    rowDeclared,
+    modulePresent,
+    reason: rowDeclared && modulePresent
+      ? "host " + String(hostVersion) + " declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert"
+      : "host " + String(hostVersion) + " (rowDeclared=" + rowDeclared + " modulePresent=" + modulePresent + ") — the panel seam is ABSENT, so the legacy contact arms",
   }
 }
 
@@ -739,6 +877,19 @@ export interface TuiSessionOptions {
   readonly bootWaitMs?: number
   /** Pattern marking the CHAT screen as ready; the default accepts the English and Chinese prompts. */
   readonly readyPattern?: RegExp
+  /** tmux pane width in columns; defaults to 220. A wider pane is what makes a long host hint fit. */
+  readonly paneWidth?: number
+  /** tmux pane height in rows; defaults to 50. */
+  readonly paneHeight?: number
+  /**
+   * The command typed into the pane to start the host; defaults to `dsh-tui` from PATH.
+   *
+   * A DOWNGRADED fixture needs this. The installed launcher is a DELEGATING launcher with a version
+   * gate — measured 2026-10-06: pointing `DSH_HOME` at a 0.12.0 profile while the launcher is 0.13.0
+   * yields `[dsh-tui] cannot start: the profile runs v0.12.0 but this launcher is v0.13.0`, the process
+   * exits 1, and the pane never paints. The old host's OWN `bin/dsh-tui.js` accepts its own version.
+   */
+  readonly bootCommand?: string
 }
 
 /** One captured tmux pane. */
@@ -777,7 +928,7 @@ export interface TuiSessionResult {
  *   `send-keys` arguments (a literal string, or `Enter`/`Escape`/`M-w`).
  * @param options.bootWaitMs - how long the first boot may take.
  */
-export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_000, readyPattern = /❯|esc to interrupt|按 Esc/ }: TuiSessionOptions): TuiSessionResult {
+export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_000, readyPattern = /❯|esc to interrupt|按 Esc/, paneWidth = 220, paneHeight = 50, bootCommand = "dsh-tui" }: TuiSessionOptions): TuiSessionResult {
   mkdirSync(outDir, { recursive: true })
   /** The private tmux socket for this lane; `-S` keeps the server off the operator's own socket. */
   const socket = join(root, lane + ".sock")
@@ -792,7 +943,7 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
   writeFileSync(logFile, "")
 
   /** The detached `new-session` call; a non-zero status is reported instead of thrown. */
-  const created = tmux(socket, ["-f", "/dev/null", "new-session", "-d", "-s", "tui", "-x", "220", "-y", "50", "-c", join(root, "ws")])
+  const created = tmux(socket, ["-f", "/dev/null", "new-session", "-d", "-s", "tui", "-x", String(paneWidth), "-y", String(paneHeight), "-c", join(root, "ws")])
   if (created.status !== 0) failures.push("tmux new-session failed: " + created.stderr.trim())
   tmux(socket, ["pipe-pane", "-t", "tui", "-o", "cat > '" + logFile + "'"])
 
@@ -808,9 +959,12 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
     // the REPO as cwd, so workspace-scoped state (and the session-store key) escaped the
     // sandbox even though DSH_HOME/HOME pointed inside it.
     "DSH_TUI_WORKSPACE_TARGET=" + join(root, "ws"),
+    // The launchpad gate is an ENV key, so it must ride the explicit list above: `env -i` drops every
+    // ambient key, and a lane booted without it never reaches the chat screen on 0.13.0.
+    "DSH_TUI_NO_LAUNCHPAD=" + String(env.DSH_TUI_NO_LAUNCHPAD ?? "1"),
     "TERM=xterm-256color"]
-  /** The whole `env -i … dsh-tui` command line typed into the pane. */
-  const boot = "env -i " + envArgs.map((entry) => "'" + entry + "'").join(" ") + " dsh-tui"
+  /** The whole `env -i … <bootCommand>` command line typed into the pane. */
+  const boot = "env -i " + envArgs.map((entry) => "'" + entry + "'").join(" ") + " " + bootCommand
   tmux(socket, ["send-keys", "-t", "tui", boot, "Enter"])
 
   /** Capture the pane under a step name, write it to `<name>.pane.txt`, and return its text. */
@@ -965,7 +1119,7 @@ export interface TuiPrereqOptions {
 /** Declared prerequisites, in check order. */
 export function tuiPrereqs({ sandboxPresent, hostInstallRefusal }: TuiPrereqOptions): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.12.0", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.13.0", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
     // CHECKED BEFORE `absent-fixture`, and it exists because that one LIED. When `--install` ran and
     // the harness REFUSED the host on peer ranges, the run fell through to `requested-absent-fixture`
@@ -1073,11 +1227,9 @@ export function readSessionHeaders(root: string, { limit = 1000, projectKey: onl
       // in a reader is a claim about the HARNESS, and this one had silently expired.
       /** The session's store directory; a non-directory entry is skipped. */
       const sessionDir = join(keyDir, id)
-      /** The store files actually present, newest version first so a v4 beats a leftover v3. */
-      const stores = readdirSync(sessionDir).filter((name) => /^session\.v\d+\.jsonl\.zstd$/.test(name)).sort().reverse()
-      /** The store file of one session; a session with no store at all is skipped. */
-      const file = stores.length === 0 ? "" : join(sessionDir, stores[0])
-      if (file === "" || !existsSync(file)) continue
+      /** The store file of one session, its container version DISCOVERED (never assumed). */
+      const file = discoverSessionStore(sessionDir)
+      if (file === undefined) continue
       /** Every decoded frame of the store, concatenated as the harness wrote them. */
       const text = decompressAllFrames(file)
       /** The store's first `session` record line, or `undefined` when it carries none. */
@@ -1198,9 +1350,9 @@ export function countSessionEvents(root: string, type: string): SessionEventCoun
   const sessions: SessionEventHits[] = []
   // Every session store under the sandbox key contributes to the count.
   for (const id of readdirSync(dir)) {
-    /** The store file of one session; a session without a v3 store is skipped. */
-    const file = join(dir, id, "session.v3.jsonl.zstd")
-    if (!existsSync(file)) continue
+    /** The store file of one session, its container version DISCOVERED (never assumed). */
+    const file = discoverSessionStore(join(dir, id))
+    if (file === undefined) continue
     /** Every decoded frame of the store, concatenated. */
     const text = decompressAllFrames(file)
     /** Matching lines in this store, counted on the decoded JSONL text. */
@@ -1214,6 +1366,8 @@ export function countSessionEvents(root: string, type: string): SessionEventCoun
 export interface CommandRunRecord {
   /** Session the command was invoked in. */
   readonly sessionId: string
+  /** The id correlating this invocation with its `command/done`; the join key of the two records. */
+  readonly commandId: unknown
   /** The command name the harness recorded, `undefined` when the record omits it. */
   readonly name: unknown
   /** The raw argument string the harness recorded for the command. */
@@ -1277,16 +1431,16 @@ export function readCommandRecords(root: string): CommandRecordSet {
   if (!existsSync(dir)) return { runs, dones }
   // Every session store under the sandbox key is scanned, in readdir order.
   for (const id of readdirSync(dir)) {
-    /** The store file of one session; a session without a v3 store is skipped. */
-    const file = join(dir, id, "session.v3.jsonl.zstd")
-    if (!existsSync(file)) continue
+    /** The store file of one session, its container version DISCOVERED (never assumed). */
+    const file = discoverSessionStore(join(dir, id))
+    if (file === undefined) continue
     // The frames are decoded once, then every JSONL line of the store is walked.
     for (const line of decompressAllFrames(file).split("\n")) {
       if (!line.startsWith('{"type":"command/')) continue
       try {
         // The store's record JSON is dynamic; the parsed value is given the local record shape.
         const record = JSON.parse(line) as CommandEventRecord
-        if (record.type === "command/run") runs.push({ sessionId: id, name: record.data?.name, args: record.data?.args })
+        if (record.type === "command/run") runs.push({ sessionId: id, commandId: record.data?.commandId, name: record.data?.name, args: record.data?.args })
         if (record.type === "command/done") dones.push({ sessionId: id, commandId: record.data?.commandId, kind: record.data?.kind, text: record.data?.text })
       } catch {
         // A malformed record is surfaced by its absence, never counted as a success.
@@ -1308,6 +1462,22 @@ export function sandboxProjectKey(root: string): string {
   /** The sandbox workspace whose absolute path the host keys the session store by. */
   const ws = join(root, "ws")
   return "--" + ws.replace(/^\/+/, "").replaceAll("/", "-") + "--"
+}
+
+/**
+ * Every session id already present under the sandbox project key.
+ *
+ * A lane reads this BEFORE its boot so that "the sessions THIS run created" is a set difference rather
+ * than an assumption: a warm shared root carries earlier runs' sessions, and a check scoped to the
+ * delta cannot fail on a neighbour's record or pass because a neighbour's store shadowed the new one.
+ * @param root The sandbox root whose DSH_HOME holds the stores.
+ * @returns The session directory names present, `[]` when the key has no store yet.
+ */
+export function sandboxSessionIds(root: string): string[] {
+  /** The sandbox-keyed session store directory this run's boot writes. */
+  const dir = join(root, "dshhome", "sessions", sandboxProjectKey(root))
+  if (!existsSync(dir)) return []
+  try { return readdirSync(dir) } catch { return [] }
 }
 
 /** The session-store path a boot in this sandbox writes (isolation assertion). */

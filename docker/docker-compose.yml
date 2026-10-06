@@ -58,10 +58,10 @@ services:
       # to move with them — a mixed pair installs but declares unmet peers.
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
       # Which DSH-TUI host the TUI lane installs. It MUST accept the harness pin's peer range:
-      # 0.12.0 covers 0.1.7-rc.1 through 0.2.0-rc.2, while 0.11.2 stops at 0.2.0-rc.1 — measured
+      # 0.13.0 covers 0.1.7-rc.1 through 0.2.0-rc.2 (0.12.0, the earlier pin, did too), while 0.11.2 stops at 0.2.0-rc.1 — measured
       # 2026-10-02: a TUI pin whose peer range excludes the harness pin is REFUSED by
       # `dsh plugin --profile dsh-tui add`, so these two knobs move together.
-      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.12.0}
+      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.13.0}
     volumes:
       # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
       # `docker compose run` usable by hand and writes ./docker/out.
@@ -86,6 +86,6 @@ services:
       MPD_E2E_INSTALL_SPEC: ${MPD_ONECLICK_SPEC:-git+file:///opt/oneclick.git}
       MPD_E2E_OUT: /out
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
-      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.12.0}
+      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.13.0}
     volumes:
       - ${MPD_DOCKER_OUT:-./out}:/out

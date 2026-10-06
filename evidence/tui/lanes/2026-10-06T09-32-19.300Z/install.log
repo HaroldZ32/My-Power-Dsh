@@ -1,0 +1,21 @@
+dsh: initialized profile dsh-tui at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui
+Error: ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK
+
+  × adding a new package
+  ╰─▶ Failed to open the store operation lock at "pnpm-store-operation-locks":
+      Read-only file system (os error 30)
+
+dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/.plugin-manager/logs/operation-9RqJBi/pnpm.log
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+Error: ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK
+
+  × adding a new package
+  ╰─▶ Failed to open the store operation lock at "pnpm-store-operation-locks":
+      Read-only file system (os error 30)
+
+dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/.plugin-manager/logs/operation-fiBoPV/pnpm.log

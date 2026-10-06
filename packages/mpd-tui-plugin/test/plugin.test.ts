@@ -147,6 +147,9 @@ function allServices(overrides: Record<string, any> = {}): {
     commands: [],
     decisions: [],
     views: [],
+    // The sidebar panel seam's own log: one entry per registration, and one per open request.
+    panels: [],
+    panelOpens: [],
   }
   /** How many times a recorded disposer was called. */
   const disposed = { count: 0 }
@@ -222,6 +225,36 @@ function allServices(overrides: Record<string, any> = {}): {
         return disposer
       },
     },
+    // THE SIDEBAR PANEL SEAM (dsh-tui 0.13.0). It is present here because this double models the host
+    // the bundle targets; an arm that needs a PRE-0.13.0 host deletes it from the service map, which
+    // is exactly what makes `panelSeamBound()` false and the legacy Ctrl+A contact arm.
+    tuiPanels: (() => {
+      /** The panels this activation registered, in registration order (the host's own read-back). */
+      const owned: { id: string; title: string; source: string }[] = []
+      /** How many panels the host's own activation prefix names (a real host composes `act<N>:<slug>`). */
+      let activation = 0
+      return {
+        /** Registers one panel under the host-composed id and returns the host's own disposer. */
+        register(descriptor: { id: string; title: string }): () => void {
+          calls.panels.push(descriptor)
+          owned.push({ id: `act${activation}:${descriptor.id}`, title: descriptor.title, source: "plugin" })
+          return disposer
+        },
+        /** The host's own read-back: ONLY the calling activation's panels. */
+        list(): { id: string; title: string; source: string }[] {
+          return owned
+        },
+        /** Opens one of this activation's panels: the double always accepts. */
+        open(id: string): boolean {
+          calls.panelOpens.push(id)
+          return true
+        },
+        /** Names the activation prefix a test wants (the real host's `act<N>` fallback form). */
+        setActivation(next: number): void {
+          activation = next
+        },
+      }
+    })(),
     tuiDialogs: {
       /** No picker in this double: every dialog request resolves undefined. */
       async select(): Promise<undefined> {
@@ -293,6 +326,9 @@ describe("plugin contract", () => {
       commands: true,
       shortcuts: true,
       dialogs: true,
+      // The dsh-tui 0.13.0 sidebar panel surface: contributed by default, and routed to by
+      // `alt+a` / `/mpd panel` (with the full-screen scene as the declared fallback).
+      panel: true,
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,
@@ -368,9 +404,23 @@ describe("full composition (every service injected)", () => {
 
     // The activation channel is inject, per seam.
     const injected = host.injections.map((entry) => entry[0])
-    for (const id of ["tuiStatus", "tuiRenderers", "tuiSettingsSections", "tuiScenes", "tuiCommandTrees", "tuiShortcuts", "tuiDialogs", "commands", "tuiPluginHost", "settings"]) {
+    for (const id of ["tuiStatus", "tuiRenderers", "tuiSettingsSections", "tuiScenes", "tuiCommandTrees", "tuiShortcuts", "tuiDialogs", "commands", "tuiPluginHost", "settings", "tuiPanels"]) {
       expect(injected).toContain(id)
     }
+
+    // tuiPanels (dsh-tui 0.13.0): ONE sidebar panel, with the FROZEN descriptor, and its final id
+    // DISCOVERED from the host's own `list()` read-back (never composed on this side).
+    expect(calls.panels).toHaveLength(1)
+    expect(calls.panels[0].apiVersion).toBe(1)
+    expect(calls.panels[0].id).toBe("team")
+    expect(calls.panels[0].title).toBe("MPD")
+    expect(calls.panels[0].minColumns).toBe(32)
+    expect(calls.panels[0].order).toBe(10)
+    expect(calls.panels[0].icon).toBeUndefined()
+    expect(calls.panels[0].compact).toBeUndefined()
+    expect(typeof calls.panels[0].component).toBe("function")
+    expect(outcomeOf(report, "panel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "panel").detail)).toContain("act0:team")
 
     // tuiStatus: one live keyed contribution under the conventions' key.
     expect(STATUS_KEY).toBe("mpd-tui")
@@ -811,10 +861,33 @@ function sceneKitDouble(): { React: Record<string, unknown>; ui: Record<string, 
 }
 
 describe("the Ctrl+A takeover wiring (W2)", () => {
-  test("apply registers the zero-row keyhook view and reports its outcome under its own name", () => {
+  test("on a host WITH the panel seam the contact stays INERT (the version gate)", () => {
+    // The frozen rule (R5/R4): where the host offers `ctx.tuiPanels` (dsh-tui 0.13.0+), Ctrl+A keeps
+    // its host dashboard meaning and MPD's own key/command are the entry points — so the legacy
+    // host-input contact must register NOTHING at all.
     /** The recording services and the call log. */
     const { services, calls } = allServices()
-    /** A host double with every service composed. */
+    /** A host double with every service composed — the panel seam included. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    expect(calls.views).toHaveLength(0)
+    /** The gate's own record: skipped, with the reason a reader needs. */
+    const gated = outcomeOf(report, "dashboardKey")
+    expect(gated.state).toBe("absent")
+    expect(String(gated.detail)).toContain("panel seam")
+    // The panel itself is the surface that replaces it.
+    expect(outcomeOf(report, "panel").state).toBe("confirmed")
+    // …and the status seam (which the hook rides) still reports its own, separate outcome.
+    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
+  })
+
+  test("on a host WITHOUT the panel seam the contact arms (the legacy path)", () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    // A pre-0.13.0 host: the panel service is not composed at all.
+    delete (services as Record<string, unknown>).tuiPanels
+    /** A host double with every other service composed. */
     const host = hostDouble(services)
     /** The report `apply` returned. */
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
@@ -826,48 +899,19 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     expect(hook?.maxRows).toBe(1)
     expect(typeof hook?.component).toBe("function")
     expect(outcomeOf(report, "dashboardKey").state).toBe("requested")
-    // …and it is reported as its OWN role, riding the status seam that the entry above reports.
-    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
-  })
-
-  test("with the row config off, no view is registered and the absence says why", () => {
-    /** The recording services and the call log. */
-    const { services, calls } = allServices()
-    /** A host double with every service composed. */
-    const host = hostDouble(services)
-    /** The report of a composition that disabled the takeover. */
-    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, dashboardKey: false })
-    expect(calls.views).toHaveLength(0)
-    /** The skip's own record: `absent`, with the reason a reader needs. */
-    const skipped = outcomeOf(report, "dashboardKey")
-    expect(skipped.state).toBe("absent")
-    expect(String(skipped.detail)).toContain("dashboardKey: false")
+    // The panel registration is attempted and settles ABSENT rather than throwing (the deferred binder
+    // degrades on a host that never offers the seam).
+    expect(outcomeOf(report, "panel").state).toBe("absent")
   })
 })
 
 describe("the Ctrl+A takeover wiring (W2)", () => {
-  test("apply registers the zero-row keyhook view and reports its outcome under its own name", () => {
+  test("with the row config off, the contact stays inert on BOTH host generations", () => {
     /** The recording services and the call log. */
     const { services, calls } = allServices()
-    /** A host double with every service composed. */
-    const host = hostDouble(services)
-    /** The report `apply` returned. */
-    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
-    /** The keyhook's own view registration, out of every rich view the host received. */
-    const hook = calls.views.find((view) => view.key === "mpd-tui-keyhook")
-    expect(hook).toBeDefined()
-    // 1 row, not 0: the host's own validator refuses 0 (it requires an integer 1..3), so the ZERO is
-    // rendered by the empty Box the component returns.
-    expect(hook?.maxRows).toBe(1)
-    expect(typeof hook?.component).toBe("function")
-    expect(outcomeOf(report, "dashboardKey").state).toBe("requested")
-    // …and it is reported as its OWN role, riding the status seam that the entry above reports.
-    expect(outcomeOf(report, "tuiStatus").state).toBe("requested")
-  })
-
-  test("with the row config off, no view is registered and the absence says why", () => {
-    /** The recording services and the call log. */
-    const { services, calls } = allServices()
+    // The legacy host: without this deletion the arm below would pass for the version gate's reason
+    // instead of the config's, which is exactly the confusion this arm exists to prevent.
+    delete (services as Record<string, unknown>).tuiPanels
     /** A host double with every service composed. */
     const host = hostDouble(services)
     /** The report of a composition that disabled the takeover. */
@@ -877,6 +921,25 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     const skipped = outcomeOf(report, "dashboardKey")
     expect(skipped.state).toBe("absent")
     expect(String(skipped.detail)).toContain("dashboardKey: false")
+  })
+
+  test("with the panel surface off, no panel is registered and both entry points keep the scene path", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the panel surface. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false })
+    expect(calls.panels).toHaveLength(0)
+    /** The skip's own record: `absent`, naming the knob. */
+    const skipped = outcomeOf(report, "panel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("panel: false")
+    // `/mpd panel` still reaches a surface: the full-screen merged scene.
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    expect((await handler({ rawInput: "panel" })).kind).toBe("success")
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
   })
 
   test("every registered SCENE reports the host kit it received (the contact's arming path)", () => {
@@ -971,6 +1034,89 @@ describe("honest outcomes (no disposer-type inference)", () => {
     /** The report `apply` returned. */
     const report = mod.apply(host.ctx as never, {})
     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
+  })
+
+  test("a panel host with no list() read-back is reported requested, never confirmed", () => {
+    // The id is DISCOVERED from the host's own `list()`; without that read-back nothing proves the
+    // registration, so the honest state is `requested` — exactly as the other unconfirmable seams.
+    /** A host whose panel registry takes a registration but exposes no read-back. */
+    const services = { tuiPanels: { register: () => () => {}, open: () => true } }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The panel's own measured outcome. */
+    const measured = outcomeOf(report, "panel")
+    expect(measured.state).toBe("requested")
+    expect(String(measured.detail)).toContain("no panel read-back")
+  })
+
+  test("a refused panel registration is reported refused, never confirmed", () => {
+    /** A host whose panel registry refuses every descriptor by throwing. */
+    const services = {
+      tuiPanels: {
+        register: () => {
+          throw new Error("duplicate panel id")
+        },
+        list: () => [],
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The report `apply` returned. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The panel's own measured outcome. */
+    const measured = outcomeOf(report, "panel")
+    expect(measured.state).toBe("refused")
+    expect(String(measured.detail)).toContain("duplicate panel id")
+    /** The one aggregate diagnostic line names the refusal instead of hiding it. */
+    const aggregate = host.infos.find((line) => line.includes("mpd TUI surfaces")) ?? ""
+    expect(aggregate).toContain("tuiPanels(refused")
+  })
+
+  test("a refused panel OPEN falls back to the full-screen scene and prints the reason", async () => {
+    // The frozen clause R4: `opened() === false` means the host refused (rate-limited, an id it no
+    // longer owns, or no live panel consumer) — never a silent no-op, so the scene opens and the
+    // printed line says which surface the user is looking at.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** The same services, with a panel registry that refuses every open request. */
+    const refusalServices = {
+      ...services,
+      tuiPanels: { ...services.tuiPanels, open: () => false },
+    }
+    /** A host double for those services. */
+    const host = hostDouble(refusalServices)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd panel` answer. */
+    const result = await handler({ rawInput: "panel" })
+    expect(result.kind).toBe("success")
+    expect(String(result.text)).toBe(t("panel.fallback", { id: "act0:team" }))
+    // The refusal is not a no-op: the full-screen merged scene opened.
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("an accepted panel OPEN prints the panel status line with the discovered id", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed (its panel registry accepts every open). */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd panel` answer. */
+    const result = await handler({ rawInput: "panel" })
+    expect(result.kind).toBe("success")
+    // The id is the HOST's own `<pluginId>:<slug>`, discovered from `list()` — never composed here.
+    expect(String(result.text)).toBe(t("panel.opened", { id: "act0:team" }))
+    expect(calls.panelOpens).toEqual(["act0:team"])
+    // …and the panel was the surface: no scene was opened for this invocation.
+    expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(false)
+    // `/mpd subagents` rides the same route.
+    expect((await handler({ rawInput: "subagents" })).kind).toBe("success")
+    expect(calls.panelOpens).toEqual(["act0:team", "act0:team"])
   })
 
   test("a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe", () => {
@@ -1092,7 +1238,7 @@ describe("/mpd command grammar (bare = picker, value = direct, status = print)",
     /** The handler's answer for an action outside the grammar. */
     const unknown = await handler({ rawInput: "nope" })
     expect(unknown.kind).toBe("error")
-    expect(unknown.text).toContain(t("command.unknownAction", { action: "nope", usage: "/mpd [board|team|plan|subagents|workmates|status]" }).split("{")[0].trim())
+    expect(unknown.text).toContain(t("command.unknownAction", { action: "nope", usage: `/mpd [${COMMAND_ACTIONS.join("|")}]` }).split("{")[0].trim())
   })
 })
 

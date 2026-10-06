@@ -1,0 +1,50 @@
+
+   MPD team — Scene Smoke (tui-scene) · 216x48
+   active · 3 task(s) · 1 done · 1 running · 1 pending · 0 failed · 2 link(s)
+   roster  ◐Senior Engineer 1/2 · ○Reviewer 0/1                                                    
+   task dependency graph                                                                          
+   ┌────────────────────────────────┐                                                           
+   │ ✓ T1 REQ freeze the contract   │                                                             
+   └────────────────┬───────────────┘                                                              
+                    │                     
+                    │                                                                             
+                    │                                                                         
+   ┌────────────────┴───────────────┐                                                             
+   │ ◐ T2 WRK build the graph       │                                                             
+   └────────────────┬───────────────┘                                                             
+                    │                                                  
+                    │                               
+                    │                                                                                          
+   ┌────────────────┴───────────────┐
+   │ ○ T3 REV review the graph      │
+   └────────────────────────────────┘
+   esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board
+                                                                                            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                                                                                                                                                                                                                          
+                            
+
+

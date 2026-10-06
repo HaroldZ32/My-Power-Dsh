@@ -1,0 +1,141 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "cb1191cc-b5cc-4dd8-9526-d602967e0759",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/cb1191cc-b5cc-4dd8-9526-d602967e0759/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:0032debdfd06e53407cd59421d137e6cb3b17e9498a3111c545b35661355882c",
+      "agentPreset": "standard",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "ab71a97b-9ff5-4993-bbce-99c558bc587f",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/ab71a97b-9ff5-4993-bbce-99c558bc587f/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:9d63e24012394d43c76e5b77ed616131854252db511f3ab7ff1cc0be13bf5bb8",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "d4a3e5bc-b4d2-438a-bc9f-bb3bb9472e12",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/d4a3e5bc-b4d2-438a-bc9f-bb3bb9472e12/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:ce26542ed857624761c84ebeb8e629732942c3e48c610bccfc337a3ecdcaaf40",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "6e4f77ae-f26d-4dda-87ec-0178c9c83abb",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/6e4f77ae-f26d-4dda-87ec-0178c9c83abb/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:7a75115ad35d354f00fdc0d85c080eb763f2813f1f7d2179e7fa2908966cd3c5",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "835705e3-8c39-497e-8b97-7eda66e63f5d",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/835705e3-8c39-497e-8b97-7eda66e63f5d/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:9c5cbb6148052383d920dd7d43a5973c2a929341e17c8a7db068b345e2d9ec7b",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "bf751343-0492-4063-8ce7-2720e1b7433f",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/bf751343-0492-4063-8ce7-2720e1b7433f/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:f36f6c31f8b2446e4489b823c17cfc2f340b35239eaacc25ae0d29b62120cf70",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "cb1be62a-7de9-44c8-ab84-6dfa0f651d21",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/cb1be62a-7de9-44c8-ab84-6dfa0f651d21/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:8b428a6f1f97591e96908cb45ad3f948d166359e2d5bd0cc562cf663efb203c0",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "5b65787d-268b-4c76-817b-372ab2ab8e69",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/5b65787d-268b-4c76-817b-372ab2ab8e69/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:61dbf6ae163ec9753cd59687c0ba54f63c66443ef8cbf7aefa8fe6b5559618ca",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "1653b690-d4c1-4c54-a824-423b3b699461",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/1653b690-d4c1-4c54-a824-423b3b699461/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:8e5aceccaf93b6813dc6ff217061c0e802cf598d2b313541f2a745b4daa61a61",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "c00aad45-1c6b-4f8e-9675-35bd1654fdad",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/c00aad45-1c6b-4f8e-9675-35bd1654fdad/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:586888535435b2a182c4662dc8e0f6a0bd54756cc1befcf994cd81a7f1da264e",
+      "agentPreset": "standard",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "fa742fea-504b-48c7-8e09-64c0c98700d6",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/fa742fea-504b-48c7-8e09-64c0c98700d6/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:53749be3e8e366d0cf90784cf9430f537a6c7343b50245abf298e25f32af44f2",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "0e1d1f97-a702-4a8e-a031-119284adb9c3",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/0e1d1f97-a702-4a8e-a031-119284adb9c3/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:678e2887078a3dcc06e4db4aac065041df9b9c507039cbb4c43de2d10fd920bb",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "5b2736f5-609c-4060-bc53-5b4a18d32bca",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/5b2736f5-609c-4060-bc53-5b4a18d32bca/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:61dc43f14bcae8d21f607ca4c0e6f283b88fb4c9f5dfb68e40d67ee82fff36a8",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "49e6b53c-bbaf-499f-82ca-219b13447f59",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/49e6b53c-bbaf-499f-82ca-219b13447f59/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:450548a839498dd255f49e9872e7946b3c10aa49717f24700e64f044a42161db",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "272e3960-95fe-4742-be83-f91e8e1e7fd8",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/272e3960-95fe-4742-be83-f91e8e1e7fd8/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:dcd65778cdffdc27771f1c4d34ec82a5a5bd64429a78b93c7c20cce17d1a03fa",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "2ad20bf7-76da-4d15-93b3-483de552c367",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/2ad20bf7-76da-4d15-93b3-483de552c367/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:fd9f69067d55ebe9ae7ec5003022ee28eae2d8278884020355e449d89514b51f",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    },
+    {
+      "sessionId": "4282605c-d654-464d-adf7-16716032787c",
+      "projectKey": "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--",
+      "store": ".mpd/recon/tui-013/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-tui-013-ws--/4282605c-d654-464d-adf7-16716032787c/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:89c3277ed6d36348f90b1e2d1d3919f57335c300e1e992eda7dbe429fb9c9f25",
+      "agentPreset": "mpd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws"
+    }
+  ]
+}

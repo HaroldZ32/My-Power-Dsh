@@ -8,8 +8,9 @@
 // This module is that missing surface. Every DSH-TUI seam the bundle uses is resolved, probed and
 // reported HERE.
 //
-// WRAPPED SEAMS (14 `tui*` services plus `tuiPrompt`, the harness `commands` registry and the
-// harness `settings` provider): see {@link TUI_SEAMS} for the single-source id table.
+// WRAPPED SEAMS (15 `tui*` services — the fourteen present since 0.12.0 plus the sidebar panel
+// registry 0.13.0 added — plus `tuiPrompt`, the harness `commands` registry and the harness
+// `settings` provider): see {@link TUI_SEAMS} for the single-source id table.
 //
 // THE BINDING DISCIPLINE IS MEASURED, NOT CHOSEN (T4-INERT-1, evidence at
 // `evidence/tui/plugin/20260915T054343Z/mount-instrumentation/`): in this harness a plugin
@@ -96,6 +97,13 @@ export const TUI_SEAMS = {
   effectLedger: "tuiEffectLedger",
   /** The workspace registry. */
   workspaces: "tuiWorkspaces",
+  /**
+   * The sidebar panel registry — the sanctioned panel seam, ADDED BY dsh-tui 0.13.0.
+   *
+   * Its absence is not a failure but the version discriminator the legacy Ctrl+A host-input contact
+   * arms on (see {@link TuiAdapter.panelSeamBound}).
+   */
+  panels: "tuiPanels",
   /** The prompt-slot seam — HOST-UNAVAILABLE on every measured dsh-tui build (docs/tui.md seam 2). */
   prompt: "tuiPrompt",
   /** The harness command registry (`/mpd`). */
@@ -130,6 +138,7 @@ export const TUI_SEAM_KEYS: readonly TuiSeamKey[] = [
   "messageObserver",
   "effectLedger",
   "workspaces",
+  "panels",
   "prompt",
   "commands",
   "settings",
@@ -184,7 +193,7 @@ export interface OutcomeSink {
  * registration counts as "something happened" (the line must be able to report a refusal instead
  * of hiding it behind the nothing-composed warning), and the warning is ONE line for the whole
  * plugin rather than one per seam — a TUI boot must not fill its log with the same expected miss
- * seventeen times.
+ * eighteen times.
  * @param sink - where the line goes (a host logger or the file sink; never a terminal fd).
  * @param outcomes - the outcomes to report, in wiring order.
  * @returns which branch printed, so a caller can assert the aggregate's shape.
@@ -847,6 +856,61 @@ export interface TuiWorkspacesLike {
 }
 
 /**
+ * `ctx.tuiPanels` — the sidebar panel registry, ADDED BY dsh-tui 0.13.0.
+ *
+ * This is the seam the bundle's upstream panel ask was answered with: a plugin contributes a
+ * right-hand sidebar panel (a `component` slot, plus a `compact` row slot the 0.13.0 host validates
+ * and stores but does NOT mount), and the HOST owns admission, the per-plugin budget (≤4) , the
+ * global budget (≤32) and crash isolation.
+ *
+ * Its ABSENCE is also the version discriminator the legacy Ctrl+A host-input contact arms on: a host
+ * that offers this seam is a host where that contact must stay inert, because the panel is reachable
+ * through MPD's own key instead ({@link TuiAdapter.panelSeamBound}).
+ */
+export interface TuiPanelsLike {
+  /** Registers one panel; the host prefixes the slug with the calling activation's plugin id. */
+  register(descriptor: TuiPanelDescriptorLike, identity?: unknown): Disposer | undefined
+  /** The panels registered BY THE CALLING ACTIVATION — the read-back that proves a registration. */
+  list?(): readonly TuiPanelSummaryLike[]
+  /** Opens one of the caller's own panels; false when refused, rate-limited or unconsumed. */
+  open?(id: string): boolean
+  /** Closes one of the caller's own panels. */
+  close?(id: string): boolean
+  /** Sets or clears the caller's own panel badge. */
+  badge?(id: string, badge: { level: string; unread: number } | null): boolean
+}
+
+/** One sidebar panel descriptor, as dsh-tui 0.13.0 validates it. */
+export interface TuiPanelDescriptorLike {
+  /** The host's panel API version; the host refuses every other value (0.13.0 accepts exactly 1). */
+  apiVersion: 1
+  /** A single lowercase slug; the host composes the final id as `<pluginId>:<slug>`. */
+  id: string
+  /** The display title (non-empty; the host sanitises it to at most 80 cells). */
+  title: string
+  /** Optional icon whose DISPLAY width must be exactly one cell. */
+  icon?: string
+  /** Optional sidebar width floor, an integer from 12 to 64 (the host's own default is 28). */
+  minColumns?: number
+  /** Optional ordering hint within the host's panel bar. */
+  order?: number
+  /** The full panel component, rendered BY THE HOST with its own React and ui kit. */
+  component?: unknown
+  /** The compact row slot: validated and stored by 0.13.0, NOT mounted (the host's own TODO §18.1). */
+  compact?: { maxRows: 1 | 2 | 3; component: unknown }
+}
+
+/** One row of the host's panel read-back; the id is the `<pluginId>:<slug>` the HOST composed. */
+export interface TuiPanelSummaryLike {
+  /** The final id, host-prefixed. */
+  id: string
+  /** The title the host stored. */
+  title: string
+  /** `plugin` for every plugin-registered panel. */
+  source: string
+}
+
+/**
  * `ctx.tuiPrompt` — the prompt-slot seam.
  *
  * HOST-UNAVAILABLE: every measured dsh-tui build omits this service, and `docs/tui.md` (seam 2)
@@ -1093,6 +1157,36 @@ export interface SceneRegistrationHandle extends SeamBindingHandle {
   closeScene(id: string): boolean
 }
 
+/**
+ * The handle a sidebar panel registration returns.
+ *
+ * `id()` is the FINAL host id (`<pluginId>:<slug>`), DISCOVERED from the host's own `list()`
+ * read-back rather than composed here: the plugin-id half comes from a Component identity this
+ * bundle's plain loader row does not carry, so the host falls back to a per-activation `act<N>`
+ * name that cannot be predicted from this side. It stays undefined until the seam binds and a
+ * read-back proves the registration.
+ */
+export interface PanelRegistrationHandle extends SeamBindingHandle {
+  /** The final host panel id, or undefined while unbound, refused, or without a host read-back. */
+  id(): string | undefined
+  /** Releases the registration early; the activation's own teardown runs it too, exactly once. */
+  dispose(): void
+}
+
+/**
+ * The result of one panel-open request.
+ *
+ * `opened()` is the HOST's own answer whenever the seam was BOUND at call time: true means the
+ * request reached the side panel, false means the host refused it (not this activation's panel, rate
+ * limited to one open per 5000 ms, or no live panel consumer). It is undefined when the request was
+ * QUEUED because the seam had not bound yet — so a caller that needs a synchronous routing decision
+ * (panel or the legacy scene) tests {@link TuiAdapter.panelSeamBound} first.
+ */
+export interface PanelOpenResult extends SeamBindingHandle {
+  /** The host's answer, or undefined when the request was queued instead of answered. */
+  opened(): boolean | undefined
+}
+
 /** The consumer-facing shape of one status view, owned by {@link TuiAdapter.registerStatusView}. */
 export interface TuiStatusView {
   /** The status key the host validates against its key grammar. */
@@ -1213,6 +1307,8 @@ export interface TuiAdapter {
   effectLedger(): TuiEffectLedgerLike | undefined
   /** The bound workspace registry, or undefined when the seam never bound. */
   workspaces(): TuiWorkspacesLike | undefined
+  /** The bound sidebar panel registry, or undefined on every host before dsh-tui 0.13.0. */
+  panels(): TuiPanelsLike | undefined
   /** The bound prompt slot, or undefined (host-unavailable on every measured build). */
   prompt(): TuiPromptLike | undefined
   /** The bound harness command registry, or undefined when the seam never bound. */
@@ -1280,6 +1376,29 @@ export interface TuiAdapter {
   registerShortcut(combo: string, options: { description: string; handler: () => void | Promise<void> }, identity?: unknown): SeamBindingHandle
   /** Declares the completion provider of one command root. */
   registerCommandTree(provider: TuiCommandTreeProvider): SeamBindingHandle
+  /**
+   * Registers the sidebar panel through the `panels` seam (dsh-tui 0.13.0+).
+   *
+   * Safe to call at apply time: with the deferred binder the call is queued until the seam binds, and
+   * on a host that never offers the seam it settles as `absent` without a throw.
+   * @param descriptor - the panel descriptor, as the host validates it (apiVersion exactly 1).
+   * @returns the registration handle carrying the DISCOVERED final id.
+   */
+  registerPanel(descriptor: TuiPanelDescriptorLike): PanelRegistrationHandle
+  /**
+   * Asks the host to open one panel THIS activation registered.
+   * @param id - the final id {@link PanelRegistrationHandle.id} discovered at registration.
+   * @returns the request handle, whose `opened()` is the host's answer when the seam was bound.
+   */
+  openPanel(id: string): PanelOpenResult
+  /**
+   * Whether the sidebar panel seam is bound right now.
+   *
+   * NOT a capability report but the ARBITER between this bundle's two panel surfaces: `alt+a` and
+   * `/mpd panel` route through the panel seam when this is true and through the legacy full-screen
+   * scene when it is false, and the legacy Ctrl+A host-input contact arms ONLY while it is false.
+   */
+  panelSeamBound(): boolean
   /** Subscribes one mediated decision intercept point. */
   requestDecisionEvent(
     event: string,
@@ -1505,6 +1624,7 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
     messageObserver: () => bindings.messageObserver.service as TuiMessageObserverLike | undefined,
     effectLedger: () => bindings.effectLedger.service as TuiEffectLedgerLike | undefined,
     workspaces: () => bindings.workspaces.service as TuiWorkspacesLike | undefined,
+    panels: () => bindings.panels.service as TuiPanelsLike | undefined,
     prompt: () => bindings.prompt.service as TuiPromptLike | undefined,
     commands: () => bindings.commands.service as CommandsLike | undefined,
     settings: () => bindings.settings.service as SettingsProviderLike | undefined,
@@ -1867,6 +1987,110 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       })
       return handle
     },
+
+    /** Registers the sidebar panel; see {@link TuiAdapter.registerPanel}. */
+    registerPanel(descriptor: TuiPanelDescriptorLike): PanelRegistrationHandle {
+      /** The registration's handle. */
+      const handle = makeHandle("panels")
+      /** The final host-composed id, discovered from the host's own read-back. */
+      let finalId: string | undefined
+      /** The host's own disposer, kept so `dispose()` can release the panel before teardown. */
+      let release: Disposer | undefined
+      /** Whether the host's disposer already ran; keeps `dispose()` idempotent. */
+      let disposed = false
+      /** Releases the registration early; also run — exactly once — by the activation's teardown. */
+      const dispose = (): void => {
+        if (disposed) return
+        disposed = true
+        /** The host's disposer, captured before the field is cleared. */
+        const call = release
+        release = undefined
+        finalId = undefined
+        if (typeof call !== "function") return
+        try {
+          call()
+        } catch {
+          // A host disposer that throws must not break the activation's teardown.
+        }
+      }
+      whenBoundInternal("panels", (service, scope) => {
+        /** The bound panel registry, before `register` is trusted. */
+        const registry = service as TuiPanelsLike
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.register is missing` })
+          return
+        }
+        // The ids THIS activation had registered before the call, so the id the host composes can be
+        // DISCOVERED from the read-back: the `<pluginId>` half is the host's, not ours to predict.
+        /** The ids visible to this activation before the registration. */
+        const before = new Set((typeof registry.list === "function" ? registry.list() ?? [] : []).map((row) => row.id))
+        try {
+          // The identity is the INJECTED SCOPE — the calling activation. The host's own
+          // `requirePluginCaller` refuses a consumer ctx, and the same mistake made every
+          // `tuiStatus` registration silently refuse on 0.12.0 (see `setStatus`).
+          //
+          // THE HOST'S RETURN IS NOT A PROOF. MEASURED against the installed 0.13.0 host
+          // (`lib/types/dsh-adapter/panels.js`): `register()` returns the disposer ONLY on success
+          // and `undefined` on EVERY refusal path (wrong apiVersion, bad id/title/icon/compact/
+          // minColumns, the ≤4 per-plugin or ≤32 global budget, no live activation owner, a foreign
+          // identity, a failed effect bind). The read-back below — not this return value — is what
+          // distinguishes the two, which is why a missing new id is reported as REFUSED.
+          /** The host's disposer, or `undefined` when the host refused the descriptor. */
+          const disposer = registry.register(descriptor, scope)
+          if (typeof disposer === "function") {
+            release = disposer
+            effectOn(scope, dispose, `mpd-tui panel ${descriptor.id}`)
+          }
+          /** The host's read-back, bound once: present only when the host exposes it at all. */
+          const readBack = typeof registry.list === "function" ? registry.list.bind(registry) : undefined
+          if (readBack !== undefined) {
+            finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id))
+          }
+          handle.record(finalId !== undefined
+            ? { state: "confirmed", detail: `${finalId} registered` }
+            : readBack !== undefined
+              ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` }
+              : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` })
+        } catch (error) {
+          handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
+        }
+      })
+      return { ...handle, id: () => finalId, dispose }
+    },
+
+    /** Asks the host to open one of this activation's panels; see {@link TuiAdapter.openPanel}. */
+    openPanel(id: string): PanelOpenResult {
+      /** The request's handle. */
+      const handle = makeHandle("panels")
+      /** The host's answer; undefined while the request is queued or the seam never bound. */
+      let opened: boolean | undefined
+      whenBoundInternal("panels", (service) => {
+        /** The bound panel registry, before `open` is trusted. */
+        const registry = service as TuiPanelsLike
+        if (typeof registry?.open !== "function") {
+          // A BOUND SEAM WITH NO `open` MEMBER is a legal host shape (`open` is optional in
+          // {@link TuiPanelsLike}), and it must not read as "queued forever": the request cannot be
+          // made, so the answer is an explicit `false` — a caller that routes on `opened()` then
+          // falls back to its other surface instead of waiting for an answer that never comes.
+          opened = false
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing on this host build` })
+          return
+        }
+        try {
+          opened = registry.open(id) === true
+          handle.record(opened
+            ? { state: "confirmed", detail: `${id} handed to the side panel` }
+            : { state: "refused", detail: `${id} refused (not this activation's panel, one open per 5000 ms, or no live panel consumer)` })
+        } catch (error) {
+          opened = false
+          handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
+        }
+      })
+      return { ...handle, opened: () => opened }
+    },
+
+    /** Whether the sidebar panel seam is bound; the panel-vs-scene arbiter. */
+    panelSeamBound: (): boolean => bindings.panels.bound,
 
     /** Subscribes one mediated decision intercept point. */
     requestDecisionEvent(

@@ -20,6 +20,7 @@ var TUI_SEAMS = {
   messageObserver: "tuiMessageObserver",
   effectLedger: "tuiEffectLedger",
   workspaces: "tuiWorkspaces",
+  panels: "tuiPanels",
   prompt: "tuiPrompt",
   commands: "commands",
   settings: "settings"
@@ -39,6 +40,7 @@ var TUI_SEAM_KEYS = [
   "messageObserver",
   "effectLedger",
   "workspaces",
+  "panels",
   "prompt",
   "commands",
   "settings"
@@ -368,6 +370,7 @@ function createTuiAdapter(ctx, options = {}) {
     messageObserver: () => bindings.messageObserver.service,
     effectLedger: () => bindings.effectLedger.service,
     workspaces: () => bindings.workspaces.service,
+    panels: () => bindings.panels.service,
     prompt: () => bindings.prompt.service,
     commands: () => bindings.commands.service,
     settings: () => bindings.settings.service,
@@ -635,6 +638,69 @@ function createTuiAdapter(ctx, options = {}) {
       });
       return handle;
     },
+    registerPanel(descriptor) {
+      const handle = makeHandle("panels");
+      let finalId;
+      let release;
+      let disposed = false;
+      const dispose = () => {
+        if (disposed)
+          return;
+        disposed = true;
+        const call = release;
+        release = undefined;
+        finalId = undefined;
+        if (typeof call !== "function")
+          return;
+        try {
+          call();
+        } catch {}
+      };
+      whenBoundInternal("panels", (service, scope) => {
+        const registry = service;
+        if (typeof registry?.register !== "function") {
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.register is missing` });
+          return;
+        }
+        const before = new Set((typeof registry.list === "function" ? registry.list() ?? [] : []).map((row) => row.id));
+        try {
+          const disposer = registry.register(descriptor, scope);
+          if (typeof disposer === "function") {
+            release = disposer;
+            effectOn(scope, dispose, `mpd-tui panel ${descriptor.id}`);
+          }
+          const readBack = typeof registry.list === "function" ? registry.list.bind(registry) : undefined;
+          if (readBack !== undefined) {
+            finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
+          }
+          handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
+        } catch (error) {
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return { ...handle, id: () => finalId, dispose };
+    },
+    openPanel(id) {
+      const handle = makeHandle("panels");
+      let opened;
+      whenBoundInternal("panels", (service) => {
+        const registry = service;
+        if (typeof registry?.open !== "function") {
+          opened = false;
+          handle.record({ state: "refused", detail: `${TUI_SEAMS.panels}.open is missing on this host build` });
+          return;
+        }
+        try {
+          opened = registry.open(id) === true;
+          handle.record(opened ? { state: "confirmed", detail: `${id} handed to the side panel` } : { state: "refused", detail: `${id} refused (not this activation's panel, one open per 5000 ms, or no live panel consumer)` });
+        } catch (error) {
+          opened = false;
+          handle.record({ state: "refused", detail: String(error?.message ?? error) });
+        }
+      });
+      return { ...handle, opened: () => opened };
+    },
+    panelSeamBound: () => bindings.panels.bound,
     requestDecisionEvent(event, listener, options2 = {}) {
       let supported = false;
       let granted;

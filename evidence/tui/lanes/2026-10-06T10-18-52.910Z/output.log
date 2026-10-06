@@ -1,0 +1,8 @@
+dsh-tui home fixture=.mpd/recon/tui-013/home/.dsh-tui/onboarding.json, .mpd/recon/tui-013/home/.dsh-tui/agent-preset.json preset=mpd
+seeded workmate library at .mpd/recon/tui-013/home/.mpd/workmate/qa-tui-probe
+model-echo check: runSessions=1 checked=0 offenders=0 (must be 0)
+harness command records THIS run: [{"sessionId":"272e3960-95fe-4742-be83-f91e8e1e7fd8","commandId":"cmd-7d02cec7-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"272e3960-95fe-4742-be83-f91e8e1e7fd8","commandId":"cmd-7d02cec7-2","kind":"success"}]
+surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered tuiPanels=MISSING
+panel registration id=undefined ok=false
+negative control ok=false (must be false)
+board-opened events in the sandbox store=2 scene-reported transcript rows=0

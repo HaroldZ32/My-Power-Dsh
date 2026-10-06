@@ -7,7 +7,7 @@
 // across thirteen, and a second contact surface is exactly what the rule forbids.
 //
 // The scan covers `packages/mpd-*/src/**/*.ts` EXCEPT `packages/mpd-tui-adapter-plugin` (the ONE
-// sanctioned route) and fails naming file + line for any of the fifteen ids, in ALL THREE
+// sanctioned route) and fails naming file + line for any of the sixteen ids, in ALL THREE
 // spellings:
 //   * PROPERTY — `ctx.tuiScenes`, and the same read through an ALIASED receiver (`const t = ctx;
 //     t.tuiScenes`), because an alias is not a different seam;
@@ -89,7 +89,15 @@ interface SelfTestResult {
 /** A report sink: one line at a time, so a caller can capture or silence the report. */
 type ReportStream = (line: string) => void
 
-/** The fifteen DSH-TUI service ids this gate owns (the fourteen `tui*` services plus `tuiPrompt`). */
+/**
+ * The sixteen DSH-TUI service ids this gate owns.
+ *
+ * The fifteen `tui*` services — the fourteen available since dsh-tui 0.12.0 plus `tuiPanels`, which
+ * 0.13.0 added — and `tuiPrompt`. A seam missing from this list is a seam a consumer file could name
+ * directly without the gate reddening, which is why the list is kept in step with `TUI_SEAMS` by a
+ * MECHANISM and not by hand: the test "the forbidden list tracks the adapter's seam table" reddens
+ * when the adapter names a `tui*` id this list does not carry.
+ */
 export const FORBIDDEN_TUI_SEAMS: readonly string[] = [
   "tuiScenes",
   "tuiStatus",
@@ -105,6 +113,7 @@ export const FORBIDDEN_TUI_SEAMS: readonly string[] = [
   "tuiMessageObserver",
   "tuiEffectLedger",
   "tuiWorkspaces",
+  "tuiPanels",
   "tuiPrompt",
 ]
 
@@ -523,6 +532,20 @@ try {
     const result = selfTest()
     reportSelfTest(result)
     expect(result.ok).toBe(true)
+  })
+  test("the forbidden list tracks the adapter's seam table", async () => {
+    // THE DRIFT THIS CATCHES (measured 2026-10-06): dsh-tui 0.13.0 added `tuiPanels` and the adapter
+    // adopted it, while this gate's list still carried only the fourteen 0.12.0 services — so a
+    // consumer file could have named the new seam directly and the gate would have stayed green.
+    // The invariant is therefore DERIVED from the table, not from the release we last targeted: every
+    // `tui*`-shaped id in `TUI_SEAMS` must be forbidden outside the adapter. The harness services the
+    // table also brokers (`commands`, `settings`) are deliberately NOT this gate's business.
+    /** The adapter's own seam table, the single source of the service ids. */
+    const { TUI_SEAMS } = await import("../src/index.ts")
+    /** The `tui*` ids the table names. */
+    const tuiIds = Object.values(TUI_SEAMS).filter((id) => id.startsWith("tui"))
+    expect(tuiIds.length).toBeGreaterThan(0)
+    for (const id of tuiIds) expect(FORBIDDEN_TUI_SEAMS).toContain(id)
   })
 } catch {
   // Not under the bun test runner (or not bun at all): the CLI is the whole surface.

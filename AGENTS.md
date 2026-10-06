@@ -56,7 +56,7 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
 | `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the authoritative A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.ts`, `scripts/vendor-agent-teams.ts`, or an `mpd-delta` region |
 | `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement): what each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip / `--require-docker` policy | you run a verification pass, or a Docker step skipped and you need to know why |
-| `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fourteen `tui*` seams with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
+| `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fifteen `tui*` seams (the fourteen dsh-tui has exposed since 0.12.0, plus the `tuiPanels` sidebar registry 0.13.0 added) with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask (ANSWERED for the sidebar by 0.13.0, still open for the dashboard) | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
 | `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the adopted-then-retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the session-start gate's softer signals | you need the provenance or the composition history behind §1 before restating it |
 | `agent-references/plugin-authoring.md` | the full §6 body: the two adapter surfaces in detail, the counted host-setup bypass and the R1–R5 residuals, the delta-registry mechanics, the tool/guard/waterfall/subagent API signatures and the state-resolution rules | you author or debug a plugin row, touch a seam, or need an exact adapter signature |
 | `agent-references/qa-discipline.md` | the full §7 body: the triple-isolation rationale, the live-case session-log decode trap, the durable-anchor (T-90) calibration bound and the preset/row conformance failure modes | you set up a QA lane, read a session store, or a conformance case reddens without a cause |
@@ -330,10 +330,13 @@ and every adapter API signature — is in `agent-references/plugin-authoring.md`
   services that plane uses; resolve it with `resolveTuiAdapter(ctx)` / `createLazyTuiAdapter(ctx,
   { label })`, binder = ONE deferred `ctx.inject([id], …)` PER SEAM, probe = `ctx.get(id, false)`, and a
   seam that never binds degrades to `absent` rather than failing the boot. Two gates pin it:
-  `no-direct-tui-access` and `no-terminal-writes`. Full contract, the fourteen seams and the declared
+  `no-direct-tui-access` and `no-terminal-writes`. Full contract, the fifteen seams and the declared
   WEB-plane residual: `agent-references/seam-adapters.md`. **ONE DSH-TUI contact is NOT a seam, is
   COUNTED, and lives in that same adapter (2026-10-05)**: the host's `dashboard` (`Ctrl+A`) `useStdin`,
-  reached by dynamic-importing `<root>/lib/types/ui.js` by file URL. Route any future host-internals
+  reached by dynamic-importing `<root>/lib/types/ui.js` by file URL. Since 0.13.0 it is VERSION-GATED:
+  the contact arms only while the `tuiPanels` seam is ABSENT (a pre-0.13.0 host), and on a host that
+  offers the seam it stays inert — Ctrl+A keeps the host dashboard meaning and the merged view opens
+  through `alt+a` / `/mpd panel`. Route any future host-internals
   need through this same adapter — never a second contact site.
 - **A patch row NEVER id-targets a host-owned row — binding** (`node scripts/verify-no-host-override.ts`,
   §4). The deployment default preset is the USER's to choose, not the bundle's: `docs/preset-default.md`

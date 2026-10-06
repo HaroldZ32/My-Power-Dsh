@@ -51,13 +51,14 @@ ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
 DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.12.0 is the dsh-tui release whose peer ranges cover the WHOLE band this lane is
+# The DSH-TUI host. 0.13.0 is the dsh-tui release this bundle targets, and its peer ranges still
+# cover the WHOLE band this lane is
 # expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2` — so ONE default
-# serves the pinned baseline and any older adaptation run. 0.11.2 stopped at 0.2.0-rc.1, and a
+# serves the pinned baseline and any older adaptation run. (0.12.0 was the pin before it.) 0.11.2 stopped at 0.2.0-rc.1, and a
 # `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
 # same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
 # (evidence/docker/client-install/2026-09-29T07-07-01Z).
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.12.0}"
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.13.0}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"

@@ -27,7 +27,8 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: open with `alt+a`, or with **`Ctrl+A`** whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
+| Sidebar panel (dsh-tui 0.13.0) | `ctx.tuiPanels` (through the adapter) | ONE panel — slug `team`, title `MPD`, `minColumns` 32, `order` 10, no icon, NO `compact` — whose body is the SAME merged view: the host's curated `host.snapshot().subagents` rows FIRST, then the MPD dependency DAG. `alt+a` and the new `/mpd panel` route through `tuiPanels.open()` when the seam is bound and FALL BACK to the full-screen `mpd-tui-subagents` scene on any refusal — never a silent no-op. `/mpd panel` prints a bilingual status line naming the surface it reached |
+| Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
 | Decision events | `tuiPluginHost.subscribeDecision` | attempted, expected to be refused, **not activated** (see below) |
@@ -35,6 +36,67 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 Supporting surfaces (not one of the seven seams): the `/mpd` command on the
 harness command registry, the `mpd` settings namespace registration, and the
 log-only `mpd-tui/board-opened` session record.
+
+### The sidebar panel (dsh-tui 0.13.0): one panel, one merged view
+
+`src/panel.ts` contributes exactly ONE sidebar panel and carries the whole of its contract. The
+descriptor is FROZEN at module scope (`PANEL_DESCRIPTOR_FROZEN`): `apiVersion` 1, slug `team` (the host
+prefixes it with the activation's plugin id), title `MPD`, `minColumns` 32 (a floor above the host's own
+28 default), `order` 10, **no icon and NO `compact`** — 0.13.0 validates and stores that row slot but
+does not mount its render slot, so declaring it would claim a surface the host never draws.
+
+The registration is safe on every host build: the apply-time `registerPanel(...)` is QUEUED by the
+adapter's deferred binder and settled as `absent` where no `tuiPanels` service exists, and it never
+throws. The final id is not composed here — it is DISCOVERED from the host's own `list()` read-back,
+which is why the debug line reads `sidebar panel id: act1:team` (measured) on the real 0.13.0 host and
+`(not discovered)` everywhere else.
+
+The BODY is the SAME merged view the full-screen scene draws, through ONE reader (`readWorkflow`, the
+agentless form of the scenes' own `readDashboardWorkflow`), so the two surfaces cannot describe one team
+differently: the host's curated `host.snapshot().subagents` rows FIRST, then the MPD dependency DAG,
+both reusing `subagent-scene.ts` (`subagentSectionRows`, `teamGraphView`) and `graph.ts`. It renders
+ONLY through the props' own kit — `props.React` and `props.ui` — because the host renders the panel
+inside its own reconciler: importing React (or any second copy of it) here would mount a foreign tree,
+so the panel never imports it and never reads a theme of its own (the single-React rule).
+
+**Entry points, and the ONE routed open.** `alt+a` and the new `/mpd panel` subcommand both land on
+`openMergedPanel()`, which decides PER CALL — the seam binds asynchronously, so a key pressed before the
+binding must still find a surface: the sidebar panel when `panelSeamBound()` is true and an id was
+discovered, otherwise the full-screen `mpd-tui-subagents` scene. A host REFUSAL is not a no-op either:
+`opened() === false` (not this activation's panel, the one-open-per-5000 ms rate limit, or no live panel
+consumer) opens the scene as the fallback and logs why. A QUEUED request (`opened() === undefined`) is
+NOT read as a refusal. `/mpd subagents` keeps its pre-panel boolean contract; `/mpd panel` prints the
+routed outcome in the active language (`panel.opened` / `panel.fallback` / `panel.unavailable`), so a
+fallback can never be read as "the panel opened".
+
+**`Ctrl+A` is VERSION-GATED.** On a host that offers the panel seam the legacy host-input contact is
+skipped outright — `takeoverArmed(seamBound, savedKnob, floor)` returns `false` whatever the config
+layers say, the aggregate line names the reason, and `Ctrl+A` keeps the host's own dashboard meaning. On
+a host WITHOUT the seam the contact arms exactly as before, and there the saved `tui.dashboardKey` knob
+outranks the row config's floor. The gate is re-read PER PRESS, not only at apply, because the adapter
+binds the seam through a deferred inject — so `tui.dashboardKey` is meaningful on OLD hosts only, and on
+a 0.13.0 host that key is not MPD's to spend.
+
+The row config's new `panel` switch (default `true`) turns BOTH the contribution and the routing off: no
+registration is attempted (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming
+the config), `alt+a` and `/mpd panel` keep the pre-panel full-screen path, and the `Ctrl+A` arming is
+decided by the seam alone.
+
+**BOUNDS, stated plainly.** (1) The panel's BODY is not observable in a tmux pane capture on the current
+host: the capture around a host-ACCEPTED `open()` was BYTE-IDENTICAL, so the real-PTY lane proves the
+registration, the discovered id and the accepted open — never a render, and no claim is made that the
+panel bar or the body paints. (2) The 0.12.0 leg has NO PTY proof: a clean 0.12.0 sandbox needs
+`dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`, refused here by the read-only pnpm store lock (the
+existing `.mpd/recon/tui-012` fixture is a mixed-version composition whose loader fails on the
+0.13.0-only row before a chat screen exists), so the old-host arming path rests on the unit arms — the
+predicate is `takeoverArmed` in `src/panel.ts`, covered by `test/panel.test.ts`, plus the `Ctrl+A`
+decision arms in `test/dashboard-key.test.ts` — and NOT on a pane.
+
+Evidence: `evidence/tui/lanes/2026-10-06T10-27-42.389Z/` (mount lane PASS),
+`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` (7 of 8 surfaces render, the panel row green, the negative
+control red), `evidence/tui/lanes/2026-10-06T10-28-57.807Z/` (the host's `Ctrl+A` stayed INERT and
+`/mpd panel` proved the sidebar registration + an accepted open), and
+`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`.
 
 ### The dependency graph: arrows, the legend and the `Ctrl+A` take-over
 
@@ -55,7 +117,9 @@ the host's own `useStdin` (see `packages/mpd-tui-adapter-plugin`) and a zero-row
 listener that consumes the key first. With no team the listener touches nothing, and every failure — an
 unreachable host module, a version-skewed one, the `tui.dashboardKey` knob off — degrades to exactly
 today's behaviour. `skills/dsh-qa/scripts/tui-deps-ctrla.ts` proves both arms (and the settings-screen
-control) on a real PTY.
+control) on a real PTY. **Since dsh-tui 0.13.0 this path is VERSION-GATED**: on a host that offers the
+sidebar panel seam the contact is skipped outright and `Ctrl+A` keeps the host's own dashboard meaning —
+the take-over arms only on a host WITHOUT the seam (see the sidebar panel section above).
 
 ONE HOST CONSTRAINT, stated because it changes what you see: the live input context is only ever handed
 to a SCENE render, so the take-over arms itself from the first MPD panel or scene you open in a session
@@ -187,7 +251,8 @@ soft probe, which is the host's documented idiom.
 | `commandTrees` | `true` | register the `/mpd` completion tree |
 | `commands` | `true` | register the `/mpd` command (the board's opening path) |
 | `shortcuts` | `true` | register the key bindings |
-| `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12) |
+| `panel` | `true` | contribute the sidebar panel (dsh-tui 0.13.0) and route `alt+a` / `/mpd panel` through it. Off ⇒ no registration is attempted (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming the config) and both entry points keep the pre-panel path, the full-screen merged scene |
+| `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12). **On a host that offers the sidebar panel seam (dsh-tui 0.13.0+) this knob is INERT** — the contact stays disarmed whatever it says, so it is meaningful on OLD hosts only |
 | `dialogs` | `true` | enable the mediated dialog facade |
 | `sessionEvents` | `true` | append the log-only `mpd-tui/board-opened` record, and only after the event type is verified known to a reachable `dsh-session` copy |
 | `decisionEvents` | `true` | attempt the mediated decision-event registration (expected: refused) |
@@ -308,6 +373,20 @@ only when no logger exists to `stderr`, with `debug` gated behind
     MPD-resolved string at its next use — a scene `title` (fixed at registration) only after a
     restart. A host whose language is pinned by `cordis.yml`'s `lang` is a KNOWN gap: that key is read
     by the host's own `plugin.apply` and is invisible to a plugin.
+16. **The sidebar panel's BODY is not observable in a tmux pane capture on the current host.** Measured:
+    after `/mpd panel` reported a host-ACCEPTED open, the 320×50 capture was byte-identical to the
+    capture taken immediately before it (both 3413 characters), and `alt+a` changed nothing at all — so
+    the real-PTY lane proves the registration, the discovered id (`act1:team`) and the accepted open,
+    and NOT a render. On 0.13.0 there is no pane-capturable MPD dependency view, so no claim is made
+    that the panel bar or the panel body paints; the merge itself is covered by
+    `test/subagent-scene.test.ts` and `test/graph.test.ts`, never by a pane.
+17. **The old-host `Ctrl+A` arming path has NO PTY proof.** A clean 0.12.0 sandbox needs
+    `dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`, which is refused here by the read-only pnpm
+    store lock; the existing `.mpd/recon/tui-012` fixture is a mixed-version composition whose loader
+    fails on the 0.13.0-only `dsh-tui-panels` row before any chat screen exists. That path therefore
+    rests on the unit arms — the predicate is `takeoverArmed` in `src/panel.ts` (`test/panel.test.ts`,
+    16 pass) plus the `Ctrl+A` decision arms in `test/dashboard-key.test.ts` (11 pass) — and nothing is
+    claimed about a real 0.12.0 pane.
 
 ## Build and test
 

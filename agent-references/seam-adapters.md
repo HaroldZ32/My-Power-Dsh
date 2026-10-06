@@ -18,18 +18,28 @@ adapter ACCESSES a seam".
 | Plane | Package | Row / service | What it owns |
 |---|---|---|---|
 | DSH (harness) | `packages/mpd-dsh-adapter-plugin` | row `mpd-dsh-adapter`, service `mpdDsh` | `ctx.tools`, `ctx.subagents`, `ctx.skills`, `ctx.agentPresets`, `ctx.commands`, `ctx.systemPrompt`, `ctx.on`, `ctx.loader`, the LLM catalog, settings, the team plane (`TeamExecutor`) |
-| DSH-TUI (terminal front door) | `packages/mpd-tui-adapter-plugin` | row `mpd-tui-adapter`, service `mpdTui` | the fourteen `ctx.tui*` services dsh-tui 0.12.0 exposes, plus `tuiPrompt` and the `commands`/`settings` services it brokers |
+| DSH-TUI (terminal front door) | `packages/mpd-tui-adapter-plugin` | row `mpd-tui-adapter`, service `mpdTui` | the fifteen `ctx.tui*` services dsh-tui 0.13.0 exposes (the fourteen available since 0.12.0, plus `tuiPanels`), plus `tuiPrompt` and the `commands`/`settings` services it brokers |
 
 Resolve them with `resolveDshAdapter(ctx)` / `createLazyDshAdapter(ctx, { label })` and
 `resolveTuiAdapter(ctx)` / `createLazyTuiAdapter(ctx, { label })`; each falls back to a row-private
 `create*Adapter` so a package stays usable in a unit test with a host double.
 
-## The TUI plane, in detail (dsh-tui 0.12.0)
+## The TUI plane, in detail (dsh-tui 0.12.0 → 0.13.0)
 
 The plugin-facing seams are exactly: `tuiScenes`, `tuiStatus`, `tuiRenderers`, `tuiSettingsSections`,
 `tuiShortcuts`, `tuiDialogs`, `tuiCommandTrees`, `tuiPluginHost`, `tuiToast`, `tuiThemes`,
 `tuiPluginStorage`, `tuiMessageObserver`, `tuiEffectLedger`, `tuiWorkspaces` (plus `tuiPrompt`, which
-nothing in this installation provides).
+nothing in this installation provides) — and, ADDED BY 0.13.0, **`tuiPanels`**, the sidebar panel
+registry. The wave `dsh-tui-013-adaptation` adopted it as the fifteenth seam: the descriptor's
+`apiVersion` must be exactly 1, its `id` is a single lowercase slug the host prefixes with the calling
+activation's plugin id, `component`/`compact` are the two render slots (0.13.0 VALIDATES and STORES
+`compact` but does not mount its render slot, so this bundle declares `component` only), the budget is
+≤4 panels per plugin and ≤32 globally, and `open()` is rate-limited to one per plugin per 5000 ms and
+returns `false` without consuming the window when no live panel consumer exists. **The final id is
+DISCOVERED, never composed**: the plugin-id half comes from a Component identity our plain loader row
+does not carry, so the host falls back to a per-activation `act<N>` name — measured on the real host as
+`act1:team`, which is exactly why `TuiAdapter.registerPanel()` reads the id back from the host's own
+`list()` instead of building the string here.
 
 BINDING DISCIPLINE — measured, not assumed:
 
@@ -54,7 +64,8 @@ BINDING DISCIPLINE — measured, not assumed:
 plugin binding, and the contribution kinds (`workspace.provider`, `tui.settings-section`, `tui.scene`)
 cannot place content inside the host's own `SubagentDashboard` (a Chat-local early return with fixed
 props). The user requirement "Ctrl+A opens MPD's panel + dependency graph" therefore needed a contact
-OUTSIDE the fourteen seams, and it is declared here rather than hidden:
+OUTSIDE the seams (fifteen as of 0.13.0, fourteen when the contact was written), and it is declared
+here rather than hidden:
 
 - The adapter resolves the INSTALLED host root (`MPD_DSH_TUI_HOST_ROOT`, its own module dir,
   `process.argv[1]`, `<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`, `~/.dsh`,
@@ -82,6 +93,33 @@ OUTSIDE the fourteen seams, and it is declared here rather than hidden:
   candidate, import error, version-skewed `ui.js` without `useStdin`) degrades to `hostInput() ===
   undefined` plus ONE diagnostic line, and the takeover is simply absent — `alt+a` still opens the
   panel. The A2.2 gate's scope is unchanged: the contact lives inside `mpd-tui-adapter-plugin`.
+
+### The contact is VERSION-GATED (0.13.0 and later keep it inert)
+
+The contact exists for exactly ONE host generation: a dsh-tui WITHOUT a sanctioned way to open MPD's
+own panel, where intercepting `Ctrl+A` was the user's clause. 0.13.0 ships that way (`tuiPanels`), so
+the rule is now:
+
+- the ARBITER is `TuiAdapter.panelSeamBound()`, read at apply AND again per press (`takeoverArmed()` in
+  `packages/mpd-tui-plugin/src/panel.ts`) — the second read is not redundant, because the adapter binds
+  the seam through a DEFERRED inject and a binding that lands after our row applied must still disarm
+  the contact;
+- on a host that OFFERS the seam the APPLY-TIME test normally keeps the contact out of the session
+  entirely, reporting one `skipped` outcome naming the reason — and when the seam binds LATER (it is
+  bound through a deferred inject, so a binding can land after this row applied), the contact IS
+  registered (a zero-row status view plus its prepended input listener) and is disarmed per press by
+  `takeoverArmed()` instead. Both shapes keep `Ctrl+A` on the host's own dashboard, and `alt+a` /
+  `/mpd panel` route through `tuiPanels.open()`. The per-press read is therefore NOT dead code: it is
+  the half that covers the late binding, and deleting it would break the gate for that case;
+- on a host WITHOUT the seam (0.12.0) the old behaviour stands unchanged: the contact arms under
+  `tui.dashboardKey` + a team with ≥1 task, and `alt+a` opens the full-screen merged scene.
+
+MEASURED on the real 0.13.0 host (PTY lane `tui-deps-ctrla`, `evidence/tui/lanes/`): "the host's Ctrl+A
+stayed INERT (its own dashboard opened) and `/mpd panel` proved the sidebar registration + accepted
+open". The 0.12.0 leg has NO PTY proof in this wave — the sandboxed 0.12.0 profile could not be built
+here (a clean one needs `dsh plugin add`, which the read-only pnpm store lock refuses) — so it rests on
+the unit arms (`packages/mpd-tui-plugin/test/panel.test.ts` `takeoverArmed`, `plugin.test.ts` the
+legacy-host arm). That bound is stated, never glossed.
 
 ## R5 — no MPD diagnostic may reach the terminal
 
@@ -141,22 +179,32 @@ updated when its rows move to a log file, because the assertion has to read
 inventory; it needs its own adapter before the "one adapter per plane" rule is claimed for the web
 plane. Do not widen it meanwhile.
 
-## The panel question (why the team panel is a scene)
+## The panel question (PARTLY ANSWERED by 0.13.0)
 
-dsh-tui 0.12.0 offers NO supported way to render inside or below its subagent dashboard
+dsh-tui 0.12.0 offered NO supported way to render inside or below its subagent dashboard
 (`TuiSceneDescriptor` is `{ id, title, component }`; the dashboard is an early-return full-screen swap
 in `screens/Chat.js` with only `{ subagents, onClose, onSelect }` props; the three contribution kinds
 are `workspace.provider`, `tui.settings-section`, `tui.scene`). MPD therefore renders its own scene
 whose TOP section is the host's own `channel.subagents` feed (the same source `Ctrl+A` shows — MPD
 teammates are real continuable subagents, so the data-level merge already exists) and whose lower
-section is the team DAG. It still opens on MPD's own combo (`alt+a`), and since 2026-10-05 `Ctrl+A`
-opens the SAME panel whenever the workspace's team projection holds a team with ≥1 task — through the
-host-input contact above, never by patching the host dashboard, and never at all when there is no team
-(the key then keeps its default meaning). The host dashboard's own rendering is NOT extended: this is a
-key re-point plus MPD's own panel, which is why the upstream ask below still stands.
+section is the team DAG. That scene is STILL the fallback surface and the only merged view on a host
+with no panel seam.
 
-The upstream ask that would make the merge literal — a panel/section contribution kind, a
-`TuiSceneDescriptor.slot`, or an exported dashboard row hook — is drafted in
-`agent-references/upstream-dsh-tui-seam-request.md`. Upstream `main` already carries an unreleased
-`ctx.tuiPanels`, but it is a RIGHT-SIDEBAR panel and still cannot enter the dashboard. A granted seam
-would let the bundle DELETE the host-input contact rather than keep it.
+**What 0.13.0 changed (wave `dsh-tui-013-adaptation`).** The release ships `ctx.tuiPanels`, so the same
+merge now lives in a RIGHT-SIDEBAR panel: `packages/mpd-tui-plugin/src/panel.ts` registers ONE panel
+(`id` slug `team`, title `MPD`, `minColumns` 32, `order` 10, NO `compact` — 0.13.0 stores that slot but
+does not mount it) whose body is the host's curated `host.snapshot().subagents` rows FIRST and the MPD
+dependency DAG below, reusing `subagent-scene.ts` + `graph.ts` rather than re-rendering them. `alt+a`
+and `/mpd panel` route through `tuiPanels.open()` whenever the seam is bound and a discovered id
+exists, and FALL BACK to the full-screen scene on any refusal (rate limit, an id the host no longer
+owns, or no live panel consumer) — never a silent no-op. Because the panel seam exists, the Ctrl+A
+host-input contact is version-gated OFF (see above), which is the outcome the upstream ask was for.
+
+**What is NOT granted, and is measured rather than assumed.** The seam is a sidebar panel: it still
+cannot enter or extend the host's own subagent dashboard, so the dashboard itself is untouched. And the
+panel's BODY is not observable in a tmux pane capture on this host — the lane
+(`skills/dsh-qa/scripts/tui-panels.ts`) captured a byte-identical pane before and after a host-ACCEPTED
+open, so it proves the registration (the host's own `list()` read-back yields the discovered id
+`act1:team`), the descriptor acceptance and `open()`, and it states plainly that it does not prove a
+render. The remaining ask — a dashboard row hook or a section contribution kind — is still drafted in
+`agent-references/upstream-dsh-tui-seam-request.md`.

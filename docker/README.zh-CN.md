@@ -81,9 +81,10 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.12.0`
-    —— 其 peer 范围覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、`0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2`
-    只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时 `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.13.0`
+    —— 即本 bundle 现在对标的 dsh-tui 版本，其 peer 范围仍覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、
+    `0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2` 只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时
+    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.12.0` 仅作历史保留。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
     profile，并记下十五条断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
     `preset-mpd` / `mpd-tui` / 官方团队行、`/mpd team` 场景在真实终端上画出依赖图、真实 tmux PTY 启动并到达聊天界面、无致命签名，

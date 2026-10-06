@@ -55,6 +55,8 @@ import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
 import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
+import { registerPanelSurface, takeoverArmed } from "./panel.js"
+import type { PanelOpenOutcome } from "./panel.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
@@ -94,9 +96,20 @@ export type Config = {
   /** Enable the mediated dialog facade. */
   dialogs?: boolean
   /**
-   * Enable the Ctrl+A takeover: with a team that has at least one task, Ctrl+A opens MPD's merged
-   * panel instead of the host's own subagent dashboard; with no team the key passes through. This is
-   * the FLOOR of the toggle — a saved `tui.dashboardKey` (the /settings row) outranks it per press.
+   * Contribute the sidebar panel and route `alt+a` / `/mpd panel` through it (dsh-tui 0.13.0+). With
+   * the surface off, both entry points keep the pre-panel path: the full-screen merged scene.
+   */
+  panel?: boolean
+  /**
+   * Enable the Ctrl+A takeover — MEANINGFUL ON OLD dsh-tui BUILDS ONLY.
+   *
+   * On a host WITHOUT the sidebar panel seam (every dsh-tui before 0.13.0) the takeover intercepts
+   * Ctrl+A while MPD's team projection has a team with at least one task, opening MPD's merged view
+   * instead of the host's own subagent dashboard; with no team the key passes through. On a host that
+   * OFFERS the panel seam (0.13.0+) the contact stays INERT — Ctrl+A keeps its host dashboard meaning
+   * and the merged view opens through `alt+a` / `/mpd panel`, both of which route through the panel
+   * (see `panel.ts`). This key is the FLOOR of the toggle: a saved `tui.dashboardKey` (the /settings
+   * row) outranks it per press.
    */
   dashboardKey?: boolean
   /** Append the log-only board-opened session record (only when verified safe). */
@@ -122,6 +135,7 @@ export const Config: Schemastery<Config> = z.object({
   commands: z.boolean().default(true),
   shortcuts: z.boolean().default(true),
   dialogs: z.boolean().default(true),
+  panel: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
   sessionEvents: z.boolean().default(true),
   decisionEvents: z.boolean().default(true),
@@ -148,6 +162,8 @@ export interface ResolvedConfig {
   shortcuts: boolean
   /** Whether the mediated dialog facade is enabled. */
   dialogs: boolean
+  /** Whether the sidebar panel surface is contributed and the merged-view opens route through it. */
+  panel: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
   dashboardKey: boolean
   /** Whether the log-only board-opened record may be appended. */
@@ -178,6 +194,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     commands: bool(config.commands, true),
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
+    panel: bool(config.panel, true),
     dashboardKey: bool(config.dashboardKey, true),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
@@ -545,6 +562,24 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openPlan: () => false,
         openSubagents: () => false,
       }
+  // ── the sidebar panel (dsh-tui 0.13.0, frozen R2/R3) ─────────────────────
+  // ONE panel, carrying the SAME merged view the full-screen scene draws: the host's curated
+  // `host.snapshot().subagents` rows FIRST, then the MPD dependency DAG. The two surfaces share one
+  // `readWorkflow` closure, so they cannot describe one team differently, and the descriptor is the
+  // frozen one (`id: "team"`, `title: "MPD"`, `minColumns: 32`, `order: 10`, no icon, no `compact`).
+  // Registering it is safe on every host build: the adapter's deferred binder queues the call until
+  // the seam binds and settles it as `absent` where the host has no panel seam at all.
+  const panel = registerPanelSurface(tui, {
+    enabled: resolved.panel,
+    // The panel reads the SAME projection the Ctrl+A contact reads (`readDashboardWorkflow`, the
+    // scenes' own reader in its agentless form), so the sidebar and the full-screen scene cannot
+    // describe one team differently.
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    // THE FALLBACK IS THE EXISTING SURFACE, never a silent no-op: every refusal lands on the scene
+    // this wave must not lose (frozen R4/R5).
+    openMergedScene: () => scene.openSubagents(),
+    log,
+  })
   // ── the Ctrl+A takeover (W2) ─────────────────────────────────────────────
   // The hook rides the SAME status seam and the SAME read path as the scenes; it mounts an empty-Box
   // view inside the Chat screen, prepends a listener on the host's own input bus through the adapter's
@@ -557,25 +592,43 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // takeover off without a restart, and a composition that never saves keeps it on.
   /** Whether the takeover may intercept right now. */
   const dashboardKeyEnabled = (): boolean => {
+    /** The live value from the resolved config layers, when the config row is composed. */
+    let saved: boolean | undefined
     try {
-      /** The live value from the resolved config layers, when the config row is composed. */
+      /** The config layer's own answer; a non-boolean leaves the row config in charge. */
       const live = configHandle?.get?.(DASHBOARD_TAKEOVER_KNOB)
-      if (typeof live === "boolean") return live
+      if (typeof live === "boolean") saved = live
     } catch {
       // An unreadable config layer leaves the row config's own value in charge.
     }
-    return resolved.dashboardKey
+    // THE RULE LIVES IN `panel.ts` (`takeoverArmed`): the SEAM WINS over every configuration, and the
+    // seam state is re-read here PER PRESS, never only at apply — the adapter binds it through a
+    // DEFERRED inject, so a binding that lands after this row applied must still disarm the contact.
+    return takeoverArmed(tui.panelSeamBound(), saved, resolved.dashboardKey)
   }
+  // THE VERSION GATE (frozen R5/R4). The host-input contact exists for exactly ONE host generation:
+  // a dsh-tui WITHOUT the panel seam, where Ctrl+A's own dashboard is the only way to reach the
+  // merged view. On a host that OFFERS the panel seam the contact must stay INERT — Ctrl+A keeps the
+  // host's own dashboard meaning, and MPD's own key (`alt+a`) plus `/mpd panel` are the entry points.
+  // The apply-time test below is the FAST PATH — it keeps the status view and the input listener out
+  // of a 0.13.0 session entirely. `dashboardKeyEnabled` repeats the same test PER PRESS, because the
+  // adapter binds the seam through a DEFERRED inject and a binding that lands after this row applied
+  // must still disarm the contact; the per-PRESS read of the `tui.dashboardKey` knob is unchanged.
   /** The hook's registration, or the explicit skip that says why the takeover is absent. */
-  const dashboardKey = resolved.dashboardKey
-    ? registerDashboardKey(ctx, tui, {
-        enabled: dashboardKeyEnabled,
-        mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
-        readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
-        openMergedScene: () => scene.openSubagents(),
-        log,
-      })
-    : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)")
+  const dashboardKey = !tui.panelSeamBound()
+    ? (resolved.dashboardKey
+        ? registerDashboardKey(ctx, tui, {
+            enabled: dashboardKeyEnabled,
+            mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
+            readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+            openMergedScene: () => scene.openSubagents(),
+            log,
+          })
+        : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)"))
+    : tui.skipped(
+        "status",
+        "the host exposes the sidebar panel seam (dsh-tui 0.13.0+), so the legacy Ctrl+A host-input contact stays inert: Ctrl+A keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel",
+      )
   /** The renderer seam result, or a config-disabled stub. */
   const renderers = resolved.renderers ? registerRenderers(ctx, tui, log) : skipped("renderers", "disabled by config")
   /** The settings-section seam result, or a config-disabled stub. */
@@ -584,11 +637,30 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const trees = resolved.commandTrees ? registerCommandTrees(tui) : skipped("commandTrees", "disabled by config")
 
   // ── supporting surfaces ──────────────────────────────────────────────────
+  // THE ONE ROUTED OPEN (frozen R4): `alt+a` and `/mpd panel` both land here. The panel is the
+  // surface when the host offers the seam and its registration was confirmed; the full-screen merged
+  // scene is the surface everywhere else — a host without the seam, an id not yet discovered, or an
+  // `openPanel` the host REFUSED. Nothing on this path is ever a silent no-op.
+  /** Opens the sidebar panel, or the full-screen merged scene, and says which one it reached. */
+  const openMergedPanel = (): PanelOpenOutcome & { id: string | undefined } => {
+    /** The panel surface's own answer. */
+    const routed = panel.openOrScene()
+    return { ...routed, id: panel.id() }
+  }
+  /** The shortcut seam result, or a config-disabled stub. */
   const shortcuts = resolved.shortcuts
     ? registerShortcuts(ctx, tui, log, {
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
-        openSubagents: () => scene.openSubagents(),
+        // `alt+a` — the DSH-TUI 0.13.0 entry point for the merged view, routed through the panel seam
+        // with the full-screen scene as its declared fallback. The boolean is the shortcut's own
+        // "did a surface open" contract, reported from the ROUTED result so a panel that declined and
+        // took its scene fallback is still a `true`.
+        openSubagents: () => {
+          /** How the routed open ended, and the scene's own answer where it was the surface. */
+          const route = openMergedPanel()
+          return route.outcome === "opened" || route.sceneOpened
+        },
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
           void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords)
@@ -602,7 +674,20 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
         openPlan: () => scene.openPlan(),
-        openSubagents: () => scene.openSubagents(),
+        // `/mpd subagents` keeps its pre-panel contract (a boolean: the merged view opened) while
+        // riding the same routed open as `alt+a`.
+        openSubagents: () => {
+          /** How the routed open ended, and the scene's own answer where it was the surface. */
+          const route = openMergedPanel()
+          return route.outcome === "opened" || route.sceneOpened
+        },
+        // `/mpd panel` gets the FULL route result, so its printed line can name the surface the user
+        // is looking at (the panel, the scene as a fallback, or a host with no panel seam).
+        openPanel: () => {
+          /** How the routed open ended, and the discovered host panel id. */
+          const route = openMergedPanel()
+          return { outcome: route.outcome, id: route.id }
+        },
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
@@ -634,6 +719,12 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   record(renderers)
   record(settings)
   record(scene)
+  // The PANEL is reported under its own name as well as through the adapter's seam table: the
+  // aggregate line then names the DISCOVERED host id, which is the one fact an operator cannot
+  // reconstruct from the seam states (the host composes `<pluginId>:<slug>` from an activation name
+  // this row does not carry — see `PanelRegistrationHandle.id`).
+  outcomes.push({ id: "panel", outcome: panel.outcome() })
+  log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`)
   // The takeover ROLE is reported under its own name (it rides the status seam, which reports
   // separately above), so the aggregate line names it instead of hiding a second `status` entry.
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() })
@@ -669,6 +760,7 @@ async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): 
     { id: "team", label: "Team", description: "team workflow: phase, roster, task DAG" },
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
     { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
+    { id: "panel", label: "Panel", description: "the sidebar panel (dsh-tui 0.13.0), or the full-screen fallback" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" },
   ])
