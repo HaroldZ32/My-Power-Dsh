@@ -1,5 +1,6 @@
 // packages/mpd-tools-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -1529,6 +1530,9 @@ function resolveDshAdapter(ctx) {
 // packages/mpd-tools-plugin/src/index.ts
 var name = "mpd-tools";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
+function sessionTarget(target, dsh, exec) {
+  return isAbsolute(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const writeGuard = config.writeGuard ?? true;
@@ -1542,10 +1546,11 @@ function apply(ctx, config = {}) {
       const content = exec.arguments?.content;
       if (typeof fp !== "string" || typeof content !== "string")
         return;
-      if (!existsSync(fp))
+      const target = sessionTarget(fp, dsh, exec);
+      if (!existsSync(target))
         return;
       try {
-        const old = readFileSync(fp, "utf8");
+        const old = readFileSync(target, "utf8");
         if (old === content)
           return;
       } catch {
@@ -1572,8 +1577,9 @@ function apply(ctx, config = {}) {
 ... [mpd-tools truncated ` + text.length + " chars; keep " + maxBytes + ` budget; tail follows] ...
 `;
     const budget = Math.max(0, maxBytes - banner.length);
+    const tailChars = Math.max(1, Math.floor(budget * 0.3));
     const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : "";
-    const tail = budget > 0 ? text.slice(-Math.floor(budget * 0.3)) : "";
+    const tail = budget > 0 ? text.slice(-tailChars) : "";
     return { ...out, content: [{ type: "text", text: head + banner + tail }] };
   });
   dsh.onPostToolExecute(async (exec, result, out) => {
