@@ -196,9 +196,282 @@ function installReadonlyGuard(dsh, options) {
   }
 }
 
-// packages/mpd-roles-plugin/src/session-gate.ts
-import { readdir as readdirFs } from "node:fs/promises";
-import { join as join2 } from "node:path";
+// packages/mpd-roles-plugin/src/complexity-gate.ts
+import { readFile as readFileFs } from "node:fs/promises";
+import { join } from "node:path";
+var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
+var GATE_MODE_MECHANICAL = "mechanical";
+var GATE_MODE_ADVISORY = "advisory";
+var GATE_MODE_OFF = "off";
+var GATE_CONFIG_KEY = "team.gate";
+var BOULDER_DIR_CONFIG_KEY = "boulder.dir";
+var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
+function resolveBoulderDir(value) {
+  if (typeof value !== "string")
+    return;
+  const trimmed = value.trim();
+  if (trimmed === "" || WORKSPACE_ROOT_SPELLINGS.includes(trimmed))
+    return;
+  return trimmed;
+}
+var STAGING_TOOL_NAME = "agent_teams_plan";
+var PLAN_EXTEND_ACTIONS = ["add_member", "create_task"];
+var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
+var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
+var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
+var NO_TEAM_STAGED_PHRASE = "NO team was staged";
+var SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (a short or single-threaded task), continue solo";
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var DELIVERABLE_VERB_MIN = 4;
+var ENUMERATED_LINE_MIN = 3;
+var ACTION_VERB_MIN = 3;
+var C_SUBSIGNAL_MIN = 2;
+var GATE_PLAN_NAME_MAX = 60;
+var GATE_PLAN_EXCERPT_MAX = 500;
+var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
+var DEFAULT_GATE_PRESETS = ["mpd"];
+function distinctMatches(text, pattern) {
+  const seen = new Set;
+  for (const match of text.matchAll(pattern))
+    seen.add(match[0].toLowerCase());
+  return seen.size;
+}
+function enumeratedLineCount(text) {
+  let count = 0;
+  for (const line of text.split(`
+`))
+    if (ENUMERATED_LINE_PATTERN.test(line))
+      count += 1;
+  return count;
+}
+function clauseStepCount(text) {
+  let count = 0;
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+    if (CLAUSE_ACTION_PATTERN.test(clause))
+      count += 1;
+  return count;
+}
+function consumeExplicitFlag(text) {
+  const source = String(text ?? "");
+  const trimmed = source.trimStart();
+  const prefix = /^team:\s*/iu.exec(trimmed);
+  if (prefix !== null)
+    return { flagged: true, text: trimmed.slice(prefix[0].length) };
+  const marker = /(^|\s)!team\b/iu.exec(source);
+  if (marker !== null)
+    return { flagged: true, text: source.replace(/(^|\s)!team\b\s*/iu, "$1") };
+  return { flagged: false, text: source };
+}
+function evaluateComplexityGate(text, input = {}) {
+  const source = String(text ?? "");
+  const signals = [];
+  if (input.explicitFlag === true)
+    signals.push("A");
+  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+    signals.push("B");
+  const cSubSignals = [
+    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
+    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+  ].filter(Boolean).length;
+  if (cSubSignals >= C_SUBSIGNAL_MIN)
+    signals.push("C");
+  if (input.activeBoulder === true)
+    signals.push("D");
+  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+}
+async function readBoulderGate(workspace, opts = {}) {
+  try {
+    const read = opts.readFile ?? ((path) => readFileFs(path, "utf8"));
+    const root = resolveBoulderDir(opts.boulderDir) ?? String(workspace ?? "");
+    const raw = await read(join(root, ".mpd", "boulder.json"));
+    const state = JSON.parse(raw);
+    if (state === null || typeof state !== "object" || Array.isArray(state))
+      return { active: false };
+    const record = state;
+    const works = record.works !== null && typeof record.works === "object" && !Array.isArray(record.works) ? record.works : {};
+    const activeId = String(record.active_work_id ?? "");
+    const pointed = activeId === "" ? undefined : works[activeId];
+    const work = pointed !== null && typeof pointed === "object" && !Array.isArray(pointed) ? pointed : record;
+    const status = typeof work.status === "string" ? work.status : undefined;
+    const planPath = typeof work.active_plan === "string" && work.active_plan !== "" ? work.active_plan : undefined;
+    return {
+      active: status === "active",
+      ...status === undefined ? {} : { status },
+      ...planPath === undefined ? {} : { planPath }
+    };
+  } catch {
+    return { active: false };
+  }
+}
+function resolveGateMode(value) {
+  if (value === GATE_MODE_ADVISORY)
+    return GATE_MODE_ADVISORY;
+  if (value === GATE_MODE_OFF || value === false)
+    return GATE_MODE_OFF;
+  return GATE_MODE_MECHANICAL;
+}
+function collapseWhitespace(text) {
+  return String(text ?? "").replace(/\s+/gu, " ").trim();
+}
+function gatePlanShell(input) {
+  const goal = String(input.goal ?? "");
+  const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
+  const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
+  const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
+  return {
+    name: firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX),
+    description: "Staged mechanically by the mpd session-start complexity gate on " + matched + "." + `
+This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + `
+Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
+` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
+Active plan artifact (signal D): ` + input.planPath),
+    approval: "required"
+  };
+}
+function advisoryNoticeText(signals, explicit) {
+  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+` + SOLO_PERMISSION_SENTENCE + " — and say so in one line." + `
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
+}
+function mechanicalNoticeText(input) {
+  const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
+  const id = input.planId === "" ? "(plan id not reported by the call)" : input.planId;
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
+- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' + `
+- ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
+` + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert." + `
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
+}
+function messageText(message) {
+  const content = message?.content;
+  if (!Array.isArray(content))
+    return;
+  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  return parts.length === 0 ? undefined : parts.join(`
+`);
+}
+function latestUserMessage(candidates) {
+  let fallback;
+  for (let index = candidates.length - 1;index >= 0; index -= 1) {
+    const message = candidates[index];
+    if (message?.role !== "user")
+      continue;
+    const text = messageText(message);
+    if (text === undefined)
+      continue;
+    const source = String(message?.source?.kind ?? "");
+    if (source === "user")
+      return { message, text };
+    fallback ??= { message, text };
+  }
+  return fallback;
+}
+function consumeFlagFromMessage(message, source) {
+  if (!consumeExplicitFlag(source).flagged)
+    return message;
+  let changed = false;
+  const content = (message?.content ?? []).map((block) => {
+    const text = block?.text;
+    if (block?.type !== "text" || typeof text !== "string")
+      return block;
+    const next = consumeExplicitFlag(text);
+    if (next.text === text)
+      return block;
+    changed = true;
+    return { ...block, text: next.text };
+  });
+  return changed ? { ...message, content } : message;
+}
+function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.parentSession !== undefined)
+    return false;
+  const preset = header.agentPreset;
+  if (preset === undefined)
+    return true;
+  return presets.includes(String(preset));
+}
+
+// packages/mpd-roles-plugin/src/roster-section.ts
+var ROSTER_SECTION_NAME = "mpd:roster";
+var ROSTER_SECTION_ORDER = 605;
+function functionOf(description) {
+  const text = String(description ?? "");
+  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
+  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
+}
+function rosterSectionText(members) {
+  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
+  return [
+    "## MPD specialist roster",
+    "The specialists this deployment stages as teammates, addressed by NAME:",
+    ...lines,
+    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
+  ].join(`
+`);
+}
+function installRosterSection(dsh, options) {
+  const presets = options.presets ?? ["mpd"];
+  const disposers = new Map;
+  const text = rosterSectionText(options.members);
+  const report = (line) => {
+    try {
+      options.log?.(line);
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
+      const dispose = dsh.agentPromptSection(agent, section);
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
+    } catch (error) {
+      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      if (options.onEvent !== undefined) {
+        options.onEvent(event, handler);
+        return;
+      }
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => {
+    register(payload?.agent ?? payload);
+    return;
+  });
+  subscribe("agent/disposed", (payload) => {
+    release(payload?.agent ?? payload);
+    return;
+  });
+  return { installed: true, registered: disposers.size, disposers };
+}
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -217,8 +490,8 @@ function bundleRootOf(moduleUrl) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-var LOG_SUBDIR = join(".mpd", "logs");
+import { join as join2, resolve } from "node:path";
+var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
 var DEFAULT_RING_LINES = 64;
@@ -255,9 +528,9 @@ function resolveLogRoots(env = process.env, cwd) {
 }
 function tryOpenRoot(root, name) {
   try {
-    const dir = join(root, LOG_SUBDIR);
+    const dir = join2(root, LOG_SUBDIR);
     mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${name}.log`);
+    const file = join2(dir, `${name}.log`);
     return { fd: openSync(file, "a"), file };
   } catch {
     return null;
@@ -959,22 +1232,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name) {
+  function hostToolDefinition(name) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -1276,20 +1557,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -1791,148 +2064,99 @@ function createLazyDshAdapter(ctx, options) {
 }
 
 // packages/mpd-roles-plugin/src/session-gate.ts
-var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
-var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
-var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
-var DELIVERABLE_VERB_MIN = 4;
-var ENUMERATED_LINE_MIN = 3;
-var ACTION_VERB_MIN = 3;
-var C_SUBSIGNAL_MIN = 2;
-var PLANS_DIR = [".mpd", "plans"];
-var DEFAULT_GATE_PRESETS = ["mpd"];
-function distinctMatches(text, pattern) {
-  const seen = new Set;
-  for (const match of text.matchAll(pattern))
-    seen.add(match[0].toLowerCase());
-  return seen.size;
-}
-function enumeratedLineCount(text) {
-  let count = 0;
-  for (const line of text.split(`
-`))
-    if (ENUMERATED_LINE_PATTERN.test(line))
-      count += 1;
-  return count;
-}
-function clauseStepCount(text) {
-  let count = 0;
-  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
-    if (CLAUSE_ACTION_PATTERN.test(clause))
-      count += 1;
-  return count;
-}
-function consumeExplicitFlag(text) {
-  const source = String(text ?? "");
-  const trimmed = source.trimStart();
-  const prefix = /^team:\s*/iu.exec(trimmed);
-  if (prefix !== null)
-    return { flagged: true, text: trimmed.slice(prefix[0].length) };
-  if (/!team/iu.test(source))
-    return { flagged: true, text: source.replace(/!team\s*/giu, "") };
-  return { flagged: false, text: source };
-}
-function evaluateComplexityGate(text, input = {}) {
-  const source = String(text ?? "");
-  const signals = [];
-  if (input.explicitFlag === true)
-    signals.push("A");
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
-    signals.push("B");
-  const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN
-  ].filter(Boolean).length;
-  if (cSubSignals >= C_SUBSIGNAL_MIN)
-    signals.push("C");
-  if (input.planArtifact === true)
-    signals.push("D");
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
-}
-async function hasPlanArtifact(workspace, readdirFn) {
-  try {
-    const read = readdirFn ?? readdirFs;
-    const entries = await read(join2(String(workspace ?? ""), ...PLANS_DIR));
-    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"));
-  } catch {
-    return false;
-  }
-}
-function messageText(message) {
-  const content = message?.content;
-  if (!Array.isArray(content))
-    return;
-  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
-  return parts.length === 0 ? undefined : parts.join(`
-`);
-}
-function latestUserMessage(candidates) {
-  let fallback;
-  for (let index = candidates.length - 1;index >= 0; index -= 1) {
-    const message = candidates[index];
-    if (message?.role !== "user")
-      continue;
-    const text = messageText(message);
-    if (text === undefined)
-      continue;
-    const source = String(message?.source?.kind ?? "");
-    if (source === "user")
-      return { message, text };
-    fallback ??= { message, text };
-  }
-  return fallback;
-}
-function consumeFlagFromMessage(message, source) {
-  if (!consumeExplicitFlag(source).flagged)
-    return message;
-  let changed = false;
-  const content = (message?.content ?? []).map((block) => {
-    const text = block?.text;
-    if (block?.type !== "text" || typeof text !== "string")
-      return block;
-    const next = consumeExplicitFlag(text);
-    if (next.text === text)
-      return block;
-    changed = true;
-    return { ...block, text: next.text };
-  });
-  return changed ? { ...message, content } : message;
-}
-function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
-  const header = agent?.session?.header;
-  if (header === undefined || header === null)
-    return false;
-  if (header.parentSession !== undefined)
-    return false;
-  const preset = header.agentPreset;
-  if (preset === undefined)
-    return true;
-  return presets.includes(String(preset));
-}
-function advisoryNoticeText(signals, explicit) {
-  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
-- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
-- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
-}
+var STAGING_TIMEOUT_MS = 5000;
 function gateTrace(line) {
   try {
     if (process.env.MPD_ROLES_GATE_TRACE === "1")
       rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line);
   } catch {}
 }
+function sessionIdOf(agent) {
+  const handle = agent;
+  const id = handle?.session?.id ?? handle?.sessionId ?? handle?.id;
+  return typeof id === "string" && id !== "" ? id : "workspace";
+}
+function planIdOf(value) {
+  const direct = value?.planId;
+  if (typeof direct === "string" && direct !== "")
+    return direct;
+  const plan = value?.plan;
+  return typeof plan?.planId === "string" ? plan.planId : "";
+}
+function errorText(error) {
+  const message = error?.message;
+  return message === undefined ? String(error) : String(message);
+}
 function installSessionGate(dsh, options) {
   const presets = options.presets ?? DEFAULT_GATE_PRESETS;
-  const settled = new Set;
+  const acted = new Set;
   const disposers = new Map;
   const report = (line) => {
     try {
       options.log?.(line);
     } catch {}
   };
+  const warn = (line) => {
+    try {
+      options.warn(line);
+    } catch {}
+  };
+  function configValue(key) {
+    try {
+      return options.configValue?.(key);
+    } catch {
+      return;
+    }
+  }
+  function hasStagingTool(agent) {
+    if (typeof dsh.hasTool !== "function")
+      return false;
+    try {
+      return dsh.hasTool(STAGING_TOOL_NAME, agent) === true;
+    } catch {
+      return false;
+    }
+  }
+  function probeStagedPlan(workspace, sessionId) {
+    if (typeof options.stagedPlan !== "function") {
+      return { verdict: "unknown", reason: "no staged-plan probe is available in this composition (mpdTeams is not mounted)" };
+    }
+    try {
+      const existing = options.stagedPlan(workspace, sessionId);
+      return existing === undefined || existing === null ? { verdict: "none" } : { verdict: "staged", plan: existing };
+    } catch (error) {
+      return { verdict: "unknown", reason: errorText(error) };
+    }
+  }
+  async function stagePlan(input) {
+    const probe = probeStagedPlan(input.workspace, input.sessionId);
+    if (probe.verdict === "staged")
+      return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true };
+    if (probe.verdict === "unknown") {
+      warn('session-start gate: the staged-plan probe could not answer for session "' + input.sessionId + '" (' + String(probe.reason) + ") — staging anyway, so an existing UN-APPROVED plan for this session may have been ARCHIVED into .mpd/team/archive/ (an APPROVED plan is never replaced without replace:true)");
+    }
+    if (!hasStagingTool(input.agent))
+      return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" };
+    try {
+      const shell = gatePlanShell({
+        signals: input.signals,
+        goal: input.goal,
+        ...input.planPath === undefined ? {} : { planPath: input.planPath }
+      });
+      const result = await dsh.executeTool({
+        name: STAGING_TOOL_NAME,
+        arguments: { action: "create", name: shell.name, description: shell.description, approval: shell.approval },
+        agent: input.agent,
+        timeoutMs: options.stageTimeoutMs ?? STAGING_TIMEOUT_MS
+      });
+      if (result?.ok !== true || result.isError === true) {
+        return { ok: false, planId: "", alreadyStaged: false, error: result?.error === undefined ? "the staging call did not report ok" : String(result.error) };
+      }
+      return { ok: true, planId: planIdOf(result.value), alreadyStaged: false };
+    } catch (error) {
+      return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) };
+    }
+  }
   const stepHandler = (bound) => async (payload, decision) => {
     try {
       gateTrace("step entered bound=" + String(bound?.id ?? "none") + " payloadAgent=" + String(payload?.agent?.id ?? "none") + " kind=" + String(decision?.kind) + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1) + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1));
@@ -1946,8 +2170,13 @@ function installSessionGate(dsh, options) {
         return;
       }
       const agentId = String(agent.id ?? "");
-      if (agentId !== "" && settled.has(agentId))
+      if (agentId !== "" && acted.has(agentId))
         return;
+      const mode = resolveGateMode(configValue(GATE_CONFIG_KEY));
+      if (mode === GATE_MODE_OFF) {
+        gateTrace("mode off agent=" + agentId);
+        return;
+      }
       const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
       const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
@@ -1955,20 +2184,39 @@ function installSessionGate(dsh, options) {
         gateTrace("no user text yet agent=" + agentId);
         return;
       }
-      if (agentId !== "")
-        settled.add(agentId);
       const workspace = dsh.workspaceRoot({ agent });
       const consumed = consumeExplicitFlag(user.text);
-      const planArtifact = await hasPlanArtifact(workspace, options.readdir);
-      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
+      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY));
+      const boulder = await readBoulderGate(workspace, {
+        ...options.readFile === undefined ? {} : { readFile: options.readFile },
+        ...boulderDir === undefined ? {} : { boulderDir }
+      });
+      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, activeBoulder: boulder.active });
       if (verdict.trigger !== true) {
         gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
         return;
       }
-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0");
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"));
+      if (agentId !== "")
+        acted.add(agentId);
+      let outcome = { ok: false, planId: "", alreadyStaged: false };
+      if (mode === GATE_MODE_MECHANICAL) {
+        outcome = await stagePlan({
+          agent,
+          workspace,
+          sessionId: sessionIdOf(agent),
+          goal: consumed.text,
+          signals: verdict.signals,
+          ...boulder.planPath === undefined ? {} : { planPath: boulder.planPath }
+        });
+        if (!outcome.ok) {
+          warn('session-start gate: staging degraded to the advisory notice for agent "' + agentId + '" (' + String(outcome.error) + ")");
+        }
+      }
+      const staged = mode === GATE_MODE_MECHANICAL && outcome.ok;
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged));
       const notice = dsh.userMessage({
-        text: advisoryNoticeText(verdict.signals, consumed.flagged),
+        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
       const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
@@ -1980,7 +2228,7 @@ function installSessionGate(dsh, options) {
       const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
       return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
     } catch (error) {
-      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
+      warn("session-start gate failed (" + errorText(error) + ") — the step runs unchanged");
       return;
     }
   };
@@ -1994,9 +2242,9 @@ function installSessionGate(dsh, options) {
     } catch {}
   };
   const register = (agent) => {
+    if (agent === undefined || agent === null || disposers.has(agent))
+      return;
     try {
-      if (agent === undefined || agent === null || disposers.has(agent))
-        return;
       if (!sessionQualifies(agent, presets))
         return;
       const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent));
@@ -2005,7 +2253,7 @@ function installSessionGate(dsh, options) {
       report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)));
       gateTrace("registered agent=" + String(agent.id ?? "?"));
     } catch (error) {
-      options.warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+      warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + errorText(error) + ")");
     }
   };
   for (const agent of dsh.liveAgents())
@@ -2017,80 +2265,7 @@ function installSessionGate(dsh, options) {
   };
   subscribe("agent/created", (payload) => register(payload?.agent ?? payload));
   subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
-  return { installed: true, settled, disposers };
-}
-
-// packages/mpd-roles-plugin/src/roster-section.ts
-var ROSTER_SECTION_NAME = "mpd:roster";
-var ROSTER_SECTION_ORDER = 605;
-function functionOf(description) {
-  const text = String(description ?? "");
-  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
-  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
-}
-function rosterSectionText(members) {
-  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
-  return [
-    "## MPD specialist roster",
-    "The specialists this deployment stages as teammates, addressed by NAME:",
-    ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
-  ].join(`
-`);
-}
-function installRosterSection(dsh, options) {
-  const presets = options.presets ?? ["mpd"];
-  const disposers = new Map;
-  const text = rosterSectionText(options.members);
-  const report = (line) => {
-    try {
-      options.log?.(line);
-    } catch {}
-  };
-  const register = (agent) => {
-    try {
-      if (agent === undefined || agent === null || disposers.has(agent))
-        return;
-      if (!sessionQualifies(agent, presets))
-        return;
-      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
-      const dispose = dsh.agentPromptSection(agent, section);
-      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
-      const preset = agent?.session?.header?.agentPreset;
-      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
-    } catch (error) {
-      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
-    }
-  };
-  const release = (agent) => {
-    const dispose = disposers.get(agent);
-    if (dispose === undefined)
-      return;
-    disposers.delete(agent);
-    try {
-      dispose();
-    } catch {}
-  };
-  for (const agent of dsh.liveAgents())
-    register(agent);
-  const subscribe = (event, handler) => {
-    try {
-      if (options.onEvent !== undefined) {
-        options.onEvent(event, handler);
-        return;
-      }
-      dsh.onEvent(event, handler);
-    } catch {}
-  };
-  subscribe("agent/created", (payload) => {
-    register(payload?.agent ?? payload);
-    return;
-  });
-  subscribe("agent/disposed", (payload) => {
-    release(payload?.agent ?? payload);
-    return;
-  });
-  return { installed: true, registered: disposers.size, disposers };
+  return { installed: true, acted, disposers, mode: resolveGateMode(configValue(GATE_CONFIG_KEY)) };
 }
 
 // packages/mpd-roles-plugin/src/index.ts
@@ -2163,6 +2338,17 @@ function readPersona(config, spec) {
   return spec.description;
 }
 var EXTENSIONS_SERVICE = "mpdExtensions";
+var CONFIG_SERVICE = "mpdConfig";
+var TEAMS_SERVICE = "mpdTeams";
+function stagedPlanProbe(ctx) {
+  return (workspace, sessionId) => {
+    const teams = ctx.get?.(TEAMS_SERVICE, false);
+    if (teams === undefined || teams === null || typeof teams.planFor !== "function") {
+      throw new Error("the " + TEAMS_SERVICE + " service is not mounted, so the staged-plan probe cannot answer");
+    }
+    return teams.planFor(workspace, sessionId)?.plan ?? null;
+  };
+}
 var PROJECT_ONLY_PLANE = "project";
 var PROJECT_ROLES_REASON = "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session";
 function text(value) {
@@ -2415,6 +2601,29 @@ Work with the tools your role requires (read-only roles must never modify anythi
     }
   });
   const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }));
+  const configValue = (key) => {
+    const live = (() => {
+      try {
+        return ctx.get?.(CONFIG_SERVICE, false);
+      } catch {
+        return;
+      }
+    })();
+    const value = (() => {
+      try {
+        return live?.get?.(key);
+      } catch {
+        return;
+      }
+    })();
+    if (value !== undefined)
+      return value;
+    if (key === GATE_CONFIG_KEY)
+      return config.team?.gate;
+    if (key === BOULDER_DIR_CONFIG_KEY)
+      return config.boulder?.dir;
+    return;
+  };
   const guardOutcome = [];
   try {
     const guard = installReadonlyGuard(dsh, {
@@ -2440,12 +2649,14 @@ Work with the tools your role requires (read-only roles must never modify anythi
     warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")");
   }
   try {
-    installSessionGate(dsh, {
+    const gate = installSessionGate(dsh, {
       presets: ["mpd"],
       warn: (line) => warn(line),
-      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line)
+      log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
+      configValue,
+      stagedPlan: stagedPlanProbe(ctx)
     });
-    guardOutcome.push("sessionGate=advisory");
+    guardOutcome.push("sessionGate=" + gate.mode);
   } catch (error) {
     guardOutcome.push("sessionGate=absent");
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")");
@@ -2472,5 +2683,6 @@ export {
   pkgRoot,
   readPersona,
   rosterFunctionList,
-  rosterNameList
+  rosterNameList,
+  stagedPlanProbe
 };

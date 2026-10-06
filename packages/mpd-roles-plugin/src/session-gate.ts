@@ -1,221 +1,83 @@
-// The session-start complexity gate (AGENTS.md §1), re-implemented on the OFFICIAL Agent
-// Teams plugin's seams after the vendored body that used to own it was retired.
+// The session-start complexity gate — the WIRING half (AGENTS.md §1).
 //
-// The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with four
-// signals, reproduced VERBATIM from the retired implementation
-// (`packages/mpd-agent-teams-plugin/lib/session-start.ts`, read as the SPEC — never
-// mounted or imported):
-//   A (hard) `team:` prefix or `!team` anywhere; the marker is CONSUMED from the goal text;
-//   B (soft) >= 4 distinct deliverable verbs;
-//   C (soft) ONE signal that fires when >= 2 of its three sub-signals hold (>= 3 enumerated
-//            lines, >= 3 distinct action verbs, >= 3 action clauses);
-//   D (soft) a `.mpd/plans/*.md` artifact exists for the session workspace.
+// The PURE half (patterns, thresholds, predicate, the boulder read, both notice builders, the mode
+// resolver) lives in `./complexity-gate.ts`, which resolves under plain `node` and is what the QA
+// case and the unit tests import. THIS file owns the three things that need a live harness:
+//   1. ONE `agent/pre-step` listener PER QUALIFYING AGENT, registered in that agent's own scope;
+//   2. the per-call config read (`team.gate`, `boulder.dir`) and the workspace/session resolution;
+//   3. the STAGING call: a triggered session stages an APPROVABLE PLAN SHELL through the
+//      `agent_teams_plan` tool (mpd-team-core) — never through a hand-built `{session:{id}}` stand-in
+//      for a live agent, which is exactly why the TUI's approval hop used to be broken.
 //
-// The gate ADVISES and stages NOTHING — including for an explicit `team:` / `!team` request,
-// which is only a stronger reason to advise. It injects ONE user-role notice carrying the
-// marker `[AgentTeams] Session-start team rule`, naming the fired signals, and telling the
-// captain to stage a team itself with the official tools (`spawn_teammate` +
-// `team_task_create`) at the moment the work warrants one.
+// WHAT A TRIGGER DOES (the mode, resolved PER CALL from `team.gate`):
+//   mechanical (DEFAULT) — stage the shell, then inject the MECHANICAL notice naming the id the
+//                          call returned; every degradation of this route falls back to ADVISORY;
+//   advisory             — today's notice, stages nothing;
+//   off                  — the listener returns immediately.
+//
+// THE HONEST BOUND (stated so no reader over-reads the log): the gate can fill the plan's `name`,
+// `description` and `approval`; the store fills `planId`/`stagedAt`/`version` and the tool fills
+// `sessionId`/`workspace`. It can NOT fill `members[]`, `tasks[]`, prompts, blockers or owners — at
+// the first pre-step there is no decomposition and no DAG, and keyword->specialist selection is the
+// "invent a team" defect this bundle forbids. So it stages a NAMED, SIGNALLED, APPROVABLE SHELL of
+// 0 members and 0 tasks, and the notice says so outright. NEVER claim a team was created.
 //
 // Scope: the mpd preset's own top-level sessions only. A child session (subagent, teammate,
 // workflow worker) never gets its own gate, and neither does another preset's session.
-import { readdir as readdirFs } from "node:fs/promises"
-import { join } from "node:path"
 import type { DshAdapter, DshAgentPreStep, DshPreStepDecision } from "../../mpd-dsh-adapter-plugin/src/index"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
+import {
+  advisoryNoticeText,
+  BOULDER_DIR_CONFIG_KEY,
+  consumeExplicitFlag,
+  consumeFlagFromMessage,
+  DEFAULT_GATE_PRESETS,
+  evaluateComplexityGate,
+  GATE_CONFIG_KEY,
+  GATE_MODE_MECHANICAL,
+  GATE_MODE_OFF,
+  gatePlanShell,
+  latestUserMessage,
+  mechanicalNoticeText,
+  readBoulderGate,
+  resolveBoulderDir,
+  resolveGateMode,
+  sessionQualifies,
+  STAGING_TOOL_NAME,
+  type GateMode,
+} from "./complexity-gate.ts"
 
-/** The notice marker (frozen; AGENTS.md §1 and the retired implementation both carry it). */
-export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
+/** How long ONE staging call may take before the mechanical route degrades, in milliseconds. */
+const STAGING_TIMEOUT_MS = 5000
 
-/** Signal B: deliverable verbs (English + CJK), counted by DISTINCT match. */
-export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu
-/** Signal C2: action verbs (English + CJK), counted by DISTINCT match. */
-export const ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu
-/** Signal C1: numbered / bulleted / table rows that read as enumerated steps. */
-export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u
-/** Signal C: clause separators — a single-line plan enumerates steps through punctuation too. */
-export const CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u
-/** Signal C3: a clause that OPENS (optionally after a conjunction) with an action verb. */
-export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu
-/** Signal B threshold: distinct deliverable-verb matches. */
-export const DELIVERABLE_VERB_MIN = 4
-/** Signal C1 and C3 threshold: enumerated lines / positional clauses. */
-export const ENUMERATED_LINE_MIN = 3
-/** Signal C2 threshold: distinct action-verb matches. */
-export const ACTION_VERB_MIN = 3
-/** Signal C: how many of its three sub-signals must hold (its own majority). */
-export const C_SUBSIGNAL_MIN = 2
-/** Signal D: the plan-artifact directory, relative to the session workspace. */
-export const PLANS_DIR = [".mpd", "plans"] as const
-/** The presets whose top-level sessions the gate covers. */
-export const DEFAULT_GATE_PRESETS: readonly string[] = ["mpd"]
-
-/** Distinct matches of one global pattern (`matchAll` needs the `g` flag). */
-function distinctMatches(text: string, pattern: RegExp): number {
-  /** The distinct spellings this pattern matched, lowercased so casing cannot inflate the count. */
-  const seen = new Set<string>()
-  for (const match of text.matchAll(pattern)) seen.add(match[0].toLowerCase())
-  return seen.size
-}
-
-/** Lines that read as enumerated steps (numbered, bulleted, table rows). */
-function enumeratedLineCount(text: string): number {
-  /** Lines that read as enumerated steps so far. */
-  let count = 0
-  for (const line of text.split("\n")) if (ENUMERATED_LINE_PATTERN.test(line)) count += 1
-  return count
-}
-
-/** Clauses that OPEN with an action verb. */
-function clauseStepCount(text: string): number {
-  /** Clauses that open with an action verb so far. */
-  let count = 0
-  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN)) if (CLAUSE_ACTION_PATTERN.test(clause)) count += 1
-  return count
-}
-
-/**
- * The hard explicit flag and the text with its marker CONSUMED.
- *
- * `team:` is only an activation prefix when it opens the trimmed text; a bare `!team`
- * anywhere activates. Frozen from the retired implementation — the marker must not reach
- * the model as part of the goal.
- */
-export function consumeExplicitFlag(text: string): { flagged: boolean; text: string } {
-  /** The message text as given, before any marker is consumed. */
-  const source = String(text ?? "")
-  /** The text with leading whitespace removed, which is where a `team:` prefix may open. */
-  const trimmed = source.trimStart()
-  /** The `team:` prefix match, or null when the flag is not spelled that way. */
-  const prefix = /^team:\s*/iu.exec(trimmed)
-  if (prefix !== null) return { flagged: true, text: trimmed.slice(prefix[0].length) }
-  if (/!team/iu.test(source)) return { flagged: true, text: source.replace(/!team\s*/giu, "") }
-  return { flagged: false, text: source }
-}
-
-/**
- * Evaluate the frozen gate. `trigger = explicitFlag OR (matchedSignals >= 1)`.
- *
- * C is ONE signal: its own 2-of-3 majority is established FIRST, and C1/C2/C3 are never
- * counted as separate top-level signals. A satisfied C is therefore sufficient on its own —
- * the ratified Option A predicate, with the multi-clause false positive as its accepted,
- * ledgered cost (the frozen complex prompts #1/#3 carry C as their only signal).
- */
-export function evaluateComplexityGate(
-  text: string,
-  input: { explicitFlag?: boolean; planArtifact?: boolean } = {},
-): { trigger: boolean; signals: string[] } {
-  /** The goal text as given; a non-string reads as empty rather than throwing. */
-  const source = String(text ?? "")
-  /** The fired signal letters, in A to D order, which is what the notice names. */
-  const signals: string[] = []
-  if (input.explicitFlag === true) signals.push("A")
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN) signals.push("B")
-  /** How many of signal C's three sub-signals hold (its own 2-of-3 majority). */
-  const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN,
-  ].filter(Boolean).length
-  if (cSubSignals >= C_SUBSIGNAL_MIN) signals.push("C")
-  if (input.planArtifact === true) signals.push("D")
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals }
-}
-
-/** Whether a `.mpd/plans/*.md` artifact exists for one workspace (never throws). */
-export async function hasPlanArtifact(workspace: string, readdirFn?: (path: string) => Promise<string[]>): Promise<boolean> {
+/** One-line diagnostics for a live boot, enabled with `MPD_ROLES_GATE_TRACE=1`. */
+function gateTrace(line: string): void {
   try {
-    /** The directory reader: the injected seam in a test, `node:fs/promises` in a boot. */
-    const read = readdirFn ?? readdirFs
-    /** The plan directory's entries; a missing directory is caught below and reads as no artifact. */
-    const entries = await read(join(String(workspace ?? ""), ...PLANS_DIR))
-    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"))
-  } catch {
-    return false
-  }
-}
-
-/** The text of one message's text blocks, joined; `undefined` when it has none. */
-function messageText(message: unknown): string | undefined {
-  /** The message's content blocks, when it carries an array of them. */
-  const content = (message as { content?: unknown } | undefined)?.content
-  if (!Array.isArray(content)) return undefined
-  /** The text of every text block, in order; other block kinds are dropped. */
-  const parts = content
-    .filter((block): block is { type: string; text: string } => (block as { type?: unknown })?.type === "text" && typeof (block as { text?: unknown }).text === "string")
-    .map((block) => block.text)
-  return parts.length === 0 ? undefined : parts.join("\n")
+    if (process.env.MPD_ROLES_GATE_TRACE === "1") rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line)
+  } catch { /* tracing must never take the gate down */ }
 }
 
 /**
- * The user's OWN turn among the candidates — the goal text the gate judges.
+ * The session key the STAGING STORE files one session's plan under — MIRRORED from the writer.
  *
- * MEASURED 2026-09-27 (one instrumented live boot, the defect that made the gate silent):
- * the step's DECISION carries the claimed turn PLUS the user-role notice the harness itself
- * splices in — `{role:"user", source:{kind:"runtime-context"}, text:"Current runtime context.
- * This snapshot supersedes earlier ru…"}` — so "the last user-role message" is NOT the goal.
- * The gate judged that snapshot on every triggered prompt and the predicate was always false.
- *
- * The rule is therefore SOURCE-AWARE: a message whose `source.kind` is `user` is the caller's
- * own turn and wins (the LAST such message); only when a host tags no message that way does
- * this fall back to the last user-role message with text. Callers pass the PAYLOAD's raw
- * claimed list first (before the injected notices are spliced onto the decision).
+ * `mpd-team-core-plugin`'s own `sessionIdOf(exec)` (resolved by its `where()` and used by the
+ * `agent_teams_plan` tool's `create`) is the authority for this key, and this function reproduces
+ * it EXACTLY: the FIRST non-nullish of `agent.session.id ?? agent.sessionId ?? agent.id`, and the
+ * literal `"workspace"` when that candidate is not a non-empty string. Both quirks are load-bearing
+ * — `??` stops at the first non-nullish candidate, so a NON-STRING session id falls through to
+ * `"workspace"` rather than continuing down the chain, and a handle with no ids at all is filed
+ * under `workspace.json`. The probe asking any other spelling (the empty string, or a continued
+ * chain) reads a slot the write never touches: it answers "nothing staged" for a DIFFERENT file
+ * while the write lands in this one, and the idempotence guard is structurally blind — the measured
+ * class where a captain's un-approved plan is silently ARCHIVED. Mirrored, not imported, because
+ * the store is another package's scope; if its chain ever moves, this is the line to move with it.
  */
-export function latestUserMessage(candidates: readonly unknown[]): { message: unknown; text: string } | undefined {
-  /** The last user-role message with text, used only when no message is tagged as the caller's own. */
-  let fallback: { message: unknown; text: string } | undefined
-  for (let index = candidates.length - 1; index >= 0; index -= 1) {
-    /** The candidate under inspection, walked from newest to oldest. */
-    const message = candidates[index]
-    if ((message as { role?: unknown } | undefined)?.role !== "user") continue
-    /** The candidate's joined text, or undefined when it has no text blocks. */
-    const text = messageText(message)
-    if (text === undefined) continue
-    /** The message's source kind, which is what separates the real turn from an injected notice. */
-    const source = String((message as { source?: { kind?: unknown } } | undefined)?.source?.kind ?? "")
-    if (source === "user") return { message, text }
-    fallback ??= { message, text }
-  }
-  return fallback
-}
-
-/** Rewrite a claimed user message with the explicit marker CONSUMED (text blocks only). */
-export function consumeFlagFromMessage(message: unknown, source: string): unknown {
-  if (!consumeExplicitFlag(source).flagged) return message
-  /** Whether any text block actually lost the marker. */
-  let changed = false
-  /** The rewritten content blocks, with the marker consumed from every block that carried it. */
-  const content = ((message as { content?: unknown[] } | undefined)?.content ?? []).map((block) => {
-    /** This block's text, when the block is a text block. */
-    const text = (block as { text?: unknown } | undefined)?.text
-    if ((block as { type?: unknown } | undefined)?.type !== "text" || typeof text !== "string") return block
-    /** This block's text with the explicit flag consumed. */
-    const next = consumeExplicitFlag(text)
-    if (next.text === text) return block
-    changed = true
-    return { ...(block as object), text: next.text }
-  })
-  return changed ? { ...(message as object), content } : message
-}
-
-/**
- * Whether one agent's SESSION is covered by the gate: a top-level session of one of the
- * configured presets.
- *
- * A child session (subagent, teammate, workflow worker, ralph round) already belongs to a
- * parent's team — it must never be told to stage one of its own. A session that names a
- * preset must be on the list; a session with NO preset at all (the headless direct driver,
- * legacy installs) deploys the bundle itself and stays covered.
- */
-export function sessionQualifies(agent: unknown, presets: readonly string[] = DEFAULT_GATE_PRESETS): boolean {
-  /** The agent's session header, which carries the parent link and the preset. */
-  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
-  if (header === undefined || header === null) return false
-  if (header.parentSession !== undefined) return false
-  /** The session's preset name; absent means a preset-less session, which still qualifies. */
-  const preset = header.agentPreset
-  if (preset === undefined) return true
-  return presets.includes(String(preset))
+function sessionIdOf(agent: unknown): string {
+  /** The agent handle, narrowed to the three shapes a session id is spelled in. */
+  const handle = agent as { session?: { id?: unknown }; sessionId?: unknown; id?: unknown } | undefined
+  /** The FIRST non-nullish candidate — the `??` order is part of the mirrored contract. */
+  const id = handle?.session?.id ?? handle?.sessionId ?? handle?.id
+  return typeof id === "string" && id !== "" ? id : "workspace"
 }
 
 /** The session workspace of one agent, or `undefined` when it declares none. */
@@ -226,39 +88,30 @@ function sessionCwdOf(agent: unknown): string | undefined {
 }
 
 /**
- * The advisory notice text: what fired, that NOTHING was staged, and what to do instead.
+ * The plan id inside one plan-shaped payload, read defensively; empty when unreadable.
  *
- * One model pays for this text once per session, so it stays short; the staging tools are
- * the OFFICIAL ones (`spawn_teammate`, `team_task_create`), never the retired
- * `agent_teams_*` vocabulary.
+ * TWO SHAPES reach this reader and both are documented: the TOOL RESULT wraps the plan
+ * (`{plan:{planId}}`, the `create` action's return) while the STAGED-PLAN PROBE returns the plan
+ * itself (`{planId}`, `mpdTeams.planFor(...).plan`). Neither is ever invented here — an unreadable
+ * payload reads as the empty string, which the notice renders as "plan id not reported".
  */
-export function advisoryNoticeText(signals: readonly string[], explicit: boolean): string {
-  /** The fired signals as a readable list, or the generic wording when none is named. */
-  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/")
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY "
-    + "and stages nothing while complexity is merely being judged."
-    + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "")
-    + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate"
-    + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell"
-    + " the user the Web plan is ready for review."
-    + "\n- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line."
-    + "\n- A team is NOT a precondition of this session, and you may not create a second team while leading one."
+function planIdOf(value: unknown): string {
+  /** The id on the payload itself, which is what the staged-plan probe answers. */
+  const direct = (value as { planId?: unknown } | undefined)?.planId
+  if (typeof direct === "string" && direct !== "") return direct
+  /** The plan record the `create` action wrapped, when the payload carries one. */
+  const plan = (value as { plan?: { planId?: unknown } } | undefined)?.plan
+  return typeof plan?.planId === "string" ? plan.planId : ""
 }
 
-/**
- * One-line diagnostics for a live boot, enabled with `MPD_ROLES_GATE_TRACE=1`.
- *
- * WHY THIS EXISTS: the gate failed once as "mounted, silent, no error", and neither a unit
- * test nor the install line could say WHERE it stopped (never dispatched? wrong agent?
- * unqualified session? predicate false?). This hook answers that from the boot log itself.
- */
-function gateTrace(line: string): void {
-  try {
-    if (process.env.MPD_ROLES_GATE_TRACE === "1") rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line)
-  } catch { /* tracing must never take the gate down */ }
+/** A thrown value reduced to printable text: its `message` when it carries one, else the value. */
+function errorText(error: unknown): string {
+  /** The thrown value's own message, read through a one-property view because it is `unknown`. */
+  const message = (error as { message?: unknown } | undefined)?.message
+  return message === undefined ? String(error) : String(message)
 }
 
-/** What installing the gate needs: the covered presets, the two reporters and the probe seam. */
+/** What installing the gate needs: the covered presets, the reporters and the per-call seams. */
 export interface SessionGateOptions {
   /** Presets whose top-level sessions are covered (default: `["mpd"]`). */
   presets?: readonly string[]
@@ -271,18 +124,65 @@ export interface SessionGateOptions {
    * normal boot's evidence.
    */
   log?: (line: string) => void
-  /** `readdir` injection for the plan-artifact probe (tests); defaults to `node:fs/promises`. */
-  readdir?: (path: string) => Promise<string[]>
+  /**
+   * ONE config value for one key, resolved PER CALL and never cached (T-18: a `.mpd/mpd.jsonc`
+   * edit is picked up live). The caller owns the precedence — the mounted `mpdConfig` service
+   * first, this row's own config second; `undefined` here means "declared nowhere", so the
+   * mode default applies.
+   */
+  configValue?: (key: string) => unknown
+  /** The boulder-state READER seam (`node:fs/promises` by default), for tests and the QA case. */
+  readFile?: (path: string) => Promise<string>
+  /**
+   * Whether a plan is ALREADY staged for one session — `mpdTeams.planFor(...).plan` in a boot.
+   *
+   * THREE-VALUED BY CONTRACT (see {@link probeStagedPlan}): `null` or `undefined` is the POSITIVE
+   * "nothing is staged" answer; a non-null plan means one IS staged and the gate SKIPS staging (the
+   * tool's `create` ARCHIVES an existing un-approved plan, so a second staging moves the captain's
+   * in-progress plan out of its slot); a THROW — or leaving this seam unset — means the probe CANNOT
+   * answer, and the gate then stages anyway and reports that in ONE warning. Never answer `null` to
+   * mean "I could not read it": that is the silent path this contract exists to close.
+   */
+  stagedPlan?: (workspace: string, sessionId: string) => unknown
+  /** The staging call's timeout in milliseconds (default {@link STAGING_TIMEOUT_MS}). */
+  stageTimeoutMs?: number
 }
 
 /** The gate's install outcome, exposed so a mount lane can assert it. */
 export interface SessionGateInstall {
   /** Always true: the gate degrades per agent rather than failing as a whole. */
   installed: boolean
-  /** Per-agent settlement registry (exposed for tests and for a future reset seam). */
-  settled: Set<string>
+  /**
+   * Agent ids that have already FIRED their ONE notice. An id is written IMMEDIATELY BEFORE the
+   * async staging call, so a re-entrant step can never stage a second plan; a step whose predicate
+   * did NOT fire leaves the session unregistered and is judged again on the next user turn.
+   */
+  acted: Set<string>
   /** One disposer per agent whose scope carries a gate listener. */
   disposers: Map<unknown, () => void>
+  /**
+   * The `team.gate` mode resolved at INSTALL time — the BOOT LINE's snapshot, never a cached mode.
+   *
+   * It is a snapshot and can be WRONG for the live behaviour in ONE case, named so a reader is not
+   * misled: the loader applies sibling rows CONCURRENTLY and cordis answers `undefined` for a
+   * provider whose fiber is not ACTIVE yet (the same transient miss T-50 documents), so a
+   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default
+   * (`mechanical`) is reported. The AUTHORITATIVE mode is the one the FIRING line prints, because
+   * every fire re-resolves it per call.
+   */
+  mode: GateMode
+}
+
+/** The outcome of ONE mechanical staging attempt. */
+interface StageOutcome {
+  /** Whether a plan is staged in the session as a result (this fire staged one, or one was there). */
+  ok: boolean
+  /** The plan id the CALL returned, or the empty string when it reported none. */
+  planId: string
+  /** Whether the gate SKIPPED staging because this session already had a plan. */
+  alreadyStaged: boolean
+  /** Why the attempt degraded to the advisory notice, when it did. */
+  error?: string
 }
 
 /**
@@ -300,17 +200,23 @@ export interface SessionGateInstall {
  *
  * The handler then reads the agent from the REGISTRATION rather than from the payload, so it
  * cannot be misled by a payload that omits `agent`; the payload's own `agent` stays a
- * fallback. Settlement is per agent id and the notice is injected ONCE: after it fires, that
- * agent's later steps return the downstream decision untouched.
+ * fallback. The notice is injected ONCE per agent, and the acted entry is recorded BEFORE the
+ * async staging call so a re-entrant step can never stage twice.
+ *
+ * @param dsh - the adapter slice this row uses: the agent-scoped listener, the live agents, the
+ *   event bus, the notice factory, the workspace resolver, and the two tool seams the staging call
+ *   needs (`hasTool` / `executeTool`).
+ * @param options - the covered presets, the reporters and the per-call seams (see the interface).
+ * @returns the install outcome: the acted registry, the disposers and the resolved mode.
  */
 export function installSessionGate(
-  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot">,
+  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot" | "hasTool" | "executeTool">,
   options: SessionGateOptions,
 ): SessionGateInstall {
   /** The presets whose top-level sessions are covered. */
   const presets = options.presets ?? DEFAULT_GATE_PRESETS
-  /** Agent ids that have already spent their ONE evaluation. */
-  const settled = new Set<string>()
+  /** Agent ids that have already fired their ONE notice. */
+  const acted = new Set<string>()
   /** One disposer per agent whose scope carries a gate listener. */
   const disposers = new Map<unknown, () => void>()
   /** Emit a boot-log line without letting a throwing logger take the gate down. */
@@ -318,6 +224,154 @@ export function installSessionGate(
     try {
       options.log?.(line)
     } catch { /* logging must never take the gate down */ }
+  }
+  /** Report one contained failure without letting a throwing reporter take the gate down. */
+  const warn = (line: string): void => {
+    try {
+      options.warn(line)
+    } catch { /* warning must never take the gate down */ }
+  }
+
+  /**
+   * ONE config value for ONE key: the live layer (the mounted `mpdConfig` service) first, this
+   * row's own config second, `undefined` last so the caller's default applies. Resolved PER CALL.
+   * @param key - the dot-path key, e.g. `team.gate`.
+   * @returns the raw value, or `undefined` when neither layer declares it.
+   */
+  function configValue(key: string): unknown {
+    try {
+      return options.configValue?.(key)
+    } catch {
+      // A throwing config layer reads as ABSENT, which keeps the gate's own default in force.
+      return undefined
+    }
+  }
+
+  /**
+   * Whether the staging tool is registered IN THE CALLING AGENT'S OWN VIEW — the exact view its
+   * call will execute against.
+   *
+   * WHY THE AGENT IS PASSED (2026-10-07): the ONE-ARG form reads the host-plane GLOBAL view and
+   * answers correctly today only because `agent_teams_plan` happens to be a host-plane row
+   * (`cordis.patch.yml` id `mpd-team-core`). The moment that row moves plane — the preset plane is
+   * the agent scope's PARENT, invisible to an unscoped read — the one-arg probe would silently
+   * answer `false` and this ladder would degrade to advisory with NO error anywhere. With the agent
+   * the adapter resolves through that agent's own view (host globals + preset plane + the agent's
+   * own registrations), i.e. the SAME resolution execution uses, so a probe and the call it
+   * promises can never come from different planes.
+   *
+   * A missing `hasTool` seam (a partial adapter double) reads FALSE — the ladder's advisory step,
+   * never a throw. Nothing here is cached: the probe runs per fire.
+   * @param agent - the LIVE bound agent whose view is probed.
+   * @returns true only when the adapter answered positively for that agent's view.
+   */
+  function hasStagingTool(agent: unknown): boolean {
+    if (typeof dsh.hasTool !== "function") return false
+    try {
+      return dsh.hasTool(STAGING_TOOL_NAME, agent) === true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Ask the caller's idempotence probe about ONE session, THREE-VALUED and never throwing.
+   *
+   *   "none"    — the probe POSITIVELY answered "nothing is staged": staging is safe.
+   *   "staged"  — a plan IS staged; the caller skips staging and names it.
+   *   "unknown" — the probe could not answer AT ALL: no closure was supplied (the `mpdTeams` service
+   *               is not mounted in this composition) or the read threw. Staging proceeds — that is
+   *               the mission — but the caller says so in ONE warning, because staging can ARCHIVE
+   *               an existing un-approved plan for the session, and silence there would make the
+   *               "never re-stage" claim dishonest.
+   *
+   * The absent-closure arm is the one that used to be indistinguishable from "none": an `undefined`
+   * answer and an unavailable service both read as "nothing staged" and staged SILENTLY.
+   * @param workspace - the session workspace the probe reads.
+   * @param sessionId - the key {@link sessionIdOf} mirrors from the staging store's own writer.
+   * @returns the verdict, the plan when one is staged, and why when the probe could not answer.
+   */
+  function probeStagedPlan(
+    workspace: string,
+    sessionId: string,
+  ): { verdict: "none" | "staged" | "unknown"; plan?: unknown; reason?: string } {
+    if (typeof options.stagedPlan !== "function") {
+      return { verdict: "unknown", reason: "no staged-plan probe is available in this composition (mpdTeams is not mounted)" }
+    }
+    try {
+      /** The probe's answer: a plan object, or `null`/`undefined` for the positive "none" verdict. */
+      const existing = options.stagedPlan(workspace, sessionId)
+      return existing === undefined || existing === null ? { verdict: "none" } : { verdict: "staged", plan: existing }
+    } catch (error) {
+      return { verdict: "unknown", reason: errorText(error) }
+    }
+  }
+
+  /**
+   * Run the lazy stage ladder at FIRE time — nothing is resolved at apply time, so the row order
+   * (`mpd-roles` composing before `mpd-team-core`) stays irrelevant.
+   * @param input - the bound live agent, its workspace/session, the consumed goal and the verdict.
+   * @returns what happened, never a throw: every failure is a degraded {@link StageOutcome}.
+   */
+  async function stagePlan(input: {
+    /** The LIVE agent the listener is bound to; the tool resolves workspace and session from it. */
+    agent: unknown
+    /** The session workspace, used for the idempotence probe. */
+    workspace: string
+    /** The session the staging call is attributed to. */
+    sessionId: string
+    /** The goal text with the explicit marker already consumed. */
+    goal: string
+    /** The fired signal letters, inlined into the shell's description. */
+    signals: readonly string[]
+    /** The active work's plan path, echoed into the description when signal D fired. */
+    planPath?: string
+  }): Promise<StageOutcome> {
+    // (b) A plan is ALREADY staged for this session: the tool's `create` ARCHIVES it — the plan is
+    // copied to `.mpd/team/archive/<planId>/plan.json` BEFORE the staging slot is cleared — so the
+    // gate skips staging and names the plan that is already there.
+    //
+    // THE BOUND, stated instead of an absolute: the gate never DESTROYS a plan (an archived plan is
+    // recoverable, and an APPROVED plan is refused by the tool without `replace:true`), and it
+    // re-stages ONLY when this probe POSITIVELY answered "none staged" — or when the probe could not
+    // answer at all, in which case it says so in ONE warning (below). A silent "cannot answer" is
+    // what would make a claim of "never re-stage" dishonest.
+    /** The probe's three-valued answer, whose "unknown" arm is the one that must be loud. */
+    const probe = probeStagedPlan(input.workspace, input.sessionId)
+    if (probe.verdict === "staged") return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true }
+    if (probe.verdict === "unknown") {
+      // STAGING IS THE MISSION, so an unanswerable probe does NOT block it — it is REPORTED. The
+      // consequence is named exactly: staging MOVES an existing un-approved plan for this session
+      // out of its slot into the archive, where it stays readable.
+      warn("session-start gate: the staged-plan probe could not answer for session \"" + input.sessionId + "\" (" + String(probe.reason) + ") — staging anyway, so an existing UN-APPROVED plan for this session may have been ARCHIVED into .mpd/team/archive/ (an APPROVED plan is never replaced without replace:true)")
+    }
+    // (a) The tool is not registered in this composition (another preset, a boot without
+    //     mpd-team-core): the mechanical route is impossible, so the advisory notice is the honest one.
+    // Probed in the SAME agent view the call below executes against, so the two cannot disagree.
+    if (!hasStagingTool(input.agent)) return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" }
+    try {
+      /** The three fields the gate can fill — a SHELL, never a decomposed team. */
+      const shell = gatePlanShell({
+        signals: input.signals,
+        goal: input.goal,
+        ...(input.planPath === undefined ? {} : { planPath: input.planPath }),
+      })
+      /** The tool result, normalized by the adapter (`{ok, isError, value, error}`). */
+      const result = await dsh.executeTool({
+        name: STAGING_TOOL_NAME,
+        arguments: { action: "create", name: shell.name, description: shell.description, approval: shell.approval },
+        // THE LIVE AGENT, never a fabricated `{session:{id}}` stand-in: the tool resolves the
+        // workspace and the session FROM this handle, and a stand-in is what broke the approval hop.
+        agent: input.agent,
+        timeoutMs: options.stageTimeoutMs ?? STAGING_TIMEOUT_MS,
+      })
+      if (result?.ok !== true || result.isError === true) {
+        return { ok: false, planId: "", alreadyStaged: false, error: result?.error === undefined ? "the staging call did not report ok" : String(result.error) }
+      }
+      return { ok: true, planId: planIdOf(result.value), alreadyStaged: false }
+    } catch (error) {
+      return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) }
+    }
   }
 
   /** One step handler, bound to the agent whose scope registered it. */
@@ -334,9 +388,13 @@ export function installSessionGate(
       const agent = bound ?? payload?.agent
       if (agent === undefined || agent === null) return undefined
       if (!sessionQualifies(agent, presets)) { gateTrace("not qualified agent=" + String((agent as { id?: unknown }).id ?? "?")); return undefined }
-      /** The bound agent's id; an empty one cannot be settled and is judged on every step. */
+      /** The bound agent's id; an empty one cannot be marked acted and is judged on every step. */
       const agentId = String((agent as { id?: unknown }).id ?? "")
-      if (agentId !== "" && settled.has(agentId)) return undefined
+      if (agentId !== "" && acted.has(agentId)) return undefined
+      // THE MODE IS RESOLVED PER CALL (never cached): a `.mpd/mpd.jsonc` edit takes effect on the
+      // next step, and `off` returns BEFORE the goal is even read.
+      const mode: GateMode = resolveGateMode(configValue(GATE_CONFIG_KEY))
+      if (mode === GATE_MODE_OFF) { gateTrace("mode off agent=" + agentId); return undefined }
       // THE GOAL COMES FROM THE RAW CLAIMED LIST (the payload), never from the decision:
       // the decision also carries the harness's injected runtime-context turn (measured), and
       // judging that snapshot made the predicate false on every triggered prompt.
@@ -345,24 +403,60 @@ export function installSessionGate(
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages
       /** The user's own turn, preferring the payload's raw list over the spliced decision. */
       const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages)
-      // Nothing to judge yet: leave the session unsettled so the first REAL user turn is
-      // still evaluated, instead of spending the one evaluation on an empty step.
+      // NOTHING TO JUDGE YET: the session stays unregistered, so the first REAL user turn is still
+      // evaluated instead of a pre-step with no user text spending the one evaluation.
       if (user === undefined) { gateTrace("no user text yet agent=" + agentId); return undefined }
-      if (agentId !== "") settled.add(agentId)
-      /** The workspace the plan-artifact probe reads, resolved from the bound agent. */
+      /** The workspace the boulder probe reads and the staging call writes under. */
       const workspace = dsh.workspaceRoot({ agent } as never)
       /** The goal text with the explicit marker removed, plus whether it was there. */
       const consumed = consumeExplicitFlag(user.text)
-      /** Signal D's input: whether a plan artifact exists for this workspace. */
-      const planArtifact = await hasPlanArtifact(workspace, options.readdir)
+      // Signal D's state root, resolved PER CALL from `boulder.dir` (never cached) and normalized by
+      // the ONE rule both consumers share: a `.mpd` spelling (this knob's retired schema default)
+      // means "the session workspace", never a directory literally named `.mpd` under the workspace —
+      // that reading is what double-nested the ledger path and left signal D unable to fire.
+      /** The state-root override, or undefined when the session workspace is the right root. */
+      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY))
+      /** What the workspace's boulder ledger says about an ACTIVE work (never throws). */
+      const boulder = await readBoulderGate(workspace, {
+        ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
+        ...(boulderDir === undefined ? {} : { boulderDir }),
+      })
       /** The frozen predicate's answer: whether it triggered, and which signals fired. */
-      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact })
+      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, activeBoulder: boulder.active })
+      // NO TRIGGER = NO SETTLEMENT: the session is judged again on its next user turn, so a trivial
+      // first turn can never spend the one evaluation on the complex turn that follows it.
       if (verdict.trigger !== true) { gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60))); return undefined }
-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0")
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"))
-      /** The ONE advisory notice, built through the adapter so its source kind is producer-owned. */
+      // THE RE-ENTRY GUARD, written IMMEDIATELY BEFORE the async stage: the harness may dispatch the
+      // next pre-step while the staging call is still in flight, and a second stage would ARCHIVE the
+      // plan the first one just staged. This agent is never judged again.
+      if (agentId !== "") acted.add(agentId)
+      /** What the mechanical route did; the advisory route leaves it at this degraded default. */
+      let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
+      if (mode === GATE_MODE_MECHANICAL) {
+        outcome = await stagePlan({
+          agent,
+          workspace,
+          sessionId: sessionIdOf(agent),
+          goal: consumed.text,
+          signals: verdict.signals,
+          ...(boulder.planPath === undefined ? {} : { planPath: boulder.planPath }),
+        })
+        if (!outcome.ok) {
+          // Ladder step (d): the call failed, threw or timed out — ONE warning carrying the error,
+          // and the step continues with the ADVISORY notice (never a claimed staged plan).
+          warn("session-start gate: staging degraded to the advisory notice for agent \"" + agentId + "\" (" + String(outcome.error) + ")")
+        }
+      }
+      /** Whether a plan is staged in this session as a result of this fire. */
+      const staged = mode === GATE_MODE_MECHANICAL && outcome.ok
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/")
+        + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged))
+      /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
       const notice = dsh.userMessage({
-        text: advisoryNoticeText(verdict.signals, consumed.flagged),
+        text: staged
+          ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged })
+          : advisoryNoticeText(verdict.signals, consumed.flagged),
         // A PRODUCER-OWNED source kind, never the retired `{kind:"plugin"}` wrapper: the
         // 0.1.7 session format (v4) REJECTS that kind at append time —
         // `dsh-session-format-v3-to-v4` `source()` throws "format v4 message requires a
@@ -370,6 +464,8 @@ export function installSessionGate(
         // (exit 1, 7 session records) the moment the notice was injected. The vocabulary is a
         // merge-extensible sum type with no shared `plugin` member: every producer names
         // itself, exactly like `agent-instructions` and `goal` do.
+        // ONE reason string for BOTH notices on purpose: this is the source shape a live boot has
+        // already accepted, and the notice TEXT is what distinguishes the two routes.
         source: { kind: "mpd-roles", reason: "session-start-advisory" },
       })
       /** The decision's messages with the explicit marker consumed from the user's own turn. */
@@ -386,7 +482,7 @@ export function installSessionGate(
       return { ...decision, kind: decision?.kind ?? "enter", messages: amended }
     } catch (error) {
       // A gate failure never breaks a step: the harness's own decision stands.
-      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged")
+      warn("session-start gate failed (" + errorText(error) + ") — the step runs unchanged")
       return undefined
     }
   }
@@ -402,10 +498,12 @@ export function installSessionGate(
     } catch { /* a failed teardown must not break agent disposal */ }
   }
 
-  /** Register the gate in ONE qualifying agent's own scope. */
+  /** Register the gate for ONE newly discovered agent, at most once per agent handle. */
   const register = (agent: unknown): void => {
+    // A duplicate registration would be a second listener on the same scope, i.e. a second notice
+    // per step: the agent HANDLE itself is the key, exactly as the roster section's name is.
+    if (agent === undefined || agent === null || disposers.has(agent)) return
     try {
-      if (agent === undefined || agent === null || disposers.has(agent)) return
       // Scope first: another preset's session and a subagent/member session never get a gate.
       if (!sessionQualifies(agent, presets)) return
       /** The scope's own disposer, or a no-op when it returned none. */
@@ -419,9 +517,9 @@ export function installSessionGate(
     } catch (error) {
       // A scope that refuses the listener degrades with ONE warning per agent; the boot and
       // every other session stay untouched.
-      options.warn("session-start gate not registered for agent \""
+      warn("session-start gate not registered for agent \""
         + String((agent as { id?: unknown } | undefined)?.id ?? "?")
-        + "\" (" + (error instanceof Error ? error.message : String(error)) + ")")
+        + "\" (" + errorText(error) + ")")
     }
   }
 
@@ -434,11 +532,12 @@ export function installSessionGate(
   }
   subscribe("agent/created", (payload: unknown) => register((payload as { agent?: unknown } | undefined)?.agent ?? payload))
   subscribe("agent/disposed", (payload: unknown) => release((payload as { agent?: unknown } | undefined)?.agent ?? payload))
-  return { installed: true, settled, disposers }
+  // The MODE is resolved ONCE here, for the boot line ONLY: `installSessionGate` is a synchronous
+  // installer, and every fire re-resolves it through `configValue` (never a cached mode).
+  return { installed: true, acted, disposers, mode: resolveGateMode(configValue(GATE_CONFIG_KEY)) }
 }
 
-
-/** The cwd used for the plan-artifact probe (documented for callers that pass an agent). */
+/** The cwd used for the boulder probe (documented for callers that pass an agent). */
 export function gateWorkspaceOf(agent: unknown): string | undefined {
   return sessionCwdOf(agent)
 }

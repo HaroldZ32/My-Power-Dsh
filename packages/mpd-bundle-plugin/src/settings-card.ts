@@ -1361,6 +1361,195 @@
     }
   }
 
+  // ── R2: the section renders on the harness's OWN settings-form tokens ───────────
+  // WHAT THIS IS: the card's entire visual contract, read off the INSTALLED primitives —
+  // `@deepseek-ai/dsh-client-ui-primitives/lib/settings-form/fields.module.css` (`.field`, `.field +
+  // .field`, `.label`, `.hint`, `.input`, `.reset`) and `SettingsForm.module.css` (`.form`,
+  // `.footer`, `.save`, `.readOnly`), with the alias VALUES and the focus ring taken from the theme
+  // bundle (`dsh-client-ui-theme`: `body{…}` is the light theme, `body[data-ds-dark-theme]{…}` the
+  // dark one, and its `focus.css` holds `:root{--dsw-focus-ring-width:2px}` plus the global
+  // `:focus-visible` rule), and the section title/description from the settings plane's own
+  // `dsh-client-ui-settings-models` (`.title` 16px/500/24px, `.description` 14px/24px). R2 is a
+  // RESTYLE: nothing in this block reads, writes or re-keys a value — every key, attribute and
+  // behaviour path below the styles is the one that shipped.
+  //
+  // FALLBACK DISCIPLINE (BINDING): an inline style gets no stylesheet default, and a bare
+  // `var(--dsw-…)` that resolves to nothing paints an invisible control — so every token below is
+  // read WITH a literal. A token this bundle ALREADY pairs keeps that exact literal
+  // (`--dsw-alias-label-primary, #1c1c1e`, `-secondary, #5b6472`, `-tertiary, #8a94a6`,
+  // `--dsw-alias-state-business-primary, #4d6bfe` — the vocabulary `team-view.ts` renders the team
+  // panel with, so the two panels degrade identically); a token it does not pair yet carries the
+  // token's own LIGHT-theme value from the theme bundle, which is what the token resolves to by
+  // default. `--dsw-focus-ring-color` is DEFINED by that theme (as `transparent`, for pointer
+  // modality), so its fallback is the host's own nested one rather than a literal.
+  //
+  // THE FOCUS RING IS NOT PAINTED HERE, deliberately: the host's global `:focus-visible` rule
+  // already gives every focusable element `outline-width: var(--dsw-focus-ring-width)` in
+  // `outline-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` — the
+  // exact pair the contract names — and a pseudo-class cannot be expressed as an inline style. Only
+  // the CONTROL opts out, exactly as the host's `.input:focus-visible` does (border accent, no
+  // outline), through the two listeners below.
+  /** The radius the harness's `.field` / `.input` / `.button` all share (`--dsw-radius-md:12px`). */
+  const RADIUS_MD = "var(--dsw-radius-md, 12px)"
+  /** The control stroke (`.input`): 0.5px, light-theme literal. */
+  const STROKE_CONTROL = "0.5px solid var(--dsw-alias-border-l4, #00000029)"
+  /** The FIELD separator (`.field + .field`): 0.5px, light-theme literal. */
+  const STROKE_FIELD = "0.5px solid var(--dsw-alias-border-l2, #0000001a)"
+  /** The outlined action's stroke (`.button.outline`): 0.5px, light-theme literal. */
+  const STROKE_BUTTON = "0.5px solid var(--dsw-alias-border-l3, #0000001f)"
+  /** The label alias the host's `.label` colours with (the bundle's existing literal). */
+  const LABEL_PRIMARY = "var(--dsw-alias-label-primary, #1c1c1e)"
+  /** The muted alias (`.reset`, `.description`; the bundle's existing literal). */
+  const LABEL_SECONDARY = "var(--dsw-alias-label-secondary, #5b6472)"
+  /** The dimmest alias (`.hint`, `.readOnly`, `.failed`; the bundle's existing literal). */
+  const LABEL_TERTIARY = "var(--dsw-alias-label-tertiary, #8a94a6)"
+  /** The control fill (`.input` `--dsw-alias-bg-layer-3`, light-theme literal `#fff`). */
+  const FILL_CONTROL = "var(--dsw-alias-bg-layer-3, #fff)"
+  /** The focus/active accent (`.input:focus-visible`; the bundle's existing literal). */
+  const ACCENT = "var(--dsw-alias-state-business-primary, #4d6bfe)"
+  /** The pointer-hover wash (`.button.outline:hover`), light-theme literal. */
+  const HOVER_WASH = "var(--dsw-alias-interactive-bg-hover, #2631480f)"
+  /**
+   * Every inline style bag the card renders with. The keys are the ROLES the harness names
+   * (`.field`, `.label`, `.hint`, `.input`, `.help`, `.footer`, `.save`, `.reset`, `.readOnly`), so a
+   * reviewer can diff one against its stylesheet rule directly.
+   */
+  const SKIN: Record<string, Record<string, string | number>> = {
+    /** The host's `.form`: a plain column — the host's own sections have no panel chrome. */
+    form: { display: "flex", flexDirection: "column" },
+    /** `.field`: flex column, gap 6px, padding 12px 0. The separator is added per field below. */
+    field: { display: "flex", flexDirection: "column", gap: 6, padding: "12px 0" },
+    /** The settings section title (`.title`: 16px/500/24px, label-primary). */
+    title: { margin: 0, fontSize: 16, fontWeight: 500, lineHeight: "24px", color: LABEL_PRIMARY },
+    /** The section description (`.description`: 14px/24px, label-secondary). */
+    description: { margin: "0 0 12px", fontSize: 14, lineHeight: "24px", color: LABEL_SECONDARY },
+    /** `.readOnly` / `.unavailable`: the state notes, 12px/1.5 tertiary. */
+    note: { margin: "0 0 12px", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.help`: the disclosure block — 12px/1.6 stack, 8px between paragraphs. */
+    help: { margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10 },
+    /** One `.help > p`: 12px/1.6, the hint colour (the captain's R2 note: no wall of body text). */
+    helpText: { margin: 0, fontSize: 12, lineHeight: 1.6, color: LABEL_TERTIARY },
+    /** `.label`: 13px/500/1.5, label-primary. */
+    label: { display: "block", fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** `.hint`: the row's human sentence — 12px/1.5 tertiary (the contract's hint row). */
+    hint: { display: "block", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The block that stacks the sentence over its key, with the 2px the row always had. */
+    hintBlock: { display: "block", marginBottom: 2 },
+    /** The dotted key BENEATH a sentence: one step down (11px, dimmer) so it never competes. */
+    key: { display: "block", fontSize: 11, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** The dotted key as a row's ONLY hint (a knob with no sentence): the hint size, still dim. */
+    keyOnly: { display: "block", marginBottom: 2, fontSize: 12, lineHeight: 1.5, opacity: 0.6, color: LABEL_TERTIARY },
+    /** `.input`: 34px, 0 12px padding, the control stroke, radius-md, layer-3 fill, 13px. */
+    control: {
+      boxSizing: "border-box",
+      width: "100%",
+      height: 34,
+      padding: "0 12px",
+      border: STROKE_CONTROL,
+      borderRadius: RADIUS_MD,
+      background: FILL_CONTROL,
+      fontSize: 13,
+      lineHeight: 1.5,
+      color: LABEL_PRIMARY,
+    },
+    /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
+    controlOff: { color: LABEL_TERTIARY, cursor: "default" },
+    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
+    /** A slot's one-line impact: the hint treatment. */
+    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** The row's marker line (overridden / invalid) that carries the reset link. */
+    resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
+    reset: {
+      border: "none",
+      background: "none",
+      padding: 0,
+      fontFamily: "inherit",
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: LABEL_SECONDARY,
+      cursor: "pointer",
+    },
+    /** `.footer`: one row, gap 8px, 16px above. */
+    footer: { display: "flex", alignItems: "center", gap: 8, paddingTop: 16 },
+    /** `.save`: radius-md pill, 5px 14px, 13px, label-primary fill with the layer-3 text colour. */
+    save: {
+      appearance: "none",
+      border: "1px solid transparent",
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: LABEL_PRIMARY,
+      color: FILL_CONTROL,
+    },
+    /** `.button.outline`: the secondary action beside the save. */
+    discard: {
+      appearance: "none",
+      border: STROKE_BUTTON,
+      borderRadius: RADIUS_MD,
+      padding: "5px 14px",
+      fontFamily: "inherit",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer",
+      background: "transparent",
+      color: LABEL_PRIMARY,
+    },
+    /** `.failed`: the save's own status line, 12px/1.5 tertiary, stretched like the host's. */
+    status: { flex: 1, minWidth: 0, margin: 0, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+  }
+
+  /** The field bag of the field at `index`: the separator lands on every field but the FIRST. */
+  const fieldStyle = (index: number): Record<string, string | number> => (index === 0 ? SKIN.field : { ...SKIN.field, borderTop: STROKE_FIELD })
+
+  /** The control bag of one row: a control the page refuses writes on takes `.input:disabled`. */
+  const controlStyle = (off: boolean): Record<string, string | number> => (off ? { ...SKIN.control, ...SKIN.controlOff } : SKIN.control)
+
+  /** The mutable inline-style bag a focus or hover listener writes to (a DOM element's `style`). */
+  interface PaintStyle {
+    /** One CSS property, written by its camel-cased name. */
+    [property: string]: string
+  }
+
+  /** The event shape those listeners read: the element the event was dispatched on. */
+  interface PaintEvent {
+    /** The element itself, whose own `style` is the only thing a paint touches. */
+    currentTarget: { style: PaintStyle }
+  }
+
+  /** Write one declaration set onto the element an event came from, so inline styles can react. */
+  const paint = (event: PaintEvent, declarations: Record<string, string>): void => {
+    for (const [property, value] of Object.entries(declarations)) event.currentTarget.style[property] = value
+  }
+
+  /** The control's focus pair: the host's `.input:focus-visible` on, and the token pair back off. */
+  const CONTROL_FOCUS = {
+    /** On focus: the business-primary border, with the ring opted out (the host's own rule). */
+    onFocus: (event: PaintEvent): void => paint(event, { borderColor: ACCENT, outline: "none" }),
+    /** On blur: clear both, so the inline `border` shorthand and the global ring apply again. */
+    onBlur: (event: PaintEvent): void => paint(event, { borderColor: "", outline: "" }),
+  }
+
+  /** The reset link's hover pair (`.reset:hover` → label-primary), for a button that reads as a link. */
+  const LINK_HOVER = {
+    /** Enter: the link darkens to label-primary. */
+    onMouseEnter: (event: PaintEvent): void => paint(event, { color: LABEL_PRIMARY }),
+    /** Leave: back to label-secondary. */
+    onMouseLeave: (event: PaintEvent): void => paint(event, { color: LABEL_SECONDARY }),
+  }
+
+  /** The outlined action's hover pair (`.button.outline:hover` → the interactive wash). */
+  const BUTTON_HOVER = {
+    /** Enter: the wash replaces the transparent fill. */
+    onMouseEnter: (event: PaintEvent): void => paint(event, { background: HOVER_WASH }),
+    /** Leave: back to transparent. */
+    onMouseLeave: (event: PaintEvent): void => paint(event, { background: "transparent" }),
+  }
+
   /** The card component: self-contained markup, no private host components. */
   function createCardComponent(react: ReactSurface, fields: FieldDescriptor[] = FIELDS, readGroups: () => unknown = () => []): (props: CardComponentProps) => unknown {
     /** The element factory, destructured once per component construction. */
@@ -1385,8 +1574,8 @@
       } catch {
         /* a broken catalog probe degrades the OPTIONS, never the section */
       }
-      /** One rendered row per knob, in declaration order. */
-      const rows = fields.map((field) => {
+      /** One rendered row per knob, in declaration order (`index` picks the separator). */
+      const rows = fields.map((field, index) => {
         /** The row's dotted knob key. */
         const key = fieldKey(field)
         /** The row's control (a knob with no projected control renders an empty input). */
@@ -1409,12 +1598,12 @@
         const pointer = keyAt < 0 ? hint : hint.slice(keyAt).replace(/\)\s*$/, "").trim()
         /** The hint markup: sentence plus key, or the key alone for a knob with no sentence. */
         const hintNode = human.length === 0
-          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 }, "data-mpd-row-key": key }, pointer)
+          ? createElement("span", { style: SKIN.keyOnly, "data-mpd-row-key": key }, pointer)
           : createElement(
               "span",
-              { style: { display: "block", marginBottom: 2 } },
-              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
-              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-key": key }, pointer),
+              { style: SKIN.hintBlock },
+              createElement("span", { style: SKIN.hint, "data-mpd-row-human": key }, human),
+              createElement("span", { style: SKIN.key, "data-mpd-row-key": key }, pointer),
             )
         /** The row's options (select knobs only). */
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
@@ -1422,7 +1611,7 @@
         const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
-              { value: control.text, disabled, onChange: (event: ChangeEvent) => props.edit(key, event.target.value), style: { width: "100%" } },
+              { value: control.text, disabled, onChange: (event: ChangeEvent) => props.edit(key, event.target.value), style: { ...controlStyle(disabled), cursor: disabled ? "default" : "pointer" }, ...CONTROL_FOCUS },
               createElement("option", { value: "" }, "—"),
               ...optionElements(createElement, options),
             )
@@ -1430,19 +1619,20 @@
               value: control.text,
               disabled,
               onChange: (event: ChangeEvent) => props.edit(key, event.target.value),
-              style: { width: "100%" },
+              style: controlStyle(disabled),
+              ...CONTROL_FOCUS,
             })
         return createElement(
           "label",
-          { key, style: { display: "block", margin: "8px 0" } },
-          createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
+          { key, style: fieldStyle(index) },
+          createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
           createElement(
             "span",
-            { style: { fontSize: 11, opacity: 0.7 } },
+            { style: SKIN.resetNote },
             (control.overridden ? "overridden · " : "") + (control.invalid ? "not a valid value · " : ""),
-            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key) }, t("reset")),
+            createElement("button", { type: "button", disabled, onClick: () => props.resetField(key), style: SKIN.reset, ...LINK_HOVER }, t("reset")),
           ),
         )
       })
@@ -1459,7 +1649,7 @@
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
-        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
         catalogNotice(catalog),
       )
       // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
@@ -1475,57 +1665,67 @@
         if (slot !== previous) {
           slotChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
             t("teamModels." + slot + ".heading"),
           ))
           slotChildren.push(createElement(
             "p",
-            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
             t("teamModels." + slot + ".impact"),
           ))
         }
         slotChildren.push(slotRows[index])
       }
+      /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
+      const saveBlocked = disabled || !state.dirty || state.invalid
       return createElement(
         "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
-        createElement("h3", { style: { margin: "0 0 4px" } }, t("title")),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("intro")),
+        { style: SKIN.form },
+        createElement("h3", { style: SKIN.title }, t("title")),
+        createElement("p", { style: SKIN.description }, t("intro")),
+        // The preset explanation sits beside the intro: same hint treatment, one extra sentence.
+        createElement("p", { style: SKIN.helpText, "data-mpd-preset-about": "1" }, t("presetAbout")),
         disabled
-          ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
+          ? createElement("p", { style: SKIN.note }, t("readOnly"))
           : null,
         createElement(
           "p",
           {
-            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            style: SKIN.note,
             [CATALOG_ATTR]: catalog.mode,
             "data-mpd-catalog-providers": String(catalog.providers ?? 0),
             "data-mpd-catalog-models": String(catalog.models ?? 0),
           },
           catalogNotice(catalog),
         ),
-        // THE DISCLOSURE, ONCE. Every row used to carry it, which is what buried the rows.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "bridge" },
-          state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "restart" },
-          state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
-        // The not-lost clause belongs to the same statement; it used to ride every row's hint.
-        createElement("p", { style: { margin: "0 0 4px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "not-lost" },
-          NOT_LOST),
-        createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 }, "data-mpd-disclosure": "workspace" },
-          state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        // THE DISCLOSURE, ONCE, in its own `.help` block: the same four sentences as before, at the
+        // hint size and colour with the host's 8px between paragraphs, so they read as ONE note
+        // instead of a second wall of body copy beside the fields.
+        createElement(
+          "div",
+          { style: SKIN.help },
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "bridge" },
+            state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "restart" },
+            state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
+          // The not-lost clause belongs to the same statement; it used to ride every row's hint.
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
+            NOT_LOST),
+          createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
+            state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
         createElement(
           "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
-          createElement("button", { type: "button", disabled: disabled || !state.dirty || state.invalid, onClick: () => props.save() }, t("save")),
-          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard() }, t("discard")),
-          createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
+          { style: SKIN.footer },
+          createElement("button", { type: "button", disabled: saveBlocked, onClick: () => props.save(), style: { ...SKIN.save, opacity: saveBlocked ? 0.4 : 1 } }, t("save")),
+          createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
+          createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
         state.mode === "memory"
-          ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
+          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
           : null,
       )
     }
@@ -1538,6 +1738,17 @@
       nav: "MPD",
       title: "MPD bundle",
       intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
+      //
+      // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
+      // strings rendered verbatim by `dsh-client-ui-agent-preset`; only the harness's OWN four presets
+      // are localized, through a FIXED id table (`BUILT_IN_PRESET_KEYS = { standard, ptc, minimal,
+      // cordis }`) whose values are keys in the host client's own dictionary. A third-party preset has
+      // no key and no slot, and §6 forbids patching the host's client code — so the MPD preset's own
+      // English sentence stays English in every language. This row is the localized explanation on a
+      // surface this bundle DOES own.
+      presetAbout:
+        "The \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.",
       save: "Save",
       discard: "Discard",
       reset: "Reset to the file value",
@@ -1551,6 +1762,9 @@
       nav: "MPD",
       title: "MPD 插件包",
       intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
+      presetAbout:
+        "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
       save: "保存",
       discard: "放弃",
       reset: "重置为文件值",

@@ -112,8 +112,11 @@ Manifest 不变式（为什么存在）：
   背后的引擎）从不把 bundle 的传递依赖链到 profile 根，普通的包名行会在模块无法解析时自禁用
   （E4 缺陷，见 `docs/plan-e.md`）。该主体是主代码 + 自带 vendored closure
   （`packages/mpd-agent-teams-plugin/_deps/`），而从 0.1.7-rc.2 起**没有任何行挂载它**。
-- **`dependencies` 有四个条目：`dsh-better-sidebar` 与三个官方 Agent Teams 包**
+- **`dependencies` 只有三个条目 —— 三个官方 Agent Teams 包**
   （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`）。
+  `dsh-better-sidebar` **有意不在其中**：它是**可选 peer**（外加 `devDependency`），一个 bundle
+  从不安装的**兼容性**宿主 —— 因为它的 `node-pty` postinstall 会破坏"无构建脚本"的依赖闭包（§8）；
+  它的缺席是正常且有意的组合，而不是损坏的安装。
   只声明依赖不会挂载任何东西，而只有行也会在模块无法解析时让启动致命，所以**两半都必需**：
   它们可被解析，是因为
   `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` 会在 loader 运行前把非安装型 bundle 层的
@@ -451,14 +454,16 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 `packages/mpd-bundle-plugin/test/client-harness.ts` 现在**默认**建模这个竞态（侧边栏服务在
 `apply()` 之后才发布），因此一旦有人改回探测，测试会立刻失败。
 
-**两个 mpd 界面都由侧边栏承载；团队面板则来自官方插件**：`WorkmateLibraryView` 由
+**两个 mpd 界面都由侧边栏承载，且**两种**侧边栏宿主都能承载它们**：`WorkmateLibraryView` 由
 `registerSidebarTab` 注册为一个 **DSH-better-sidebar** Tab
-（`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90）。
-没有 DSH-better-sidebar 时它只输出一条
-警告（`… has no host (no floating fallback by design)`）并且什么都不注册，因此侧边栏之外不存在
-任何界面。宿主本身并不是可选第三方附加项：`dsh-better-sidebar` 是已声明的运行时依赖，由带守卫的
-`mpd-better-sidebar` 行挂载（§4），因此那条警告路径对应的是依赖缺失或损坏，而不是普通安装会遇到
-的情形。**Agent Teams 面板**是另一回事，完全不依赖该侧边栏：它是官方
+（`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90）。该宿主是
+**兼容性**选项而非必需项：`dsh-better-sidebar` 是 bundle 从不安装的可选 peer，其缺席正常且有意（见上）。
+当它**确实**挂载时，harness 侧的注册会主动让位并只打印一行 `console.info`，因此同一个面板绝不会出现两次。
+**没有它时** —— 这正是检出安装解析到的情形 —— **同样这两个 body** 会注册进 **harness 自己**的右侧边栏
+（`ctx.inject(["sidebarRightTabs", "sidebarRight"], …)`）：Team Tab（在会话没有自己的团队时会列出
+**工作区**自己的团队）与 Workmate 库都仍然可达，而这**正是必须在没有社区侧边栏时也能工作的界面**。
+那里若缺少接缝，会**一次性**按名字报告（`no sidebar host took the mpd panels: …`），而不是留下一个没有
+任何理由的空界面。**Agent Teams 面板**是另一回事，完全不依赖该侧边栏：它是官方
 `@deepseek-ai/dsh-experimental-client-ui-agent-team` 客户端插件，由本 bundle 自己的
 `mpd-ui-agent-team` 行挂载，注册一个会话头部动作，渲染 Lead 会话的 `agentTeam` 投影
 （名册 + 任务板，只读）。`scripts/build-mpd-client.ts` 在构建期就强制侧边栏这条规则：只要有

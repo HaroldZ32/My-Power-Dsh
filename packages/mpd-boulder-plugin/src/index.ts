@@ -19,6 +19,12 @@ import {
 } from "./vendor/index.ts"
 import { join } from "node:path"
 import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+// THE ONE READING OF `boulder.dir`. Its normalization rule is shared with the session gate's signal D
+// (`mpd-roles-plugin`'s `resolveBoulderDir`), deliberately: this knob is a STATE ROOT whose ledger is
+// read at `<root>/.mpd/boulder.json`, so a `.mpd` value accepted literally as a root double-nests the
+// path (`<ws>/.mpd/.mpd/boulder.json`) and both consumers must refuse that reading the same way. The
+// import is TYPE-FREE and value-level because the two rows already declare the convention together.
+import { resolveBoulderDir } from "../../mpd-roles-plugin/src/complexity-gate.ts"
 
 /** Cordis plugin name of this row; the loader keys the mounted instance on it. */
 export const name = "mpd-boulder"
@@ -52,16 +58,22 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
   // The mpdConfig service, present only when mpd-config-plugin is mounted in the same composition.
   const svc = ctx.get?.("mpdConfig") as { get: (k?: string) => any } | undefined
   if (!svc?.get) return config
-  // Runtime-layer value for the override; only a string is accepted, anything else keeps the row config.
-  const v = svc.get("boulder.dir")
-  return typeof v === "string" ? { ...config, boulderDir: v } : config
+  // The runtime-layer value for the override; only a STRING is accepted, anything else keeps the row
+  // config — and the value is normalized by the SHARED rule (`resolveBoulderDir`), because a `.mpd`
+  // spelling means "the session workspace" here for the same measured reason it does in the gate:
+  // accepting it as a root reads and writes `<ws>/.mpd/.mpd/boulder.json` instead of the contract
+  // path `<ws>/.mpd/boulder.json`.
+  const v = resolveBoulderDir(svc.get("boulder.dir"))
+  return v === undefined ? config : { ...config, boulderDir: v }
 }
 
 
 // Explicit override (config.boulderDir / mpd.jsonc boulder.dir) wins; otherwise the
-// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd.
+// CALLING SESSION's workspace (adapter workspaceRoot) — never the dsh process cwd. The row config
+// goes through the SAME normalization as the runtime layer, so the ONE reading of this knob holds
+// however the value arrived (row option, project file, or a legacy materialized default).
 function boulderRoot(config: Config, dsh: DshAdapter, exec?: any): string {
-  return config.boulderDir ? config.boulderDir : dsh.workspaceRoot(exec)
+  return resolveBoulderDir(config.boulderDir) ?? dsh.workspaceRoot(exec)
 }
 
 /** Register every boulder tool on the adapter; `config` is the row config, which `mpd.jsonc` may override per key. */

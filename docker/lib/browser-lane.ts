@@ -84,7 +84,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return kind === "object" || kind === "function" ? (value as Record<string, unknown>) : undefined
 }
 
-// The playwright surface this lane uses, declared locally for the SAME reason docker/ui/capture.ts
+// The playwright surface this lane uses, declared locally for the SAME reason docker/ui/capture.mts
 // declares it: playwright is installed in the CONTAINER (npm i playwright inside docker/), never in
 // this checkout, so a static import could not resolve at typecheck time.
 /** Subset of playwright's `ConsoleMessage` that this lane reads. */
@@ -438,7 +438,7 @@ await stage("ui.teamPanel", "the right sidebar opens on the Agent Teams panel wi
     // and reloading to the landing page would discard it.
     await page.waitForTimeout(1500)
     // EXACT name, not a loose regex: /sidebar/i matched "Collapse sidebar" first and collapsed the
-    // LEFT rail instead (measured 2026-09-27 in docker/ui/capture.ts).
+    // LEFT rail instead (measured 2026-09-27 in docker/ui/capture.mts).
     let button = page.getByRole("button", { name: "Open right sidebar", exact: true }).first()
     if (await button.count() === 0) button = page.getByRole("button", { name: /right sidebar/i }).first()
     if (await button.count() === 0) throw new Error("no 'Open right sidebar' control was found")

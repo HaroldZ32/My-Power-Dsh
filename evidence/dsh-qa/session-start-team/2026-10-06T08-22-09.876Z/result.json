@@ -1,0 +1,425 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-BeMOQw",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "4c3c75da2ca17c50f5fbb75a829833d15c8b0e87",
+      "gateHash": "8c9ce3999ecdd2d98a9c4b1336cf5816a648d86d4a0ea70632e35adc7423a3ae",
+      "wiringHash": "103d0c3c609c4b768d565a5e3c3febcac82585b6f5eb81c358da0dca55ce7661",
+      "measuredAt": "2026-10-06T08:22:59.905Z"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "mountsRoles": true,
+      "retiredAgentTeamsRow": false
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 22,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 22,
+        "sessionFrames": 9,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 70,
+        "sessionFrames": 41,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "C"
+        ],
+        "planIds": [
+          "plan-20261006082347"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261006082347"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 159,
+        "sessionFrames": 95,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-364c21cd-1cf1-4c2b-9ee8-4482b1bd58c4\" signals=C mode=mechanical staged=1 plan=plan-20261006082347",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "C"
+        ],
+        "planIds": [
+          "plan-20261006082534"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261006082534"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 219,
+        "sessionFrames": 133,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-eac18dbc-b6a2-490d-a262-0bc53b7202c3\" signals=C mode=mechanical staged=1 plan=plan-20261006082534",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "A"
+        ],
+        "planIds": [
+          "plan-20261006082722"
+        ],
+        "markerConsumed": true,
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261006082722"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 219,
+        "sessionFrames": 133,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-370a1e71-c089-4d93-9bed-c324f25de85b\" signals=A mode=mechanical staged=1 plan=plan-20261006082722",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "boulderActiveSide": [
+      {
+        "prompt": "Reply with exactly: boulder-ok",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "D"
+        ],
+        "planIds": [
+          "plan-20261006082916"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261006082916"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 23,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-4d325e80-bb1a-45bd-a5ce-7e6e42185f26\" signals=D mode=mechanical staged=1 plan=plan-20261006082916",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "boulderCompletedSide": [
+      {
+        "prompt": "Reply with exactly: boulder-ok",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 22,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "advisorySide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advisory",
+        "expectedMode": "advisory",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 1,
+        "mechanical": 0,
+        "officialTools": 1,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "C"
+        ],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 413,
+        "sessionFrames": 251,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-71f865f0-cffa-4ea4-bf36-0d351a6b0436\" signals=C mode=advisory staged=0",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "offSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "off",
+        "expectedMode": "off",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 202,
+        "sessionFrames": 122,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=off",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "verdicts": {
+      "ok": true,
+      "sides": 10,
+      "failed": [],
+      "simpleNotices": [
+        0,
+        0,
+        0
+      ],
+      "softNotices": [
+        1,
+        1
+      ],
+      "softPlanIds": [
+        [
+          "plan-20261006082347"
+        ],
+        [
+          "plan-20261006082534"
+        ]
+      ],
+      "explicitMarkerConsumed": [
+        true
+      ],
+      "boulderActive": [
+        {
+          "notices": 1,
+          "signals": [
+            "D"
+          ],
+          "stagedPlans": 1,
+          "teamRecords": 0,
+          "planIds": [
+            "plan-20261006082916"
+          ]
+        }
+      ],
+      "boulderCompleted": [
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        }
+      ],
+      "advisory": [
+        {
+          "notices": 1,
+          "advisory": 1,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        }
+      ],
+      "off": [
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0,
+          "modeLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=off"
+        }
+      ]
+    }
+  },
+  "totalSteps": 11
+}

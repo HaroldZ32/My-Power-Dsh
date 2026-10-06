@@ -18,11 +18,17 @@
 > tools and its staged-team flow do not exist in a shipped session any more. What SURVIVED the
 > migration, and is what a reader should carry away, is the **gate semantics**: the same frozen
 > predicate `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's
-> first pre-step, its notice keeps the marker `[AgentTeams] Session-start team rule`, and it still
-> **ADVISES — it stages nothing**; only its implementation moved (into `mpd-roles-plugin`, on the
-> official plugin's seams) and the captain now stages with `spawn_teammate` + `team_task_create`.
+> first pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`. The gate is
+> now **MECHANICAL by default** (the implementation moved into `mpd-roles-plugin`, on the official
+> plugin's seams): a trigger STAGES an approvable plan shell — 0 members, 0 tasks, through this
+> bundle's OWN `agent_teams_plan` tool — and injects ONE notice naming the returned plan id, with
+> NOTHING spawned and the shell INERT until the captain extends it (`add_member` / `create_task`) and
+> approves it with `agent_teams_plan {action:"approve"}`. `team.gate` in `mpd.jsonc` selects
+> `mechanical` (the default) | `advisory` | `off`; under `advisory`, or with that tool unmounted, the
+> ONE notice is advisory and says `NO team was staged`.
 > See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
-> record, read as history.
+> record, read as history — including the `D_AUTOROUTE_ADVISORY` decision and the `D_planArtifact`
+> signal row, both superseded on 2026-10-07 (see the dated note under the signal table).
 
 Single source of truth for frozen values: `evidence/omo-align/requirements/frozen-contract.json`
 (captain-owned). Research input: `evidence/omo-align/research/team-vs-mass-ulw/gap.json` (t2) and
@@ -68,6 +74,17 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 | `C_enumeratedSteps` | soft | satisfied at **2-of-3** sub-signals: `C1` ≥ 3 enumerated lines (`^\s*(\d+[.)]\|[-*])\s`); `C2` ≥ 3 distinct action verbs; `C3` ≥ 3 action clauses (each pairing an action verb with an object, numbered or not) |
 | `D_planArtifact` | soft | a `.mpd/plans/*.md` file exists for the session workspace at the first pre-step |
 
+> **SUPERSEDED 2026-10-07 — signal `D`, and the advisory decision with it.** The `D_planArtifact` row
+> above is this wave's frozen record and is kept VERBATIM as history; the shipped predicate no longer
+> probes for a plan file. **`D` is an ACTIVE boulder work for the workspace** — `status: "active"` in
+> `.mpd/boulder.json` — because the plan-file probe measurably fired in EVERY session of this
+> workspace: one plan file outlives the work that produced it. A plan FILE alone is not a signal any
+> more. The same date supersedes `D_AUTOROUTE_ADVISORY` (§ above): a trigger no longer only advises —
+> the default mode STAGES an approvable, inert plan shell through `agent_teams_plan` and the captain
+> approves it, while the advisory notice and its `NO team was staged` wording survive as the
+> `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
+> `packages/mpd-roles-plugin/README.md`.
+
 **Harmonized verb tables (behaviour change, R3).** `C2` and `C3` now carry ONE shared verb set:
 14 English — `add, align, audit, build, change, check, consolidate, implement, migrate, overhaul,
 port, refactor, rewrite, verify` — and 12 CJK — `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计,
@@ -82,6 +99,9 @@ frozen expectation. A satisfied C therefore triggers on its own. **Accepted and 
 multi-clause request such as “Check the test, build the package, verify the output.” satisfies C
 (C2+C3) and therefore DOES route to a team; no rule operating on C alone can separate it from frozen
 complex prompt #1. See §7 `O1` and §8's rate study.
+
+*Frozen wave record. Superseded 2026-10-07 — the default mode now STAGES an approvable plan shell
+through `agent_teams_plan` and the captain approves it; see the dated note under the signal table.*
 
 On a trigger the gate now **ADVISES** (`D_AUTOROUTE_ADVISORY`): it stages nothing and injects ONE
 advisory notice (marker `[AgentTeams] Session-start team rule`) naming the fired signals and stating

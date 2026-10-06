@@ -7,70 +7,86 @@ The bundle's host-plane patch layer is `cordis.patch.yml`, and it sits at the **
 MCP servers (ast-grep / git-bash / lsp / codegraph + the remote context7 / grep.app rows),
 the B/C-line plugins (mpd-config first so the mpdConfig service is visible to the rows
 below, then mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline /
-boulder / comment-checker / codegraph / memory / workmate), the `mpd-web-compat` self-row
+boulder / comment-checker / codegraph / memory / workmate), the bundle's OWN team plane
+(`mpd-team-core` / `mpd-team-watchdog` / `mpd-team-compact`), the `mpd-web-compat` self-row
 (`name: '@mpd-dsh/mpd'` — the loader entry that carries the bundle's web client),
-mpd-bootstrap provisioning, and the adopted `agent-teams` row (`stateDir: .mpd/team`).
+mpd-bootstrap provisioning, and the THREE official Agent Teams rows (`mpd-agent-team`,
+`mpd-tool-agent-team`, `mpd-ui-agent-team`, plus the `mpd-roster-provider` row the tool row points
+at). The vendored `agent-teams` body is **NOT mounted** — no loader row names
+`packages/mpd-agent-teams-plugin` any more.
 
 The waveform-read rows (`mcp-wave-mcp` / `mcp-traceweave`) are **not mounted**: they wrap
 external Python MCP servers and stay commented out in `cordis.patch.yml:92-123` together
 with their install steps, so a machine without those binaries boots unchanged.
 
-The bundle ships ONE preset (`mpd`, the main working agent; assets under
-`packages/mpd-bootstrap-plugin/presets/mpd`): it configures `dsh-agent-instructions`
+The bundle ships ONE preset (`mpd`, the main working agent), declared as the **`preset-mpd` ROW** in
+`presets/mpd.patch.yml` — the second entry of `dsh.bundle.patch`: it configures `dsh-agent-instructions`
 with `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]` so every project
-session attempts to read AGENT.md, and it declares native tool presentation. The
+session attempts to read AGENT.md, and it declares native tool presentation. (The retired
+preset-DIRECTORY form under `packages/mpd-bootstrap-plugin/presets/` does not exist any more: the
+harness 0.1.7-rc.2 preset model is one row per preset, carrying the child list inline.) The
 specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
 ## Session-start team gate (binding)
 
-A session starts with **NO team** — a team is not a precondition of a session
-(upstream parity: the upstream team mode ships disabled by default). What is enforced
-mechanically by the adopted agent-teams plugin is an **advisory complexity gate**
-(`sessionTeamPolicy` config, implementation in
-`packages/mpd-agent-teams-plugin/lib/session-start.ts`), not prompt guidance alone:
+A session starts with **NO team** — a team is not a precondition of a session. The frozen predicate is
+evaluated at the session's first pre-step and enforced mechanically by `mpd-roles-plugin` on the
+official plugin's seams:
 
-- `mode: off` (the default) means "no auto-provision and no unconditional notice".
-  The decoupled mechanical gate is `autoRoute: true` (default enabled).
-- At the session's first pre-step the gate evaluates
-  `trigger = explicit flag OR (matchedSignals >= 1)`:
-  the explicit flag is a `team:` prefix or `!team` (the marker is consumed, so it
-  never reaches the model as goal text), and the soft signals are
-  (B) ≥4 distinct deliverable verbs, (C) ≥3 enumerated steps / action verbs /
-  clauses, (D) a `.mpd/plans/*.md` artifact for this workspace.
+```
+trigger = explicit flag OR (matchedSignals >= 1)
+```
+
+- The explicit flag (**A**) is a `team:` prefix or a token-boundary `!team`; the marker is CONSUMED, so
+  it never reaches the model as goal text.
+- The soft signals are (**B**) ≥ 4 distinct deliverable verbs, (**C**) ONE signal satisfied by 2 of its
+  3 sub-signals (≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses), and (**D**) an
+  ACTIVE boulder work for the session workspace (`status: "active"` in `.mpd/boulder.json`) — a plan
+  FILE alone is NOT a signal (the retired plan-file probe fired in every session of this workspace).
 - **Not triggered** → the session runs solo; no team, no notice.
-- **Triggered by a soft signal** → the gate **stages nothing**: it injects exactly one
-  advisory notice carrying the marker `[AgentTeams] Session-start team rule`, naming the
-  fired signals and stating that **no team was staged**. The captain stages one with
-  `agent_teams_create(approval="required", profile="mpd")` at the moment the work
-  actually warrants it, or continues solo and says so. A session that already has a team
-  (resume) simply stays in it.
-- **Explicit `team:` / `!team`** → provisioning is unchanged: the staged default team
-  **"MPD Default"** (profile `mpd`, `approval: required` — members are only roster rows
-  and spawn after the user reviews and approves the Web plan) is provisioned with the
-  routed-by-the-gate notice. The `/agent-teams` command stages the same way.
-- Scope: `presets: [mpd]` covers mpd-preset sessions plus sessions without any preset
-  (headless direct runs); subagent/member sessions (`parentSession` set) never qualify.
-- The gate runs on the PRE-STEP, **before** the preset's sizing doctrine, so the
-  sizing rule can no longer appear only after a team already exists.
-- The policy settles once per session: a team deleted mid-session is never recreated,
-  and a team the captain creates afterwards is never fought over.
-- The `mpd` preset persona carries the matching SESSION STARTUP RULE so the captain
-  behaves correctly whether or not the gate fired.
 
-Keep the legacy behaviour by opting in explicitly: `mode: auto` provisions the
-default team unconditionally, and `mode: instruct` injects the instruction notice
-without creating anything. Both values are preserved.
+`team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL: `mechanical` (the default) |
+`advisory` | `off`.
+
+- **mechanical** → the gate STAGES an APPROVABLE PLAN SHELL through the bundle's OWN `agent_teams_plan`
+  tool — 0 members, 0 tasks, `approval: required` — and injects exactly ONE notice carrying the marker
+  `[AgentTeams] Session-start team rule`, naming the plan id the call RETURNED. **NOTHING is spawned**:
+  the shell is INERT until the captain extends it (`add_member` / `create_task`, each member's prompt
+  from `mpd_role_persona`) and approves it with `agent_teams_plan {action:"approve"}` — approval is what
+  materialises the team record and raises the members through the bundle's NATIVE executor. While a plan
+  is already staged for that session the gate says so and does not stage a second one (a second staging
+  would archive the in-progress plan).
+- **advisory** — also the effective behaviour when `agent_teams_plan` is not mounted — the ONE notice
+  says `NO team was staged`, and the captain stages the team itself when the work warrants it.
+- **off** → the listener returns immediately.
+
+An explicit `team:` / `!team` request is signal **A** and travels the SAME route (under `mechanical` it
+stages the shell too). The gate is scoped to top-level `mpd` sessions — a subagent/member session
+(`parentSession` set) never qualifies, and neither does another preset's session — settles once per
+session, and a failure inside it leaves the step untouched. The `mpd` preset persona carries the
+matching SESSION STARTUP RULE, so the captain behaves correctly whether or not the gate fired.
+
+**RETIRED — kept as history, not as configuration.** This section used to document the vendored
+`agent-teams` plugin's `sessionTeamPolicy` / `autoRoute` knobs, its provisioned **"MPD Default"** team
+staged by `agent_teams_create(approval="required", profile="mpd")`, and its `mode: auto | instruct`
+opt-ins. No loader row mounts that plugin any more, and none of those keys, tools or that staged-team
+flow exists in a shipped session.
 
 ## Configuration plane
 
-The row also carries the upstream-aligned limits (measured against the upstream
-`team_mode`), all absent-safe and defaulting to the frozen local values:
-`maxMembers: 16` (local ceiling kept), `maxParallelMembers: 8`,
-`maxMessagesPerRun: 10000`, `maxWallClockMinutes: 120`, `maxMemberTurns: 500`,
-`messagePayloadMaxBytes: 32768` (min 1024), `recipientUnreadMaxBytes: 262144`
-(min 1024), `mailboxPollIntervalMs: 3000` (min 500), `memberMaxDepth: 1`,
-`stateDir: .mpd/team`, and `enforcement: enforce` (over-limit sends are blocked;
-`observe` logs only — the upstream semantics).
+The team plane's own configuration is the gate's key plus the rows' own:
+
+- `team.gate` — `mechanical` (default) | `advisory` | `off`, read PER CALL by `mpd-roles-plugin`.
+- The official `mpd-agent-team` row carries its limits from the patch: `maxMembers: 16`,
+  `maxTasks: 256`, `maxPendingMessagesPerMember: 64`, `maxMessageBytes: 32768`,
+  `disposalTimeoutMs: 5000`.
+- `mpd-team-core` owns the team record under `<workspace>/.mpd/team/`: `teams/<id>.json`, the
+  `staging/<sessionId>.json` slot a staged plan lives in, and the archived plans.
+
+The retired vendored row's upstream-aligned limits (`maxParallelMembers`, `maxMessagesPerRun`,
+`maxWallClockMinutes`, `maxMemberTurns`, `messagePayloadMaxBytes`, `recipientUnreadMaxBytes`,
+`mailboxPollIntervalMs`, `memberMaxDepth`, `stateDir`, `enforcement`) are HISTORY: they exist only in
+`packages/mpd-agent-teams-plugin/lib/index.ts`, which no row mounts.
 
 ## TUI composition
 

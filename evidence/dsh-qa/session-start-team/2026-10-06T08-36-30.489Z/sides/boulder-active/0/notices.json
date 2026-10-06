@@ -1,0 +1,36 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "D"
+    ],
+    "planIds": [
+      "plan-20261006084155"
+    ]
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261006084155"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Reply with exactly: boulder-ok",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-76dd31d1-0122-407f-bf52-21f0009033d4\" signals=D mode=mechanical staged=1 plan=plan-20261006084155",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

@@ -1,3 +1,7 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // Plugin-contract, seam-activation and honesty tests for packages/mpd-tui-plugin.
 //
 // The fakes MODEL THE HOST instead of being permissive:
@@ -19,7 +23,7 @@ import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.ts"
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
-import { COMMAND_ACTIONS } from "../src/command-trees"
+import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
@@ -428,16 +432,26 @@ describe("full composition (every service injected)", () => {
     expect(shortcutsOutcome.state).toBe("confirmed")
     expect(shortcutsOutcome.detail).toContain("alt+m")
 
-    // tuiCommandTrees + commands: the tree root matches the registered command.
-    expect(calls.maps).toHaveLength(1)
-    expect(calls.maps[0].root).toBe("mpd")
+    // tuiCommandTrees + commands: the tree roots match the registered commands. TWO providers are
+    // expected since R3 — `/mpd` (its subcommands) and `/mpd-model` (the pick-list command, whose
+    // panel arguments are picked, never typed, so it completes nothing below its root).
+    expect(calls.maps.map((entry: { root: string }) => entry.root).sort()).toEqual([MODEL_COMMAND, "mpd"].sort())
+    /** The `/mpd` tree provider this arm asserts the subcommands of. */
+    const mpdTree = calls.maps.find((entry: { root: string }) => entry.root === "mpd")
+    expect(mpdTree.root).toBe("mpd")
     // CONTENT-ROBUST: the completion advertises EXACTLY the declarative action list, in any order,
     // whatever that list is. Freezing the literal here would make a grammar addition (Lane C's
     // `subagents`) a test edit in two places; comparing against the module's own declaration keeps
     // the invariant that matters — the tree and the grammar cannot drift apart.
-    expect([...calls.maps[0].children(["mpd"]).map((node: { name: string }) => node.name)].sort()).toEqual([...COMMAND_ACTIONS].sort())
-    expect(calls.commands).toHaveLength(1)
-    expect(calls.commands[0].name).toBe("mpd")
+    expect([...mpdTree.children(["mpd"]).map((node: { name: string }) => node.name)].sort()).toEqual([...COMMAND_ACTIONS].sort())
+    // R4: every node carries BOTH languages, and its `en` half IS the fallback description.
+    for (const node of mpdTree.children(["mpd"])) {
+      expect(node.descriptions?.zh).toBeString()
+      expect(node.descriptions?.en).toBe(node.description)
+    }
+    expect(mpdTree.descriptions?.en).toBeString()
+    expect(calls.commands).toHaveLength(2)
+    expect(calls.commands.map((entry: { name: string }) => entry.name).sort()).toEqual(["mpd", MODEL_COMMAND].sort())
 
     // settings namespace + dialogs availability.
     expect(calls.namespaces.map((entry) => entry.ns)).toEqual(["mpd"])
@@ -1078,7 +1092,7 @@ describe("/mpd command grammar (bare = picker, value = direct, status = print)",
     /** The handler's answer for an action outside the grammar. */
     const unknown = await handler({ rawInput: "nope" })
     expect(unknown.kind).toBe("error")
-    expect(unknown.text).toContain("unknown action")
+    expect(unknown.text).toContain(t("command.unknownAction", { action: "nope", usage: "/mpd [board|team|plan|subagents|workmates|status]" }).split("{")[0].trim())
   })
 })
 
@@ -1122,14 +1136,55 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hint!.indexOf(`mpd.jsonc ${field.path.join(".")}`)).toBeGreaterThan(String(knob?.semantics).length - 1)
       // the sentence names THIS slot's members, in the group's own order
       expect(field.hint).toContain(teamModelMembers(field.path[1] as "slot1", "en"))
+      // R4, the host's OWN pattern (captain's A2): `hint` is the ENGLISH base and
+      // `hintDescriptions` carries the zh translation — never an `en` twin of the base, which the
+      // host's `pick(field.hint, field.hintDescriptions)` would only duplicate. The zh half must
+      // carry the same dotted key, or a zh reader loses the pointer the disclosure hangs off.
+      expect(field.hintDescriptions).toBeDefined()
+      expect(Object.keys(field.hintDescriptions!)).toEqual(["zh"])
+      expect(field.hintDescriptions!.zh).toContain(`mpd.jsonc ${field.path.join(".")}`)
+      expect(field.hintDescriptions!.zh).toContain(String(knob?.semanticsZh))
+      expect(field.hintDescriptions!.zh).not.toBe(field.hint)
     }
     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
     expect(String(slotFields[3].hint)).not.toContain("Architect")
     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
-    // the thirteen scalar rows carry their key alone (they have no invented copy)
+    // the thirteen scalar rows carry their key alone (they have no invented copy), and — having no
+    // zh sentence to translate — no `hintDescriptions` either: the host falls back to the base.
     for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
+      expect(field.hintDescriptions).toBeUndefined()
     }
+  })
+
+  test("R4: the localized pairs are the host's OWN shape — an `en` base, never a redundant `en` twin", () => {
+    // A2: `descriptions: { zh }` with the English in the base field is the host's own declaration
+    // pattern. An `en` key duplicating the base buys nothing and doubles the surface a reviewer
+    // has to check, so its presence is asserted ABSENT rather than tolerated.
+    for (const field of SETTINGS_FIELDS) {
+      expect(field.descriptions).toBeDefined()
+      expect(Object.keys(field.descriptions!)).toEqual(["zh"])
+      // Every field's English base is present and non-empty, which is what makes the zh-only map
+      // safe: a language the map does not cover falls back to these.
+      expect(field.label.length).toBeGreaterThan(0)
+      expect(String(field.hint).length).toBeGreaterThan(0)
+    }
+    // The slot knobs' base labels carry the EN group name and their zh labels the zh one, so both
+    // languages are genuinely reachable rather than one being a copy of the other.
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] === "teamModels")) {
+      /** The shared declaration this row mirrors. */
+      const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
+      expect(field.label).toBe(knob!.label)
+      // The two languages genuinely differ: the base is the EN sentence, the map the zh one.
+      expect(String(field.hint)).not.toBe(field.hintDescriptions!.zh)
+      expect(String(field.hint).startsWith(String(knob!.semantics))).toBe(true)
+      expect(String(field.hintDescriptions!.zh).startsWith(String(knob!.semanticsZh))).toBe(true)
+    }
+    // The SECTION's own localized text rides `descriptions` (there is no section hint field), and
+    // its English base is the title, so a language the map misses shows the title rather than a key.
+    expect(SETTINGS_SECTION.title).toBe("MPD bundle")
+    expect(Object.keys(SETTINGS_SECTION.descriptions!).sort()).toEqual(["en", "zh"])
+    expect(String(SETTINGS_SECTION.descriptions!.en).startsWith(SETTINGS_SECTION.title)).toBe(true)
   })
 
   test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {

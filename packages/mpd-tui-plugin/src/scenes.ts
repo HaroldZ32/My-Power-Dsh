@@ -28,6 +28,7 @@
 // host injects through the scene props; this file therefore never imports React
 // (it uses `props.React.createElement`, the documented always-safe form).
 import { TUI_SEAMS } from "./types.js"
+import { t } from "./i18n.js"
 import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
 import type { Log } from "./log.js"
 import { boardLines, readBoardState, statusLine } from "./state.js"
@@ -567,11 +568,11 @@ function createTeamComponent(
         else if (input === "a") {
           /** Whether the last read saw a staged team, which is what the `a` key needs. */
           const staged = latestRef?.current?.staged === true
-          if (!staged) { setNotice("plan approval needs a staged team"); return }
+          if (!staged) { setNotice(t("scene.planNeedsStaged")); return }
           setNotice("")
           nav.planFromTeam = true
           nav.planTeamId = latestRef?.current?.teamId
-          if (!openScene(PLAN_SCENE_ID)) setNotice("the plan approval surface is not available in this composition")
+          if (!openScene(PLAN_SCENE_ID)) setNotice(t("scene.planMissing"))
         }
       })
     }
@@ -1168,9 +1169,13 @@ export function registerScene(
       return
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
-      tui.registerScene({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
-      tui.registerScene({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx)
+      // Scene TITLES have no localized contribution field on the installed host (measured: a
+      // `TuiSceneDescriptor` carries one `title` string), so they are resolved through MPD's own
+      // dictionary AT REGISTRATION. A `/lang` switch therefore reaches them at the NEXT plugin
+      // apply (a restart), not mid-session — see the limits stated in `i18n.ts`.
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx)
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx)
       // The MERGED PANEL rides the SAME seam: the host's own subagent rows on top, the MPD team
       // body below them. It gets the SAME `readWorkflow` closure the team scene uses, so the two
       // surfaces cannot describe one team differently. MPD's own key opens it; `Ctrl+A` — the
@@ -1178,7 +1183,9 @@ export function registerScene(
       tui.registerScene(
         {
           id: SUBAGENT_SCENE_ID,
-          title: SUBAGENT_SCENE_TITLE,
+          // The descriptor's title is localized at registration; inside the scene the component
+          // renders its own body header from the same dictionary, so the two agree per render.
+          title: t("scene.subagents"),
           component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit),
         },
         ctx,

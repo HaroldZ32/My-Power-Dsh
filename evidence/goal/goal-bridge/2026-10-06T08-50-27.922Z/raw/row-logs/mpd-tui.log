@@ -1,0 +1,3 @@
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui-adapter] host contact ABSENT: no candidate carried a readable lib/types/ui.js (15 probed) — the surfaces that need it stay inactive

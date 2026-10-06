@@ -134,3 +134,58 @@ stopping at the mount:
 
 `verify-plugin-manifest --pack` covers the packaging half of that list statically; only the container
 covers the mount half — and only a driven turn covers the behavioural half.
+
+---
+
+## The former §4 body (verbatim): the full gate table with every per-row measurement
+
+Provenance: moved from `AGENTS.md` §4 ("Gates (binding)") on 2026-10-06 by the instruction-budget split (the
+manual must stay under the harness's 65,536-byte workspace-instruction budget, and it was already
+over at the previous HEAD). The block below is reproduced VERBATIM — its byte count and sha256 are
+recorded in `evidence/gates/agents-budget/20261006T085805Z/result.json`. `AGENTS.md` §4 carries the BINDING rules and points
+here for the full body; where the two differ, the manual wins.
+
+## 4. Gates (binding)
+
+| Gate | Command | When |
+|---|---|---|
+| Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; the helper REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
+| Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff: every `packages/*/src` entry is rebuilt twice into a temp dir and compared byte-for-byte with its committed `dist/`; unmatched `dist/` files are printed in a loud NOT COVERED section, never silently skipped; `--self-test` seeds a mismatch; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
+| Row/parity | `bun run verify:rows` + `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
+| Pack closure | `node scripts/verify-pack-closure.ts` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
+| Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
+| QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
+| QA real cases | `node skills/dsh-qa/scripts/<case>.ts` | runtime-behavior changes |
+| Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
+| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
+| **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): the TWO install-time rules — **no `cordis`** in `dependencies` / `peerDependencies` / `optionalDependencies` (by NAME; the optional field is NOT an exemption) and no `preinstall` / `install` / `postinstall` / `prepare` script NAME — the VERSION-COHERENCE rule (`dsh-plugin.json` + `dsh-distribution.json` must carry `package.json`'s version) — plus the packaging contract a one-command install rests on: declared patch files exist, every row module path resolves, the `files` allowlist admits every runtime path, `evidence/` stays out, and **npm's own `npm pack --dry-run` list carries them**. `--self-test`: six arms with clean controls | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
+| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in the source set (`packages/*/{src,test,self-fix-tests}`, `scripts/`, `skills/*/scripts/`, `docker/`, `tests/`, `templates/`, `extensions/`) has a precise comment above it, and that every NAMED function writes down its parameter and return types | any source edit, and EVERY release sweep |
+| No host override | `node scripts/verify-no-host-override.ts`: fails when ANY shipped patch row id-targets an id a host layer declares; refuses a vacuous PASS; `--self-test` 6 arms + a live seed | any bundle-patch row edit, and EVERY release sweep |
+| Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
+| Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
+| Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass — the steps ABOVE it carry the wave | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+
+**The pack-closure bound (T-91):** a green `node scripts/verify-pack-closure.ts` certifies COMPLETENESS
+plus the BYTE IDENTITY of every file whose source did not move; **freshness is NOT what the exit code
+says** — it is read from the `expected-after-pack` list at the re-pack (T-26's discriminator: TIMESTAMP
+ORDER; `--pack-stamp <t>` re-anchors it for a reviewer mutating a COPY). The gate's `--self-test` fixture
+arms are the operative evidence; a grep for this paragraph is not.
+
+`--dump-config` is NOT a gate: it COMPOSES rows and never executes plugin code, so a schema/apply abort
+is invisible to it. Measured: `dsh --profile mpd --dump-config` exited 0 with the `mpd-workmate` row
+present while the same profile's real boot could not load the tree; the decisive check was a mounting boot
+with registration instrumentation (`evidence/workmate/rename-delete-core/20260910T132303Z-mount/`).
+**It proves COMPOSITION ONLY — never a plugin load.** Every instruction that sends a reader to the flag
+goes through the repo wrapper `node scripts/dump-config.ts` (T-31), which prints that warning itself;
+only passages that CONTRAST the flag keep the raw spelling on purpose.
+
+No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
+pass and their evidence is committed with the change.
+
+`bun run verify:gates` is the fast aggregate over the static gates (vendor, dist freshness, row parity,
+doc pairs, preset conformance) — one command for a patch/preset edit and for the release sweep. It
+expects a CLEAN tree: a dirty `skills/**` corpus legitimately reddens the vendor gate until the wave's
+single re-pin lands (§9/§11).
+

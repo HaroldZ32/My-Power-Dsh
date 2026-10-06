@@ -1,0 +1,206 @@
+Bundled 4 modules in 6ms
+
+  index.js  1.65 KB  (entry point)
+
+Bundled 5 modules in 7ms
+
+  index.js  75.69 KB  (entry point)
+
+Bundled 16 modules in 6ms
+
+  index.js  94.45 KB  (entry point)
+
+Bundled 5 modules in 7ms
+
+  index.js  73.77 KB  (entry point)
+
+Bundled 4 modules in 5ms
+
+  index.js  66.83 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  68.62 KB  (entry point)
+
+Bundled 9 modules in 7ms
+
+  index.js  158.97 KB  (entry point)
+
+Bundled 3 modules in 5ms
+
+  index.js  66.48 KB  (entry point)
+
+Bundled 14 modules in 7ms
+
+  index.js  197.00 KB  (entry point)
+
+Bundled 4 modules in 9ms
+
+  index.js  73.81 KB  (entry point)
+
+Bundled 20 modules in 6ms
+
+  index.js  99.85 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  75.45 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  68.20 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  69.83 KB  (entry point)
+
+Bundled 8 modules in 8ms
+
+  index.js  102.77 KB  (entry point)
+
+Bundled 8 modules in 7ms
+
+  index.js  119.1 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  79.22 KB  (entry point)
+
+Bundled 9 modules in 6ms
+
+  index.js  128.80 KB  (entry point)
+
+Bundled 18 modules in 6ms
+
+  index.js  200.55 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  64.22 KB  (entry point)
+
+Bundled 1 module in 3ms
+
+  index.js  31.42 KB  (entry point)
+
+Bundled 29 modules in 9ms
+
+  index.js  0.29 MB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  88.64 KB  (entry point)
+
+Bundled 4 modules in 8ms
+
+  index.js  102.41 KB  (entry point)
+
+Bundled 1 module in 3ms
+
+  sdk.js  1.71 KB  (entry point)
+
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (566453 bytes)
+(node:324) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+Bundled 4 modules in 5ms
+
+  index.js  1.65 KB  (entry point)
+
+Bundled 5 modules in 6ms
+
+  index.js  75.69 KB  (entry point)
+
+Bundled 16 modules in 7ms
+
+  index.js  94.45 KB  (entry point)
+
+Bundled 5 modules in 7ms
+
+  index.js  73.77 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  66.83 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  68.62 KB  (entry point)
+
+Bundled 9 modules in 6ms
+
+  index.js  158.97 KB  (entry point)
+
+Bundled 3 modules in 6ms
+
+  index.js  66.48 KB  (entry point)
+
+Bundled 14 modules in 6ms
+
+  index.js  197.00 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  73.81 KB  (entry point)
+
+Bundled 20 modules in 6ms
+
+  index.js  99.85 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  75.45 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  68.20 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  69.83 KB  (entry point)
+
+Bundled 8 modules in 6ms
+
+  index.js  102.77 KB  (entry point)
+
+Bundled 8 modules in 6ms
+
+  index.js  119.1 KB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  79.22 KB  (entry point)
+
+Bundled 9 modules in 8ms
+
+  index.js  128.80 KB  (entry point)
+
+Bundled 18 modules in 6ms
+
+  index.js  200.55 KB  (entry point)
+
+Bundled 4 modules in 6ms
+
+  index.js  64.22 KB  (entry point)
+
+Bundled 1 module in 5ms
+
+  index.js  31.42 KB  (entry point)
+
+Bundled 29 modules in 7ms
+
+  index.js  0.29 MB  (entry point)
+
+Bundled 4 modules in 7ms
+
+  index.js  88.64 KB  (entry point)
+
+Bundled 4 modules in 8ms
+
+  index.js  102.41 KB  (entry point)
+
+Bundled 1 module in 3ms
+
+  sdk.js  1.71 KB  (entry point)
+
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (566466 bytes)
+(node:326) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

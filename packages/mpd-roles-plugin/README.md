@@ -84,10 +84,11 @@ it with `spawn_teammate` by passing its `mpd_role_persona` text.
 
 ## Team mode
 
-Multi-member team work is NOT built here: it is the **official Agent Teams plugin**
+Multi-member team work is NOT built here: **staging** runs on the mpd plan plane (`agent_teams_plan`,
+owned by `mpd-team-core-plugin`) and the members themselves ride the **official Agent Teams plugin**
 (`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`,
 mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows),
-whose Lead stages teammates with `spawn_teammate` and opens their lanes with `team_task_create`.
+whose Lead creates teammates with `spawn_teammate` and opens their lanes with `team_task_create`.
 This row contributes the ROSTER side of that path — every call through `mpd-dsh-adapter`:
 
 | Contract | How this row implements it |
@@ -95,7 +96,7 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
 | a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
-| the session-start complexity gate | an ADVISORY `agent/pre-step` listener (below) |
+| the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell by default (below) |
 
 **Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
 to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
@@ -121,7 +122,7 @@ The seven-name deny list is enforced on BOTH paths, from ONE exported constant
 This closes the measured defect of the retired profile-carried `toolDeny`: a teammate staged
 as "Explorer" without the filter kept `write`/`edit`/`bash`.
 
-### The session-start complexity gate (advisory)
+### The session-start complexity gate (mechanical by default)
 
 At a session's first pre-step the row evaluates the frozen predicate
 
@@ -131,13 +132,29 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 with signals **A** (`team:` prefix or `!team`; the marker is CONSUMED from the goal text),
 **B** (≥ 4 distinct deliverable verbs), **C** (ONE signal, fired by ≥ 2 of its three
-sub-signals: ≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses) and **D** (a
-`.mpd/plans/*.md` artifact exists for the session workspace). On a trigger it injects ONE
-user-role notice carrying the marker `[AgentTeams] Session-start team rule` that names the
-fired signals, states that **NO team was staged**, and tells the captain to stage one with
-`spawn_teammate` + `team_task_create` when the work actually warrants a team.
+sub-signals: ≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses) and **D** (an
+ACTIVE boulder work exists for the session workspace: `status: "active"` in `.mpd/boulder.json` —
+a plan FILE alone is NOT a signal, repaired 2026-10-07 because the retired plan-file probe fired
+in every session of this workspace). Every notice carries the marker
+`[AgentTeams] Session-start team rule`.
 
-**It never stages a team** — including for an explicit `team:` / `!team` request, which is
-only a stronger reason to advise. It is scoped to top-level `mpd` sessions (a child session —
-subagent, teammate, workflow worker — and another preset's session never get it), settles
-once per session, and a failure inside it leaves the step untouched.
+What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `mechanical` (the default)
+| `advisory` | `off`.
+
+- **mechanical** — the gate STAGES an APPROVABLE PLAN SHELL through the `agent_teams_plan` tool
+  (0 members, 0 tasks: at the first pre-step there is no decomposition yet) and injects ONE
+  user-role notice naming the plan id the call RETURNED. NOTHING is spawned: the plan is INERT
+  until the captain extends it (`add_member` / `create_task`) and approves it with
+  `agent_teams_plan {action:"approve"}`, which is what spawns the members and posts the tasks.
+  While a plan for this session is already staged the gate reports that and stages nothing more —
+  a second staging would archive the in-progress plan.
+- **advisory** — without the `agent_teams_plan` tool mounted, or under `team.gate: "advisory"`, the
+  ONE notice says `NO team was staged` and tells the captain to stage one itself at the moment the
+  work warrants it.
+- **off** — the listener returns immediately.
+
+An explicit `team:` / `!team` request is signal **A** and travels the SAME route: under
+`mechanical` it stages the shell too, and the marker is CONSUMED from the goal text. It is scoped
+to top-level `mpd` sessions (a child session — subagent, teammate, workflow worker — and another
+preset's session never get it), settles once per session, and a failure inside it leaves the step
+untouched.

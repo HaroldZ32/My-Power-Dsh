@@ -6,9 +6,12 @@
 // captured, and the team-mutation seams THROW, so "a fired soft signal stages nothing" is
 // proven by the test failing loudly if the gate ever reached for one.
 import { describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { READONLY_DENY } from "../src/index.ts"
+import { READONLY_DENY, stagedPlanProbe } from "../src/index.ts"
 import { ROLES } from "../src/roles.data.ts"
 import {
   installReadonlyGuard,
@@ -19,14 +22,26 @@ import {
 } from "../src/team-guard.ts"
 import {
   advisoryNoticeText,
+  ALREADY_STAGED_PLAN_PHRASE,
   consumeExplicitFlag,
   consumeFlagFromMessage,
+  DRIFTED_ADVISORY_SENTENCE,
   evaluateComplexityGate,
-  installSessionGate,
+  GATE_CONFIG_KEY,
+  GATE_MODE_ADVISORY,
+  GATE_MODE_OFF,
+  gatePlanShell,
+  INERT_PLAN_PHRASE,
   latestUserMessage,
+  mechanicalNoticeText,
+  readBoulderGate,
+  resolveGateMode,
   sessionQualifies,
+  STAGED_PLAN_PHRASE,
+  STAGING_TOOL_NAME,
   STARTUP_NOTICE_MARKER,
-} from "../src/session-gate.ts"
+} from "../src/complexity-gate.ts"
+import { installSessionGate } from "../src/session-gate.ts"
 import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "../src/roster-section.ts"
 
 /** The sandbox workspace every fixture session reports as its cwd. */
@@ -51,7 +66,14 @@ function userMessage(text: string): {
 }
 
 /** The recording adapter double (see the file header). */
-function planeHarness(options: { membership?: unknown; agents?: unknown[]; planFiles?: string[] } = {}): {
+function planeHarness(options: {
+  membership?: unknown
+  agents?: unknown[]
+  /** The tool names this composition registers; empty means the staging tool is ABSENT. */
+  tools?: string[]
+  /** The answer one `executeTool` call returns; defaults to a successful `create` payload. */
+  toolResult?: unknown
+} = {}): {
   dsh: unknown
   calls: Array<{ seam: string; args: unknown[] }>
   guards: Array<(exec: unknown) => string | undefined>
@@ -60,6 +82,8 @@ function planeHarness(options: { membership?: unknown; agents?: unknown[]; planF
   steps: Array<{ agent: unknown; listener: (payload: unknown, decision: unknown) => unknown }>
   listeners: Map<string, Array<(...args: unknown[]) => unknown>>
   agents: unknown[]
+  /** Every `executeTool` call the gate made, in order — the mechanical route's proof. */
+  toolCalls: Array<{ name: string; arguments: unknown; agent: unknown; timeoutMs?: number }>
   emit: (event: string, payload: unknown) => void
 } {
   /** Every adapter seam call the double recorded, in call order. */
@@ -79,6 +103,8 @@ function planeHarness(options: { membership?: unknown; agents?: unknown[]; planF
   const listeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
   /** The live agents the double reports; one qualifying lead unless overridden. */
   const agents = options.agents ?? [mpdAgent()]
+  /** Every internal tool call the gate issued, which is how "staged" is proven. */
+  const toolCalls: Array<{ name: string; arguments: unknown; agent: unknown; timeoutMs?: number }> = []
   /** Monotonic counter keeping each injected notice id unique within a test. */
   let messageSeq = 0
 
@@ -117,7 +143,18 @@ function planeHarness(options: { membership?: unknown; agents?: unknown[]; planF
       return () => { released.push(section.name) }
     },
     workspaceRoot: () => WORKSPACE,
-    // ── the seams the gate must NEVER reach (it stages nothing) ──
+    // ── the two INTERNAL-TOOL seams the MECHANICAL gate stages through ──
+    // `tools` is EMPTY unless an arm asks for the staging tool, so every other arm exercises the
+    // ladder's advisory step (a composition without mpd-team-core) by default. The probe RECORDS
+    // its second argument, because the ladder must ask the CALLING AGENT'S view — the view its call
+    // executes against — and never the host-plane global read.
+    hasTool: (name: string, agent?: unknown) => { record("hasTool", name, agent); return (options.tools ?? []).includes(name) },
+    executeTool: (input: { name: string; arguments?: unknown; agent?: unknown; timeoutMs?: number }) => {
+      record("executeTool", input.name, input.arguments)
+      toolCalls.push({ name: input.name, arguments: input.arguments, agent: input.agent, ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }) })
+      return options.toolResult ?? { ok: true, isError: false, value: { plan: { planId: "plan-staged-1", name: "shell" } } }
+    },
+    // ── the seams the gate must NEVER reach DIRECTLY (staging goes through the tool) ──
     teamSpawnTeammate: () => { record("teamSpawnTeammate"); throw new Error("the gate staged a teammate") },
     teamCreateTask: () => { record("teamCreateTask"); throw new Error("the gate staged a task") },
     teamUpdateTask: () => { record("teamUpdateTask"); throw new Error("the gate mutated a task") },
@@ -131,6 +168,7 @@ function planeHarness(options: { membership?: unknown; agents?: unknown[]; planF
     steps,
     listeners,
     agents,
+    toolCalls,
     emit: (event: string, payload: unknown) => { for (const handler of listeners.get(event) ?? []) handler(payload) },
   }
 }
@@ -244,10 +282,18 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
   test("signal A: team: prefix and !team, with the marker consumed", () => {
     expect(consumeExplicitFlag("team: migrate the parser")).toEqual({ flagged: true, text: "migrate the parser" })
     expect(consumeExplicitFlag("  team:   do it")).toEqual({ flagged: true, text: "do it" })
-    // `!team` is stripped WITH its trailing whitespace (the frozen `replace(/!team\s*/giu,'')`).
+    // `!team` is stripped WITH its trailing whitespace, and only at a TOKEN BOUNDARY.
     expect(consumeExplicitFlag("please !team take this on")).toEqual({ flagged: true, text: "please take this on" })
     expect(consumeExplicitFlag("a team: inside the sentence")).toEqual({ flagged: false, text: "a team: inside the sentence" })
     expect(evaluateComplexityGate("tiny task", { explicitFlag: true })).toEqual({ trigger: true, signals: ["A"] })
+  })
+
+  test("P8: a QUOTED !team is neither an activation nor stripped (only the earliest boundary one is)", () => {
+    // The retired global replace deleted this occurrence and flagged the goal; both were wrong.
+    expect(consumeExplicitFlag('the manual says "!team" activates a team')).toEqual({ flagged: false, text: 'the manual says "!team" activates a team' })
+    expect(consumeExplicitFlag("use `!team` in a code span")).toEqual({ flagged: false, text: "use `!team` in a code span" })
+    // ONE real marker plus a quoted one: the real one is consumed, the quoted one survives.
+    expect(consumeExplicitFlag('!team please leave "!team" alone')).toEqual({ flagged: true, text: 'please leave "!team" alone' })
   })
 
   test("signal B: >= 4 DISTINCT deliverable verbs", () => {
@@ -267,8 +313,9 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(evaluateComplexityGate("- one\n- two\n- three").signals).toEqual([])
   })
 
-  test("signal D: a plan artifact exists", () => {
-    expect(evaluateComplexityGate("small task", { planArtifact: true })).toEqual({ trigger: true, signals: ["D"] })
+  test("signal D reads an ACTIVE boulder work, never a plan FILE", () => {
+    expect(evaluateComplexityGate("small task", { activeBoulder: true })).toEqual({ trigger: true, signals: ["D"] })
+    expect(evaluateComplexityGate("small task", { activeBoulder: false })).toEqual({ trigger: false, signals: [] })
   })
 
   test("no signal: nothing fires, and the trigger needs at least one", () => {
@@ -289,19 +336,161 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(text).not.toContain("agent_teams_create")
     expect(advisoryNoticeText(["A"], true)).toContain("CONSUMED")
   })
+
+  test("the MECHANICAL text names the RETURNED plan id, the shell bound and the inertness rule", () => {
+    /** The mechanical notice for a freshly staged shell. */
+    const text = mechanicalNoticeText({ planId: "plan-abc", signals: ["A"], explicit: true, alreadyStaged: false })
+    expect(text.startsWith(STARTUP_NOTICE_MARKER)).toBe(true)
+    expect(text).toContain(STAGED_PLAN_PHRASE)
+    expect(text).toContain("plan-abc")
+    expect(text).toContain("complexity signals A")
+    expect(text).toContain(INERT_PLAN_PHRASE)
+    expect(text).toContain("agent_teams_plan")
+    expect(text).toContain("SHELL")
+    // An id the call did NOT report is never invented.
+    expect(mechanicalNoticeText({ planId: "", signals: ["C"], explicit: false, alreadyStaged: false })).toContain("plan id not reported")
+    // The idempotence branch says the gate did NOT stage again.
+    const skipped = mechanicalNoticeText({ planId: "plan-xyz", signals: ["B"], explicit: false, alreadyStaged: true })
+    expect(skipped).toContain(ALREADY_STAGED_PLAN_PHRASE)
+    expect(skipped).not.toContain(STAGED_PLAN_PHRASE + " — plan-xyz")
+    expect(skipped).toContain("plan-xyz")
+  })
+
+  test("resolveGateMode: the vocabulary, the tolerated booleans, and the fail-safe default", () => {
+    expect(resolveGateMode("mechanical")).toBe("mechanical")
+    expect(resolveGateMode("advisory")).toBe("advisory")
+    expect(resolveGateMode("off")).toBe("off")
+    expect(resolveGateMode(true)).toBe("mechanical")
+    expect(resolveGateMode(false)).toBe("off")
+    // ABSENT and every UNKNOWN value fail safe to mechanical, so a typo cannot disable the gate.
+    expect(resolveGateMode(undefined)).toBe("mechanical")
+    expect(resolveGateMode("bogus")).toBe("mechanical")
+    expect(resolveGateMode(0)).toBe("mechanical")
+  })
+
+  test("gatePlanShell fills ONLY what the gate can know, and says so in the description", () => {
+    /** The shell for a goal whose first line is long and whose body carries the marker-free goal. */
+    const shell = gatePlanShell({ signals: ["B", "D"], goal: "Align   the   bundle\nwith upstream and audit the rest", planPath: ".mpd/plans/x.md" })
+    expect(shell.approval).toBe("required")
+    expect(shell.name).toBe("Align the bundle")
+    expect(shell.name.length).toBeLessThanOrEqual(60)
+    expect(shell.description).toContain("complexity signals B/D")
+    expect(shell.description).toContain("0 members and 0 tasks")
+    expect(shell.description).toContain(".mpd/plans/x.md")
+    expect(shell.description).toContain("agent_teams_plan")
+    // A one-line goal longer than the cap is CLIPPED, and an empty goal falls back to a fixed name.
+    expect(gatePlanShell({ signals: [], goal: "x".repeat(200) }).name.length).toBe(60)
+    expect(gatePlanShell({ signals: [], goal: "   " }).name.length).toBeGreaterThan(0)
+    // The excerpt is bounded, so one enormous goal cannot bloat every later prompt with it.
+    expect(gatePlanShell({ signals: [], goal: "y".repeat(5000) }).description.length).toBeLessThan(1200)
+  })
+})
+
+describe("readBoulderGate: signal D's only input, repaired to an ACTIVE work", () => {
+  /** A reader seam that answers one fixed ledger text, or throws. */
+  const readerOf = (text: string | Error): (path: string) => Promise<string> => async () => {
+    if (text instanceof Error) throw text
+    return text
+  }
+  /** A ledger whose single work carries the given status, keyed by the active id. */
+  const ledger = (status: string | undefined): string => JSON.stringify({
+    active_work_id: "w-1",
+    works: { "w-1": { ...(status === undefined ? {} : { status }), active_plan: ".mpd/plans/p.md" } },
+  })
+
+  test("an ACTIVE work reads active and carries its plan path", async () => {
+    /** The verdict for a ledger whose only work is active. */
+    const read = await readBoulderGate("/ws", { readFile: readerOf(ledger("active")) })
+    expect(read).toEqual({ active: true, status: "active", planPath: ".mpd/plans/p.md" })
+  })
+
+  test("a COMPLETED work is silent — this workspace's own ledger must read inactive", async () => {
+    // The measured false positive: `.mpd/plans/mpd-seam-convergence.md` survives its completed work.
+    expect((await readBoulderGate("/ws", { readFile: readerOf(ledger("completed")) })).active).toBe(false)
+    // The RATIFIED conservative reading: a work with NO status is NOT active, unlike the vendor.
+    expect((await readBoulderGate("/ws", { readFile: readerOf(ledger(undefined)) })).active).toBe(false)
+    // A missing file, malformed JSON, a non-object and a permission error all read inactive.
+    expect((await readBoulderGate("/ws", { readFile: readerOf(new Error("ENOENT")) })).active).toBe(false)
+    expect((await readBoulderGate("/ws", { readFile: readerOf("{ not json") })).active).toBe(false)
+    expect((await readBoulderGate("/ws", { readFile: readerOf("null") })).active).toBe(false)
+    expect((await readBoulderGate("/ws", { readFile: readerOf("[]") })).active).toBe(false)
+    expect((await readBoulderGate("/ws", { readFile: readerOf(new Error("EACCES")) })).active).toBe(false)
+  })
+
+  test("the fallback shape mirrors the vendor, and boulder.dir overrides the workspace", async () => {
+    // No active_work_id: the TOP-LEVEL state is the work, which is how a legacy ledger reads.
+    const topLevel = JSON.stringify({ status: "active", active_plan: ".mpd/plans/top.md" })
+    expect(await readBoulderGate("/ws", { readFile: readerOf(topLevel) })).toEqual({ active: true, status: "active", planPath: ".mpd/plans/top.md" })
+    // An id pointing at NOTHING falls back to the top-level state too.
+    const dangling = JSON.stringify({ active_work_id: "gone", status: "active" })
+    expect((await readBoulderGate("/ws", { readFile: readerOf(dangling) })).active).toBe(true)
+    // The state root is `join(root, ".mpd", "boulder.json")` and `boulder.dir` replaces the workspace.
+    /** The path the reader was asked for. */
+    const seen: string[] = []
+    await readBoulderGate("/ws", { boulderDir: "/elsewhere", readFile: async (path) => { seen.push(path); return topLevel } })
+    expect(seen[0]).toBe("/elsewhere/.mpd/boulder.json")
+    await readBoulderGate("/ws", { readFile: async (path) => { seen.push(path); return topLevel } })
+    expect(seen[1]).toBe("/ws/.mpd/boulder.json")
+  })
+
+  test("this WORKSPACE's real ledger reads inactive (the measured D repair)", async () => {
+    /** The repo root, derived from this test file's own location. */
+    const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+    // The repository's own `.mpd/boulder.json`: one COMPLETED work whose plan file still exists.
+    /** The real ledger text, read through the injected reader below. */
+    const real = readFileSync(join(repoRoot, ".mpd", "boulder.json"), "utf8")
+    /** The verdict for that ledger, which must NOT fire signal D any more. */
+    const read = await readBoulderGate("", { readFile: async () => real })
+    expect(read.active).toBe(false)
+    // And the same ledger read through the default `node:fs/promises` reader, from the real root.
+    expect((await readBoulderGate(repoRoot)).active).toBe(false)
+  })
 })
 
 describe("session-start gate: scope, one-shot settlement and the advisory injection", () => {
-  test("a fired SOFT signal injects ONE advisory notice and stages NOTHING", async () => {
-    /** A double whose membership is irrelevant to the gate arm. */
-    const harness = planeHarness()
-    /** The gate install, whose settlement set is asserted after the first step. */
-    const gate = installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
-    expect(gate.installed).toBe(true)
+  test("the MECHANICAL route stages a SHELL through the tool and injects the notice naming its id", async () => {
+    /** A double whose composition REGISTERS the staging tool (mpd-team-core is mounted). */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** Registration-signature lines, asserted to carry the mode. */
+    const lines: string[] = []
+    /** Warnings the fire reported; this arm is the POSITIVE control and must produce none. */
+    const warnings: string[] = []
+    /** The gate install, whose resolved mode is asserted. */
+    const gate = installSessionGate(harness.dsh as never, {
+      warn: (line) => warnings.push(line),
+      log: (line) => lines.push(line),
+      // The probe POSITIVELY answers "nothing staged" — the only answer that stages in silence.
+      stagedPlan: () => null,
+    })
+    // The DEFAULT mode is mechanical: absent config reads mechanical (the fail-safe).
+    expect(gate.mode).toBe("mechanical")
     /** The claimed user turn the gate must judge. */
     const claimed = userMessage("Check the tests, build the package, verify the output.")
     /** The step decision the listener returned for that turn. */
     const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
+
+    // EXACTLY ONE staging call, to the ONE tool, with the live agent and the shell's three fields.
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(harness.toolCalls[0].name).toBe(STAGING_TOOL_NAME)
+    expect(harness.toolCalls[0].agent).toBe(harness.agents[0])
+    expect(harness.toolCalls[0].timeoutMs).toBe(5000)
+    // THE PROBE ASKS THE CALLING AGENT'S VIEW (2026-10-07): the one-arg host-plane read answers
+    // `false` the moment `agent_teams_plan` moves plane, and the ladder would then degrade to
+    // advisory with no error anywhere. The agent is the LIVE bound handle, never undefined.
+    /** The `hasTool` probes the gate made, each with the view it asked about. */
+    const probes = harness.calls.filter((call) => call.seam === "hasTool")
+    expect(probes).toHaveLength(1)
+    expect(probes[0].args).toEqual([STAGING_TOOL_NAME, harness.agents[0]])
+    /** The staging call's arguments, asserted field by field below. */
+    const args = harness.toolCalls[0].arguments as { action: string; name: string; description: string; approval: string }
+    expect(args.action).toBe("create")
+    expect(args.approval).toBe("required")
+    expect(args.name).toBe("Check the tests, build the package, verify the output.")
+    expect(args.description).toContain("complexity signals C")
+    // NOTHING is decomposed: the description states the shell bound outright.
+    expect(args.description).toContain("0 members and 0 tasks")
+    // The gate reached NO mutation seam directly: the tool IS the single writer of the plan store.
+    expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
 
     expect(decided.kind).toBe("enter")
     expect(decided.messages).toHaveLength(2)
@@ -309,46 +498,265 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const notice = decided.messages[1]
     expect(notice.role).toBe("user")
     expect(notice.content[0].text.startsWith(STARTUP_NOTICE_MARKER)).toBe(true)
-    expect(notice.content[0].text).toContain("NO team was staged")
+    // The id comes from the CALL, and the notice never claims a team was created.
+    expect(notice.content[0].text).toContain(STAGED_PLAN_PHRASE)
+    expect(notice.content[0].text).toContain("plan-staged-1")
+    expect(notice.content[0].text).toContain(INERT_PLAN_PHRASE)
+    expect(notice.content[0].text).not.toContain("NO team was staged")
+    // The REPORT line carries the mode and the staged flag (the boot signature a lane asserts).
+    expect(lines.join("\n")).toContain("signals=C mode=mechanical staged=1 plan=plan-staged-1")
+    // THE POSITIVE CONTROL for the probe's loudness: an ANSWERED "none staged" stages in silence.
+    expect(warnings).toEqual([])
     // The claimed user turn is still there (and unchanged: a SOFT signal has no marker).
     expect(decided.messages[0].content[0].text).toBe("Check the tests, build the package, verify the output.")
-    // Nothing was staged: the mutation seams were never reached…
-    expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
-    // …and the session is settled, so a second step injects nothing.
+    // THE RE-ENTRY GUARD: a second step injects nothing and stages nothing more.
     expect(await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
   })
 
-  test("an explicit team: flag is ADVISED (never provisioned) and CONSUMED from the goal text", async () => {
-    /** A double for the explicit-flag arm. */
-    const harness = planeHarness()
-    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
-    /** The user turn carrying the team: marker. */
-    const claimed = userMessage("team: redesign the loader")
-    /** The decision with the marker consumed and the notice appended. */
-    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
-    expect(decided.messages).toHaveLength(2)
-    expect(decided.messages[0].content[0].text).toBe("redesign the loader")
-    expect(decided.messages[1].content[0].text).toContain("CONSUMED")
-    expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
+  test("the ladder degrades to the ADVISORY notice: tool absent, and a failing call", async () => {
+    // (a) NO staging tool in this composition: nothing is called, the advisory notice lands.
+    /** A double whose composition does NOT register the staging tool. */
+    const withoutTool = planeHarness({ tools: [] })
+    installSessionGate(withoutTool.dsh as never, { warn: () => {} })
+    /** The turn that triggers the predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    /** The decision for the tool-absent arm. */
+    const absent: any = await withoutTool.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(withoutTool.toolCalls).toEqual([])
+    expect(absent.messages[1].content[0].text).toContain("NO team was staged")
+    // The ADVISORY rung still asked the AGENT'S view, so the only way this reads false is that the
+    // tool is genuinely unreachable THERE — a host-plane read would have answered for a composition
+    // the session cannot actually call into.
+    expect(withoutTool.calls.find((call) => call.seam === "hasTool")?.args).toEqual([STAGING_TOOL_NAME, withoutTool.agents[0]])
+
+    // (d) THE CALL FAILS: one warning carrying the error, and the ADVISORY notice — never a claim.
+    /** A double whose tool call answers an error result. */
+    const failing = planeHarness({ tools: [STAGING_TOOL_NAME], toolResult: { ok: false, isError: true, error: "the store is read-only" } })
+    /** Warnings the degraded call reported. */
+    const warnings: string[] = []
+    installSessionGate(failing.dsh as never, { warn: (line) => warnings.push(line) })
+    /** The decision for the failing-call arm. */
+    const failed: any = await failing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(failing.toolCalls).toHaveLength(1)
+    expect(failed.messages[1].content[0].text).toContain("NO team was staged")
+    expect(warnings.join(" ")).toContain("staging degraded to the advisory notice")
+    expect(warnings.join(" ")).toContain("the store is read-only")
   })
 
-  test("signal D needs a real .mpd/plans artifact, and the probe is workspace-scoped", async () => {
-    /** A double whose plan probe reports one artifact. */
-    const withPlan = planeHarness()
-    /** Paths the injected plan probe was asked for, proving workspace scoping. */
+  test("IDEMPOTENCE: a plan the probe REPORTS is never re-staged (a second stage would ARCHIVE it)", async () => {
+    /** A double whose composition registers the tool and whose session already has a plan. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** Workspaces/sessions the gate's idempotence probe was asked about. */
+    const probes: Array<{ workspace: string; sessionId: string }> = []
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: (workspace, sessionId) => {
+        probes.push({ workspace, sessionId })
+        return { planId: "plan-already-there" }
+      },
+    })
+    /** The turn that triggers the predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    /** The decision for the already-staged arm. */
+    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    // NO second staging call: the captain's in-progress plan survives.
+    expect(harness.toolCalls).toEqual([])
+    expect(probes).toEqual([{ workspace: WORKSPACE, sessionId: "lead-1" }])
+    // The notice names the plan that IS staged and says the gate did not stage again.
+    expect(decided.messages[1].content[0].text).toContain(ALREADY_STAGED_PLAN_PHRASE)
+    expect(decided.messages[1].content[0].text).toContain("plan-already-there")
+  })
+
+  test("ID-KEY AGREEMENT: the probe asks the SAME session key the staging tool writes under", async () => {
+    // The staging store keys its slot by `sessionId + ".json"` under `<ws>/.mpd/team/staging/`, and
+    // the WRITER's chain is `agent.session.id ?? agent.sessionId ?? agent.id`, then the literal
+    // "workspace". A probe asking any other key reads a file the write never touches — it answers
+    // "nothing staged" for a DIFFERENT slot while the write lands in this one, and the idempotence
+    // guard is blind exactly where it matters. All three divergences are pinned below.
+    /** The session keys the probes were asked about, in arm order. */
+    const asked: string[] = []
+    /** Read AND record one probe answer (the positive "nothing staged"). */
+    const record = (_workspace: string, sessionId: string): unknown => { asked.push(sessionId); return null }
+    /** The turn that triggers the predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+
+    // (1) A real session: the SESSION id wins over the agent id.
+    /** A handle carrying both a session id and an agent id. */
+    const withSession = { id: "agent-7", session: { id: "sess-7", header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
+    /** A double over that handle. */
+    const one = planeHarness({ agents: [withSession] })
+    installSessionGate(one.dsh as never, { warn: () => {}, stagedPlan: record })
+    await one.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(asked[0]).toBe("sess-7")
+
+    // (2) A handle with NO id at all: the tool files it under `workspace.json`, so the probe must
+    //     ask "workspace" — the empty string asked about `.json`, a slot the write never touches.
+    /** A qualifying session whose handle carries no id in any spelling. */
+    const anonymous = { session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
+    /** A double over that anonymous handle. */
+    const two = planeHarness({ agents: [anonymous] })
+    installSessionGate(two.dsh as never, { warn: () => {}, stagedPlan: record })
+    await two.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(asked[1]).toBe("workspace")
+
+    // (3) A NON-STRING session id: `??` stops at the first NON-NULLISH candidate, and the tool then
+    //     falls to "workspace" rather than walking on to the agent id — the second divergence.
+    /** A handle whose session id is a number, with a usable agent id behind it. */
+    const numericSession = { id: "agent-9", session: { id: 42, header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
+    /** A double over that handle. */
+    const three = planeHarness({ agents: [numericSession] })
+    installSessionGate(three.dsh as never, { warn: () => {}, stagedPlan: record })
+    await three.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(asked[2]).toBe("workspace")
+    // …and the FLAT spelling is honoured when the session object carries none.
+    /** A handle whose session id sits on the flat `sessionId` field. */
+    const flat = { id: "agent-10", sessionId: "flat-10", session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
+    /** A double over that handle. */
+    const four = planeHarness({ agents: [flat] })
+    installSessionGate(four.dsh as never, { warn: () => {}, stagedPlan: record })
+    await four.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(asked[3]).toBe("flat-10")
+    // The workspace side of the pair is the same one the tool resolves, always.
+    expect(asked).toHaveLength(4)
+  })
+
+  test("an UNANSWERABLE probe still stages — and says LOUDLY that a plan may have been ARCHIVED", async () => {
+    // The bound, made loud: staging IS the mission, so a probe that cannot answer does not block it.
+    // What it must never do is stay SILENT — that is the path where a captain's un-approved plan for
+    // this session is moved into `.mpd/team/archive/` without a word.
+    /** The turn that triggers the predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+
+    // (i) NO probe seam at all (mpdTeams absent from the composition).
+    /** A double whose composition registers the tool but supplies no probe. */
+    const missing = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** Warnings the fire reported. */
+    const missingWarnings: string[] = []
+    installSessionGate(missing.dsh as never, { warn: (line) => missingWarnings.push(line) })
+    /** The decision for the missing-probe arm. */
+    const stagedAnyway: any = await missing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(missing.toolCalls).toHaveLength(1)
+    // The notice is the MECHANICAL one: the plan really was staged, so it is not misreported.
+    expect(stagedAnyway.messages[1].content[0].text).toContain(STAGED_PLAN_PHRASE)
+    expect(missingWarnings).toHaveLength(1)
+    expect(missingWarnings[0]).toContain("staged-plan probe could not answer")
+    expect(missingWarnings[0]).toContain("mpdTeams is not mounted")
+    // The CONSEQUENCE is named, not implied.
+    expect(missingWarnings[0]).toContain("may have been ARCHIVED")
+
+    // (ii) A probe that THROWS (the service is mounted but its read failed).
+    /** A double whose probe throws. */
+    const throwing = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** Warnings the throwing arm reported. */
+    const throwingWarnings: string[] = []
+    installSessionGate(throwing.dsh as never, {
+      warn: (line) => throwingWarnings.push(line),
+      stagedPlan: () => { throw new Error("mpdTeams read failed") },
+    })
+    await throwing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(throwing.toolCalls).toHaveLength(1)
+    expect(throwingWarnings).toHaveLength(1)
+    expect(throwingWarnings[0]).toContain("staged-plan probe could not answer")
+    expect(throwingWarnings[0]).toContain("mpdTeams read failed")
+    expect(throwingWarnings[0]).toContain("may have been ARCHIVED")
+  })
+
+  test("stagedPlanProbe: an UNREADABLE service THROWS instead of answering 'nothing staged'", () => {
+    // The F4 boundary at the seam that FEEDS the gate: `null` is the positive "none" answer, a plan
+    // is the "staged" answer, and every unreadable shape must THROW so the gate can be loud about
+    // the archive risk. Folding these into `undefined` is what made the silent path possible.
+    /** A ctx whose `mpdTeams` service is absent (its row has not applied). */
+    const absentService = stagedPlanProbe({ get: () => undefined } as never)
+    expect(() => absentService("/ws", "s-1")).toThrow("mpdTeams")
+    /** A ctx whose service exists but exposes no usable `planFor` (a partial publication). */
+    const partialService = stagedPlanProbe({ get: () => ({}) } as never)
+    expect(() => partialService("/ws", "s-1")).toThrow("cannot answer")
+    /** A ctx whose lookup itself throws, which must surface rather than read as "none". */
+    const hostileLookup = stagedPlanProbe({ get: () => { throw new Error("service exploded") } } as never)
+    expect(() => hostileLookup("/ws", "s-1")).toThrow("service exploded")
+
+    // The POSITIVE answers stay exactly as the gate's ladder expects them.
+    /** Workspaces/sessions the mounted service was asked about. */
+    const asked: Array<{ workspace: string; sessionId: string }> = []
+    /** A mounted service that answers "nothing staged". */
+    const mounted = stagedPlanProbe({
+      get: (name: string) => (name === "mpdTeams"
+        ? { planFor: (workspace: string, sessionId: string) => { asked.push({ workspace, sessionId }); return { plan: null } } }
+        : undefined),
+    } as never)
+    expect(mounted("/ws", "s-1")).toBeNull()
+    expect(asked).toEqual([{ workspace: "/ws", sessionId: "s-1" }])
+    /** A mounted service with one plan staged. */
+    const staged = stagedPlanProbe({ get: () => ({ planFor: () => ({ plan: { planId: "plan-x" } }) }) } as never)
+    expect(staged("/ws", "s-1")).toEqual({ planId: "plan-x" })
+  })
+
+  test("team.gate=advisory stages nothing; team.gate=off does nothing at all", async () => {
+    /** The turn that triggers the predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+
+    // ADVISORY: the tool IS registered, and the mode alone suppresses the staging call.
+    /** A double whose composition registers the staging tool. */
+    const advisory = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The installed gate, whose resolved mode is the ROW-config value. */
+    const advisoryGate = installSessionGate(advisory.dsh as never, { warn: () => {}, configValue: (key) => (key === GATE_CONFIG_KEY ? GATE_MODE_ADVISORY : undefined) })
+    expect(advisoryGate.mode).toBe(GATE_MODE_ADVISORY)
+    /** The advisory-mode decision. */
+    const advised: any = await advisory.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(advisory.toolCalls).toEqual([])
+    expect(advised.messages[1].content[0].text).toContain("NO team was staged")
+
+    // OFF: the listener returns immediately — no notice, no read, no call.
+    /** A double whose composition registers the staging tool. */
+    const off = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The installed gate, whose resolved mode is off. */
+    const offGate = installSessionGate(off.dsh as never, { warn: () => {}, configValue: (key) => (key === GATE_CONFIG_KEY ? GATE_MODE_OFF : undefined) })
+    expect(offGate.mode).toBe(GATE_MODE_OFF)
+    expect(await off.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    expect(off.toolCalls).toEqual([])
+    // The BOOLEAN spelling is tolerated too (`false` -> off), and anything unknown fails safe.
+    expect(installSessionGate(
+      planeHarness().dsh as never,
+      { warn: () => {}, configValue: (key) => (key === GATE_CONFIG_KEY ? false : undefined) },
+    ).mode).toBe(GATE_MODE_OFF)
+  })
+
+  test("signal D: an ACTIVE boulder work fires the gate through the injected reader, honours boulder.dir", async () => {
+    /** Paths the boulder reader was asked for, proving the state-root resolution. */
     const seen: string[] = []
-    installSessionGate(withPlan.dsh as never, { warn: () => {}, readdir: async (path) => { seen.push(path); return ["lane.md"] } })
+    /** A double over a workspace whose ledger says one work is ACTIVE. */
+    const active = planeHarness()
+    installSessionGate(active.dsh as never, {
+      warn: () => {},
+      readFile: async (path) => { seen.push(path); return JSON.stringify({ active_work_id: "w", works: { w: { status: "active", active_plan: ".mpd/plans/lane.md" } } }) },
+    })
     /** The claim the gate must judge, a prompt with no signal of its own. */
     const claimed = userMessage("fix the typo")
-    /** The decision for the plan-artifact case, carrying the D notice. */
-    const decided: any = await withPlan.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
-    expect(seen[0]).toBe(WORKSPACE + "/.mpd/plans")
+    /** The decision for the active-work case, carrying the D notice. */
+    const decided: any = await active.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(seen[0]).toBe(WORKSPACE + "/.mpd/boulder.json")
     expect(decided.messages[1].content[0].text).toContain("complexity signals D")
 
-    /** A double whose plan probe fails, the no-artifact control. */
-    const withoutPlan = planeHarness()
-    installSessionGate(withoutPlan.dsh as never, { warn: () => {}, readdir: async () => { throw new Error("ENOENT") } })
-    expect(await withoutPlan.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    // The `boulder.dir` override replaces the workspace as the STATE ROOT (resolved per call).
+    /** A double over an override state root. */
+    const overridden = planeHarness()
+    installSessionGate(overridden.dsh as never, {
+      warn: () => {},
+      configValue: (key) => (key === "boulder.dir" ? "/elsewhere" : undefined),
+      readFile: async (path) => { seen.push(path); return JSON.stringify({ active_work_id: "w", works: { w: { status: "active" } } }) },
+    })
+    await overridden.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(seen[1]).toBe("/elsewhere/.mpd/boulder.json")
+
+    // A COMPLETED work (this workspace's real shape) leaves the gate silent — the repair's control.
+    /** A double whose ledger's only work is completed. */
+    const completed = planeHarness()
+    installSessionGate(completed.dsh as never, {
+      warn: () => {},
+      readFile: async () => JSON.stringify({ active_work_id: "w", works: { w: { status: "completed", active_plan: ".mpd/plans/mpd-seam-convergence.md" } } }),
+    })
+    expect(await completed.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })).toBeUndefined()
   })
 
   test("scope: child sessions and other presets never get the gate; mpd and preset-less sessions do", async () => {
@@ -366,7 +774,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const other = { id: "other-1", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } }
     /** A double over all three agents, so registration alone is the filter. */
     const harness = planeHarness({ agents: [lead, child, other] })
-    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    installSessionGate(harness.dsh as never, { warn: () => {} })
     // REGISTRATION is the filter now: ONLY the qualifying agent's scope got a listener, so a
     // child or another preset's session cannot fire the gate even in principle.
     expect(harness.steps.map((step) => step.agent)).toEqual([lead])
@@ -381,19 +789,28 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     expect(harness.released).toContain("agent-pre-step:late-1")
   })
 
-  test("a step with no user text does NOT spend the settlement, and a reject decision is left alone", async () => {
+  test("P4: only a FIRING turn registers the agent — an empty or non-firing turn stays unjudged-and-rejudged", async () => {
     /** A double for the settlement arm. */
     const harness = planeHarness()
-    /** The gate install, whose settlement set must stay empty. */
-    const gate = installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    /** The gate install, whose acted set must stay empty until a turn really fires. */
+    const gate = installSessionGate(harness.dsh as never, { warn: () => {} })
     expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [] })).toBeUndefined()
-    expect(gate.settled.size).toBe(0)
+    expect(gate.acted.size).toBe(0)
     expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "reject" })).toBeUndefined()
-    /** The claim that finally fires the gate, after two no-op steps. */
+    // A SIMPLE first turn does not fire and therefore does NOT spend the evaluation…
+    /** A turn whose predicate is false. */
+    const simple = userMessage("fix the typo")
+    expect(await harness.steps[0].listener({ messages: [simple], turn: 1, step: 1 }, { kind: "enter", messages: [simple] })).toBeUndefined()
+    expect(gate.acted.size).toBe(0)
+    // …so the COMPLEX turn that follows it is still judged, and fires.
+    /** The claim that finally fires the gate, after three no-op steps. */
     const claimed = userMessage("Check the tests, build the package, verify the output.")
-    /** The decision proving the no-op steps did not spend the settlement. */
+    /** The decision proving the no-op steps did not spend the evaluation. */
     const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
     expect(decided.messages).toHaveLength(2)
+    expect(gate.acted.size).toBe(1)
+    // WHICH IS THE POINT OF THE REPAIR: a settled-on-first-turn gate went silent on every session
+    // whose opening turn was a lookup, which is the common case.
   })
 
   test("a contained failure leaves the step untouched (a broken gate never breaks a turn)", async () => {
@@ -401,14 +818,34 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const harness = planeHarness()
     /** Warnings the gate reported instead of throwing. */
     const warnings: string[] = []
-    installSessionGate(harness.dsh as never, { warn: (line) => warnings.push(line), readdir: async () => { throw new Error("boom") } })
-    // The plan probe is contained, so the gate still runs; force a real failure instead:
+    installSessionGate(harness.dsh as never, { warn: (line) => warnings.push(line) })
+    // A throwing workspace resolver is the failure this arm forces:
     const broken = harness.dsh as any
     broken.workspaceRoot = () => { throw new Error("no workspace") }
     /** The claim the broken gate still has to judge. */
     const claimed = userMessage("Check the tests, build the package, verify the output.")
     expect(await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
     expect(warnings.join(" ")).toContain("session-start gate failed")
+  })
+
+  test("an explicit team: flag is CONSUMED from the goal text and counts as signal A", async () => {
+    /** A double whose composition registers the staging tool, so the flag's route is mechanical. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    installSessionGate(harness.dsh as never, { warn: () => {} })
+    /** The user turn carrying the team: marker. */
+    const claimed = userMessage("team: redesign the loader")
+    /** The decision with the marker consumed and the notice appended. */
+    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
+    expect(decided.messages).toHaveLength(2)
+    // CONSUMED: the marker never reaches the model as part of the goal.
+    expect(decided.messages[0].content[0].text).toBe("redesign the loader")
+    // Signal A fired on its own (a two-word goal carries no soft signal), and the shell's
+    // description records it — and the shell's NAME comes from the consumed goal, not the marker.
+    const args = harness.toolCalls[0].arguments as { name: string; description: string }
+    expect(args.name).toBe("redesign the loader")
+    expect(args.description).toContain("complexity signals A")
+    expect(decided.messages[1].content[0].text).toContain("CONSUMED")
+    expect(decided.messages[1].content[0].text).toContain(STAGED_PLAN_PHRASE)
   })
 
   test("consumeFlagFromMessage rewrites only text blocks and leaves a clean message identical", () => {
@@ -530,7 +967,7 @@ describe("gate registration through the REAL adapter (the mounted-but-silent reg
     }
     /** The REAL adapter built over that ctx. */
     const adapter = createDshAdapter(ctx)
-    installSessionGate(adapter as never, { warn: () => {}, readdir: async () => [] })
+    installSessionGate(adapter as never, { warn: () => {} })
 
     // Registered on the AGENT's scope, never on the row's event bus.
     expect(captured.map((entry) => entry.event)).toEqual(["agent/pre-step"])
@@ -574,7 +1011,7 @@ describe("goal selection: the injected runtime-context turn must not shadow the 
   test("the gate judges the GOAL even when the decision carries an injected context turn", async () => {
     /** A double for the runtime-context shadowing arm. */
     const harness = planeHarness()
-    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    installSessionGate(harness.dsh as never, { warn: () => {} })
     /** The real goal the gate must judge. */
     const goal = userMessage("Check the tests, build the package, verify the output.")
     /** The runtime-context turn the harness splices in AFTER the goal. */
@@ -603,7 +1040,7 @@ describe("goal selection: the injected runtime-context turn must not shadow the 
     expect(out.messages[2]).toBe(injected)
     // A SIMPLE goal through the same shape stays silent (the falsifiability arm).
     const simpleHarness = planeHarness()
-    installSessionGate(simpleHarness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    installSessionGate(simpleHarness.dsh as never, { warn: () => {} })
     /** A simple goal through the same two-message shape. */
     const simple = userMessage("fix the typo")
     /** The raw handler answer: undefined, so the step stays untouched. */
@@ -627,5 +1064,39 @@ describe("goal selection: the injected runtime-context turn must not shadow the 
     const untagged = { id: "u", role: "user", content: [{ type: "text", text: "legacy" }] }
     expect(latestUserMessage([untagged])?.text).toBe("legacy")
     expect(latestUserMessage([untagged, injected])?.text).toBe("Current runtime context.")
+  })
+})
+
+/**
+ * THE PROMPT/IMPLEMENTATION DRIFT GUARD (P5, 2026-10-07).
+ *
+ * The shipped preset's SESSION STARTUP RULE is the only prompt-side statement of this gate, and it
+ * drifted from the implementation: it still said a triggered soft signal "only ADVISES" and that an
+ * explicit request was merely "routed to team mode", while the gate now STAGES a plan shell by
+ * default. A prompt that describes a contract the code does not implement is worse than no prompt:
+ * the model obeys the text, not the code.
+ *
+ * The four strings below are the coupling. They belong to the preset lane's edit, and this test is
+ * where the drift reddens — the mode NAME a reader can set, the notice MARKER every notice carries,
+ * the STAGING TOOL the gate calls, and the ABSENCE of the two sentences the mechanical gate makes
+ * false. It reads the shipped file, so a change to either side alone is caught.
+ */
+describe("the mpd preset states the MECHANICAL gate contract (prompt/implementation drift guard)", () => {
+  test("the preset names team.gate, the marker and the staging tool, and drops the drifted sentences", () => {
+    /** The repo root, derived from this test file's own location. */
+    const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+    /** The shipped preset patch, read verbatim. */
+    const preset = readFileSync(join(repoRoot, "presets", "mpd.patch.yml"), "utf8")
+    // The mode name the reader must be able to set (and the default it documents).
+    expect(preset).toContain(GATE_CONFIG_KEY)
+    // The frozen notice marker, so the prompt and the notice agree on the string a boot looks for.
+    expect(preset).toContain(STARTUP_NOTICE_MARKER)
+    // The tool the mechanical gate actually calls — the prompt must not send the captain elsewhere.
+    expect(preset).toContain(STAGING_TOOL_NAME)
+    // The drifted sentences: an explicit request is no longer merely "routed" to team mode, and a
+    // triggered soft signal does not "only ADVISES".
+    expect(preset).not.toContain(DRIFTED_ADVISORY_SENTENCE)
+    expect(preset).not.toContain("the gate only ADVISES")
+    expect(preset).not.toContain("it stages NOTHING")
   })
 })

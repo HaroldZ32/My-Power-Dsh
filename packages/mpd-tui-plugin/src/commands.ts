@@ -27,7 +27,8 @@ import type { SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
 import { scalarText } from "./sanitize.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
-import { COMMAND_ACTIONS, COMMAND_ROOT } from "./command-trees.js"
+import { COMMAND_ACTIONS, COMMAND_ROOT, MODEL_COMMAND, MODEL_COMMAND_DESCRIPTION } from "./command-trees.js"
+import { t } from "./i18n.js"
 
 /** What the command needs from the rest of the plugin. */
 export interface CommandActions {
@@ -45,6 +46,8 @@ export interface CommandActions {
   workmatesText(): string
   /** Picker for the bare form; undefined when no dialog seam is available. */
   pickAction(): Promise<string | undefined>
+  /** The `/mpd-model` pick-list chain; its result is the command's own rendered outcome. */
+  openModelMenu(): Promise<CommandResult>
   /** Append the log-only board-opened record when it is safe to do so. */
   recordBoardOpened(via: "command" | "shortcut", session: SessionLike | undefined): void
 }
@@ -56,7 +59,7 @@ type CommandResult = { kind: "success"; text?: string } | { kind: "error"; text:
 const USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`
 
 /**
- * Activate `/mpd`.
+ * Activate `/mpd` and `/mpd-model`.
  * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param actions - the handlers.
  * @returns the seam handle.
@@ -82,6 +85,15 @@ export function registerCommands(tui: TuiAdapter, actions: CommandActions): { ou
       return runAction(head, actions, session)
     },
   })
+  // The pick-list model settings menu is its OWN command (R3): `/mpd model` would collide with
+  // the `/mpd` grammar's single-value form, and a menu is an entry point a user reaches directly.
+  // Its outcome text is the chain's own sentence (see `model-menu.ts`), so nothing is reworded
+  // here — a failure to write must reach the user as the sentence that names the failure.
+  tui.registerCommand({
+    name: MODEL_COMMAND,
+    description: MODEL_COMMAND_DESCRIPTION,
+    handler: async (): Promise<CommandResult> => actions.openModelMenu(),
+  })
   return { outcome: (): SeamOutcome => handle.outcome() }
 }
 
@@ -93,28 +105,26 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     actions.recordBoardOpened("command", session)
     /** Whether the board scene opened; a refusal becomes a command error. */
     const opened = actions.openBoard("command")
-    return opened
-      ? { kind: "success" }
-      : { kind: "error", text: "mpd: the board scene is not available in this composition" }
+    return opened ? { kind: "success" } : { kind: "error", text: t("command.boardMissing") }
   }
   if (action === "workmates") return { kind: "success", text: clamp(actions.workmatesText()) }
   if (action === "status") return { kind: "success", text: clamp(actions.statusText()) }
   if (action === "team") {
     return actions.openTeam()
       ? { kind: "success" }
-      : { kind: "error", text: "mpd: the team workflow scene is not available in this composition" }
+      : { kind: "error", text: t("command.teamMissing") }
   }
   if (action === "subagents") {
     return actions.openSubagents()
       ? { kind: "success" }
-      : { kind: "error", text: "mpd: the subagents + team panel is not available in this composition" }
+      : { kind: "error", text: t("command.subagentsMissing") }
   }
   if (action === "plan") {
     return actions.openPlan()
       ? { kind: "success" }
-      : { kind: "error", text: "mpd: the plan approval scene is not available in this composition" }
+      : { kind: "error", text: t("command.planMissing") }
   }
-  return { kind: "error", text: `mpd: unknown action "${clamp(action, 40)}" — usage: ${USAGE}` }
+  return { kind: "error", text: t("command.unknownAction", { action: clamp(action, 40), usage: USAGE }) }
 }
 
 /**

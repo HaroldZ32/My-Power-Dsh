@@ -1,0 +1,162 @@
+{
+  "wave": "restore the MECHANICAL session-start team gate (and make the ULW gate mechanical with it), make the Web sidebar work with AND without dsh-better-sidebar, make the persisted GOAL callable by default, and fix every finding of the Lead's audit",
+  "branch": "feature/team-gui-settings-tui-i18n",
+  "base_commit": "4c3c75da2ca17c50f5fbb75a829833d15c8b0e87",
+  "recorded_at": "2026-10-06T08:36:35Z",
+  "user_decisions": [
+    "team: yes (internal 11-name roster; the Lead is the only git writer)",
+    "the mechanical action is a STAGED PLAN (members spawn only after approval), not an auto-spawn",
+    "ALL signals trigger the mechanical action: A explicit flag, B deliverable verbs, C enumerated steps, D active boulder work",
+    "signal D is repaired to 'an ACTIVE boulder work exists' (a plan FILE alone is not a signal)",
+    "a mpd.jsonc switch is restored: team.gate = mechanical (default) | advisory | off",
+    "partial reuse of the official team API is acceptable: the gate must come back and act through OUR plane, not be fully decoupled",
+    "better-sidebar is a COMPATIBILITY option, never a requirement: the sidebar must work with AND without it"
+  ],
+  "defects_found_and_fixed": [
+    {
+      "id": "P1",
+      "finding": "signal D was a constant: any workspace that ever wrote a plan artifact fired the gate in EVERY session (this repo's own plan was bound to a boulder work that had been completed since 2026-10-02, and .mpd/ is gitignored local state)",
+      "fix": "D now reads the boulder ledger through the shared resolveBoulderDir and requires status === 'active'; hasPlanArtifact/PLANS_DIR were deleted, so a plan file can never fire the gate again"
+    },
+    {
+      "id": "P2",
+      "finding": "the gate's live evidence was anchored to a revision that no longer existed",
+      "fix": "re-run on the settled tree; anchors recorded below"
+    },
+    {
+      "id": "P3",
+      "finding": "`node skills/dsh-qa/scripts/session-start-team.ts --self-test` failed: the gate's only module imported the adapter extensionlessly and the adapter's own chain did too",
+      "fix": "the pure half was split into packages/mpd-roles-plugin/src/complexity-gate.ts (node:fs + node:path only), so the QA case imports a module plain node can load; the case is green under node AND bun"
+    },
+    {
+      "id": "P4",
+      "finding": "one-shot settlement: settled.add() ran before the predicate, so only the FIRST user turn was ever judged",
+      "fix": "acted[] with the add moved immediately before the async stage; every user turn is judged until the gate fires"
+    },
+    {
+      "id": "P5",
+      "finding": "prompt/implementation drift (the preset said an explicit flag gets a notice 'routed to team mode'; the notice said the marker was CONSUMED); nothing pinned it",
+      "fix": "preset + AGENTS.md section 1 + the roles README pair rewritten to the mechanical contract, and a drift-guard test in packages/mpd-roles-plugin/test/team-plane.test.ts asserts the sentences (present: team.gate, the marker, agent_teams_plan; absent: 'routed to team mode', 'the gate only ADVISES', 'it stages NOTHING')"
+    },
+    {
+      "id": "P6",
+      "finding": "no off switch once the retired plugin's sessionTeamPolicy left the composition",
+      "fix": "team.gate (mechanical default | advisory | off), resolved PER CALL and never cached; booleans tolerated; an unknown value fails safe to mechanical"
+    },
+    {
+      "id": "P7",
+      "finding": "the QA live arm booted a fresh EMPTY workspace, so it could never exercise signal D",
+      "fix": "the case now SEEDS both sides (active ledger -> must stage; completed ledger -> must stay silent), plus an off-mode side, and reads the row log as the boot-signature source"
+    },
+    {
+      "id": "P8",
+      "finding": "consumeExplicitFlag stripped EVERY '!team' occurrence, including inside quoted/code content",
+      "fix": "the earliest token-boundary occurrence only, with a quoted-occurrence regression arm"
+    },
+    {
+      "id": "C2",
+      "finding": "the QA case's 'nothing was staged' assertion was VACUOUS: it scanned .mpd/team/<id>/team.json, the retired layout",
+      "fix": "it now asserts exactly ONE .mpd/team/staging/*.json whose planId equals the notice's AND zero .mpd/team/teams/*.json"
+    },
+    {
+      "id": "goal-probe",
+      "finding": "mpd_goal_anchor refused with 'the goal tools are not mounted in this composition' while get_goal/create_goal really worked: the adapter's toolReachable asked the GLOBAL tool view, where a preset-plane row can never exist, so every auto-anchor was a silent no-op",
+      "fix": "the read now passes the calling agent as the viewing scope; hasTool(name, agent?) and toolRuntime().get(name, agent?) gained the same scope-aware form; the one-arg form stays the deliberate host-plane global read; both directions pinned with red-able controls and probed against the installed harness"
+    },
+    {
+      "id": "boulder-dir",
+      "finding": "the live falsifier exposed a true positive: the boulder.dir schema default '.mpd' is merged as the LAST-WINS row knob, so BOTH consumers (the gate's signal D and mpd_boulder_*) joined '.mpd/boulder.json' onto it and used <ws>/.mpd/.mpd/boulder.json — D could never fire on the contract path, and the knob was unconfigurable from .mpd/mpd.jsonc",
+      "fix": "the schema declares the leaf UNSET (the vendored schemastery's required(false)); a shared resolveBoulderDir normalizes '.'/'.mpd'/blank to 'the session workspace'; the boulder row imports it so ONE reading governs both consumers (registered in the coupling inventory)"
+    },
+    {
+      "id": "sidebar-C1",
+      "finding": "without dsh-better-sidebar our better-sidebar tabs can never register (the client table accepts only an exact @scope/name specifier) and the failure was SILENT",
+      "fix": "the harness right-sidebar path is now the assured surface, and a composition where nothing took the panels reports ONE line mid-session (bounded wait, cleared on dispose) naming the missing seat and where the data still is"
+    },
+    {
+      "id": "sidebar-C2",
+      "finding": "the team panel was session-scoped, so a session with no bound team saw a dead empty state even though the workspace held four team records",
+      "fix": "/plugins/mpd-team/state gained a workspace listing (derived phase, tallies, the index binding) and the client renders it; the honest empty sentence survives only for a genuinely empty workspace"
+    },
+    {
+      "id": "tui-H4",
+      "finding": "the TUI plan-approval hop forwarded a FABRICATED { session: { id } } agent, which the harness session store rejects ('not live in this store')",
+      "fix": "the caller is resolved from the adapter's live registry by identity, and an unresolvable caller REFUSES with nothing called"
+    },
+    {
+      "id": "approve-empty",
+      "finding": "a mechanically staged 0-member/0-task shell could be approved, minting an empty team record",
+      "fix": "approve refuses an empty plan with an actionable message; the over-reach direction (task-only and member-only plans still approve) is pinned"
+    },
+    {
+      "id": "qa-import",
+      "finding": "importing skills/dsh-qa/scripts/ulw-command.ts EXECUTED its case body (a full sandboxed run fired as a side effect of an import)",
+      "fix": "the same isEntry guard the sibling case carries; proven in both directions (HEAD's bytes execute on import, the shipped file is silent, argv[1] still runs the case)"
+    },
+    {
+      "id": "doc-drift",
+      "finding": "the flagship docs still taught the retired advisory gate and the retired plugin's config plane (root README pair, packages/mpd-bundle/README pair, the parity ledger's live paragraph, and the team-lifecycle.svg's baked text)",
+      "fix": "all updated in one pass; the ledger keeps its frozen rows verbatim with a dated SUPERSEDED note, so history is marked rather than rewritten"
+    }
+  ],
+  "anchors": {
+    "note": "sha256, read at 2026-10-06T08:36Z from the settled tree the final live run boots",
+    "packages/mpd-roles-plugin/src/complexity-gate.ts": "8c9ce3999ecdd2d98a9c4b1336cf5816a648d86d4a0ea70632e35adc7423a3ae",
+    "packages/mpd-roles-plugin/src/session-gate.ts": "b1d3160da53559df967a175d9f9b1920706d9b8231e84002ca3cbb5c57ef8d46",
+    "packages/mpd-roles-plugin/dist/index.js": "bc12c058e9a7240ad480e9d69dcce5ce6afe051c76137bed9c17a50d8a7b8a1e",
+    "packages/mpd-ulw-plugin/dist/index.js": "0c54621f317b393e9a0e6e0a96bc1499027d4f2b38d97df44fd273ac38616437"
+  },
+  "live_evidence": {
+    "case": "skills/dsh-qa/scripts/session-start-team.ts",
+    "runs": [
+      {
+        "dir": "evidence/dsh-qa/session-start-team/2026-09-27T22-12-46.513Z/",
+        "note": "the PREVIOUS wave's run, anchored to a source revision that no longer existed (the Lead's audit finding P2)"
+      },
+      {
+        "dir": "evidence/dsh-qa/session-start-team/2026-10-06T07-56-06.937Z/",
+        "result": "9 of 10 sides; the RED boulder-active side EXPOSED the boulder.dir doubling defect (a true positive, left red on purpose)"
+      },
+      {
+        "dir": "evidence/dsh-qa/session-start-team/2026-10-06T08-22-09.876Z/",
+        "result": "PASS 10/10 after the boulder.dir fix: soft-complex and explicit sides each staged EXACTLY ONE plan whose id the notice named with ZERO team records, the boulder-active side fired on signal D, the boulder-completed side stayed silent, and the advisory/off modes behaved"
+      }
+    ]
+  },
+  "gates": [
+    { "gate": "verify-dist-fresh", "command": "node scripts/verify-dist-fresh.ts", "result": "ok 29/29 fresh (each rebuilt twice byte-identical), 7 NOT COVERED listed", "note": "must be run with the PINNED toolchain bun 1.4.0 on PATH; the untracked-toolchain 1.4.2 emits different bytes" },
+    { "gate": "tests", "command": "bun test packages", "result": "1564 pass / 3 skip / 0 fail across 137 files" },
+    { "gate": "verify:manifest", "command": "bun run verify:manifest", "result": "PASS" },
+    { "gate": "verify:rows", "command": "bun run verify:rows", "result": "PASS (33 row ids)" },
+    { "gate": "verify:docs", "command": "bun run verify:docs", "result": "PASS (pairs=45 failed=0 violations=0 links=439 dead=0)" },
+    { "gate": "verify-no-host-override", "command": "node scripts/verify-no-host-override.ts", "result": "PASS" },
+    { "gate": "verify:comments", "command": "node scripts/verify-comment-coverage.ts", "result": "PASS (392 files, 31779 declarations)" },
+    { "gate": "verify-manual-paths", "command": "node scripts/verify-manual-paths.ts", "result": "PASS resolved=142" },
+    { "gate": "coupling inventory", "command": "bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts", "result": "PASS (two new frozen couplings registered: mpd-ulw -> mpd-roles and mpd-boulder -> mpd-roles, both on the shared complexity-gate module)" },
+    { "gate": "vendor re-pin", "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step", "result": "ONE re-pin for the wave: skills.treeSha af8ab5da... -> ed49ac82... (334 files); the VENDOR_LOCK assertion in agent-teams-messaging now passes" }
+  ],
+  "preexisting_reds_not_caused_by_this_wave": [
+    {
+      "subject": "bun run typecheck",
+      "detail": "exit 1 with EXACTLY 4 errors, all in skills/programming/scripts/typescript/check-no-excuse-rules.ts (TS2307 x3 for 'typescript/unstable/ast|async', TS7006 x1). Root cause is environmental: this checkout has no node_modules/typescript (require.resolve proves it unresolvable) and the file is untouched by the wave. bun install was deliberately NOT run, because it would change the resolution of the optional tool packages (ast-grep, comment-checker) mid-wave."
+    },
+    {
+      "subject": "bun run test:qa",
+      "detail": "3 of 48 cases fail at the wave's baseline and remain red for reasons outside it: bundle-lifecycle (its own unmodified assertion on the unmodified cordis.patch.yml regex), extension-lifecycle (REPRODUCED with HEAD's own pre-rebuild dist byte-for-byte, so the rebuild is not the cause), preset-register (the case expects mpd-mcp-gitbash/dist/cli.js while the unmodified patch carries dist/launch.js inside a !!js conditional operand)."
+    },
+    {
+      "subject": "bun run verify:vendor",
+      "detail": "cannot run in this environment: 'upstream checkout not found at /home/haroldzhao' (MPD_UPSTREAM_ROOT is unset). The wave's own corpus pin IS verified by the re-pin helper and by the agent-teams-messaging case's treeSha assertion."
+    },
+    {
+      "subject": "docs/AGENTS.md instruction budget",
+      "detail": "the manual is 71811 bytes against the loader's 65536 cap, so the injected copy is truncated at the tail. It was ALREADY over at HEAD (71149); this wave adds ~660 bytes. Trimming the manual is a captain-level restructure and is declared, not silently grown."
+    }
+  ],
+  "honest_bounds": [
+    "A REAL BROWSER still has to confirm the mid-session sidebar diagnostic on a healthy profile (the 8000 ms bound is derived from this file's own measurement, but offline only the wiring at 30-40 ms was exercised), and that the new workspace listing renders in the live DOM. The existing browser evidence proves the harness-right-sidebar fallback path (team tab click + graph checks green, consoleErrors empty) but predates the workspace listing.",
+    "The Docker real-machine lane was NOT run in this session.",
+    "The live hop of the TUI approval (a real TUI host resolving the live agent) is covered by unit arms against the real adapter, not by a live TUI boot.",
+    "The packed copy dist/mpd-package/** was not regenerated; a release pack must run after these rebuilds."
+  ]
+}

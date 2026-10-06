@@ -121,19 +121,30 @@ The TUI command tree exposes `/mpd team` and `/mpd plan`
 (`packages/mpd-tui-plugin/src/command-trees.ts` is the action list: `board`, `team`, `plan`,
 `workmates`, `status`), alongside the keyed status line and the board scene.
 
-**The staged-plan approval workflow this section used to document is RETIRED, and nothing here claims
-it.** It belonged to the vendored `agent-teams` plugin — its approve/delete tool calls, its typed
-approval phrase and its `Ctrl+X` / `Ctrl+D` gestures, all
-driven from a durable `.mpd/team/team.json` record. The official Agent Teams plugin this bundle now
-mounts has **no staged plan and no approval step**: the Lead spawns a teammate with `spawn_teammate`
-and opens its lane with `team_task_create`, and the shared board is the plan (see
-`docs/user-guide.md` §6 and `docs/plan-0.1.7-adaptation.md` §3). Team state lives in the Lead's
-session log, so there is no team record for a TUI surface to approve. No TUI key sequence approves a
-plan any more.
+**The approval gate is BACK on the mpd plan plane, and this section states it plainly.** The first
+implementation called the now-RETIRED vendored `agent-teams` tools (`agent_teams_approve`,
+`agent_teams_delete`) against a durable `.mpd/team/team.json`, and the official Agent Teams plugin this
+bundle mounts has **no staged plan and no approval step** — the Lead spawns a teammate with
+`spawn_teammate` and opens its lane with `team_task_create`, and the shared board is the plan (see
+`docs/user-guide.md` §6 and `docs/plan-0.1.7-adaptation.md` §3). But the staged plan itself is NOT
+gone: THIS bundle owns it (`mpd-team-core`'s `agent_teams_plan`, kept under
+`<workspace>/.mpd/team/`), and since W6 the TUI plan scene carries the approval gate again. Open it
+with `/mpd plan`, type the EXACT phrase the pane serves (`approve plan-…`, from the same projection
+the Web panel renders), press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R`
+re-reads and `esc` goes back. The action is an `agent_teams_plan {action:"approve"|"delete"}` call, so
+approval materialises the mpd record and raises its members through the NATIVE executor — no official
+service needed. The caller rides the call by IDENTITY, resolved from the adapter's own live registry
+(`liveAgent(sessionId)`, else a live entry whose own `session.id` matches, else the ONE live agent
+when the scene carries no id); when none of those names a caller the pane REFUSES and calls nothing:
+`session "<id>" is not live in this process — no live agent to speak as, so nothing was called`. NOT
+claimed: that every host and every session resolves — the live hop on a real TUI host is not yet
+falsified by the wave.
 
-What is still true of the TUI package in this area: it is **read-only over team and workspace state**
-— the package contains no write primitive, and any team mutation is a tool call the model makes
-through the adapter. `/mpd team` is the guaranteed entry point to the team scene, and `alt+t` is a
+What is still true of the TUI package in this area: the package contains **no write primitive** —
+every team mutation is a tool call it makes through the adapter, and `/mpd plan` is the one surface
+that offers one, behind five barriers (a separate surface, the typed exact phrase, an echo that starts
+empty, chord-only mutations, and single-flight with a re-read). `/mpd team` is the guaranteed entry
+point to the team scene, and `alt+t` is a
 best-effort shortcut to it. The limits the `tui-team-surface` wave recorded (the dependency-residual
 limit and one unlocatable contract row label) stay OPEN in `docs/tui-parity.md` §4–§5 — read that
 page before quoting a status from this one.
@@ -161,13 +172,15 @@ the composed entries and returns false when no dsh-tui host row is present, so t
 is exactly what it was).
 
 What a TUI session still has: the `/mpd team` scene, the `/mpd plan` scene and the status line render
-from the team state they can read — with no Team service the board is empty and the status line reads
-`team -`. The mpd team WORKFLOW rows stay mounted on purpose, because they are not the official
-service: the file-backed actions of `agent_teams_plan` / `agent_teams_task` / `agent_teams_mail` /
-`agent_teams_control` (`<workspace>/.mpd/team/`) keep working, and the actions that need the service
-itself (approve, dispatch, a teammate message, compaction) fail with the adapter naming the service it
-could not resolve. A TUI session cannot spawn a teammate today — that is the limit, not a
-configuration mistake.
+from the team state they can read — with no Team service the OFFICIAL readout is empty and the status
+line reads `team -`. The mpd team WORKFLOW rows stay mounted on purpose, because they are not the
+official service: the file-backed actions of `agent_teams_plan` / `agent_teams_task` /
+`agent_teams_mail` / `agent_teams_control` (`<workspace>/.mpd/team/`) keep working, and
+`agent_teams_plan`'s own `approve` / `delete` ride the mpd record's NATIVE executor over
+`ctx.subagents` rather than the official service. What the official service would still carry — its
+own live readout, wait-for-change and teammate messaging — fails with the adapter naming the service it
+could not resolve. A TUI session cannot spawn a teammate today through the official plane — that is the
+limit, not a configuration mistake.
 
 ## 4. Admission and distribution artifacts
 

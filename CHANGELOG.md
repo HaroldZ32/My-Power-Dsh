@@ -14,6 +14,46 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## Unreleased — the gate contract is stated, not drifted
+
+**Changed.**
+
+- **The session-start complexity gate's contract is written down where the model reads it.** The gate
+  has been MECHANICAL since the plan plane landed: a trigger STAGES an APPROVABLE PLAN SHELL through
+  the `agent_teams_plan` tool (0 members, 0 tasks) and injects ONE notice naming the returned plan id —
+  NOTHING is spawned and the plan is INERT until the captain extends it (`add_member` / `create_task`)
+  and approves it — while `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` |
+  `off`. The shipped `mpd` preset, `AGENTS.md` §1, the `mpd-roles-plugin` README pair and the
+  `mpd_config_get` consumed-keys list all still described the retired advisory-only behaviour; they now
+  state the mechanical contract, the advisory fallback (the ONE notice then says `NO team was staged`),
+  and the notice marker `[AgentTeams] Session-start team rule`. The sentence that an explicit `team:` /
+  `!team` request was merely "routed to team mode" is gone — such a request now stages the shell too
+  (signal A) and has its marker CONSUMED from the goal text. A new drift guard in
+  `packages/mpd-roles-plugin/test/team-plane.test.ts` pins that preset text, so the prompt and the
+  implementation can no longer diverge silently.
+- **Signal D reads an ACTIVE boulder, not a plan file.** The retired probe ("some `.mpd/plans/*.md`
+  exists") measurably fired in EVERY session of this workspace, because one plan file outlives the work
+  that produced it. D now means an ACTIVE boulder work for the workspace (`status: "active"` in
+  `.mpd/boulder.json`), and a plan FILE alone is not a signal.
+
+**Fixed.**
+
+- **The TUI plan scene's approval path is documented as PRESENT again.** The pane has carried the
+  typed-phrase gate since W6 — type the exact phrase the pane serves (`approve plan-…`) and press
+  `Ctrl+X`, `Ctrl+D` twice within 10 s to discard, `Ctrl+R` to re-read — and it now really acts: the
+  action is an `agent_teams_plan {action:"approve"|"delete"}` call carrying the LIVE agent resolved
+  from the adapter's own registry (`liveAgent(sessionId)`, else a live entry whose own `session.id`
+  matches, else the ONE live agent when the scene carries no id). A caller that cannot be resolved
+  REFUSES before calling anything; the live hop on a real TUI host is not yet falsified.
+  `packages/mpd-tui-plugin/README.md`, `docs/tui.md` and their `*.zh-CN.md` twins said the approval
+  flow was gone; they now state what is true, refusal path included.
+- **`docs/design.md` no longer counts `dsh-better-sidebar` among the bundle's runtime
+  `dependencies`.** It is an optional peer (+ a `devDependency`) the bundle deliberately does not
+  install, and its ABSENCE is a normal, intended composition. Without it the SAME two bodies register
+  into the harness's own right sidebar (the Team tab — which lists the WORKSPACE's teams for a session
+  that has none — and the Workmate library), and that is the surface which must work; the old text
+  promised one warning and "no surface outside the sidebar".
+
 ## v0.11.6 — the gate's own comments, and the manual's budget
 
 **Fixed.**

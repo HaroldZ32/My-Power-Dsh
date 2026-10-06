@@ -40,7 +40,7 @@ import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, T
 // guarded FALLBACK registration and for the section it declares.
 import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS } from "../../mpd-config-plugin/src/settings-schema"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
-import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import type { DshAdapter, DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { Log } from "./log.js"
 import { serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 
@@ -88,8 +88,22 @@ function knobHint(key: string, semantics?: string): string {
   // The ROW hint is the knob's own sentence plus its dotted key. The bridge disclosure is stated
   // ONCE, in the section's own description (see SETTINGS_SECTION below) — inlining it per row is
   // what made 25 rows read as the same four lines (measured in docker/ui, `05b-mpd-section.png`).
+  /** The dotted `.mpd/mpd.jsonc` key the row edits; the same pointer in both languages. */
   const pointer = `mpd.jsonc ${key}`
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
+}
+
+/**
+ * The hint pair the host resolves per render (`hintDescriptions` at use, the host's own `pick()`).
+ *
+ * Both halves are built by the SAME {@link knobHint}, so the zh hint cannot lose the `.mpd/mpd.jsonc`
+ * pointer or the human sentence the EN one carries — it differs only in the language of the
+ * sentence, which the shared schema declares twice (`semantics` / `semanticsZh`).
+ */
+function knobHintPair(knob: (typeof SETTINGS_KNOBS)[number]): { zh: string; en: string } {
+  /** The dotted key both halves point at. */
+  const key = knob.path.join(".")
+  return { zh: knobHint(key, knob.semanticsZh), en: knobHint(key, knob.semantics) }
 }
 
 // ── the twelve team-model slot knobs: a SELECT with a live option list (A4) ─────
@@ -102,7 +116,7 @@ function knobHint(key: string, semantics?: string): string {
 /** The leaf names of one slot knob, in the schema's path order (`teamModels.<slot>.<leaf>`). */
 const TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"] as const
 /** The three leaf names of a team-model slot, in schema path order. */
-type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
+export type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
 
 /** One rendered option: the RAW id the settings document stores, plus its display label. */
 export interface SettingsOption {
@@ -260,11 +274,23 @@ function configPluginPresent(ctx: PluginContextLike): boolean {
  * baseline this package exports) and the registered section cannot drift apart.
  */
 function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldLike {
+  /** The localized hint pair; the host resolves it per render (its own `pick()`, measured). */
+  const hints = knobHintPair(knob)
   return {
     path: [...knob.path],
     label: knob.label,
+    // `label` is the English base and `descriptions` carries the zh translation — the HOST'S OWN
+    // pattern (measured in its `settings/definitions.js`: `descriptions: { zh: … }` with the
+    // English living in the base field). An `en` twin would duplicate the base string and buy
+    // nothing: the host's `pick(text, descriptions)` falls back to the base when the map has no
+    // entry for the active language.
     descriptions: { zh: knob.zh },
-    hint: knobHint(knob.path.join("."), knob.semantics),
+    hint: hints.en,
+    // `hintDescriptions` is the host's OWN localized hint field: its settings screen renders
+    // `pick(field.hint, field.hintDescriptions)`, so the zh reader gets a zh sentence while the
+    // rest of the screen is Chinese. Set only when the two differ, so a field whose hint is
+    // language-neutral keeps one string.
+    ...(hints.zh === hints.en ? {} : { hintDescriptions: { zh: hints.zh } }),
     kind: knob.kind,
     ...(knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }),
   }
@@ -329,10 +355,14 @@ export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   // screen bound no value for any of its 25 rows and rendered `（未设置）` for all of them. The Web
   // front door had the same defect and the same fix (`configForms.get("mpd-config")`).
   ns: SETTINGS_ENTRY,
+  // The section header the host draws. `title` is the English fallback AND the string every
+  // non-localized reader (a log line, a test, an older host) still gets, so the two halves stay in
+  // sync by construction: the en description IS this title.
   title: "MPD bundle",
   // The section's own description carries the disclosure ONCE; the 25 rows carry their own
-  // sentences and their keys. `title` is the section header the host draws, so the sentence a
-  // reader needs before touching any knob belongs here and nowhere else.
+  // sentences and their keys. Because `title` is the section header the host draws, the sentence a
+  // reader needs before touching any knob belongs here and nowhere else — in BOTH languages, since
+  // the host resolves `descriptions` with its own active language (`pick()`).
   descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
   fields: SETTINGS_FIELDS,
 }
@@ -345,11 +375,21 @@ export const SETTINGS_SECTION: TuiSettingsSectionLike = {
  * `mpdDsh` miss (rows are applied concurrently, cordis answers `undefined` for a
  * non-ACTIVE provider) cannot cost the section its live options. An adapter that predates
  * the `llmCatalog` seam simply reports no catalog, which is the declared-fallback branch.
+ *
+ * EXPORTED because the `/mpd-model` pick-list must read the catalog through the same
+ * resolution: two readers could name different providers, which is the drift the menu's
+ * whole contract forbids. The type is DERIVED from the adapter's own surface (only the three
+ * members this package consumes), so it cannot drift from a hand-written copy of it — and each
+ * member stays OPTIONAL, because that is what makes a partial double (a catalog and nothing
+ * else) a legal override in a test.
  */
-function resolveCatalogReader(ctx: PluginContextLike): { llmCatalog?: () => Promise<DshLlmCatalog> } {
+export type CatalogReadSeam = Partial<Pick<DshAdapter, "llmCatalog" | "settingsReader" | "settingsMutate">>
+
+/** Resolve the shared catalog/settings read-write seam; see the doc comment above. */
+export function resolveCatalogReader(ctx: PluginContextLike): CatalogReadSeam {
   try {
     /** The mounted adapter, when this row can read it. */
-    const mounted = serviceOf<{ llmCatalog?: () => Promise<DshLlmCatalog> }>(ctx, "mpdDsh")
+    const mounted = serviceOf<CatalogReadSeam>(ctx, "mpdDsh")
     if (mounted !== undefined) return mounted
   } catch {
     // fall through to a standalone adapter
@@ -372,7 +412,7 @@ export function registerSettingsSection(
   ctx: PluginContextLike,
   tui: TuiAdapter,
   log: Log,
-  adapterOverride?: { llmCatalog?: () => Promise<DshLlmCatalog> },
+  adapterOverride?: CatalogReadSeam,
 ): { outcome(): SeamOutcome } {
   /** The namespace registration result, folded into the section outcome. */
   let namespace: { state: SeamState; detail?: string } = { state: "absent", detail: "settings was not injected" }

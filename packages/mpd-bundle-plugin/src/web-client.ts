@@ -425,6 +425,255 @@
    */
   const TEAM_PLAN_PATH = "/plugins/mpd-team/plan"
 
+  /**
+   * The route serving the session's FROZEN ACCEPTANCE CONTRACTS and the workspace hold.
+   *
+   * Passed to the view so a pinned task can quote the contract it was claimed under. Without it the
+   * detail body correctly renders its "no contract was served" sentence — which is indistinguishable
+   * on screen from a task that genuinely has none, so the route is threaded rather than left out.
+   */
+  const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The team view's own copy, in English — the fallback AND the key list.
+   *
+   * A view built by `teamViewOf()` runs in a render path with no `ctx`, so it can neither bind nor
+   * register a locale namespace itself; it takes a translator as a dependency instead. This table is
+   * what the translator answers with when the host's locale registry is absent or answers nothing,
+   * which is why the view can never render a bare key. The same key set is registered below, so `zh`
+   * resolves for a Chinese host and this table carries the English.
+   */
+  const TEAM_COPY_EN: Record<string, string> = {
+    "header.approved": "approved",
+    "header.workspace": "workspace",
+    "header.complete": "complete",
+    "progress.label": "Progress",
+    "members.title": "MEMBERS",
+    "members.empty": "No member was raised for this team.",
+    "members.current": "current",
+    "task.title": "TASKS",
+    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.cycle": "CYCLE",
+    "task.blockedBy": "blocked by",
+    "task.dependents": "dependents",
+    "task.attempt": "attempt",
+    "task.round": "round",
+    "task.verdict": "verdict",
+    "task.owner": "owner",
+    "task.contract": "acceptance contract",
+    "task.contract.none": "No frozen acceptance contract was served for this task.",
+    "task.close": "close",
+    "tally.running": "running",
+    "tally.ready": "ready",
+    "tally.blocked": "blocked",
+    "tally.released": "released by a failed blocker",
+    "state.reading": "Reading the team…",
+    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
+    // ── D2: the session-less workspace listing ────────────────────────────────
+    // Mirrored VERBATIM from `team-view.ts`'s own table (the view's English fallback and this host
+    // dictionary are deliberately one text): a session with no team of its own now lists the
+    // workspace's teams instead of claiming the workspace is empty.
+    "workspace.title": "WORKSPACE TEAMS",
+    "workspace.hint": "No team is bound to this session. The workspace's own teams are listed here — a session drives the one it approved itself.",
+    "workspace.active": "this session",
+    "workspace.members": "members",
+    "workspace.stage": "Stage one with agent_teams_plan, then approve it.",
+    "phase.staged": "staged",
+    "phase.active": "active",
+    "phase.idle": "idle",
+    "phase.ended": "ended",
+    "executor.label": "executor",
+    "plan.members": "Wants {n} member(s)",
+    "plan.tasks": "Wants {n} task(s)",
+    "plan.gate": "To approve, type:",
+    "kind.req": "REQ",
+    "kind.wrk": "WRK",
+    "kind.rev": "REV",
+    "kind.fix": "FIX",
+    "kind.int": "INT",
+    // THE ROSTER ROLES. These are product names carried by the record (`member.role`), so English is the
+    // identity mapping and Chinese is a DISPLAY-only rendering — the record itself is never rewritten.
+    // Without this the panel renders a Chinese shell around English role chips, which is the one place a
+    // reader could still tell the panel was translated from somewhere else.
+    "Lead": "Lead",
+    "Architect": "Architect",
+    "Researcher": "Researcher",
+    "Planner": "Planner",
+    "Deep Worker": "Deep Worker",
+    "Senior Engineer": "Senior Engineer",
+    "Explorer": "Explorer",
+    "Reviewer": "Reviewer",
+    "Plan Reviewer": "Plan Reviewer",
+    "Vision Analyst": "Vision Analyst",
+    "Junior Engineer": "Junior Engineer",
+  }
+
+  /**
+   * The team view's copy in Simplified Chinese, keyed identically to {@link TEAM_COPY_EN}.
+   *
+   * `zh` is the meaning-authoritative half of the pair; the English file is its translation. The two
+   * labels the capture driver asserts on (`members.title` / `task.title`) are deliberately kept as the
+   * host's own convention shows them — an uppercase SECTION label — so a screenshot reads the same
+   * structure in either language while the words behind it are local.
+   */
+  const TEAM_COPY_ZH: Record<string, string> = {
+    "header.approved": "已批准",
+    "header.workspace": "工作区",
+    "header.complete": "已完成",
+    "progress.label": "进度",
+    "members.title": "成员",
+    "members.empty": "该团队尚未拉起成员。",
+    "members.current": "当前",
+    "task.title": "任务",
+    "task.empty": "暂无共享任务 — 队长用 team_task_create 发布任务。",
+    "task.cycle": "依赖环",
+    "task.blockedBy": "前置",
+    "task.dependents": "后继",
+    "task.attempt": "认领次数",
+    "task.round": "评审轮次",
+    "task.verdict": "评审结论",
+    "task.owner": "负责人",
+    "task.contract": "验收契约",
+    "task.contract.none": "该任务没有已冻结的验收契约。",
+    "task.close": "关闭",
+    "tally.running": "进行中",
+    "tally.ready": "可领取",
+    "tally.blocked": "受阻",
+    "tally.released": "因前置失败而释放",
+    "state.reading": "正在读取团队…",
+    "state.unavailable": "未提供团队状态。该配置可能没有挂载 mpd 团队行。",
+    "state.none": "本工作区还没有团队。用 agent_teams_plan 拟定一个团队，然后批准它。",
+    // ── D2：无会话归属时的团队清单 ────────────────────────────────
+    // 会话未绑定团队时不再只显示一句空状态：这里列出本工作区自己的团队，并标出哪个属于当前会话。
+    "workspace.title": "工作区团队",
+    "workspace.hint": "当前会话未绑定团队。以下列出本工作区的团队 — 只有自己批准的那个才由当前会话驱动。",
+    "workspace.active": "当前会话",
+    "workspace.members": "成员",
+    "workspace.stage": "用 agent_teams_plan 拟定一个团队，然后批准它。",
+    "phase.staged": "已拟定",
+    "phase.active": "进行中",
+    "phase.idle": "空闲",
+    "phase.ended": "已结束",
+    "executor.label": "执行器",
+    "plan.members": "需要 {n} 名成员",
+    "plan.tasks": "需要 {n} 个任务",
+    "plan.gate": "批准请键入：",
+    "kind.req": "需求",
+    "kind.wrk": "工作",
+    "kind.rev": "评审",
+    "kind.fix": "修复",
+    "kind.int": "集成",
+    "Lead": "队长",
+    "Architect": "架构师",
+    "Researcher": "研究员",
+    "Planner": "规划师",
+    "Deep Worker": "深度执行者",
+    "Senior Engineer": "高级工程师",
+    "Explorer": "探索者",
+    "Reviewer": "审查者",
+    "Plan Reviewer": "计划审查者",
+    "Vision Analyst": "视觉分析师",
+    "Junior Engineer": "初级工程师",
+  }
+
+  /**
+   * The translator the shared team view renders with.
+   *
+   * COMMITTED BY THE TAB'S OWN MOUNT, because that is the only place a bound translator exists: the
+   * view is constructed inside a render path that has no `ctx`. Until that mount the fallback answers,
+   * so the view is never left without one — and once committed, the bound translator is followed for
+   * the rest of the session, which is what makes a host language switch take effect on the next render.
+   */
+  let teamTranslator: ((key: string) => string) | undefined
+
+  /**
+   * Resolve one team-view key, preferring the tab's bound translator and falling back to English.
+   *
+   * TOTAL by construction: an unbound translator, a throw inside the host's, or a host that answers
+   * the key itself all end at {@link TEAM_COPY_EN}, so a missing translation degrades to readable
+   * English rather than to a raw key on screen.
+   * @param key - the dictionary key the view asked for.
+   * @returns the localized string, the English fallback, or the key when even that is absent.
+   */
+  function teamSay(key: string): string {
+    if (teamTranslator !== undefined) {
+      try {
+        /** What the host's translator answered for this key. */
+        const answered = teamTranslator(key)
+        // A host that echoes the key back has no entry for it; the English table is the better answer.
+        if (typeof answered === "string" && answered.length > 0 && answered !== key) return answered
+      } catch {
+        // A throwing host translator costs the translation, never the panel.
+      }
+    }
+    return TEAM_COPY_EN[key] ?? key
+  }
+
+  /** The session the team sidebar last announced, so the line is logged once per session, not per render. */
+  let announcedSidebarSession: string | undefined
+
+  /**
+   * Whether the client entry already reported that NO sidebar host is carrying the mpd panels.
+   *
+   * ONE LINE PER ENTRY, and the reason it is a module-scope flag rather than a local: the two
+   * moments that learn the fact are different — a seam missing at apply time, and the settle
+   * check registered at the end of {@link mountHarnessSidebar} — and a user debugging a GUI with no
+   * Team tab needs EXACTLY ONE line that says so instead of a stream of them per poll.
+   */
+  let harnessSidebarReported = false
+
+  /** The harness right sidebar's own seam ids, named once so the report and the injection cannot drift. */
+  const HARNESS_SIDEBAR_SERVICES = "sidebarRightTabs + sidebarRight"
+
+  /**
+   * How long the client waits for a sidebar host to take the panels before it reports that NONE did.
+   *
+   * WHY A BOUNDED WAIT AND NOT DISPOSAL ALONE (D1/F5). The entry disposer fires at page unload, so a
+   * profile with no reachable seat reported the problem only after the user had already given up on an
+   * empty right sidebar. This bound is DERIVED FROM MEASUREMENT rather than chosen: the sidebar's own
+   * provider was measured arriving `true` eight seconds after `apply()` (see {@link mountSidebarPages}),
+   * and the settle check runs after the injection callbacks have had that whole window — so a seat that
+   * is merely LATE has already registered and this line stays silent, while a profile that has no seat
+   * at all is reported while the user is looking at the page.
+   *
+   * Exported so a TEST can shorten it: an arm that waits the production bound would spend eight seconds
+   * per case, and a private knob behind a public seam is how the assertion stays honest instead of
+   * being deleted for being slow.
+   */
+  let settleTimeoutMsValue = 8000
+
+  /**
+   * Which host took the mpd panels on the last mount, for the diagnostic to NAME.
+   *
+   * The settle check's whole value is the sentence it prints, and "NOTHING took it" is only half of
+   * what the reader needs: naming the host that DID take the panels (or that they are contested) turns
+   * a mystery into a fact. Written by {@link mountHarnessSidebar}, read by the settle line below — the
+   * reader that a snapshot of a mount's own tallies would otherwise lack.
+   */
+  let harnessSidebarHost = ""
+
+  /**
+   * Report, at most once per client entry, that neither sidebar host is carrying the mpd panels.
+   *
+   * THE SILENT MODE THIS CLOSES (D1). With `dsh-better-sidebar` absent BY DESIGN the mpd panels ride
+   * the harness's own right sidebar, whose services are reached through `ctx.inject` — and a missing
+   * seam there produces NOTHING: no tab, no error, and (before this line) no diagnostic either, so
+   * the user sees an empty GUI and no reason for it. The line states the reason and leaves the reader
+   * with the one thing that still works, the ROUTES.
+   * @param reason - why no sidebar host took the panels, phrased as a clause.
+   */
+  function reportNoHarnessSidebar(reason: string): void {
+    if (harnessSidebarReported) return
+    harnessSidebarReported = true
+    // WHICH HOST, when one arrived late: "nothing took the panels" is the claim, and naming the host
+    // that DID take them (after the bound, or on a remount) is the difference between a mystery and a
+    // fact for whoever reads the console. Empty when neither host ever published.
+    /** The host that took the panels, as the mount recorded it, or an empty string. */
+    const host = harnessSidebarHost
+    console.warn("[mpd] no sidebar host took the mpd panels: " + reason + (host === "" ? "" : " (the host that did take them: " + host + ")") + ". The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on " + TEAM_STATE_PATH + " and " + TEAM_PLAN_PATH + ".");
+  }
+
   /** The shared team view, built once per client entry; undefined when the splice is absent. */
   let teamView: { TeamView: (props?: unknown) => unknown } | undefined
 
@@ -449,7 +698,15 @@
     if (react === undefined) return undefined
     if (typeof MPD_TEAM_VIEW !== "object" || MPD_TEAM_VIEW === null) return undefined
     try {
-      teamView = MPD_TEAM_VIEW.createTeamView({ react, statePath: TEAM_STATE_PATH, planPath: TEAM_PLAN_PATH })
+      teamView = MPD_TEAM_VIEW.createTeamView({
+        react,
+        statePath: TEAM_STATE_PATH,
+        planPath: TEAM_PLAN_PATH,
+        // The task route is what lets a pinned node quote its frozen contract; the translator is the
+        // view's only language source (it runs in a render path with no `ctx` of its own).
+        taskPath: TEAM_TASK_PATH,
+        t: teamSay,
+      })
       return teamView
     } catch (error) {
       console.warn("[mpd] the team view could not be built: " + String(error))
@@ -1258,34 +1515,142 @@
       return h("div", { style: { padding: "12px", fontSize: "12px", ...dim } },
         "The team view is unavailable in this client build.");
     }
-    // The seat's own props are forwarded VERBATIM: the view reads the session id from whichever
-    // spelling its host used, so nothing here needs to know which host this is.
+    // ANNOUNCE THE SESSION THIS SEAT RENDERS, ONCE. The value is the only place the panel's own view
+    // of "which session am I" is observable from outside, and a verification run needs exactly that:
+    // MEASURED 2026-10-05, a capture that seeded a session IT created kept reading an empty panel,
+    // because the app renders a session of its own choosing. One `[mpd…]` line lets the driver seed
+    // the RIGHT session (the console collector already keeps every such line for the report).
+    /** The session this seat's props name, whichever spelling the host used. */
+    const seatSession = sessionIdOfSeat(props)
+    if (seatSession !== "" && announcedSidebarSession !== seatSession) {
+      announcedSidebarSession = seatSession
+      console.info("[mpd] team sidebar session: " + seatSession)
+    }
+    // The seat's own props are forwarded VERBATIM, which is what makes the two hosts work with one
+    // body: the harness right sidebar passes `sessionId` directly (verified in the DOM 2026-10-05 —
+    // the prop bag carried `useSessions,useSessionStatus,useSessionRetainInfo,sessionId,useSession,…`
+    // and the view fetched all three routes with that id), while the better-sidebar host spells the
+    // same fact differently. Nothing here needs to know which host this is.
     return view.TeamView(props);
+  }
+
+  /**
+   * Read the session id off a seat's props, whichever spelling the host used.
+   *
+   * The two sidebar hosts pass the same FACT in different shapes — the harness's right sidebar puts
+   * `sessionId` on the props directly, while a nested `scope.sessionId` is the other spelling this
+   * bundle has seen — so the reader tolerates both and answers "" when neither is present.
+   * @param props - the seat props as the host supplied them.
+   * @returns the session id, or an empty string when the props carry none.
+   */
+  function sessionIdOfSeat(props: unknown): string {
+    /** The props as a bag, so an unknown host shape can be read without a cast at each use. */
+    const bag = (props ?? {}) as { sessionId?: unknown; scope?: { sessionId?: unknown } }
+    /** The direct spelling first, then the nested one. */
+    const value = bag.sessionId ?? bag.scope?.sessionId
+    return typeof value === "string" ? value : ""
+  }
+
+  /** Whether one harness-sidebar registration was accepted on the last mount — see the settle check below. */
+  let harnessSidebarRegistered: number = 0
+
+  /**
+   * Whether `dsh-better-sidebar` took the panels on the last mount.
+   *
+   * The settle check asks "did NOTHING take the mpd panels?", and in a profile that mounts BOTH hosts
+   * the harness seat resolves and its callback backs off deliberately — leaving the counter at zero
+   * for a perfectly healthy composition. This latch is what tells those two states apart, so the loud
+   * line is emitted exactly when the panels are really unreachable.
+   *
+   * Both are SNAPSHOTS of the last `mountHarnessSidebar` call, never its working state: the counters
+   * it decides with are local to that call, so a teardown that lands after a later arm re-mounted the
+   * sidebar cannot read that arm's numbers.
+   */
+  let betterSidebarPreferred: boolean = false
+
+  /**
+   * Publish what one mount settled on, so the exported diagnostics and the settle line read a
+   * coherent set.
+   *
+   * Named rather than inlined because the mount now publishes from TWO points: the early preference
+   * probe (which returns before the fallback runs) and the end of a completed mount, where a late
+   * harness seat may have registered after the snapshot was already written.
+   * @param preferred - whether `dsh-better-sidebar` took the panels on this mount.
+   * @param registered - how many harness-sidebar registrations the seat accepted.
+   */
+  function publishSettle(preferred: boolean, registered: number): void {
+    harnessSidebarRegistered = registered
+    betterSidebarPreferred = preferred
+    harnessSidebarHost = preferred ? "dsh-better-sidebar" : registered > 0 ? "the harness right sidebar" : ""
   }
 
   /** The harness-sidebar Team tab, contributed by the bundle's ONE applied client module. */
   function mountHarnessSidebar(ctx: ClientContext): void {
+    // THIS CALL'S OWN TALLIES, not factory state: the settle check below closes over them, so what it
+    // reports is what THIS mount did. A reload of the client module in an offline harness re-runs
+    // `apply`, and a value shared across mounts would let one arm's outcome silence another's report.
+    /** How many tab registrations this mount's fallback attempt got accepted. */
+    let registered: number = 0
+    /** Whether this mount found `dsh-better-sidebar` and deliberately left the fallback alone. */
+    let preferred: boolean = false
+    // ── THE PREFERENCE, PROBED EARLY AS WELL AS IN THE GATE ──────────────────────
+    // The gate inside the `sidebarRightTabs + sidebarRight` callback is the AUTHORITATIVE check (the
+    // latest knowable moment). This early probe answers the OTHER composition, and it is not a race:
+    // `betterSidebar` is visible here exactly when that service is a plain registry entry — which is
+    // how the client framework hands out a service that is up at apply time — while a plugin-fiber
+    // service stays invisible to a bare probe and is caught by the callback instead. Without this
+    // half, a profile mounting BOTH hosts but never publishing the harness SEAT would wait out the
+    // bounded settle and report a problem neither host has (measured in the offline harness, where
+    // the seat is exactly that absent).
+    /** Whether `dsh-better-sidebar` is already visible to a plain probe. */
+    const preferredEarly: boolean = typeof ctx.get === "function" && ((): boolean => {
+      try { return ctx.get("betterSidebar") !== undefined && ctx.get("betterSidebar") !== null } catch { return false }
+    })()
+    if (preferredEarly) {
+      // The preferred host owns the panels: latch it and leave the fallback (and the settle report) alone.
+      preferred = true
+      publishSettle(preferred, registered)
+      return
+    }
     // DEGRADE, NEVER TAKE THE ENTRY DOWN. `ctx.inject` is a client-framework seam: a
     // composition (or the offline client harness) without it must simply not get this tab,
     // while the workmate page and the settings card still mount. Measured: an unguarded read
     // threw inside `apply`, and `bun test packages/mpd-bundle-plugin` reported
     // "Unhandled error between tests" for every arm that drives the real client bytes.
-    // SILENT by design: the settings card's arms count the boot's console warnings, and an
-    // optional tab that is simply absent is not a warning-worthy event (the same reading the
-    // better-sidebar mount takes when its host never arrives).
-    if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") return
+    // LOUD, NOT SILENT (D1). Returning quietly here is the mode this file shipped with, and it is
+    // the one a user cannot debug: the Team and Workmate tabs are simply absent with no reason
+    // given. The line is emitted ONCE, names WHAT is missing, and states that the ROUTES still
+    // serve the data, so the NEXT check is a hint rather than a hunch.
+    if (typeof ctx.inject !== "function" || typeof ctx.locale?.bind !== "function") {
+      /** Which of the two seam reads failed, as the report should read it. */
+      const missing = typeof ctx.inject !== "function" ? "ctx.inject" : "ctx.locale.bind"
+      reportNoHarnessSidebar("this client ctx exposes no " + missing)
+      return
+    }
     /** The translator bound to this tab's own locale namespace. */
     const t = ctx.locale.bind("mpdTeamSidebar");
+    // COMMIT IT for the shared view, which is constructed by `teamViewOf()` in a render path that has
+    // no `ctx` and therefore cannot bind a namespace itself. Wrapped so the view gets the full English
+    // table for any key the host does not resolve, and so a throwing host translator cannot take the
+    // panel down: the view receives `teamSay`, never the host's function directly.
+    teamTranslator = (key: string): string => {
+      try { return String(t(key)) } catch { return TEAM_COPY_EN[key] ?? key }
+    };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
         "type.label": "Team",
         "guide.title": "Team",
         "guide.description": "Roster and shared task progress for this session",
+        // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
+        // cannot drift: a key added to the view and forgotten here still renders English instead of
+        // a raw key, which is the failure mode this pairing exists to make impossible.
+        ...TEAM_COPY_EN,
       },
       zh: {
         "type.label": "团队",
         "guide.title": "团队",
         "guide.description": "本会话的名册与共享任务进度",
+        ...TEAM_COPY_ZH,
       },
     }), "mpd-team-sidebar:copy");
     // The guide entry names a COMMAND, not a callback: that command is a client shortcut.
@@ -1311,10 +1676,15 @@
         let primary: unknown;
         try { primary = ctx.get("betterSidebar"); } catch { primary = undefined; }
         if (primary !== undefined && primary !== null) {
+          preferred = true;
           console.info("[mpd] better-sidebar is mounted: the team view registers THERE, and the official right sidebar is left to its own tabs");
           return;
         }
       }
+    // THE SEAM IS REAL AND THIS IS THE FALLBACK'S TURN: every registration below is counted, so the
+    // check at the end of this callback can tell "the host took the tabs" from "the host refused
+    // them" — the second is a defect in THIS file and must not be silent either.
+    try {
     sidebar.effect(() => sidebar.sidebarRightTabs.register({
       id: TEAM_TAB_ID,
       kind: TEAM_TAB_KIND,
@@ -1328,6 +1698,7 @@
         description: () => t("guide.description"),
       }],
     }), "mpd-team-sidebar:type");
+    registered += 1;
     sidebar.effect(() => sidebar.slots.register({
       name: "sidebar.right.pane.tab",
       key: TEAM_TAB_ID,
@@ -1352,13 +1723,63 @@
         description: () => "Durable agents from your library",
       }],
     }), "mpd-workmate-sidebar:type");
+    registered += 1;
     sidebar.effect(() => sidebar.slots.register({
       name: "sidebar.right.pane.tab",
       key: WORKMATE_TAB_ID,
       locale: WORKMATE_LOCALE_NAMESPACE,
       inject: () => ({}),
     }, WorkmateSidebarBody), "mpd-workmate-sidebar:body");
+    } catch (error) {
+      // A THROWING HOST IS NOT AN ABSENT HOST, and conflating the two is how a real defect reads as
+      // an optional surface that simply is not there. The registration attempt stays contained (a
+      // throw out of `apply` would fail the whole web page), and the report gate is the same single
+      // line, so a broken fallback still produces exactly one diagnostic.
+      reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" is served but refused the registration: " + String(error))
+      return
+    }
+    if (registered === 0) {
+      // The seam resolved and both registrations were attempted, yet the host accepted none: reported
+      // rather than left as an empty right sidebar.
+      reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" resolved but accepted no tab registration")
+    }
+    // PUBLISHED FROM INSIDE THE CALLBACK, because a seat that arrives AFTER `apply()` returned (the
+    // live case, and every harness arm) would otherwise leave the diagnostics reading the pre-arrival
+    // snapshot — `registered: 0, host: ""` about a profile whose panels are registered and fine.
+    publishSettle(preferred, registered)
     });
+    // ── THE SETTLE CHECK (D1) ───────────────────────────────────────────────────
+    // The OTHER way this surface goes missing: the seat named above never resolves at all (a build
+    // without the harness right sidebar, or a seat renamed by a newer host). `ctx.inject` parks its
+    // callback and says NOTHING when its deps never arrive, so nothing inside the callback can learn
+    // that. TWO moments ask the question and the report gate makes them ONE line:
+    //   • a BOUNDED WAIT after this mount — the line a user staring at an empty right sidebar needs
+    //     WHILE the page is open (F5: the disposer alone reported it only at unload);
+    //   • the entry DISPOSER as the final backstop, for a page torn down before the bound elapsed.
+    // Never a false line: with `dsh-better-sidebar` mounted the callback DOES resolve, takes the
+    // preference branch above, and falls to the bottom with nothing registered — so `registered` alone
+    // would report a problem neither host has. The `preferred` latch keeps that guarantee.
+    /** The bounded-wait handle, cleared by the disposer below so a torn-down entry leaves no timer. */
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    if (typeof setTimeout === "function") {
+      settleTimer = setTimeout(() => {
+        settleTimer = undefined
+        if (registered === 0 && !preferred) {
+          reportNoHarnessSidebar("neither \"" + HARNESS_SIDEBAR_SERVICES + "\" nor better-sidebar accepted a registration within " + settleTimeoutMsValue + "ms")
+        }
+      }, settleTimeoutMsValue)
+    }
+    ctx.effect(() => () => {
+      // THE TIMER IS CLEARED FIRST: a disposed entry must not leave a pending callback behind, and a
+      // page torn down inside the bound reports through the backstop below instead.
+      if (settleTimer !== undefined) {
+        clearTimeout(settleTimer)
+        settleTimer = undefined
+      }
+      if (registered === 0 && !preferred) {
+        reportNoHarnessSidebar("\"" + HARNESS_SIDEBAR_SERVICES + "\" was never published in this profile, and better-sidebar is not mounted either")
+      }
+    }, "mpd: harness sidebar report");
     // The command the workmate guide entry names. Registered in the same injected scope as the
     // team's, because both open a tab on the SAME registry and neither may run before it exists.
     ctx.inject(["shortcuts"], (scope) => {
@@ -1371,6 +1792,10 @@
         resolve: () => ({ status: "handled", run: () => ctx.sidebarRight.openTab(WORKMATE_TAB_KIND) }),
       }), "mpd-workmate-sidebar:command");
     });
+    // PUBLISH WHAT THIS MOUNT SETTLED ON. The two locals are what the settle checks DECIDE with; the
+    // snapshots are what the settle line and the exported diagnostics READ (naming the host that won),
+    // and the callback above publishes again on a late arrival so a settled value is never stale.
+    publishSettle(preferred, registered)
   }
 
   /** The client entry: mount the command row, both sidebar pages and the settings card. */
@@ -1409,10 +1834,37 @@
   /** The page's dictionaries, frozen so an offline assertion cannot mutate them. */
   const dictionaries = { zh: Object.freeze({ ...zh }), en: Object.freeze({ ...en }) };
 
+  /**
+   * The client-entry diagnostics, exported for the OFFLINE harness.
+   *
+   * The settle line is a TIMED behaviour, so an arm that wants to assert it must be able to shorten
+   * the bound (`settleTimeoutMs(ms)`) and to read WHAT the entry settled on (`sidebarDiagnostics()`:
+   * whether it reported, which host took the panels, how many registrations were accepted, and whether
+   * the better-sidebar preference fired). Without these two the only honest assertions would be an
+   * eight-second sleep per case or a deleted one.
+   * @param ms - the new settle bound in milliseconds, or undefined to READ the current one.
+   * @returns the bound in force after the call.
+   */
+  const settleTimeoutMs = (ms?: number): number => {
+    if (typeof ms === "number" && Number.isFinite(ms) && ms >= 0) settleTimeoutMsValue = ms
+    return settleTimeoutMsValue
+  }
+
+  /**
+   * What the last mount settled on, so a test can assert the DIAGNOSTIC and not only the console line.
+   * @returns the reported flag, the host that won, the accepted registrations and the preference latch.
+   */
+  const sidebarDiagnostics = (): { reported: boolean; host: string; registered: number; preferred: boolean } => ({
+    reported: harnessSidebarReported,
+    host: harnessSidebarHost,
+    registered: harnessSidebarRegistered,
+    preferred: betterSidebarPreferred,
+  })
+
   // `inject`/`apply` are the client-module contract; the view plus the two pure helpers
   // (dictionaries and the §D failure mapper) are exported so the offline harness
   // (packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs) can pin them without a browser.
-  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
+  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard, settleTimeoutMs, sidebarDiagnostics };
   return module.exports;
 }
 
@@ -1450,7 +1902,7 @@ declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
 interface MpdTeamViewGlobal {
   /** Build the shared team view once, so both hosts render one component with one poller. */
-  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; pollMs?: number }) => MpdTeamViewModule
+  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
 }
 
 /** The built team view. */

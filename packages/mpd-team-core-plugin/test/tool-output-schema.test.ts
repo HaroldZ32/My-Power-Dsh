@@ -208,6 +208,76 @@ function fixture(): Fixture {
   }
 }
 
+describe("an EMPTY plan cannot be approved (D4a)", () => {
+  test("approve REFUSES a plan with 0 members and 0 tasks, and mints NO team record", async () => {
+    // THE MECHANICALLY-STAGED SHELL (D5): a session gate can stage `approval:"required"` with nothing
+    // in it, and approving one used to mint a team record with an empty roster and an empty board — a
+    // name in `.mpd/team/teams/`, a row in every panel, and no work behind it. The refusal must also
+    // leave the WORKSPACE untouched: a refusal that still wrote half a record would be worse than none.
+    /** The harness under test. */
+    const f = fixture()
+    try {
+      await f.call("agent_teams_plan", { action: "create", name: "shell", description: "a mechanically staged plan", approval: "required" })
+      expect(listTeams(f.workspace)).toEqual([])
+      /** The refusal, captured by value so the arm can read its message. */
+      let refusal: Error | undefined
+      try {
+        await f.call("agent_teams_plan", { action: "approve" })
+      } catch (error) {
+        refusal = error as Error
+      }
+      expect(refusal).toBeDefined()
+      // The message must tell the caller WHAT to do, not merely that it may not: naming the two calls
+      // that fill the plan is what makes the shell actionable in the panel AND in a session.
+      expect(refusal?.message).toContain("EMPTY")
+      expect(refusal?.message).toContain("add_member")
+      expect(refusal?.message).toContain("create_task")
+      // NOTHING was created, and the plan is still staged: the captain can fill it and approve again.
+      expect(listTeams(f.workspace)).toEqual([])
+      /** The still-staged plan, read back through the tool. */
+      const status = await f.call("agent_teams_plan", { action: "status" })
+      expect((status.plan as { approvedAt?: string } | null)?.approvedAt).toBeUndefined()
+      // FILLING IT MAKES THE SAME PLAN APPROVABLE — the guard is a gate, not a dead end.
+      await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
+      /** The approved plan, whose value the `f.call` checks validate against the declaration. */
+      const approved = await f.call("agent_teams_plan", { action: "approve" })
+      expect((approved.created as { members: unknown[] }).members.length).toBe(1)
+      expect(listTeams(f.workspace).length).toBe(1)
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("a plan with EITHER a member or a task still approves — the guard refuses nothing else", async () => {
+    // THE OTHER DIRECTION, so the new refusal cannot over-reach: a task-only plan (a captain posting
+    // the board first) is a legitimate plan, and so is a member-only one.
+    /** The harness under test, for the task-only plan. */
+    const taskOnly = fixture()
+    try {
+      await taskOnly.call("agent_teams_plan", { action: "create", name: "tasks only", description: "board first" })
+      await taskOnly.call("agent_teams_plan", { action: "create_task", task: { subject: "solo", description: "one task" } })
+      /** The approved plan. */
+      const approved = await taskOnly.call("agent_teams_plan", { action: "approve" })
+      expect((approved.created as { tasks: unknown[] }).tasks.length).toBe(1)
+      expect(listTeams(taskOnly.workspace).length).toBe(1)
+    } finally {
+      rmSync(taskOnly.workspace, { recursive: true, force: true })
+    }
+    /** The harness under test, for the member-only plan. */
+    const memberOnly = fixture()
+    try {
+      await memberOnly.call("agent_teams_plan", { action: "create", name: "members only", description: "roster first" })
+      await memberOnly.call("agent_teams_plan", { action: "add_member", member: { name: "Explorer", description: "finds", prompt: "You find things." } })
+      /** The approved plan. */
+      const approved = await memberOnly.call("agent_teams_plan", { action: "approve" })
+      expect((approved.created as { members: unknown[] }).members.length).toBe(1)
+      expect(listTeams(memberOnly.workspace).length).toBe(1)
+    } finally {
+      rmSync(memberOnly.workspace, { recursive: true, force: true })
+    }
+  })
+})
+
 describe("every action's value satisfies its declared output contract", () => {
   test("status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it", async () => {
     /** The harness under test. */

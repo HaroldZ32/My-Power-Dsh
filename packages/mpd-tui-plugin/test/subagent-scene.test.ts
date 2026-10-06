@@ -1,3 +1,6 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
 // The merged panel: the HOST's own subagent rows ABOVE the MPD team panel.
 //
 // HARNESS: the React/ui double and the row-aware text flattening below are the SAME ones

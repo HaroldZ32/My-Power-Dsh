@@ -2,11 +2,11 @@
 //
 // WHY IT EXISTS. The retired vendored plugin staged a team as a PLAN the user could read, edit
 // and APPROVE before a single teammate existed, and froze each task's contract at claim time
-// with a monotonic attempt counter. The official plugin has no such stage: `spawn_teammate`
-// creates a teammate immediately and `team_task_create` posts a task immediately, so a captain
-// that wants a review step has nowhere to put one. This store is that step — a sidecar under
-// `<workspace>/.mpd/team/`, never a second source of team truth: the roster and the board stay
-// the official service's, and this file only records what the user has staged, approved or
+// with a monotonic attempt counter. Neither the official tool row nor the native team executor
+// has such a stage: a member is raised (and a task posted) the moment the tool is called, so a
+// captain that wants a review step has nowhere to put one. This store is that step — a sidecar
+// under `<workspace>/.mpd/team/`, never a second source of team truth: the roster and the board
+// stay the team RECORD's, and this file only records what the user has staged, approved or
 // halted.
 //
 // Everything here is PURE filesystem + plain data, so the whole state machine is unit-testable
@@ -14,13 +14,13 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-/** One member the plan wants. The prompt is what `spawn_teammate` will receive. */
+/** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
-  /** The teammate NAME the captain will address; `spawn_teammate` receives it verbatim. */
+  /** The teammate NAME the captain will address; the executor receives it verbatim. */
   name: string
   /** One-line role summary, shown in the staged plan for the user to read before approving. */
   description: string
-  /** The full instantiation prompt `spawn_teammate` will receive once the plan is approved. */
+  /** The full instantiation prompt the teammate receives once the plan is approved. */
   prompt: string
   /** Optional rostered role label, carried for readability — model routing does not read it. */
   role?: string

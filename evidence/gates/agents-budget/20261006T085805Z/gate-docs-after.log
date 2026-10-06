@@ -1,0 +1,76 @@
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.ts: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.ts: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.ts: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.ts: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.ts: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.ts: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.ts: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.ts: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.ts: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.ts: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.ts: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.ts: registry 1 id(s), live 1 id(s) — agree
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=439 checked=365 resolved=358 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=30 ignoredAnchorOnly=44 files=110
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=45 failed=0 violations=0 exempt=23 derived=3 links=439 dead=0 — PASS

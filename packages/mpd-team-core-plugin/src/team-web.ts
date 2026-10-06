@@ -15,7 +15,7 @@
 // answer the same question and must not disagree — but it is computed here from the RECORD, which is
 // why it can carry `kind`, `attempt`, `round` and `verdict` at all.
 import type { TeamRecord } from "./team-store"
-import { blockingDependencies, cycleIds, derivePhase, idleMembers, memberProgress, readyTasks, summariseTeam, taskVisual } from "./team-store"
+import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
 
@@ -107,6 +107,28 @@ export interface TeamWebTask {
   depth: number
 }
 
+/** One of the WORKSPACE's teams, as the browser reads it in the session-less listing. */
+export interface TeamWebWorkspaceTeam {
+  /** The mpd team id (`<team-…>`), which `approve <teamId>` names. */
+  id: string
+  /** The team name the user reads. */
+  name: string
+  /** What the team is for. */
+  description: string
+  /** `staged` | `active` | `idle` | `ended`, derived from the record. */
+  phase: string
+  /** ISO instant the plan was approved, when it was. */
+  approvedAt?: string
+  /** ISO instant the team was ended, when it was. */
+  endedAt?: string
+  /** The task tally, so a reader can tell a finished wave from one still running. */
+  tasks: { total: number; completed: number; failed: number }
+  /** The roster size. */
+  members: number
+  /** Whether the index binds this team to the session that asked. */
+  active: boolean
+}
+
 /** The whole payload the Web team view renders. */
 export interface TeamWebState {
   /** The route's own success marker; a payload without it is treated as unreadable. */
@@ -115,6 +137,21 @@ export interface TeamWebState {
   workspace: string
   /** The session the caller asked about. */
   sessionId: string
+  /**
+   * The WORKSPACE's teams, newest first — the answer for a session that has none of its own.
+   *
+   * WHY IT IS HERE (D2): the record is SESSION-scoped, so a session that did not approve the
+   * workspace's team rendered an empty panel while that team sat on disk — the "建了但没用上"
+   * experience. `records: []` answers the honest empty state; a NON-EMPTY list is information the
+   * panel shows instead of a dead end. The session-scoped `team` below is unchanged, so the TUI and
+   * every existing reader of this payload see exactly what they saw before.
+   */
+  workspaceTeams: {
+    /** Every readable record under `.mpd/team/teams`, newest first. */
+    records: TeamWebWorkspaceTeam[]
+    /** The team the index binds to the session that asked, when it binds one. */
+    activeId?: string
+  }
   /** The team head, or null when this session has no team. */
   team: {
     /** The mpd team id, which `approve <teamId>` names. */
@@ -145,14 +182,48 @@ export interface TeamWebState {
 }
 
 /**
+ * Project the workspace's teams into the rows the browser reads.
+ *
+ * The list counterpart of the single-team head: a session with no team of its OWN still gets the
+ * workspace's, which is the whole point of D2. The phase is DERIVED per row through the store's own
+ * rule, and the tally comes from the record rather than from the panel counting rendered nodes.
+ * @param teams - the workspace's records, as {@link listTeams} answers them.
+ * @param activeId - the team the index binds to the session that asked, when it binds one.
+ * @returns the listing half of the payload.
+ */
+export function buildWorkspaceTeams(teams: readonly TeamRecord[], activeId: string | undefined): TeamWebState["workspaceTeams"] {
+  return {
+    records: teams.map((team) => ({
+      id: team.teamId,
+      name: team.name,
+      description: team.description,
+      phase: derivePhase(team),
+      ...(team.approvedAt === undefined ? {} : { approvedAt: team.approvedAt }),
+      ...(team.endedAt === undefined ? {} : { endedAt: team.endedAt }),
+      tasks: {
+        total: team.tasks.length,
+        completed: team.tasks.filter((task) => task.status === "completed").length,
+        failed: team.tasks.filter((task) => task.status === "failed").length,
+      },
+      members: team.members.length,
+      active: team.teamId === activeId,
+    })),
+    ...(activeId === undefined ? {} : { activeId }),
+  }
+}
+
+/**
  * Project one record into the browser payload.
  *
  * PURE, so the whole projection is testable without a server, a socket or a session — and so the
- * client's contract is a value rather than a running handler.
+ * client's contract is a value rather than a running handler. The workspace listing arrives as an
+ * ARGUMENT rather than being read here, so this stays a projection of values: the route reads the
+ * directory (and says so in its own name), and a test can pin the listing it wants.
  * @param record - the team record, or undefined when the session has none.
  * @param workspace - the workspace the read happened in.
  * @param sessionId - the session the caller asked about.
  * @param executor - the active backend's kind and reason.
+ * @param workspaceTeams - the workspace's own teams, or omitted when the caller did not read them.
  * @returns the payload.
  */
 export function buildTeamState(
@@ -160,12 +231,16 @@ export function buildTeamState(
   workspace: string,
   sessionId: string,
   executor: { kind: string; reason: string },
+  workspaceTeams?: TeamWebState["workspaceTeams"],
 ): TeamWebState {
+  /** The workspace listing this payload carries; an absent one reads as "nothing was read", never as a promise. */
+  const listing: TeamWebState["workspaceTeams"] = workspaceTeams ?? { records: [] }
   /** The empty payload every early return shares. */
   const empty: TeamWebState = {
     ok: true,
     workspace,
     sessionId,
+    workspaceTeams: listing,
     team: null,
     counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
     members: [],
@@ -206,6 +281,9 @@ export function buildTeamState(
     ok: true,
     workspace,
     sessionId,
+    // The workspace listing travels on BOTH shapes: a session that HAS a team still sees its
+    // siblings, which is what makes the panel a workspace view rather than a session view.
+    workspaceTeams: listing,
     team: {
       id: record.teamId,
       name: record.name,
@@ -514,7 +592,13 @@ export function registerTeamRoutes(
   all = mount(TEAM_STATE_PATH, (req) => {
     /** The session this request asks about. */
     const sessionId = sessionOf(req)
-    return buildTeamState(deps.recordFor(sessionId), deps.workspace(), sessionId, deps.executor())
+    /** The workspace this request is attributed to, resolved PER CALL like every other read here. */
+    const workspace = deps.workspace()
+    // THE WORKSPACE LISTING IS READ HERE, at the impure edge, and passed into the projection: the
+    // session-scoped record stays exactly what it was, and a session with none now renders the
+    // workspace's teams instead of a dead empty state (D2). `activeTeamId` is the index's answer for
+    // THIS session, which is what marks the row the panel should call active.
+    return buildTeamState(deps.recordFor(sessionId), workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)))
   }) && all
   all = mount(TEAM_PLAN_PATH, (req) => {
     /** The session whose staged plan is asked for. */

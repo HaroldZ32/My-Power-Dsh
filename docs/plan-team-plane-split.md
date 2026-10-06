@@ -342,6 +342,19 @@ must not become a cached module-level value.
 worse than the honest refusal it has today.** The route family (§5f) already serves the staged plan to
 the Web side, so the same `planId` decision is answerable there first if that is the cheaper order.
 
+> **LANDED (W6, 2026-10-07) — recorded here, the paragraph above is kept as the state it was written
+> in.** The session resolver arrived: the plan scene reads the staged plan through the shared
+> projection (which serves the exact `phrase` the Web panel renders) and takes its caller from the
+> adapter's own live registry — `liveAgent(sessionId)`, else a live entry whose own `session.id`
+> matches, else the ONE live agent when the scene carries no id — never a hand-built
+> `{ session: { id } }`, which the harness's own session store refused by identity. The phrase gate is
+> ACTIVE (`approve plan-…` typed exactly, then `Ctrl+X`; `Ctrl+D` twice within 10 s discards), and the
+> action is a real `agent_teams_plan {action:"approve"|"delete"}` call. A composition whose caller
+> cannot be resolved REFUSES before calling anything; the live hop on a real TUI host is not yet
+> falsified. The `PLAN_MUTATION_UNAVAILABLE` constant survives only for the no-tool case, and its own
+> wording ("no plan approval exists on the official Agent Teams plane") still reads as broader than
+> that — carried to the next wave rather than silently rewritten here.
+
 ### (c) `mpd-team-core`'s own copy named tools nothing registers — FIXED
 
 Its `/agent-teams` usage lines told the user to approve "with `agent_teams_approve`" and to add members

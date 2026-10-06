@@ -220,10 +220,29 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-tui-plugin/src/index.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/scenes.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS } from \"../../mpd-config-plugin/src/settings-schema\"",
+  // mpd-tui -> mpd-config AGAIN, from the model menu this time, and for the same reason the entry
+  // above is allowed: the four slots and their member groups have ONE declaration, and the /mpd-model
+  // pick-list has to offer exactly the slots the settings rows expose. Restating them in
+  // `model-menu.ts` would be the drift this inventory exists to catch, so the import is recorded
+  // rather than removed.
+  "packages/mpd-tui-plugin/src/model-menu.ts :: import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS } from \"../../mpd-config-plugin/src/settings-schema\"",
   "packages/mpd-tui-plugin/src/state.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/status.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { TeamRecord, TeamTaskRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/watchdog.ts :: import type { IncidentRecord } from \"../../mpd-team-watchdog-plugin/src/sidecars.js\"",
+  // mpd-ulw -> mpd-roles (mechanical gate, 2026-10-06): the ULW activation gate and the
+  // session-start gate evaluate THE SAME frozen predicate, and the directive's own clause forbids
+  // inventing a second one. Importing the pure module is what makes that a fact instead of prose —
+  // a fork would let the two gates drift apart silently, which is the exact defect class this wave
+  // repairs. The import pulls no adapter value (the pure module touches only node:fs/node:path), so
+  // the coupling adds a source edge, not a boot-order dependency.
+  "packages/mpd-ulw-plugin/src/index.ts :: } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
+  // mpd-boulder -> mpd-roles (the SAME defect class, 2026-10-06): `boulder.dir` was read TWO ways, and
+  // the divergence produced a doubled `<ws>/.mpd/.mpd/boulder.json` in every real boot — the gate's
+  // signal D could never fire and `mpd_boulder_*` wrote to a path nobody documented. The cure is ONE
+  // reading of the knob, so the boulder row imports the gate's `resolveBoulderDir` instead of keeping a
+  // second copy that could drift back apart. Same shape as the ULW entry above, same file, same reason.
+  "packages/mpd-boulder-plugin/src/index.ts :: import { resolveBoulderDir } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

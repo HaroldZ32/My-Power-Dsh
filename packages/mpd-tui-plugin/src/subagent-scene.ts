@@ -50,6 +50,7 @@ import type { TuiScenePropsLike } from "./types.js"
 import { clampCells, stripControl } from "./sanitize.js"
 import { GRAPH_THEME, layoutGraph, legendLines, type GraphTask, type GraphView } from "./graph.js"
 import { teamWorkflowLines, type TeamWorkflow } from "./team-state.js"
+import { t } from "./i18n.js"
 
 /** The scene id this component is registered under (unique, kebab-case, MPD-owned). */
 export const SUBAGENT_SCENE_ID = "mpd-tui-subagents"
@@ -926,7 +927,9 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
       React.createElement(
         ui.Text,
         { key: "title", bold: true },
-        safeRow(`${SUBAGENT_SCENE_TITLE}${measured.size === "" ? "" : ` · ${measured.size}`}`),
+        // Resolved per render through MPD's own dictionary: the descriptor's title is fixed at
+        // registration, so the body must not read a stale constant either (see `i18n.ts`).
+        safeRow(`${t("scene.subagents")}${measured.size === "" ? "" : ` · ${measured.size}`}`),
       ),
     )
     if (detailOpen) {

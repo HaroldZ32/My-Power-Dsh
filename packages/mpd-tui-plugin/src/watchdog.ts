@@ -15,6 +15,7 @@
 // line (the plain board line), no replay dialog, and an `acknowledge()` that reports failure instead
 // of pretending — a front door must never offer an action it cannot honour.
 import type { IncidentRecord } from "../../mpd-team-watchdog-plugin/src/sidecars.js"
+import { t } from "./i18n.js"
 import type { DialogSeam } from "./dialogs.js"
 import type { Log } from "./log.js"
 import type { PluginContextLike, TuiAdapter } from "./types.js"
@@ -102,9 +103,15 @@ export function heldTeams(service: WatchdogServiceLike | undefined, workspace: s
 export function watchdogNotice(view: WatchdogView): string | undefined {
   /** The notice's halves: the live hold first, then the unread replay count. */
   const parts: string[] = []
-  if (view.holds.length > 0) parts.push(`held ${view.holds.join(", ")}`)
-  if (view.unread.length > 0) parts.push(`${view.unread.length} unread incident${view.unread.length === 1 ? "" : "s"}`)
-  return parts.length === 0 ? undefined : `${WATCHDOG_NOTICE_PREFIX}: ${parts.join(" · ")}`
+  if (view.holds.length > 0) parts.push(t("watchdog.held", { teams: view.holds.join(", ") }))
+  if (view.unread.length > 0) {
+    /** The unread count as a string, rendered through the singular or plural sentence. */
+    const n = String(view.unread.length)
+    parts.push(t(view.unread.length === 1 ? "watchdog.unreadOne" : "watchdog.unread", { n }))
+  }
+  // The status line carries one `text` per entry and has no localized field, so the notice is
+  // resolved at use through MPD's own dictionary (see `i18n.ts` for the stated limits).
+  return parts.length === 0 ? undefined : t("watchdog.notice", { parts: parts.join(" · ") })
 }
 
 /** Join the notice providers the status line renders, or undefined when none has anything to say. */
@@ -125,15 +132,17 @@ export interface WatchdogDialogRequest {
 /** Build the replay dialog: the notice text plus the acknowledge action. */
 export function watchdogDialog(view: WatchdogView): WatchdogDialogRequest {
   /** Why the dialog is shown: a live hold, or incidents recorded while nobody watched. */
-  const detail =
-    view.holds.length > 0
-      ? `Team ${view.holds.join(", ")} is held by the team watchdog (a member went silent).`
-      : "The team watchdog recorded incidents while nobody was watching."
+  // The dialog's own title and labels are MPD's copy: the host localizes the chrome it owns and
+  // nothing of this request, so both are resolved here, at the moment the dialog is built.
+  /** Why the dialog is shown, in the active language. */
+  const detail = view.holds.length > 0
+    ? t("watchdog.holdDetail", { teams: view.holds.join(", ") })
+    : t("watchdog.replayDetail")
   return {
     title: `${watchdogNotice(view) ?? WATCHDOG_NOTICE_PREFIX} — ${detail}`,
     options: [
-      { id: ACKNOWLEDGE_OPTION, label: "Acknowledge", description: "mark these incidents as read so they stop being replayed" },
-      { id: "later", label: "Later", description: "keep them unread; they will be shown again on the next start" },
+      { id: ACKNOWLEDGE_OPTION, label: t("watchdog.acknowledge"), description: t("watchdog.acknowledgeHint") },
+      { id: "later", label: t("watchdog.later"), description: t("watchdog.laterHint") },
     ],
   }
 }

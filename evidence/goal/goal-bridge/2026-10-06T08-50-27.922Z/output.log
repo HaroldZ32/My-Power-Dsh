@@ -1,0 +1,26 @@
+Goal-bridge self-test complete — both calls succeeded.
+
+**1) Anchor outcome** (`mpd_goal_anchor`)
+- `ok` = **true**, `created` = **true** (new goal anchored; the anchor path reports `ok` and `created` rather than a bare `ok/created` enum)
+- Goal id: `goal-8012f0be-7a38-453f-9942-f9e1369a54e6`
+- Objective: `ship the goal bridge`
+- Phase at creation: `active`, `activation: armed`, `maxGoalRounds: 5`, `roundsStarted: 0`, revision 1
+
+**2) Status readback** (`mpd_goal_status`) — matches the anchor
+- id: `goal-8012f0be-7a38-453f-9942-f9e1369a54e6`
+- objective: `ship the goal bridge`
+- phase: `active`
+- revision 1, `maxGoalRounds` 5, `roundsStarted` 0, `activation` armed
+- Goal service: `enabled=true`, `autoAnchor=true`
+
+Nothing else was modified; no blockers observed. The goal remains armed and active, so the harness will continue working toward it across automatic rounds unless you complete or pause it.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user wants a simple self-test: call mpd_goal_anchor with objective 'ship the goal bridge' and maxRounds 5, then call mpd_goal_status, then report.
+
+This is trivial single-turn-ish work. Let's do it. Note mpd_goal_anchor requires a direct human turn on this top-level agent — we have that.
+
+Call both? Status depends on anchor completing, so sequential. But they're independent calls technically... no, status must reflect anchor. Do anchor first, then status.
+dsh: reasoning:
+Now call status.

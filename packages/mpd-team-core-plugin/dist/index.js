@@ -756,22 +756,30 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
-  function toolReachable(name) {
+  function hostToolDefinition(name) {
     try {
       const hostView = service("tools");
-      if (typeof hostView?.get === "function" && hostView.get(name) !== undefined)
-        return true;
-    } catch {}
-    return liveAgents().some((candidate) => {
-      const scoped = scopedToolRegistry(candidate);
-      if (scoped === undefined)
-        return false;
-      try {
-        return scoped.get(name) !== undefined;
-      } catch {
-        return false;
-      }
-    });
+      return typeof hostView?.get === "function" ? hostView.get(name) : undefined;
+    } catch {
+      return;
+    }
+  }
+  function toolDefinitionFor(name, agent) {
+    if (agent === undefined)
+      return hostToolDefinition(name);
+    const scoped = scopedToolRegistry(agent);
+    if (scoped === undefined)
+      return hostToolDefinition(name);
+    try {
+      return scoped.get(name, agent);
+    } catch {
+      return;
+    }
+  }
+  function toolReachable(name) {
+    if (hostToolDefinition(name) !== undefined)
+      return true;
+    return liveAgents().some((candidate) => toolDefinitionFor(name, candidate) !== undefined);
   }
   function projectToolResult(raw) {
     const record = raw;
@@ -1073,20 +1081,12 @@ function createDshAdapter(ctx, config = {}) {
       });
       return typeof off === "function" ? off : () => {};
     },
-    hasTool(toolName) {
-      const tools = service("tools");
-      if (typeof tools?.get !== "function")
-        return false;
-      try {
-        return tools.get(toolName) !== undefined;
-      } catch {
-        return false;
-      }
+    hasTool(toolName, agent) {
+      return toolDefinitionFor(toolName, agent) !== undefined;
     },
     toolRuntime() {
-      const tools = service("tools");
       return {
-        get: (toolName) => typeof tools?.get === "function" ? tools.get(toolName) : undefined,
+        get: (toolName, agent) => toolDefinitionFor(toolName, agent),
         execute: (input) => adapter.executeTool({ ...input, timeoutMs: defaultTimeoutMs }).then((result) => result.raw)
       };
     },
@@ -2230,11 +2230,33 @@ var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PA
 function approvalPhraseFor(planId) {
   return `approve ${planId}`;
 }
-function buildTeamState(record, workspace, sessionId, executor) {
+function buildWorkspaceTeams(teams, activeId) {
+  return {
+    records: teams.map((team) => ({
+      id: team.teamId,
+      name: team.name,
+      description: team.description,
+      phase: derivePhase(team),
+      ...team.approvedAt === undefined ? {} : { approvedAt: team.approvedAt },
+      ...team.endedAt === undefined ? {} : { endedAt: team.endedAt },
+      tasks: {
+        total: team.tasks.length,
+        completed: team.tasks.filter((task) => task.status === "completed").length,
+        failed: team.tasks.filter((task) => task.status === "failed").length
+      },
+      members: team.members.length,
+      active: team.teamId === activeId
+    })),
+    ...activeId === undefined ? {} : { activeId }
+  };
+}
+function buildTeamState(record, workspace, sessionId, executor, workspaceTeams) {
+  const listing = workspaceTeams ?? { records: [] };
   const empty = {
     ok: true,
     workspace,
     sessionId,
+    workspaceTeams: listing,
     team: null,
     counts: { total: 0, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
     members: [],
@@ -2266,6 +2288,7 @@ function buildTeamState(record, workspace, sessionId, executor) {
     ok: true,
     workspace,
     sessionId,
+    workspaceTeams: listing,
     team: {
       id: record.teamId,
       name: record.name,
@@ -2411,7 +2434,8 @@ function registerTeamRoutes(webServer, deps) {
   let all = true;
   all = mount(TEAM_STATE_PATH, (req) => {
     const sessionId = sessionOf(req);
-    return buildTeamState(deps.recordFor(sessionId), deps.workspace(), sessionId, deps.executor());
+    const workspace = deps.workspace();
+    return buildTeamState(deps.recordFor(sessionId), workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)));
   }) && all;
   all = mount(TEAM_PLAN_PATH, (req) => {
     const sessionId = sessionOf(req);
@@ -2565,7 +2589,7 @@ function apply(ctx) {
   }
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages a plan (nothing is spawned); `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it (spawns members through spawn_teammate, posts tasks to the official board, resolves blocked_by and owner); `delete` archives it; `status` shows the plan, the halt, and the official roster and board side by side.",
+    description: "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR — the NATIVE continuable-subagent backend is the DEFAULT, and the official `dsh.team*` calls are the FALLBACK — REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
     parameters: {
       type: "object",
       properties: {
@@ -2574,12 +2598,12 @@ function apply(ctx) {
         description: { type: "string", description: "create/edit: what the team is for." },
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
         replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}. `prompt` is what spawn_teammate receives." },
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside `task`." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside it." },
         owner: { type: "string", description: "create_task: alias of `task.owner`." },
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
-        members: { type: "array", items: { type: "object" }, description: "edit: replacement member list." },
-        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement task list." },
+        members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
+        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
         dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." }
       },
       required: ["action"],
@@ -2709,6 +2733,10 @@ function apply(ctx) {
           throw new Error('no team is staged in this session — use action:"create" first');
         if (plan.approvedAt !== undefined)
           throw new Error(`plan ${plan.planId} is already approved`);
+        const staged = plan.members.length + plan.tasks.length;
+        if (staged === 0) {
+          throw new Error(`plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first`);
+        }
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
         }
@@ -2736,7 +2764,7 @@ function apply(ctx) {
               memberId: member.id,
               name: member.name,
               description: member.description === "" ? member.name : member.description,
-              prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
+              prompt: plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description,
               ...member.route === undefined ? {} : { provider: member.route },
               ...exec.signal === undefined ? {} : { signal: exec.signal }
             });

@@ -1,3 +1,7 @@
+// This file's copy assertions are LANGUAGE-INDEPENDENT (they read `t(...)`), so no process-wide
+// language pin is needed any more: the suite passes under no variable, `en` and `zh` alike.
+
+import { t } from "../src/i18n"
 // The team-workflow + plan-approval surfaces (frozen contract `.mpd/plans/tui-team-surface.md`).
 //
 // What these tests pin, and why each one is falsifiable:
@@ -684,7 +688,11 @@ describe("the two surfaces register through the existing tuiScenes seam", () => 
     expect(registeredIds).toEqual(expect.arrayContaining([BOARD_SCENE_ID, TEAM_SCENE_ID, PLAN_SCENE_ID]))
     // The registrations stay a SET of ids, and the three frozen titles are all present.
     expect(new Set(registeredIds).size).toBe(registeredIds.length)
-    expect(registered.map((entry) => entry.title)).toEqual(expect.arrayContaining(["MPD board", "MPD team", "MPD plan approval"]))
+    // The titles are LOCALIZED AT USE, so the expectation comes from the dictionary: asserting the English
+    // strings made this arm pass under one language and hide the other render (measured 2026-10-06).
+    expect(registered.map((entry) => entry.title)).toEqual(
+      expect.arrayContaining([t("scene.board"), t("scene.team"), t("scene.plan")]),
+    )
     expect(typeof components[TEAM_SCENE_ID]).toBe("function")
     expect(typeof components[PLAN_SCENE_ID]).toBe("function")
   })
@@ -739,7 +747,7 @@ describe("surface T1 — the team workflow", () => {
     render(kit, components[TEAM_SCENE_ID])
     /** The scene after the approval key was pressed. */
     const text = pressAndRender(kit, components[TEAM_SCENE_ID], "a")
-    expect(text).toContain("plan approval needs a staged team")
+    expect(text).toContain(t("scene.planNeedsStaged"))
     expect(opened).toEqual([])
   })
 
