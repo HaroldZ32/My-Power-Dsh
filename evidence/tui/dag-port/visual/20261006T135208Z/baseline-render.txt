@@ -1,0 +1,488 @@
+
+==============================================================================
+FIXTURE chain — A single chain T1 -> T2 -> T3: three ranks, one box each.
+==============================================================================
+
+-- chain @ 120 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4         5         6         7         8         9         0         1         
+012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK Freeze the acceptance │
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK Port the layout       │
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK Verify on a real PTY  │
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 33, 33, 17, 17, 33, 33, 33, 17, 17, 33, 33, 33]  distinct=2
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 120 cols = 0
+
+-- chain @ 80 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4         5         6         7         
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK Freeze the acceptance │
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK Port the layout       │
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK Verify on a real PTY  │
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 33, 33, 17, 17, 33, 33, 33, 17, 17, 33, 33, 33]  distinct=2
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 80 cols = 0
+
+-- chain @ 48 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4       
+012345678901234567890123456789012345678901234567
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK Freeze the acceptance │
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK Port the layout       │
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK Verify on a real PTY  │
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker → dependent · ▶ focus
+   ✓ done · ◐ run · ○ open · ✗ fail · ⊘ cancel
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 33, 33, 17, 17, 33, 33, 33, 17, 17, 33, 33, 33]  distinct=2
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 48 cols = 0
+
+-- chain @ 32 cols -> mode=boxes width=32 lines=15 cycles=[] hits=3
+   0         1         2         3 
+01234567890123456789012345678901
+ 0 ┌──────────────────────────────┐
+ 1 │ ✓ T1 WRK Freeze the acceptanc│
+ 2 └───────────────┬──────────────┘
+ 3                 │
+ 4                 │
+ 5                 ▼
+ 6 ┌───────────────┴──────────────┐
+ 7 │ ◐ T2 WRK Port the layout     │
+ 8 └───────────────┬──────────────┘
+ 9                 │
+10                 │
+11                 ▼
+12 ┌───────────────┴──────────────┐
+13 │ ○ T3 WRK Verify on a real PTY│
+14 └──────────────────────────────┘
+   LEGEND (1 line(s)):
+   ▼/▸ arrow · ▶ focus
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [31, 31, 31, 16, 16, 31, 31, 31, 16, 16, 31, 31, 31]  distinct=2
+   hit T1: rows 0..2 cols 0..31 (w=32)
+   hit T2: rows 6..8 cols 0..31 (w=32)
+   hit T3: rows 12..14 cols 0..31 (w=32)
+   rows exceeding 32 cols = 0
+
+==============================================================================
+FIXTURE fanin — A fan-in: T3 rests on TWO blockers (T1, T2); T4 then fans in from T3 and T1.
+==============================================================================
+
+-- fanin @ 120 cols -> mode=boxes width=71 lines=15 cycles=[] hits=4
+   0         1         2         3         4         5         6         7         8         9         0         1         
+012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐   ┌────────────────────────────────┐
+ 1 │ ✓ T1 REQ Freeze the theme table│   │ ✓ T2 WRK Port the geometry     │
+ 2 └────────────────┬───────────────┘   └────────────────┬───────────────┘
+ 3                  │                                    │
+ 4                  ├────────────────────────────────────┘
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T3 INT Join the two halves   │
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T4 REV Verify fidelity       │
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [70, 70, 70, 54, 54, 33, 33, 33, 17, 17, 33, 33, 33]  distinct=4
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 0..2 cols 37..70 (w=34)
+   hit T3: rows 6..8 cols 0..33 (w=34)
+   hit T4: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 120 cols = 0
+
+-- fanin @ 80 cols -> mode=boxes width=71 lines=15 cycles=[] hits=4
+   0         1         2         3         4         5         6         7         
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐   ┌────────────────────────────────┐
+ 1 │ ✓ T1 REQ Freeze the theme table│   │ ✓ T2 WRK Port the geometry     │
+ 2 └────────────────┬───────────────┘   └────────────────┬───────────────┘
+ 3                  │                                    │
+ 4                  ├────────────────────────────────────┘
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T3 INT Join the two halves   │
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T4 REV Verify fidelity       │
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [70, 70, 70, 54, 54, 33, 33, 33, 17, 17, 33, 33, 33]  distinct=4
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 0..2 cols 37..70 (w=34)
+   hit T3: rows 6..8 cols 0..33 (w=34)
+   hit T4: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 80 cols = 0
+
+-- fanin @ 48 cols -> mode=boxes width=47 lines=15 cycles=[] hits=4
+   0         1         2         3         4       
+012345678901234567890123456789012345678901234567
+ 0 ┌────────────────────┐   ┌────────────────────┐
+ 1 │ ✓ T1 REQ Freeze the│   │ ✓ T2 WRK Port the g│
+ 2 └──────────┬─────────┘   └──────────┬─────────┘
+ 3            │                        │
+ 4            ├────────────────────────┘
+ 5            ▼
+ 6 ┌──────────┴─────────┐
+ 7 │ ◐ T3 INT Join the t│
+ 8 └──────────┬─────────┘
+ 9            │
+10            │
+11            ▼
+12 ┌──────────┴─────────┐
+13 │ ○ T4 REV Verify fid│
+14 └────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker → dependent · ▶ focus
+   ✓ done · ◐ run · ○ open · ✗ fail · ⊘ cancel
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [46, 46, 46, 36, 36, 21, 21, 21, 11, 11, 21, 21, 21]  distinct=4
+   hit T1: rows 0..2 cols 0..21 (w=22)
+   hit T2: rows 0..2 cols 25..46 (w=22)
+   hit T3: rows 6..8 cols 0..21 (w=22)
+   hit T4: rows 12..14 cols 0..21 (w=22)
+   rows exceeding 48 cols = 0
+
+-- fanin @ 32 cols -> mode=rail width=32 lines=4 cycles=[] hits=4
+   0         1         2         3 
+01234567890123456789012345678901
+ 0 ✓ T1 REQ Freeze the theme table
+ 1 └─▸ ◐ T3 INT Join the    ⇠ T1+T2
+ 2    └─▸ ○ T4 REV Verif    ⇠ T3+T1
+ 3 ✓ T2 WRK Port the geometry
+   LEGEND (1 line(s)):
+   ▼/▸ arrow · ▶ focus
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [0, 3]  distinct=2
+   hit T1: rows 0..0 cols 0..31 (w=32)
+   hit T3: rows 1..1 cols 0..31 (w=32)
+   hit T4: rows 2..2 cols 0..31 (w=32)
+   hit T2: rows 3..3 cols 0..31 (w=32)
+   rows exceeding 32 cols = 0
+
+==============================================================================
+FIXTURE six-states — One task per state, so six distinct marks are on one board at the same rank.
+==============================================================================
+
+-- six-states @ 120 cols -> mode=boxes width=117 lines=3 cycles=[] hits=6
+   0         1         2         3         4         5         6         7         8         9         0         1         
+012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌───────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+ 1 │ ✓ T1 WRK Compl│   │ ◐ T2 WRK Runni│   │ ✗ T3 WRK Faile│   │ ○ T4 WRK Block│   │ ⊘ T5 WRK Cance│   │ ○ T6 WRK Open │
+ 2 └───────────────┘   └───────────────┘   └───────────────┘   └───────────────┘   └───────────────┘   └───────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [116, 116, 116]  distinct=1
+   hit T1: rows 0..2 cols 0..16 (w=17)
+   hit T2: rows 0..2 cols 20..36 (w=17)
+   hit T3: rows 0..2 cols 40..56 (w=17)
+   hit T4: rows 0..2 cols 60..76 (w=17)
+   hit T5: rows 0..2 cols 80..96 (w=17)
+   hit T6: rows 0..2 cols 100..116 (w=17)
+   rows exceeding 120 cols = 0
+
+-- six-states @ 80 cols -> mode=rail width=80 lines=6 cycles=[] hits=6
+   0         1         2         3         4         5         6         7         
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ✓ T1 WRK Completed task
+ 1 ◐ T2 WRK Running task
+ 2 ✗ T3 WRK Failed task
+ 3 ○ T4 WRK Blocked task
+ 4 ⊘ T5 WRK Cancelled task
+ 5 ○ T6 WRK Open task
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 0
+   box right-border columns = []  distinct=0
+   hit T1: rows 0..0 cols 0..79 (w=80)
+   hit T2: rows 1..1 cols 0..79 (w=80)
+   hit T3: rows 2..2 cols 0..79 (w=80)
+   hit T4: rows 3..3 cols 0..79 (w=80)
+   hit T5: rows 4..4 cols 0..79 (w=80)
+   hit T6: rows 5..5 cols 0..79 (w=80)
+   rows exceeding 80 cols = 0
+
+-- six-states @ 48 cols -> mode=rail width=48 lines=6 cycles=[] hits=6
+   0         1         2         3         4       
+012345678901234567890123456789012345678901234567
+ 0 ✓ T1 WRK Completed task
+ 1 ◐ T2 WRK Running task
+ 2 ✗ T3 WRK Failed task
+ 3 ○ T4 WRK Blocked task
+ 4 ⊘ T5 WRK Cancelled task
+ 5 ○ T6 WRK Open task
+   LEGEND (2 line(s)):
+   ▼/▸ blocker → dependent · ▶ focus
+   ✓ done · ◐ run · ○ open · ✗ fail · ⊘ cancel
+   ARROWHEAD ▼ count = 0
+   box right-border columns = []  distinct=0
+   hit T1: rows 0..0 cols 0..47 (w=48)
+   hit T2: rows 1..1 cols 0..47 (w=48)
+   hit T3: rows 2..2 cols 0..47 (w=48)
+   hit T4: rows 3..3 cols 0..47 (w=48)
+   hit T5: rows 4..4 cols 0..47 (w=48)
+   hit T6: rows 5..5 cols 0..47 (w=48)
+   rows exceeding 48 cols = 0
+
+-- six-states @ 32 cols -> mode=rail width=32 lines=6 cycles=[] hits=6
+   0         1         2         3 
+01234567890123456789012345678901
+ 0 ✓ T1 WRK Completed task
+ 1 ◐ T2 WRK Running task
+ 2 ✗ T3 WRK Failed task
+ 3 ○ T4 WRK Blocked task
+ 4 ⊘ T5 WRK Cancelled task
+ 5 ○ T6 WRK Open task
+   LEGEND (1 line(s)):
+   ▼/▸ arrow · ▶ focus
+   ARROWHEAD ▼ count = 0
+   box right-border columns = []  distinct=0
+   hit T1: rows 0..0 cols 0..31 (w=32)
+   hit T2: rows 1..1 cols 0..31 (w=32)
+   hit T3: rows 2..2 cols 0..31 (w=32)
+   hit T4: rows 3..3 cols 0..31 (w=32)
+   hit T5: rows 4..4 cols 0..31 (w=32)
+   hit T6: rows 5..5 cols 0..31 (w=32)
+   rows exceeding 32 cols = 0
+
+==============================================================================
+FIXTURE cjk — CJK subjects and ids, the fixture that reddens on a cell-width bug.
+==============================================================================
+
+-- cjk @ 120 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4         5         6         7         8         9         0         1         
+012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK 冻 结 验 收 契 约      
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK 移 植 布 局 几 何      
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK 真 机  PTY 验 证       
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 0, 33, 17, 17, 33, 0, 33, 17, 17, 33, 0, 33]  distinct=3
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 120 cols = 0
+
+-- cjk @ 80 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4         5         6         7         
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK 冻 结 验 收 契 约      
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK 移 植 布 局 几 何      
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK 真 机  PTY 验 证       
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 0, 33, 17, 17, 33, 0, 33, 17, 17, 33, 0, 33]  distinct=3
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 80 cols = 0
+
+-- cjk @ 48 cols -> mode=boxes width=34 lines=15 cycles=[] hits=3
+   0         1         2         3         4       
+012345678901234567890123456789012345678901234567
+ 0 ┌────────────────────────────────┐
+ 1 │ ✓ T1 WRK 冻 结 验 收 契 约      
+ 2 └────────────────┬───────────────┘
+ 3                  │
+ 4                  │
+ 5                  ▼
+ 6 ┌────────────────┴───────────────┐
+ 7 │ ◐ T2 WRK 移 植 布 局 几 何      
+ 8 └────────────────┬───────────────┘
+ 9                  │
+10                  │
+11                  ▼
+12 ┌────────────────┴───────────────┐
+13 │ ○ T3 WRK 真 机  PTY 验 证       
+14 └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker → dependent · ▶ focus
+   ✓ done · ◐ run · ○ open · ✗ fail · ⊘ cancel
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [33, 0, 33, 17, 17, 33, 0, 33, 17, 17, 33, 0, 33]  distinct=3
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 6..8 cols 0..33 (w=34)
+   hit T3: rows 12..14 cols 0..33 (w=34)
+   rows exceeding 48 cols = 0
+
+-- cjk @ 32 cols -> mode=boxes width=32 lines=15 cycles=[] hits=3
+   0         1         2         3 
+01234567890123456789012345678901
+ 0 ┌──────────────────────────────┐
+ 1 │ ✓ T1 WRK 冻 结 验 收 契 约    
+ 2 └───────────────┬──────────────┘
+ 3                 │
+ 4                 │
+ 5                 ▼
+ 6 ┌───────────────┴──────────────┐
+ 7 │ ◐ T2 WRK 移 植 布 局 几 何    
+ 8 └───────────────┬──────────────┘
+ 9                 │
+10                 │
+11                 ▼
+12 ┌───────────────┴──────────────┐
+13 │ ○ T3 WRK 真 机  PTY 验 证     
+14 └──────────────────────────────┘
+   LEGEND (1 line(s)):
+   ▼/▸ arrow · ▶ focus
+   ARROWHEAD ▼ count = 2
+   box right-border columns = [31, 0, 31, 16, 16, 31, 0, 31, 16, 16, 31, 0, 31]  distinct=3
+   hit T1: rows 0..2 cols 0..31 (w=32)
+   hit T2: rows 6..8 cols 0..31 (w=32)
+   hit T3: rows 12..14 cols 0..31 (w=32)
+   rows exceeding 32 cols = 0
+
+==============================================================================
+FIXTURE cycle — A dependency cycle: T1 blockedBy T2 and T2 blockedBy T1.
+==============================================================================
+
+-- cycle @ 120 cols -> mode=boxes width=71 lines=3 cycles=[T1,T2] hits=2
+   0         1         2         3         4         5         6         7         8         9         0         1         
+012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐   ┌────────────────────────────────┐
+ 1 │ ○ T1 WRK Cycle half A          │   │ ○ T2 WRK Cycle half B          │
+ 2 └────────────────────────────────┘   └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [70, 70, 70]  distinct=1
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 0..2 cols 37..70 (w=34)
+   rows exceeding 120 cols = 0
+
+-- cycle @ 80 cols -> mode=boxes width=71 lines=3 cycles=[T1,T2] hits=2
+   0         1         2         3         4         5         6         7         
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+ 0 ┌────────────────────────────────┐   ┌────────────────────────────────┐
+ 1 │ ○ T1 WRK Cycle half A          │   │ ○ T2 WRK Cycle half B          │
+ 2 └────────────────────────────────┘   └────────────────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker above → dependent below · ▶ focus lights its chain
+   ✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [70, 70, 70]  distinct=1
+   hit T1: rows 0..2 cols 0..33 (w=34)
+   hit T2: rows 0..2 cols 37..70 (w=34)
+   rows exceeding 80 cols = 0
+
+-- cycle @ 48 cols -> mode=boxes width=47 lines=3 cycles=[T1,T2] hits=2
+   0         1         2         3         4       
+012345678901234567890123456789012345678901234567
+ 0 ┌────────────────────┐   ┌────────────────────┐
+ 1 │ ○ T1 WRK Cycle half│   │ ○ T2 WRK Cycle half│
+ 2 └────────────────────┘   └────────────────────┘
+   LEGEND (2 line(s)):
+   ▼/▸ blocker → dependent · ▶ focus
+   ✓ done · ◐ run · ○ open · ✗ fail · ⊘ cancel
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [46, 46, 46]  distinct=1
+   hit T1: rows 0..2 cols 0..21 (w=22)
+   hit T2: rows 0..2 cols 25..46 (w=22)
+   rows exceeding 48 cols = 0
+
+-- cycle @ 32 cols -> mode=rail width=32 lines=2 cycles=[T1,T2] hits=2
+   0         1         2         3 
+01234567890123456789012345678901
+ 0 ○ T1 WRK Cycle half A
+ 1 └─▸ ○ T2 WRK Cycle half B
+   LEGEND (1 line(s)):
+   ▼/▸ arrow · ▶ focus
+   ARROWHEAD ▼ count = 0
+   box right-border columns = [0]  distinct=1
+   hit T1: rows 0..0 cols 0..31 (w=32)
+   hit T2: rows 1..1 cols 0..31 (w=32)
+   rows exceeding 32 cols = 0

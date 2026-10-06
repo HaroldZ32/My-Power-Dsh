@@ -1,0 +1,86 @@
+{
+  "lane": "seam-guard",
+  "assignment": "T5 (R13 root cause) + T6 (R1/R12 wiring of the dag + workmate pages)",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "measuredAtUtc": "2026-10-06T14:20:00Z",
+  "hostUnderTest": {
+    "package": "@deepseek-harness-tui/dsh-tui",
+    "version": "0.13.0",
+    "installPath": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui",
+    "profileUsed": ".mpd/recon/tui-013/dshhome/profiles/dsh-tui (bundles: dsh-base, dsh-tui, @mpd-dsh/mpd link:/checkout)",
+    "rowOrderFromDumpConfig": { "dsh-tui-panels": 529, "dsh-tui-plugin-host": 531, "dsh-tui (main plugin)": 600, "mpd-tui-adapter": 846, "mpd-tui": 850 }
+  },
+  "artifactRevision": {
+    "note": "THE PTY EVIDENCE DESCRIBES THE COMMITTED dist, NOT the edited src: the src change of T6 is verified by tsgo + the package suite only, because the dist rebuild belongs to the captain's integration task.",
+    "packages/mpd-tui-plugin/dist/index.js": { "bytes": 306516, "sha256": "6c6f573ae2caab43c8836d756d46b07a884e3f0a0d1523cd9798f1ad05d86744", "mtimeLocal": "2026-10-06T21:34:00Z" }
+  },
+  "R13": {
+    "claim": "root-caused and remedied; the bundle cannot fix it (host-owned switches)",
+    "hostEvidence": [
+      "lib/types/components/sidePanel/SidePanelColumn.js — tabs = controller.enabledPanelIds.map(...)",
+      "lib/types/components/sidePanel/useSidePanel.js — enabledPanelIds = parseSidePanelIds(panelsCsv); open = openSetting && splitAvailable",
+      "lib/types/tuiDisplayPrefs.js — DEFAULT_SIDE_PANEL_IDS='todo,jobs,agents'; open store default false; SIDE_PANEL_ID_PATTERN",
+      "lib/types/dsh-adapter/panels.js — register(): enablePanelIdInStore(finalId) (auto-enable), open() -> panelBridgeRequests.request (delivery ack)",
+      "lib/types/components/sidePanel/panelBridge.js — request() returns true with any live Chat consumer",
+      "lib/types/components/sidePanel/useSidePanel.js — bridge handler DROPS an open request whose id is not enabled",
+      "lib/types/dsh-adapter/plugin.js — applyDisplay: applySidePanelPanels(value.sidePanel?.panels ?? config.sidePanel?.panels), at boot and on scope.watch",
+      "lib/types/settings/definitions.js — 'sidePanel.open' (off by default), 'sidePanel.panels'",
+      "lib/types/components/sidePanel/PanelHost.js:71 — tooNarrow = width < def.minColumns swaps the body for a panel-too-narrow notice"
+    ],
+    "measured": {
+      "no-switch": {
+        "dir": "no-switch/",
+        "panelBarAfterToggle": "│ ‹ 待办 › ▸ ◆   (3 tabs: todo/jobs/agents)",
+        "liveEnableListViaHostCompletionProvider": "6 items: toggle, focus, zoom, todo, jobs, agents (+ ↓1) — act1:team ABSENT",
+        "mpdPanelCommandRecord": "mpd 侧栏面板：已打开（act1:team）  (registration ACCEPTED; open() acknowledged)",
+        "conclusion": "the panel registers and is openable, but the host's enable CSV does not carry its id, so no tab exists and the sidebar does not show it"
+      },
+      "with-switch": {
+        "dir": "with-switch/",
+        "switch": "profile cordis.patch.yml -> dsh-tui.config.sidePanel = { open: true, panels: 'todo,jobs,agents,act1:team' }",
+        "bootPanelBar": "│ ‹ 待办 › ▸ ◆ M   (4th tab appears)",
+        "liveEnableListViaHostCompletionProvider": "7 items (+ ↓2) — act1:team present",
+        "afterOpenById": "│ ≡ ▸ ◆ ‹ MPD ›   and the panel BODY renders (subagents section + DAG rows T1/T4/T5/T6 + legend)",
+        "sandboxRestored": "profile cordis.patch.yml byte-identical to profile-patch-before.yml after the run"
+      }
+    },
+    "bundleSideFix": "none legitimate (no seam exposes the enable list; writing it needs a 2nd host-internals contact and fights the user's own settings). Rejected deliberately — see R13-ROOT-CAUSE.md.",
+    "recommendationOnR26Question3": "NO — keep the honest sentence; a live-store read is a second, version-fragile host contact whose truth the host can invalidate on the next settings write, and the sentence is needed anyway. The measurement belongs in the QA lane."
+  },
+  "T6": {
+    "filesEdited": [
+      "packages/mpd-tui-plugin/src/index.ts",
+      "packages/mpd-tui-plugin/src/commands.ts",
+      "packages/mpd-tui-plugin/src/command-trees.ts"
+    ],
+    "adapterTouched": false,
+    "registrations": [
+      { "slug": "team", "via": "registerPanelSurface (pre-existing)", "order": 10, "minColumns": 32 },
+      { "slug": "dag", "via": "registerDagPanel", "order": 11, "minColumns": "DAG_PANEL_MIN_COLUMNS (32 in dag-theme.ts)" },
+      { "slug": "workmate", "via": "registerWorkmatePanel", "order": 12, "minColumns": "WORKMATE_PANEL_MIN_COLUMNS (28)" }
+    ],
+    "hostBudget": { "maxPanelsPerPlugin": 4, "used": 3, "source": "lib/types/dsh-adapter/panels.js MAX_PANELS_PER_PLUGIN" },
+    "slugValidity": "both match the host's SUB_ID_PATTERN ^[a-z][a-z0-9_-]*$",
+    "arbitration": "alt+a and /mpd panel still route through panel.openOrScene(); the two pages use a new openPage() helper in index.ts with the SAME four-state vocabulary (opened/fallback/refused/unavailable) and each page's own scene fallback; takeoverArmed / Ctrl+A contact untouched",
+    "commands": ["/mpd dag", "/mpd workmate", "bare /mpd picker entries", "/mpd completion tree children (bilingual)", "/mpd panel unchanged"],
+    "gates": {
+      "tsgo --noEmit -p tsconfig.json": "exit 0",
+      "bun test packages/mpd-tui-adapter-plugin/test/": "39 pass / 0 fail (incl. no-direct-tui-access)",
+      "bun test packages/mpd-tui-plugin/test/": "279 pass / 2 fail — (1) plugin.test.ts asserts the OLD one-panel contract (calls.panels length 1) and must be updated for the three-panel composition; (2) dag-fidelity R19 numeric ordering, another lane's requirement",
+      "bun run verify:comments": "FAIL — only other lanes' files remain (panel-core.ts 381/547/681, panel-workmate.ts 204/377, panel-dag.ts 587, subagent-scene.ts 225); my index.ts finding was fixed",
+      "node scripts/verify-dist-fresh.ts": "FAIL — exactly ONE stale target: packages/mpd-tui-plugin/dist/index.js (src 356771 B vs committed 306516 B). The adapter is FRESH."
+    },
+    "notVerified": [
+      "the new dag/workmate slugs on a real PTY (they exist only in src; dist is stale by rule)",
+      "the runtime outcome of the three-panel budget against the live host (unit doubles only)",
+      "the false-green sentence change (R26: i18n.ts + panel.ts are outside this lane's write scope)"
+    ]
+  },
+  "files": {
+    "output.log": "raw gate/test/probe outputs captured in one run",
+    "R13-ROOT-CAUSE.md": "the root-cause writeup with host file:symbol evidence",
+    "no-switch/": "real-PTY captures + summary WITHOUT the host switch",
+    "with-switch/": "real-PTY captures + summary WITH the host switches (remedy proof)",
+    "boot.pane.txt / panel-toggle.pane.txt / probe-summary.json / probe4-summary.json": "first-pass captures (superseded by the two subdirectories; step names overlap)"
+  }
+}

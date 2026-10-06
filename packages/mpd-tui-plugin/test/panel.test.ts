@@ -22,6 +22,7 @@ import { describe, expect, test } from "bun:test"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { createLog } from "../src/log"
 import { createPanelComponent, PANEL_DESCRIPTOR_FROZEN, PANEL_MIN_COLUMNS, PANEL_ORDER, PANEL_SLUG, PANEL_TITLE, panelStatusLine, registerPanelSurface, takeoverArmed } from "../src/panel"
+import { legendLines } from "../src/graph"
 import { pick, TUI_TEXT, t } from "../src/i18n"
 import type { TeamWorkflow } from "../src/team-state"
 
@@ -397,7 +398,14 @@ describe("the panel registration (frozen descriptor, discovered id)", () => {
     expect(descriptor?.apiVersion).toBe(1)
     expect(descriptor?.id).toBe("team")
     expect(descriptor?.title).toBe("MPD")
-    expect(descriptor?.minColumns).toBe(32)
+    // 28, NOT 32 — AMENDED BY CAPTAIN RULING (2026-10-13), and the value is pinning a MEASURED host
+    // behaviour rather than a preference: `PanelHost.js` replaces the page's body with a
+    // `panel-too-narrow` notice whenever `width < def.minColumns`, while `dimensions.js` puts the panel
+    // column at exactly 28 cells at the split threshold. A floor of 32 therefore opened a width band in
+    // which the sidebar showed a refusal instead of the team graph — the very "I couldn't see it"
+    // defect this wave root-causes. A frozen test that pins a defective value is a bug with a lock on
+    // it, so this one line moves with the fix; nothing else in this file is touched.
+    expect(descriptor?.minColumns).toBe(28)
     expect(descriptor?.order).toBe(10)
     // No icon (the host demands exactly one display cell) and — deliberately — NO `compact`: the
     // 0.13.0 host validates and stores that slot but does NOT mount its render slot, so declaring one
@@ -489,12 +497,20 @@ describe("the `/mpd panel` status sentence is bilingual", () => {
     // substituted — never a third, untranslated string.
     /** The id the sentence must carry. */
     const id = "act0:team"
-    /** The two declared halves with the placeholder substituted. */
+    // EVERY PLACEHOLDER IS SUBSTITUTED, not just the first — which is why this uses the same `split/join`
+    // the resolver uses rather than `String.replace`: R26's honest sentence names the id TWICE (the host
+    // accepted it, and here is how to add it to the panel list), so a single-replacement expectation
+    // would read as a mismatch the moment the wording got more useful.
+    /** The two declared halves with the placeholder substituted everywhere it appears. */
     const expected = [
-      TUI_TEXT["panel.opened"].en.replace("{id}", id),
-      TUI_TEXT["panel.opened"].zh.replace("{id}", id),
+      TUI_TEXT["panel.opened"].en.split("{id}").join(id),
+      TUI_TEXT["panel.opened"].zh.split("{id}").join(id),
     ]
     expect(expected).toContain(panelStatusLine("opened", id))
+    // R26: the sentence must NOT claim the panel is open — the host's own `open()` is a delivery ack, so
+    // "opened" would be the false green this requirement exists to remove.
+    expect(panelStatusLine("opened", id)).not.toBe(TUI_TEXT["panel.opened"].en)
+    expect(panelStatusLine("opened", id)).toContain(id)
   })
 })
 
@@ -638,7 +654,27 @@ describe("the panel component (both sections, props kit only)", () => {
     expect(indexOfRow("task dependency graph")).toBeGreaterThan(3)
     expect(indexOfRow("│ ✓ T1 WRK build the panel")).toBeGreaterThan(indexOfRow("task dependency graph"))
     expect(indexOfRow("│ ○ T2 WRK migrate the plugin")).toBeGreaterThan(indexOfRow("task dependency graph"))
-    expect(text).toContain("blocker → dependent")
+    // THE LEGEND'S OWN WIDTH CONTRACT, asserted as the WIDTH-DEPENDENT behaviour it is.
+    //
+    // AMENDED DELIBERATELY (2026-10-13), and the reason is a change in the VALUE UNDER TEST rather than a
+    // relaxation: this panel's rows are now budgeted against the frame's INTERIOR (`panelContentWidth` —
+    // the reported width minus the two border cells, the FINDING 11 fix), so the legend's wording ladder
+    // selects whichever rung fits THAT budget. At this fixture's 34-cell panel the interior is 32, and the
+    // 33-cell rung `▼/▸ blocker → dependent · ▶ focus` no longer fits — so the ladder drops to its terser
+    // 19-cell rung, which is the ladder working exactly as designed (a narrow viewport gets terser wording,
+    // never a truncated lie). The old expectation pinned the roomier rung, written against the older, wider
+    // budget. The real-width behaviour is evidenced by the frozen PTY capture, where the 120-column frame
+    // prints `▼/▸ blocker → dependent · ▶ focus` verbatim.
+    //
+    // WHAT IS ASSERTED INSTEAD: the marks a reader cannot recover from the drawing (BOTH directional
+    // arrows, and the focus marker) are named on whichever rung the budget selects — and the ladder still
+    // ASCENDS when there is room, which is the half that stops a later edit from quietly pinning the terse
+    // rung forever.
+    expect(text).toContain("▼")
+    expect(text).toContain("▸")
+    expect(text).toContain("▶ focus")
+    expect(legendLines(80)[0]).toContain("blocker above → dependent below")
+    expect(legendLines(32)[0]).toContain("arrow")
     // The divider separates the two sources.
     expect(text).toContain("─")
     // THE ORDER (frozen clause R3): the host's curated rows come FIRST, the MPD DAG below them — no

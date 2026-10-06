@@ -31,6 +31,29 @@
 // state (`failedDependencies`) rather than folded into it. `team-store.ts` and `team-state.ts` carry
 // the same rule; this module only DRAWS the `visual` it is handed and never re-derives it, which is
 // how the three stay in agreement.
+//
+// RANK IS DERIVED FROM THE GRAPH, NOT TRUSTED FROM `depth` (R17, user-reported defect). The served
+// `depth` was MEASURED lying on our own live board: `.mpd/team/teams/team-20261006135108.json` holds
+// task ids `T1..T10` while its `blockedBy` values are plan ordinals (`["2"]`, `["2","3","4","6"]`, …),
+// `team-store.ts` resolves a blocker by exact task id or exact subject and otherwise returns the
+// reference UNCHANGED, and its `taskDepths` then filters the unresolvable ones out — so every task
+// became a root, every depth became 0, and the drawing collapsed to ONE rank with NO edges. That is
+// the exact lie the user reported against the WEB view, and the TUI must not repeat it: `rankPlan`
+// recomputes the longest blocker path over the blockers that RESOLVE, and uses the served `depth`
+// only for a board whose graph says nothing at all. `ranksDerived` reports which source won.
+//
+// A BLOCKER REFERENCE THAT RESOLVES TO NOTHING IS REPORTED, NEVER DROPPED (R18). The silent filter in
+// the store is what produced that bug, and a second silent filter one layer down would reproduce it,
+// so the references no task on the board carries travel out of the layout in `unresolved` and can be
+// counted, named and shown by the page.
+//
+// A WIDE GLYPH OWNS THE CELL AFTER IT. `cellWidth` — never a character count — says how many cells a
+// glyph takes, and the cell a wide glyph covers must render as NOTHING rather than as the background
+// space it would otherwise fall back to. Writing one array slot per character while advancing two
+// cells left that slot blank, which made a row of CJK text one cell WIDER than its grid and pushed a
+// box's closing `│` off the edge — measured: `cjk-1 codepoints=33 cellWidth=34 endsWith│=false`
+// against `ascii codepoints=34 cellWidth=34 endsWith│=true`. The `wide` array below is that fix, and
+// it is why a CJK subject can no longer shear the drawing.
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 
 /** One task as the graph needs it; a structural subset of `TeamTaskRow` so a fixture is cheap. */
@@ -101,6 +124,22 @@ export interface GraphView {
   focus?: string
   /** The tasks lit beside the focus: its transitive DEPENDENCIES. */
   chain: string[]
+  /**
+   * Where the ranks came from: `true` when they were DERIVED from the dependency graph, `false` when
+   * the graph resolved no blocker at all and the served `depth` was the only signal left.
+   *
+   * Reported rather than implicit because the served `depth` has been measured lying (see the header),
+   * so a reader of a flat-looking drawing needs to know which of the two sources drew it.
+   */
+  ranksDerived: boolean
+  /**
+   * Blocker references no task on this board carries, sorted and de-duplicated.
+   *
+   * NOT decorative: the served records really do carry them (the live board's `blockedBy` holds plan
+   * ordinals while its ids are `T1..T10`) and the store silently filters them out, so a page can only
+   * stop the data loss from being invisible if the layout hands the list on.
+   */
+  unresolved: readonly string[]
 }
 
 /**
@@ -320,18 +359,140 @@ export function dependencyChain(tasks: readonly GraphTask[], id: string): Set<st
   return seen
 }
 
-/** The ranks a board lays out in: index = depth, value = that rank's tasks in board order. */
-function ranksOf(tasks: readonly GraphTask[]): GraphTask[][] {
-  /** The highest depth on the board; a negative depth is treated as a root. */
-  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0)
-  /** One bucket per rank, so an empty rank still exists and the spacing stays honest. */
-  const ranks: GraphTask[][] = Array.from({ length: deepest + 1 }, () => [])
-  for (const task of tasks) {
-    /** The rank this task claims; a negative or unknown depth falls back to 0. */
-    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0
-    ranks[rank].push(task)
+/** What the board's own references resolve to, and therefore how the ranks were decided. */
+interface RankPlan {
+  /** The ranks, index = rank, value = that rank's tasks in board order. */
+  ranks: GraphTask[][]
+  /** The rank each task sits in, which the rail's forest and the chain's walk both read. */
+  rankOf: ReadonlyMap<string, number>
+  /** Whether the ranks were derived from the dependency graph; `false` means the served depth drew. */
+  derived: boolean
+  /** The blocker references no task on the board carries, sorted and de-duplicated. */
+  unresolved: string[]
+}
+
+/**
+ * The rank of every task, DERIVED: the longest chain of blockers that RESOLVE beneath it.
+ *
+ * This is the algorithm the drawing should have used all along (§header, R17). It walks iteratively —
+ * an explicit stack, never a recursion — so a malformed board cannot exhaust the call stack, and it
+ * breaks a cycle by counting the blocker that closes it as contributing NOTHING, which keeps every
+ * rank finite while `cycleIds` still reports the cycle itself.
+ * @param tasks - the board, in board order (the walk's determinism rests on it).
+ * @param byId - task lookup by id.
+ * @returns the derived rank of every task; a task whose blockers do not resolve is a root.
+ */
+function deriveRanks(tasks: readonly GraphTask[], byId: ReadonlyMap<string, GraphTask>): Map<string, number> {
+  /** The settled rank of every task. */
+  const settled = new Map<string, number>()
+  /** The tasks on the current walk, whose ranks are not settled yet. */
+  const walking = new Set<string>()
+  for (const root of tasks) {
+    if (settled.has(root.id)) continue
+    /** The walk's frames: the id, and how many of its blockers have been expanded. */
+    const stack: Array<{ id: string; next: number }> = [{ id: root.id, next: 0 }]
+    walking.add(root.id)
+    while (stack.length > 0) {
+      /** The frame being worked. */
+      const frame = stack[stack.length - 1]
+      /** This task's blocker references that RESOLVE to a task on the board. */
+      const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id))
+      if (frame.next < deps.length) {
+        /** The next blocker to expand. */
+        const dependency = deps[frame.next]
+        frame.next += 1
+        // A blocker already on the walk closes a cycle: it contributes nothing, so the walk neither
+        // recurses nor settles it twice — and every rank stays finite.
+        if (settled.has(dependency) || walking.has(dependency)) continue
+        walking.add(dependency)
+        stack.push({ id: dependency, next: 0 })
+        continue
+      }
+      /** The longest chain under this task, one longer than its deepest blocker. */
+      let deepest = 0
+      for (const dependency of deps) deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1)
+      settled.set(frame.id, deepest)
+      walking.delete(frame.id)
+      stack.pop()
+    }
   }
+  return settled
+}
+
+/** The rank a served `depth` claims; a negative or non-finite depth is a root. */
+function servedRank(task: GraphTask): number {
+  return Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0
+}
+
+/**
+ * The order two task ids draw in: NUMERIC, so `T2` precedes `T10` instead of following it (R19).
+ *
+ * The reference model orders a column by `localeCompare(a, b, { numeric: true })`, and a board that
+ * draws the order the route happened to serve reads as scrambled: `T10, T2, T1, T3` is what a reader
+ * sees today. A numeric collator is what makes `T9` sort before `T10`, which character-wise it does
+ * not.
+ */
+const ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
+
+/**
+ * Bucket a board into ranks, one array per rank.
+ *
+ * WITHIN A RANK the tasks are ordered by the numeric id (R19), which is the order the drawing stacks
+ * them left to right; the board's own order is not a fact about the dependency graph, so it is not a
+ * fact about the picture either.
+ * @param tasks - the board.
+ * @param rankOf - the rank each task claims.
+ * @returns the ranks, index = rank; every rank from 0 to the deepest exists, even when empty.
+ */
+function bucketRanks(tasks: readonly GraphTask[], rankOf: (task: GraphTask) => number): GraphTask[][] {
+  /** The deepest rank on the board, so an empty rank still exists and the spacing stays honest. */
+  const deepest = tasks.reduce((max, task) => Math.max(max, rankOf(task)), 0)
+  /** One bucket per rank, in draw order. */
+  const ranks: GraphTask[][] = Array.from({ length: deepest + 1 }, () => [])
+  for (const task of tasks) ranks[Math.min(Math.max(0, rankOf(task)), deepest)].push(task)
+  for (const rank of ranks) rank.sort((left, right) => ID_ORDER.compare(left.id, right.id))
   return ranks
+}
+
+/**
+ * What the board's references resolve to: its ranks, where they came from, and what did not resolve.
+ *
+ * THE DERIVATION WINS; THE SERVED `depth` IS A FALLBACK (R17). It is used in the one case where the
+ * graph carries no information at all — not a single blocker reference resolves — while the served
+ * depths still vary, which means the record knows about structure its references cannot express. The
+ * result is reported in `ranksDerived` so that fallback is never silent.
+ * @param tasks - the board.
+ * @returns the rank plan; ranks are empty for an empty board.
+ */
+function rankPlan(tasks: readonly GraphTask[]): RankPlan {
+  /** Task lookup by id. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** The blocker references no task on the board carries. */
+  const missing = new Set<string>()
+  /** How many blocker references DO resolve to a task on the board. */
+  let resolved = 0
+  for (const task of tasks) {
+    for (const id of task.dependencies) {
+      if (byId.has(id)) resolved += 1
+      else missing.add(id)
+    }
+  }
+  /** The unresolved references, in a stable order. */
+  const unresolved = [...missing].sort()
+  if (tasks.length === 0) return { ranks: [], rankOf: new Map(), derived: true, unresolved }
+  /** Whether the served depths claim any structure at all. */
+  const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1
+  if (resolved === 0 && servedVaries) {
+    /** The ranks the served `depth` claims, the only signal left on a graph that resolves nothing. */
+    const ranks = bucketRanks(tasks, servedRank)
+    /** The rank each task sits in, read back off those buckets. */
+    const rankOf = new Map<string, number>()
+    ranks.forEach((rank, index) => { for (const task of rank) rankOf.set(task.id, index) })
+    return { ranks, rankOf, derived: false, unresolved }
+  }
+  /** The rank every task derives from its own blocker graph. */
+  const derived = deriveRanks(tasks, byId)
+  return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved }
 }
 
 /** Ids taking part in a dependency cycle, so a malformed board is REPORTED rather than drawn flat. */
@@ -382,14 +543,16 @@ export function cycleIds(tasks: readonly GraphTask[]): string[] {
  * @returns the view, or `undefined` when even the narrowest boxes would not fit.
  */
 export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: string): GraphView | undefined {
+  /** What the board's references resolve to, and therefore how it is ranked. */
+  const plan = rankPlan(tasks)
   if (tasks.length === 0) {
     /** The empty view: a board with no tasks draws nothing rather than a bare frame. */
-    const empty: GraphView = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] }
+    const empty: GraphView = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved }
     if (focus !== undefined) empty.focus = focus
     return empty
   }
   /** The ranks, in draw order. */
-  const ranks = ranksOf(tasks)
+  const ranks = plan.ranks
   if (ranks.length > MAX_BOX_RANKS) return undefined
   /** The count of tasks in the busiest rank, which sets the box width. */
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1)
@@ -421,18 +584,28 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
   const text: (string | null)[][] = []
   /** The tone per cell; a later, LOUDER write wins so a chain edge stays visible across a trunk. */
   const tone: (GraphTone | null)[][] = []
+  /**
+   * The cells a WIDE glyph already covers, which must render as NOTHING rather than as a space.
+   *
+   * THE CJK FIX (see the header): a wide glyph takes two cells, so the cell after it is part of the
+   * glyph and cannot carry a space — a space there makes the row one cell wider than the grid it was
+   * built for and pushes the box's closing border off its own column.
+   */
+  const wide: boolean[][] = []
   /** The tone precedence, so a merge never dims something the focus lit. `blank` is lowest. */
   const order: GraphTone[] = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"]
   /** The tone currently in a cell, or undefined. */
   const toneAt = (row: number, col: number): GraphTone | undefined => tone[row]?.[col] ?? undefined
   /** Grow the canvas so a cell can be written. */
   const grow = (row: number): void => {
-    while (mask.length <= row) { mask.push(new Array(width).fill(0)); text.push(new Array(width).fill(null)); tone.push(new Array(width).fill(null)) }
+    while (mask.length <= row) { mask.push(new Array(width).fill(0)); text.push(new Array(width).fill(null)); tone.push(new Array(width).fill(null)); wide.push(new Array(width).fill(false)) }
   }
   /** OR one direction into a cell; edges MERGE, they never overwrite. */
   const link = (row: number, col: number, dir: number, at: GraphTone): void => {
     if (col < 0 || col >= width || row < 0) return
     grow(row)
+    // A cell inside a wide glyph is not a cell this drawing may enter: the glyph already owns it.
+    if (wide[row][col]) return
     mask[row][col] |= dir
     /** The tone already there, if any. */
     const current = toneAt(row, col)
@@ -442,8 +615,21 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
   const label = (row: number, col: number, char: string, at: GraphTone): void => {
     if (col < 0 || col >= width) return
     grow(row)
+    if (wide[row][col]) return
     text[row][col] = char
     tone[row][col] = at
+    // EVERY CELL THE GLYPH COVERS IS MARKED, in CELLS and never in characters: the glyph's own tone is
+    // carried onto its continuation cells so the two render as ONE span, and any junction or label a
+    // previous write left there is cleared — the glyph has replaced that cell, not merely sat beside it.
+    for (let step = 1; step < cellWidth(char); step++) {
+      /** The cell this glyph's next column covers; past the edge there is nothing to mark. */
+      const over = col + step
+      if (over >= width) break
+      text[row][over] = null
+      mask[row][over] = 0
+      tone[row][over] = at
+      wide[row][over] = true
+    }
   }
   /** The centre column of one task's box. */
   const centreOf = (id: string): number => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2)
@@ -517,7 +703,10 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
     let run: GraphSpan | null = null
     for (let col = 0; col < width; col++) {
       /** The character at this cell: a label wins over the junction glyph for its mask. */
-      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " "
+      // A cell a WIDE glyph covers renders as NOTHING, never as the background space it would
+      // otherwise fall back to — that is what keeps the row exactly as wide as the grid it was built
+      // for, and the box's closing border on its own column (the CJK defect, see the header).
+      const char = wide[row][col] ? "" : (text[row][col] ?? JUNCTION[mask[row][col]] ?? " ")
       // An untouched cell is BACKGROUND, and consecutive background is ONE span rather than one per
       // cell: the host renders each span as its own element, so a 108-cell row of mostly gaps would
       // otherwise build ~100 elements per row on every render — and this scene re-renders on hover.
@@ -533,7 +722,7 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
   /** The focus's chain as a list, for the header and the tests. */
   const chainList = chain === undefined ? [] : [...chain].sort()
   /** The finished view; `focus` is assigned only when there IS one, which exactOptionalPropertyTypes requires. */
-  const view: GraphView = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList }
+  const view: GraphView = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved }
   if (focus !== undefined) view.focus = focus
   return view
 }
@@ -553,17 +742,32 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
   /** Task lookup by id. */
   const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** What the board's references resolve to; the forest hangs off the DERIVED rank, not the served one. */
+  const plan = rankPlan(tasks)
   /** Each task's children, attached to the FIRST of its blockers in draw order. */
   const children = new Map<string, GraphTask[]>()
   for (const task of tasks) {
     /** The blocker this task hangs under: the deepest one, so the forest stays shallow. */
-    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0]
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (plan.rankOf.get(right) ?? 0) - (plan.rankOf.get(left) ?? 0))[0]
     if (parent === undefined) continue
     if (!children.has(parent)) children.set(parent, [])
     ;(children.get(parent) as GraphTask[]).push(task)
   }
   /** The rows, accumulated depth-first. */
   const drawn: Array<{ task: GraphTask; prefix: string; leaf: boolean; depth: number }> = []
+  // THE PREFIX IS BOUNDED BY THE WIDTH, or a deep forest silently loses every task near its bottom:
+  // the indent grows three cells per level, and at ~26 levels it filled a 80-cell row on its own, so
+  // the label was clamped away entirely and rows 27..40 of a 40-task chain rendered as blank lines —
+  // measured while probing a 40-task board, and the reason `hits` and the drawn text disagreed. The
+  // budget keeps the label its own floor by cutting whole three-cell levels off the FRONT, which are
+  // the far ancestors a reader is not following anyway; the levels nearest the task are what carries
+  // its place in the tree.
+  /** The cells the label keeps for itself whatever the indent wants, tail or no tail. */
+  const RAIL_LABEL_FLOOR = 16
+  /** How many indent levels fit while that floor is kept. */
+  const maxLevels = Math.max(0, Math.floor((Math.max(0, cols) - RAIL_LABEL_FLOOR) / 3))
+  /** The cells the bounded prefix may occupy. */
+  const prefixCells = maxLevels * 3
   // A task is drawn AT MOST ONCE. Without this the fallback pass below would re-enter a cycle and
   // recurse until the stack died — measured: a two-task cycle hung the render. The forest is a
   // DRAWING of a DAG, so a row per task is both the correct output and the termination proof.
@@ -572,7 +776,7 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
   /**
    * Walk one task's subtree, recording the row it draws.
    * @param task - the task to draw.
-   * @param prefix - the connector prefix inherited from the ancestors.
+   * @param prefix - the connector prefix inherited from the ancestors, already width-bounded.
    * @param leaf - whether this task is the last child of its parent.
    * @param depth - how deep the walk is, which decides whether a connector is drawn.
    */
@@ -582,7 +786,11 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
     drawn.push({ task, prefix, leaf, depth })
     /** This task's children, in board order. */
     const kids = children.get(task.id) ?? []
-    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1))
+    /** The prefix this task's children inherit, cut to the width budget on a whole level boundary. */
+    const grown = depth === 0 ? "" : prefix + (leaf ? "   " : "│  ")
+    /** The bounded form: the innermost levels survive, so the near tree stays readable. */
+    const next = grown.length <= prefixCells ? grown : grown.slice(grown.length - prefixCells)
+    kids.forEach((child, index) => walk(child, next, index === kids.length - 1, depth + 1))
   }
   for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0)) walk(root, "", true, 0)
   // A task reached by no root (a cycle) must still be drawn, or the board would silently lose a row.
@@ -628,7 +836,7 @@ export function layoutRail(tasks: readonly GraphTask[], cols: number, focus?: st
   /** The focus's chain as a list, for the header and the tests. */
   const chainList = chain === undefined ? [] : [...chain].sort()
   /** The finished view; `focus` is assigned only when there IS one. */
-  const view: GraphView = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList }
+  const view: GraphView = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved }
   if (focus !== undefined) view.focus = focus
   return view
 }
@@ -644,7 +852,10 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
   /** The focus's chain, or undefined when nothing is focused. */
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
   /** The ranks, in draw order. */
-  const ranks = ranksOf(tasks)
+  /** What the board's references resolve to, and therefore how it is ranked. */
+  const plan = rankPlan(tasks)
+  /** The ranks, in draw order. */
+  const ranks = plan.ranks
   /** The lines and the rectangles, built together. */
   const lines: GraphSpan[][] = []
   /** One rectangle per row, so the pointer can resolve to a task. */
@@ -671,7 +882,7 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
   /** The focus's chain as a list, for the header and the tests. */
   const chainList = chain === undefined ? [] : [...chain].sort()
   /** The finished view; `focus` is assigned only when there IS one. */
-  const view: GraphView = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList }
+  const view: GraphView = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved }
   if (focus !== undefined) view.focus = focus
   return view
 }

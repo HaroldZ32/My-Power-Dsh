@@ -1,0 +1,66 @@
+{
+  "task": "graph.ts R17 (derived rank) + R18 (unresolved references) + R19 (numeric order) + the CJK cell defect + the rail's deep-prefix label loss",
+  "member": "dag-geometry (Senior Engineer)",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "captured_utc": "2026-10-06T14:11:46Z",
+  "note": "The frozen layoutDag/DagView contract (src/dag-layout.ts) was RETIRED by the captain's ruling mid-flight; that file was deleted and the amendment landed in graph.ts instead, which is why this evidence directory is named after the module that actually changed.",
+  "files": [
+    "packages/mpd-tui-plugin/src/graph.ts",
+    "packages/mpd-tui-plugin/test/graph-rank.test.ts (new, 12 arms)"
+  ],
+  "commands": [
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/graph-rank.test.ts",
+      "observed": "12 pass / 0 fail / 743 expect() calls"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/graph.test.ts",
+      "observed": "25 pass / 0 fail — the pre-existing suite is untouched by the amendment"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/dag-fidelity.test.ts",
+      "observed": "fidelity-verifier's independent R17/R19/R21 arms PASS against graph.ts (its R19 arm was red on purpose before the numeric-order fix)"
+    },
+    {
+      "command": "bun evidence/tui/dag-port/graph-rank/20261006T140859Z/cjk.mts",
+      "observed": "BEFORE raw: 34 codepoints but 40 CELLS for a 34-cell grid; BEFORE clamped: 28 codepoints / 34 cells / endsWith│=FALSE. AFTER: 28 codepoints / 34 cells / endsWith│=TRUE"
+    }
+  ],
+  "r17_rank_derivation": {
+    "rule": "rankPlan() derives the rank as the longest chain of blockers that RESOLVE on the board (iterative, cycle-safe); the served `depth` draws ONLY when not one reference resolves AND the served depths vary, and `ranksDerived` reports which source won.",
+    "arms": [
+      "FALLBACK ARM A: a genuinely flat board, served flat, still draws flat and reports ranksDerived=true (nothing is invented)",
+      "FALLBACK ARM B: the user's broken board (nothing resolves, depths all 0, so they do NOT vary) -> the served depth is REFUSED and derivation runs",
+      "FALLBACK ARM C: nothing resolves but the served depths DO vary -> the fallback fires and reports ranksDerived=false",
+      "the same board with a LYING depth and with an HONEST depth draws identical ranks and columns",
+      "the measured board (ids T1..T12, ordinals resolved, every depth 0) yields FIVE ranks where the served depth drew one"
+    ]
+  },
+  "r18_unresolved": {
+    "rule": "GraphView.unresolved carries every blocker reference no task on the board names, sorted and de-duplicated, from BOTH dependency lists; it survives every mode (boxes, rail, list).",
+    "arms": [
+      "the record verbatim (ordinals 2..9) reports exactly [\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\"] and invents no edges",
+      "a reference that DOES resolve draws its arrowhead and is NOT listed",
+      "an empty board reports nothing"
+    ]
+  },
+  "cjk_cell_fix": {
+    "rule": "a wide glyph OWNS the cells it covers: `cellWidth` (never a character count) says how many, the covered cells render as NOTHING, and link()/label() refuse to write into them.",
+    "mechanism_measured": "the removed loop wrote ONE array slot per character while advancing cellWidth(char) per iteration, so the cell a wide glyph covers kept rendering a background space: the row came out 6 cells wider than its 34-cell grid, and the layout's own clamp then cut the box's closing border. The clamp is where the border is lost, which is why the defect reproduced at every width and with a single wide glyph.",
+    "arms": [
+      "every line's cellWidth <= cols at 120/80/48/34, and a boxed body row ENDS ON ITS BORDER COLUMN (cellWidth == colEnd + 1)",
+      "the ASCII control keeps the identical geometry, so the fix is not a special case"
+    ]
+  },
+  "extra_defect_found_and_fixed": {
+    "what": "the rail's indent prefix grew 3 cells per level unbounded, so at ~27 levels it filled an 80-cell row by itself, clampSpans cut the label, and rows 27..40 of a 40-task chain rendered BLANK while their hit rectangles still claimed the task",
+    "evidence": "measured while probing a 40-task board: `rail lines 40 hits 40` but row 39 was 80 spaces; after bounding the prefix to whole 3-cell levels off the front: all 40 rows carry their own task id at 80/40/24 columns",
+    "arm": "test/graph-rank.test.ts > 'the rail keeps every task at any depth'"
+  },
+  "not_verified": [
+    "No real terminal render: every CJK/rail claim is measured with cellWidth over the layout's own output",
+    "The rank derivation is exercised on fixtures, not on a live team record read through the route (that is panel-surface's page and the captain's docker step)",
+    "graph.ts's boxes/rail/list were not re-verified visually; only their invariants and the pre-existing 25-arm suite",
+    "The bound where lane/gutter geometry interacts with a real font (CJK in a browser) is out of scope for this file"
+  ]
+}

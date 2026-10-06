@@ -1,0 +1,68 @@
+{
+  "task": "T2 (R17/R18/R19/CJK) + PRIORITY #1 (WEB DAG edge legibility) — dag-geometry",
+  "member": "dag-geometry (Senior Engineer)",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "captured_utc": "2026-10-06T14:11:46Z",
+  "write_scope_used": [
+    "packages/mpd-tui-plugin/src/graph.ts",
+    "packages/mpd-tui-plugin/test/graph-rank.test.ts (new)",
+    "packages/mpd-bundle-plugin/src/team-view.ts",
+    "packages/mpd-bundle-plugin/test/team-view.test.ts",
+    "evidence/tui/dag-port/**"
+  ],
+  "commands": [
+    {
+      "command": "bun test packages/mpd-bundle-plugin/test/",
+      "observed": "146 pass / 0 fail / 2750 expect() calls"
+    },
+    {
+      "command": "bun test packages/mpd-bundle-plugin/test/team-view.test.ts",
+      "observed": "28 pass / 0 fail (includes the 4 new legibility arms and the new R19 arm)"
+    },
+    {
+      "command": "./node_modules/.bin/tsgo --noEmit -p tsconfig.json",
+      "observed": "PASS — 0 errors across the whole tree (was red from other lanes' in-flight files earlier)"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "observed": "team-view.ts: 0 violations (6 fixed). Remaining violations belong to panel-dag.ts / panel-workmate.ts / scene-visuals.test.ts"
+    },
+    {
+      "command": "bun evidence/tui/dag-port/web-dag/20261006T140859Z/before-after.mts",
+      "observed": "see before_after below"
+    }
+  ],
+  "before_after": {
+    "fixture": "the captain's corrected 5-rank board: T1..T5 rank0, T6/T11/T12 rank1, T7/T9 rank2, T8 rank3, T10 rank4; 16 drawable edges, 8 of them rank-skipping",
+    "edge_measured": "T2 -> T7 (rank 0 -> rank 2, so it skips rank 1's column)",
+    "before": {
+      "runs": "out[164,77 91x1] riser[255,25 1x52] in[255,25 86x1]",
+      "why": "the removed formula took the space between the two END boxes as the riser's band: band=[165,339], centre=252, lane=+3 (per-source counter) -> riserX=255, i.e. the MIDDLE OF RANK 1'S COLUMN",
+      "crossings": "ALL THREE runs crossed a box: out -> rank1.row1, riser -> rank1.row0 AND rank1.row1, in -> rank1.row0"
+    },
+    "after": {
+      "runs": "out[153,77 12x1] riser[165,77 1x104] cross1[165,181 171x1] riser2[336,25 1x156] in[336,25 16x1]",
+      "why": "the edge is a CHAIN OF ADJACENT-RANK HOPS: riser1 stands in gutter 0 (x=165), the crossing runs at y=181 — BELOW every box of rank 1, in the row reserved for this edge — riser2 stands in gutter 1 (x=336), then the lead-in arrives at T7's border",
+      "crossings": "0 interior overlaps over the WHOLE graph: 66 runs x 12 boxes = 0"
+    },
+    "geometry_measured": "inset=15 (computed from the 9 lanes the busiest gutter carries), gutter=30, maxLanes=9, laneOverflow=0; the 9 lane x values are distinct (156,159,162,165,168,171,174,177,180)"
+  },
+  "invariants_now_pinned_by_tests": [
+    "no edge run enters any node box's interior, read off data-mpd-box / data-mpd-route in the rendered tree (with a POSITIVE CONTROL: the pre-fix riser is caught by the same check)",
+    "a rank-skipping edge is a chain of adjacent-rank hops (keys out, riser, cross1, riser2, in) with the two risers in DIFFERENT gutters and the crossing below every box of the rank it crosses",
+    "the busiest gutter's 9 hops occupy 9 distinct x, all strictly inside the gutter",
+    "every drawn run reaches the box(s) it names (lead-out on the blocker's border, lead-in on the blocked task's border, marker tip on that same border)",
+    "data-mpd-graph says ranks=5 edges=16 and exactly 16 data-mpd-edge marks exist (the docker witness contract, unchanged)"
+  ],
+  "r19_numeric_order": {
+    "tui": "graph.ts bucketRanks sorts each rank with Intl.Collator(numeric:true) — fidelity-verifier's arm 'R19: within a rank the task order is NUMERIC' now PASSES",
+    "web": "team-view.ts layout() sorts each column with the same comparator — new arm: a scrambled T10,T2,T1,T3,T20 board draws T1,T2,T3,T10,T20 in the column AND in the node rows"
+  },
+  "not_verified": [
+    "No browser render and no screenshot: the legibility claim is proven geometrically from the rendered element tree (data-mpd-box / data-mpd-route) plus the pure layout, not visually",
+    "No docker run and no real PTY: R16's real-machine evidence is the captain's step",
+    "The TEST is asserted at the DOM/tree level via the existing render harness (no real layout engine), so a CSS-only mistake (e.g. a transform on the edge layer) would not be caught",
+    "Back edges (cycles) keep the mirrored wrap-around route; only same-rank and forward edges are covered by the new fixture's arms",
+    "laneOverflow is reported but never exercised by a fixture (the inset computation prevents it); no arm forces the capped-inset path"
+  ]
+}

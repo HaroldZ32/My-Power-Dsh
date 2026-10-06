@@ -95,6 +95,17 @@ integer in the host's own 12..64 range (its default is 28); `order` an optional 
 and STORES `compact` but does not mount its render slot** (the host's own `TODO §18.1`), so this bundle
 declares `component` only.
 
+**Who uses it, after the DAG-port wave (2026-10-06).** `mpd-tui-plugin` contributes **three** pages through
+this one seam — `team`, `dag` and `workmate` — against the host's 4-per-plugin budget, all three asking
+for `minColumns` 28. The seam surface itself is unchanged and **this package was not edited by that
+wave**; what is worth carrying here is the measured trap that wave root-caused: `minColumns` is not a
+preference but a GATE — the host renders a `panel-too-narrow` notice **instead of** a page's body
+whenever the column is narrower than the descriptor asks for, while its own split threshold puts the
+panel column at exactly `28`. A descriptor asking for more than the host's own floor therefore buys a
+band of terminal widths in which the sidebar opens, the tab exists, and the user is shown a refusal
+instead of the page — and nothing reddens at registration, because the host's validator accepts the
+larger number happily. Ask for the floor; degrade inside the page.
+
 ## The binding discipline
 
 Measured, not chosen (T4-INERT-1, `evidence/tui/plugin/20260915T054343Z/mount-instrumentation/`):

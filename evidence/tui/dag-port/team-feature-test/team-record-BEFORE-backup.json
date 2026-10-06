@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "teamId": "team-20261006135108",
+  "name": "tui-dag-port",
+  "description": "Wave: port the WEB dependency-DAG visual language to the MPD TUI as independent sidebar pages (dag + workmate), redesign the whole mpd-tui surface layer, and prove panel visibility on a real machine. Acceptance contract: evidence/tui/dag-port/requirements.md",
+  "leadSessionId": "3e63ddb8-5044-4db9-a601-7a26c217815b",
+  "phase": "active",
+  "createdAt": "2026-10-06T13:51:08.036Z",
+  "members": [
+    {
+      "id": "M1",
+      "name": "dag-geometry",
+      "description": "Owns the pure adaptive DAG layout engine for the TUI (packages/mpd-tui-plugin/src/dag-layout.ts)",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "role": "Senior Engineer",
+      "executorRef": "7cbeae1a-2081-412f-bc28-33eed81c5c08"
+    },
+    {
+      "id": "M2",
+      "name": "panel-surface",
+      "description": "Owns the independent sidebar pages: the new dag panel, the new workmate panel, and the reworked merged team panel",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "role": "Senior Engineer",
+      "executorRef": "7507d9b8-124c-4736-854a-3b07af0b2709"
+    },
+    {
+      "id": "M3",
+      "name": "tui-visuals",
+      "description": "Owns the whole-surface visual redesign: every scene, the status line and the renderers share one visual system",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "executorRef": "80f16fab-d086-40d2-8042-7c9fee85b61c"
+    },
+    {
+      "id": "M4",
+      "name": "seam-guard",
+      "description": "Owns registration/wiring of the new panels and ROOT-CAUSES why the existing team panel was invisible",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "executorRef": "0d185009-48c9-4ada-b7df-d10167526b70"
+    },
+    {
+      "id": "M5",
+      "name": "fidelity-verifier",
+      "description": "Independent verification: invariant/golden geometry tests, PTY captures, gate runs, honest bounds",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "executorRef": "c388b96b-9b1c-434b-92cd-c541cc593243"
+    },
+    {
+      "id": "M6",
+      "name": "visual-reviewer",
+      "description": "Reads real-PTY captures and judges visual fidelity vs the WEB reference, plus CJK alignment",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "executorRef": "f8aeb18c-4923-4017-ac1e-2fa62d7db852"
+    },
+    {
+      "id": "M7",
+      "name": "doc-scribe",
+      "description": "Bilingual docs for the touched packages plus evidence archiving",
+      "status": "running",
+      "spawnedAt": "2026-10-06T13:51:08.037Z",
+      "executorRef": "d0bb3e25-b785-4506-af00-070e23599b67"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "subject": "REQUIREMENT: freeze the acceptance contract and the shared visual contract",
+      "description": "The frozen input every other task references. OWNER: captain (already delivered before the wave started, completed at approval).\n\nDELIVERED:\n- evidence/tui/dag-port/requirements.md — the agreed acceptance criteria R1..R16, the user's verbatim decisions, the non-goals, and the write-scope partition.\n- packages/mpd-tui-plugin/src/dag-theme.ts — the captain-owned visual contract: DagTone, DAG_STATE_TONES, DAG_TONE_THEME (host theme keys), DAG_TONE_WEB_HEX (provenance from the WEB TONE table), DAG_TONE_GLYPH, DAG_KIND_ABBREV, DAG_CHROME, DAG_ANIM, DAG_PANEL_SLUG='dag', WORKMATE_PANEL_SLUG='workmate', DAG_PANEL_MIN_COLUMNS=32, WORKMATE_PANEL_MIN_COLUMNS=28.\n\nACCEPTANCE: `./node_modules/.bin/tsgo --noEmit -p tsconfig.json` exits 0 with the contract in place — MEASURED, exit 0. No lane may edit dag-theme.ts; it exists so two parallel lanes never share a file (AGENTS.md §5, one writer per file).",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [
+        "evidence/tui/dag-port/requirements.md",
+        "packages/mpd-tui-plugin/src/dag-theme.ts"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "lead"
+    },
+    {
+      "id": "T2",
+      "subject": "WORK: the adaptive vertical DAG layout engine (dag-layout.ts)",
+      "description": "Port the WEB dependency-DAG's SEMANTICS and visual language into a pure, testable cell-grid layout engine. Clauses: R2, R3, R4, R5, R10, R15.\n\nDELIVERABLES: packages/mpd-tui-plugin/src/dag-layout.ts (NEW), packages/mpd-tui-plugin/test/dag-layout.test.ts (NEW), evidence/tui/dag-port/dag-layout/<timestamp>/.\n\nFROZEN SIGNATURE (do not change without the captain):\n  layoutDag(tasks: readonly DagTask[], opts: { cols: number; rows?: number; focus?: string }): DagView\n  DagView { lines: DagSpan[][]; hits: DagHit[]; width: number; height: number; mode: 'boxes'|'rail'|'list'; cycles: string[]; focus?: string; chain: string[]; ranks: number }\n  DagTask { id; subject; kind?; visual; assignee?; dependencies: readonly string[]; failedDependencies?: readonly string[]; depth; attempt?; owner?; round?; verdict? }\n\nACCEPTANCE:\n1. Rank is the VERTICAL axis (top to bottom) and every size is COMPUTED from opts.cols (optionally opts.rows) — NO fixed size is the layout rule (the user's explicit '纵向，但不要固定尺寸'). Named MIN/MAX clamps are allowed; a transplanted 168px-style constant is NOT.\n2. One drawn edge per blockedBy entry naming a task on the board; orthogonal routing; per-source lane separation; the ▼ entry marker preserved (WEB has no arrowheads — this is a deliberate TUI improvement).\n3. Six states via dag-theme DAG_TONE_THEME/DAG_TONE_GLYPH; a cycle is reported in `cycles` and drawn; a failed blocker surfaces via failedDependencies BESIDE the state, never folded into `blocked` (OPT-1 — read graph.ts's header before touching that rule).\n4. Every line's cellWidth <= cols, asserted, INCLUDING a CJK-subject fixture (sanitize.ts computes advance widths; a codepoint is not a cell).\n5. Tests are INVARIANT-shaped, never byte-frozen grids and never fixed sizes.\n\nADVERSARIAL INPUTS THE TESTS MUST SURVIVE: cols=1, cols=12, cols=200; a 500-task board; a self-dependency; a 3-cycle; an unknown state string; a dependency id absent from the board.\n\nEVIDENCE: `bun test packages/mpd-tui-plugin/test/dag-layout.test.ts` and `./node_modules/.bin/tsgo --noEmit -p tsconfig.json`, quoted with their observed output.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/src/dag-layout.ts",
+        "packages/mpd-tui-plugin/test/dag-layout.test.ts",
+        "evidence/tui/dag-port/dag-layout/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "dag-geometry"
+    },
+    {
+      "id": "T3",
+      "subject": "WORK: the independent dag + workmate sidebar pages, and the reworked team panel",
+      "description": "Build the INDEPENDENT sidebar pages and rework the merged one onto the wave's visual system. Clauses: R1, R6, R7, R8, R9, R11, R12.\n\nDELIVERABLES: src/panel-dag.ts (NEW), src/panel-workmate.ts (NEW), src/panel.ts (EDIT — rework the existing merged `team` panel), test/panel-dag.test.ts (NEW), evidence/tui/dag-port/panel-surface/<timestamp>/.\n\nACCEPTANCE:\n1. A DAG page whose body is layoutDag()'s output rendered by the HOST's ui kit; the descriptor uses dag-theme DAG_PANEL_SLUG and DAG_PANEL_MIN_COLUMNS, and its icon is exactly ONE cell.\n2. A workmate page (R12) with a real empty state naming the call that fills it.\n3. Chrome (R6): bordered node boxes AND a bordered panel frame with a border title; header row; footer key-hint row; an explicit LEGEND whose glyphs are READ FROM dag-theme, never re-typed (blocked and open share ○ in the WEB view — the legend is the only thing that disambiguates them).\n4. Progress/completion stats (R7) wired to a REAL caller — the already-written `layoutList` in graph.ts currently has no caller anywhere in src/; either give it one or report that it must be superseded. Dead code stays a finding, not a silent omission.\n5. Animation (R8) via ui.useAnimationTime at dag-theme DAG_ANIM.intervalMs, with a MANDATORY degraded path drawing DAG_ANIM.staticPhase when the timer is absent or non-finite.\n6. Badge + icon (R9): host.notify(level, unread)/clearBadge() driven by team state (failed -> error, blocked -> warning, else info).\n7. Interaction (R11): click-to-pin detail body + keyboard focus/pin via host.onKey when focused. HOVER IS NOT REQUIRED — do not build it. The pinned body carries id/kind/visual/verdict/failedBy/owner/attempt/round/blockedBy/dependents.\n8. SINGLE-REACT RULE: never import React or ink; every hook/element via props.React / props.ui. Defensive narrowing: a host build with no usable React/ui/snapshot renders null rather than throwing. useTerminalSize called ONCE per render, only when exposed.\n9. The panel REFRESHES (channel.subscribe or per-render host.snapshot()) — an unreachable panel is exactly the defect R13 exists for.\n10. Every currently-exported symbol of panel.ts stays exported (seam-guard and the tests import them).\n\nEVIDENCE: `bun test packages/mpd-tui-plugin/test/` and `./node_modules/.bin/tsgo --noEmit -p tsconfig.json`, quoted. On completion message seam-guard (and the captain) the EXACT export names it must wire.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/src/panel-dag.ts",
+        "packages/mpd-tui-plugin/src/panel-workmate.ts",
+        "packages/mpd-tui-plugin/src/panel.ts",
+        "packages/mpd-tui-plugin/test/panel-dag.test.ts",
+        "evidence/tui/dag-port/panel-surface/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "panel-surface"
+    },
+    {
+      "id": "T4",
+      "subject": "WORK: redesign the whole mpd-tui surface layer (scenes + status line + renderers)",
+      "description": "The user chose the FULL redesign (option C): '全面重设计整个 mpd-tui 表面层（panel + 全部 scene + 状态行）', after saying '目前TUI的视觉效果很烂'. Clause: R14 (plus the visual half of R6/R8 for the scenes).\n\nDELIVERABLES: src/scenes.ts, src/subagent-scene.ts, src/status.ts, src/renderers.ts (all EDIT), test/scene-visuals.test.ts (NEW), evidence/tui/dag-port/tui-visuals/<timestamp>/.\n\nACCEPTANCE:\n1. ONE visual system shared with the new panels: the same dag-theme tone table, the same DAG_CHROME markers, the same border vocabulary. A scene must not invent a colour the palette does not carry.\n2. Match the HOST'S OWN craft: read the installed host's native surfaces first (lib/types/components/sidePanel/builtinPanels.js and the host's own scene sources under /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/) and mirror their idiom, rather than inventing a private theme. The complaint is craft, not colour count.\n3. CJK SAFETY: every advance-width computation goes through sanitize.ts (cellWidth/clampCells). A CJK subject must never shear a box or a column.\n4. HONEST DEGRADATION: a width too small means a smaller layout, never a truncated lie; an absent timer means a static frame.\n5. NO BEHAVIOUR CHANGE while restyling — key bindings, scene ids/titles, refresh cadence and the existing data flow stay EXACTLY as they are. If something looks wrong, report it to the captain instead of fixing it here.\n6. INTERFACE FREEZE: other lanes import `subagentSectionRows` and `teamGraphView` from subagent-scene.ts, and index.ts imports the scene ids/titles. Every currently-exported symbol keeps its name and signature — message the captain and panel-surface BEFORE changing any, never after.\n\nEVIDENCE: `bun test packages/mpd-tui-plugin/test/` and `./node_modules/.bin/tsgo --noEmit -p tsconfig.json`, quoted, plus the behaviour you deliberately left untouched.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/src/scenes.ts",
+        "packages/mpd-tui-plugin/src/subagent-scene.ts",
+        "packages/mpd-tui-plugin/src/status.ts",
+        "packages/mpd-tui-plugin/src/renderers.ts",
+        "packages/mpd-tui-plugin/test/scene-visuals.test.ts",
+        "evidence/tui/dag-port/tui-visuals/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "tui-visuals"
+    },
+    {
+      "id": "T5",
+      "subject": "WORK: ROOT-CAUSE why the existing team sidebar panel was invisible (R13)",
+      "description": "*** THE WAVE'S HIGHEST-RISK ITEM *** Clause R13.\n\nTHE USER'S REPORT: 'the current `team` panel may not be visible — I did not see it when I tried' (目前 team 这个，可能不太可见，我调的时候没看到), and their binding instruction: '你得 docker 实机验一下确保没问题'.\n\nDELIVERABLE: evidence/tui/dag-port/seam-guard/<timestamp>/root-cause.md — the ROOT CAUSE with file:symbol evidence, plus the remedy.\n\nINVESTIGATE AGAINST THE INSTALLED HOST (read-only): /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/components/sidePanel/{PanelStore,PanelBar,SidePanelColumn,builtinPanels}.js and lib/types/tuiDisplayPrefs.js and lib/types/utils/keymap.js.\n\nHYPOTHESES TO TEST (do not trust recon — verify each against the source):\n1. Plugin panels are DISABLED BY DEFAULT and appear only when their id is listed in the display-prefs `panels` CSV (recon claims DEFAULT_SIDE_PANEL_IDS='todo,jobs,agents').\n2. The host PREFIXES a plugin panel id (`<pluginId>:<slug>`), while the enable-CSV/user asks for a bare slug that can never match.\n3. The sidebar is simply closed by default (Ctrl+B) — a non-defect.\n4. The panel registers but is dropped by a limit (<=4 per plugin, <=32 global) or by a minColumns/id-pattern rejection.\n5. The registration itself fails on the real host (seam outcome !== 'bound').\n\nACCEPTANCE:\n- The root cause is stated with a file:symbol citation and a REPRODUCTION on a real PTY (repo harness skills/dsh-qa/scripts/tui-panels.ts and tui-mount.ts — read them, then run with the dsh-qa three-isolation rule: sandbox DSH_HOME, sandbox HOME, sandbox workspace).\n- A FIX if the bundle can legitimately make its panel visible; otherwise the EXACT one-command/settings remedy plus the documentation pointer. If the honest answer is 'the host owns the switch', say exactly that — do not fake a fix.\n- On a real PTY you either SEE the panel or you report the observed failure. 'It should work' is not evidence.\n\nBLOCKER TO OTHERS: the remedy dictates how the new dag/workmate pages must be made visible, so report to the captain and panel-surface as soon as the root cause is known — do not wait for the whole task.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [],
+      "writeScopes": [
+        "evidence/tui/dag-port/seam-guard/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "seam-guard"
+    },
+    {
+      "id": "T6",
+      "subject": "WORK: wire the dag + workmate panels through the adapter and keep alt+a / /mpd panel correct",
+      "description": "Wire the two NEW panels and keep the existing entry points intact. Clause R1.\n\nDELIVERABLES: src/index.ts, src/registration.ts, src/types.ts, src/commands.ts, src/command-trees.ts, src/shortcuts.ts, src/dashboard-key.ts (EDIT — only where needed), evidence/tui/dag-port/seam-guard/<timestamp>/wiring/.\n\nDEPENDS ON task 2 (panel-surface) — it will message you the exact export names from src/panel-dag.ts and src/panel-workmate.ts. Do not guess them; wait for the message or read the files once they exist.\n\nACCEPTANCE:\n1. The dag and workmate pages are registered THROUGH THE ADAPTER ONLY (`resolveTuiAdapter` / `createLazyTuiAdapter`) — never a raw ctx.tui* call. `packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts` enforces this and must stay green.\n2. Budget: three panels total (team, dag, workmate) against the host's <=4 per plugin — confirmed, and each slug valid against the host's id pattern.\n3. `alt+a` and `/mpd panel` keep working: they route through tuiPanels.open() when the seam is bound and FALL BACK to the full-screen mpd-tui-subagents scene on refusal — never a silent no-op. The legacy Ctrl+A arbitration in panel.ts `takeoverArmed` must not regress (R4/R5 frozen clauses).\n4. `/mpd panel` prints a bilingual status line naming the surface it reached, and now also reaches the new pages.\n5. A seam that never binds still degrades to `absent` and never fails the boot.\n\nBUILD NOTE: after your src edits run `node scripts/verify-dist-fresh.ts` and REPORT the STALE list — the dist rebuild belongs to the captain's integration task; do not rebuild dist yourself.\n\nEVIDENCE: the adapter/registration tests, `bun test packages/mpd-tui-plugin/test/`, `node skills/dsh-qa/scripts/tui-panels.ts` under the three-isolation rule, and the observed STALE list. If you must touch packages/mpd-tui-adapter-plugin/src/index.ts, say so LOUDLY — an adapter edit fans out to ~12 dist targets.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "2"
+      ],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/src/index.ts",
+        "packages/mpd-tui-plugin/src/registration.ts",
+        "packages/mpd-tui-plugin/src/types.ts",
+        "packages/mpd-tui-plugin/src/commands.ts",
+        "packages/mpd-tui-plugin/src/command-trees.ts",
+        "packages/mpd-tui-plugin/src/shortcuts.ts",
+        "packages/mpd-tui-plugin/src/dashboard-key.ts",
+        "evidence/tui/dag-port/seam-guard/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "seam-guard"
+    },
+    {
+      "id": "T7",
+      "subject": "REVIEW: independent verification of R1..R16 (invariant tests + real PTY + gates)",
+      "description": "INDEPENDENT verification — you did not write the implementation, which is the point.\n\nDELIVERABLES: packages/mpd-tui-plugin/test/dag-fidelity.test.ts (NEW), packages/mpd-tui-plugin/test/panel-visibility.test.ts (NEW), evidence/tui/dag-port/verification/<timestamp>/report.md, and the REAL-PTY captures under evidence/tui/dag-port/verification/pty/.\n\nLOAD SKILLS FIRST: the `dsh-qa` skill (skill tool) before any QA, and follow its THREE-ISOLATION rule exactly (sandbox DSH_HOME, sandbox HOME, sandbox workspace) — a boot that touches the real ~/.dsh or real ~/.mpd/workmate is a defect in your own work. Also load `debugging` if a PTY capture misbehaves.\n\nVERIFY, each with a command you actually ran and its real output:\n1. GEOMETRY (R2/R15): INVARIANT tests — NOT byte-frozen grids and NOT fixed sizes (the user explicitly forbade locking characters because the layout must adapt). Assert: shrinking cols never increases any line's cellWidth; every line's cellWidth <= cols; ranks are monotone top-to-bottom; each node is contained in its own hit rect; an edge's endpoints belong to the right (blocker, dependent) pair; a cycle terminates; a CJK fixture never shears. Then ADVERSARIALLY break it: cols=1, 12, 200; a 500-task board; a self-dependency; a 3-cycle; an unknown state string; a dependency id absent from the board.\n2. WEB PARITY (R3/R4/R5): build a parity table of WEB tone+glyph vs TUI tone+glyph for all six states, read from BOTH sources, and flag drift. Confirm blocked and open really do share a glyph in the WEB view AND that the TUI legend disambiguates them.\n3. PANEL VISIBILITY (R13): independently reproduce — or fail to reproduce — seam-guard's root cause. Do not accept its narrative; read the installed host sources yourself and run the real PTY harness. If the panel is still invisible on a real PTY, that is a FAIL and you say so.\n4. REAL-PTY CAPTURES: capture the ACTUAL rendered surfaces with the new pages and the redesigned scenes, at SEVERAL widths (120, 80, 48, 32 cols) and at least one CJK content case, saved under evidence/tui/dag-port/verification/pty/. These are the artefacts visual-reviewer reads — capture raw frames, not screenshots of your own summary.\n5. GATES: run and QUOTE (including failures): `bun test`, `bun run typecheck`, `bun run verify:rows`, `bun run verify:docs`, `node scripts/verify-dist-fresh.ts`, `bun run verify:comments`, `bun run verify:manifest`. A gate you did not run is not verified — do not claim it.\n\nALSO: an ANTI-SLOP pass — flag any second renderer, duplicated tone table, speculative abstraction, or animation that fights the host. The user asked for a port, not a rewrite of the world.\n\nREPORT: a numbered findings list (severity + file:symbol evidence), an R1..R16 status table (verified / failed / not verified), the exact commands with observed output, and the ONE thing you would change first.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "2",
+        "3",
+        "4",
+        "6"
+      ],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/test/dag-fidelity.test.ts",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+        "evidence/tui/dag-port/verification/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "fidelity-verifier"
+    },
+    {
+      "id": "T8",
+      "subject": "REVIEW: visual fidelity of the rendered TUI vs the WEB DAG reference",
+      "description": "Judge the ACTUAL rendered output against the WEB reference. Clauses: R3, R4, R6, R8, R9, R10, R14.\n\nSOURCES: fidelity-verifier writes the real-PTY captures under evidence/tui/dag-port/verification/pty/ (several widths + a CJK case). Glob for them. If they are missing, message the captain naming exactly what you need instead of inventing a verdict. Use read_image for rasterised screenshots; for TEXT FRAME captures read them as text and reason about the CELL GRID yourself (count columns, verify border alignment).\n\nJUDGE, quoting the actual captured lines:\n1. Does a node carry the WEB's content in the WEB's order — status glyph, task id, kind abbreviation, subject?\n2. Do the six states read as six DISTINCT states? (Host fact: blocked and open share ○ in the WEB view, so the TUI LEGEND must be what disambiguates them. If the legend is missing or wrong, say so plainly.)\n3. Are edges legible and ARROWED (the TUI keeps a ▼ entry marker the WEB view lacks)? Can a fan-in (2+ blockers) be told from a single chain? Does a long edge crossing a rank overpaint a node box?\n4. Border alignment: does every box's right edge land on ONE column, or does it wobble? A wobble on the CJK fixture means a cell-width bug — name the exact line.\n5. Chrome: header? footer? legend present and truthful? panel frame present?\n6. At 32 cols: does it degrade to a smaller layout (rail) rather than truncating a lie?\n7. Animation (R8): a static capture cannot show motion. Say so honestly — report whether the static-phase rendering looks correct and state that motion is UNVERIFIED by you.\n\nDELIVERABLE: evidence/tui/dag-port/visual/<timestamp>/findings.md — a numbered list; each finding quotes the exact captured line(s) it rests on, gives a severity, and states whether it MATCHES, DIVERGES from, or IMPROVES ON the WEB reference. End with the single worst visual defect found.\n\nNOTE: your roster guard denies write/edit/bash, so report the findings content by message and let the captain archive it.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "7"
+      ],
+      "writeScopes": [
+        "evidence/tui/dag-port/visual/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "visual-reviewer"
+    },
+    {
+      "id": "T9",
+      "subject": "WORK: bilingual docs for the new panels, the redesign and the R13 remedy",
+      "description": "Bilingual docs for everything the wave delivered. Clauses: the AGENTS.md language policy, R13's documentation pointer.\n\nDELIVERABLES: packages/mpd-tui-plugin/README.md + README.zh-CN.md, packages/mpd-tui-adapter-plugin/README.md + README.zh-CN.md, docs/tui.md + docs/tui.zh-CN.md (create the zh twin if absent), evidence/tui/dag-port/docs/<timestamp>/.\n\nTHE POLICY IS BINDING (AGENTS.md, Language policy + §4): every human-facing doc is a BILINGUAL PAIR carrying its language-switch link DIRECTLY UNDER THE TITLE ([中文](./<name>.zh-CN.md) from the English file, [English](./<name>.md) from the Chinese one), and A CHANGE TO ONE UPDATES BOTH. The gate is `bun run verify:docs`. The Chinese side must read as native technical Chinese carrying the SAME facts — not a word-for-word machine translation — and the heading trees must match.\n\nDOCUMENT ONLY WHAT THE DELIVERED CODE ACTUALLY DOES — read the source and the lanes' evidence first. A doc that oversells is a defect.\n1. The two NEW sidebar pages (dag, workmate) and the reworked team panel: ids, titles, minColumns, and HOW A USER REACHES THEM. This paragraph matters most — the user reported the existing panel was invisible.\n2. The R13 remedy: the exact user-facing steps to make a plugin panel visible, for the installed host version.\n3. The DAG page's semantics: vertical ADAPTIVE ranks, the six-state tone palette, the legend, click-to-pin + keyboard, and OPT-1 (a FAILED dependency does NOT block its dependents).\n4. HONEST BOUNDS: what is deliberately NOT ported from the WEB view (hover, pixel geometry, CSS behaviour) and why.\n5. The whole-surface redesign (R14): which surfaces changed.\n\nDO NOT bump versions, DO NOT touch package.json, DO NOT edit source.\n\nVERIFY (exactly two checks, then stop): `bun run verify:docs` and `node scripts/verify-manual-paths.ts` — quote their real output in evidence/tui/dag-port/docs/<timestamp>/output.log.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "writeScopes": [
+        "packages/mpd-tui-plugin/README.md",
+        "packages/mpd-tui-plugin/README.zh-CN.md",
+        "packages/mpd-tui-adapter-plugin/README.md",
+        "packages/mpd-tui-adapter-plugin/README.zh-CN.md",
+        "docs/tui.md",
+        "docs/tui.zh-CN.md",
+        "evidence/tui/dag-port/docs/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.037Z",
+      "updatedAt": "2026-10-06T13:51:08.037Z",
+      "revision": 1,
+      "owner": "doc-scribe"
+    },
+    {
+      "id": "T10",
+      "subject": "INTEGRATION: rebuild dist, run the full gate sweep, Docker real-machine E2E, commit on a branch + bilingual PR",
+      "description": "CAPTAIN-OWNED. The captain is the ONLY git writer (AGENTS.md §5) and owns every DERIVED surface (T-88): dist/** and the branch/PR.\n\nDELIVERABLES: rebuilt `packages/*/dist/**` for every touched package, dist/mpd-package/** if the pack is refreshed, evidence/tui/dag-port/integration/<timestamp>/, the feature branch, and a BILINGUAL PR body.\n\nSTEPS:\n1. Confirm every lane's claims against the artefacts on disk — a member's summary is not evidence; verify the tests actually pass and the files actually exist.\n2. Rebuild the touched dists with the PINNED canonical command from the REPO ROOT: `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`. A build run from a PACKAGE directory is flagged STALE (T-67). An ADAPTER edit fans out — rebuild EVERY dependent package, not just the touched one.\n3. `node scripts/verify-dist-fresh.ts` — expect no STALE entries.\n4. Full gate sweep, each command named exactly: `bun test`, `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`, `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-pack-closure.ts`, `bun run verify:comments`, `bun run verify:manifest`, `node scripts/verify-no-host-override.ts`.\n5. REAL DOCKER MACHINE (the user's explicit instruction: '你得 docker 实机验一下确保没问题'): `node scripts/docker-e2e.ts --mode source --require-docker` — assert the TUI actually renders the new pages on a real PTY inside ubuntu:24.04. A SKIP is NOT a pass; if Docker is unavailable the captain says so plainly rather than claiming success.\n6. One commit on a `feature/<slug>` branch; ONE PR against `dev` with a BILINGUAL body (## English then ## 简体中文): what changed, the measured evidence paths under evidence/, the gates run WITH observed results, and the honest bounds — never a claim the evidence does not carry.\n\nACCEPTANCE: no STALE dist; every named gate run with its observed result recorded; the Docker verdict stated honestly; the PR body carrying BOTH languages.\n\nNOTE: the captain also CORRECTS the staged-plan dependency error (task 6 was created blocked_by a wrong id) before dispatch.",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "7",
+        "8",
+        "9"
+      ],
+      "writeScopes": [
+        "packages/*/dist/**",
+        "dist/mpd-package/**",
+        "evidence/tui/dag-port/integration/"
+      ],
+      "createdAt": "2026-10-06T13:51:08.038Z",
+      "updatedAt": "2026-10-06T13:51:08.038Z",
+      "revision": 1,
+      "owner": "lead"
+    }
+  ],
+  "nextMemberNumber": 8,
+  "nextTaskNumber": 11,
+  "approvedAt": "2026-10-06T13:51:08.305Z"
+}

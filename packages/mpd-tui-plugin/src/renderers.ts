@@ -11,11 +11,57 @@
 // HONESTY (T10-F1 class): the host answers a refused registration with a NO-OP
 // disposer, so a returned function proves nothing. This seam therefore reports
 // `requested`, never `confirmed` — the host exposes no read-back for renderers.
+//
+// WHAT THIS SEAM CAN CARRY. A renderer returns `{title, lines}` of PLAIN TEXT: the transcript has no
+// colour slot and no span slot (the host draws the result as text rows). So the shared visual system
+// reaches these rows the only way it honestly can — through its MARKERS: the `kind` abbreviation a DAG
+// node label carries (`DAG_KIND_ABBREV`), and the state glyph the contract publishes for a payload's
+// own status (`DAG_TONE_GLYPH`). No glyph is invented for a status the contract does not publish, and
+// the payload's own words stay on the row beside the mark.
 import { TUI_SEAMS } from "./types.js"
 import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiRenderResult } from "./types.js"
 import type { Log } from "./log.js"
 import { field, scalarLines, scalarText } from "./sanitize.js"
+import { DAG_KIND_ABBREV, DAG_TONE_GLYPH } from "./dag-theme.js"
 import { BOARD_OPENED_EVENT } from "./registration.js"
+
+/**
+ * The VISUAL state a payload's official status maps onto, for the statuses the record's own
+ * `taskVisualState` (team-state.ts) maps unconditionally.
+ *
+ * The `blocked` reading is deliberately ABSENT: the record derives it from the task's DEPENDENCIES,
+ * and a transcript payload carries none — a row that guessed `blocked` from a bare `pending` would be
+ * claiming a fact it never read.
+ */
+const STATUS_VISUAL: Readonly<Record<string, string>> = Object.freeze({
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  in_progress: "running",
+})
+
+/**
+ * The state glyph one payload status draws as.
+ * @param value - the payload's `status` field, of unknown shape.
+ * @returns the contract's glyph, or undefined for a status this module cannot map without inventing.
+ */
+function statusGlyph(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  /** The visual state the record maps that status to, when it maps it at all. */
+  const visual = STATUS_VISUAL[value]
+  return visual === undefined ? undefined : DAG_TONE_GLYPH[visual]
+}
+
+/**
+ * The three-letter kind abbreviation a payload kind draws as — the SAME abbreviation a DAG node label
+ * carries, so a reader learns one vocabulary in the transcript and in the drawing.
+ * @param value - the payload's `kind` field, of unknown shape.
+ * @returns the abbreviation, or undefined for a kind the contract does not carry.
+ */
+function kindAbbrev(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  return Object.prototype.hasOwnProperty.call(DAG_KIND_ABBREV, value) ? DAG_KIND_ABBREV[value] : undefined
+}
 
 /** Transcript event types this plugin renders. */
 export const TRANSCRIPT_TYPES: readonly string[] = [
@@ -68,21 +114,44 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
     title: "mpd team member removed",
     lines: [field(payload, "name", 80) ?? field(payload, "memberId", 60) ?? "?"],
   }),
-  "agent-teams/task-created": (payload) => ({
-    title: "mpd team task created",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} ${field(payload, "subject", 160) ?? ""}`.trim(),
-      ...bullet(payload, ["assignee", "kind", "round"]),
-    ],
-  }),
-  "agent-teams/task-updated": (payload) => ({
-    title: "mpd team task updated",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} -> ${field(payload, "status", 40) ?? "?"}`,
-      ...bullet(payload, ["assignee", "attempt", "verdict"]),
-      ...scalarLines(field(payload, "output", 400) ?? [], 6, 400),
-    ],
-  }),
+  "agent-teams/task-created": (payload) => {
+    /** The task id the row addresses; `?` when the payload does not name one. */
+    const id = field(payload, "taskId", 40) ?? "?"
+    /** The kind abbreviation a DAG node label would carry, when the payload's kind is a known one. */
+    const abbrev = kindAbbrev((payload as { kind?: unknown } | null)?.kind)
+    /** The subject, which is what the row is for. */
+    const subject = field(payload, "subject", 160) ?? ""
+    return {
+      title: "mpd team task created",
+      lines: [
+        // THE ROW READS LIKE A DAG NODE LABEL: the state a fresh task holds in the drawing's own
+        // vocabulary (`open`), its id, its kind abbreviation and its subject. The full kind name is not
+        // repeated below — the abbreviation IS the shared vocabulary for it, and printing both would put
+        // two spellings of one fact on one row.
+        `${DAG_TONE_GLYPH.open ?? "○"} ${`${id}${abbrev === undefined ? "" : ` ${abbrev}`} ${subject}`.trim()}`,
+        ...bullet(payload, ["assignee", "round"]),
+      ],
+    }
+  },
+  "agent-teams/task-updated": (payload) => {
+    /** The task id the row addresses; `?` when the payload does not name one. */
+    const id = field(payload, "taskId", 40) ?? "?"
+    /** The status the payload reports; `?` when it reports none. */
+    const status = field(payload, "status", 40) ?? "?"
+    /** The contract's glyph for that status, when it is one the record maps unconditionally. */
+    const glyph = statusGlyph((payload as { status?: unknown } | null)?.status)
+    return {
+      title: "mpd team task updated",
+      lines: [
+        // The transition line is FROZEN (this package's suite pins it word for word), so the state mark
+        // goes on the line BELOW it rather than in front of it.
+        `${id} -> ${status}`,
+        `${glyph === undefined ? "" : `${glyph} `}${status}`,
+        ...bullet(payload, ["assignee", "attempt", "verdict"]),
+        ...scalarLines(field(payload, "output", 400) ?? [], 6, 400),
+      ],
+    }
+  },
   "agent-teams/team-halted": (payload) => ({
     title: "mpd team halted",
     lines: [`cancelled ${field(payload, "cancelledTasks", 20) ?? "?"} task(s)`],

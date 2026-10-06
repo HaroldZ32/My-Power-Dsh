@@ -1194,7 +1194,10 @@ var TUI_TEXT = {
   "command.unknownAction": { zh: "mpd: 未知动作“{action}” —— 用法：{usage}", en: 'mpd: unknown action "{action}" — usage: {usage}' },
   "command.workmatesNone": { zh: "mpd workmates：无", en: "mpd workmates: none" },
   "command.workmatesList": { zh: "mpd workmates（{count}）：{names}", en: "mpd workmates ({count}): {names}" },
-  "panel.opened": { zh: "mpd 侧栏面板：已打开（{id}）", en: "mpd sidebar panel: opened ({id})" },
+  "panel.opened": {
+    zh: "mpd 侧栏面板：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）",
+    en: 'mpd sidebar panel: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B (or turn on "Side panel starts open")'
+  },
   "panel.fallback": { zh: "mpd 侧栏面板：宿主拒绝了打开请求（{id}），已改为全屏面板", en: "mpd sidebar panel: the host refused the open request ({id}); opened the full-screen panel instead" },
   "panel.refused": { zh: "mpd 侧栏面板：宿主拒绝了该面板的注册，已改为全屏面板", en: "mpd sidebar panel: the host refused the panel registration; opened the full-screen panel instead" },
   "panel.unavailable": { zh: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板", en: "mpd sidebar panel: this host exposes no panel seam; using the full-screen panel" },
@@ -3939,518 +3942,475 @@ function boardLines(state, holds = []) {
   return lines;
 }
 
-// packages/mpd-tui-plugin/src/status.ts
-var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, tui, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
-  const view = tui.registerStatusView({
-    key: STATUS_KEY,
-    intervalMs,
-    identity: ctx,
-    label: "mpd-tui status line",
-    render: () => statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.()),
-    onError: (error) => log.debug(`status refresh failed: ${String(error?.message ?? error)}`)
-  });
-  return { outcome: () => view.outcome(), refresh: () => view.refresh() };
-}
-// packages/mpd-tui-plugin/src/registration.ts
-import { createRequire } from "node:module";
-import { readdirSync as readdirSync3 } from "node:fs";
-import { homedir as homedir4 } from "node:os";
-import { join as join5 } from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
-var BOARD_OPENED_EVENT = "mpd-tui/board-opened";
-function candidateAnchors(env = process.env, home = homedir4()) {
-  const anchors = [];
-  try {
-    anchors.push(fileURLToPath2(import.meta.url));
-  } catch {}
-  const argv1 = process.argv[1];
-  if (typeof argv1 === "string" && argv1.length > 0)
-    anchors.push(argv1);
-  const homes = [];
-  if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
-    homes.push(env.DSH_HOME);
-  homes.push(join5(home, ".dsh"), join5(home, ".dsh-tui"));
-  for (const root of homes) {
-    const profiles = join5(root, "profiles");
-    try {
-      for (const entry of readdirSync3(profiles, { withFileTypes: true })) {
-        if (entry.isDirectory())
-          anchors.push(join5(profiles, entry.name, "package.json"));
-      }
-    } catch {}
-  }
-  return [...new Set(anchors)];
-}
-function registerInto(moduleLike, type) {
-  const set = moduleLike?.KNOWN_SESSION_EVENT_TYPES;
-  if (!(set instanceof Set))
-    return false;
-  try {
-    if (set.has(type))
-      return true;
-  } catch {
-    return false;
-  }
-  try {
-    set.add(type);
-  } catch {}
-  try {
-    return set.has(type) === true;
-  } catch {
-    return false;
-  }
-}
-function registerLogOnlyEventType(type, log) {
-  let verified = false;
-  let resolved = 0;
-  for (const anchor of candidateAnchors()) {
-    try {
-      const required = createRequire(anchor)("@deepseek-ai/dsh-session");
-      resolved += 1;
-      if (registerInto(required, type))
-        verified = true;
-    } catch {}
-  }
-  log.debug(`session event type ${type}: ${verified ? "registered" : "NOT registered"} (${resolved} dsh-session copy/copies reached)`);
-  return verified;
-}
+// packages/mpd-tui-plugin/src/dag-theme.ts
+var DAG_STATE_TONES = Object.freeze([
+  "completed",
+  "running",
+  "open",
+  "failed",
+  "blocked",
+  "cancelled"
+]);
+var DAG_TONE_THEME = Object.freeze({
+  completed: "success",
+  running: "activity",
+  failed: "error",
+  blocked: "warning",
+  cancelled: "inactive",
+  open: "subtle",
+  focus: "accentShimmer",
+  chain: "accent",
+  edge: "promptBorder",
+  dim: "inactive",
+  blank: "text"
+});
+var DAG_TONE_WEB_HEX = Object.freeze({
+  completed: "#12a150",
+  running: "#4d6bfe",
+  failed: "#e5484d",
+  blocked: "#e08700",
+  cancelled: "#8a94a6",
+  open: "#5b6472",
+  focus: "#5b6472",
+  chain: "#5b6472",
+  edge: "#d8dde5",
+  dim: "#8a94a6",
+  blank: ""
+});
+var DAG_TONE_GLYPH = Object.freeze({
+  completed: "✓",
+  running: "◐",
+  failed: "✗",
+  blocked: "○",
+  cancelled: "⊘",
+  open: "○"
+});
+var DAG_KIND_ABBREV = Object.freeze({
+  requirement: "REQ",
+  work: "WRK",
+  review: "REV",
+  repair: "FIX",
+  integration: "INT"
+});
+var DAG_CHROME = Object.freeze({
+  nodeBorder: "round",
+  frameBorder: "single",
+  arrowDown: "▼",
+  arrowRight: "▸",
+  focusMarker: "▶",
+  pinMarker: "◆",
+  barFull: "█",
+  barEmpty: "░"
+});
+var DAG_ANIM = Object.freeze({
+  intervalMs: 125,
+  frames: 4,
+  staticPhase: 0
+});
+var DAG_PANEL_SLUG = "dag";
+var WORKMATE_PANEL_SLUG = "workmate";
+var DAG_PANEL_MIN_COLUMNS = 28;
+var WORKMATE_PANEL_MIN_COLUMNS = 28;
 
-// packages/mpd-tui-plugin/src/renderers.ts
-var TRANSCRIPT_TYPES = [
-  "agent-teams/team-created",
-  "agent-teams/member-added",
-  "agent-teams/member-removed",
-  "agent-teams/task-created",
-  "agent-teams/task-updated",
-  "agent-teams/team-halted",
-  "agent-teams/team-resumed",
-  "agent-teams/team-deleted",
-  "agent-teams/plan-discarded",
-  "agent-teams/message-sent",
-  BOARD_OPENED_EVENT
-];
-function bullet(payload, keys) {
-  const parts = [];
-  for (const key of keys) {
-    const value = field(payload, key, 120);
-    if (value !== undefined && value !== "")
-      parts.push(`${key}=${value}`);
-  }
-  return parts;
+// packages/mpd-tui-plugin/src/panel-core.ts
+var PANEL_ROW_MAX_CELLS = 4000;
+function panelKit(React, ui) {
+  if (React === null || React === undefined || ui === null || ui === undefined)
+    return;
+  if (typeof React.createElement !== "function")
+    return;
+  const kit = ui;
+  if (typeof kit.Box !== "function" || typeof kit.Text !== "function")
+    return;
+  return { React, ui: kit };
 }
-var TRANSCRIPT_RENDERERS = {
-  "agent-teams/team-created": (payload) => ({
-    title: "mpd team created",
-    lines: [field(payload, "name", 80) ?? "?", `team ${field(payload, "teamId", 60) ?? "?"}`, ...bullet(payload, ["profile", "captainSessionId"])]
-  }),
-  "agent-teams/member-added": (payload) => ({
-    title: "mpd team member added",
-    lines: [field(payload, "name", 80) ?? "?", ...bullet(payload, ["role", "memberId"])]
-  }),
-  "agent-teams/member-removed": (payload) => ({
-    title: "mpd team member removed",
-    lines: [field(payload, "name", 80) ?? field(payload, "memberId", 60) ?? "?"]
-  }),
-  "agent-teams/task-created": (payload) => ({
-    title: "mpd team task created",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} ${field(payload, "subject", 160) ?? ""}`.trim(),
-      ...bullet(payload, ["assignee", "kind", "round"])
-    ]
-  }),
-  "agent-teams/task-updated": (payload) => ({
-    title: "mpd team task updated",
-    lines: [
-      `${field(payload, "taskId", 40) ?? "?"} -> ${field(payload, "status", 40) ?? "?"}`,
-      ...bullet(payload, ["assignee", "attempt", "verdict"]),
-      ...scalarLines(field(payload, "output", 400) ?? [], 6, 400)
-    ]
-  }),
-  "agent-teams/team-halted": (payload) => ({
-    title: "mpd team halted",
-    lines: [`cancelled ${field(payload, "cancelledTasks", 20) ?? "?"} task(s)`]
-  }),
-  "agent-teams/team-resumed": (payload) => ({
-    title: "mpd team resumed",
-    lines: [field(payload, "reason", 200) ?? "(no reason recorded)"]
-  }),
-  "agent-teams/team-deleted": (payload) => ({
-    title: "mpd team deleted",
-    lines: [field(payload, "teamId", 60) ?? "?"]
-  }),
-  "agent-teams/plan-discarded": (payload) => ({
-    title: "mpd staged plan discarded",
-    lines: [field(payload, "teamId", 60) ?? "?"]
-  }),
-  "agent-teams/message-sent": (payload) => ({
-    title: "mpd team message",
-    lines: [
-      `${field(payload, "from", 60) ?? "?"} -> ${field(payload, "to", 60) ?? "?"}`,
-      ...scalarLines(field(payload, "content", 400) ?? [], 12, 400)
-    ]
-  }),
-  [BOARD_OPENED_EVENT]: (payload) => {
-    const view = field(payload, "view", 120) ?? "board";
-    const via = field(payload, "via", 20) ?? "?";
-    const stamp = payload?.at;
-    const at = typeof stamp === "number" && Number.isFinite(stamp) ? new Date(stamp).toISOString() : undefined;
-    return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] };
+function usePanelSize(ui, fallbackCols) {
+  if (typeof ui.useTerminalSize !== "function")
+    return { cols: fallbackCols, rows: undefined };
+  try {
+    const size = ui.useTerminalSize();
+    const columns = size?.columns;
+    if (typeof columns !== "number" || !Number.isFinite(columns) || columns <= 0)
+      return { cols: fallbackCols, rows: undefined };
+    const rows = size?.rows;
+    return {
+      cols: Math.floor(columns),
+      rows: typeof rows === "number" && Number.isFinite(rows) && rows > 0 ? Math.floor(rows) : undefined
+    };
+  } catch {
+    return { cols: fallbackCols, rows: undefined };
   }
-};
-function registerRenderers(ctx, tui, log) {
-  const seam = tui.whenBound("renderers", (_service, _scope, handle) => {
-    const registry = tui.renderers();
-    if (typeof registry?.register !== "function") {
-      handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` });
+}
+function useRunningPhase(ui, active) {
+  if (typeof ui.useAnimationTime !== "function")
+    return DAG_ANIM.staticPhase;
+  try {
+    const time = ui.useAnimationTime(active ? DAG_ANIM.intervalMs : null);
+    if (typeof time !== "number" || !Number.isFinite(time))
+      return DAG_ANIM.staticPhase;
+    const tick = Math.floor(Math.max(0, time) / DAG_ANIM.intervalMs);
+    return tick % DAG_ANIM.frames;
+  } catch {
+    return DAG_ANIM.staticPhase;
+  }
+}
+function panelSnapshot(host) {
+  if (host === null || host === undefined)
+    return;
+  const api = host;
+  if (typeof api.snapshot !== "function")
+    return;
+  try {
+    return api.snapshot();
+  } catch {
+    return;
+  }
+}
+function panelText(value, maxCells = PANEL_ROW_MAX_CELLS) {
+  try {
+    return clampCells(stripControl(value), maxCells);
+  } catch {
+    return "";
+  }
+}
+function panelField(value, maxCells) {
+  if (typeof value !== "string" && typeof value !== "number")
+    return;
+  if (typeof value === "number" && !Number.isFinite(value))
+    return;
+  try {
+    return clampCells(collapse(stripControl(String(value))), maxCells);
+  } catch {
+    return;
+  }
+}
+function toneColor(tone) {
+  const key = DAG_TONE_THEME[tone];
+  return typeof key === "string" && key !== "" ? key : DAG_TONE_THEME.blank;
+}
+function textRow(kit, text, options) {
+  const shown = panelText(text, options.maxCells ?? PANEL_ROW_MAX_CELLS);
+  return kit.React.createElement(kit.ui.Text, {
+    key: options.key,
+    ...options.tone === undefined ? {} : { color: toneColor(options.tone) },
+    ...options.dim === true ? { dimColor: true } : {},
+    ...options.bold === true ? { bold: true } : {}
+  }, options.joinNext === true ? `${shown} ` : shown);
+}
+function clampRowSpans(spans, cols) {
+  const width = Number.isFinite(cols) ? Math.max(0, Math.floor(cols)) : 0;
+  if (width <= 0)
+    return [];
+  const kept = [];
+  let used = 0;
+  for (const span of spans) {
+    if (used >= width)
+      break;
+    const room = width - used;
+    const spanWidth = cellWidth(span.text);
+    if (spanWidth <= room) {
+      kept.push(span);
+      used += spanWidth;
+      continue;
+    }
+    kept.push({ text: clampCells(span.text, room), tone: span.tone });
+    used = width;
+  }
+  return kept;
+}
+function graphRow(kit, spans, options) {
+  const fitted = clampRowSpans(spans, options.cols);
+  const drawn = fitted.map((span, at) => kit.React.createElement(kit.ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+  const row = kit.React.createElement(kit.ui.Text, { key: `t-${options.key}` }, ...drawn);
+  if (options.onClick === undefined || typeof kit.ui.Box !== "function")
+    return row;
+  return kit.React.createElement(kit.ui.Box, { key: options.key, onClick: options.onClick, flexDirection: "row" }, row);
+}
+function panelFrame(kit, title, children) {
+  return kit.React.createElement(kit.ui.Box, {
+    key: "frame",
+    flexDirection: "column",
+    width: "100%",
+    height: "100%",
+    borderStyle: DAG_CHROME.frameBorder,
+    borderColor: toneColor("edge"),
+    ...title === "" ? {} : { borderText: { content: panelText(title, 80), position: "top", align: "start" } }
+  }, ...children);
+}
+function panelContentWidth(measuredColumns) {
+  const columns = Math.floor(Number.isFinite(measuredColumns) ? measuredColumns : 0);
+  return Math.max(1, columns - 2);
+}
+var PANEL_CHROME_ROWS = 2;
+function clampScroll(offset, contentRows, viewportRows) {
+  const viewport = Math.max(1, Math.floor(Number.isFinite(viewportRows) ? viewportRows : 1));
+  const content = Math.max(0, Math.floor(Number.isFinite(contentRows) ? contentRows : 0));
+  const max = Math.max(0, content - viewport);
+  const wanted = Math.floor(Number.isFinite(offset) ? offset : 0);
+  return { offset: Math.min(max, Math.max(0, wanted)), max, overflow: max > 0 };
+}
+function scrollByWheel(event, offset, contentRows, viewportRows) {
+  const band = clampScroll(offset, contentRows, viewportRows);
+  if (!band.overflow)
+    return band.offset;
+  if (event === null || event === undefined || typeof event !== "object")
+    return band.offset;
+  const raw = event;
+  if (typeof raw.deltaY !== "number" || !Number.isFinite(raw.deltaY))
+    return band.offset;
+  return clampScroll(band.offset + raw.deltaY, contentRows, viewportRows).offset;
+}
+function gutterCells(offset, contentRows, viewportRows) {
+  const band = clampScroll(offset, contentRows, viewportRows);
+  if (!band.overflow)
+    return [];
+  const viewport = Math.min(Math.max(1, Math.floor(viewportRows)), contentRows);
+  const thumb = Math.min(viewport, Math.max(1, Math.floor(viewport * viewport / contentRows)));
+  const travel = viewport - thumb;
+  const top = travel === 0 ? 0 : Math.round(band.offset / band.max * travel);
+  const cells = [];
+  for (let row = 0;row < viewport; row += 1)
+    cells.push(row >= top && row < top + thumb ? DAG_CHROME.barFull : DAG_CHROME.barEmpty);
+  return cells;
+}
+function panelScrollKey(event) {
+  if (event === null || event === undefined || typeof event !== "object")
+    return;
+  const raw = event;
+  const flags = raw.key !== null && raw.key !== undefined && typeof raw.key === "object" ? raw.key : {};
+  const input = typeof raw.input === "string" ? raw.input : "";
+  const ctrl = flags.ctrl === true;
+  if (flags.pageUp === true || input === "\x1B[5~")
+    return "pageUp";
+  if (flags.pageDown === true || input === "\x1B[6~")
+    return "pageDown";
+  if (flags.home === true || ctrl && input === "a")
+    return "top";
+  if (flags.end === true || ctrl && input === "e")
+    return "bottom";
+  return;
+}
+function usePanelViewport(kit, read, initialOffset = 0) {
+  const live = kit.React.useRef(initialOffset);
+  const cell = kit.React.useState(initialOffset);
+  const set = cell[1];
+  const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 });
+  const measured = read();
+  if (facts !== null && facts !== undefined)
+    facts.current = measured;
+  const position = () => typeof live?.current === "number" && Number.isFinite(live.current) ? live.current : initialOffset;
+  const sizes = () => {
+    const value = facts?.current;
+    const contentRows = typeof value?.contentRows === "number" && Number.isFinite(value.contentRows) ? Math.max(1, Math.floor(value.contentRows)) : 1;
+    const viewportRows = typeof value?.viewportRows === "number" && Number.isFinite(value.viewportRows) ? Math.max(1, Math.floor(value.viewportRows)) : 1;
+    return { contentRows, viewportRows };
+  };
+  const band = () => {
+    const now = sizes();
+    return clampScroll(position(), now.contentRows, now.viewportRows);
+  };
+  const commit = (next) => {
+    const now = sizes();
+    const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset;
+    if (live !== null && live !== undefined)
+      live.current = clamped;
+    set(clamped);
+  };
+  const handle = {
+    get contentRows() {
+      return sizes().contentRows;
+    },
+    get viewportRows() {
+      return sizes().viewportRows;
+    },
+    get offset() {
+      return band().offset;
+    },
+    get max() {
+      return band().max;
+    },
+    get overflow() {
+      return band().overflow;
+    },
+    scrollTo: (next) => {
+      commit(next);
+    },
+    scrollBy: (delta) => {
+      commit(position() + delta);
+    },
+    onWheel: (event) => {
+      const now = sizes();
+      commit(scrollByWheel(event, position(), now.contentRows, now.viewportRows));
+    },
+    sync() {
+      return handle;
+    }
+  };
+  return handle;
+}
+function viewportGutter(kit, viewport, onTrackClick) {
+  const cells = gutterCells(viewport.offset, viewport.contentRows, viewport.viewportRows);
+  if (cells.length === 0)
+    return;
+  const rows = cells.map((cell, at) => kit.React.createElement(kit.ui.Text, { key: `g${at}`, color: cell === DAG_CHROME.barFull ? toneColor("chain") : toneColor("dim") }, cell));
+  if (onTrackClick === undefined)
+    return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...rows);
+  return kit.React.createElement(kit.ui.Box, {
+    key: "gutter",
+    flexDirection: "column",
+    width: 1,
+    onClick: (event) => {
+      const row = typeof event?.localRow === "number" ? Math.floor(event.localRow) : 0;
+      onTrackClick(row);
+    }
+  }, ...rows);
+}
+function panelViewportBody(kit, children, viewport, reserveGutter = true) {
+  const window = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
+  if (!reserveGutter)
+    return [...window];
+  const rail = viewportGutter(kit, viewport);
+  if (rail === undefined)
+    return [...window];
+  return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...window), rail)];
+}
+function publishBadge(host, badge, previous) {
+  if (host === null || host === undefined)
+    return;
+  const api = host;
+  const next = badge === null ? null : { level: badge.level, unread: Math.max(0, Math.floor(badge.unread)) };
+  const last = previous.current;
+  if (last === next || last !== null && next !== null && last.level === next.level && last.unread === next.unread)
+    return;
+  try {
+    if (next === null) {
+      if (typeof api.clearBadge === "function")
+        api.clearBadge();
+    } else if (typeof api.notify === "function") {
+      api.notify(next.level, next.unread);
+    } else {
       return;
     }
-    let requested = 0;
-    let threw = 0;
-    for (const type of TRANSCRIPT_TYPES) {
-      const render = TRANSCRIPT_RENDERERS[type];
-      if (render === undefined)
-        continue;
-      const registration = tui.registerRenderer(type, (payload) => {
+    previous.current = next;
+  } catch {}
+}
+function usePanelKeys(kit, host, active, listener) {
+  const handlerRef = kit.React.useRef(listener);
+  if (handlerRef !== null && handlerRef !== undefined)
+    handlerRef.current = listener;
+  kit.React.useEffect(() => {
+    if (!active || host === null || host === undefined)
+      return;
+    const api = host;
+    if (typeof api.onKey !== "function")
+      return;
+    try {
+      const dispose = api.onKey((event) => {
         try {
-          const result = render(payload);
-          if (result === undefined)
-            return;
-          const title = scalarText(result.title, 120);
-          return { ...title === undefined ? {} : { title }, lines: scalarLines(result.lines, 100, 400) };
-        } catch {
-          return;
-        }
-      }, ctx);
-      const measured = registration.outcome();
-      if (measured.state === "requested")
-        requested += 1;
-      else if (measured.state === "refused") {
-        threw += 1;
-        log.debug(`transcript renderer ${type} refused: ${measured.detail ?? "unknown"}`);
-      }
+          const live = handlerRef.current;
+          if (typeof live === "function")
+            live(event);
+        } catch {}
+      });
+      return () => {
+        if (typeof dispose === "function")
+          dispose();
+      };
+    } catch {
+      return;
     }
-    handle.record(requested === 0 ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` } : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` });
-  });
-  return { outcome: () => seam.outcome() };
+  }, [active, host]);
 }
-
-// packages/mpd-config-plugin/src/settings-schema.ts
-var import_schemastery = __toESM(require_lib(), 1);
-var SETTINGS_NS = "mpd";
-var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
-var TEAM_MODEL_SLOT_DEFAULTS = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
-};
-var TEAM_MODEL_FALLBACK_OPTIONS = {
-  provider: ["deepseek-official"],
-  model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
-  reasoningEffort: ["off", "low", "high", "max"]
-};
-function teamModelSlotSchema(slot) {
-  return import_schemastery.default.object({
-    provider: import_schemastery.default.string().default(slot.provider),
-    model: import_schemastery.default.string().default(slot.model),
-    reasoningEffort: import_schemastery.default.string().default(slot.reasoningEffort)
-  });
-}
-var SettingsSchema = import_schemastery.default.object({
-  hashline: import_schemastery.default.object({ maxDiffChars: import_schemastery.default.number().default(20000) }),
-  commentChecker: import_schemastery.default.object({ autoCheck: import_schemastery.default.boolean().default(true) }),
-  ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
-  memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
-  team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
-  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().required(false) }),
-  teamModels: import_schemastery.default.object({
-    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
-    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
-    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
-  }),
-  watchdog: import_schemastery.default.object({
-    enabled: import_schemastery.default.boolean().default(true),
-    warnSilenceMs: import_schemastery.default.number().default(600000),
-    tickIntervalMs: import_schemastery.default.number().default(15000),
-    warnStreakToEscalate: import_schemastery.default.number().default(6),
-    actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("warn-only"),
-    toolInFlightMaxMs: import_schemastery.default.number().default(900000),
-    holdTtlMs: import_schemastery.default.number().default(900000)
-  }),
-  tui: import_schemastery.default.object({ dashboardKey: import_schemastery.default.boolean().default(true) })
-});
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
-var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
-function knobHint(key, semantics) {
-  const pointer = `mpd.jsonc ${key}`;
-  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
-}
-var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_SLOT_GROUPS = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
-};
-var TEAM_MODEL_LEAF_TEMPLATES = {
-  provider: {
-    en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
-    zh: "这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。"
-  },
-  model: {
-    en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
-    zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
-  },
-  reasoningEffort: {
-    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
-  }
-};
-var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
-  slot4: {
-    provider: {
-      en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-      zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。"
-    },
-    model: {
-      en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-      zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
-    },
-    reasoningEffort: {
-      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+function usePanelTick(kit, intervalMs, enabled = true) {
+  const tick = kit.React.useState(0);
+  const set = tick[1];
+  kit.React.useEffect(() => {
+    if (!enabled)
+      return;
+    try {
+      const timer = setInterval(() => {
+        set(Date.now());
+      }, intervalMs);
+      return () => {
+        try {
+          clearInterval(timer);
+        } catch {}
+      };
+    } catch {
+      return;
     }
-  }
-};
-function teamModelMembers(slot, lang) {
-  return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ");
+  }, [enabled, intervalMs]);
 }
-function teamModelLeafSentence(slot, leaf, lang) {
-  const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf];
-  if (override !== undefined)
-    return override[lang];
-  return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang].split("{group}").join(TEAM_MODEL_SLOT_GROUPS[slot][lang]).split("{members}").join(teamModelMembers(slot, lang));
+function panelKeysArmed(focused, visible, host) {
+  if (focused !== true || visible !== true)
+    return false;
+  if (host === null || host === undefined)
+    return false;
+  return typeof host.onKey === "function";
 }
-var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
-  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1;
-  const group = TEAM_MODEL_SLOT_GROUPS[slot];
-  const leaves = [
-    { leaf: "provider", label: "provider", zh: "提供商" },
-    { leaf: "model", label: "model", zh: "模型" },
-    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
-  ];
-  return leaves.map(({ leaf, label, zh }) => ({
-    path: ["teamModels", slot, leaf],
-    label: `Slot ${index} ${label} (${group.en})`,
-    zh: `槽位 ${index} ${zh}（${group.zh}）`,
-    kind: "select",
-    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: teamModelLeafSentence(slot, leaf, "en"),
-    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
-    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
-  }));
-});
-var SETTINGS_KNOBS = [
-  { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
-  { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
-  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
-  { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
-  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
-  { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
-  { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
-  { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
-  { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
-  { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
-  { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
-  { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS,
-  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
-];
-
-// packages/mpd-tui-plugin/src/settings.ts
-var SETTINGS_ENTRY = "mpd-config";
-function knobHint2(key, semantics) {
-  const pointer = `mpd.jsonc ${key}`;
-  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
+function panelKeyEvent(event) {
+  if (event === null || event === undefined || typeof event !== "object")
+    return;
+  const raw = event;
+  const input = typeof raw.input === "string" ? raw.input : "";
+  return {
+    input,
+    ...raw.key !== null && raw.key !== undefined && typeof raw.key === "object" ? { key: raw.key } : {},
+    ...typeof raw.preventDefault === "function" ? { preventDefault: () => raw.preventDefault.call(raw) } : {}
+  };
 }
-function knobHintPair(knob) {
-  const key = knob.path.join(".");
-  return { zh: knobHint2(key, knob.semanticsZh), en: knobHint2(key, knob.semantics) };
+function runningGlyph(phase) {
+  const base = DAG_TONE_GLYPH.running ?? "◐";
+  const orbit = [base, `${base}·`, base, `${base}··`];
+  const index = (Math.floor(phase) % orbit.length + orbit.length) % orbit.length;
+  return orbit[index];
 }
-var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
-function dedupeOptions(pairs) {
-  const seen = new Set;
+function visualGlyph(visual) {
+  return DAG_TONE_GLYPH[visual] ?? "?";
+}
+function visualTone(visual) {
+  return DAG_STATE_TONES.includes(visual) ? visual : "dim";
+}
+function legendLinesFor(cols, arrowLines) {
+  const width = Number.isFinite(cols) ? Math.floor(cols) : 0;
+  if (width <= 0)
+    return [];
   const out = [];
-  for (const pair of pairs) {
-    if (pair.value.length === 0 || seen.has(pair.value))
-      continue;
-    seen.add(pair.value);
-    out.push(pair);
+  const push = (line) => {
+    if (line !== "")
+      out.push(clampCells(stripControl(line), width));
+  };
+  for (const line of arrowLines)
+    push(line);
+  const entries = DAG_STATE_TONES.map((state) => {
+    const glyph = DAG_TONE_GLYPH[state] ?? "?";
+    const twin = DAG_STATE_TONES.find((other) => other !== state && DAG_TONE_GLYPH[other] === DAG_TONE_GLYPH[state]);
+    return twin === undefined ? `${glyph} ${state}` : `${glyph} ${state}=${twin}`;
+  });
+  const oneLine = entries.join(" · ");
+  if (cellWidth(oneLine) <= width) {
+    push(oneLine);
+    return out;
   }
+  let current = "";
+  for (const entry of entries) {
+    const candidate = current === "" ? entry : `${current} · ${entry}`;
+    if (cellWidth(candidate) <= width) {
+      current = candidate;
+      continue;
+    }
+    push(current);
+    current = entry;
+  }
+  push(current);
   return out;
 }
-function declaredOptions(leaf) {
-  return TEAM_MODEL_FALLBACK_OPTIONS[leaf].map((value) => ({ value, label: value }));
-}
-function optionLabel(name, id) {
-  return typeof name === "string" && name.length > 0 ? name : id;
-}
-function teamModelOptionLists(catalog) {
-  const providers = [];
-  const models = [];
-  const efforts = [];
-  if (catalog !== undefined && catalog.degraded !== true) {
-    const rawProviders = Array.isArray(catalog.providers) ? catalog.providers : [];
-    for (const provider of rawProviders) {
-      if (typeof provider?.id !== "string" || provider.id.length === 0)
-        continue;
-      providers.push({ value: provider.id, label: optionLabel(provider.name, provider.id) });
-      const rawModels = Array.isArray(provider.models) ? provider.models : [];
-      for (const model of rawModels) {
-        if (typeof model?.id !== "string" || model.id.length === 0)
-          continue;
-        models.push({ value: model.id, label: optionLabel(model.name, model.id) });
-        const rawEfforts = Array.isArray(model.efforts) ? model.efforts : [];
-        for (const effort of rawEfforts) {
-          if (typeof effort?.id !== "string" || effort.id.length === 0)
-            continue;
-          efforts.push({ value: effort.id, label: optionLabel(effort.name, effort.id) });
-        }
-      }
-    }
-  }
-  const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) };
-  const pick3 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
-  return {
-    provider: pick3("provider"),
-    model: pick3("model"),
-    reasoningEffort: pick3("reasoningEffort"),
-    source: {
-      provider: live.provider.length > 0 ? "live" : "declared",
-      model: live.model.length > 0 ? "live" : "declared",
-      reasoningEffort: live.reasoningEffort.length > 0 ? "live" : "declared"
-    }
-  };
-}
-function slotLeafOf(path) {
-  if (path[0] !== "teamModels")
-    return;
-  const leaf = path[2];
-  return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
-}
-function isServed(provider) {
-  try {
-    if (typeof provider.describe === "function") {
-      const described = provider.describe();
-      if (Array.isArray(described) && described.some((entry) => String(entry?.ns ?? "") === SETTINGS_NS))
-        return true;
-    }
-  } catch {}
-  try {
-    return typeof provider.get === "function" && provider.get(SETTINGS_NS) !== undefined;
-  } catch {
-    return false;
-  }
-}
-function configPluginPresent(ctx) {
-  try {
-    return typeof ctx.get === "function" && ctx.get("mpdConfig") !== undefined;
-  } catch {
-    return false;
-  }
-}
-function declaredField(knob) {
-  const hints = knobHintPair(knob);
-  return {
-    path: [...knob.path],
-    label: knob.label,
-    descriptions: { zh: knob.zh },
-    hint: hints.en,
-    ...hints.zh === hints.en ? {} : { hintDescriptions: { zh: hints.zh } },
-    kind: knob.kind,
-    ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
-  };
-}
-var DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey";
-var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
-function settingsFields(lists) {
-  return SETTINGS_KNOBS.map((knob) => {
-    const leaf = slotLeafOf(knob.path);
-    const field2 = declaredField(knob);
-    return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
-  });
-}
-var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var SETTINGS_SECTION = {
-  ns: SETTINGS_ENTRY,
-  title: "MPD bundle",
-  descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
-  fields: SETTINGS_FIELDS
-};
-function resolveCatalogReader(ctx) {
-  try {
-    const mounted = serviceOf(ctx, "mpdDsh");
-    if (mounted !== undefined)
-      return mounted;
-  } catch {}
-  return createDshAdapter(ctx);
-}
-function registerSettingsSection(ctx, tui, log, adapterOverride) {
-  let namespace = { state: "absent", detail: "settings was not injected" };
-  let section;
-  const catalogReader = adapterOverride ?? resolveCatalogReader(ctx);
-  tui.whenBound("settings", (service, _scope, handle) => {
-    const provider = service;
-    if (typeof provider?.register !== "function") {
-      namespace = { state: "refused", detail: "settings.register is missing" };
-      handle.record(namespace);
-      return;
-    }
-    if (configPluginPresent(ctx)) {
-      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` };
-      log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`);
-      handle.record(namespace);
-      return;
-    }
-    if (isServed(provider)) {
-      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` };
-      log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`);
-      handle.record(namespace);
-      return;
-    }
-    const registered = tui.registerSettingsNamespace(SETTINGS_NS, SettingsSchema, { applies: "restart" });
-    const measured = registered.outcome();
-    namespace = measured.state === "requested" ? { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` } : { state: measured.state, detail: measured.detail };
-    handle.record(namespace);
-    if (namespace.state === "refused")
-      log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`);
-  });
-  const sectionHandle = tui.registerSettingsSection(async () => {
-    let catalog;
-    try {
-      catalog = await catalogReader.llmCatalog?.();
-    } catch {
-      catalog = undefined;
-    }
-    const lists = teamModelOptionLists(catalog);
-    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
-    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
-    return { ...SETTINGS_SECTION, fields: settingsFields(lists) };
-  }, ctx);
-  return {
-    outcome: () => {
-      const measured = sectionHandle.outcome();
-      const chosen = measured.state === "refused" ? { state: "refused", detail: measured.detail } : section ?? { state: measured.state, detail: measured.detail };
-      return {
-        id: measured.id,
-        state: chosen.state,
-        detail: `${chosen.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`
-      };
-    }
-  };
+function panelFloorColumns(which) {
+  if (which === "dag")
+    return DAG_PANEL_MIN_COLUMNS;
+  if (which === "workmate")
+    return WORKMATE_PANEL_MIN_COLUMNS;
+  return DAG_PANEL_MIN_COLUMNS;
 }
 
 // packages/mpd-tui-plugin/src/graph.ts
@@ -4589,14 +4549,76 @@ function dependencyChain(tasks, id) {
   }
   return seen;
 }
-function ranksOf(tasks) {
-  const deepest = tasks.reduce((max, task) => Math.max(max, Number.isFinite(task.depth) ? task.depth : 0), 0);
-  const ranks = Array.from({ length: deepest + 1 }, () => []);
-  for (const task of tasks) {
-    const rank = Number.isFinite(task.depth) && task.depth >= 0 ? Math.min(task.depth, deepest) : 0;
-    ranks[rank].push(task);
+function deriveRanks(tasks, byId) {
+  const settled = new Map;
+  const walking = new Set;
+  for (const root of tasks) {
+    if (settled.has(root.id))
+      continue;
+    const stack = [{ id: root.id, next: 0 }];
+    walking.add(root.id);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
+      if (frame.next < deps.length) {
+        const dependency = deps[frame.next];
+        frame.next += 1;
+        if (settled.has(dependency) || walking.has(dependency))
+          continue;
+        walking.add(dependency);
+        stack.push({ id: dependency, next: 0 });
+        continue;
+      }
+      let deepest = 0;
+      for (const dependency of deps)
+        deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
+      settled.set(frame.id, deepest);
+      walking.delete(frame.id);
+      stack.pop();
+    }
   }
+  return settled;
+}
+function servedRank(task) {
+  return Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0;
+}
+var ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function bucketRanks(tasks, rankOf) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, rankOf(task)), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks)
+    ranks[Math.min(Math.max(0, rankOf(task)), deepest)].push(task);
+  for (const rank of ranks)
+    rank.sort((left, right) => ID_ORDER.compare(left.id, right.id));
   return ranks;
+}
+function rankPlan(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const missing = new Set;
+  let resolved = 0;
+  for (const task of tasks) {
+    for (const id of task.dependencies) {
+      if (byId.has(id))
+        resolved += 1;
+      else
+        missing.add(id);
+    }
+  }
+  const unresolved = [...missing].sort();
+  if (tasks.length === 0)
+    return { ranks: [], rankOf: new Map, derived: true, unresolved };
+  const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1;
+  if (resolved === 0 && servedVaries) {
+    const ranks = bucketRanks(tasks, servedRank);
+    const rankOf = new Map;
+    ranks.forEach((rank, index) => {
+      for (const task of rank)
+        rankOf.set(task.id, index);
+    });
+    return { ranks, rankOf, derived: false, unresolved };
+  }
+  const derived = deriveRanks(tasks, byId);
+  return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
 }
 function cycleIds(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
@@ -4629,13 +4651,14 @@ function cycleIds(tasks) {
   return [...cyclic].sort();
 }
 function layoutBoxes(tasks, cols, focus) {
+  const plan = rankPlan(tasks);
   if (tasks.length === 0) {
-    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [] };
+    const empty = { lines: [], hits: [], width: 0, mode: "boxes", cycles: [], chain: [], ranksDerived: plan.derived, unresolved: plan.unresolved };
     if (focus !== undefined)
       empty.focus = focus;
     return empty;
   }
-  const ranks = ranksOf(tasks);
+  const ranks = plan.ranks;
   if (ranks.length > MAX_BOX_RANKS)
     return;
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
@@ -4655,6 +4678,7 @@ function layoutBoxes(tasks, cols, focus) {
   const mask = [];
   const text = [];
   const tone = [];
+  const wide = [];
   const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
   const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
   const grow = (row) => {
@@ -4662,12 +4686,15 @@ function layoutBoxes(tasks, cols, focus) {
       mask.push(new Array(width).fill(0));
       text.push(new Array(width).fill(null));
       tone.push(new Array(width).fill(null));
+      wide.push(new Array(width).fill(false));
     }
   };
   const link = (row, col, dir, at) => {
     if (col < 0 || col >= width || row < 0)
       return;
     grow(row);
+    if (wide[row][col])
+      return;
     mask[row][col] |= dir;
     const current = toneAt(row, col);
     if (current === undefined || order.indexOf(at) > order.indexOf(current))
@@ -4677,8 +4704,19 @@ function layoutBoxes(tasks, cols, focus) {
     if (col < 0 || col >= width)
       return;
     grow(row);
+    if (wide[row][col])
+      return;
     text[row][col] = char;
     tone[row][col] = at;
+    for (let step = 1;step < cellWidth(char); step++) {
+      const over = col + step;
+      if (over >= width)
+        break;
+      text[row][over] = null;
+      mask[row][over] = 0;
+      tone[row][over] = at;
+      wide[row][over] = true;
+    }
   };
   const centreOf = (id) => (column.get(id) ?? 0) + Math.floor(nodeWidth / 2);
   const RANK_STRIDE = 6;
@@ -4742,7 +4780,7 @@ function layoutBoxes(tasks, cols, focus) {
     const cells = [];
     let run = null;
     for (let col = 0;col < width; col++) {
-      const char = text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
+      const char = wide[row][col] ? "" : text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
       const at = toneAt(row, col) ?? "blank";
       if (run !== null && run.tone === at)
         run.text += char;
@@ -4758,7 +4796,7 @@ function layoutBoxes(tasks, cols, focus) {
   while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
     lines.pop();
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList };
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -4766,9 +4804,10 @@ function layoutBoxes(tasks, cols, focus) {
 function layoutRail(tasks, cols, focus) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
   const byId = new Map(tasks.map((task) => [task.id, task]));
+  const plan = rankPlan(tasks);
   const children = new Map;
   for (const task of tasks) {
-    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (byId.get(right)?.depth ?? 0) - (byId.get(left)?.depth ?? 0))[0];
+    const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (plan.rankOf.get(right) ?? 0) - (plan.rankOf.get(left) ?? 0))[0];
     if (parent === undefined)
       continue;
     if (!children.has(parent))
@@ -4776,6 +4815,9 @@ function layoutRail(tasks, cols, focus) {
     children.get(parent).push(task);
   }
   const drawn = [];
+  const RAIL_LABEL_FLOOR = 16;
+  const maxLevels = Math.max(0, Math.floor((Math.max(0, cols) - RAIL_LABEL_FLOOR) / 3));
+  const prefixCells = maxLevels * 3;
   const seen = new Set;
   const walk = (task, prefix, leaf, depth) => {
     if (seen.has(task.id))
@@ -4783,7 +4825,9 @@ function layoutRail(tasks, cols, focus) {
     seen.add(task.id);
     drawn.push({ task, prefix, leaf, depth });
     const kids = children.get(task.id) ?? [];
-    kids.forEach((child, index) => walk(child, depth === 0 ? "" : prefix + (leaf ? "   " : "│  "), index === kids.length - 1, depth + 1));
+    const grown = depth === 0 ? "" : prefix + (leaf ? "   " : "│  ");
+    const next = grown.length <= prefixCells ? grown : grown.slice(grown.length - prefixCells);
+    kids.forEach((child, index) => walk(child, next, index === kids.length - 1, depth + 1));
   };
   for (const root of tasks.filter((task) => task.dependencies.filter((id) => byId.has(id)).length === 0))
     walk(root, "", true, 0);
@@ -4811,7 +4855,32 @@ function layoutRail(tasks, cols, focus) {
     hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
   });
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList };
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
+  if (focus !== undefined)
+    view.focus = focus;
+  return view;
+}
+function layoutList(tasks, cols, focus) {
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const plan = rankPlan(tasks);
+  const ranks = plan.ranks;
+  const lines = [];
+  const hits = [];
+  for (let rank = 0;rank < ranks.length; rank++) {
+    const rule = "─".repeat(Math.max(0, cols - 8));
+    lines.push(clampSpans([{ text: `rank ${rank} `, tone: "edge" }, { text: rule, tone: "edge" }], cols));
+    for (const task of ranks[rank]) {
+      const at = toneOf(task, focus, chain);
+      const suffix = task.dependencies.length === 0 ? "" : ` ⇠${task.dependencies.join(",")}`;
+      const head = labelOf(task, focus);
+      const tail = `${task.visual}${task.attempt === undefined ? "" : ` a${task.attempt}`}${task.assignee === undefined ? "" : `  @${task.assignee}`}${suffix}`;
+      const shown = clampCells(stripControl(head), Math.max(8, cols - cellWidth(tail) - 3));
+      lines.push(clampSpans([{ text: "  " + shown + " ".repeat(Math.max(0, cols - 2 - cellWidth(shown) - cellWidth(tail) - 1)), tone: at }, { text: tail, tone: at }], cols));
+      hits.push({ taskId: task.id, row: lines.length - 1, rowEnd: lines.length - 1, col: 0, colEnd: Math.max(0, cols - 1) });
+    }
+  }
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -5325,6 +5394,160 @@ function planProjectionLines(workflow) {
 }
 
 // packages/mpd-tui-plugin/src/subagent-scene.ts
+var ROW_LABEL_TONE = Object.freeze({
+  workspace: "dim",
+  team: "focus",
+  phase: "chain",
+  plan: "chain",
+  "team-plan": "chain",
+  captain: "dim",
+  staged: "blocked",
+  watchdog: "blocked",
+  "team-hold": "blocked",
+  members: "dim",
+  roster: "focus",
+  tasks: "running",
+  boulder: "chain",
+  plans: "dim",
+  workmates: "dim",
+  mail: "dim",
+  note: "blocked",
+  confirm: "focus",
+  required: "chain",
+  runnable: "chain"
+});
+var LABEL_ROW = /^([a-z][a-z0-9-]*)( {2,})([\s\S]*)$/u;
+function labelSplit(line) {
+  const matched = LABEL_ROW.exec(line);
+  if (matched === null)
+    return;
+  return { label: `${matched[1]}${matched[2]}`, rest: matched[3] };
+}
+function toneOfStatus(row) {
+  if (row.live)
+    return "running";
+  if (row.failed)
+    return "failed";
+  return row.status === "completed" ? "completed" : "dim";
+}
+function toneOfTally(counts, states = []) {
+  if (counts.failed > 0)
+    return "failed";
+  if (counts.inProgress > 0)
+    return "running";
+  if (counts.total > 0 && counts.completed >= counts.total)
+    return "completed";
+  const unfinished = states.filter((state) => state !== "completed" && state !== "cancelled");
+  if (counts.total > 0 && unfinished.length > 0 && unfinished.every((state) => state === "blocked"))
+    return "blocked";
+  return "open";
+}
+var TONE_PRECEDENCE = Object.freeze([
+  "failed",
+  "running",
+  "blocked",
+  "completed",
+  "cancelled",
+  "open",
+  "focus",
+  "chain",
+  "edge",
+  "dim",
+  "blank"
+]);
+function dominantTone(tones) {
+  for (const tone of TONE_PRECEDENCE)
+    if (tones.includes(tone))
+      return tone;
+  return "dim";
+}
+function barCells(filled, total, cells) {
+  const width = Number.isFinite(cells) ? Math.max(0, Math.floor(cells)) : 0;
+  if (width === 0)
+    return "";
+  const whole = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0;
+  const part = Number.isFinite(filled) ? Math.min(whole, Math.max(0, Math.floor(filled))) : 0;
+  const lit = whole === 0 ? 0 : Math.min(width, Math.max(part > 0 ? 1 : 0, Math.round(part / whole * width)));
+  return DAG_CHROME.barFull.repeat(lit) + DAG_CHROME.barEmpty.repeat(width - lit);
+}
+var RUNNING_FRAMES = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"]);
+function runningMarker(phase) {
+  const index = Number.isFinite(phase) ? (Math.floor(phase) % RUNNING_FRAMES.length + RUNNING_FRAMES.length) % RUNNING_FRAMES.length : DAG_ANIM.staticPhase;
+  return RUNNING_FRAMES[index] ?? DAG_TONE_GLYPH.running ?? "◐";
+}
+function animPhase(timeMs) {
+  if (!Number.isFinite(timeMs) || timeMs <= 0)
+    return DAG_ANIM.staticPhase;
+  return Math.floor(timeMs / DAG_ANIM.intervalMs) % DAG_ANIM.frames;
+}
+function stateMarker(tone, phase) {
+  return tone === "running" ? runningMarker(phase) : visualGlyph(tone);
+}
+function chromeTitle(parts) {
+  return parts.filter((part) => part !== undefined && part !== "").join(" · ");
+}
+function useSurfaceClock(ui) {
+  if (typeof ui.useAnimationFrame === "function") {
+    const pair = ui.useAnimationFrame(DAG_ANIM.intervalMs);
+    const ref = Array.isArray(pair) ? pair[0] : undefined;
+    const time = Number(Array.isArray(pair) ? pair[1] : 0);
+    return { time: Number.isFinite(time) ? time : 0, ref };
+  }
+  if (typeof ui.useAnimationTime === "function") {
+    const time = Number(ui.useAnimationTime(DAG_ANIM.intervalMs));
+    return { time: Number.isFinite(time) ? time : 0, ref: undefined };
+  }
+  return { time: 0, ref: undefined };
+}
+function surfaceText(kit, key, text, style = {}) {
+  return textRow(kit, text, {
+    key,
+    ...style.tone === undefined ? {} : { tone: style.tone },
+    ...style.bold === true ? { bold: true } : {},
+    ...style.dim === true && style.tone === undefined ? { dim: true } : {}
+  });
+}
+function surfaceBodyRow(kit, key, line, overrides) {
+  if (line === "")
+    return surfaceText(kit, key, line);
+  const split = labelSplit(line);
+  if (split === undefined) {
+    return surfaceText(kit, key, line, line.startsWith("  ") ? { dim: true } : {});
+  }
+  const label = split.label.trimEnd();
+  const tone = overrides?.[label] ?? ROW_LABEL_TONE[label] ?? "dim";
+  return kit.React.createElement(kit.ui.Text, { key }, kit.React.createElement(kit.ui.Text, { key: "label", color: toneColor(tone) }, split.label), kit.React.createElement(kit.ui.Text, { key: "value" }, split.rest));
+}
+function surfaceRule(kit, key, title, tone = "dim") {
+  return kit.React.createElement(kit.ui.Box, {
+    key,
+    height: 1,
+    flexShrink: 0,
+    borderStyle: DAG_CHROME.frameBorder,
+    borderTop: true,
+    borderBottom: false,
+    borderLeft: false,
+    borderRight: false,
+    borderColor: toneColor(tone),
+    ...title === undefined || title === "" ? {} : { borderText: { content: safeRow(title), position: "top", align: "start" } }
+  });
+}
+function surfaceFrame(kit, key, title, children, tone = "dim", ref) {
+  return kit.React.createElement(kit.ui.Box, {
+    key,
+    flexDirection: "column",
+    width: "100%",
+    flexGrow: 1,
+    paddingX: 1,
+    borderStyle: DAG_CHROME.frameBorder,
+    borderColor: toneColor(tone),
+    ...ref === undefined ? {} : { ref },
+    ...title === "" ? {} : { borderText: { content: safeRow(title), position: "top", align: "start" } }
+  }, children);
+}
+function surfaceHints(kit, key, hints) {
+  return surfaceText(kit, key, chromeTitle(hints), { dim: true });
+}
 var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
 var MERGED_ROW_MAX_CELLS = 4000;
 var FALLBACK_COLS = 100;
@@ -5360,12 +5583,7 @@ function isoInstant(value) {
   return new Date(value).toISOString();
 }
 function hostKit(React, ui) {
-  if (React === null || React === undefined || ui === null || ui === undefined)
-    return;
-  if (typeof React.createElement !== "function")
-    return;
-  const kit = ui;
-  if (typeof kit.Box !== "function" || typeof kit.Text !== "function")
+  if (panelKit(React, ui) === undefined)
     return;
   return { React, ui };
 }
@@ -5613,6 +5831,8 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
     const ui = kit.ui;
     const close = typeof props.close === "function" ? props.close : () => {};
     const channel = props?.channel;
+    const clock = useSurfaceClock(ui);
+    const phase = animPhase(clock.time);
     const workflowState = React.useState(undefined);
     const workflow = workflowState[0];
     const setWorkflow = workflowState[1];
@@ -5746,35 +5966,40 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
           interrupt(selected);
       });
     }
+    const sectionTone = dominantTone(rows.map((row) => toneOfStatus(row)));
+    const teamTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual));
+    const surfaceTone = dominantTone([sectionTone, teamTone]);
+    const frameTone = detailOpen && detailRow !== undefined ? toneOfStatus(detailRow) : surfaceTone;
     const children = [];
-    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeRow(`${t("scene.subagents")}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    children.push(surfaceText(kit, "title", chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), { bold: true, tone: frameTone }));
     if (detailOpen) {
       const detailRows = detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll);
       for (let index = 0;index < detailRows.length; index += 1) {
         const row = detailRows[index];
-        children.push(React.createElement(ui.Text, {
-          key: `detail-${index}`,
-          ...row.title === true ? { bold: true } : {},
-          ...row.dim === true ? { dimColor: true } : {}
-        }, safeRow(row.text)));
+        children.push(row.title === true ? surfaceText(kit, `detail-${index}`, row.text, { bold: true, tone: frameTone }) : surfaceBodyRow(kit, `detail-${index}`, row.text, row.dim === true ? undefined : { output: "dim" }));
+        if (row.dim === true) {
+          children[children.length - 1] = surfaceText(kit, `detail-${index}`, row.text, { dim: true });
+        }
       }
     } else {
       const section = subagentSectionRows(channel);
       for (let index = 0;index < section.length; index += 1) {
         const row = section[index];
+        const view2 = row.rowIndex === undefined ? undefined : rows[row.rowIndex];
+        const tone = view2 !== undefined ? toneOfStatus(view2) : row.dim === true ? undefined : sectionTone;
         const emphasis = {
-          ...row.header === true ? { bold: true } : {},
-          ...row.dim === true ? { dimColor: true } : {},
-          ...row.rowIndex !== undefined && row.rowIndex === selectedIndex ? { bold: true } : {}
+          ...tone === undefined ? {} : { tone },
+          bold: row.header === true || view2 !== undefined && row.rowIndex === selectedIndex,
+          ...row.dim === true ? { dim: true } : {}
         };
         if (row.rowIndex === undefined) {
-          children.push(React.createElement(ui.Text, { key: `sub-${index}`, ...emphasis }, safeRow(row.text)));
+          children.push(surfaceText(kit, `sub-${index}`, row.text, emphasis));
           continue;
         }
         const clicked = row.rowIndex;
-        children.push(React.createElement(ui.Box, { key: `sub-${index}`, onClick: () => setFocus(clicked) }, React.createElement(ui.Text, { key: "row", ...emphasis }, safeRow(row.text))));
+        children.push(React.createElement(ui.Box, { key: `sub-${index}`, onClick: () => setFocus(clicked) }, surfaceText(kit, "row", row.text, emphasis)));
       }
-      children.push(React.createElement(ui.Text, { key: "sep" }, safeRow("")));
+      children.push(surfaceRule(kit, "sep", undefined, surfaceTone));
       let teamLines;
       try {
         teamLines = workflow === undefined ? ["team state unreadable"] : teamWorkflowLines(workflow);
@@ -5782,30 +6007,592 @@ function createSubagentSceneComponent(readWorkflow, onHostKit) {
         teamLines = ["team state unreadable"];
       }
       for (let index = 0;index < teamLines.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `team-${index}` }, safeRow(teamLines[index])));
+        const overrides = { tasks: teamTone };
+        children.push(surfaceBodyRow(kit, `team-${index}`, teamLines[index], overrides));
       }
       const view = teamGraphView(workflow, measured.cols);
       if (view !== undefined) {
         children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
         for (let index = 0;index < view.lines.length; index += 1) {
-          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+        }
+        let arrow = [];
+        try {
+          arrow = legendLines(measured.cols);
+        } catch {
+          arrow = [];
+        }
+        for (let index = 0;index < arrow.length; index += 1) {
+          children.push(surfaceText(kit, `legend-${index}`, arrow[index], { dim: true }));
         }
         let legend = [];
         try {
-          legend = legendLines(measured.cols);
+          legend = legendLinesFor(measured.cols, arrow);
         } catch {
           legend = [];
         }
-        for (let index = 0;index < legend.length; index += 1) {
-          children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow(legend[index])));
+        for (let index = arrow.length;index < legend.length; index += 1) {
+          children.push(surfaceText(kit, `state-key-${index - arrow.length}`, legend[index], { dim: true }));
         }
       }
     }
-    if (noticeLine !== "")
-      children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeRow(noticeLine)));
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeRow(detailOpen ? "esc/backspace/q back to the list · ↑↓ scroll the output · i interrupt the selected run · r refresh" : "esc/q close · ↑↓ select · enter detail · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board")));
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+    if (noticeLine !== "") {
+      children.push(surfaceText(kit, "notice", noticeLine, { tone: noticeLine.startsWith("interrupt requested") ? "completed" : "blocked" }));
+    }
+    children.push(surfaceHints(kit, "footer", detailOpen ? ["esc/backspace/q back to the list", "↑↓ scroll the output", "i interrupt the selected run", "r refresh"] : ["esc/q close", "↑↓ select", "enter detail", "i interrupt the selected run", "r refresh", "alt+a this panel", "alt+t team", "alt+m board"]));
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, measured.cols - 6));
+    return surfaceFrame(kit, "frame", borderTitle, children, frameTone, clock.ref);
+  };
+}
+
+// packages/mpd-tui-plugin/src/status.ts
+var STATUS_KEY = "mpd-tui";
+var STATUS_MAX_CELLS = 200;
+function statusMarker(state) {
+  const tally = state.team?.tasks;
+  return tally === undefined ? visualGlyph("dim") : visualGlyph(toneOfTally(tally, []));
+}
+function statusVisualLine(state, notice) {
+  return clampCells(stripControl(statusLine(state, notice)), STATUS_MAX_CELLS);
+}
+function registerStatus(ctx, tui, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews, teamRecords) {
+  const view = tui.registerStatusView({
+    key: STATUS_KEY,
+    intervalMs,
+    identity: ctx,
+    label: "mpd-tui status line",
+    render: () => statusVisualLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), bridgeNotice?.()),
+    onError: (error) => log.debug(`status refresh failed: ${String(error?.message ?? error)}`)
+  });
+  return { outcome: () => view.outcome(), refresh: () => view.refresh() };
+}
+// packages/mpd-tui-plugin/src/registration.ts
+import { createRequire } from "node:module";
+import { readdirSync as readdirSync3 } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { join as join5 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+var BOARD_OPENED_EVENT = "mpd-tui/board-opened";
+function candidateAnchors(env = process.env, home = homedir4()) {
+  const anchors = [];
+  try {
+    anchors.push(fileURLToPath2(import.meta.url));
+  } catch {}
+  const argv1 = process.argv[1];
+  if (typeof argv1 === "string" && argv1.length > 0)
+    anchors.push(argv1);
+  const homes = [];
+  if (typeof env.DSH_HOME === "string" && env.DSH_HOME.length > 0)
+    homes.push(env.DSH_HOME);
+  homes.push(join5(home, ".dsh"), join5(home, ".dsh-tui"));
+  for (const root of homes) {
+    const profiles = join5(root, "profiles");
+    try {
+      for (const entry of readdirSync3(profiles, { withFileTypes: true })) {
+        if (entry.isDirectory())
+          anchors.push(join5(profiles, entry.name, "package.json"));
+      }
+    } catch {}
+  }
+  return [...new Set(anchors)];
+}
+function registerInto(moduleLike, type) {
+  const set = moduleLike?.KNOWN_SESSION_EVENT_TYPES;
+  if (!(set instanceof Set))
+    return false;
+  try {
+    if (set.has(type))
+      return true;
+  } catch {
+    return false;
+  }
+  try {
+    set.add(type);
+  } catch {}
+  try {
+    return set.has(type) === true;
+  } catch {
+    return false;
+  }
+}
+function registerLogOnlyEventType(type, log) {
+  let verified = false;
+  let resolved = 0;
+  for (const anchor of candidateAnchors()) {
+    try {
+      const required = createRequire(anchor)("@deepseek-ai/dsh-session");
+      resolved += 1;
+      if (registerInto(required, type))
+        verified = true;
+    } catch {}
+  }
+  log.debug(`session event type ${type}: ${verified ? "registered" : "NOT registered"} (${resolved} dsh-session copy/copies reached)`);
+  return verified;
+}
+
+// packages/mpd-tui-plugin/src/renderers.ts
+var STATUS_VISUAL = Object.freeze({
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  in_progress: "running"
+});
+function statusGlyph(value) {
+  if (typeof value !== "string")
+    return;
+  const visual = STATUS_VISUAL[value];
+  return visual === undefined ? undefined : DAG_TONE_GLYPH[visual];
+}
+function kindAbbrev(value) {
+  if (typeof value !== "string")
+    return;
+  return Object.prototype.hasOwnProperty.call(DAG_KIND_ABBREV, value) ? DAG_KIND_ABBREV[value] : undefined;
+}
+var TRANSCRIPT_TYPES = [
+  "agent-teams/team-created",
+  "agent-teams/member-added",
+  "agent-teams/member-removed",
+  "agent-teams/task-created",
+  "agent-teams/task-updated",
+  "agent-teams/team-halted",
+  "agent-teams/team-resumed",
+  "agent-teams/team-deleted",
+  "agent-teams/plan-discarded",
+  "agent-teams/message-sent",
+  BOARD_OPENED_EVENT
+];
+function bullet(payload, keys) {
+  const parts = [];
+  for (const key of keys) {
+    const value = field(payload, key, 120);
+    if (value !== undefined && value !== "")
+      parts.push(`${key}=${value}`);
+  }
+  return parts;
+}
+var TRANSCRIPT_RENDERERS = {
+  "agent-teams/team-created": (payload) => ({
+    title: "mpd team created",
+    lines: [field(payload, "name", 80) ?? "?", `team ${field(payload, "teamId", 60) ?? "?"}`, ...bullet(payload, ["profile", "captainSessionId"])]
+  }),
+  "agent-teams/member-added": (payload) => ({
+    title: "mpd team member added",
+    lines: [field(payload, "name", 80) ?? "?", ...bullet(payload, ["role", "memberId"])]
+  }),
+  "agent-teams/member-removed": (payload) => ({
+    title: "mpd team member removed",
+    lines: [field(payload, "name", 80) ?? field(payload, "memberId", 60) ?? "?"]
+  }),
+  "agent-teams/task-created": (payload) => {
+    const id = field(payload, "taskId", 40) ?? "?";
+    const abbrev = kindAbbrev(payload?.kind);
+    const subject = field(payload, "subject", 160) ?? "";
+    return {
+      title: "mpd team task created",
+      lines: [
+        `${DAG_TONE_GLYPH.open ?? "○"} ${`${id}${abbrev === undefined ? "" : ` ${abbrev}`} ${subject}`.trim()}`,
+        ...bullet(payload, ["assignee", "round"])
+      ]
+    };
+  },
+  "agent-teams/task-updated": (payload) => {
+    const id = field(payload, "taskId", 40) ?? "?";
+    const status = field(payload, "status", 40) ?? "?";
+    const glyph = statusGlyph(payload?.status);
+    return {
+      title: "mpd team task updated",
+      lines: [
+        `${id} -> ${status}`,
+        `${glyph === undefined ? "" : `${glyph} `}${status}`,
+        ...bullet(payload, ["assignee", "attempt", "verdict"]),
+        ...scalarLines(field(payload, "output", 400) ?? [], 6, 400)
+      ]
+    };
+  },
+  "agent-teams/team-halted": (payload) => ({
+    title: "mpd team halted",
+    lines: [`cancelled ${field(payload, "cancelledTasks", 20) ?? "?"} task(s)`]
+  }),
+  "agent-teams/team-resumed": (payload) => ({
+    title: "mpd team resumed",
+    lines: [field(payload, "reason", 200) ?? "(no reason recorded)"]
+  }),
+  "agent-teams/team-deleted": (payload) => ({
+    title: "mpd team deleted",
+    lines: [field(payload, "teamId", 60) ?? "?"]
+  }),
+  "agent-teams/plan-discarded": (payload) => ({
+    title: "mpd staged plan discarded",
+    lines: [field(payload, "teamId", 60) ?? "?"]
+  }),
+  "agent-teams/message-sent": (payload) => ({
+    title: "mpd team message",
+    lines: [
+      `${field(payload, "from", 60) ?? "?"} -> ${field(payload, "to", 60) ?? "?"}`,
+      ...scalarLines(field(payload, "content", 400) ?? [], 12, 400)
+    ]
+  }),
+  [BOARD_OPENED_EVENT]: (payload) => {
+    const view = field(payload, "view", 120) ?? "board";
+    const via = field(payload, "via", 20) ?? "?";
+    const stamp = payload?.at;
+    const at = typeof stamp === "number" && Number.isFinite(stamp) ? new Date(stamp).toISOString() : undefined;
+    return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] };
+  }
+};
+function registerRenderers(ctx, tui, log) {
+  const seam = tui.whenBound("renderers", (_service, _scope, handle) => {
+    const registry = tui.renderers();
+    if (typeof registry?.register !== "function") {
+      handle.record({ state: "refused", detail: `${TUI_SEAMS.renderers}.register is missing` });
+      return;
+    }
+    let requested = 0;
+    let threw = 0;
+    for (const type of TRANSCRIPT_TYPES) {
+      const render = TRANSCRIPT_RENDERERS[type];
+      if (render === undefined)
+        continue;
+      const registration = tui.registerRenderer(type, (payload) => {
+        try {
+          const result = render(payload);
+          if (result === undefined)
+            return;
+          const title = scalarText(result.title, 120);
+          return { ...title === undefined ? {} : { title }, lines: scalarLines(result.lines, 100, 400) };
+        } catch {
+          return;
+        }
+      }, ctx);
+      const measured = registration.outcome();
+      if (measured.state === "requested")
+        requested += 1;
+      else if (measured.state === "refused") {
+        threw += 1;
+        log.debug(`transcript renderer ${type} refused: ${measured.detail ?? "unknown"}`);
+      }
+    }
+    handle.record(requested === 0 ? { state: "refused", detail: `every renderer registration was refused (${threw} threw)` } : { state: "requested", detail: `${requested}/${TRANSCRIPT_TYPES.length} renderer(s) requested (no host read-back; a refusal also returns a disposer)` });
+  });
+  return { outcome: () => seam.outcome() };
+}
+
+// packages/mpd-config-plugin/src/settings-schema.ts
+var import_schemastery = __toESM(require_lib(), 1);
+var SETTINGS_NS = "mpd";
+var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
+var TEAM_MODEL_SLOT_DEFAULTS = {
+  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
+};
+var TEAM_MODEL_FALLBACK_OPTIONS = {
+  provider: ["deepseek-official"],
+  model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
+  reasoningEffort: ["off", "low", "high", "max"]
+};
+function teamModelSlotSchema(slot) {
+  return import_schemastery.default.object({
+    provider: import_schemastery.default.string().default(slot.provider),
+    model: import_schemastery.default.string().default(slot.model),
+    reasoningEffort: import_schemastery.default.string().default(slot.reasoningEffort)
+  });
+}
+var SettingsSchema = import_schemastery.default.object({
+  hashline: import_schemastery.default.object({ maxDiffChars: import_schemastery.default.number().default(20000) }),
+  commentChecker: import_schemastery.default.object({ autoCheck: import_schemastery.default.boolean().default(true) }),
+  ulw: import_schemastery.default.object({ maxRounds: import_schemastery.default.number().default(6) }),
+  memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
+  team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
+  boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().required(false) }),
+  teamModels: import_schemastery.default.object({
+    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
+    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
+    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
+    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
+  }),
+  watchdog: import_schemastery.default.object({
+    enabled: import_schemastery.default.boolean().default(true),
+    warnSilenceMs: import_schemastery.default.number().default(600000),
+    tickIntervalMs: import_schemastery.default.number().default(15000),
+    warnStreakToEscalate: import_schemastery.default.number().default(6),
+    actionOnEscalate: import_schemastery.default.union([import_schemastery.default.const("pause"), import_schemastery.default.const("warn-only")]).default("warn-only"),
+    toolInFlightMaxMs: import_schemastery.default.number().default(900000),
+    holdTtlMs: import_schemastery.default.number().default(900000)
+  }),
+  tui: import_schemastery.default.object({ dashboardKey: import_schemastery.default.boolean().default(true) })
+});
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function knobHint(key, semantics) {
+  const pointer = `mpd.jsonc ${key}`;
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
+}
+var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
+};
+var TEAM_MODEL_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
+    zh: "这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。"
+  },
+  model: {
+    en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
+    zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
+  },
+  reasoningEffort: {
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+  }
+};
+var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
+  slot4: {
+    provider: {
+      en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+      zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。"
+    },
+    model: {
+      en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+      zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
+    },
+    reasoningEffort: {
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+    }
+  }
+};
+function teamModelMembers(slot, lang) {
+  return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ");
+}
+function teamModelLeafSentence(slot, leaf, lang) {
+  const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf];
+  if (override !== undefined)
+    return override[lang];
+  return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang].split("{group}").join(TEAM_MODEL_SLOT_GROUPS[slot][lang]).split("{members}").join(teamModelMembers(slot, lang));
+}
+var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
+  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1;
+  const group = TEAM_MODEL_SLOT_GROUPS[slot];
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["teamModels", slot, leaf],
+    label: `Slot ${index} ${label} (${group.en})`,
+    zh: `槽位 ${index} ${zh}（${group.zh}）`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    semantics: teamModelLeafSentence(slot, leaf, "en"),
+    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
+    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
+  }));
+});
+var SETTINGS_KNOBS = [
+  { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
+  { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
+  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+  { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
+  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+  { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+  { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+  { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+  { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+  { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
+  { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
+  { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+  ...TEAM_MODEL_KNOBS,
+  { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
+];
+
+// packages/mpd-tui-plugin/src/settings.ts
+var SETTINGS_ENTRY = "mpd-config";
+function knobHint2(key, semantics) {
+  const pointer = `mpd.jsonc ${key}`;
+  return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
+}
+function knobHintPair(knob) {
+  const key = knob.path.join(".");
+  return { zh: knobHint2(key, knob.semanticsZh), en: knobHint2(key, knob.semantics) };
+}
+var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
+function dedupeOptions(pairs) {
+  const seen = new Set;
+  const out = [];
+  for (const pair of pairs) {
+    if (pair.value.length === 0 || seen.has(pair.value))
+      continue;
+    seen.add(pair.value);
+    out.push(pair);
+  }
+  return out;
+}
+function declaredOptions(leaf) {
+  return TEAM_MODEL_FALLBACK_OPTIONS[leaf].map((value) => ({ value, label: value }));
+}
+function optionLabel(name, id) {
+  return typeof name === "string" && name.length > 0 ? name : id;
+}
+function teamModelOptionLists(catalog) {
+  const providers = [];
+  const models = [];
+  const efforts = [];
+  if (catalog !== undefined && catalog.degraded !== true) {
+    const rawProviders = Array.isArray(catalog.providers) ? catalog.providers : [];
+    for (const provider of rawProviders) {
+      if (typeof provider?.id !== "string" || provider.id.length === 0)
+        continue;
+      providers.push({ value: provider.id, label: optionLabel(provider.name, provider.id) });
+      const rawModels = Array.isArray(provider.models) ? provider.models : [];
+      for (const model of rawModels) {
+        if (typeof model?.id !== "string" || model.id.length === 0)
+          continue;
+        models.push({ value: model.id, label: optionLabel(model.name, model.id) });
+        const rawEfforts = Array.isArray(model.efforts) ? model.efforts : [];
+        for (const effort of rawEfforts) {
+          if (typeof effort?.id !== "string" || effort.id.length === 0)
+            continue;
+          efforts.push({ value: effort.id, label: optionLabel(effort.name, effort.id) });
+        }
+      }
+    }
+  }
+  const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) };
+  const pick3 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
+  return {
+    provider: pick3("provider"),
+    model: pick3("model"),
+    reasoningEffort: pick3("reasoningEffort"),
+    source: {
+      provider: live.provider.length > 0 ? "live" : "declared",
+      model: live.model.length > 0 ? "live" : "declared",
+      reasoningEffort: live.reasoningEffort.length > 0 ? "live" : "declared"
+    }
+  };
+}
+function slotLeafOf(path) {
+  if (path[0] !== "teamModels")
+    return;
+  const leaf = path[2];
+  return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
+}
+function isServed(provider) {
+  try {
+    if (typeof provider.describe === "function") {
+      const described = provider.describe();
+      if (Array.isArray(described) && described.some((entry) => String(entry?.ns ?? "") === SETTINGS_NS))
+        return true;
+    }
+  } catch {}
+  try {
+    return typeof provider.get === "function" && provider.get(SETTINGS_NS) !== undefined;
+  } catch {
+    return false;
+  }
+}
+function configPluginPresent(ctx) {
+  try {
+    return typeof ctx.get === "function" && ctx.get("mpdConfig") !== undefined;
+  } catch {
+    return false;
+  }
+}
+function declaredField(knob) {
+  const hints = knobHintPair(knob);
+  return {
+    path: [...knob.path],
+    label: knob.label,
+    descriptions: { zh: knob.zh },
+    hint: hints.en,
+    ...hints.zh === hints.en ? {} : { hintDescriptions: { zh: hints.zh } },
+    kind: knob.kind,
+    ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
+  };
+}
+var DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey";
+var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
+function settingsFields(lists) {
+  return SETTINGS_KNOBS.map((knob) => {
+    const leaf = slotLeafOf(knob.path);
+    const field2 = declaredField(knob);
+    return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
+  });
+}
+var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+var SETTINGS_SECTION = {
+  ns: SETTINGS_ENTRY,
+  title: "MPD bundle",
+  descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE}`, en: `MPD bundle · ${SECTION_NOTICE}` },
+  fields: SETTINGS_FIELDS
+};
+function resolveCatalogReader(ctx) {
+  try {
+    const mounted = serviceOf(ctx, "mpdDsh");
+    if (mounted !== undefined)
+      return mounted;
+  } catch {}
+  return createDshAdapter(ctx);
+}
+function registerSettingsSection(ctx, tui, log, adapterOverride) {
+  let namespace = { state: "absent", detail: "settings was not injected" };
+  let section;
+  const catalogReader = adapterOverride ?? resolveCatalogReader(ctx);
+  tui.whenBound("settings", (service, _scope, handle) => {
+    const provider = service;
+    if (typeof provider?.register !== "function") {
+      namespace = { state: "refused", detail: "settings.register is missing" };
+      handle.record(namespace);
+      return;
+    }
+    if (configPluginPresent(ctx)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is owned by mpd-config in this composition — the fallback registration was skipped` };
+      log.info(`settings namespace ${SETTINGS_NS}: mpd-config owns the registration — fallback skipped (design §10.1)`);
+      handle.record(namespace);
+      return;
+    }
+    if (isServed(provider)) {
+      namespace = { state: "absent", detail: `namespace ${SETTINGS_NS} is already served by mpd-config — the fallback registration was skipped` };
+      log.info(`settings namespace ${SETTINGS_NS} is already served — fallback registration skipped (design §10.1)`);
+      handle.record(namespace);
+      return;
+    }
+    const registered = tui.registerSettingsNamespace(SETTINGS_NS, SettingsSchema, { applies: "restart" });
+    const measured = registered.outcome();
+    namespace = measured.state === "requested" ? { state: "requested", detail: `namespace ${SETTINGS_NS} requested by the fallback (no other registrant) (no host read-back)` } : { state: measured.state, detail: measured.detail };
+    handle.record(namespace);
+    if (namespace.state === "refused")
+      log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`);
+  });
+  const sectionHandle = tui.registerSettingsSection(async () => {
+    let catalog;
+    try {
+      catalog = await catalogReader.llmCatalog?.();
+    } catch {
+      catalog = undefined;
+    }
+    const lists = teamModelOptionLists(catalog);
+    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
+    return { ...SETTINGS_SECTION, fields: settingsFields(lists) };
+  }, ctx);
+  return {
+    outcome: () => {
+      const measured = sectionHandle.outcome();
+      const chosen = measured.state === "refused" ? { state: "refused", detail: measured.detail } : section ?? { state: measured.state, detail: measured.detail };
+      return {
+        id: measured.id,
+        state: chosen.state,
+        detail: `${chosen.detail ?? ""} · namespace ${SETTINGS_NS}: ${namespace.state}${namespace.detail === undefined ? "" : ` (${namespace.detail})`}`
+      };
+    }
   };
 }
 
@@ -5941,10 +6728,10 @@ function registerDashboardKey(ctx, tui, deps) {
 // packages/mpd-tui-plugin/src/panel.ts
 var PANEL_SLUG = "team";
 var PANEL_TITLE = "MPD";
-var PANEL_MIN_COLUMNS = 32;
+var PANEL_MIN_COLUMNS = 28;
 var PANEL_ORDER = 10;
-var FALLBACK_COLS2 = PANEL_MIN_COLUMNS;
-var ROW_MAX_CELLS = 4000;
+var PANEL_REFRESH_MS = 1000;
+var MERGED_FALLBACK_ROWS = 24;
 var PANEL_DESCRIPTOR_FROZEN = {
   apiVersion: 1,
   id: PANEL_SLUG,
@@ -5957,47 +6744,27 @@ function takeoverArmed(seamBound, savedKnob, floor) {
     return false;
   return typeof savedKnob === "boolean" ? savedKnob : floor;
 }
-function panelKit(React, ui) {
-  if (React === null || React === undefined || ui === null || ui === undefined)
-    return;
-  if (typeof React.createElement !== "function")
-    return;
-  const kit = ui;
-  if (typeof kit.Box !== "function" || typeof kit.Text !== "function")
-    return;
-  return { React, ui: kit };
-}
-function measurePanel(ui) {
-  if (typeof ui.useTerminalSize !== "function")
-    return { cols: FALLBACK_COLS2 };
-  try {
-    const size = ui.useTerminalSize();
-    const columns = size?.columns;
-    if (typeof columns !== "number" || !Number.isFinite(columns) || columns <= 0)
-      return { cols: FALLBACK_COLS2 };
-    return { cols: Math.floor(columns) };
-  } catch {
-    return { cols: FALLBACK_COLS2 };
+function wrapPanelLines(text, cols) {
+  const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
+  const flat = panelText(text);
+  if (flat === "")
+    return [""];
+  const lines = [];
+  let current = "";
+  for (const word of flat.split(" ")) {
+    if (word === "")
+      continue;
+    const candidate = current === "" ? word : `${current} ${word}`;
+    if (current !== "" && cellWidth(candidate) + 1 > width) {
+      lines.push(current);
+      current = word;
+      continue;
+    }
+    current = candidate;
   }
-}
-function safeRow2(value) {
-  try {
-    return clampCells(stripControl(value), ROW_MAX_CELLS);
-  } catch {
-    return "";
-  }
-}
-function readSnapshot(host) {
-  if (host === null || host === undefined)
-    return;
-  const api = host;
-  if (typeof api.snapshot !== "function")
-    return;
-  try {
-    return api.snapshot();
-  } catch {
-    return;
-  }
+  if (current !== "")
+    lines.push(current);
+  return lines;
 }
 function createPanelComponent(readWorkflow) {
   return function MpdTuiPanel(props) {
@@ -6007,14 +6774,61 @@ function createPanelComponent(readWorkflow) {
     }
     const React = kit.React;
     const ui = kit.ui;
-    const measured = measurePanel(ui);
-    const snapshot = readSnapshot(props?.host);
+    const measured = usePanelSize(ui, panelFloorColumns("merged"));
+    const contentCols = panelContentWidth(measured.cols);
+    const width = Math.max(1, contentCols);
+    const snapshot = panelSnapshot(props?.host);
     let workflow;
     try {
       workflow = readWorkflow();
     } catch {
       workflow = undefined;
     }
+    const pinned = React.useState(undefined);
+    const pinnedId = typeof pinned[0] === "string" ? pinned[0] : undefined;
+    const setPinned = pinned[1];
+    usePanelTick(kit, PANEL_REFRESH_MS, true);
+    const view = teamGraphView(workflow, width);
+    const dependentsOf = (id) => (workflow?.tasks ?? []).filter((task) => task.dependencies.includes(id)).map((task) => task.id);
+    const pinnedTask = pinnedId === undefined ? undefined : (workflow?.tasks ?? []).find((task) => task.id === pinnedId);
+    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const viewport = usePanelViewport(kit, () => sizes);
+    const drawnLines = view === undefined ? [] : view.lines;
+    usePanelKeys(kit, props?.host, keysArmed, (event) => {
+      const bare = panelKeyEvent(event);
+      if (bare === undefined)
+        return;
+      const flags = bare.key ?? {};
+      const gesture = panelScrollKey(bare);
+      const input = bare.input;
+      const down = flags.downArrow === true || input === "j" || input === "J";
+      const up = flags.upArrow === true || input === "k" || input === "K";
+      if (gesture !== undefined || down || up) {
+        if (bare.preventDefault !== undefined)
+          bare.preventDefault();
+        if (gesture === "top")
+          viewport.scrollTo(0);
+        else if (gesture === "bottom")
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
+        else if (gesture === "pageUp")
+          viewport.scrollBy(-viewport.viewportRows);
+        else if (gesture === "pageDown")
+          viewport.scrollBy(viewport.viewportRows);
+        else
+          viewport.scrollBy(down ? 1 : -1);
+        return;
+      }
+      const escape = flags.escape === true || input === "\x1B";
+      if (!escape)
+        return;
+      if (pinnedId === undefined)
+        return;
+      if (bare.preventDefault !== undefined)
+        bare.preventDefault();
+      setPinned(undefined);
+    });
     const children = [];
     const section = subagentSectionRows(snapshot);
     for (let index = 0;index < section.length; index += 1) {
@@ -6023,33 +6837,66 @@ function createPanelComponent(readWorkflow) {
         key: `sub-${index}`,
         ...row.header === true ? { bold: true } : {},
         ...row.dim === true ? { dimColor: true } : {}
-      }, safeRow2(row.text)));
+      }, panelText(row.text)));
     }
     if (typeof ui.Divider === "function")
       children.push(React.createElement(ui.Divider, { key: "sep" }));
     else
-      children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, safeRow2("─")));
-    const view = teamGraphView(workflow, measured.cols);
+      children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, panelText("─")));
     if (view === undefined) {
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow2("task dependency graph: no team in this workspace")));
+      const empty = wrapPanelLines("task dependency graph: no team in this workspace — `agent_teams_plan` stages one", width);
+      for (let index = 0;index < empty.length; index += 1) {
+        children.push(textRow(kit, empty[index], { key: `graphhead-${index}`, dim: true, maxCells: width, joinNext: index < empty.length - 1 }));
+      }
     } else {
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow2(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)));
+      children.push(textRow(kit, `task dependency graph${view.mode === "rail" ? " (rail)" : ""}`, { key: "graphhead", dim: true, maxCells: width }));
       for (let index = 0;index < view.lines.length; index += 1) {
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
-        children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
+        const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
+        children.push(hit === undefined ? graphRow(kit, view.lines[index], { key: `graph-${index}`, cols: width }) : graphRow(kit, view.lines[index], {
+          key: `graph-${index}`,
+          cols: width,
+          onClick: () => {
+            setPinned(hit.taskId);
+          }
+        }));
       }
-      let legend = [];
-      try {
-        legend = legendLines(measured.cols);
-      } catch {
-        legend = [];
-      }
-      for (let index = 0;index < legend.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow2(legend[index])));
+      if (pinnedTask !== undefined) {
+        children.push(textRow(kit, `◆ ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: width }));
+        const facts = [
+          ["id", pinnedTask.id],
+          ["kind", pinnedTask.kind ?? "—"],
+          ["visual", pinnedTask.visual],
+          ["verdict", pinnedTask.verdict ?? "—"],
+          ["failedBy", pinnedTask.failedDependencies.length === 0 ? "—" : pinnedTask.failedDependencies.join(",")],
+          ["owner", pinnedTask.assignee ?? "—"],
+          ["attempt", pinnedTask.attempt === undefined ? "—" : String(pinnedTask.attempt)],
+          ["round", pinnedTask.round === undefined ? "—" : String(pinnedTask.round)],
+          ["blockedBy", pinnedTask.dependencies.length === 0 ? "—" : pinnedTask.dependencies.join(",")],
+          ["dependents", dependentsOf(pinnedTask.id).join(",") === "" ? "—" : dependentsOf(pinnedTask.id).join(",")]
+        ];
+        for (const [label, value] of facts)
+          children.push(textRow(kit, `${label} ${value}`, { key: `pin-${label}`, dim: true, maxCells: width }));
       }
     }
-    const body = typeof ui.ScrollBox === "function" ? React.createElement(ui.ScrollBox, { key: "body" }, children) : children;
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", height: "100%", paddingX: 1 }, body);
+    let arrow = [];
+    try {
+      arrow = legendLines(width);
+    } catch {
+      arrow = [];
+    }
+    const legend = legendLinesFor(width, arrow);
+    for (let index = 0;index < legend.length; index += 1) {
+      children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }));
+    }
+    children.push(textRow(kit, "merged view · /mpd panel opens it full-screen", { key: "keys", dim: true, maxCells: width }));
+    const contentRows = Math.max(children.length, 1);
+    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
+    sizes.contentRows = contentRows;
+    sizes.viewportRows = windowRows;
+    const scroller = viewport;
+    const scrolled = React.createElement(ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
+    const body = panelViewportBody(kit, [scrolled], scroller);
+    return panelFrame(kit, PANEL_TITLE, body);
   };
 }
 function registerPanelSurface(tui, deps) {
@@ -6094,14 +6941,627 @@ function panelStatusLine(outcome, id) {
   return t("panel.unavailable");
 }
 
+// packages/mpd-tui-plugin/src/panel-dag.ts
+var DAG_PANEL_ID = DAG_PANEL_SLUG;
+var DAG_PANEL_TITLE = "MPD DAG";
+var DAG_PANEL_ICON = "◈";
+var DAG_PANEL_ORDER = 11;
+var DAG_PANEL_REFRESH_MS = 1000;
+var DAG_PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: DAG_PANEL_ID,
+  title: DAG_PANEL_TITLE,
+  icon: DAG_PANEL_ICON,
+  minColumns: DAG_PANEL_MIN_COLUMNS,
+  order: DAG_PANEL_ORDER
+};
+function dagPageOf(workflow) {
+  if (workflow === undefined || !Array.isArray(workflow.tasks) || workflow.tasks.length === 0)
+    return;
+  const tasks = [];
+  for (const task of workflow.tasks) {
+    const id = panelField(task.id, 40);
+    if (id === undefined || id === "")
+      continue;
+    tasks.push({
+      id,
+      subject: panelField(task.subject, 200) ?? "",
+      ...task.kind === undefined ? {} : { kind: panelField(task.kind, 20) ?? "" },
+      visual: panelField(task.visual, 20) ?? "open",
+      ...task.assignee === undefined ? {} : { assignee: panelField(task.assignee, 60) ?? "" },
+      dependencies: (Array.isArray(task.dependencies) ? task.dependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
+      depth: typeof task.depth === "number" && Number.isFinite(task.depth) ? Math.max(0, Math.floor(task.depth)) : 0,
+      ...typeof task.attempt === "number" && Number.isFinite(task.attempt) ? { attempt: Math.floor(task.attempt) } : {},
+      failedDependencies: (Array.isArray(task.failedDependencies) ? task.failedDependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
+      ...typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {},
+      ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }
+    });
+  }
+  if (tasks.length === 0)
+    return;
+  return {
+    tasks,
+    workspace: panelField(workflow.workspace, 200) ?? "",
+    teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
+    phase: panelField(workflow.team?.phase, 20) ?? "unknown",
+    completed: typeof workflow.counts?.completed === "number" ? workflow.counts.completed : 0,
+    total: typeof workflow.counts?.total === "number" ? workflow.counts.total : tasks.length,
+    members: Array.isArray(workflow.members) ? workflow.members.length : 0,
+    problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== "")
+  };
+}
+function viewFacts(view) {
+  return {
+    ranksDerived: view.ranksDerived === true,
+    unresolved: Array.isArray(view.unresolved) ? view.unresolved.filter((id) => typeof id === "string") : []
+  };
+}
+var LIST_ROWS = 24;
+var MIN_BOX_LABEL_CELLS = 32;
+var NODE_GAP2 = 3;
+function widestLabel(tasks) {
+  let widest = 0;
+  for (const task of tasks) {
+    const abbrev = DAG_KIND_ABBREV[task.kind ?? ""] ?? "";
+    const label = ` ${visualGlyphFor(task.visual)} ${task.id}${abbrev === "" ? "" : ` ${abbrev}`} ${task.subject}`;
+    widest = Math.max(widest, panelCellWidth(label));
+  }
+  return widest;
+}
+function boxGrid(tasks, cols) {
+  if (tasks.length === 0)
+    return;
+  const rankOf = new Map;
+  for (const task of tasks)
+    rankOf.set(task.id, 0);
+  for (let pass = 0;pass < tasks.length; pass += 1) {
+    let moved = false;
+    for (const task of tasks) {
+      let deepest = -1;
+      for (const blocker of task.dependencies) {
+        const at = rankOf.get(blocker);
+        if (at !== undefined && at > deepest)
+          deepest = at;
+      }
+      if (deepest + 1 > (rankOf.get(task.id) ?? 0)) {
+        rankOf.set(task.id, deepest + 1);
+        moved = true;
+      }
+    }
+    if (!moved)
+      break;
+  }
+  const ranks = Math.max(0, ...[...rankOf.values()].map((rank) => rank + 1));
+  if (ranks === 0)
+    return;
+  let widestRank = 1;
+  const perRank = new Map;
+  for (const rank of rankOf.values())
+    perRank.set(rank, (perRank.get(rank) ?? 0) + 1);
+  for (const count of perRank.values())
+    widestRank = Math.max(widestRank, count);
+  const nodeWidth = Math.min(34, Math.floor((cols - NODE_GAP2 * (widestRank - 1)) / widestRank));
+  return { ranks, nodeWidth };
+}
+function panelCellWidth(value) {
+  return cellWidth(panelText(value));
+}
+function visualGlyphFor(visual) {
+  return DAG_TONE_GLYPH[visual] ?? "?";
+}
+function dagPanelLayout(tasks, cols, focus) {
+  const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
+  const grid = boxGrid(tasks, width);
+  const label = widestLabel(tasks);
+  if (grid !== undefined && grid.nodeWidth - 2 >= label && grid.nodeWidth - 2 >= MIN_BOX_LABEL_CELLS) {
+    const boxes = layoutBoxes(tasks, width, focus);
+    if (boxes !== undefined)
+      return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
+  }
+  if (tasks.length > LIST_ROWS) {
+    const dense = layoutList(tasks, width, focus);
+    return { view: dense, mode: "list", list: true, ...viewFacts(dense) };
+  }
+  const rail = layoutRail(tasks, width, focus);
+  return { view: rail, mode: "rail", list: false, ...viewFacts(rail) };
+}
+function dagBadge(tasks) {
+  let unread = 0;
+  let failed = false;
+  let blocked = false;
+  let running = false;
+  for (const task of tasks) {
+    if (task.visual === "failed") {
+      failed = true;
+      unread += 1;
+      continue;
+    }
+    if (task.visual === "blocked") {
+      blocked = true;
+      unread += 1;
+      continue;
+    }
+    if (task.visual === "running")
+      running = true;
+  }
+  if (failed)
+    return { level: "error", unread };
+  if (blocked)
+    return { level: "warning", unread };
+  if (running)
+    return { level: "info", unread: 0 };
+  return null;
+}
+function pinnedDetailLines(task, tasks, cols) {
+  const dependents = tasks.filter((other) => other.dependencies.includes(task.id)).map((other) => other.id);
+  const facts = [
+    ["id", task.id],
+    ["kind", task.kind ?? "—"],
+    ["visual", task.visual],
+    ["verdict", task.verdict ?? "—"],
+    ["failedBy", task.failedDependencies.length === 0 ? "—" : task.failedDependencies.join(",")],
+    ["owner", task.assignee ?? "—"],
+    ["attempt", task.attempt === undefined ? "—" : String(task.attempt)],
+    ["round", task.round === undefined ? "—" : String(task.round)],
+    ["blockedBy", task.dependencies.length === 0 ? "—" : task.dependencies.join(",")],
+    ["dependents", dependents.length === 0 ? "—" : dependents.join(",")]
+  ];
+  return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
+}
+function dagPanelKeyAction(event, order, focus) {
+  if (event === undefined)
+    return { consumed: false };
+  const flags = event.key ?? {};
+  const input = event.input;
+  const forward = flags.downArrow === true || input === "j" || input === "J";
+  const backward = flags.upArrow === true || input === "k" || input === "K";
+  if (!forward && !backward) {
+    const enter = flags.return_ === true || flags.return === true || input === "\r" || input === `
+`;
+    if (enter || input === " ")
+      return { consumed: true, ...focus === undefined ? {} : { pin: true } };
+    if (flags.escape === true || input === "\x1B")
+      return { consumed: true, pin: false };
+    return { consumed: false };
+  }
+  if (order.length === 0)
+    return { consumed: true };
+  const at = focus === undefined ? -1 : order.indexOf(focus);
+  const next = at < 0 ? forward ? 0 : order.length - 1 : (at + (forward ? 1 : -1) + order.length) % order.length;
+  return { consumed: true, focus: order[next] };
+}
+var DAG_FALLBACK_ROWS = 24;
+function scrollRowIntoView(viewport, row) {
+  if (row < viewport.offset) {
+    viewport.scrollTo(row);
+    return;
+  }
+  if (row >= viewport.offset + viewport.viewportRows)
+    viewport.scrollTo(row - viewport.viewportRows + 1);
+}
+function headerFacts(page, cols) {
+  const total = Math.max(1, page.total);
+  const barCells2 = Math.max(0, Math.min(16, cols - 44));
+  const filled = Math.min(barCells2, Math.round(Math.max(0, page.completed) / total * barCells2));
+  return {
+    facts: [
+      { label: "team", value: page.teamName, tone: "chain" },
+      { label: "phase", value: page.phase, tone: "dim" },
+      { label: "tasks", value: `${page.completed}/${page.total}`, tone: "completed" },
+      { label: "members", value: String(page.members), tone: "chain" }
+    ],
+    bar: DAG_CHROME.barFull.repeat(filled) + DAG_CHROME.barEmpty.repeat(Math.max(0, barCells2 - filled))
+  };
+}
+function createDagPanelComponent(readWorkflow) {
+  return function MpdTuiDagPanel(props) {
+    const kit = panelKit(props?.React, props?.ui);
+    if (kit === undefined) {
+      return null;
+    }
+    const measured = usePanelSize(kit.ui, panelFloorColumns("dag"));
+    const contentCols = panelContentWidth(measured.cols);
+    let page;
+    try {
+      page = dagPageOf(readWorkflow());
+    } catch {
+      page = undefined;
+    }
+    panelSnapshot(props?.host);
+    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
+    const focused = kit.React.useState(undefined);
+    const cursor = kit.React.useState(undefined);
+    const pinned = typeof focused[0] === "string" ? focused[0] : undefined;
+    const setPinned = focused[1];
+    const cursorId = typeof cursor[0] === "string" ? cursor[0] : undefined;
+    const setCursor = cursor[1];
+    const focus = pinned ?? cursorId;
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus);
+    usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
+    const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"));
+    const phase = useRunningPhase(kit.ui, animate);
+    const badge = page === undefined ? null : dagBadge(page.tasks);
+    const published = kit.React.useRef(null);
+    kit.React.useEffect(() => {
+      publishBadge(props?.host, badge, published);
+    }, [badge === null ? "none" : `${badge.level}:${badge.unread}`, props?.host]);
+    const order = layout === undefined ? [] : layout.view.hits.map((hit) => hit.taskId);
+    const rowIndex = new Map;
+    usePanelKeys(kit, props?.host, keysArmed, (event) => {
+      const bare = panelKeyEvent(event);
+      const gesture = panelScrollKey(bare);
+      if (gesture !== undefined) {
+        if (bare?.preventDefault !== undefined)
+          bare.preventDefault();
+        if (gesture === "top")
+          viewport.scrollTo(0);
+        else if (gesture === "bottom")
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
+        else
+          viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows);
+        return;
+      }
+      const action = dagPanelKeyAction(bare, order, cursorId);
+      if (!action.consumed)
+        return;
+      if (bare?.preventDefault !== undefined)
+        bare.preventDefault();
+      if (action.focus !== undefined) {
+        setCursor(action.focus);
+        const at = rowIndex.get(action.focus);
+        if (at !== undefined)
+          scrollRowIntoView(viewport, at);
+      }
+      if (action.pin === true)
+        setPinned(focus);
+      if (action.pin === false)
+        setPinned(undefined);
+    });
+    const children = [];
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const viewport = usePanelViewport(kit, () => sizes);
+    const header = page === undefined ? undefined : headerFacts(page, contentCols);
+    if (header !== undefined) {
+      const spans = [];
+      for (const fact of header.facts)
+        spans.push({ text: `${fact.label} `, tone: "dim" }, { text: `${fact.value}  `, tone: fact.tone });
+      if (header.bar !== "")
+        spans.push({ text: header.bar, tone: "completed" });
+      children.push(graphRow(kit, spans.map((span) => ({ text: panelText(span.text, contentCols), tone: span.tone })), { key: "header", cols: contentCols }));
+    } else {
+      children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }));
+    }
+    if (layout !== undefined) {
+      const baseGlyph = DAG_TONE_GLYPH.running ?? "◐";
+      const breathe = runningGlyph(phase);
+      const breathing = breathe !== baseGlyph;
+      for (let index = 0;index < layout.view.lines.length; index += 1) {
+        for (const candidate of layout.view.hits) {
+          if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId))
+            rowIndex.set(candidate.taskId, index);
+        }
+        const row = layout.view.lines[index];
+        const running = row.some((span) => span.tone === "running");
+        const spans = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
+        const hit = layout.view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
+        children.push(hit === undefined ? graphRow(kit, spans, { key: `row-${index}`, cols: contentCols }) : graphRow(kit, spans, {
+          key: `row-${index}`,
+          cols: contentCols,
+          onClick: () => {
+            setPinned(hit.taskId);
+            setCursor(hit.taskId);
+          }
+        }));
+      }
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }));
+      if (layout.unresolved.length > 0) {
+        children.push(textRow(kit, `unresolved blockers: ${layout.unresolved.join(", ")}`, { key: "unresolved", tone: "warning", maxCells: contentCols }));
+      }
+      if (layout.view.cycles.length > 0) {
+        children.push(textRow(kit, `dependency cycle: ${layout.view.cycles.join(", ")}`, { key: "cycle", tone: "failed", maxCells: contentCols }));
+      }
+    }
+    const pinnedTask = pinned === undefined ? undefined : page?.tasks.find((task) => task.id === pinned);
+    if (pinnedTask !== undefined) {
+      children.push(textRow(kit, `${DAG_CHROME.pinMarker} ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: contentCols }));
+      for (const line of pinnedDetailLines(pinnedTask, page?.tasks ?? [], contentCols)) {
+        children.push(textRow(kit, line, { key: `pin-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+      }
+    }
+    let arrow = [];
+    try {
+      arrow = legendLines(contentCols);
+    } catch {
+      arrow = [];
+    }
+    for (const line of legendLinesFor(contentCols, arrow)) {
+      children.push(textRow(kit, line, { key: `legend-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+    }
+    const contentRows = Math.max(children.length, 1);
+    sizes.contentRows = contentRows;
+    sizes.viewportRows = windowRows;
+    const scroller = viewport;
+    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
+    const footer = textRow(kit, `↑↓/jk move · Enter pin · Esc unpin · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const body = panelViewportBody(kit, [scrolled], scroller);
+    return panelFrame(kit, DAG_PANEL_TITLE, [...body, footer]);
+  };
+}
+function registerDagPanel(tui, deps) {
+  const panel = deps.enabled ? tui.registerPanel({
+    ...DAG_PANEL_DESCRIPTOR_FROZEN,
+    component: createDagPanelComponent(deps.readWorkflow)
+  }) : undefined;
+  return {
+    panel,
+    registered: () => panel !== undefined && panel.id() !== undefined,
+    id: () => panel?.id(),
+    outcome: () => {
+      if (panel !== undefined)
+        return panel.outcome();
+      return tui.skipped("panels", "the DAG sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+    },
+    openScene: () => deps.openScene()
+  };
+}
+
+// packages/mpd-tui-plugin/src/panel-workmate.ts
+import { lstatSync, readdirSync as readdirSync4, readFileSync as readFileSync4 } from "node:fs";
+import { join as join6 } from "node:path";
+var WORKMATE_PANEL_ID = WORKMATE_PANEL_SLUG;
+var WORKMATE_PANEL_TITLE = "MPD workmate";
+var WORKMATE_PANEL_ICON = DAG_CHROME.pinMarker;
+var WORKMATE_PANEL_ORDER = 12;
+var WORKMATE_PANEL_REFRESH_MS = 2000;
+var WORKMATE_PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: WORKMATE_PANEL_ID,
+  title: WORKMATE_PANEL_TITLE,
+  icon: WORKMATE_PANEL_ICON,
+  minColumns: WORKMATE_PANEL_MIN_COLUMNS,
+  order: WORKMATE_PANEL_ORDER
+};
+var WORKMATE_FALLBACK_ROWS = 24;
+function scrollRowIntoView2(viewport, row) {
+  if (row < viewport.offset) {
+    viewport.scrollTo(row);
+    return;
+  }
+  if (row >= viewport.offset + viewport.viewportRows)
+    viewport.scrollTo(row - viewport.viewportRows + 1);
+}
+var ARCHIVE_DIR = ".archive";
+var MAX_ENTRIES = 200;
+var NOTE_CELLS = 120;
+function readJsonObject(path) {
+  try {
+    const parsed = JSON.parse(readFileSync4(path, "utf8"));
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+      return;
+    return parsed;
+  } catch {
+    return;
+  }
+}
+function readFirstLine(path) {
+  try {
+    const lines = readFileSync4(path, "utf8").split(`
+`);
+    for (const line of lines) {
+      const bare = line.replace(/^[#>\s*-]+/u, "").trim();
+      if (bare === "")
+        continue;
+      const shown = panelField(bare, NOTE_CELLS);
+      if (shown !== undefined && shown !== "")
+        return shown;
+    }
+    return;
+  } catch {
+    return;
+  }
+}
+function readEntry(root, key) {
+  const dir = join6(root, key);
+  try {
+    lstatSync(dir);
+  } catch {
+    return;
+  }
+  const meta = readJsonObject(join6(dir, "meta.json"));
+  if (meta === undefined)
+    return;
+  const note = readFirstLine(join6(dir, "note.md"));
+  const shownKey = panelField(key, 60) ?? key;
+  const name = panelField(meta.name, 60) ?? shownKey;
+  const base = panelField(meta.baseName, 60);
+  const description = panelField(meta.description, 120);
+  const updatedAt = panelField(meta.updatedAt, 40);
+  const provider = panelField(meta.provider, 40);
+  const model = panelField(meta.model, 60);
+  const route = model === undefined ? provider : provider === undefined ? model : `${provider}/${model}`;
+  return {
+    key: shownKey,
+    name,
+    base: base === undefined || base === "" ? "(unknown base)" : base,
+    ...description === undefined ? {} : { description },
+    ...note === undefined ? {} : { note },
+    ...typeof meta.uses === "number" && Number.isFinite(meta.uses) ? { uses: Math.max(0, Math.floor(meta.uses)) } : {},
+    ...updatedAt === undefined ? {} : { updatedAt },
+    readonlyBase: meta.readonly === true,
+    ...route === undefined || route === "" ? {} : { route }
+  };
+}
+function readWorkmateLibrary(home) {
+  const root = join6(panelField(home, 400) ?? "", ".mpd", "workmate");
+  const problems = [];
+  let keys = [];
+  try {
+    keys = readdirSync4(root, { withFileTypes: true }).filter((entry) => (entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith(".")).map((entry) => entry.name);
+  } catch {
+    return { entries: [], archived: 0, root, problems };
+  }
+  const entries = [];
+  for (const key of keys) {
+    if (entries.length >= MAX_ENTRIES) {
+      problems.push(`library truncated at ${MAX_ENTRIES} instances`);
+      break;
+    }
+    try {
+      const entry = readEntry(root, key);
+      if (entry === undefined) {
+        problems.push(`${panelField(key, 40) ?? "?"}: no meta.json (orphan directory)`);
+        continue;
+      }
+      entries.push(entry);
+    } catch {
+      problems.push(`${panelField(key, 40) ?? "?"}: unreadable`);
+    }
+  }
+  entries.sort((left, right) => {
+    const byTime = (right.updatedAt ?? "").localeCompare(left.updatedAt ?? "");
+    return byTime !== 0 ? byTime : left.key.localeCompare(right.key);
+  });
+  let archived = 0;
+  try {
+    archived = readdirSync4(join6(root, ARCHIVE_DIR), { withFileTypes: true }).filter((entry) => entry.isDirectory()).length;
+  } catch {
+    archived = 0;
+  }
+  return { entries, archived, root, problems };
+}
+function headerLine(library, cols) {
+  const counts = `${library.entries.length} instance${library.entries.length === 1 ? "" : "s"}${library.archived > 0 ? ` · ${library.archived} archived` : ""}`;
+  return panelText(`${counts} · read-only`, cols);
+}
+function entryLines(entry, cols) {
+  const title = `${DAG_CHROME.pinMarker} ${entry.name} · ${entry.key}`;
+  const base = `base ${entry.base}${entry.readonlyBase ? " (read-only)" : ""}${entry.route === undefined ? "" : ` · ${entry.route}`}`;
+  const uses = `uses ${entry.uses ?? 0}${entry.updatedAt === undefined ? "" : ` · updated ${entry.updatedAt}`}`;
+  const rows = [title, base, uses];
+  if (entry.description !== undefined && entry.description !== "")
+    rows.push(entry.description);
+  if (entry.note !== undefined)
+    rows.push(entry.note);
+  return rows.map((row) => panelText(row, cols));
+}
+function createWorkmatePanelComponent(readLibrary) {
+  return function MpdTuiWorkmatePanel(props) {
+    const kit = panelKit(props?.React, props?.ui);
+    if (kit === undefined) {
+      return null;
+    }
+    const measured = usePanelSize(kit.ui, panelFloorColumns("workmate"));
+    const contentCols = panelContentWidth(measured.cols);
+    let library;
+    try {
+      library = readLibrary();
+    } catch {
+      library = { entries: [], archived: 0, root: "", problems: ["library unreadable"] };
+    }
+    const cursor = kit.React.useState(undefined);
+    const cursorKey = typeof cursor[0] === "string" ? cursor[0] : undefined;
+    const setCursor = cursor[1];
+    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
+    usePanelTick(kit, WORKMATE_PANEL_REFRESH_MS, true);
+    const order = library.entries.map((entry) => entry.key);
+    const rowIndex = new Map;
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const windowRows = Math.max(1, (measured.rows ?? WORKMATE_FALLBACK_ROWS) - PANEL_CHROME_ROWS);
+    const viewport = usePanelViewport(kit, () => sizes);
+    usePanelKeys(kit, props?.host, keysArmed, (event) => {
+      const bare = event;
+      if (bare === null || bare === undefined || typeof bare !== "object")
+        return;
+      const gesture = panelScrollKey(bare);
+      if (gesture !== undefined) {
+        if (typeof bare.preventDefault === "function")
+          bare.preventDefault();
+        if (gesture === "top")
+          viewport.scrollTo(0);
+        else if (gesture === "bottom")
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
+        else
+          viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows);
+        return;
+      }
+      const flags = bare.key ?? {};
+      const input = typeof bare.input === "string" ? bare.input : "";
+      const forward = flags.downArrow === true || input === "j" || input === "J";
+      const backward = flags.upArrow === true || input === "k" || input === "K";
+      if (!forward && !backward)
+        return;
+      if (order.length === 0)
+        return;
+      if (typeof bare.preventDefault === "function")
+        bare.preventDefault();
+      const at = cursorKey === undefined ? -1 : order.indexOf(cursorKey);
+      const next = at < 0 ? forward ? 0 : order.length - 1 : (at + (forward ? 1 : -1) + order.length) % order.length;
+      setCursor(order[next]);
+      const row = rowIndex.get(order[next]);
+      if (row !== undefined)
+        scrollRowIntoView2(viewport, row);
+    });
+    const children = [textRow(kit, headerLine(library, contentCols), { key: "header", dim: true, maxCells: contentCols })];
+    if (library.entries.length === 0) {
+      children.push(textRow(kit, "no workmates yet — `mpd_workmate_init` creates one", { key: "empty", dim: true, maxCells: contentCols }));
+      if (library.root !== "")
+        children.push(textRow(kit, `library ${library.root}`, { key: "root", dim: true, maxCells: contentCols }));
+    } else {
+      for (const entry of library.entries) {
+        const focused = entry.key === cursorKey;
+        const rows = entryLines(entry, contentCols);
+        rowIndex.set(entry.key, children.length);
+        for (let index = 0;index < rows.length; index += 1) {
+          children.push(textRow(kit, rows[index], {
+            key: `${entry.key}-${index}`,
+            bold: index === 0,
+            dim: index !== 0,
+            ...index !== 0 ? {} : { tone: focused ? "focus" : "chain" },
+            maxCells: contentCols
+          }));
+        }
+        children.push(kit.React.createElement(kit.ui.Text, { key: `${entry.key}-gap` }, ""));
+      }
+      for (const problem of library.problems)
+        children.push(textRow(kit, problem, { key: `p-${problem.slice(0, 24)}`, tone: "failed", maxCells: contentCols }));
+    }
+    const contentRows = Math.max(children.length, 1);
+    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
+    sizes.contentRows = contentRows;
+    sizes.viewportRows = windowRows;
+    const scroller = viewport;
+    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
+    const footer = textRow(kit, `↑↓/jk move · PgUp/PgDn scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const body = panelViewportBody(kit, [scrolled], scroller);
+    return panelFrame(kit, WORKMATE_PANEL_TITLE, [...body, footer]);
+  };
+}
+function registerWorkmatePanel(tui, deps) {
+  const panel = deps.enabled ? tui.registerPanel({
+    ...WORKMATE_PANEL_DESCRIPTOR_FROZEN,
+    component: createWorkmatePanelComponent(() => readWorkmateLibrary(deps.home()))
+  }) : undefined;
+  return {
+    panel,
+    registered: () => panel !== undefined && panel.id() !== undefined,
+    id: () => panel?.id(),
+    outcome: () => {
+      if (panel !== undefined)
+        return panel.outcome();
+      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+    },
+    openScene: () => deps.openScene()
+  };
+}
+
 // packages/mpd-tui-plugin/src/scenes.ts
 var BOARD_SCENE_ID = "mpd-tui-board";
 var TEAM_SCENE_ID = "mpd-tui-team";
 var PLAN_SCENE_ID = "mpd-tui-plan";
-var FALLBACK_COLS3 = 100;
+var FALLBACK_COLS2 = 100;
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
-var SCENE_ROW_MAX_CELLS = 4000;
 var PLAN_MUTATION_UNAVAILABLE = "no plan approval exists on the official Agent Teams plane (0.1.7): a team is its Lead session and its board is live";
 var UNAVAILABLE_PLAN_ACTIONS = {
   available: () => false,
@@ -6111,16 +7571,15 @@ var UNAVAILABLE_PLAN_ACTIONS = {
 function noopSubscribe2() {
   return () => {};
 }
-function safeLine(value) {
-  const raw = typeof value === "string" ? value : String(value ?? "");
-  return clampCells(stripControl(raw), SCENE_ROW_MAX_CELLS);
-}
 function usableKit(React, ui) {
   if (React === undefined || React === null)
     return false;
   if (ui === undefined || ui === null)
     return false;
   return typeof ui.Box === "function" && typeof ui.Text === "function";
+}
+function surfaceKit(React, ui) {
+  return { React, ui };
 }
 function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
   try {
@@ -6167,7 +7626,7 @@ function wrapCells(value, cols) {
 }
 function measureTerminal2(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", cols: FALLBACK_COLS3, window: 20 };
+    return { size: "", cols: FALLBACK_COLS2, window: 20 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -6180,7 +7639,7 @@ function measureTerminal2(ui) {
   const terminalCols = Number(columns);
   return {
     size,
-    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS3,
+    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS2,
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
@@ -6193,21 +7652,24 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
       return null;
     }
     onHostKit?.(ui);
+    const surface = surfaceKit(React, ui);
     const read = () => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds());
+        const state2 = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []);
+        return { rows: boardLines(state2, holds()), state: state2 };
       } catch {
-        return ["board state unreadable"];
+        return { rows: ["board state unreadable"] };
       }
     };
-    const state = React.useState([]);
-    const rows = state[0];
-    const setRows = state[1];
+    const state = React.useState({ rows: [] });
+    const board = state[0];
+    const rows = board.rows;
+    const setBoard = state[1];
     React.useEffect(() => {
-      setRows(read());
+      setBoard(read());
       let timer;
       try {
-        timer = setInterval(() => setRows(read()), BOARD_REFRESH_MS);
+        timer = setInterval(() => setBoard(read()), BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
       }
@@ -6219,12 +7681,14 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
         }
       };
     }, []);
+    const clock = useSurfaceClock(ui);
+    const phase = animPhase(clock.time);
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
         if (key?.escape === true || input === "q")
           close();
         else if (input === "r")
-          setRows(read());
+          setBoard(read());
         else if (input === "a") {
           nav.planFromTeam = false;
           openScene(TEAM_SCENE_ID);
@@ -6245,16 +7709,19 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     }
     const measured = measureTerminal2(ui);
     const size = measured.size;
-    const header = `MPD board — ${rows.length} line(s)${size === "" ? "" : ` · ${size}`}`;
-    const children = [
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(header)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${sessionRows} transcript row(s)`))
-    ];
+    const tally = board.state?.team?.tasks;
+    const tone = tally === undefined ? "dim" : toneOfTally(tally, []);
+    const barWidth = Math.max(4, Math.min(24, measured.cols - 64));
+    const children = [];
+    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }));
+    children.push(surfaceText(surface, "meta", chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]), { dim: true }));
+    children.push(surfaceRule(surface, "rule", undefined, tone));
     for (let index = 0;index < rows.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(rows[index])));
+      children.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }));
     }
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · a team workflow")));
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "r refresh", "a team workflow"]));
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6));
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
   };
 }
 function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
@@ -6265,6 +7732,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     if (!usableKit(React, ui))
       return null;
     onHostKit?.(ui);
+    const surface = surfaceKit(React, ui);
     const workflowState = React.useState(undefined);
     const workflow = workflowState[0];
     const setWorkflow = workflowState[1];
@@ -6282,6 +7750,8 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const setScroll = scrollState[1];
     const latestRef = React.useRef?.(undefined);
     const viewRef = React.useRef?.(undefined);
+    const clock = useSurfaceClock(ui);
+    const phase = animPhase(clock.time);
     const refresh = () => {
       let next;
       try {
@@ -6372,25 +7842,36 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     }
     const children = [];
     const head = workflow?.team;
-    children.push(React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}${measured.size === "" ? "" : ` · ${measured.size}`}`)));
+    const tone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual));
+    const barWidth = Math.max(4, Math.min(16, measured.cols - 46));
+    const barFits = measured.cols >= 50;
+    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}`, measured.size]), {
+      bold: true,
+      tone
+    }));
     if (workflow === undefined) {
-      children.push(React.createElement(ui.Text, { key: "unreadable" }, safeLine("team state unreadable")));
+      children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }));
     } else if (head === undefined) {
-      children.push(React.createElement(ui.Text, { key: "none", dimColor: true }, safeLine("no team in this workspace — stage one with agent_teams_plan, then approve it")));
+      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
     } else {
       const counts = workflow.counts;
-      children.push(React.createElement(ui.Text, { key: "phase" }, safeLine(`${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`)));
+      children.push(surfaceText(surface, "phase", chromeTitle([
+        barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
+        `${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`
+      ]), { tone }));
       const roster = workflow.members.length === 0 ? "roster  (no members)" : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ");
-      for (const chunk of wrapCells(roster, graphWidth))
-        children.push(React.createElement(ui.Text, { key: `roster-${chunk}`, dimColor: true }, safeLine(chunk)));
+      const rosterChunks = wrapCells(roster, graphWidth);
+      for (let index = 0;index < rosterChunks.length; index += 1) {
+        children.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]));
+      }
       if (workflow.holds.includes(head.id))
-        children.push(React.createElement(ui.Text, { key: "hold", color: "warning" }, safeLine(`watchdog   HELD (${workflow.holds.join(", ")})`)));
+        children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`));
       const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeLine(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`)));
+      children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
       const graphWindow = Math.max(3, measured.window - 4);
       const graphRows = [];
       for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text));
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
         graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
       }
       children.push(React.createElement(ui.Box, {
@@ -6418,27 +7899,37 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
             setScroll(Math.max(0, scroll + (delta > 0 ? 1 : -1)));
         }
       }, graphRows));
+      let arrow = [];
+      try {
+        arrow = legendLines(graphWidth);
+      } catch {
+        arrow = [];
+      }
+      for (let index = 0;index < arrow.length; index += 1) {
+        children.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }));
+      }
       let legend = [];
       try {
-        legend = legendLines(graphWidth);
+        legend = legendLinesFor(graphWidth, arrow);
       } catch {
         legend = [];
       }
-      for (let index = 0;index < legend.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeLine(legend[index])));
+      for (let index = arrow.length;index < legend.length; index += 1) {
+        children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }));
       }
       const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus);
       if (detail !== undefined) {
-        children.push(React.createElement(ui.Text, { key: "detail", bold: true }, safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)));
-        children.push(React.createElement(ui.Text, { key: "detail-meta", dimColor: true }, safeLine(`${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`)));
+        children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }));
+        children.push(surfaceText(surface, "detail-meta", `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`, { dim: true }));
       }
       for (const problem of workflow.problems)
-        children.push(React.createElement(ui.Text, { key: `problem-${problem}`, color: "warning" }, safeLine(`note       ${problem}`)));
+        children.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`));
     }
     if (notice !== "")
-      children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)));
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board")));
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+      children.push(surfaceText(surface, "notice", notice, { tone: "blocked" }));
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"]));
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? "" : ` — ${head.name}`}`, measured.size]), Math.max(8, measured.cols - 6));
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
   };
 }
 function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
@@ -6467,6 +7958,9 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     if (!usableKit(React, ui))
       return null;
     onHostKit?.(ui);
+    const surface = surfaceKit(React, ui);
+    const clock = useSurfaceClock(ui);
+    const phase = animPhase(clock.time);
     const channelSession = () => {
       const live = props?.channel;
       const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
@@ -6674,27 +8168,28 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const measured = measureTerminal2(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
+    const tone = busy ? "running" : message.startsWith("approve failed") || message.startsWith("discard failed") ? "failed" : message.startsWith("approved:") ? "completed" : message.startsWith("discarded:") ? "cancelled" : usable ? "focus" : "dim";
     const settled = message !== "";
     const verdict = !usable && settled;
     const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`;
-    const children = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))];
+    const children = [surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} ${title}`, size]), { bold: true, tone })];
     if (!usable) {
       if (verdict) {
-        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message)));
-        children.push(React.createElement(ui.Text, { key: "context", dimColor: true }, safeLine(team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`)));
+        children.push(surfaceText(surface, "verdict", message, { bold: true, tone }));
+        children.push(surfaceText(surface, "context", team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`, { dim: true }));
       } else {
         const detail = team === undefined ? "no staged plan for team (none)" : `no staged plan for team ${team.id} (phase ${team.phase})`;
-        children.push(React.createElement(ui.Text, { key: "empty" }, safeLine(detail)));
+        children.push(surfaceText(surface, "empty", detail, { dim: true }));
       }
-      children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc back")));
-      return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+      children.push(surfaceHints(surface, "footer", ["esc back"]));
+      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
     }
     for (let index = 0;index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])));
+      children.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }));
     }
     if (busy)
-      children.push(React.createElement(ui.Text, { key: "busy", dimColor: true }, safeLine("working…")));
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
+      children.push(surfaceText(surface, "busy", "working…", { tone: "running" }));
+    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
   };
 }
 function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit) {
@@ -6748,22 +8243,25 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
 }
 function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []));
+    const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []);
+    return `${statusLine(state)} ${statusMarker(state)}`;
   } catch {
-    return "mpd: state unreadable";
+    return "mpd: state unreadable ?";
   }
 }
 
 // packages/mpd-tui-plugin/src/command-trees.ts
 var COMMAND_ROOT = "mpd";
 var MODEL_COMMAND = "mpd-model";
-var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "panel", "workmates", "status"];
+var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "status"];
 var COMMAND_CHILDREN = [
   { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板", en: "Open the mpd board scene" } },
   { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板", en: "Open the team workflow scene" } },
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
   { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
+  { name: "dag", description: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开依赖 DAG 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback" } },
+  { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
 ];
@@ -7118,6 +8616,10 @@ function runAction(action, actions, session) {
     const route = actions.openPanel();
     return { kind: "success", text: clamp(panelStatusLine(route.outcome, route.id)) };
   }
+  if (action === "dag")
+    return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) };
+  if (action === "workmate")
+    return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) };
   if (action === "plan") {
     return actions.openPlan() ? { kind: "success" } : { kind: "error", text: t("command.planMissing") };
   }
@@ -7140,6 +8642,9 @@ function appendBoardOpened(session, typeKnown, via, view, log) {
 }
 function clamp(value, maxCells = 800) {
   return scalarText(value, maxCells) ?? "";
+}
+function pageLine(slug, route) {
+  return `${slug} · ${panelStatusLine(route.outcome, route.id)}`;
 }
 
 // packages/mpd-tui-plugin/src/model-menu.ts
@@ -7540,6 +9045,18 @@ function apply(ctx, config = {}) {
     openMergedScene: () => scene.openSubagents(),
     log
   });
+  const dagPanel = registerDagPanel(tui, {
+    enabled: resolved.panel,
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    openScene: () => scene.openSubagents(),
+    log
+  });
+  const workmatePanel = registerWorkmatePanel(tui, {
+    enabled: resolved.panel,
+    home,
+    openScene: () => scene.open(),
+    log
+  });
   const dashboardKeyEnabled = () => {
     let saved;
     try {
@@ -7562,6 +9079,18 @@ function apply(ctx, config = {}) {
   const openMergedPanel = () => {
     const routed = panel.openOrScene();
     return { ...routed, id: panel.id() };
+  };
+  const openPage = (page) => {
+    const id = page.id();
+    if (!tui.panelSeamBound() || id === undefined)
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+    if (typeof tui.panels()?.open !== "function") {
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+    }
+    const result = tui.openPanel(id);
+    if (result.opened() === true)
+      return { outcome: "opened", sceneOpened: false, id };
+    return { outcome: "fallback", sceneOpened: page.openScene(), id };
   };
   const shortcuts = resolved.shortcuts ? registerShortcuts(ctx, tui, log, {
     openBoard: () => scene.open(),
@@ -7587,6 +9116,14 @@ function apply(ctx, config = {}) {
       const route = openMergedPanel();
       return { outcome: route.outcome, id: route.id };
     },
+    openDag: () => {
+      const route = openPage(dagPanel);
+      return { outcome: route.outcome, id: route.id };
+    },
+    openWorkmate: () => {
+      const route = openPage(workmatePanel);
+      return { outcome: route.outcome, id: route.id };
+    },
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
     workmatesText: () => {
       const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
@@ -7607,6 +9144,10 @@ function apply(ctx, config = {}) {
   record(scene);
   outcomes.push({ id: "panel", outcome: panel.outcome() });
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`);
+  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() });
+  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`);
+  outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() });
+  log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });
   record(trees);
   record(shortcuts);
@@ -7626,6 +9167,8 @@ async function pickAction(log, dialogs) {
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
     { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
     { id: "panel", label: "Panel", description: "the sidebar panel (dsh-tui 0.13.0), or the full-screen fallback" },
+    { id: "dag", label: "DAG", description: "the dependency DAG as its own sidebar page" },
+    { id: "workmate", label: "Workmate", description: "the workmate library as its own sidebar page" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" }
   ]);

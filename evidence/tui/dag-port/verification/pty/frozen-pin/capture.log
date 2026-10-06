@@ -1,0 +1,4 @@
+[fidelity] capturing 120 cols …
+[fidelity]   chat=true split=true tooNarrow=false widest=118 bars=["≡ ▸ ◆ ‹ MPD › ◈ ◆","‹ 待办 › ▸ ◆ M ◈ ◆"] mpdTab=true
+[fidelity] captured 1/1 widths
+[fidelity] PASS: every width booted the chat screen

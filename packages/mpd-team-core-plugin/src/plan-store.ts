@@ -33,7 +33,20 @@ export interface StagedTask {
   subject: string
   /** The acceptance text the assigned member receives — how the task is to be worked. */
   description: string
-  /** Subjects of tasks that must close first; resolved to board ids when the task is created. */
+  /**
+   * What must close before this task is ready, in ONE of three forms:
+   *
+   *   1. a task id on the board this plan will build (`"T2"`);
+   *   2. the SUBJECT of an earlier task in the same plan (the documented form, and the one a captain
+   *      writes from the plan text itself);
+   *   3. this plan's own 1-BASED POSITION (`"2"` for the second staged task) — the form that was
+   *      silently accepted and then silently unresolved until 2026-10-06, when a live board carrying
+   *      `["2"]`, `["2","3","4","6"]`, `["7","8","9"]` flattened its whole DAG to one column.
+   *
+   * Approval resolves all three to real board ids; anything that resolves to NOTHING is kept in the
+   * board task's `blockedBy` and reported BESIDE it (see `TeamTaskRecord.unresolvedBlockers`), named in
+   * the approved plan's `created.unresolved` and in the approval answer — never dropped in silence.
+   */
   blockedBy?: string[]
   /** Paths the task is expected to touch, forwarded to the board's write-scope check. */
   writeScopes?: string[]
@@ -66,7 +79,18 @@ export interface StagedPlan {
   /** ISO instant the plan was discarded instead of approved. */
   discardedAt?: string
   /** What approval actually created, so a reader can reconcile plan with reality. */
-  created?: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> }
+  created?: {
+    members: Array<{ name: string; id: string }>
+    tasks: Array<{ subject: string; id: string }>
+    /**
+     * The staged blockers that named NO task, per board task, as approval resolved them.
+     *
+     * This is the durable half of the report: the archived plan is what a captain (or a repairing
+     * agent) reads afterwards, and the board task's own `unresolvedBlockers` is the live half. ABSENT
+     * means every blocker of every staged task resolved to a real board id.
+     */
+    unresolved?: Array<{ taskId: string; references: string[] }>
+  }
 }
 
 /** A task's frozen contract, written when the task is claimed. */
@@ -223,6 +247,38 @@ export function addTask(plan: StagedPlan, task: StagedTask): StagedPlan {
   const subject = task.subject.trim()
   if (subject === "") throw new Error("a task needs a non-empty subject")
   return { ...plan, tasks: [...plan.tasks, { ...task, subject }] }
+}
+
+/** How one blocker reference reads against the plan AS IT STANDS when the reference is written. */
+export type BlockerForm =
+  | "position"
+  | "subject"
+  | "board-id"
+  | "unknown"
+
+/**
+ * Classify one staged blocker reference, so a captain learns at WRITE time what the text will mean.
+ *
+ * This is the write-time half of the 2026-10-06 defect: a plan whose `blockedBy` carried bare numbers
+ * (its own positions) or free text was accepted without a word, and the failure only appeared three
+ * layers downstream as a board with no edges. A reference is now read against the plan as written:
+ *
+ *   · `board-id` — `T<n>`, a task id the approval mints (the plan's own tasks become `T1…Tn`);
+ *   · `position` — a bare number, the plan's own 1-BASED position (forward references included);
+ *   · `subject`  — it matches a task already staged in this plan;
+ *   · `unknown`  — none of the above, so nothing in this plan can resolve it: it is exactly the text
+ *                  that used to be stored and silently dropped by every reader.
+ *
+ * ADVISORY, never a refusal: a forward reference is legitimate (tasks are written in order), and only
+ * the approval knows the final board. `unknown` is the form worth saying out loud at write time.
+ * @param plan - the plan as it stands, INCLUDING the task the reference was just written on.
+ * @param reference - one reference, as the caller wrote it.
+ * @returns which of the four forms it reads as.
+ */
+export function classifyBlocker(plan: StagedPlan, reference: string): BlockerForm {
+  if (/^T\d+$/u.test(reference)) return "board-id"
+  if (/^\d+$/u.test(reference)) return "position"
+  return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown"
 }
 
 /** Archive one plan under `.mpd/team/archive/<planId>/` and clear its staging slot. */

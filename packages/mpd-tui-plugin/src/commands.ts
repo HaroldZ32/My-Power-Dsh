@@ -59,6 +59,14 @@ export interface CommandActions {
    * instead of claiming the panel opened when the scene did.
    */
   openPanel(): PanelRoute
+  /**
+   * Open the INDEPENDENT dependency-DAG page (frozen R1), routed exactly as {@link CommandActions.openPanel}
+   * routes the merged panel: the page's sidebar panel when the host serves it, its own full-screen
+   * surface otherwise. Never a silent no-op.
+   */
+  openDag(): PanelRoute
+  /** Open the INDEPENDENT workmate page (frozen R12), routed as {@link CommandActions.openDag}. */
+  openWorkmate(): PanelRoute
   /** The plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
@@ -148,6 +156,12 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
     const route = actions.openPanel()
     return { kind: "success", text: clamp(panelStatusLine(route.outcome, route.id)) }
   }
+  // The two INDEPENDENT pages (frozen R1/R12) print the SAME four-state sentence the merged panel
+  // prints, prefixed with the page's own slug: the sentence names the surface and the final host id
+  // (`<pluginId>:dag`), so a user reading it knows WHICH page the host admitted. The slug is a proper
+  // noun (it is the host-facing panel id half), so it is not translated.
+  if (action === "dag") return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) }
+  if (action === "workmate") return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) }
   if (action === "plan") {
     return actions.openPlan()
       ? { kind: "success" }
@@ -195,4 +209,15 @@ export function appendBoardOpened(
  */
 function clamp(value: string, maxCells: number = 800): string {
   return scalarText(value, maxCells) ?? ""
+}
+
+/**
+ * The printed line of one independent page: its slug, then the SAME routed sentence the merged panel
+ * prints, so all three sidebar surfaces report their outcome in one vocabulary.
+ * @param slug - the page's slug (`dag`, `workmate`), a proper noun and therefore not translated.
+ * @param route - how the routed open ended, and the final host panel id.
+ * @returns the user-visible line.
+ */
+function pageLine(slug: string, route: PanelRoute): string {
+  return `${slug} · ${panelStatusLine(route.outcome, route.id)}`
 }

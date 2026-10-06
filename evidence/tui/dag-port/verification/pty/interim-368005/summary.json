@@ -1,0 +1,28 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013-en",
+  "widths": [
+    120
+  ],
+  "verdicts": [
+    {
+      "cols": 120,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": true,
+      "panelTitleSeen": true,
+      "widestLine": 118,
+      "panelBars": [
+        "≡ ▸ ◆ ‹ MPD › ◈ ◆",
+        "‹ 待办 › ▸ ◆ M ◈ ◆",
+        "≡ ▸ ◆ M ‹ MPD DAG › ◆",
+        "≡ ▸ ◆ M ◈ ‹ MPD workmate ›",
+        "≡ ‹ 任务 › ◆ M ◈ ◆                ⤢",
+        "≡ ▸ ‹ 代理 › M ◈ ◆                ⤢"
+      ],
+      "mpdTabSeen": true,
+      "bootPane": "evidence/tui/dag-port/verification/pty/interim-368005/w120/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/interim-368005/w120/panel.pane.txt",
+      "failures": []
+    }
+  ]
+}

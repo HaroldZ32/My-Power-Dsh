@@ -1,0 +1,259 @@
+=== T5/T6 seam-guard evidence: raw outputs (2026-10-06T14:05:51Z) ===
+
+--- artifact revisions (mpd-tui-plugin dist) ---
+-rw-rw-r-- 1 haroldzhao haroldzhao 306516 Oct  6 21:34 packages/mpd-tui-plugin/dist/index.js
+6c6f573ae2caab43c8836d756d46b07a884e3f0a0d1523cd9798f1ad05d86744  packages/mpd-tui-plugin/dist/index.js
+a35d0acf75af480237dffc4f60c042d354d40f88db80ca286d1a6d4497d35994  packages/mpd-tui-plugin/src/index.ts
+
+--- probe 3 (NO host switch): /panel completions + panel bar ---
+{
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/no-switch/boot.pane.txt",
+      "bar": "",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-completions",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/no-switch/panel-completions.pane.txt",
+      "bar": "",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "clear",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/no-switch/clear.pane.txt",
+      "bar": "",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-by-id",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/no-switch/panel-by-id.pane.txt",
+      "bar": "",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-toggle",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/no-switch/panel-toggle.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "mentionsPanelId": false
+    }
+  ]
+}
+EXIT3=0
+
+--- probe 4 (host switches pinned): /panel completions + panel bar ---
+{
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/boot.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-completions",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/panel-completions.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "clear",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/clear.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-by-id",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/panel-by-id.pane.txt",
+      "bar": "│ ≡ ▸ ◆ ‹ MPD ›",
+      "mentionsPanelId": false
+    }
+  ]
+}
+EXIT4=0
+
+--- probe 1/2 (earlier runs, same sandbox) ---
+{
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/boot.pane.txt",
+      "bar": "",
+      "hasMTab": false
+    },
+    {
+      "step": "panel-toggle",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/panel-toggle.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "hasMTab": false
+    },
+    {
+      "step": "escape-to-chat",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/escape-to-chat.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "hasMTab": false
+    },
+    {
+      "step": "mpd-panel-cmd",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/mpd-panel-cmd.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "hasMTab": false
+    },
+    {
+      "step": "escape2",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/escape2.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "hasMTab": false
+    },
+    {
+      "step": "ctrl-b",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/ctrl-b.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆",
+      "hasMTab": false
+    }
+  ]
+}
+EXIT=0
+{
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/boot.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "cmd-status",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/cmd-status.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "cmd-panel",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/cmd-panel.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "panel-toggle",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/panel-toggle.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆"
+    },
+    {
+      "step": "ctrl-b",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/ctrl-b.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆"
+    }
+  ]
+}
+--- stderr tail ---
+file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/ink/update-overflow-guard.js:177
+        throw error;
+        ^
+
+Error: write EIO
+    at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+    at writeGeneric (node:internal/stream_base_commons:150:3)
+    at Socket._writeGeneric (node:net:1262:11)
+    at Socket._write (node:net:1274:8)
+    at writeOrBuffer (node:internal/streams/writable:574:12)
+    at _write (node:internal/streams/writable:503:10)
+    at Writable.write (node:internal/streams/writable:512:10)
+    at App.handleSetRawMode (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/ink/components/App.js:368:31)
+    at App.detachForShutdown (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/ink/components/App.js:273:22)
+    at Ink.detachForShutdown (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/ink/ink.js:1435:19)
+Emitted 'error' event on WriteStream instance at:
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  errno: -5,
+  code: 'EIO',
+  syscall: 'write'
+}
+
+Node.js v24.21.0
+
+EXIT=0
+
+--- harness command records (the sandbox session store) ---
+RUNS = 41 DONES = 41
+{"session":"68220b85","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"49e6b53c","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"5026facd","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"272e3960","name":"mpd","args":" workmates","kind":"success","text":"mpd workmates（1）：qa-tui-probe"}
+{"session":"272e3960","name":"mpd","args":" board","kind":"success"}
+{"session":"1e71cc6a","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"09eceb85","name":"mpd","args":" workmates","kind":"success","text":"mpd workmates（1）：qa-tui-probe"}
+{"session":"09eceb85","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"09eceb85","name":"mpd","args":" board","kind":"success"}
+{"session":"089be7d6","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"a418571d","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"2ad20bf7","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"c8be639f","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+{"session":"a3f5785d","name":"mpd","args":" panel","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"}
+
+--- host row order (dump-config, JSON envelope unwrapped) ---
+529: - id: dsh-tui-panels
+531: - id: dsh-tui-plugin-host
+600: name: '@deepseek-harness-tui/dsh-tui'
+846: - id: mpd-tui-adapter
+847: name: '@mpd-dsh/mpd/packages/mpd-tui-adapter-plugin/dist/index.js'
+849: - id: mpd-tui
+850: name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+867: return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+907: return n.indexOf('@deepseek-harness-tui/dsh-tui') === 0 ||
+
+--- mpd-tui-plugin suite ---
+(fail) a CJK fixture does not shear the layout > a wide-glyph label survives the scenes' own clamps [0.28ms]
+(fail) the running mark breathes on a timer and freezes without one > a host with NO timer draws the STATIC frame [0.24ms]
+(fail) the running mark breathes on a timer and freezes without one > a host WITH a timer draws the phase its clock reports, and the frame is CELL-STABLE [0.33ms]
+(fail) the running mark breathes on a timer and freezes without one > a NON-FINITE clock degrades to the static frame instead of throwing [0.14ms]
+(fail) the legend is composed, and it disambiguates the two states that share a glyph > the drawing's lines keep the drawing's key, and the contract's key follows them [0.41ms]
+(fail) the legend is composed, and it disambiguates the two states that share a glyph > the merged panel's legend sits under its DAG, never inside it [0.32ms]
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [1.91ms]
+
+ 291 pass
+ 13 fail
+ 3714 expect() calls
+Ran 304 tests across 16 files. [329.00ms]
+
+--- mpd-tui-adapter-plugin suite (no-direct-tui-access + others) ---
+(pass) the forbidden list tracks the adapter's seam table [0.16ms]
+
+ 39 pass
+ 0 fail
+ 205 expect() calls
+Ran 39 tests across 2 files. [1.59s]
+
+--- root typecheck ---
+packages/mpd-bundle-plugin/src/team-view.ts(1382,9): error TS1005: ',' expected.
+
+--- dist freshness ---
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 1 of 29 targets not fresh (STALE: 1) — 627ms
+
+--- comment coverage gate ---
+  810: comment — tick
+  944: comment — push
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts (4)
+  442: comment — ctx
+  594: comment — label
+  595: comment — bottom
+  645: comment — page
+
+packages/mpd-tui-plugin/src/panel-workmate.ts (2)
+  228: comment — model
+  419: comment — next
+
+packages/mpd-tui-plugin/src/panel-dag.ts (1)
+  612: comment — phase
+
+packages/mpd-tui-plugin/src/subagent-scene.ts (1)
+  225: comment — part
+
+error: script "verify:comments" exited with code 1

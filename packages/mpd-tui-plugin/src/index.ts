@@ -57,6 +57,8 @@ import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
+import { registerDagPanel } from "./panel-dag.js"
+import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
@@ -580,6 +582,33 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     openMergedScene: () => scene.openSubagents(),
     log,
   })
+  // ── the two INDEPENDENT pages (frozen R1/R12) ────────────────────────────
+  // The DAG page and the workmate page are their own panels, registered through the SAME adapter and
+  // fed by the SAME projections the merged panel uses, so three surfaces cannot describe one team or
+  // one library differently. The host budgets a plugin at FOUR panels (host `MAX_PANELS_PER_PLUGIN`
+  // in `lib/types/dsh-adapter/panels.js`), and this row now contributes THREE (team, dag, workmate) —
+  // inside the budget with one slot to spare. Each slug is a single lowercase word (`dag`,
+  // `workmate`), which is what the host's own `SUB_ID_PATTERN` requires before it prefixes the id.
+  //
+  // A HOST THAT CANNOT SERVE A PANEL STILL GETS A SURFACE: each page's `openScene` fallback is the
+  // existing full-screen view that already carries this content (the merged subagents scene, the
+  // board), never a silent no-op — the same rule the merged panel follows.
+  const dagPanel = registerDagPanel(tui, {
+    enabled: resolved.panel,
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    openScene: () => scene.openSubagents(),
+    log,
+  })
+  // The workmate page: the durable library under the user's HOME, with the board scene (which already
+  // lists it) as the full-screen surface for a host that cannot serve a panel.
+  const workmatePanel = registerWorkmatePanel(tui, {
+    enabled: resolved.panel,
+    // The library lives under the user's HOME and is resolved per read, never cached at apply.
+    home,
+    // The board scene is the full-screen surface that lists the library.
+    openScene: () => scene.open(),
+    log,
+  })
   // ── the Ctrl+A takeover (W2) ─────────────────────────────────────────────
   // The hook rides the SAME status seam and the SAME read path as the scenes; it mounts an empty-Box
   // view inside the Chat screen, prepends a listener on the host's own input bus through the adapter's
@@ -647,6 +676,31 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     const routed = panel.openOrScene()
     return { ...routed, id: panel.id() }
   }
+  /**
+   * The SAME arbitration for the two independent pages (frozen R1/R12).
+   *
+   * `panel.ts` owns this route for the merged view; the pages answer it identically — the panel when
+   * the host offers the seam, its registration was confirmed and the host accepted the open, else the
+   * page's own full-screen surface — so a new page cannot make the routing honest for one surface and
+   * a silent no-op for another. The four outcomes are `panel.ts`'s own vocabulary.
+   * @param page - the registered page seam: its discovered id and its full-screen fallback.
+   * @returns how the routed open ended, and the id it went to.
+   */
+  const openPage = (page: { id(): string | undefined; openScene(): boolean }): PanelOpenOutcome & { id: string | undefined } => {
+    /** The final host id, read PER CALL: the seam may have bound since the last invocation. */
+    const id = page.id()
+    if (!tui.panelSeamBound() || id === undefined) return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+    if (typeof tui.panels()?.open !== "function") {
+      // A bound seam with no `open` member cannot satisfy the request at all — the scene is the surface
+      // and the line must not read as a host refusal.
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+    }
+    /** The host's answer; a boolean only because the seam was bound at call time. */
+    const result = tui.openPanel(id)
+    if (result.opened() === true) return { outcome: "opened", sceneOpened: false, id }
+    // A REFUSAL IS NOT A NO-OP: the page's full-screen surface opens instead, and the line says why.
+    return { outcome: "fallback", sceneOpened: page.openScene(), id }
+  }
   /** The shortcut seam result, or a config-disabled stub. */
   const shortcuts = resolved.shortcuts
     ? registerShortcuts(ctx, tui, log, {
@@ -688,6 +742,19 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           const route = openMergedPanel()
           return { outcome: route.outcome, id: route.id }
         },
+        // `/mpd dag` and `/mpd workmate`: the two independent pages (frozen R1/R12) reach the SAME
+        // arbitrated route as `alt+a`, so a host without a usable panel seam lands on each page's own
+        // full-screen surface instead of nothing.
+        openDag: () => {
+          /** How the routed open of the DAG page ended. */
+          const route = openPage(dagPanel)
+          return { outcome: route.outcome, id: route.id }
+        },
+        openWorkmate: () => {
+          /** How the routed open of the workmate page ended. */
+          const route = openPage(workmatePanel)
+          return { outcome: route.outcome, id: route.id }
+        },
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
@@ -725,6 +792,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // this row does not carry — see `PanelRegistrationHandle.id`).
   outcomes.push({ id: "panel", outcome: panel.outcome() })
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`)
+  // The two PAGES report under their own names for the same reason: `panel.id()` names one discovered
+  // host id, and each page composes a DIFFERENT one (`<pluginId>:dag`, `<pluginId>:workmate`), so a
+  // single line could not tell an operator which page the host actually admitted.
+  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() })
+  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`)
+  outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() })
+  log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`)
   // The takeover ROLE is reported under its own name (it rides the status seam, which reports
   // separately above), so the aggregate line names it instead of hiding a second `status` entry.
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() })
@@ -761,6 +835,10 @@ async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): 
     { id: "plan", label: "Plan", description: "review and approve a staged plan" },
     { id: "subagents", label: "Subagents", description: "the host's subagent rows above the team panel" },
     { id: "panel", label: "Panel", description: "the sidebar panel (dsh-tui 0.13.0), or the full-screen fallback" },
+    // The two independent pages are their OWN entries: their `/mpd` children exist (and appear in the
+    // completion tree), so the bare-form picker must offer the same two actions a user can type.
+    { id: "dag", label: "DAG", description: "the dependency DAG as its own sidebar page" },
+    { id: "workmate", label: "Workmate", description: "the workmate library as its own sidebar page" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
     { id: "status", label: "Status", description: "print the mpd status line" },
   ])

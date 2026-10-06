@@ -23,10 +23,10 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
-| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
+| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
 | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
-| 侧栏面板（dsh-tui 0.13.0） | `ctx.tuiPanels`（经适配器） | **一个**面板 —— slug `team`、标题 `MPD`、`minColumns` 32、`order` 10、无图标、**无 `compact`** —— 其正文就是**同一份**合并视图：先是宿主那份精心裁剪的 `host.snapshot().subagents` 行，然后是 MPD 依赖 DAG。接缝已绑定时，`alt+a` 与新增的 `/mpd panel` 都经 `tuiPanels.open()` 路由；只要被拒就**回退**到全屏 `mpd-tui-subagents` 场景 —— 绝不静默无操作。`/mpd panel` 会打印一行双语状态，点名它实际到达的界面 |
+| 侧栏页面（dsh-tui 0.13.0） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`order` 10、合并视图）、`dag`（`MPD DAG`、`◈`、`order` 11）与 `workmate`（`MPD workmate`、`◆`、`order` 12）；三者的 `minColumns` 都是 28，且都不声明 `compact`。接缝已绑定时，`alt+a` / `/mpd panel` 经 `tuiPanels.open()` 路由到合并视图；`/mpd dag` 与 `/mpd workmate` 路由到各自的页面。**任何**拒绝都会回退到该页自己的全屏场景（`team`/`dag` 用 `mpd-tui-subagents`，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
 | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
@@ -35,18 +35,59 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
 命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
 
-### 侧栏面板（dsh-tui 0.13.0）：一个面板，一份合并视图
+### 三个侧栏页面（dsh-tui 0.13.0）：合并视图、DAG 与 workmate 书架
 
-`src/panel.ts` 只贡献**一个**侧栏面板，并承载它的全部契约。描述符在模块作用域**冻结**
-（`PANEL_DESCRIPTOR_FROZEN`）：`apiVersion` 为 1、slug `team`（宿主会用本次激活的插件 id 加前缀）、
-标题 `MPD`、`minColumns` 32（高于宿主自身默认的 28 这一底线）、`order` 10、**无图标、无 `compact`**
-—— 0.13.0 会校验并保存那个行槽位，却**不挂载**它的渲染槽位，声明它就等于主张一个宿主永远不会绘制的
-界面。
+本包通过宿主的 `tuiPanels` 接缝贡献**三个**页面，每个页面都有自己在模块作用域**冻结**的描述符
+（`*_DESCRIPTOR_FROZEN`），且都在宿主自己的 `MAX_PANELS_PER_PLUGIN = 4` 配额之内：
+
+| 模块 | slug（宿主会用本次激活的插件 id 加前缀） | 标题 | 图标 | `order` | `minColumns` |
+|---|---|---|---|---|---|
+| `src/panel.ts` | `team` | `MPD` | — | 10 | 28 |
+| `src/panel-dag.ts` | `dag` | `MPD DAG` | `◈` | 11 | 28 |
+| `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `◆` | 12 | 28 |
+
+三个页面的 `apiVersion` 都是 1（0.13.0 只接受这个值），且都**不声明 `compact`**：0.13.0 会校验并保存
+那个行槽位，却**不挂载**它的渲染槽位，声明它就等于主张一个宿主永远不会绘制的界面。
+
+**三页都向宿主请求 `minColumns` 28 —— 那正是宿主自己的底线 —— 而这个数字就是"面板看不见"这一缺陷的
+修复。** 宿主的 `components/sidePanel/PanelHost.js` 会计算
+`tooNarrow = def.minColumns !== undefined && width < def.minColumns`，为真时用一条 `panel-too-narrow`
+提示**顶替**页面正文；而 `components/sidePanel/dimensions.js` 在分栏阈值处把面板列固定为它自己的
+`PANEL_MIN_COLUMNS = 28`。旧的描述符向宿主请求 32，于是出现了一整段终端宽度：侧栏能打开、标签页也在，
+用户看到的却是一条拒绝提示而不是团队图。宿主的描述符校验器对 32 照收不误，注册阶段不会变红 —— 只有按
+宽度分段的测试才抓得到这类问题。28 列下的可读性是**页面自己**的职责（DAG 页按实际拿到的宽度在
+`boxes`／`rail`／`list` 之间选择），绝不是要求宿主把列加宽。
 
 注册在每一个宿主版本上都是安全的：apply 时的 `registerPanel(...)` 被适配器的延迟绑定器**入队**，在
 没有 `tuiPanels` 服务的宿主上结算为 `absent`，且绝不抛错。最终 id 不在这里拼装 —— 它是从宿主自己的
 `list()` 回读中**发现**的，因此在真机 0.13.0 宿主上调试行写作 `sidebar panel id: act1:team`（实测），
 其它地方则是 `(not discovered)`。
+
+**用户究竟怎么走到某一页 —— 在断定"面板不见了"之前请先读这一段。** 最终 id 是**动态**的
+（`<activationId>:<slug>`；实测为 `act1:team`、`act1:dag`、`act1:workmate`，该组合里那个 plain loader
+行不携带任何 Component 身份），所以任何地方都不写死它：请从宿主的 `/panel ` 补全列表得知，或直接读
+`/mpd panel`、`/mpd dag`、`/mpd workmate` 打印的那一行（各自都会点名它实际走到的 id）。注册一个页面**本身
+并不会**让它出现在屏幕上 —— 决定这件事的是**宿主自己行配置里的两个开关**，而本包无法代设（补丁行绝不能
+id 指向宿主拥有的行）：
+
+1. **该页必须在启用列表里** —— `/settings` → 侧栏 → *启用的面板*（`dsh-tui.sidePanel.panels`，默认
+   `todo,jobs,agents`）：把该页的最终 id 加进去。宿主会保留一个格式合法但**尚无面板认领**的 id，因此在
+   插件注册之前先写入 `act1:dag` 也没问题；默认列表正是新装配置只显示宿主自有标签页的原因。
+2. **侧栏必须打开** —— 按 `Ctrl+B`（宿主的三态切换），或打开 *启动时展开侧栏*
+   （`dsh-tui.sidePanel.open`，默认 `false`）。
+
+两个开关就位后，`/panel <id>` 切到该页（`/panel toggle`、`focus`、`zoom` 是另外几种形式），`Alt+Z`
+缩放当前面板。**未设**时的实测：标签栏读作 `│ ‹ 待办 › ▸ ◆`，宿主活的启用列表是
+`toggle, focus, zoom, todo, jobs, agents`。**设好**时的实测（120 列）：标签栏出现
+`‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来。面板列只在宿主分栏处存在 ——
+同一份抓取在 80 列与 48 列上报 `split=false`，即根本没有面板列：那是宿主自己的阈值，不是 MPD 的设置项。
+
+出于同样的原因，`/mpd panel` 的句子刻意保守：*"宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏
+里把 {id} 加入面板列表，并按 Ctrl+B 展开（或开启"启动时展开侧栏"）"*。宿主的 `tuiPanels.open()` 只在请求
+**被送达**时返回 `true`，而它自己的 `useSidePanel` 会**丢弃** id 不在启用列表中的请求 —— 因此旧措辞是
+一次假绿灯。MPD 也无法观测渲染：宿主的事件集合是
+`registered|unregistered|badge|error|disabled`（`opened`/`focused` 是宿主明确的 TODO），所以诚实只能写在
+句子里，而不是写进分支。
 
 面板**正文**就是全屏场景绘制的**同一份**合并视图，且只经**一个**读取器（`readWorkflow`，即各场景自身
 `readDashboardWorkflow` 的无 agent 形态），因此两个界面不可能对同一个团队给出不同描述：先是宿主那份
@@ -64,6 +105,11 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 `panel.refused` / `panel.unavailable`），因此回退永远不会被读成"面板已打开"，而**已绑定**接缝却**拒绝**注册
 的宿主会报成"被拒绝"，绝不会被读成"该宿主不提供面板接缝"。
 
+**两个独立页面走同一条路由。** `/mpd dag` 与 `/mpd workmate` 调用 `openPage(...)`，与合并视图共用同一套
+仲裁，并各自带自己的**兜底**场景（`dag` → 全屏合并子代理场景，`workmate` → 看板场景）；两者都打印
+`slug · <同一句路由结果>`，因此那一行既点名宿主接纳的是**哪一页**，也点名它实际走到的最终 id。裸 `/mpd`
+的动作选择器同样多了这两个动作，而每个子命令行都携带双语描述，交给宿主按自己的 `/lang` 解析。
+
 **`Ctrl+A` 按版本设闸。** 在提供面板接缝的宿主上，旧的宿主输入接触面被直接跳过 —— 无论配置层说什么，
 `takeoverArmed(seamBound, savedKnob, floor)` 都返回 `false`，聚合行会点名原因，`Ctrl+A` 保留宿主
 dashboard 的原义。在没有该接缝的宿主上，接触面与以往完全一样地就绪，且在那里已保存的 `tui.dashboardKey`
@@ -74,10 +120,14 @@ dashboard 的原义。在没有该接缝的宿主上，接触面与以往完全�
 `skipped("panels", …)` 结果并点名该配置），`alt+a` 与 `/mpd panel` 保持面板出现之前的全屏路径，而
 `Ctrl+A` 是否就绪只由接缝决定。
 
-**如实写出的边界。**（1）在当前宿主上，面板**正文**无法用 tmux pane 抓取观测：一次**被宿主接受**的
-`open()` 前后两次抓取**逐字节相同**，因此真机 PTY 用例证明的是注册、被发现的 id 与被接受的打开 ——
-绝不是渲染，也不主张面板栏或正文绘制出来。（2）0.12.0 一侧**没有 PTY 证据**：干净的 0.12.0 沙箱需要
-`dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`，本机被只读的 pnpm store 锁拒绝（现有的
+**如实写出的边界。**（1）可见性主张是关于**那两个开关**的主张，而且有实测：当 `sidePanel.panels` 带着页面
+id、侧栏也打开时，120 列的冻结版本抓取里标签栏读作 `≡ ▸ ◆ ‹ MPD › ◈ ◆`、`≡ ▸ ◆ M ‹ MPD DAG › ◆` 与
+`≡ ▸ ◆ M ◈ ‹ MPD workmate ›`，`mpdTab=true`；未设时标签栏只有宿主自己的三个标签页（`‹ 待办 › ▸ ◆`）。
+同一份抓取在 80 列与 48 列上报 `split=false` —— 宿主根本不画面板列，因此在那里无论列表怎么写都不可能
+有页面可见。（2）MPD **无法**观测渲染：宿主的事件集合里没有 `opened`/`focused`（那是宿主明确的 TODO），
+所以插件知道的只是"id 已被拼装 + 请求已被接受"，绝不是"已经画出来了"；先前那次逐字节相同的抓取正是 R13
+的动因，也是这句话只点名补救步骤、不主张成功的原因。（3）0.12.0 一侧**没有 PTY 证据**：干净的 0.12.0
+沙箱需要 `dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`，本机被只读的 pnpm store 锁拒绝（现有的
 `.mpd/recon/tui-012` 夹具是混版组合，其 loader 在出现聊天界面前就卡在只属 0.13.0 的那一行上），因此旧
 宿主的就绪路径依赖单元断言 —— 判据是 `src/panel.ts` 中的 `takeoverArmed`，由 `test/panel.test.ts`
 覆盖，另有 `test/dashboard-key.test.ts` 的 `Ctrl+A` 决策臂 —— 而**不是**某次 pane 抓取。
@@ -85,8 +135,70 @@ dashboard 的原义。在没有该接缝的宿主上，接触面与以往完全�
 证据：`evidence/tui/lanes/2026-10-06T10-27-42.389Z/`（挂载用例 PASS）、
 `evidence/tui/lanes/2026-10-06T10-27-53.571Z/`（8 个界面中 7 个渲染，面板行绿、负对照红）、
 `evidence/tui/lanes/2026-10-06T10-28-57.807Z/`（宿主的 `Ctrl+A` **保持惰性**，而 `/mpd panel` 证明了
-侧栏注册 + 被接受的打开），以及
-`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`。
+侧栏注册 + 被接受的打开）、`evidence/tui/lane-repair/013-20261006T102742Z/TUI-013-LANE-REPORT.md`，以及
+—— 针对**本次**波次的三个页面 —— `evidence/tui/dag-port/verification/pty/frozen/`（冻结版本的真机 PTY
+抓取：标签栏里的三个 MPD 标签页、pin/unpin 键位、以及带 `split=false` 分支的宽度矩阵）与
+`evidence/tui/dag-port/seam-guard/20261006T135423Z/T6-WIRING.md`（接线与 R26 措辞）。
+
+### DAG 页面：自适应纵排 rank、六种状态色调与图例
+
+`src/panel-dag.ts` 把依赖 DAG 做成**独立**页面（冻结条款 R1），带上合并面板负担不起的外框：带边框的
+框架、点名团队与其进度的表头、图形本体、图例，以及一行只列本页真正处理的按键的页脚。
+
+- **纵排、且自适应，任何地方都没有固定尺寸。** rank 是**纵向**轴（自上而下），图形直接**复用**
+  `graph.ts` 而不是另写一套：`layoutBoxes`（每个任务一个带框盒子）、`layoutRail`（缩进森林）、
+  `layoutList`（按 rank 分组、带进度条的表格 —— 在这一页出现之前它没有任何调用方）。`dagPanelLayout`
+  按面板**实测**到的宽度选择画法：`boxes` 宁可**拒绝**也不画一个被挤扁的盒子，rail 在森林仍放得下时接管，
+  `list` 是窄而拥挤时的密集兜底。这里没有任何常量决定谁有多宽；本波次用户的决定就是
+  「纵向，但不要固定尺寸」。
+- **rank 由依赖图**推导**，绝不听信服务端给的 `depth`（R17）。** 绘制自己把每个 rank 算成"其下**能解析**
+  的阻塞者构成的最长链"；服务端的 `depth` 至多只是一个提示。这修掉了一个已实测的、静默的谎言：线上看板
+  的阻塞引用写成了计划序号（`["2"]`），而任务 id 是 `T1..T10`，于是 store 丢掉了每一个无法解析的引用、
+  每个任务都变成根、每个 depth 都变成 0 —— 图形只画**一列**、**一条边都不画**，而且什么都不说。本页会
+  报出究竟是哪个来源画的：`view boxes · 12 tasks · ranks derived` 对比 `· ranks served`。
+- **解析不了的阻塞引用是可见事实（R18）。** `GraphView.unresolved` 会以警告色调打印成
+  `unresolved blockers: <ids>` —— 静默丢数据正是上面那个缺陷的成因，绝不能在下一层重演。
+- **六态色调是一张表，而不是散落的字面量（R5）。** `dag-theme.ts` 持有 `DAG_STATE_TONES`（图例顺序下的
+  六个状态）、`DAG_TONE_THEME`（completed→`success`、running→`activity`、failed→`error`、
+  blocked→`warning`、cancelled→`inactive`、open→`subtle`）、`DAG_TONE_GLYPH`（`✓ ◐ ✗ ○ ⊘ ○`）、
+  `DAG_KIND_ABBREV`（`REQ WRK REV FIX INT`）与 `DAG_CHROME`（边框样式，以及图例必须点名的
+  `▼ ▸ ▶ ◆` 标记）。WEB 视图的十六进制色值只作为**出处**记录（`DAG_TONE_WEB_HEX`），没有任何地方渲染它们。
+- **图例消解了 WEB 视图从来不必消解的歧义（R6）。** `blocked` 与 `open` 按设计共用字形 `○`，因此图例
+  会把共用者一起印出（`○ open=blocked · ○ blocked=open`），并且**换行**而不是缩写状态名 —— 放不下的条目
+  直接**丢弃**，绝不截断。箭头与焦点那几句取自 `graph.ts` 自己的 `legendLines`，所以图例点名的字符与图形
+  实际绘制的完全一致。
+- **点击钉住 + 键盘（R11）；悬停**刻意不做**。** 一次点击经图形自己的命中矩形解析并钉住该任务；钉住的详情
+  体画在图形下方，按固定顺序印出十条事实，记录里没有的以 `—` 占位：`id`、`kind`、`visual`、`verdict`、
+  `failedBy`、`owner`、`attempt`、`round`、`blockedBy`、`dependents`。按键：`↑↓/jk` 移动焦点，`Enter`
+  钉住，`Esc` 取消钉住。**没有**悬停面 —— 终端没有指针移动，而用户在需求会上明确放弃了这一项。
+- **滚动，以及一个**已知未修**的缺陷。** 正文在内容溢出时自带**常驻**比例滚动条，并支持滚轮与
+  `PgUp`/`PgDn`/`Home`/`End`。常驻的理由来自宿主自己的规则：自动隐藏的滚动条会改变内容宽度，出现的一瞬
+  就会让每一行重新折行。缺陷是：无界的 `PgDn` 连按可以把窗口推到零行，因为偏移量跨渲染累积。它已被定位、
+  设界并记录 —— 滚动是能用的，但**不是**完美无瑕的。
+- **徽标、空状态、环。** 有失败任务时徽标为 `error`，有任务在等未完成的阻塞者时为 `warning`，看板在跑时
+  为 `info`，无事可报时**清空**徽标（过期徽标比没有更糟）。没有团队时页面点名填满它的调用：
+  `no team in this workspace — `agent_teams_plan` stages one`。依赖**环**以失败色调报出
+  （`dependency cycle: <ids>`），而不是被静默画少一条边。
+
+**OPT-1 是用户决定，不是实现细节。** **失败**的依赖**不**阻塞它的下游：下游保持 `open` 且可派发，失败被
+报在状态**旁边**（`failedBy`，在钉住详情体里渲染为 `failedBy <ids>`），绝不折进 `blocked`
+（`graph.ts` 头部、`team-store.ts` 与 `team-state.ts` 承载同一条规则；绘制只画交给它的 `visual`，从不
+重新推导）。
+
+冻结版本上 120 列的实测：本页自己的那一行读作 `view rail · 12 tasks · ranks derived`，图例的状态键把共用
+字形消解为 `○ open=blocked · ○ blocked=open`。
+
+### workmate 页面：把库做成只读书架
+
+`src/panel-workmate.ts`（冻结条款 R12）把持久 workmate 库（`$HOME/.mpd/workmate/<key>/`）渲染成**独立**
+页面，而不是合并面板里的一节，因为这个库是**按用户**的书架，而不是按工作区的团队。它在构造上就是**只读**
+的：既不创建、也不修改、也不归档任何实例 —— 改动面始终是 `mpd_workmate_*`，因为一个按键就能归档库条目的
+页面是陷阱而不是功能。每一次文件系统读取都是被包住的：库不存在（第一次 `mpd_workmate_init` 之前的正常
+状态）、目录不可读、`meta.json` 被手改、或某实例没有 note，代价都只是某一行或某个字段，绝不是整页。每个
+条目印出 `name · key`、它的 BASE 模板、使用次数、描述与 note，并按最近更新优先排序 —— 与
+`mpd_workmate_list` 提供的顺序相同，因此面板与工具不可能给出不同说法。键盘行为与 DAG 页一致，空状态点名
+填满它的调用：`no workmates yet — `mpd_workmate_init` creates one`。它的刷新节拍是 2000 ms，而 DAG 页是
+1000 ms，因为库是在工具调用时变化、而不是在按键时。
 
 ### 依赖图：箭头、图例与 `Ctrl+A` 接管
 
@@ -97,6 +209,15 @@ dashboard 的原义。在没有该接缝的宿主上，接触面与以往完全�
 依赖指向这个盒子内部"。两个调用方（团队场景与合并面板）都在图下方渲染 `legendLines(width)`；它同时说明两种
 箭头标记、五个状态字形（直接取自绘制所用的同一张表）以及焦点标记，并在终端过窄时**丢弃**一整句而不是把句子
 截断。
+
+**绘制引擎**推导**它要画的东西，并说出赢的是哪个来源（本波次）。** rank 由看板实际能解析的依赖图算出 ——
+即"其下能解析的阻塞者构成的最长链"，只有在什么都解析不出来时才把服务端的 `depth` 当提示；`GraphView`
+携带 `ranksDerived`（究竟是哪个来源画的）与 `unresolved`（看板上没有对应任务的阻塞引用），让页面能把两者
+都报出来而不是藏起来。另有两个已实测缺陷修在**绘制内部**：宽字形（CJK）占两个单元格，因此它后面那一格现在
+渲染为空而不是空格 —— 过去任何一个宽字符之后，带框的行都会丢掉右侧边框；而窄宽度底线现在是诚实的：
+`layoutBoxes` 在盒子宽度不足 `MIN_NODE_WIDTH`（16）时返回 `undefined` 而不是画一个挤扁的盒子，DAG 页还会
+在标签区至少达到 `MIN_BOX_LABEL_CELLS`（32）时才选择带框画法，因此窄面板会降级为 rail 或 list，而不是把
+盒子裁掉。
 
 当工作区的团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板——宿主自己的子代理行及计数、团队
 正文、以及该 DAG。这个键归宿主的**内建** `dashboard` 动作所有，且没有任何贡献类型能触达它的组件，因此适配器
@@ -297,8 +418,23 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 13. **`/mpd-model` 写入的是取值，并不保证建队成功。** 菜单只提供实时模型目录列出的内容；某个提供商实际并不提供的路由，仍会让建队**明确失败**（并点名成员与槽位）—— 这个失败就是如实的结果，本命令不做预校验，也不做钳制：每一档提供的都是 id，绝不是显示名。
 14. **`LocalCommand.descriptions` 在本宿主上不可达，因此 `/mpd-model` 不声明它。** `dsh-commands` 的 `normalizeDefinition` 会把每个定义重建为 `{definitionId?, name, description, input?, recordInput?, handler}` 并丢弃未知字段，所以 `descriptions` 映射永远到不了注册表。用户在斜杠菜单里看到的文案来自**命令树节点**，而它确实携带双语；命令自身的 `description` 保持英文基准值，供宿主的 `tOr('cmd-desc-<name>', description)` 回落读取。
 15. **语言解析不是逐帧订阅，且 MPD 不写任何语言偏好。** 它按 `DSH_TUI_LANG` → `~/.dsh-tui/lang.json` → 操作系统 locale（`zh` 前缀 ⇒ 中文；其他任何**已声明**的 locale ⇒ 英文，因此 `C.UTF-8` ⇒ 英文；整条链都为空时才用 `zh`）→ `zh` 的顺序、在**使用时**求值。`~/.dsh-tui` **只读**：`/lang` 始终是唯一开关，`/lang` 切换会在该字符串下一次使用时对其生效 —— 场景 `title`（在注册时固定）则要等重启。语言由 `cordis.yml` 的 `lang` 固定时属于**已知缺口**：该键由宿主自己的 `plugin.apply` 读取，插件看不见。
-16. **侧栏面板的正文在当前宿主上无法用 tmux pane 抓取观测。** 实测：`/mpd panel` 报告一次**被宿主接受**的打开之后，320×50 的抓取与紧邻其前的一次**逐字节相同**（均为 3413 个字符），而 `alt+a` 什么都没改变 —— 因此真机 PTY 用例证明的是注册、被发现的 id（`act1:team`）与被接受的打开，而**不是**渲染。0.13.0 上不存在可用 pane 抓取的 MPD 依赖视图，因此不主张面板栏或面板正文绘制出来；合并本身由 `test/subagent-scene.test.ts` 与 `test/graph.test.ts` 覆盖，绝不靠 pane。
+16. **侧栏页面只有在宿主自己那两个开关都就位时才会出现，而 MPD 永远无法观测渲染。** 冻结版本上的实测：
+    当 `sidePanel.panels` 带着页面 id、侧栏也打开时，120 列真机 PTY 抓取的标签栏读作
+    `≡ ▸ ◆ ‹ MPD › ◈ ◆`、`≡ ▸ ◆ M ‹ MPD DAG › ◆` 与 `≡ ▸ ◆ M ◈ ‹ MPD workmate ›`（`mpdTab=true`）；
+    未设时标签栏只有宿主自己的三个标签页，而 80/48 列下宿主上报 `split=false`，即根本没有面板列。页面 id 是
+    **动态**的（`<activationId>:<slug>`；实测 `act1:team`、`act1:dag`、`act1:workmate`），而补丁行不得
+    id 指向宿主的行去代设这两个开关，所以补救只能写成给用户的具名步骤（见"如何到达"一段）。插件自己知道的
+    只有"id 已被拼装 + `open()` 请求已被接受" —— 绝不是"已经画出来了"：宿主的事件集合里没有
+    `opened`/`focused`（那是宿主明确的 TODO）。
 17. **旧宿主的 `Ctrl+A` 就绪路径没有 PTY 证据。** 干净的 0.12.0 沙箱需要 `dsh plugin add @deepseek-harness-tui/dsh-tui@0.12.0`，本机被只读的 pnpm store 锁拒绝；现有的 `.mpd/recon/tui-012` 夹具是混版组合，其 loader 在出现任何聊天界面前就卡在只属 0.13.0 的 `dsh-tui-panels` 那一行上。因此该路径依赖单元断言 —— 判据是 `src/panel.ts` 中的 `takeoverArmed`（`test/panel.test.ts`，16 通过）加上 `test/dashboard-key.test.ts` 的 `Ctrl+A` 决策臂（11 通过）—— 对真实 0.12.0 pane 不做任何主张。
+18. **只属于浏览器的行为刻意**不**移植。** 悬停、WEB 视图的**像素**几何（固定 `168px` 列、`42px` 节点）、
+    CSS 省略号、`overflow:auto`、原生 tooltip、DOM 读取与 `fetch` 轮询在终端里都没有对应物，因此直接舍弃
+    而不是假装实现。移植的是 WEB 视图的**语义**与视觉语言 —— 六个状态、各自的色系、rank 的方向 —— 而绝不是
+    它的几何；这也是 TUI 里每一个尺寸都由实测面板算出的原因。WEB DAG 是那些语义的**参照**，除它自身可读性所
+    必需的 rank 推导与连线走线修复之外，本波次没有修改它。
+19. **DAG 页的滚动条能用，但**不**完美。** 无界连按 `PgDn` 可以把窗口推到零行，因为滚动偏移量跨渲染累积；
+    `clampScroll` 界定了取值范围，但累积本身仍未修。它已被定位并记录 —— 冻结版本上 `bun test ./packages`
+    的两个失败臂正是这两个偏移量累积臂（`evidence/tui/dag-port/freeze/FROZEN-REVISION.md`）。
 
 ## 构建与测试
 

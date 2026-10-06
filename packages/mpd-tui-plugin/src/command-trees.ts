@@ -19,7 +19,7 @@ export const COMMAND_ROOT = "mpd"
 export const MODEL_COMMAND = "mpd-model"
 
 /** Actions the `/mpd` grammar accepts (bare = picker, `<value>` = direct, `status` = print). */
-export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "panel", "workmates", "status"]
+export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "status"]
 
 /**
  * One completion node: the English fallback the host holds in `description`, plus BOTH halves of
@@ -41,6 +41,8 @@ export const COMMAND_CHILDREN: readonly CommandChild[] = [
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
   { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
+  { name: "dag", description: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开依赖 DAG 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback" } },
+  { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } },
 ]
