@@ -85,7 +85,38 @@ screen. Two switches in the HOST's own row config decide that, and the bundle ca
 2. **The sidebar must be open** — press `Ctrl+B` (the host's three-state toggle), or turn on *Side
    panel starts open* (`dsh-tui.sidePanel.open`, default `false`).
 
-With both in place, `/panel <id>` switches to the page (`/panel toggle` / `focus` / `zoom` are the
+**WHY SWITCH 1 USED TO UNDO ITSELF, AND THE TWO ROUTES THAT NOW HOLD IT.** The host's own registration
+path DOES append a successfully registered id (`enablePanelIdInStore` in
+`lib/types/dsh-adapter/panels.js`), so the list reads `todo,jobs,agents,act1:team,…` right after a boot —
+and then, MEASURED at about **+5.4 s**, the `dsh-tui` row re-applies its CONFIG
+(`applySidePanelPanels(config.sidePanel?.panels)`, reached through a `Fiber._reload`) and the appended ids
+are gone. That transient append is why a fresh profile shows the host's three tabs and nothing of ours.
+Two INDEPENDENT routes now hold the list:
+
+* **Automatic and bounded** — the TUI adapter (`packages/mpd-tui-adapter-plugin`) carries a settle keeper
+  that re-asserts ONLY the ids the host's own `list()` read-back produced, and it does so only when the
+  enable list names **NONE** of them; it appends them as ONE set after the user's list, never removing a
+  token and never reordering one. A list that names **ANY** of ours is a configuration that has taken a
+  position on this bundle — you enabled us in `/settings`, or ran the script below, or deliberately
+  removed some of us and kept the rest — and the keeper **stands down**, so it can never put back a page
+  you meant to remove. It walks six ticks over the first ~25 s and then **stops for good**. The ids it
+  discovered are recorded to `<workspace>/.mpd/logs/mpd-tui-panels.json`, because no source constant can
+  know them. This is the adapter's SECOND host-internals contact (the first is the `Ctrl+A` `useStdin`
+  reach; AGENTS.md §6 counts that class, so both are named in that file).
+  **Named residual:** a user who removes **ALL** of ours on purpose leaves a list indistinguishable from a
+  fresh profile's, so the keeper re-adds the set once per boot. Telling those two cases apart needs the
+  CONFIGURED value — a third host-internals contact, and a §6 count decision deliberately not taken in
+  this wave. Removing a bundle page for good is the user layer's business, which is exactly what the
+  script writes; the keeper then leaves it alone.
+* **Durable, one command** — `node scripts/mpd-tui-panels.ts` writes `dsh-tui.sidePanel.panels` into the
+  profile's own patch file, which IS the host's settings user layer: `dsh-config-editor` answers
+  `documentPath` from `profileContext.patchPath`, and `dsh-app-boot` builds that as
+  `<profileDir>/cordis.patch.yml`. The script reads BOTH installed sources and REFUSES to write when it
+  cannot prove the path. It is a DRY RUN by default, prints the exact leaf it would change, supports
+  `--apply`, keeps a `.bak` copy, and adds only the ids the list is missing. Use it when a settings layer
+  arrives too late for the bounded keeper to see, or when you want the choice to persist across restarts.
+
+With both switches in place, `/panel <id>` switches to the page (`/panel toggle` / `focus` / `zoom` are the
 other forms) and `Alt+Z` zooms it. Measured WITHOUT them: the bar reads `│ ‹ 待办 › ▸ ◆` and the host's
 live enable list is `toggle, focus, zoom, todo, jobs, agents`. Measured WITH them, at 120 columns: the
 bar carries `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders. The panel column

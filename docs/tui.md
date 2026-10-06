@@ -225,6 +225,32 @@ host-owned row, so the remedy is user steps, documented and printed by the comma
    prints);
 2. open the sidebar — `Ctrl+B` — or turn on *Side panel starts open*.
 
+**The enable list also has to survive the host's own config re-apply, and it now does, two ways.** The
+host appends a successfully registered id itself (`enablePanelIdInStore`), but MEASURED at about **+5.4 s**
+the `dsh-tui` row re-applies its config through a `Fiber._reload`
+(`applySidePanelPanels(config.sidePanel?.panels)`), so the append is transient and a stock profile ends up
+with the three builtin tabs. (Note what the reset actually does: it restores **whatever the config says**,
+which is `todo,jobs,agents` only while the user layer is unset — a profile whose list names the page ids
+settles WITH those ids and without the builtins.) Two independent routes now hold the list:
+
+* **bounded, in the plugin** — `packages/mpd-tui-adapter-plugin`'s settle keeper re-asserts only the ids
+  the host's own `list()` read-back produced, and only when the list names **NONE** of them: it appends
+  the whole set after the user's list and never removes or reorders a token. A list naming **ANY** of
+  ours is a configuration that has taken a position on the bundle — enabled in `/settings`, written by
+  the script below, or a deliberate partial removal — and the keeper **stands down**, so it never puts
+  back a page the user meant to drop. It walks six ticks over ~25 s and stops for good. That is the
+  adapter's SECOND host-internals contact, alongside the `Ctrl+A` `useStdin` reach (AGENTS.md §6 counts
+  this class, so both are named in that file), and the ids it discovered are recorded to
+  `<workspace>/.mpd/logs/mpd-tui-panels.json`. Residual, named rather than hidden: removing **ALL** of
+  ours on purpose leaves a list indistinguishable from a fresh profile's, so the set is re-added once per
+  boot; separating those cases needs the configured value itself, i.e. a third host-internals contact,
+  which is a §6 count decision this wave deliberately does not take;
+* **durable, one command** — `node scripts/mpd-tui-panels.ts` writes `dsh-tui.sidePanel.panels` into the
+  profile's patch file, which IS the settings user layer (`dsh-config-editor`'s `documentPath` returns
+  `profileContext.patchPath`; `dsh-app-boot` builds it as `<profileDir>/cordis.patch.yml`). Both readings
+  come from the installed sources and the script refuses to write when it cannot prove the path; dry run
+  by default, `--apply` to write, `.bak` kept, only missing ids added.
+
 Measured without them: the bar reads `‹ 待办 › ▸ ◆` and the host's live enable list is
 `toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns: the bar carries
 `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders

@@ -199,6 +199,152 @@ function defaultHostInputLog(line) {
     createFileSink({ root: defaultLogRoot }).write(line);
   } catch {}
 }
+var HOST_PREFS_MODULE = "lib/types/tuiDisplayPrefs.js";
+async function probeHostPrefs(candidates) {
+  let skew = "";
+  if (candidates.length === 0)
+    return { detail: `no candidate host root (no DSH profile carries ${HOST_PACKAGE_PATH.join("/")})` };
+  for (const root of candidates) {
+    const file = join(root, HOST_PREFS_MODULE);
+    try {
+      if (!statSync(file).isFile())
+        continue;
+    } catch {
+      continue;
+    }
+    try {
+      const mod = await import(pathToFileURL(file).href);
+      if (typeof mod.getSidePanelPanels !== "function" || typeof mod.applySidePanelPanels !== "function") {
+        skew = `${file} carries no getSidePanelPanels/applySidePanelPanels pair`;
+        continue;
+      }
+      const read = mod.getSidePanelPanels;
+      const write = mod.applySidePanelPanels;
+      return { prefs: { getSidePanelPanels: () => read(), applySidePanelPanels: (value) => write(value) }, root };
+    } catch (error) {
+      skew = `${file}: ${String(error?.message ?? error)}`;
+    }
+  }
+  return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
+}
+function mergePanelEnableIds(existing, ours) {
+  const tokens = [];
+  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+    const id = token.trim().toLowerCase();
+    if (id !== "" && !tokens.includes(id))
+      tokens.push(id);
+  }
+  const added = ours.filter((id) => !tokens.includes(id));
+  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+}
+var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
+function createPanelEnableKeeper(options) {
+  const ours = [];
+  const ladder = options.ladder ?? PANEL_KEEPER_LADDER_MS;
+  const pending = [];
+  let armed = false;
+  let ticks = 0;
+  let reasserted = 0;
+  let state = "requested";
+  let detail = "no panel registered yet";
+  const announce = () => {
+    if (options.onChange === undefined)
+      return;
+    try {
+      options.onChange({ state, detail, ids: [...ours], reasserted, ticks });
+    } catch {}
+  };
+  const settle = (next, nextDetail) => {
+    state = next;
+    detail = nextDetail;
+    announce();
+    if (ticks < ladder.length)
+      return;
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+  };
+  const runTick = () => {
+    ticks += 1;
+    options.loadPrefs().then((probe) => {
+      if (probe.prefs === undefined) {
+        settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
+        return;
+      }
+      const prefs = probe.prefs;
+      try {
+        const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
+        if (merge.present.length > 0) {
+          settle("confirmed", `standing down: the enable list already names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
+          return;
+        }
+        if (merge.added.length === 0) {
+          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
+          return;
+        }
+        prefs.applySidePanelPanels(merge.csv);
+        reasserted += 1;
+        settle("confirmed", `re-asserted ${merge.added.join(",")} (none of our ids was present)`);
+      } catch (error) {
+        settle("refused", String(error?.message ?? error));
+      }
+    }, (error) => {
+      settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
+    });
+  };
+  const arm = () => {
+    if (armed)
+      return;
+    armed = true;
+    for (const delayMs of ladder) {
+      try {
+        pending.push(options.schedule(runTick, delayMs));
+      } catch {
+        break;
+      }
+    }
+  };
+  return {
+    observe(id) {
+      if (id.length === 0 || ours.includes(id))
+        return;
+      ours.push(id);
+      state = "requested";
+      detail = `settling ${String(ladder.length)} tick(s) for ${ours.join(",")}`;
+      arm();
+      announce();
+    },
+    outcome() {
+      return { state, detail, ids: [...ours], reasserted, ticks };
+    },
+    stop() {
+      for (const cancel of pending.splice(0)) {
+        try {
+          cancel();
+        } catch {}
+      }
+    }
+  };
+}
+function defaultPanelKeeperSchedule(run, delayMs) {
+  const timer = setTimeout(run, delayMs);
+  timer.unref?.();
+  return () => {
+    clearTimeout(timer);
+  };
+}
+var PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json";
+function recordPanelIds(outcome) {
+  try {
+    const file = join(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${JSON.stringify({
+      version: 1,
+      panelIds: [...outcome.ids],
+      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      updatedAt: new Date().toISOString()
+    }, null, 2)}
+`);
+  } catch {}
+}
 function readableService(scoped, id) {
   if (scoped === undefined || scoped === null)
     return;
@@ -299,6 +445,18 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  const panelKeeperOptions = {
+    loadPrefs: () => probeHostPrefs(hostRootCandidates()),
+    schedule: defaultPanelKeeperSchedule,
+    ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
+    log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
+    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined
+  };
+  const panelKeeper = options.keepPanelEnable === true ? createPanelEnableKeeper(panelKeeperOptions) : {
+    observe: () => {},
+    outcome: () => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
+    stop: () => {}
+  };
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
@@ -674,6 +832,8 @@ function createTuiAdapter(ctx, options = {}) {
             finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
           handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
+          if (finalId !== undefined)
+            panelKeeper.observe(finalId);
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -805,7 +965,10 @@ function createTuiAdapter(ctx, options = {}) {
         if (live)
           bound += 1;
       }
-      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState } };
+      return { seams, bound, total: TUI_SEAM_KEYS.length, hostInput: { ...hostState }, panelEnable: panelKeeper.outcome() };
+    },
+    panelEnableOutcome() {
+      return panelKeeper.outcome();
     },
     seamOutcomes() {
       return TUI_SEAM_KEYS.map((key) => {
@@ -839,7 +1002,7 @@ function resolveTuiAdapter(ctx) {
         return mounted;
     } catch {}
   }
-  return createTuiAdapter(ctx);
+  return createTuiAdapter(ctx, { keepPanelEnable: true });
 }
 function createLazyTuiAdapter(ctx, options) {
   let fallback;
@@ -880,7 +1043,7 @@ function createLazyTuiAdapter(ctx, options) {
   });
 }
 function apply(ctx, config = {}) {
-  const adapter = createTuiAdapter(ctx, { probeHostContact: true });
+  const adapter = createTuiAdapter(ctx, { probeHostContact: true, keepPanelEnable: true });
   try {
     const provide = ctx.provide;
     if (typeof provide === "function")
@@ -899,23 +1062,29 @@ export {
   DEFAULT_LOG_NAME,
   HOST_LIVE_CONTEXT_MARKER,
   HOST_PACKAGE_PATH,
+  HOST_PREFS_MODULE,
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
+  PANEL_IDS_RECORD_NAME,
+  PANEL_KEEPER_LADDER_MS,
   SERVICE_NAME,
   TUI_SEAMS,
   TUI_SEAM_KEYS,
   apply,
   createFileSink,
   createLazyTuiAdapter,
+  createPanelEnableKeeper,
   createTuiAdapter,
   defaultLogRoot,
   describeOutcome,
   effectOn,
   hostRootCandidates,
   inject,
+  mergePanelEnableIds,
   name,
   onService,
   probeHostInput,
+  probeHostPrefs,
   readHostStdinValue,
   readableService,
   reportOutcomes,
