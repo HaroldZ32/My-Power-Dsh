@@ -44,10 +44,11 @@ glyph while writing one grid slot, so the intervening slot stayed background. Me
 **33 codepoints / 34 cells / `endsWith│=false`** → **28 / 34 / `endsWith│=true`**. Every rendered line is
 now cell-exact at 48/64/80/120/200.
 
-**4. A DAG rail that overflowed its frame and wrapped.** 7 tasks drew **14 rows**, with one-word
-fragments (`│ v`, `│visual-reviewer`, `│ r`) scattered down the panel. After budgeting every row against
-the frame INTERIOR (`panelContentWidth(cols) = max(1, cols - 2)`): **7 rows, one per task, assignee
-inline**. Before/after panes are kept at
+**4. A DAG rail that overflowed its frame and wrapped.** On the LIVE 12-task board the rail drew
+**24 rows for 12 tasks** — every row wrapped, putting each assignee on its own continuation line plus
+stray fragments (`v`, `r`, `docs`). After budgeting every row against the frame INTERIOR
+(`panelContentWidth(cols) = max(1, cols - 2)`): **12 rows, 0 continuations, every assignee inline**.
+The captured 7-task fixture reads 14 → 7. Before/after panes are kept at
 `evidence/tui/dag-port/verification/pty/{interim-368005,frozen}/w120/`.
 
 **5. A panel that was never visible, and a command that claimed it opened.** The host's tab strip paints
@@ -74,6 +75,25 @@ now honest.
 | `bun run verify:vendor` | **NOT RUNNABLE** — no `oh-my-openagent` checkout / `MPD_UPSTREAM_ROOT` on this machine |
 | `node scripts/docker-e2e.ts --mode source --require-docker` | see below |
 
+### Verified on a real PTY, at the frozen revision
+
+The final capture is anchored to the frozen artifact shas quoted above and settles these:
+
+- **R1 / R12 VERIFIED** — `‹ MPD DAG ›` paints its header, the rail with real `└─▸` edges,
+  `view rail · 12 tasks · ranks derive`, the legend, the state key (which names the blocked/open
+  ambiguity outright: `○ open=blocked`, `○ blocked=open`) and the key hints; `‹ MPD workmate ›` paints
+  `1 instance · read-only` with the instance's own rows.
+- **R6 border title VERIFIED** — `┌MPD DAG────…┐`, `┌MPD workmate────…┐`. The interim 368005 B pane is
+  the preserved bare-border BEFORE.
+- **R11 VERIFIED via the keyboard path** — `/mpd panel` to focus, one `Right` to `MPD DAG`,
+  `Down Down Enter`, and the pin body renders `id/kind/visual/verdict/failedBy/owner/attempt/round/
+  blockedBy/dependents`. (The mouse path is NOT verified.)
+- **R19 "names what it UNLOCKS" VERIFIED** — the pin body's `dependents T11,T7,T9` is exactly the set of
+  live-record tasks whose `blockedBy` names `T2`, and a multi-blocker row is annotated `⇠ T2+T3+T4+T6`.
+  Focus precedence pinned > keyboard: verified.
+- **R26 sentence half VERIFIED**, and the width behaviour: 120 cols → `split=true` with three independent
+  MPD tabs on BOTH the plain and the CJK fixture; 80/48/32 → `split=false` (the host's own 93-col floor).
+
 ### Honest bounds — what this wave does NOT claim
 
 - **The 2 red tests are deliberate.** They are the recorded signature of an UNFIXED defect: an
@@ -94,9 +114,12 @@ now honest.
   and it is the wave's most transferable lesson: **the code-point-versus-cell error appeared twice, once
   inside the product (defect 3) and once inside the instrument measuring it, and the instrument fails
   silently in the direction of reporting defects that are not there.**
-- **Not verified:** R8 (animation — a static capture cannot show motion), R11 (a pinned-task detail body
-  was never captured), R16 (Docker), the producer-side `unresolvedBlockers` field reaching readers,
-  `verify:vendor` (not runnable here).
+- **Not verified:** R8 (animation — a static capture cannot show motion); **R9** (the badge glyph renders
+  only when `tab.badge != null`, and the frozen inactive tabs show no `●`/`!`/`×` — consistent with a
+  clean board, but NOT proof of the path, and no failing task was manufactured to force one); **R14**
+  (no scene capture was run); R4's per-source lane separation; R11's MOUSE path (the keyboard path is
+  verified); R19's hover (not required); R16 Docker; the producer-side `unresolvedBlockers` field
+  reaching readers; `verify:vendor` (not runnable here).
 - **Not ported from WEB:** hover, pixel geometry, CSS ellipsis, `overflow:auto`, native tooltips, DOM
   reads and `fetch` polling. The WEB DAG is the reference.
 - **Post-wave follow-ups, recorded not done:** `packages/mpd-bundle-plugin/client.js` has **no freshness
@@ -190,8 +213,10 @@ plus `team-feature-test/` (the team-build defects found while running this wave)
   （边框在第 81 与 117 格）。它以**撤回**的形式记录，而不是删掉 —— 因为它是本波次最有价值的教训：
   **"码点 vs 单元格"这个错误出现了两次，一次在产品里（缺陷 3），一次在测量产品的仪器里；而仪器的失败
   方向是"报出不存在的缺陷"。**
-- **未验证**：R8（动画，静态截图证明不了运动）、R11（未捕获到 pin 详情体）、R16（Docker）、
-  生产侧 `unresolvedBlockers` 字段到达读取方、`verify:vendor`（本机不可运行）。
+- **未验证**：R8（动画，静态截图证明不了运动）；**R9**（badge 字形只在 `tab.badge != null` 时渲染，而冻结版
+  的非激活标签上没有 `●`/`!`/`×` —— 与"板子干净"一致，但**不是该路径的证据**，而且没有为了逼出它而人为造一个
+  失败任务）；**R14**（没有跑 scene 截图）；R4 的 per-source lane 分离；R11 的**鼠标**路径（键盘路径已验证）；
+  R19 的 hover（非需求）；R16 Docker；生产侧 `unresolvedBlockers` 字段到达读取方；`verify:vendor`（本机不可运行）。
 - **未从 WEB 移植**：hover、像素几何、CSS 省略号、`overflow:auto`、原生 tooltip、DOM 读取与 `fetch` 轮询。
   WEB 版是参照物。
 - **记录但未执行的后续项**：`packages/mpd-bundle-plugin/client.js` **没有新鲜度门禁**（它由
