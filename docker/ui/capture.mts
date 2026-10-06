@@ -173,6 +173,8 @@ interface CaptureReport {
   firstRunText?: string
   /** How many first-run gates the home step closed. */
   gatesDismissedOnHome?: number
+  /** The preset names the composer's mode selector offers when it is opened. */
+  composerPresetNames?: string[]
   /** The interactive controls found on the home screen. */
   controls?: string[]
   /** The rendered text of the home screen. */
@@ -543,6 +545,10 @@ await step("01-first-run", async () => {
 
 // 2) HOME: gates cleared, so the landing behind them is visible — workspace, the MPD preset in the
 //    composer, the model selector. This is the entry point every later step returns to.
+//    The composer's MODE SELECTOR is opened here for the same reason the registry is read in step 00:
+//    the preset's presence and the preset's selection are different claims. Opening it does not change
+//    the selection (Escape closes without choosing), so the home screenshot still shows the untouched
+//    first contact.
 await step("02-home", async () => {
   report.gatesDismissedOnHome = await dismissGates()
   report.controls = await page.evaluate(() => {
@@ -556,6 +562,16 @@ await step("02-home", async () => {
     return [...new Set(out)].slice(0, 120)
   })
   report.homeText = await bodyText()
+  // The mode selector, opened to enumerate what a person can actually choose, then closed again.
+  /** The selector's own control, named for what it shows. */
+  const modeChip = page.getByText(/^(Standard mode|MPD\b.*)$/).first()
+  if (await modeChip.count() > 0) {
+    await modeChip.click({ force: true }).catch(() => {})
+    await page.waitForTimeout(1500)
+    report.composerPresetNames = await page.evaluate(() => document.body.innerText.split("\n").map((line) => line.trim()).filter((line) => /MPD|Standard mode|agent|preset/i.test(line)).slice(0, 12))
+    await page.keyboard.press("Escape").catch(() => {})
+    await page.waitForTimeout(600)
+  }
   return shot("02-home")
 })
 
@@ -862,7 +878,13 @@ const teamText = report.teamPanelText || ""
 const pluginsText = report.pluginsText || ""
 /** The headline claims of this capture, each decided by the text the page really rendered. */
 const checks: Record<string, boolean> = {
-  homeShowsMpdPreset: /MPD \(Main Working Agent\)/.test(report.homeText || ""),
+  // THE PRESET IS OFFERED, decided from the composer's own selector rather than from a bare substring
+  // of the landing text. MEASURED 2026-10-06: the harness moved the preset behind a "Standard mode"
+  // chip, so the old `/MPD \(Main Working Agent\)/` grep of the home screen went false while the
+  // preset was present and selectable — the chip's menu lists it verbatim. The REGISTRY half of that
+  // claim is already carried by `presetsShowMpdDefault` below (the Agent-presets settings page), so
+  // this one only has to prove a person can REACH it from the composer.
+  mpdPresetOffered: (report.composerPresetNames ?? []).some((line) => /MPD \(Main Working Agent\)/.test(line)),
   pluginsShowsInstalledBundle: /@mpd-dsh\/mpd/.test(pluginsText),
   presetsShowMpdDefault: /MPD \(Main Working Agent\)/.test(presetsText) && /New task default/.test(presetsText),
   mpdSectionRendered: /MPD bundle/.test(report.mpdSectionText || ""),

@@ -343,6 +343,47 @@ candidates to nodes inside the viewport and reports `teamHoverReachable` (with t
 unreachable board instead of blaming the panel). The layout itself is not a defect — the pane scrolls —
 but it is worth knowing that a wider board is not hover-testable without scrolling it into view first.
 
+### 8a-ter. The reviewer's pass, and what it corrected
+
+An independent reviewer re-ran the matrix against the frozen blobs (`team-view` `39905b3b`,
+`settings-card` `e72212c8`, `model-menu` `93e0321a`, `capture.mts` `9534b995`, HEAD `6741d835`) and
+hashing them at three instants to prove nothing moved. Verdicts: **R1 PASS, R2 PASS, R3 PASS, R4 TUI
+PASS / WEB UNPROVEN-BY-ME** — it refused to claim the Web plane in Chinese because no zh-rendered Web
+artifact exists, which is the honest boundary and is now recorded rather than papered over.
+
+**It falsified a claim I had made.** I asserted `homeShowsMpdPreset` was pre-existing. It is not:
+`git show dev:docker/ui/out/shots/report.json` is `ok:true` with that check true, while this branch's
+report was `ok:false` with it false. The CAUSE is not this wave's code (no preset, patch or manifest
+file is in the diff, and the real `preset-conformance` mount passes) — the harness moved the preset
+from a bare composer control into a **mode selector**: the landing text now reads `Standard mode`, and
+clicking it opens a menu that lists `MPD (Main Working Agent)` verbatim. So the old check grepped the
+wrong place and reported a missing preset for a preset that was present and selectable.
+
+**Three corrections followed.**
+
+1. `mpdPresetOffered` replaces the grep: the capture OPENS the composer's mode selector and asserts the
+   menu lists `MPD (Main Working Agent)`. The registry half of the claim was already carried by
+   `presetsShowMpdDefault` (the Agent-presets settings page), so the two checks now name two different
+   facts instead of one check guessing at both.
+2. **Both board captures were re-shot with HEAD's driver.** The malformed report had been produced by
+   the SUPERSEDED `capture.mts` at `8a8fe669` — it carried none of `teamRanks`/`teamForwardEdges`/
+   `teamHoverTarget`, and its own strict check predated the viewport fix — so its
+   `teamGraphHoverFocusChain:false` was a stale-driver artifact, not a product failure. That is exactly
+   the stale-evidence class §7 warns about, caught because the reviewer diffed the artifact's keys
+   against the driver that was supposed to have written it.
+3. **Both reports are now `ok: true` with all twelve checks PASS** (`report.json` normal,
+   `report-malformed-board.json` malformed), so the wave's headline artifact no longer says FAIL while
+   its individual claims pass.
+
+**Findings left OPEN, not silently closed:** (a) `bun run test:qa` is red 3/48 in the reviewer's
+environment, with pre-wave precedents for all three and a read-only-sandbox cause on `bundle-lifecycle`
+— §4 lists it as a wave gate, so the release sweep must show it green somewhere; (b) per-cell live
+coverage of `/mpd-model` is partial (not every panel captured in both languages); (c) a cyclic board's
+back-edge draws as two disconnected stubs — non-negative and therefore contract-conformant, but
+cosmetically imperfect; (d) in zh mode the effort options show their raw catalog ids (`Off/Low/High/Max`)
+over localized descriptions — correct per the contract, half-English to a reader. None of these is
+hidden.
+
 ### 8b. Defects this wave found and fixed in its OWN tooling
 
 | Defect | Where | Why it mattered |
