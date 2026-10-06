@@ -67,4 +67,16 @@ for sid in $(ls -1 /data/dsh-web/sessions/--data-ws-- 2>/dev/null); do
 done
 echo "[capture] bound the board to $(ls -1 /data/dsh-web/sessions/--data-ws-- | wc -l) session(s)"
 
-node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out /data-out/shots --workspace /data/ws --board "$BOARD_KIND"
+# MPD_UI_LANG sets the BROWSER locale, which is what decides the Web plane's language (the harness
+# delegates to the browser when no explicit preference is stored). The Chinese run writes to its own
+# directory so it cannot overwrite the English artifacts.
+LANG_KIND="${MPD_UI_LANG:-}"
+OUT_DIR=/data-out/shots
+[ -n "$LANG_KIND" ] && OUT_DIR="/data-out/shots-$LANG_KIND"
+mkdir -p "$OUT_DIR"
+# An ARRAY, not `${VAR:+--flag "$VAR"}`: measured 2026-10-06, that expansion did not survive into the
+# child's argv, so the chrome-locale flag was silently dropped and the "Chinese" run wrote its report
+# over the English one. An array cannot word-split or vanish.
+LANG_ARGS=()
+[ -n "$LANG_KIND" ] && LANG_ARGS=(--lang "$LANG_KIND")
+node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out "$OUT_DIR" --workspace /data/ws --board "$BOARD_KIND" "${LANG_ARGS[@]}"

@@ -835,7 +835,7 @@
             react.createElement("div", { key: "c-top", style: CSS.row },
               react.createElement("span", { key: "dot", style: memberDot(member.status), title: member.status }),
               react.createElement("span", { key: "name", style: { flex: "1 1 auto", fontWeight: 600 } }, member.name),
-              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, member.role),
+              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, t(member.role)),
               react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total)),
           ]
           if (member.route !== undefined && member.route !== "") {

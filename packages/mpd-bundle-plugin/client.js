@@ -6665,6 +6665,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "kind.rev": "REV",
     "kind.fix": "FIX",
     "kind.int": "INT",
+    // THE ROSTER ROLES. These are product names carried by the record (`member.role`), so English is the
+    // identity mapping and Chinese is a DISPLAY-only rendering — the record itself is never rewritten.
+    // Without this the panel renders a Chinese shell around English role chips, which is the one place a
+    // reader could still tell the panel was translated from somewhere else.
+    "Lead": "Lead",
+    "Architect": "Architect",
+    "Researcher": "Researcher",
+    "Planner": "Planner",
+    "Deep Worker": "Deep Worker",
+    "Senior Engineer": "Senior Engineer",
+    "Explorer": "Explorer",
+    "Reviewer": "Reviewer",
+    "Plan Reviewer": "Plan Reviewer",
+    "Vision Analyst": "Vision Analyst",
+    "Junior Engineer": "Junior Engineer",
   }
 
   /**
@@ -6711,6 +6726,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "kind.rev": "评审",
     "kind.fix": "修复",
     "kind.int": "集成",
+    "Lead": "队长",
+    "Architect": "架构师",
+    "Researcher": "研究员",
+    "Planner": "规划师",
+    "Deep Worker": "深度执行者",
+    "Senior Engineer": "高级工程师",
+    "Explorer": "探索者",
+    "Reviewer": "审查者",
+    "Plan Reviewer": "计划审查者",
+    "Vision Analyst": "视觉分析师",
+    "Junior Engineer": "初级工程师",
   }
 
   /**
@@ -10186,7 +10212,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             react.createElement("div", { key: "c-top", style: CSS.row },
               react.createElement("span", { key: "dot", style: memberDot(member.status), title: member.status }),
               react.createElement("span", { key: "name", style: { flex: "1 1 auto", fontWeight: 600 } }, member.name),
-              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, member.role),
+              member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, t(member.role)),
               react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total)),
           ]
           if (member.route !== undefined && member.route !== "") {

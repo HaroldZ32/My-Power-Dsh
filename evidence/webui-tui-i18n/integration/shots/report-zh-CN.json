@@ -1,0 +1,370 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "workspace": "/data/ws",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "name": "01-first-run",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/01-first-run.png"
+    },
+    {
+      "name": "02-home",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/02-home.png"
+    },
+    {
+      "name": "03-plugins",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/03-plugins.png"
+    },
+    {
+      "name": "04-settings-mpd",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/04-settings-mpd.png"
+    },
+    {
+      "name": "05-settings-agent-presets",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/05-settings-agent-presets.png"
+    },
+    {
+      "name": "06-team-panel",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/06-team-panel.png"
+    },
+    {
+      "name": "07-team-graph-interaction",
+      "ok": true,
+      "file": "/data-out/shots-zh-CN/07-team-graph-hover.png"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
+  ],
+  "mpdConsole": [
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=host",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
+    "info: [mpd] team sidebar session: session-d41717da-1ef8-4964-bf2e-76e74fb91f88"
+  ],
+  "firstRunText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh\n添加一个 API Key 开始使用\n配置 DeepSeek 官方模型，即可开始使用。\nAPI 密钥\n稍后配置\n保存并继续",
+  "gatesDismissedOnHome": 1,
+  "controls": [
+    "新建会话",
+    "收起侧边栏",
+    "新会话",
+    "插件",
+    "搜索会话",
+    "视图选项",
+    "添加工作区",
+    "工作区“ws”的操作",
+    "在“ws”中新建会话",
+    "设置",
+    "打开右侧边栏",
+    "ws",
+    "标准模式",
+    "添加文件或调用指令",
+    "工作区内修改",
+    "DeepSeek-V41-Flash\nHigh",
+    "发送消息",
+    "新标签页",
+    "分栏",
+    "全屏",
+    "收起右侧边栏"
+  ],
+  "homeText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh",
+  "composerPresetNames": [
+    "MPD (Main Working Agent)",
+    "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.",
+    "处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。",
+    "Agent 仅使用终端工具完成任务，适合测试和对比其基础表现。",
+    "用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。"
+  ],
+  "pluginsClick": "clicked",
+  "pluginsText": "新会话\n插件\n工作区\nws\n新会话\n设置\n插件\n安装、启用和配置插件\n添加插件\n官方\n8\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n自动化任务\n实验性\n按设定的时间或周期，在会话中自动执行任务。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\n已安装\n1\n@mpd-dsh/mpd\nmy-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "settingsClick": "clicked",
+  "settingsNav": [
+    "通用设置",
+    "模型",
+    "内置插件",
+    "Agent 预设",
+    "MPD"
+  ],
+  "mpdClick": "clicked",
+  "mpdSectionText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh\n设置\n通用设置\n模型\n内置插件\nAgent 预设\nMPD\n打开配置文件\n关闭\nMPD 插件包\n本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效\nlive catalog — 1 provider · 2 models\na save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime\nthe file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update\nthe value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nif no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc\n行内 diff 上限\nmpd.jsonc hashline.maxDiffChars\n重置为文件值\n注释检查\nmpd.jsonc commentChecker.autoCheck\n重置为文件值\nUltrawork 轮数\nmpd.jsonc ulw.maxRounds\n重置为文件值\n记忆后端\nmpd.jsonc memory.vcs\n—\ngit\nsvn\n重置为文件值\n团队状态目录\nmpd.jsonc team.stateDir\n重置为文件值\nBoulder 目录\nmpd.jsonc boulder.dir\n重置为文件值\n看门狗启用\nmpd.jsonc watchdog.enabled\n重置为文件值\n静默告警阈值（毫秒）\nmpd.jsonc watchdog.warnSilenceMs\n重置为文件值\n看门狗轮询间隔（毫秒）\nmpd.jsonc watchdog.tickIntervalMs\n重置为文件值\n升级前连续告警次数\nmpd.jsonc watchdog.warnStreakToEscalate\n重置为文件值\n升级时的动作\nmpd.jsonc watchdog.actionOnEscalate\n—\npause\nwarn-only\n重置为文件值\n工具在飞上限（毫秒，0 表示不设上限）\nmpd.jsonc watchdog.toolInFlightMaxMs\n重置为文件值\n暂停持有有效期（毫秒，0 表示不设有效期）\nmpd.jsonc watchdog.holdTtlMs\n重置为文件值\nlive catalog — 1 provider · 2 models\n槽位 1 —— 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 1 提供商（重推理成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot1.provider\n—\nDeepSeek\n重置为文件值\n槽位 1 模型（重推理成员）\n这一档的模型。与上面的提供商共同决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot1.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\n重置为文件值\n槽位 1 推理强度（重推理成员）\n这一档的推理强度（off / low / high / max）。它决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。\nmpd.jsonc teamModels.slot1.reasoningEffort\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 2 —— 分析型成员（Researcher、Explorer、Plan Reviewer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 2 提供商（分析型成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，分析型成员（Researcher、Explorer、Plan Reviewer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot2.provider\n—\nDeepSeek\n重置为文件值\n槽位 2 模型（分析型成员）\n这一档的模型。与上面的提供商共同决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot2.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\n重置为文件值\n槽位 2 推理强度（分析型成员）\n这一档的推理强度（off / low / high / max）。它决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。\nmpd.jsonc teamModels.slot2.reasoningEffort\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 3 —— 执行型成员（Deep Worker、Junior Engineer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 3 提供商（执行型成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，执行型成员（Deep Worker、Junior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot3.provider\n—\nDeepSeek\n重置为文件值\n槽位 3 模型（执行型成员）\n这一档的模型。与上面的提供商共同决定 执行型成员（Deep Worker、Junior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot3.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\n重置为文件值\n槽位 3 推理强度（执行型成员）\n这一档的推理强度（off / low / high / max）。它决定 执行型成员（Deep Worker、Junior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。\nmpd.jsonc teamModels.slot3.reasoningEffort\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 4 —— 视觉成员（Vision Analyst）\n建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。\n槽位 4 提供商（视觉成员）\n这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。\nmpd.jsonc teamModels.slot4.provider\n—\nDeepSeek\n重置为文件值\n槽位 4 模型（视觉成员）\n这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。\nmpd.jsonc teamModels.slot4.model\n—\nDeepSeek-V41-Flash\nDeepSeek-V4-Pro\n重置为文件值\n槽位 4 推理强度（视觉成员）\n这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。\nmpd.jsonc teamModels.slot4.reasoningEffort\n—\noff\nlow\nhigh\nmax\n重置为文件值\nteamModels.dashboardKey.heading\nteamModels.dashboardKey.impact\nCtrl+A 依赖视图\nmpd.jsonc tui.dashboardKey\n重置为文件值\n保存\n放弃",
+  "mpdControls": [
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "行内 diff 上限mpd.jsonc hashline.maxDiffChars重置为文件值",
+      "kind": "input",
+      "value": "20000"
+    },
+    {
+      "label": "注释检查mpd.jsonc commentChecker.autoCheck重置为文件值",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Ultrawork 轮数mpd.jsonc ulw.maxRounds重置为文件值",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "记忆后端mpd.jsonc memory.vcs—gitsvn重置为文件值",
+      "kind": "select",
+      "value": "git"
+    },
+    {
+      "label": "团队状态目录mpd.jsonc team.stateDir重置为文件值",
+      "kind": "input",
+      "value": ".mpd/team"
+    },
+    {
+      "label": "Boulder 目录mpd.jsonc boulder.dir重置为文件值",
+      "kind": "input",
+      "value": ".mpd"
+    },
+    {
+      "label": "看门狗启用mpd.jsonc watchdog.enabled重置为文件值",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "静默告警阈值（毫秒）mpd.jsonc watchdog.warnSilenceMs重置为文件值",
+      "kind": "input",
+      "value": "600000"
+    },
+    {
+      "label": "看门狗轮询间隔（毫秒）mpd.jsonc watchdog.tickIntervalMs重置为文件值",
+      "kind": "input",
+      "value": "15000"
+    },
+    {
+      "label": "升级前连续告警次数mpd.jsonc watchdog.warnStreakToEscalate重置为文件值",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "升级时的动作mpd.jsonc watchdog.actionOnEscalate—pausewarn-only重置为文件值",
+      "kind": "select",
+      "value": "warn-only"
+    },
+    {
+      "label": "工具在飞上限（毫秒，0 表示不设上限）mpd.jsonc watchdog.toolInFlightMaxMs重置为文件值",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "暂停持有有效期（毫秒，0 表示不设有效期）mpd.jsonc watchdog.holdTtlMs重置为文件值",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "槽位 1 提供商（重推理成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）会按本档的 提供商+模型+推理强",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 1 模型（重推理成员）这一档的模型。与上面的提供商共同决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "槽位 1 推理强度（重推理成员）这一档的推理强度（off / low / high / max）。它决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时的思考深度：max ",
+      "kind": "select",
+      "value": "max"
+    },
+    {
+      "label": "槽位 2 提供商（分析型成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，分析型成员（Researcher、Explorer、Plan Reviewer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 2 模型（分析型成员）这一档的模型。与上面的提供商共同决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "槽位 2 推理强度（分析型成员）这一档的推理强度（off / low / high / max）。它决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时的思考深度：max 最强、high 是常规平衡、",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "槽位 3 提供商（执行型成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，执行型成员（Deep Worker、Junior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 3 模型（执行型成员）这一档的模型。与上面的提供商共同决定 执行型成员（Deep Worker、Junior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "槽位 3 推理强度（执行型成员）这一档的推理强度（off / low / high / max）。它决定 执行型成员（Deep Worker、Junior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "槽位 4 提供商（视觉成员）这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 4 模型（视觉成员）这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。mpd.jsonc teamModels.slot4.mode",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "槽位 4 推理强度（视觉成员）这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。mpd.jsonc",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Ctrl+A 依赖视图mpd.jsonc tui.dashboardKey重置为文件值",
+      "kind": "input",
+      "value": "true"
+    }
+  ],
+  "presetsClick": "clicked",
+  "agentPresetsText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh\n设置\n通用设置\n模型\n内置插件\nAgent 预设\nMPD\n打开配置文件\n关闭\nAgent 预设\n选择 Agent 的工具和工作方式。日常任务用「标准模式」，扩展 DSH 的能力用「创造模式」。\n内置\n标准模式\n新任务默认\nstandard\n处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。\n模式说明\n如何使用\nPTC 模式\n内置\nptc\n包含标准模式的所有能力，更适合批量调用工具，并对结果进行筛选、整理、去重、统计或汇总的任务。\n模式说明\n如何使用\n极简模式\n内置\nminimal\nAgent 仅使用终端工具完成任务，适合测试和对比其基础表现。\n模式说明\n如何使用\n创造模式\n内置\ncordis\n用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。\n模式说明\n如何使用\n自定义\nMPD (Main Working Agent)\n自定义\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\n让 Agent 帮我创建预设模式",
+  "browserLocale": "zh-CN",
+  "sessionCreate": {
+    "status": 200,
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259374711\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-0e51aada-125c-47b8-8a3c-8845a93b83cb\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "sessionId": "session-0e51aada-125c-47b8-8a3c-8845a93b83cb",
+  "sidebarButton": 1,
+  "teamTabClick": "clicked",
+  "teamPanelText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh\n团队\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\n已批准 2026-10-05T22:30:00.000Z\n工作区 ws\n1 进行中 · 1 可领取 · 1 受阻 · 1 因前置失败而释放\n2/6 已完成 · 1 进行中 / 1 可领取\n进度 33%\nnative 执行器\n成员 (5)\nlead\n队长\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\n高级工程师\n1/2\ndeepseek-official/deepseek-flash\n当前 T5\nweb-settings-card\n高级工程师\n0/1\ndeepseek-official/deepseek-flash\n当前 T2\ntui-model-i18n\n高级工程师\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\n审查者\n0/1\ndeepseek-official/deepseek-v4-pro\n当前 T4\n任务 (6)\n✓\nT1\n需求\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\n工作\nWeb: restyle the settings card on the official design tokens\n✓\nT3\n工作\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\n评审\nReview the integrated diff against the frozen contracts\n○\nT5\n修复\nRepair the findings the review raised\n○\nT6\n集成\nIntegrate: thread the translator, rebuild dists, capture evidence",
+  "teamRouteRequests": [],
+  "teamPanelSession": "",
+  "teamTabId": "team-2026-10-05T22-30-00.000Z",
+  "teamGraph": "ranks=4 edges=4",
+  "teamNodes": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6"
+  ],
+  "teamEdges": [
+    "T4<-T1",
+    "T4<-T3",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamHoverReachable": true,
+  "teamRanks": {
+    "T1": 0,
+    "T2": 0,
+    "T3": 0,
+    "T4": 1,
+    "T5": 2,
+    "T6": 3
+  },
+  "teamForwardEdges": [
+    "T4<-T1",
+    "T4<-T3",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamHoverTarget": "T6",
+  "teamFocusWhileHovered": "chain",
+  "teamFocusAfterLeave": "none",
+  "teamNodeBoxes": [
+    {
+      "id": "T1",
+      "x": 897,
+      "y": 574,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T2",
+      "x": 897,
+      "y": 626,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T3",
+      "x": 897,
+      "y": 678,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T4",
+      "x": 1065,
+      "y": 574,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T5",
+      "x": 1233,
+      "y": 574,
+      "w": 160,
+      "h": 42
+    },
+    {
+      "id": "T6",
+      "x": 1401,
+      "y": 574,
+      "w": 160,
+      "h": 42
+    }
+  ],
+  "teamNodeOverlaps": [],
+  "teamDetailAfterClick": "T6",
+  "mpdBindingProbe": {
+    "diffLimit": "20000",
+    "autoCheck": "true",
+    "controls": 28
+  },
+  "checks": {
+    "mpdPresetOffered": true,
+    "pluginsShowsInstalledBundle": true,
+    "presetsShowMpdDefault": true,
+    "mpdSectionRendered": true,
+    "sessionCreatedOnMpdPreset": true,
+    "teamPanelShowsRoster": true,
+    "teamGraphDrewEdges": true,
+    "teamGraphEdgesResolve": true,
+    "teamGraphHoverFocusChain": true,
+    "teamGraphNodesDoNotOverlap": true,
+    "teamGraphClickPinsDetail": true,
+    "mpdControlsBound": true
+  },
+  "ok": true,
+  "visibleText": "新会话\n插件\n工作区\nws\n新会话\n设置\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\nDeepSeek-V41-Flash\nHigh\n团队\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\n已批准 2026-10-05T22:30:00.000Z\n工作区 ws\n1 进行中 · 1 可领取 · 1 受阻 · 1 因前置失败而释放\n2/6 已完成 · 1 进行中 / 1 可领取\n进度 33%\nnative 执行器\n成员 (5)\nlead\n队长\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\n高级工程师\n1/2\ndeepseek-official/deepseek-flash\n当前 T5\nweb-settings-card\n高级工程师\n0/1\ndeepseek-official/deepseek-flash\n当前 T2\ntui-model-i18n\n高级工程师\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\n审查者\n0/1\ndeepseek-official/deepseek-v4-pro\n当前 T4\n任务 (6)\n✓\nT1\n需求\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\n工作\nWeb: restyle the settings card on the official design tokens\n✓\nT3\n工作\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\n评审\nReview the integrated diff against the frozen contracts\n○\nT5\n修复\nRepair the findings the review raised\n○\nT6\n集成\nIntegrate: thread the translator, rebuild dists, capture evidence\nIntegrate: thread the translator, rebuild dists, capture evidence\n关闭\nT6 · 集成 · ○ blocked\n前置\nT5\n后继\n—\n该任务没有已冻结的验收契约。"
+}

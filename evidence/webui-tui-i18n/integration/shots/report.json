@@ -64,7 +64,7 @@
     "log: [mpd] settings section: form updated status=ready value=present",
     "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
     "info: [mpd] model catalog: live catalog — 1 provider · 2 models",
-    "info: [mpd] team sidebar session: session-b26d95a3-aaa2-47d2-9ab1-ca79404ccc27"
+    "info: [mpd] team sidebar session: session-14bd223e-33c1-4b75-99e0-4fa5d53683df"
   ],
   "firstRunText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nAdd an API key to get started\nConfigure the official DeepSeek provider to start building.\nAPI key\nConfigure later\nSave and continue",
   "gatesDismissedOnHome": 1,
@@ -257,11 +257,12 @@
   ],
   "presetsClick": "clicked",
   "agentPresetsText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nAgent presets\nChoose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to DSH.\nBUILT-IN\nStandard mode\nNew task default\nstandard\nWork with code, files, and information. Suitable for most tasks, with search, editing, terminal commands, and other tools available as needed.\nMode details\nHow to use\nPTC mode\nBuilt-in\nptc\nIncludes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.\nMode details\nHow to use\nMinimal mode\nBuilt-in\nminimal\nThe agent works using only a terminal tool. Useful for testing and comparing its basic performance.\nMode details\nHow to use\nCreator mode\nBuilt-in\ncordis\nCustomize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode.\nMode details\nHow to use\nCUSTOM\nMPD (Main Working Agent)\nCustom\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\nLet the agent help me create a preset",
+  "browserLocale": "",
   "sessionCreate": {
     "status": 200,
-    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791255330804\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-059d107e-fb7d-4f25-86b3-66d577bde674\",\"agentPreset\":\"mpd\"}}}"
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1791259302195\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-ff479fdf-89d4-4090-8863-9f3ec3d7c86d\",\"agentPreset\":\"mpd\"}}}"
   },
-  "sessionId": "session-059d107e-fb7d-4f25-86b3-66d577bde674",
+  "sessionId": "session-ff479fdf-89d4-4090-8863-9f3ec3d7c86d",
   "sidebarButton": 1,
   "teamTabClick": "clicked",
   "teamPanelText": "New Session\nPlugins\nWorkspaces\nws\nNew Session\nSettings\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nDeepSeek-V41-Flash\nHigh\nTeam\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 1 blocked · 1 released by a failed blocker\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n1/2\ndeepseek-official/deepseek-flash\ncurrent T5\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T2\ntui-model-i18n\nSenior Engineer\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n0/1\ndeepseek-official/deepseek-v4-pro\ncurrent T4\nTASKS (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence",

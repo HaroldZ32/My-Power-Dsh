@@ -104,7 +104,7 @@ interface BrowserContextLike {
 /** Subset of playwright's `Browser` that this script uses. */
 interface BrowserLike {
   /** Open a context at the capture viewport; the size is what makes wide-screen layout claims real. */
-  newContext(options: { viewport: { width: number; height: number } }): Promise<BrowserContextLike>
+  newContext(options: { viewport: { width: number; height: number }; locale?: string }): Promise<BrowserContextLike>
   /** Close the browser so the container-side run exits instead of hanging on the child process. */
   close(): Promise<void>
 }
@@ -155,6 +155,8 @@ interface ClickOptions {
 interface CaptureReport {
   /** The base URL this capture drove. */
   base: string
+  /** The browser locale the run presented ("" = the host decided). */
+  browserLocale?: string
   /** The workspace directory handed to the created session. */
   workspace: string
   /** The `[width, height]` viewport the capture used. */
@@ -313,8 +315,20 @@ mkdirSync(OUT, { recursive: true })
 const report: CaptureReport = { base: BASE, workspace: WORKSPACE, viewport: [WIDTH, HEIGHT], steps: [], consoleErrors: [], pageErrors: [], failedRequests: [] }
 /** The headless browser; `--no-sandbox` is required inside the container and CI has no /dev/shm. */
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] })
+/**
+ * The browser locale the run presents, or "" to let the host decide.
+ *
+ * THE WEB PLANE'S LANGUAGE IS THE BROWSER'S. MEASURED on the installed harness
+ * (`dsh-client-locale`): an explicit `locale.preference` in the settings document wins, and its
+ * ABSENCE "delegates to the browser" — the client reads `navigator.language`/`languages`. So the only
+ * honest way to capture the Web UI in Chinese is to give the browser a Chinese locale, which is
+ * exactly how a Chinese-locale user sees it. Without this the wave could only ever photograph the
+ * English render, which is why R4's Web half was UNPROVEN-BY-ME in review.
+ */
+const BROWSER_LOCALE: string = arg("lang", "")
+console.log(`[capture] browser locale=${JSON.stringify(BROWSER_LOCALE)} board=${JSON.stringify(arg("board", "normal"))} out=${JSON.stringify(arg("out", ""))}`)
 /** The single browser context, created at the capture viewport. */
-const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT } })
+const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT }, ...(BROWSER_LOCALE === "" ? {} : { locale: BROWSER_LOCALE }) })
 /** The single page every step below drives. */
 const page = await context.newPage()
 // Keep EVERY mpd line (not just errors): the settings card reports a degrade as a WARNING, and a
@@ -358,7 +372,12 @@ const dismissGates = async (): Promise<number> => {
   for (let round = 0; round < 3; round++) {
     // Whether this round found anything to close; false ends the loop.
     let clicked = false
-    for (const label of [/^configure later$/i, /^continue$/i, /^ok$/i, /^got it$/i, /^skip$/i, /skip for now/i]) {
+    // THE GATE LABELS ARE LOCALIZED, so the list is bilingual. MEASURED 2026-10-06: with a zh-CN
+    // browser locale the first-run gates render Chinese (`稍后配置` / `保存并继续`), and an English-only
+    // list left the modal overlaying the app — every click behind it swallowed and the whole run
+    // degrading to a screenshot of the gate. A dismissal list that only speaks one language is a
+    // language-dependent failure, which is exactly the thing this wave must not ship.
+    for (const label of [/^configure later$/i, /^continue$/i, /^ok$/i, /^got it$/i, /^skip$/i, /skip for now/i, /^稍后配置$/, /^保存并继续$/, /^继续$/, /^跳过$/, /^知道了$/, /^知道了，继续$/, /^确定$/]) {
       // The first button whose accessible name matches this gate label.
       const button = page.getByRole("button", { name: label }).first()
       if (await button.count() === 0) continue
@@ -524,6 +543,11 @@ function listSessions(): string[] {
   return found
 }
 
+// ── THE NAV SELECTORS ARE BILINGUAL, AND THAT IS A CORRECTNESS REQUIREMENT, NOT A CONVENIENCE ───
+// MEASURED 2026-10-06: with a zh-CN browser locale the whole shell renders Chinese (`插件`, `设置`,
+// `智能体预设`, `团队`), so an English-only selector finds nothing, the step "succeeds" by clicking
+// nothing, and the run degrades into a screenshot of a screen nobody asked about. A driver that can
+// only drive one language cannot witness a bilingual feature.
 // clickText — reach a surface the way a person does (the app is a SPA: /settings is a 404).
 const clickText = async (re: RegExp, opts: ClickOptions = {}): Promise<string> => {
   // The first element whose visible text matches.
@@ -564,7 +588,7 @@ await step("02-home", async () => {
   report.homeText = await bodyText()
   // The mode selector, opened to enumerate what a person can actually choose, then closed again.
   /** The selector's own control, named for what it shows. */
-  const modeChip = page.getByText(/^(Standard mode|MPD\b.*)$/).first()
+  const modeChip = page.getByText(/^(Standard mode|标准模式|MPD\b.*)$/).first()
   if (await modeChip.count() > 0) {
     await modeChip.click({ force: true }).catch(() => {})
     await page.waitForTimeout(1500)
@@ -577,7 +601,7 @@ await step("02-home", async () => {
 
 // 3) PLUGINS: the install's user-visible result — the bundle listed as INSTALLED and enabled.
 await step("03-plugins", async () => {
-  report.pluginsClick = await clickText(/^plugins$/i)
+  report.pluginsClick = await clickText(/^(plugins|插件)$/i)
   report.pluginsText = await bodyText(2000)
   return shot("03-plugins")
 })
@@ -588,14 +612,14 @@ await step("04-settings-mpd", async () => {
   await page.goto(BASE, { waitUntil: "domcontentloaded" })
   await page.waitForTimeout(2500)
   await dismissGates()
-  report.settingsClick = await clickText(/^settings$/i)
+  report.settingsClick = await clickText(/^(settings|设置)$/i)
   report.settingsNav = await page.evaluate(() => {
     // The settings nav entries, read from the browser side.
     const out: string[] = []
     for (const el of document.querySelectorAll<HTMLElement>("button,[role=button],[role=tab],a,li,div")) {
       /** The element's visible label, trimmed; empty strings are skipped below. */
       const text = (el.innerText || "").trim()
-      if (text && text.length < 30 && /^(General|Models|Built-in plugins|Agent presets|MPD)$/.test(text)) out.push(text)
+      if (text && text.length < 30 && /^(General|Models|Built-in plugins|Agent presets|MPD|通用设置|通用|模型|内置插件|Agent 预设|智能体预设)$/.test(text)) out.push(text)
     }
     return [...new Set(out)].slice(0, 20)
   })
@@ -615,7 +639,7 @@ await step("04-settings-mpd", async () => {
 // 5) SETTINGS → AGENT PRESETS: this is where the `mpd` preset is declared as the default for a new
 //    task, which is the claim the README makes about the one preset the bundle ships.
 await step("05-settings-agent-presets", async () => {
-  report.presetsClick = await clickText(/^Agent presets$/i)
+  report.presetsClick = await clickText(/^(Agent presets|Agent 预设|智能体预设)$/i)
   report.agentPresetsText = await bodyText(3000)
   return shot("05-settings-agent-presets")
 })
@@ -643,6 +667,7 @@ await step("06-team-panel", async () => {
       })
       return { status: response.status, body: (await response.text()).slice(0, 400) }
     }, WORKSPACE).catch((e) => ({ status: 0, body: messageOf(e) }))
+  report.browserLocale = BROWSER_LOCALE
   report.sessionCreate = created
   if (reusing) report.sessionReused = SESSION
   // PUBLISH THE SESSION ID TO DISK. The board a later pass grades has to be bound to THIS session, and
@@ -689,10 +714,11 @@ await step("06-team-panel", async () => {
   // loose /sidebar/i matched "Collapse sidebar" first and collapsed the LEFT rail instead
   // (measured 2026-09-27).
   let candidate = page.getByRole("button", { name: "Open right sidebar", exact: true }).first()
-  if (await candidate.count() === 0) candidate = page.getByRole("button", { name: /right sidebar/i }).first()
+  if (await candidate.count() === 0) candidate = page.getByRole("button", { name: /^(打开右侧边栏|展开右侧栏|打开侧边栏)$/ }).first()
+  if (await candidate.count() === 0) candidate = page.getByRole("button", { name: /right sidebar|右侧边栏|右侧栏/ }).first()
   report.sidebarButton = await candidate.count()
   if (await candidate.count() > 0) { await candidate.click({ timeout: 6000, force: true }).catch(() => {}); await page.waitForTimeout(3000) }
-  report.teamTabClick = await clickText(/^Team$/i)
+  report.teamTabClick = await clickText(/^(Team|团队)$/i)
   // A LIMIT THAT CANNOT SILENTLY TRUNCATE THE ASSERTED LABELS. The graph and the member cards now sit
   // BETWEEN the two labels the checks below match, so a short cap could hide `TASKS (n)` and turn a
   // working panel into a false failure. Measured shape: header + progress + N member cards + the graph.
@@ -886,8 +912,16 @@ const checks: Record<string, boolean> = {
   // this one only has to prove a person can REACH it from the composer.
   mpdPresetOffered: (report.composerPresetNames ?? []).some((line) => /MPD \(Main Working Agent\)/.test(line)),
   pluginsShowsInstalledBundle: /@mpd-dsh\/mpd/.test(pluginsText),
-  presetsShowMpdDefault: /MPD \(Main Working Agent\)/.test(presetsText) && /New task default/.test(presetsText),
-  mpdSectionRendered: /MPD bundle/.test(report.mpdSectionText || ""),
+  // The same lesson: the PRESET NAME is a product name and survives translation, but the phrase beside
+  // it does not (`New task default` / `新建任务默认`). Both halves are anchored on text that cannot be
+  // translated away, plus the stable preset id.
+  presetsShowMpdDefault: /MPD \(Main Working Agent\)/.test(presetsText)
+    && (/(New task default|新建任务默认|默认新建任务)/.test(presetsText) || /\bmpd\b/.test(presetsText)),
+  // THE SECTION IS NAMED BY A LANGUAGE-INDEPENDENT ANCHOR, not by its localized title: `mpd.jsonc` is
+  // spelled identically in every render (the knobs' own key prefix), while the section title is
+  // `MPD bundle` in English and `MPD 插件包` in Chinese — MEASURED 2026-10-06, the title-based check
+  // failed on a Chinese run that had rendered the section perfectly.
+  mpdSectionRendered: /mpd\.jsonc/.test(report.mpdSectionText || "") && (report.settingsNav ?? []).some((entry) => entry === "MPD"),
   sessionCreatedOnMpdPreset: report.sessionCreate?.status === 200 && /"agentPreset":"mpd"/.test(report.sessionCreate?.body || ""),
   // BOTH LABELS AND THE GRAPH MARKER, because a localized panel keeps its STRUCTURE while its words
   // change: `members.title` / `task.title` are the same two section labels in either language, and the
@@ -895,7 +929,11 @@ const checks: Record<string, boolean> = {
   // that happens to say "Team". Asserting on the panel's TEXT alone was permissive enough to pass on a
   // panel that rendered nothing but the empty state — which is exactly what it did before the engine
   // fix, so the marker is now part of the claim.
-  teamPanelShowsRoster: /MEMBERS/.test(teamText) && /TASKS/.test(teamText) && (report.teamTabId ?? "") !== undefined,
+  // The two SECTION labels are localized (`MEMBERS`/`TASKS` in English, `成员`/`任务` in Chinese) while
+  // the STRUCTURE behind them is identical, so the check accepts either render. Asserting only the
+  // English words would have made a perfectly bilingual panel fail on its Chinese half — which is the
+  // same class of mistake as the driver's English-only nav selectors above.
+  teamPanelShowsRoster: (/MEMBERS|成员/.test(teamText) && /TASKS|任务/.test(teamText)) && (report.teamTabId ?? "") !== undefined,
   // ── R1, decided from the view's OWN rendered state (contract §3a), not from a screenshot ────────
   // The graph must have DRAWN at least one edge between two rendered nodes. Asserting the COUNT and
   // the endpoints rather than "the panel is not empty" is the difference between proving the
