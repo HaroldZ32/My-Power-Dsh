@@ -48,6 +48,7 @@ import {
   addTask,
   archivePlan,
   claimContract,
+  classifyBlocker,
   clearHold,
   listContracts,
   newPlanId,
@@ -57,6 +58,7 @@ import {
   readPlan,
   stagePlan,
   writePlan,
+  type BlockerForm,
   type StagedMember,
   type StagedPlan,
   type StagedTask,
@@ -209,6 +211,37 @@ function describePlan(plan: StagedPlan | undefined): string {
  */
 function stringList(value: unknown): string[] | undefined {
   return Array.isArray(value) ? value.map(String) : undefined
+}
+
+/**
+ * Read a written blocker list back to the caller, one entry per reference, in written order.
+ *
+ * The WRITE-TIME half of R21: `agent_teams_plan {action:"create_task"}` answers with this, so a captain
+ * learns what their text means while they are still writing the plan, instead of meeting it at approval
+ * time as a board whose graph quietly flattened. Nothing here refuses a reference — a forward position
+ * is legitimate — the reading only names the form.
+ * @param plan - the plan as it stands, including the task just appended.
+ * @param references - the references exactly as the caller wrote them.
+ * @returns one `{ reference, form }` entry per reference, in order.
+ */
+function blockerReading(plan: StagedPlan, references: readonly string[]): Array<{ reference: string; form: BlockerForm }> {
+  return references.map((reference) => ({ reference, form: classifyBlocker(plan, reference) }))
+}
+
+/**
+ * The sentence the write-time reading prints: what resolved, and what named nothing this plan can
+ * resolve. An empty string when every reference read as a form the approval can resolve.
+ * @param blockers - the reading the tool is returning.
+ * @returns one line, or `""` when nothing needs saying.
+ */
+function blockerSentence(blockers: unknown): string {
+  if (!Array.isArray(blockers) || blockers.length === 0) return ""
+  /** The entries whose form names nothing this plan can resolve. */
+  const unknown = blockers.filter((entry: { form?: string }) => entry?.form === "unknown").map((entry: { reference?: string }) => String(entry?.reference ?? ""))
+  /** The forms seen, in written order, so the answer shows how the rest WILL resolve. */
+  const forms = [...new Set(blockers.map((entry: { form?: string }) => String(entry?.form ?? "?")))].join("/")
+  if (unknown.length === 0) return ` — blocked_by reads as ${forms}`
+  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`
 }
 
 /**
@@ -438,13 +471,25 @@ export function apply(ctx: any): void {
           created: { type: "object" },
           stoppedAt: { type: "string" },
           archivedTo: { type: "string" },
+          // The write-time blocker reading of `create_task` / `edit`: one `{ reference, form }` per
+          // reference, declared so the harness's own output validation accepts it.
+          blockers: { type: "array", items: { type: "object" } },
         },
       },
       render: (_args: any, value: any) =>
         text(
           value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
             : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
+              // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
+              // answer the captain reads, with the board task and the exact text — because the whole
+              // defect was a plan whose dangling references were accepted, stored and never mentioned.
+              + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0
+                ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry: { taskId?: string; references?: string[] }) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge`
+                : "")
             : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}`
+            // The task-writing branches answer with the blockers reading, which is the sentence that
+            // tells a captain at WRITE time whether their references can resolve (R21).
+            : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
             : describePlan(value?.plan),
         ),
     },
@@ -528,7 +573,11 @@ export function apply(ctx: any): void {
           ...(owner === undefined ? {} : { owner: String(owner) }),
         })
         writePlan(workspace, next)
-        return { plan: next }
+        // SAID AT WRITE TIME (R21): each reference is classified against the plan AS IT NOW STANDS, so
+        // a captain sees immediately which forms will resolve and which name nothing this plan can
+        // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
+        // reference (`3` before task 3 exists) is legitimate and reads as `position`.
+        return { plan: next, ...(blockedBy === undefined ? {} : { blockers: blockerReading(next, blockedBy) }) }
       }
 
       if (action === "edit") {
@@ -562,7 +611,11 @@ export function apply(ctx: any): void {
             : {}),
         }
         writePlan(workspace, next)
-        return { plan: next }
+        // An edit REPLACES the task list, so the same write-time reading is answered here: every
+        // reference of every task that survived the edit, classified against the plan as it now stands.
+        /** Every blocker reference the edited plan carries, in task order. */
+        const editedReferences = next.tasks.flatMap((task) => task.blockedBy ?? [])
+        return { plan: next, ...(editedReferences.length === 0 ? {} : { blockers: blockerReading(next, editedReferences) }) }
       }
 
       if (action === "delete") {
@@ -606,6 +659,13 @@ export function apply(ctx: any): void {
         for (const member of plan.members) {
           record = addTeamMember(record, { name: member.name, description: member.description, ...(member.role === undefined ? {} : { role: member.role }) }, now())
         }
+        // THE ORDER IS THE FIX (defect 2026-10-06). Every staged task is minted FIRST and the blockers
+        // are resolved afterwards, against the COMPLETE board: a plan may legitimately name a task that
+        // comes LATER (a forward reference), and resolving per insert could only ever see the tasks
+        // before it — which is how a plan written in its own POSITIONS (`["2"]`, `["7","8","9"]`) used to
+        // reach the board as references no task answered, flattening the whole DAG to one column with no
+        // warning anywhere. `blockedBy` is therefore added in a second pass, through `updateTeamTask`,
+        // once the plan's own namespace can be mapped to real board ids.
         for (const task of plan.tasks) {
           record = addTeamTask(record, {
             subject: task.subject,
@@ -616,8 +676,41 @@ export function apply(ctx: any): void {
             ...(task.owner === undefined ? {} : { owner: task.owner }),
           }, now())
         }
+        /** The plan's own references → the board ids this approval minted, in plan order. */
+        const planAlias = new Map<string, string>()
+        plan.tasks.forEach((task, index) => {
+          /** The board task the staged task at this position was minted as; absent for an empty subject. */
+          const minted = record.tasks[index]
+          if (minted === undefined) return
+          // BOTH FORMS THE PLAN CAN MEAN are mapped, position first: `"2"` is the second staged task,
+          // and the subject is what the plan-store's own documentation has always promised.
+          planAlias.set(String(index + 1), minted.id)
+          if (!planAlias.has(task.subject)) planAlias.set(task.subject, minted.id)
+        })
+        for (const [index, task] of plan.tasks.entries()) {
+          /** The board task this staged task became. */
+          const minted = record.tasks[index]
+          if (minted === undefined || (task.blockedBy ?? []).length === 0) continue
+          /** What this task's references resolve to now that the whole plan is on the board. */
+          const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference)
+          // UNCHANGED MEANS ALREADY RIGHT. A subject or a backward id was resolved when the task was
+          // minted, so re-writing it would only move the task's own revision for nothing; only a
+          // reference the first pass could NOT resolve (a plan position, a forward reference) is
+          // rewritten — and a rewrite is what turns that dangling entry into a real edge.
+          if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id)) continue
+          record = updateTeamTask(record, minted.id, { blockedBy: mapped }, now())
+        }
         /** What approval actually created, recorded onto the plan so a reader can reconcile plan with reality. */
-        const created: { members: Array<{ name: string; id: string }>; tasks: Array<{ subject: string; id: string }> } = { members: [], tasks: [] }
+        const created: NonNullable<StagedPlan["created"]> = { members: [], tasks: [] }
+        // THE REPORT A CAPTAIN SEES AT APPROVAL TIME, not three layers downstream: every staged blocker
+        // that named no task is named HERE, with the board task it landed on. It travels in the
+        // approval ANSWER (rendered by the tool) and into the archived plan's `created.unresolved`, and
+        // the same list is on each board task as `unresolvedBlockers` for every later reader.
+        /** The board tasks carrying a blocker nothing answered, in board order. */
+        const unresolvedBlockers = record.tasks
+          .filter((task) => (task.unresolvedBlockers ?? []).length > 0)
+          .map((task) => ({ taskId: task.id, references: [...(task.unresolvedBlockers ?? [])] }))
+        if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
         /** The executor's own task handle per mpd task id, so a blocker can be named in ITS vocabulary. */
         const executorTaskId = new Map<string, string>()
         /** The first failure's description; set means approval stopped rather than half-build the team. */

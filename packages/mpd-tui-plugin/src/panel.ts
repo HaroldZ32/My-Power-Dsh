@@ -38,10 +38,33 @@
 // service may be named (AGENTS.md §6; enforced by `test/no-direct-tui-access.test.ts`).
 import type { Log } from "./log.js"
 import type { PanelOpenResult, PanelRegistrationHandle, SeamOutcome, TuiAdapter } from "./types.js"
-import { clampCells, stripControl } from "./sanitize.js"
-import { GRAPH_THEME, legendLines, type GraphView } from "./graph.js"
+import { cellWidth } from "./sanitize.js"
+import { legendLines } from "./graph.js"
 import { subagentSectionRows, teamGraphView } from "./subagent-scene.js"
 import type { TeamWorkflow } from "./team-state.js"
+import {
+  clampScroll,
+  graphRow,
+  legendLinesFor,
+  PANEL_CHROME_ROWS,
+  panelFrame,
+  panelKit,
+  panelKeysArmed,
+  panelKeyEvent,
+  panelContentWidth,
+  panelFloorColumns,
+  panelScrollKey,
+  panelSnapshot,
+  panelText,
+  panelViewportBody,
+  textRow,
+  usePanelKeys,
+  usePanelSize,
+  usePanelTick,
+  usePanelViewport,
+  type PanelKit,
+  type PanelPropsLike,
+} from "./panel-core.js"
 import { t } from "./i18n.js"
 
 /** The slug the panel is registered under; the HOST prefixes it with this activation's plugin id. */
@@ -50,17 +73,41 @@ export const PANEL_SLUG = "team"
 /** The panel's display title, drawn by the host in the sidebar's own panel bar. */
 export const PANEL_TITLE = "MPD"
 
-/** The sidebar width floor the descriptor asks for: wider than the host's own 28 default. */
-export const PANEL_MIN_COLUMNS = 32
+/**
+ * The sidebar width floor the descriptor ASKS THE HOST FOR: the host's own minimum, never more.
+ *
+ * WHY 28 AND NOT 32 — the same measured trap `dag-theme.ts`'s `DAG_PANEL_MIN_COLUMNS` records, and the
+ * two now agree BY CONSTRUCTION (this value is that contract's own floor for a merged page). The host's
+ * `components/sidePanel/PanelHost.js` computes `tooNarrow = def.minColumns !== undefined && width <
+ * def.minColumns` and, when true, renders a `panel-too-narrow` notice INSTEAD OF the page's body, while
+ * `components/sidePanel/dimensions.js` puts the panel column at exactly 28 cells at the split
+ * threshold. A descriptor asking for 32 therefore creates a BAND of terminal widths in which the
+ * sidebar opens, the tab is present, and the user is shown a refusal notice instead of the team graph —
+ * which is precisely the "I couldn't see it" defect this wave exists to root-cause. The host's
+ * descriptor validator (`MIN_COLUMNS_FLOOR = 12` … `CEIL = 64`) accepts 32 happily, so nothing reddens
+ * at registration: only a width-band test catches it.
+ *
+ * THE NARROW RENDERING IS OURS TO HANDLE: readability at 28 columns is a LAYOUT decision taken inside
+ * the page from the width it is actually given (the DAG page's `MIN_BOX_LABEL_CELLS` gate is what makes
+ * 28 usable), never a claim about how wide the host must make the column.
+ */
+export const PANEL_MIN_COLUMNS = 28
 
 /** The descriptor's ordering hint inside the host's panel bar. */
 export const PANEL_ORDER = 10
 
-/** The column count the DAG is laid out for before the host has measured the panel. */
-const FALLBACK_COLS = PANEL_MIN_COLUMNS
+/**
+ * How often the merged panel re-reads its two sources.
+ *
+ * A sidebar panel is a PASSIVE surface: the host re-renders it when it has a reason to, and the DAG
+ * below reads the workspace's own record, which no host event is guaranteed to bump. The tick is the
+ * same device `panel-dag.ts` uses, so one sidebar behaves like the other, and its cost is one integer
+ * per tick.
+ */
+const PANEL_REFRESH_MS = 1000
 
-/** The cell budget of one drawn row — the same bound the full-screen scenes apply to their rows. */
-const ROW_MAX_CELLS = 4000
+/** The row budget this page assumes when the host reports no height at all. */
+const MERGED_FALLBACK_ROWS = 24
 
 /**
  * The panel descriptor, frozen at module scope.
@@ -106,132 +153,50 @@ export function takeoverArmed(seamBound: boolean, savedKnob: boolean | undefined
   return typeof savedKnob === "boolean" ? savedKnob : floor
 }
 
-/** The React surface a panel component uses, as the host's own React must expose it. */
-interface PanelReactLike {
-  /** Creates one element; the panel never imports React itself. */
-  createElement(type: unknown, props?: Record<string, unknown> | null, ...children: unknown[]): unknown
-  /** One state cell (the host React's own `useState`). */
-  useState(initial: unknown): [unknown, (next: unknown) => void]
-  /** One effect (the host React's own `useEffect`). */
-  useEffect(effect: () => unknown, deps?: readonly unknown[]): void
-  /** The host React's own `useRef`. */
-  useRef(initial: unknown): { current: unknown }
-}
-
-/** The ui kit a panel component uses, as the host's own TuiPanelUi must expose it. */
-interface PanelUiLike {
-  /** The host's column box. */
-  Box?: unknown
-  /** The host's text row. */
-  Text?: unknown
-  /** The host's scrollable column, when this build exposes it. */
-  ScrollBox?: unknown
-  /** The host's horizontal rule, when this build exposes it. */
-  Divider?: unknown
-  /** The panel-size hook; the ONLY geometry source a panel has. */
-  useTerminalSize?(): { columns?: unknown; rows?: unknown }
-}
-
-/** The narrow, structural panel props shape this file reads. */
-interface PanelPropsLike {
-  /** The host's own React instance. */
-  React?: unknown
-  /** The host's panel ui kit. */
-  ui?: unknown
-  /** The host's panel host API (the curated snapshot lives behind it). */
-  host?: unknown
-}
-
-/** The host kit, once the guard has proved both halves usable. */
-interface PanelKit {
-  /** The host's React instance. */
-  React: PanelReactLike
-  /** The host's ui kit, with the two components the body requires already proved callable. */
-  ui: PanelUiLike
-}
-
-/** The panel's measured geometry, with the documented fallback applied. */
-interface PanelMeasured {
-  /** The column count the DAG lays itself out for. */
-  cols: number
-}
-
 /**
- * Prove the host handed a usable React instance and ui kit.
- * @param React - the props' React field.
- * @param ui - the props' ui field.
- * @returns the two, typed, or undefined when the host kit is unusable.
+ * The host kit this page requires before it renders at all: the host's React and the two components a
+ * row is built from. The whole narrowing (props -> kit), the containment of `host.snapshot()` and the
+ * one-hook-per-render discipline live in `panel-core.ts`, because the DAG and workmate pages apply the
+ * same three rules and a second copy of them is how two surfaces start to disagree.
  */
-function panelKit(React: unknown, ui: unknown): PanelKit | undefined {
-  if (React === null || React === undefined || ui === null || ui === undefined) return undefined
-  if (typeof (React as { createElement?: unknown }).createElement !== "function") return undefined
-  /** The ui kit's own two required components, before anything is drawn with it. */
-  const kit = ui as PanelUiLike
-  if (typeof kit.Box !== "function" || typeof kit.Text !== "function") return undefined
-  // The cast is sound because the members above were proved, and the host hands its own React and ui
-  // kit across a JS boundary with no shared type. Every ADDITIONAL field read off them
-  // (`ScrollBox`, `Divider`, `useTerminalSize`) is feature-detected at its own use site, so a leaner
-  // host build degrades instead of throwing.
-  return { React: React as PanelReactLike, ui: kit }
-}
+export type { PanelKit, PanelPropsLike }
 
 /**
- * Measure the panel through the host's own hook — ONCE per render, so the hook order never moves.
- * @param ui - the host ui kit.
- * @returns the measured geometry, with the documented fallback applied.
- */
-function measurePanel(ui: PanelUiLike): PanelMeasured {
-  if (typeof ui.useTerminalSize !== "function") return { cols: FALLBACK_COLS }
-  try {
-    /** The host's own measurement; a throwing hook degrades to the fallback. */
-    const size = ui.useTerminalSize()
-    /** The reported column count, kept only when it is a usable positive number. */
-    const columns = size?.columns
-    if (typeof columns !== "number" || !Number.isFinite(columns) || columns <= 0) return { cols: FALLBACK_COLS }
-    return { cols: Math.floor(columns) }
-  } catch {
-    return { cols: FALLBACK_COLS }
-  }
-}
-
-/**
- * One panel row as a renderable fragment — the render boundary of this file.
+ * Wrap one panel sentence to the cells this panel actually has.
  *
- * `stripControl` + `clampCells` (never `scalarText`, which would collapse the DAG's indentation), the
- * same pair the full-screen scenes apply to every untrusted row.
- * @param value - the row text.
- * @returns the sanitized, clamped row; never throws.
+ * The render boundary for TYPED text, as opposed to a drawing row: `graph.ts` lays its own rows out and
+ * clamps them, while a sentence written here has no idea how narrow the sidebar is. Clamping it would
+ * cut the sentence mid-word — and the empty state exists precisely to EXPLAIN something — so it wraps
+ * on word boundaries instead, and a single word too long for the panel is the only thing ever cut.
+ * @param text - the sentence.
+ * @param cols - the cells available on a row.
+ * @returns the rows, in print order; at least one, even for an empty sentence.
  */
-function safeRow(value: string): string {
-  try {
-    return clampCells(stripControl(value), ROW_MAX_CELLS)
-  } catch {
-    return ""
+function wrapPanelLines(text: string, cols: number): string[] {
+  /** The usable width; a nonsense width still has to produce one row. */
+  const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
+  /** The sentence, as one sanitized line. */
+  const flat = panelText(text)
+  if (flat === "") return [""]
+  /** The rows, filled one word at a time. */
+  const lines: string[] = []
+  /** The row being filled. */
+  let current = ""
+  for (const word of flat.split(" ")) {
+    if (word === "") continue
+    /** The row this word would produce. */
+    const candidate = current === "" ? word : `${current} ${word}`
+    // ONE CELL IS RESERVED for the continuation space (see the core's `textRow`): a row that carries
+    // the sentence on keeps its trailing space, so a row filled to the last cell would overflow by one.
+    if (current !== "" && cellWidth(candidate) + 1 > width) {
+      lines.push(current)
+      current = word
+      continue
+    }
+    current = candidate
   }
-}
-
-/**
- * Read the host's curated snapshot through its own API.
- *
- * The whole read is contained: a host build without `snapshot`, or a snapshot that throws, is "no
- * host rows" rather than a lost panel. The returned value is handed to `subagentSectionRows`
- * UNCHANGED — that projection reads `subagents` defensively and is the ONE reader of those rows, so
- * the sidebar and the full-screen scene cannot describe one subagent differently.
- * @param host - the panel props' `host` field.
- * @returns the snapshot, or undefined when this host exposes none.
- */
-function readSnapshot(host: unknown): unknown {
-  if (host === null || host === undefined) return undefined
-  /** The host API, before its `snapshot` member is trusted. */
-  const api = host as { snapshot?: unknown }
-  if (typeof api.snapshot !== "function") return undefined
-  try {
-    // Called AS A METHOD on the host's own object: the documented form, and the one that cannot lose
-    // a receiver the implementation may rely on.
-    return (api as { snapshot: () => unknown }).snapshot()
-  } catch {
-    return undefined
-  }
+  if (current !== "") lines.push(current)
+  return lines
 }
 
 /**
@@ -244,23 +209,33 @@ function readSnapshot(host: unknown): unknown {
 export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefined): unknown {
   return function MpdTuiPanel(props: PanelPropsLike): unknown {
     /** The host's React instance and ui kit, proved usable before a single hook is called. */
-    const kit = panelKit(props?.React, props?.ui)
+    const kit: PanelKit | undefined = panelKit(props?.React, props?.ui)
     if (kit === undefined) {
-      // The host kit is the hard contract; without it, render nothing rather than crash the
-      // reconciler. (No hook has run at this point, so the hook order is never at risk.)
+      // THE ONE EARLY EXIT, BEFORE any hook: without the host kit there is nothing to draw with, and
+      // rendering `null` is what keeps the host's reconciler alive. Because the kit is proved first,
+      // the number of hook calls below is invariant across renders on a given host.
       return null
     }
     /** The host's React instance. */
     const React = kit.React
     /** The host's ui kit. */
     const ui = kit.ui
-    /** The panel's measured geometry; the single hook call of this component. */
-    const measured = measurePanel(ui)
+    /** The panel's measured geometry; the single geometry hook call of this component. */
+    const measured = usePanelSize(ui, panelFloorColumns("merged"))
+    /** The cells this page may DRAW IN: the reported width minus the frame's own two border cells. */
+    const contentCols = panelContentWidth(measured.cols)
+    /**
+     * The row width. It is the MEASURED panel width and nothing else, which is the same budget the
+     * pre-frame panel used: the host's border is drawn by the host, outside the content box it measures
+     * with its own `useTerminalSize`, so subtracting a frame inset here would spend two of a narrow
+     * sidebar's cells on nothing.
+     */
+    const width = Math.max(1, contentCols)
     // THE ROWS ARE READ PER RENDER, not kept in state: `host.snapshot()` is the host's own curated,
     // already-immutable projection, and a copy here would be a second source of truth for it. The MPD
     // team projection is read the same way, through the injected reader.
     /** The host's curated snapshot, or undefined when this build exposes none. */
-    const snapshot = readSnapshot(props?.host)
+    const snapshot = panelSnapshot(props?.host)
     /** The DAG's own projection for this workspace, undefined when there is no team to draw. */
     let workflow: TeamWorkflow | undefined
     try {
@@ -268,6 +243,69 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
     } catch {
       workflow = undefined
     }
+    /** The pin: the task a click (or Enter) selected, whose facts are shown below the drawing. */
+    const pinned = React.useState(undefined)
+    /** The pinned task id, when the state cell holds one. */
+    const pinnedId = typeof pinned[0] === "string" ? (pinned[0] as string) : undefined
+    /** Moves the pin. */
+    const setPinned = pinned[1] as (next: unknown) => void
+    // THE PANEL OWNS A TICK. Nothing else re-renders a sidebar panel, so a page that reads its state per
+    // render would otherwise show whatever was true when the user opened it (frozen clause R13).
+    usePanelTick(kit, PANEL_REFRESH_MS, true)
+    /** The DAG box for the width THIS panel measured, undefined when there is no team to draw. */
+    const view = teamGraphView(workflow, width)
+    /** The tasks that depend on each task, so the pinned body can name them. */
+    const dependentsOf = (id: string): string[] => (workflow?.tasks ?? []).filter((task) => task.dependencies.includes(id)).map((task) => task.id)
+    /** The task the pin names, when that task is still on the board. */
+    const pinnedTask = pinnedId === undefined ? undefined : (workflow?.tasks ?? []).find((task) => task.id === pinnedId)
+    /** Whether the page currently holds the keyboard. */
+    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host)
+    /** The page's self-windowed viewport (see the body's own note: the host's ScrollBox has no `ref`). */
+    /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
+    const sizes = { contentRows: 1, viewportRows: 1 }
+    /** The window height this page affords, from the height the host reported (its legend and footer are
+     * drawn OUTSIDE the window, which is why they are subtracted here). */
+    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS)
+    /** The body's ONE scroll position: this page's keys and wheel both drive this handle. */
+    const viewport = usePanelViewport(kit, () => sizes)
+    /** The lines the page actually drew, which is what the keymap walks. */
+    const drawnLines = view === undefined ? [] : view.lines
+    // THE KEYMAP IS THE DAG PAGE'S OWN READING, applied to this surface too: the panel is the same
+    // picture, so `Esc` must clear a pin here exactly as it does there. An unhandled key is left to the
+    // host's own panel navigation.
+    usePanelKeys(kit, props?.host, keysArmed, (event: unknown): void => {
+      /** The press, narrowed once. */
+      const bare = panelKeyEvent(event)
+      if (bare === undefined) return
+      /** The host's key flags. */
+      const flags = bare.key ?? {}
+      // THE VIEWPORT KEYS: this page binds NO focus keys (its pin is a click, and `Esc` clears it), so
+      // the standard scroll keys AND `↑↓`/`jk` are free here — the merged page scrolls with the same
+      // keys a reader would try first, and nothing else competes for them.
+      /** The page-key gesture, which is the one with no competing meaning anywhere. */
+      const gesture = panelScrollKey(bare)
+      /** The typed characters, for the plain scroll keys this page can afford to answer. */
+      const input = bare.input
+      /** Whether this press moves the window DOWN by one row. */
+      const down = flags.downArrow === true || input === "j" || input === "J"
+      /** Whether this press moves the window UP by one row. */
+      const up = flags.upArrow === true || input === "k" || input === "K"
+      if (gesture !== undefined || down || up) {
+        if (bare.preventDefault !== undefined) bare.preventDefault()
+        if (gesture === "top") viewport.scrollTo(0)
+        else if (gesture === "bottom") viewport.scrollTo(Number.MAX_SAFE_INTEGER)
+        else if (gesture === "pageUp") viewport.scrollBy(-viewport.viewportRows)
+        else if (gesture === "pageDown") viewport.scrollBy(viewport.viewportRows)
+        else viewport.scrollBy(down ? 1 : -1)
+        return
+      }
+      /** Whether this press asks for the pin to be cleared. */
+      const escape = flags.escape === true || input === "\u001b"
+      if (!escape) return
+      if (pinnedId === undefined) return
+      if (bare.preventDefault !== undefined) bare.preventDefault()
+      setPinned(undefined)
+    })
 
     /** The elements handed to the host's ScrollBox, in render order. */
     const children: unknown[] = []
@@ -287,46 +325,104 @@ export function createPanelComponent(readWorkflow: () => TeamWorkflow | undefine
             ...(row.header === true ? { bold: true } : {}),
             ...(row.dim === true ? { dimColor: true } : {}),
           },
-          safeRow(row.text),
+          panelText(row.text),
         ),
       )
     }
     // The divider separates the two sources, so the host's rows are never read as MPD's own.
     if (typeof ui.Divider === "function") children.push(React.createElement(ui.Divider, { key: "sep" }))
-    else children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, safeRow("─")))
+    else children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, panelText("─")))
     // (b) THE MPD DEPENDENCY DAG — the same box `graph.ts` lays out for the full-screen scene, for the
     // width THIS panel measured.
-    /** The DAG box, absent when the team has no task to draw. */
-    const view: GraphView | undefined = teamGraphView(workflow, measured.cols)
     if (view === undefined) {
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow("task dependency graph: no team in this workspace")))
+      // THE EMPTY STATE NAMES THE CALL THAT FILLS IT (frozen clause R10). The sentence is WRAPPED to the
+      // measured width rather than clamped: a sidebar is 28-40 cells, and a panel that cut this line to
+      // `task dependency graph: no team i` would answer the question it was asked with half a word.
+      /** The empty state's sentences, each wrapped to this panel's own width. */
+      const empty = wrapPanelLines("task dependency graph: no team in this workspace — `agent_teams_plan` stages one", width)
+      for (let index = 0; index < empty.length; index += 1) {
+        children.push(textRow(kit, empty[index], { key: `graphhead-${index}`, dim: true, maxCells: width, joinNext: index < empty.length - 1 }))
+      }
     } else {
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}`)))
+      children.push(textRow(kit, `task dependency graph${view.mode === "rail" ? " (rail)" : ""}`, { key: "graphhead", dim: true, maxCells: width }))
       for (let index = 0; index < view.lines.length; index += 1) {
-        // The spans go through WITHOUT `safeRow`, exactly as the full-screen scene draws them:
-        // `graph.ts` already applies `clampCells(stripControl(...))` at layout time, and re-clamping
-        // here would cut the row's own multi-span geometry twice.
-        /** The spans of this row, each drawn in its own theme colour. */
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text))
-        children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans))
+        // The spans go through WITHOUT a second cell clamp, exactly as the full-screen scene draws them:
+        // `graph.ts` already applies `clampCells(stripControl(...))` at layout time, and re-clamping here
+        // would cut the row's own multi-span geometry twice.
+        /** The task this row belongs to, when the pointer could land on one. */
+        const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd)
+        children.push(
+          hit === undefined
+            ? graphRow(kit, view.lines[index], { key: `graph-${index}`, cols: width })
+            : graphRow(kit, view.lines[index], {
+                key: `graph-${index}`,
+                cols: width,
+                onClick: (): void => {
+                  // THE CLICK RESOLVES THROUGH THE DRAWING'S OWN HIT RECTANGLE, never through arithmetic
+                  // on the pointer: the closure already knows which task this row belongs to.
+                  setPinned(hit.taskId)
+                },
+              }),
+        )
       }
-      // THE LEGEND sits under the DAG in the SAME width budget the graph was laid out for, so a line
-      // can never claim more cells than the drawing above it used. `graph.ts` owns the content (and
-      // clamps it); a drawing module that refuses costs the legend, never the panel.
-      /** The legend lines the drawing module offers for this width. */
-      let legend: string[] = []
-      try {
-        legend = legendLines(measured.cols)
-      } catch {
-        legend = []
-      }
-      for (let index = 0; index < legend.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow(legend[index])))
+      // THE PINNED DETAIL BODY (frozen clause R11): the same ten facts the DAG page prints, in the same
+      // fixed order, read from the board rather than from the drawing (the drawing carries no verdict).
+      if (pinnedTask !== undefined) {
+        children.push(textRow(kit, `◆ ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: width }))
+        /** The pinned task's own facts, in the order the DAG page prints them. */
+        const facts: Array<[string, string]> = [
+          ["id", pinnedTask.id],
+          ["kind", pinnedTask.kind ?? "—"],
+          ["visual", pinnedTask.visual],
+          ["verdict", pinnedTask.verdict ?? "—"],
+          ["failedBy", pinnedTask.failedDependencies.length === 0 ? "—" : pinnedTask.failedDependencies.join(",")],
+          ["owner", pinnedTask.assignee ?? "—"],
+          ["attempt", pinnedTask.attempt === undefined ? "—" : String(pinnedTask.attempt)],
+          ["round", pinnedTask.round === undefined ? "—" : String(pinnedTask.round)],
+          ["blockedBy", pinnedTask.dependencies.length === 0 ? "—" : pinnedTask.dependencies.join(",")],
+          ["dependents", dependentsOf(pinnedTask.id).join(",") === "" ? "—" : dependentsOf(pinnedTask.id).join(",")],
+        ]
+        for (const [label, value] of facts) children.push(textRow(kit, `${label} ${value}`, { key: `pin-${label}`, dim: true, maxCells: width }))
       }
     }
-    /** The panel's scrollable column; a kit without `ScrollBox` draws the same children directly. */
-    const body = typeof ui.ScrollBox === "function" ? React.createElement(ui.ScrollBox, { key: "body" }, children) : children
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", height: "100%", paddingX: 1 }, body)
+    // THE LEGEND (frozen clause R6) sits under the DAG in this panel's own width budget: `graph.ts`
+    // owns the arrow sentence, the shared core adds the STATE KEY read out of `dag-theme.ts` — the line
+    // that tells `blocked ○` apart from `open ○`, which share a glyph by design.
+    /** The drawing module's own arrow/focus lines, for the width this panel measured. */
+    let arrow: string[] = []
+    try {
+      arrow = legendLines(width)
+    } catch {
+      arrow = []
+    }
+    /** The legend lines for this width: the drawing's own sentences, then the state key. */
+    const legend = legendLinesFor(width, arrow)
+    for (let index = 0; index < legend.length; index += 1) {
+      children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }))
+    }
+    // THE FOOTER (frozen clause R6): the one hint this panel actually has. It does NOT claim keys the
+    // merged page never handles — the "+"/"-" pair stays `/mpd`'s and the host's own.
+    children.push(textRow(kit, "merged view · /mpd panel opens it full-screen", { key: "keys", dim: true, maxCells: width }))
+    // ── THE SELF-WINDOWED BODY ──────────────────────────────────────────────
+    // Same device as the other two pages, and here it is also what makes the SCROLLBAR possible at all:
+    // the host strips `ref` from the panel's `ScrollBox`, so a panel can neither read a scroll position
+    // nor command one. This page owns its own single `offset`, so the gutter beside it is drawn from a
+    // number it actually knows.
+    /** The page's content height, in rows. */
+    const contentRows = Math.max(children.length, 1)
+    /** The clamped band for this render. */
+    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows)
+    /** This render's viewport, with the band the REAL row count produces. */
+    // Publish this render's measurements, which is what every getter and every later closure clamps against.
+    sizes.contentRows = contentRows
+    sizes.viewportRows = windowRows
+    /** The same handle, named for what it does here: the window this render draws. */
+    const scroller = viewport
+    /** The visible slice of the body, inside this page's own wheel handler. */
+    const scrolled = React.createElement(ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
+    /** The visible slice plus its reserved gutter column. */
+    const body = panelViewportBody(kit, [scrolled], scroller)
+    return panelFrame(kit, PANEL_TITLE, body as unknown[])
   }
 }
 

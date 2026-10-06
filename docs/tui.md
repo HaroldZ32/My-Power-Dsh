@@ -201,33 +201,100 @@ limit, not a configuration mistake.
 
 ### 3.3 The sidebar panel seam — the primary entry point on 0.13.0, and its honest bound
 
-`packages/mpd-tui-plugin/src/panel.ts` registers **ONE** right-sidebar panel through the new
-`ctx.tuiPanels` seam, whose body is the **merged** view: the host's own curated subagent snapshot rows
-first, then the MPD dependency DAG for the current workspace's team, drawn by the same projections the
-full-screen merged scene uses. The descriptor is frozen: slug `team`, title `MPD`, `minColumns` 32,
-`order` 10, and **no `compact`** — 0.13.0 validates and stores a descriptor's `compact` slot but does
-not mount its render slot, so declaring one would claim a surface that cannot render. The final panel
-id is **discovered from the host's own `list()` read-back**, never composed — measured `act1:team`,
-the slug prefixed by the host with this activation's plugin id.
+`packages/mpd-tui-plugin/` registers **THREE** right-sidebar pages through the `ctx.tuiPanels` seam —
+`src/panel.ts` (slug `team`, title `MPD`, `order` 10) with the **merged** body (the host's own curated
+subagent snapshot rows first, then the MPD dependency DAG for the current workspace's team),
+`src/panel-dag.ts` (slug `dag`, title `MPD DAG`, one-cell icon `◈`, `order` 11) and
+`src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `◆`, `order` 12), with the last two
+described in §3.4. All three are `apiVersion` 1, all three declare **no `compact`** — 0.13.0 validates
+and stores a descriptor's `compact` slot but does not mount its render slot, so declaring one would claim
+a surface that cannot render — and all three ask for **`minColumns` 28**, the host's own floor. The final
+panel id is **discovered from the host's own `list()` read-back**, never composed: `<pluginId>:<slug>`,
+measured `act1:team`, `act1:dag` and `act1:workmate` on the real host, where that plain loader row the
+host prefixes carries no Component identity.
 
-`alt+a` and the new **`/mpd panel`** subcommand both route through `tuiPanels.open()` while the seam is
-bound. On **any** refusal — the one-open-per-plugin-per-5000 ms rate limit, an id the host no longer
-owns, or no live panel consumer — they **fall back to the existing full-screen merged scene**
-(`mpd-tui-subagents`) and the printed line names the surface actually reached; nothing on that path is
-a silent no-op.
+**The reachability rule — the two host switches, which the bundle cannot set.** A registered page is not
+a visible page. On the installed host the enable list lives in the host's OWN row config
+(`dsh-tui.sidePanel.panels`, default `todo,jobs,agents`) and a well-formed id no panel claims yet stays
+in that list for a plugin that registers it later, while the sidebar itself starts CLOSED
+(`sidePanel.open` default `false`). Both are host-owned, and a bundle patch row may never id-target a
+host-owned row, so the remedy is user steps, documented and printed by the command itself:
 
-**Backed at `Observed`:** the registration, the id discovered from the host's read-back and the
-host-ACCEPTED open, recorded by the 0.13.0 real-PTY lanes
+1. add the page's final id in `/settings` → side panel → *Enabled panels* (the id is discoverable from
+   the host's `/panel ` completion list, or from the line `/mpd panel` / `/mpd dag` / `/mpd workmate`
+   prints);
+2. open the sidebar — `Ctrl+B` — or turn on *Side panel starts open*.
+
+Measured without them: the bar reads `‹ 待办 › ▸ ◆` and the host's live enable list is
+`toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns: the bar carries
+`‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders
+(`evidence/tui/dag-port/verification/pty/frozen/`). The panel column exists only where the host splits —
+the same capture reports `split=false` at 80 and 48 columns, so no page can be visible there whatever
+the list says.
+
+`alt+a` and **`/mpd panel`** route the MERGED page through `tuiPanels.open()` while the seam is bound,
+and **`/mpd dag`** / **`/mpd workmate`** route their own pages the same way. On **any** refusal — the
+one-open-per-plugin-per-5000 ms rate limit, an id the host no longer owns, or no live panel consumer —
+each falls back to ITS OWN full-screen surface (`mpd-tui-subagents` for `team` and `dag`, the board for
+`workmate`) and the printed line names the surface actually reached; nothing on that path is a silent
+no-op.
+
+**Backed at `Observed`:** the registration of all three pages, the ids discovered from the host's
+read-back, and the host-ACCEPTED open, recorded on a real PTY by
+`evidence/tui/dag-port/verification/pty/frozen/` (the three MPD tabs in the bar at 120 columns, with the
+`split=false` arms at 80/48) and by the earlier 0.13.0 lanes
 (`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`), each with its own
 negative control red as required.
 
-**BOUND — the panel BODY is not observable in a tmux pane capture on this host.** Measured: after
-`/mpd panel` reported a host-ACCEPTED open, the 320×50 capture was **byte-identical** to the capture
-taken immediately before it, and `alt+a` changed nothing at all. The lane therefore proves
-**registration + `open()` + the discovered id, NOT a render** — the panel bar and the body are not
-claimed — and the merge itself is asserted by the unit suites (`panel.test.ts` 16/0,
-`subagent-scene.test.ts` 23/0 and `graph.test.ts` 25/0 on this revision), never by a capture. Every run
-records this as `panelBodyBound`.
+**BOUND — MPD cannot observe a RENDER, and says so.** The host's `tuiPanels.open()` returns `true` when
+the request was DELIVERED, while its own `useSidePanel` silently DROPS a request whose id is not in the
+enabled list; and the host's `TuiPanelEvent` set is `registered|unregistered|badge|error|disabled`
+(`opened`/`focused` are an explicit host TODO). The plugin therefore prints only what it knows — *"the
+host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then
+press Ctrl+B (or turn on \"Side panel starts open\")"* — instead of claiming an open. The page BODIES
+are asserted by the unit suites and by the pinned real-PTY capture, never by the plugin's own branch.
+
+### 3.4 The DAG page and the workmate page — the two independent sidebar pages
+
+The DAG page renders the current workspace's team dependency DAG on its own, with chrome the merged page
+cannot afford: a bordered frame, a header naming the team and its progress, the drawing, an explicit
+legend, a footer naming the keys it handles, a status badge and a pinned detail body.
+
+- **Vertical and adaptive.** Rank is the VERTICAL axis (top→bottom) and every size is computed from the
+  panel the host measured — there is no fixed pixel or cell constant deciding the layout, which was the
+  user's explicit decision for this wave (纵向，但不要固定尺寸). `boxes`, `rail` and `list` are the
+  three renderings (the rank-grouped `list` with progress bars had no caller before this page), and the
+  page picks one from the width it was actually given rather than asking the host to widen the column.
+- **Rank is DERIVED from the dependency graph, never trusted from a served `depth`.** A board whose
+  blocker references resolve to nothing used to collapse into one silent column with no edges — the
+  defect the user reported — so the drawing computes rank itself and reports which source drew it
+  (`view … · ranks derived` versus `· ranks served`) and lists blocker references that name no task
+  (`unresolved blockers: …`).
+- **Six states, one palette.** `completed ✓ / running ◐ / failed ✗ / blocked ○ / cancelled ⊘ /
+  open ○`, mapped to host theme keys in ONE table (`success`, `activity`, `error`, `warning`,
+  `inactive`, `subtle`); the WEB view's hexes are kept as provenance, not as styling.
+- **The legend is what disambiguates `blocked` from `open`**, which share the glyph `○` by design — the
+  WEB reference has no legend at all. Clicking a task pins a detail body with ten facts
+  (`id`, `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`,
+  `dependents`), and `↑↓/jk`, `Enter`, `Esc` move, pin and unpin. **Hover is deliberately absent** — a
+  terminal has no pointer-move and the user dropped it.
+- **OPT-1 (user decision, 2026-09-13): a FAILED dependency does NOT block its dependents.** They stay
+  `open` and dispatchable, and the failure is reported BESIDE the state (`failedBy`), never folded into
+  `blocked`.
+- **The workmate page** renders the durable workmate library (`$HOME/.mpd/workmate/<key>/`) as its own
+  page because that library is a per-USER shelf rather than a per-workspace team. It is read-only by
+  construction (mutation stays in `mpd_workmate_*`), it contains every filesystem failure to a row or a
+  field, it sorts newest-updated first — the same order `mpd_workmate_list` serves — and its empty state
+  names the call that fills it (`mpd_workmate_init`).
+
+**Bounds, stated as limits.** Not ported from the WEB view: hover, its pixel geometry (fixed `168px`
+columns, `42px` nodes), CSS ellipsis, `overflow:auto`, native tooltips, DOM reads and `fetch` polling —
+none has a terminal equivalent, so none is faked. The WEB DAG remains the semantic reference and was not
+modified beyond the rank-derivation and edge-routing repairs its own legibility required. And one KNOWN
+OPEN DEFECT: the DAG page's scrollbar is functional but not flawless — an unbounded `PgDn` run can drive
+the window to zero rows because the scroll offset accumulates across renders (diagnosed, bounded by
+`clampScroll`, and recorded; the two failing `bun test ./packages` arms at the freeze are exactly those
+offset-accumulation arms).
 
 ## 4. Admission and distribution artifacts
 
@@ -730,3 +797,34 @@ host one release on and adopted the seam that release added, so the following su
   loaded at all** here (`TypeError: require() async module … cosmokit/lib/index.ts is unsupported`, a
   pre-existing module-resolution error in the retired adopted plugin's vendored `_deps`), so that arm
   is **not** claimed as evidence.
+
+### 11.4 Amendment after the dependency-DAG port wave (2026-10-06, later the same day)
+
+The rows above stay as written for the revision and the host they measured. This wave ported the WEB
+dependency view to the TUI sidebar and root-caused the invisible-panel report, so the following
+supersedes them:
+
+| Superseded statement | Was | Is (measured 2026-10-06) |
+|---|---|---|
+| §3.3 panel inventory | **ONE** sidebar panel (`team`), `minColumns` **32** | **THREE** pages — `team` (`order` 10), `dag` (`MPD DAG`, icon `◈`, `order` 11) and `workmate` (`MPD workmate`, icon `◆`, `order` 12) — **all `minColumns` 28**. The 32 was the defect: the host REPLACES a page's body with a `panel-too-narrow` notice whenever the panel column is narrower than the descriptor asks for, while its own split threshold puts that column at exactly 28, so a band of terminal widths existed in which the sidebar opened, the tab was drawn, and the user was shown a refusal notice instead of the graph |
+| §3.3 entry points | `alt+a` and `/mpd panel` | plus **`/mpd dag`** and **`/mpd workmate`**, each routing to its own page through the same arbitration and each with its OWN full-screen fallback (`mpd-tui-subagents` for `dag`, the board for `workmate`) |
+| §3.3 / §10 item #16 — "the panel body is not pane-capturable" | after a host-ACCEPTED `open()` the capture was byte-identical, so no render was claimed | the CAUSE is now known: the page was never in the host's enable list — the host's own `useSidePanel` DROPS a request whose id is not enabled, while `tuiPanels.open()` returns `true` on DELIVERY — and the sidebar starts closed. With `sidePanel.panels` carrying the page ids and the sidebar open, the 120-column capture shows the three MPD tabs and the body. The claim stays bounded: MPD still cannot observe a RENDER (the host's event set has no `opened`/`focused`), so the command's sentence states what it knows and names the remedy instead of claiming success |
+| §3 DAG description (scenes only) | a depth-indented task list inside the scene | the DAG is its own page (§3.4) and rank is **DERIVED** from the dependency graph rather than trusted from a served `depth` — a board whose blocker references resolve to nothing used to draw one column and no edges while saying nothing — with unresolvable references reported and ONE tone table as the palette source |
+| §1 surface inventory | panels, scenes and the status line as separate surfaces | the whole `mpd-tui` surface layer was restyled onto ONE visual system (R14), every surface reading the frozen tone/glyph/legend tables rather than carrying a private copy |
+
+**Evidence of this wave** (all under `evidence/tui/dag-port/`): `requirements.md` — the frozen contract
+plus its four amendments; `verification/pty/frozen/` — the frozen-revision real-PTY capture (the three
+MPD tabs, the pin/unpin keys, and the width matrix with its `split=false` arms); `seam-guard/20261006T135423Z/`
+— the wiring, the id discovery and the R26 wording; `panel-surface/20261006T140037Z/`, `dag-layout/`,
+`visual/`, `team-feature-test/`, `web-dag/`; and `freeze/FROZEN-REVISION.md` — the revision hashes the
+capture was taken against.
+
+**Bounds (the bounds are part of the claim).** (a) MPD cannot observe a render (above): what it knows is
+a composed id plus an accepted request. (b) The page ids are DYNAMIC (`<activationId>:<slug>`), so no
+document may state `act1:dag` as a constant — discover them from the host's `/panel ` completion list or
+from the printed command line. (c) At 80 and 48 columns the host does not split at all
+(`split=false`), so no sidebar page can be visible there. (d) The DAG page's scrollbar has a KNOWN OPEN
+DEFECT — an unbounded `PgDn` run can drive the window to zero rows because the scroll offset accumulates
+across renders — so it is recorded, never advertised as flawless. (e) Browser-only behaviour (hover,
+pixel geometry, CSS ellipsis, `overflow:auto`, native tooltips, DOM reads and `fetch` polling) is not
+ported and not claimed.

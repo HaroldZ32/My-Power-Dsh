@@ -408,19 +408,43 @@ describe("full composition (every service injected)", () => {
       expect(injected).toContain(id)
     }
 
-    // tuiPanels (dsh-tui 0.13.0): ONE sidebar panel, with the FROZEN descriptor, and its final id
-    // DISCOVERED from the host's own `list()` read-back (never composed on this side).
-    expect(calls.panels).toHaveLength(1)
+    // tuiPanels (dsh-tui 0.13.0): THREE sidebar panels — the merged view PLUS the two independent
+    // pages (frozen R1/R12) — each with the FROZEN descriptor of its own module, and each final id
+    // DISCOVERED from the host's own `list()` read-back (never composed on this side). The host
+    // budgets a plugin at four (`MAX_PANELS_PER_PLUGIN`), so three is the composition's own ceiling
+    // and the assertion below is what keeps a fourth registration from being added unnoticed.
+    expect(calls.panels).toHaveLength(3)
     expect(calls.panels[0].apiVersion).toBe(1)
     expect(calls.panels[0].id).toBe("team")
     expect(calls.panels[0].title).toBe("MPD")
-    expect(calls.panels[0].minColumns).toBe(32)
+    expect(calls.panels[0].minColumns).toBe(28)
     expect(calls.panels[0].order).toBe(10)
     expect(calls.panels[0].icon).toBeUndefined()
     expect(calls.panels[0].compact).toBeUndefined()
     expect(typeof calls.panels[0].component).toBe("function")
     expect(outcomeOf(report, "panel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "panel").detail)).toContain("act0:team")
+    // The DAG page: its own slug, its own title, a one-cell icon and the host's own 28-column floor
+    // (a floor above it would get the page's BODY replaced by the host's `panel-too-narrow` notice).
+    expect(calls.panels[1].apiVersion).toBe(1)
+    expect(calls.panels[1].id).toBe("dag")
+    expect(calls.panels[1].title).toBe("MPD DAG")
+    expect(calls.panels[1].icon).toBe("◈")
+    expect(calls.panels[1].minColumns).toBe(28)
+    expect(calls.panels[1].order).toBe(11)
+    expect(typeof calls.panels[1].component).toBe("function")
+    expect(outcomeOf(report, "dagPanel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "dagPanel").detail)).toContain("act0:dag")
+    // The workmate page: the third independent surface, ordered after both.
+    expect(calls.panels[2].apiVersion).toBe(1)
+    expect(calls.panels[2].id).toBe("workmate")
+    expect(calls.panels[2].title).toBe("MPD workmate")
+    expect(calls.panels[2].icon).toBe("◆")
+    expect(calls.panels[2].minColumns).toBe(28)
+    expect(calls.panels[2].order).toBe(12)
+    expect(typeof calls.panels[2].component).toBe("function")
+    expect(outcomeOf(report, "workmatePanel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "workmatePanel").detail)).toContain("act0:workmate")
 
     // tuiStatus: one live keyed contribution under the conventions' key.
     expect(STATUS_KEY).toBe("mpd-tui")

@@ -205,7 +205,17 @@ export const TUI_TEXT = {
    * instead; the host bound the seam but REFUSED the registration (a different fact from a missing
    * seam, and a different fix); or this host has no panel seam at all and the scene IS the surface.
    */
-  "panel.opened": { zh: "mpd 侧栏面板：已打开（{id}）", en: "mpd sidebar panel: opened ({id})" },
+  // R26 — THE HONEST SENTENCE. It used to say the panel had "opened", which is a claim the command
+  // cannot make: `tuiPanels.open(id)` returns a DELIVERY ack that is true whenever a Chat consumer is
+  // attached, while the host's own `useSidePanel` DROPS the request for an id that is not enabled in the
+  // display-prefs CSV. Measured: the panel frame after `/mpd panel` had NO divider while the very next
+  // `Ctrl+B` frame did. So the sentence states only what was measured (the host accepted the id AND the
+  // request) and names the step that actually makes the panel visible — the two host switches this wave
+  // root-caused. All THREE pages inherit it through `panelStatusLine`, so there is one wording, not three.
+  "panel.opened": {
+    zh: "mpd 侧栏面板：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）",
+    en: "mpd sidebar panel: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B (or turn on \"Side panel starts open\")",
+  },
   "panel.fallback": { zh: "mpd 侧栏面板：宿主拒绝了打开请求（{id}），已改为全屏面板", en: "mpd sidebar panel: the host refused the open request ({id}); opened the full-screen panel instead" },
   "panel.refused": { zh: "mpd 侧栏面板：宿主拒绝了该面板的注册，已改为全屏面板", en: "mpd sidebar panel: the host refused the panel registration; opened the full-screen panel instead" },
   "panel.unavailable": { zh: "mpd 侧栏面板：该宿主不提供面板接缝，使用全屏面板", en: "mpd sidebar panel: this host exposes no panel seam; using the full-screen panel" },

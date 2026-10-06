@@ -31,12 +31,31 @@ import { TUI_SEAMS } from "./types.js"
 import { t } from "./i18n.js"
 import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
 import type { Log } from "./log.js"
-import { boardLines, readBoardState, statusLine } from "./state.js"
+import { boardLines, readBoardState, statusLine, type BoardState } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readRecordWorkflow, readTeamWorkflow, teamWorkflowLines, type MpdPlanView } from "./team-state.js"
-import { GRAPH_THEME, hitTest, layoutGraph, legendLines, type GraphTask } from "./graph.js"
-import { SUBAGENT_SCENE_ID, SUBAGENT_SCENE_TITLE, createSubagentSceneComponent } from "./subagent-scene.js"
+import { hitTest, layoutGraph, legendLines, type GraphTask } from "./graph.js"
+import { legendLinesFor, toneColor, visualTone } from "./panel-core.js"
+import { statusMarker } from "./status.js"
+import {
+  SUBAGENT_SCENE_ID,
+  SUBAGENT_SCENE_TITLE,
+  animPhase,
+  barCells,
+  chromeTitle,
+  createSubagentSceneComponent,
+  stateMarker,
+  surfaceBodyRow,
+  surfaceFrame,
+  surfaceHints,
+  surfaceRule,
+  surfaceText,
+  toneOfTally,
+  useSurfaceClock,
+  type SurfaceKit,
+  type SurfaceTone,
+} from "./subagent-scene.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
@@ -190,6 +209,21 @@ function usableKit(React: unknown, ui: any): boolean {
   return typeof ui.Box === "function" && typeof ui.Text === "function"
 }
 
+/**
+ * This file's React and ui kit, in the SHARED BUILDERS' own shape.
+ *
+ * `scenes.ts` and `subagent-scene.ts` each declare a structural shape for the host's kit, because each
+ * narrows what it calls; this is where the two meet, ONCE per render, rather than a cast at every call
+ * site. The caller has already proved the kit usable ({@link usableKit}), which is what makes the cast
+ * sound: every member the builders read (`React.createElement`, `ui.Box`, `ui.Text`) is present.
+ * @param React - the host React instance.
+ * @param ui - the host ui kit.
+ * @returns the kit as the shared surface builders take it.
+ */
+function surfaceKit(React: unknown, ui: unknown): SurfaceKit {
+  return { React, ui } as unknown as SurfaceKit
+}
+
 /** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
 function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): TeamWorkflow | undefined {
   try {
@@ -319,31 +353,37 @@ function createBoardComponent(
     // imported module's does not (measured, dsh-tui 0.12.0) — so every scene reports it once per
     // render and the adapter keeps the newest one.
     onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
 
-    /** Reads the board rows, degrading to one explicit line when the read fails. */
-    const read = (): string[] => {
+    /** Reads the board projection and the rows drawn from it, degrading to one explicit line. */
+    const read = (): { rows: string[]; state?: BoardState } => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []), holds())
+        /** This read's projection, which carries the tally the surface's own tone reports. */
+        const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? [])
+        return { rows: boardLines(state, holds()), state }
       } catch {
-        return ["board state unreadable"]
+        return { rows: ["board state unreadable"] }
       }
     }
 
-    /** The board rows as host state; the initial read happens in the effect below. */
-    const state = React.useState([] as string[])
-    /** The current rows, the value this render draws. */
-    const rows = state[0] as string[]
-    /** Replaces the rows: the initial read, the refresh key and the timer all use it. */
-    const setRows = state[1] as (next: string[]) => void
+    /** The board projection and its rows as host state; the initial read happens in the effect below. */
+    const state = React.useState({ rows: [] as string[] } as { rows: string[]; state?: BoardState })
+    /** The current read, the value this render draws. */
+    const board = state[0] as { rows: string[]; state?: BoardState }
+    /** The rows drawn from it. */
+    const rows = board.rows
+    /** Replaces the read: the initial read, the refresh key and the timer all use it. */
+    const setBoard = state[1] as (next: { rows: string[]; state?: BoardState }) => void
 
     React.useEffect(() => {
       // Initial read is deferred to the effect: the render path stays free of
       // synchronous I/O (scene red line).
-      setRows(read())
+      setBoard(read())
       /** The refresh timer, absent when the host refused to schedule one. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
-        timer = setInterval(() => setRows(read()), BOARD_REFRESH_MS)
+        timer = setInterval(() => setBoard(read()), BOARD_REFRESH_MS)
       } catch {
         timer = undefined
       }
@@ -358,10 +398,17 @@ function createBoardComponent(
       }
     }, [])
 
+    // The shared clock, taken at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0, and every animated cell then draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
+
     if (typeof ui.useInput === "function") {
       ui.useInput((input: string, key: { escape?: boolean; ctrl?: boolean } | undefined) => {
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") setRows(read())
+        else if (input === "r") setBoard(read())
         // One-key hop from the board to the team workflow (frozen §5.6).
         else if (input === "a") {
           nav.planFromTeam = false
@@ -394,22 +441,46 @@ function createBoardComponent(
     /** The measured terminal size label, empty when the host could not measure. */
     const size = measured.size
 
-    /** The title row: the line count plus the measured size. */
-    const header = `MPD board — ${rows.length} line(s)${size === "" ? "" : ` · ${size}`}`
+    // THE BOARD'S OWN STATE, in the one tone vocabulary every surface reports: the team's tally when
+    // this workspace holds a team, `dim` when it holds none. The matrix is the same one the DAG page
+    // and the team scene draw, so a reader learns one signal for "this is fine / this is moving / this
+    // is broken".
+    /** The tally the surface reports, or undefined when there is no team to report. */
+    const tally = board.state?.team?.tasks
+    /** The tone the frame, the marker and the tally row all draw in. */
+    const tone: SurfaceTone = tally === undefined ? "dim" : toneOfTally(tally, [])
+    /** How many cells the progress bar may occupy on this width; never so wide that the row shears. */
+    const barWidth = Math.max(4, Math.min(24, measured.cols - 64))
+
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [
-      // Title/counts chrome (the host draws NO chrome for a scene).
-      React.createElement(ui.Text, { key: "title", bold: true }, safeLine(header)),
-      React.createElement(ui.Text, { key: "meta", dimColor: true }, safeLine(`${sessionRows} transcript row(s)`)),
-    ]
+    const children: unknown[] = []
+    // Title/counts chrome (the host draws NO chrome for a scene). The marker is the surface's state
+    // and the first thing the eye lands on; the size is last because it is reference, not news.
+    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }))
+    children.push(
+      surfaceText(
+        surface,
+        "meta",
+        chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]),
+        { dim: true },
+      ),
+    )
+    children.push(surfaceRule(surface, "rule", undefined, tone))
     for (let index = 0; index < rows.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(rows[index])))
+      // EVERY BODY ROW IS DRAWN BY THE SHARED BUILDER, so the board's own label vocabulary
+      // (`workspace`, `team`, `tasks`, `boulder`, `note`, …) carries the same tones here as it does in
+      // the merged panel. `tasks` is toned by the TALLY rather than by the label, because that row is
+      // the one body row whose meaning is a state.
+      children.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }))
     }
     // Key-hint footer, always the last row.
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc/q close · r refresh · a team workflow")))
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "r refresh", "a team workflow"]))
 
-    // flexGrow: the scene fills the terminal it was handed.
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    // THE FRAME: the surface's own border, its title in the border line, its colour carrying the state
+    // the marker draws — the same grammar the DAG page and the merged panel use.
+    /** The border title, clamped to the measured width so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
   }
 }
 
@@ -445,6 +516,8 @@ function createTeamComponent(
     if (!usableKit(React, ui)) return null
     // The live host kit, reported per render (see the board factory's note).
     onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
 
     /** The projection this render draws, or undefined before the first successful read. */
     const workflowState = React.useState(undefined as TeamWorkflow | undefined)
@@ -484,6 +557,12 @@ function createTeamComponent(
     // it from a ref rather than from the closure is what keeps a pointer event answered against the
     // CURRENT drawing after a refresh moved the rows.
     const viewRef = React.useRef?.(undefined as ReturnType<typeof layoutGraph> | undefined)
+    // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0 and every animated cell draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
 
     /** Re-read the workflow and publish it. The render path stays free of I/O. */
     const refresh = (): void => {
@@ -581,33 +660,62 @@ function createTeamComponent(
     const children: unknown[] = []
     /** The team head, when there is one. */
     const head = workflow?.team
+    // THE TEAM'S OWN STATE, in the one tone vocabulary every surface reports — the frame colour, the
+    // marker and the tally row all read it, exactly as the board and the merged panel do.
+    /** The tone this render reports. */
+    const tone: SurfaceTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual))
+    /** How many cells the tally's bar may take on this width; a narrow terminal simply drops it. */
+    const barWidth = Math.max(4, Math.min(16, measured.cols - 46))
+    /** Whether this width has room for the bar beside the tally's own words. */
+    const barFits = measured.cols >= 50
     // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
     // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
     // absence the moment this header was rewritten — the second of them through the CONTROL
     // CHARACTER it carries, which is why the id is the string the render boundary is tested with.
-    children.push(React.createElement(ui.Text, { key: "title", bold: true },
-      safeLine(`MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}${measured.size === "" ? "" : ` · ${measured.size}`}`)))
+    children.push(
+      surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}`, measured.size]), {
+        bold: true,
+        tone,
+      }),
+    )
     if (workflow === undefined) {
-      children.push(React.createElement(ui.Text, { key: "unreadable" }, safeLine("team state unreadable")))
+      children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }))
     } else if (head === undefined) {
       // The honest empty state: the workspace really holds no team, and the row says which tool
       // fills it rather than showing an empty frame.
-      children.push(React.createElement(ui.Text, { key: "none", dimColor: true },
-        safeLine("no team in this workspace — stage one with agent_teams_plan, then approve it")))
+      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
     } else {
       /** The tally row, in the vocabulary the record uses. */
       const counts = workflow.counts
-      children.push(React.createElement(ui.Text, { key: "phase" },
-        safeLine(`${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`)))
+      // THE TALLY IS THE ONE ROW THAT IS A STATE, so it draws in the state's tone and carries the bar;
+      // its words are unchanged, because the record's own vocabulary is what a reader already knows.
+      children.push(
+        surfaceText(
+          surface,
+          "phase",
+          chromeTitle([
+            barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
+            `${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`,
+          ]),
+          { tone },
+        ),
+      )
       /** The roster, one wrapped line, so the graph gets the room. */
       const roster = workflow.members.length === 0
         ? "roster  (no members)"
         : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ")
-      for (const chunk of wrapCells(roster, graphWidth)) children.push(React.createElement(ui.Text, { key: `roster-${chunk}`, dimColor: true }, safeLine(chunk)))
-      if (workflow.holds.includes(head.id)) children.push(React.createElement(ui.Text, { key: "hold", color: "warning" }, safeLine(`watchdog   HELD (${workflow.holds.join(", ")})`)))
+      /** The wrapped roster chunks; only the first carries the `roster` label the tone table keys on. */
+      const rosterChunks = wrapCells(roster, graphWidth)
+      for (let index = 0; index < rosterChunks.length; index += 1) {
+        children.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]))
+      }
+      if (workflow.holds.includes(head.id)) children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`))
       /** The graph's own header, which names the focus so the highlight is explainable. */
       const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`
-      children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeLine(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`)))
+      // THE HEADER MUST STAY EXACTLY `task dependency graph` WHEN NOTHING IS FOCUSED: the drawing
+      // begins on the very next row (the pointer geometry and the scroll arms are measured from that
+      // offset), so nothing may be inserted between this row and the first row of the drawing.
+      children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }))
       // THE GRAPH BOX OWNS THE POINTER. Its children are exactly the drawn rows, in order, so a
       // `localRow`/`localCol` from the host's event resolves against the SAME geometry that was
       // drawn — `hitTest` is a rectangle lookup on the layout, never a second one.
@@ -617,7 +725,7 @@ function createTeamComponent(
       const graphRows: unknown[] = []
       for (let index = scroll; index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
         /** The spans of this row, each drawn in its own theme colour. */
-        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text))
+        const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
         graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans))
       }
       children.push(React.createElement(ui.Box, {
@@ -652,33 +760,55 @@ function createTeamComponent(
       }, graphRows))
       // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
       // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
-      // one legend cannot claim more cells than the drawing above it used. `graph.ts` owns the
-      // content and its clamp; a drawing module that refuses costs the legend, never the surface.
-      /** The legend lines the drawing module offers for this width. */
+      // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not
+      // private: `graph.ts` owns the drawing's own sentences, and `panel-core.ts`'s `legendLinesFor`
+      // appends the CONTRACT's six-state key — the one that tells `○ blocked` from `○ open`, which
+      // the drawing module's own key cannot. Handing the drawing's lines to that helper is what keeps
+      // this scene's legend identical to the DAG page's.
+      /** The drawing module's own lines: its arrow/focus sentence and its own state key. */
+      let arrow: string[] = []
+      try {
+        arrow = legendLines(graphWidth)
+      } catch {
+        arrow = []
+      }
+      // THE TWO GROUPS KEEP THEIR OWNER'S KEY: the drawing's lines stay `legend-<i>` (the interface
+      // this package's own suite pins), and the contract's appended key rows are `state-key-<i>`, so a
+      // reader — and a test — can tell which owner said what. Both are DIMMED: a legend explains the
+      // drawing, it never competes with it.
+      for (let index = 0; index < arrow.length; index += 1) {
+        children.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }))
+      }
+      /** The composed legend: the drawing's lines followed by the contract's six-state key. */
       let legend: string[] = []
       try {
-        legend = legendLines(graphWidth)
+        legend = legendLinesFor(graphWidth, arrow)
       } catch {
         legend = []
       }
-      for (let index = 0; index < legend.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeLine(legend[index])))
+      for (let index = arrow.length; index < legend.length; index += 1) {
+        children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
       }
       // The detail pane: the focused task's contract, which is what a reader needs after finding it.
       /** The focused task's row, when there is one. */
       const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus)
       if (detail !== undefined) {
-        children.push(React.createElement(ui.Text, { key: "detail", bold: true },
-          safeLine(`${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`)))
-        children.push(React.createElement(ui.Text, { key: "detail-meta", dimColor: true },
-          safeLine(`${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`)))
+        // The pane draws in the FOCUSED TASK'S OWN TONE: the reader asked about this task, so the pane
+        // reports its state rather than repeating the surface's.
+        children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }))
+        children.push(surfaceText(surface, "detail-meta",
+          `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`,
+          { dim: true }))
       }
-      for (const problem of workflow.problems) children.push(React.createElement(ui.Text, { key: `problem-${problem}`, color: "warning" }, safeLine(`note       ${problem}`)))
+      for (const problem of workflow.problems) children.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`))
     }
-    if (notice !== "") children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeLine(notice)))
-    children.push(React.createElement(ui.Text, { key: "footer", dimColor: true },
-      safeLine("esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board")))
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    if (notice !== "") children.push(surfaceText(surface, "notice", notice, { tone: "blocked" }))
+    children.push(surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"]))
+    // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
+    // state the marker draws — the grammar the DAG page and the merged panel share.
+    /** The border title, clamped to the measured width so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? "" : ` — ${head.name}`}`, measured.size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
   }
 }
 
@@ -751,6 +881,14 @@ function createPlanComponent(
     if (!usableKit(React, ui)) return null
     // The live host kit, reported per render (see the board factory's note).
     onHostKit?.(ui)
+    /** The host kit in the shared builders' shape; taken once per render, never per call. */
+    const surface = surfaceKit(React, ui)
+    // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
+    // answers 0 and every animated cell draws the frozen static frame.
+    /** The host clock and the ref the animated element must carry. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the state marker breathes at. */
+    const phase = animPhase(clock.time)
 
     // ── THE SESSION ID COMES FROM THE LIVE CHANNEL ────────────────────────────
     // A staged plan is SESSION-scoped (`.mpd/team/staging/<sessionId>.json`) while every other read
@@ -1067,6 +1205,23 @@ function createPlanComponent(
     /** The measured terminal size label. */
     const size = measured.size
 
+    // THE SURFACE'S OWN STATE, in the one tone vocabulary every surface reports. It is read from THIS
+    // file's own action vocabulary (`approved:`/`discarded:`/`… failed` are the exact prefixes the two
+    // runners below set) plus the surface's own mode, so the frame, the marker and the verdict row can
+    // never describe a different outcome than the words beside them.
+    /** The tone this render reports. */
+    const tone: SurfaceTone = busy
+      ? "running"
+      : message.startsWith("approve failed") || message.startsWith("discard failed")
+        ? "failed"
+        : message.startsWith("approved:")
+          ? "completed"
+          : message.startsWith("discarded:")
+            ? "cancelled"
+            : usable
+              ? "focus"
+              : "dim"
+
     // t3's F1: a COMMITTED mutation must be confirmed ON SCREEN even though the record
     // has already left the staged phase by the time the verdict renders. `message` is the
     // last SETTLED outcome of a call that was started while the plan was actionable
@@ -1087,32 +1242,32 @@ function createPlanComponent(
       // instead of falling back to "(none)" over the very plan the surface is asking about.
       : `MPD plan approval — ${team?.name ?? stagedPlan?.name ?? "(none)"}${busy ? " · working…" : ""}`
     /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))]
+    const children: unknown[] = [surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} ${title}`, size]), { bold: true, tone })]
     if (!usable) {
       if (verdict) {
         // Frozen §4.5 row 1 / barrier 5: the verdict the runtime produced, rendered FIRST
         // so a committed approval can never read as "nothing to approve".
-        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message)))
+        children.push(surfaceText(surface, "verdict", message, { bold: true, tone }))
         children.push(
-          React.createElement(
-            ui.Text,
-            { key: "context", dimColor: true },
-            safeLine(team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`),
-          ),
+          surfaceText(surface, "context", team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`, { dim: true }),
         )
       } else {
         // The precondition failure accepts ONLY Esc: no confirmation echo, no chord.
         const detail = team === undefined ? "no staged plan for team (none)" : `no staged plan for team ${team.id} (phase ${team.phase})`
-        children.push(React.createElement(ui.Text, { key: "empty" }, safeLine(detail)))
+        children.push(surfaceText(surface, "empty", detail, { dim: true }))
       }
-      children.push(React.createElement(ui.Text, { key: "footer", dimColor: true }, safeLine("esc back")))
-      return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+      children.push(surfaceHints(surface, "footer", ["esc back"]))
+      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
     }
     for (let index = 0; index < visible.length; index += 1) {
-      children.push(React.createElement(ui.Text, { key: `line-${index}` }, safeLine(visible[index])))
+      // EVERY BODY ROW GOES THROUGH THE SHARED BUILDER, so the plan surface's own labels (`confirm`,
+      // `required`, `runnable`) carry the same tones here as the same labels do elsewhere. `runnable` is
+      // the one row whose tone depends on a VALUE — whether the plan can actually run — so it is
+      // overridden from the record rather than coloured by its label.
+      children.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }))
     }
-    if (busy) children.push(React.createElement(ui.Text, { key: "busy", dimColor: true }, safeLine("working…")))
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    if (busy) children.push(surfaceText(surface, "busy", "working…", { tone: "running" }))
+    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
   }
 }
 
@@ -1223,11 +1378,24 @@ export function registerScene(
   }
 }
 
-/** The status line the `/mpd status` action prints. */
+/**
+ * The status line the `/mpd status` action prints.
+ *
+ * The SAME sentence the keyed status row publishes (`state.ts`'s projection), signed the same way: the
+ * state mark trails the line. Nothing is inserted at the head, because the head is pinned — the command
+ * contract requires this print to START with `mpd:` (`plugin.test.ts`, the `/mpd` grammar arm).
+ * @param workspaceRoot - resolves the workspace root per call.
+ * @param home - resolves the home directory per call.
+ * @param teamViews - the official team readout, resolved per call.
+ * @param teamRecords - the mpd-owned team records, resolved per call.
+ * @returns the one-line summary, state mark last; never throws.
+ */
 export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[]): string {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []))
+    /** This call's projection, read once: the sentence and the mark must describe the same board. */
+    const state = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? [])
+    return `${statusLine(state)} ${statusMarker(state)}`
   } catch {
-    return "mpd: state unreadable"
+    return "mpd: state unreadable ?"
   }
 }

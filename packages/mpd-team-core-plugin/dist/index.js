@@ -1888,22 +1888,34 @@ function resolveBlocker(record, reference) {
   const bySubject = record.tasks.find((task) => task.subject === reference);
   return bySubject === undefined ? reference : bySubject.id;
 }
+function resolveBlockers(record, references) {
+  const blockedBy = [];
+  const unresolved = [];
+  for (const reference of references) {
+    const resolved = resolveBlocker(record, reference);
+    blockedBy.push(resolved);
+    if (!record.tasks.some((task) => task.id === resolved) && !unresolved.includes(reference))
+      unresolved.push(reference);
+  }
+  return { blockedBy, unresolved };
+}
 function addTeamTask(record, input, now) {
   const subject = input.subject.trim();
   if (subject === "")
     return record;
-  const blockedBy = (input.blockedBy ?? []).map((reference) => resolveBlocker(record, reference));
+  const blockers = resolveBlockers(record, input.blockedBy ?? []);
   const task = {
     id: "T" + record.nextTaskNumber,
     subject,
     description: input.description,
     kind: input.kind ?? "work",
     status: "pending",
-    blockedBy,
+    blockedBy: blockers.blockedBy,
     writeScopes: [...input.writeScopes ?? []],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     revision: 1,
+    ...blockers.unresolved.length === 0 ? {} : { unresolvedBlockers: blockers.unresolved },
     ...input.owner === undefined ? {} : { owner: input.owner },
     ...input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf },
     ...input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }
@@ -1916,6 +1928,7 @@ function updateTeamTask(record, taskId, patch, now) {
     if (task.id !== taskId)
       return task;
     touched = true;
+    const blockers = patch.blockedBy === undefined ? undefined : resolveBlockers(record, patch.blockedBy);
     const next = {
       ...task,
       updatedAt: now.toISOString(),
@@ -1925,8 +1938,14 @@ function updateTeamTask(record, taskId, patch, now) {
       ...patch.round === undefined ? {} : { round: patch.round },
       ...patch.verdict === undefined ? {} : { verdict: patch.verdict },
       ...patch.executorRef === undefined ? {} : { executorRef: patch.executorRef },
-      ...patch.blockedBy === undefined ? {} : { blockedBy: patch.blockedBy.map((reference) => resolveBlocker(record, reference)) }
+      ...blockers === undefined ? {} : { blockedBy: blockers.blockedBy }
     };
+    if (blockers !== undefined) {
+      if (blockers.unresolved.length === 0)
+        delete next.unresolvedBlockers;
+      else
+        next.unresolvedBlockers = blockers.unresolved;
+    }
     if (patch.owner !== undefined) {
       if (patch.owner === "")
         delete next.owner;
@@ -2175,6 +2194,13 @@ function addTask(plan, task) {
   if (subject === "")
     throw new Error("a task needs a non-empty subject");
   return { ...plan, tasks: [...plan.tasks, { ...task, subject }] };
+}
+function classifyBlocker(plan, reference) {
+  if (/^T\d+$/u.test(reference))
+    return "board-id";
+  if (/^\d+$/u.test(reference))
+    return "position";
+  return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown";
 }
 function archivePlan(workspace, plan) {
   const target = archivePathFor(workspace, plan.planId);
@@ -2504,6 +2530,18 @@ function describePlan(plan) {
 function stringList(value) {
   return Array.isArray(value) ? value.map(String) : undefined;
 }
+function blockerReading(plan, references) {
+  return references.map((reference) => ({ reference, form: classifyBlocker(plan, reference) }));
+}
+function blockerSentence(blockers) {
+  if (!Array.isArray(blockers) || blockers.length === 0)
+    return "";
+  const unknown = blockers.filter((entry) => entry?.form === "unknown").map((entry) => String(entry?.reference ?? ""));
+  const forms = [...new Set(blockers.map((entry) => String(entry?.form ?? "?")))].join("/");
+  if (unknown.length === 0)
+    return ` — blocked_by reads as ${forms}`;
+  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`;
+}
 function adapterFor(ctx) {
   const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
   return mounted ?? createDshAdapter(ctx);
@@ -2652,10 +2690,11 @@ function apply(ctx) {
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
           stoppedAt: { type: "string" },
-          archivedTo: { type: "string" }
+          archivedTo: { type: "string" },
+          blockers: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}` : describePlan(value?.plan))
+      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}` : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describePlan(value?.plan))
     },
     execute: async (args, exec) => {
       const action = String(args?.action ?? "");
@@ -2716,7 +2755,7 @@ function apply(ctx) {
           ...owner === undefined ? {} : { owner: String(owner) }
         });
         writePlan(workspace, next);
-        return { plan: next };
+        return { plan: next, ...blockedBy === undefined ? {} : { blockers: blockerReading(next, blockedBy) } };
       }
       if (action === "edit") {
         const plan = readPlan(workspace, sessionId);
@@ -2749,7 +2788,8 @@ function apply(ctx) {
           }) } : {}
         };
         writePlan(workspace, next);
-        return { plan: next };
+        const editedReferences = next.tasks.flatMap((task) => task.blockedBy ?? []);
+        return { plan: next, ...editedReferences.length === 0 ? {} : { blockers: blockerReading(next, editedReferences) } };
       }
       if (action === "delete") {
         const plan = readPlan(workspace, sessionId);
@@ -2784,7 +2824,28 @@ function apply(ctx) {
             ...task.owner === undefined ? {} : { owner: task.owner }
           }, now());
         }
+        const planAlias = new Map;
+        plan.tasks.forEach((task, index) => {
+          const minted = record.tasks[index];
+          if (minted === undefined)
+            return;
+          planAlias.set(String(index + 1), minted.id);
+          if (!planAlias.has(task.subject))
+            planAlias.set(task.subject, minted.id);
+        });
+        for (const [index, task] of plan.tasks.entries()) {
+          const minted = record.tasks[index];
+          if (minted === undefined || (task.blockedBy ?? []).length === 0)
+            continue;
+          const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
+          if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
+            continue;
+          record = updateTeamTask(record, minted.id, { blockedBy: mapped }, now());
+        }
         const created = { members: [], tasks: [] };
+        const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
+        if (unresolvedBlockers.length > 0)
+          created.unresolved = unresolvedBlockers;
         const executorTaskId = new Map;
         let stoppedAt;
         for (const member of record.members) {
@@ -3171,6 +3232,7 @@ export {
   archivePathFor,
   archivePlan,
   claimContract,
+  classifyBlocker,
   clearHold,
   inject,
   listContracts,

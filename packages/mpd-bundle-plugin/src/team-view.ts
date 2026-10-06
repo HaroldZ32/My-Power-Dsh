@@ -89,6 +89,17 @@
     verdict?: string
     /** Blockers, in board order. */
     blockedBy: string[]
+    /**
+     * The blocker references that matched NOTHING when the record was written (R18's reader side).
+     *
+     * Mirrors the producer's own `TeamTaskRecord.unresolvedBlockers` field rather than inventing a
+     * shape: `team-store.ts resolveBlockers` stores the entries that resolved in `blockedBy` — the
+     * unresolvable ones INCLUDED, verbatim — and the ones that matched no task here, de-duplicated.
+     * ABSENT when everything resolved, which is the whole reason it exists as a field: an absent key
+     * plus an empty `blockedBy` means "this task has no blockers", while a present key means "this task
+     * HAS blockers and the record could not name them". Those two states used to look identical.
+     */
+    unresolvedBlockers?: string[]
     /** Blockers that FAILED — reported BESIDE the state, which is the OPT-1 rule. */
     failedBy: string[]
     /** Longest dependency path; the column the node is drawn in. */
@@ -209,6 +220,40 @@
     top: number
   }
 
+  /** One painted rectangle of one drawn edge, in the canvas's own pixels. */
+  interface EdgeRect {
+    /** The left x. */
+    left: number
+    /** The top y. */
+    top: number
+    /** The width in pixels; a vertical run is one pixel wide. */
+    width: number
+    /** The height in pixels; a horizontal run is one pixel tall. */
+    height: number
+  }
+
+  /**
+   * One drawn dependency, ROUTED BEFORE IT IS PAINTED.
+   *
+   * The route is computed here, once, and the render only paints it — the single source of truth the
+   * file's GEO comment demands. That is also what lets the geometry be ASSERTED: a test reads these
+   * rectangles and proves no edge crosses a box, which is the mechanical meaning of "legible".
+   */
+  interface DrawnEdge {
+    /** The blocker's task id. */
+    parent: string
+    /** The blocked task's id. */
+    child: string
+    /** The witness value `data-mpd-edge` carries, so the count and the drawing cannot disagree. */
+    witness: string
+    /** The painted runs, in draw order: the lead-out first, the lead-in last. */
+    segments: Array<{ key: string; rect: EdgeRect }>
+    /** The arrival marker whose tip touches the blocked task's border, so the direction is readable. */
+    marker: EdgeRect
+    /** Whether the marker points LEFT, which is how a back edge (a cycle) arrives. */
+    pointsLeft: boolean
+  }
+
   /**
    * The whole DAG geometry, computed ONCE from the payload and never measured.
    *
@@ -228,6 +273,38 @@
     gridTemplateColumns: string
     /** One entry per node, in column-major order. */
     nodes: GraphNode[]
+    /** One routed edge per `blockedBy` entry naming a task on the board, in board order. */
+    edges: DrawnEdge[]
+    /** The inset every box keeps inside its column, widened by the lane count it must pay for. */
+    inset: number
+    /** The measured gutter between two neighbouring columns' boxes: `2 * inset`. */
+    gutter: number
+    /** How many vertical runs the busiest gutter must carry. */
+    maxLanes: number
+    /** How many lanes could NOT be given a distinct column, which a page must report (0 = all fit). */
+    laneOverflow: number
+    /** How many rows each rank's column holds: its boxes plus the rows reserved for long edges. */
+    slots: number[]
+    /**
+     * Where the ranks came from: `true` when they were DERIVED from the `blockedBy` graph, `false`
+     * when the graph resolved no blocker at all and the served `depth` was the only signal left.
+     */
+    ranksDerived: boolean
+    /**
+     * Blocker references nothing on this board carries, sorted and de-duplicated.
+     *
+     * THE UNION OF TWO SOURCES: the record's own `unresolvedBlockers` report and the view's
+     * re-derivation over the served `blockedBy`. They agree on a board the current producer wrote, and
+     * they differ exactly where it matters — a record whose references were repaired after the fact
+     * still remembers what did not resolve, and a viewer must not be told it is all fine.
+     *
+     * NOT decorative: the served records really do carry them — our live board's `blockedBy` holds plan
+     * ordinals while its ids are `T1..T10` — and the store silently filters them out, so a page can only
+     * stop that data loss from being invisible if the view hands the list on.
+     */
+    unresolved: string[]
+    /** The subset of {@link unresolved} the RECORD ITSELF reports; empty when the payload carries none. */
+    unresolvedRecorded: string[]
   }
 
   /** The style bag this view uses; the host supplies the tokens, the literals are fallbacks. */
@@ -246,7 +323,11 @@
     column: { position: "relative" },
     edgeLayer: { position: "absolute", left: 0, top: 0, pointerEvents: "none" },
     edge: { position: "absolute", background: "var(--dsw-alias-border-l2, #d8dde5)" },
-    node: { position: "absolute", left: "4px", right: "4px", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", background: "var(--dsw-alias-bg-layer-1, transparent)", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
+    // THE BOX INSET IS NOT WRITTEN HERE: it comes from the geometry (`graph.inset`), because the
+    // busiest gutter's lanes are paid for out of it and a literal would detach every box from the
+    // edges routed against it. The node's background is OPAQUE so that a run can only ever be hidden
+    // by a box, never show through it.
+    node: { position: "absolute", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", background: "var(--dsw-alias-bg-layer-1, #ffffff)", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
     nodeTop: { display: "flex", gap: "4px", alignItems: "baseline", whiteSpace: "nowrap", overflow: "hidden" },
   }
 
@@ -284,6 +365,7 @@
     "task.empty": "No shared task yet — the captain posts them with team_task_create.",
     "task.cycle": "CYCLE",
     "task.blockedBy": "blocked by",
+    "task.unresolved": "unresolved blockers",
     "task.dependents": "dependents",
     "task.attempt": "attempt",
     "task.round": "round",
@@ -348,10 +430,20 @@
     /** The vertical padding at the top and bottom of every column. */
     pad: 4,
   }
-  /** The x of the LEFT border of a node in one column — the box's own border, not the column's edge. */
-  const borderLeft = (rank: number): number => rank * GEO.column + GEO.inset
-  /** The x of the RIGHT border of a node in one column. */
-  const borderRight = (rank: number): number => rank * GEO.column + GEO.column - GEO.inset
+  /** The preferred spacing between two lane columns, in pixels. */
+  const LANE_STEP = 3
+  /** The clearance every lane keeps off a box's border, so a line never lands on a border. */
+  const LANE_CLEARANCE = 1
+  /** The furthest a box may be pushed inside its column, so a busy board cannot shrink a box away. */
+  const MAX_INSET = 24
+  /** The arrival marker's width in pixels, which is how far its tip reaches into the gutter. */
+  const MARK_W = 5
+  /** The arrival marker's height in pixels, which is the triangle's base. */
+  const MARK_H = 8
+  /** The x of the LEFT border of a node in one column, for a column inset — the box's own border. */
+  const borderLeft = (rank: number, inset: number): number => rank * GEO.column + inset
+  /** The x of the RIGHT border of a node in one column, for that same inset. */
+  const borderRight = (rank: number, inset: number): number => rank * GEO.column + GEO.column - inset
   /** The y of a box's top, from its row inside the column — the SAME expression the node renders with. */
   const boxTop = (row: number): number => GEO.pad + row * (GEO.nodeHeight + GEO.nodeGap)
   /** The y of a box's vertical MIDDLE, which is where an edge attaches. */
@@ -390,6 +482,14 @@
   const SUBJECT_MAX = 30
   /** The colour a focused edge draws in — a token with its literal fallback, like every other value here. */
   const FOCUS_EDGE = "var(--dsw-alias-label-secondary, #5b6472)"
+  /**
+   * The order two task ids draw in: NUMERIC, so `T2` precedes `T10` instead of following it (R19).
+   *
+   * `t10` sorts before `t2` character-wise, which is the opposite of how a reader counts tasks, so the
+   * comparator is numeric rather than lexical — the same rule, and the same reference model, as the TUI
+   * drawing engine's.
+   */
+  const ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" })
 
   return {
     /**
@@ -579,36 +679,381 @@
       }
 
       /**
-       * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and the numbers
-       * the drawn edges are placed with.
+       * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and every
+       * drawn edge ROUTED as a chain of adjacent-rank hops.
        *
        * `depth` is already the longest dependency path, so the columns are correct without re-deriving
        * a layout; a negative or non-finite depth falls back to rank 0 rather than dropping the task.
        * Every box is fixed, which is what lets an edge be arithmetic instead of a measurement.
+       *
+       * WHAT WAS WRONG (reported from a screenshot 2026-10-06: "依赖关系连线，根本看不清"):
+       *   * a multi-rank edge took the space between its two END boxes and called it "the band the
+       *     riser lives in" — but for an edge that skips a rank that band is the WHOLE INTERMEDIATE
+       *     COLUMN, so the vertical run went straight down through the boxes standing in it, and the
+       *     horizontal run did the same across the parent's row;
+       *   * the lanes were `0, +3, -3, +6, -6` inside an 8px gutter, and the riser was CLAMPED into
+       *     that band, so three edges leaving one column collapsed onto one or two pixels and read as
+       *     a single thick bus;
+       *   * the edge layer was the grid's LAST child, so even a correct line would have painted over
+       *     the boxes rather than behind them.
+       *
+       * THE FIX, all of it standard layered-graph practice:
+       *   1. DUMMY ROWS. An edge spanning more than one rank is expanded into a chain of adjacent-rank
+       *      hops, one reserved row per intermediate rank. Nothing occupies that row, so each hop runs
+       *      along a real corridor: the vertical runs stand in the gutters between columns and every
+       *      crossing of an intermediate column happens at the reserved row. No edge can cross a box.
+       *   2. A MEASURED GUTTER. The box inset is derived from the busiest gutter's lane count, so the
+       *      gutter is wide enough for every lane; the spacing is then computed FROM that gutter. Two
+       *      lanes can never share a column — and a lane that cannot be given one is COUNTED in
+       *      `laneOverflow` rather than silently stacked.
+       *   3. THE ROUTES TRAVEL OUT OF THIS FUNCTION, so the render paints them and a test can assert
+       *      them: the geometry is one object, and `data-mpd-box`/`data-mpd-route` publish it.
        * @param tasks - the board, in the order the route served it.
-       * @returns the columns, the canvas size and every node's box.
+       * @returns the columns, the canvas size, every node's box and every routed edge.
        */
       const layout = (tasks: TeamTask[]): GraphGeometry => {
+        // ── R20: THE RANK IS DERIVED FROM THE `blockedBy` GRAPH, NOT TRUSTED FROM `depth` ──────────
+        // WHAT WAS WRONG, and it is the defect the user photographed: this function bucketed the
+        // columns by `task.depth` verbatim. `team-store.ts` resolves a blocker by exact task id or
+        // exact subject and otherwise returns the reference UNCHANGED, and its `taskDepths` then
+        // FILTERS the unresolvable ones out — so on our own live board (ids `T1..T10`, `blockedBy`
+        // holding plan ordinals `["2"]`, `["2","3","4","6"]`, …) every task became a root, every depth
+        // became 0, and the view drew ONE column with NO edges. A view that trusts that number
+        // reproduces the lie; the TUI sibling (`mpd-tui-plugin/src/graph.ts`) already derives it, and
+        // the two planes must agree or the same record reads differently in the sidebar and the
+        // terminal. This is the same algorithm, inline because this file is ONE factory expression.
+        /** Task lookup by id, so a blocker reference can be resolved at all. */
+        const byId: Record<string, TeamTask> = {}
+        for (const task of tasks) byId[task.id] = task
+        /** A task's blocker references; a record may carry none at all, or carry something else. */
+        const blockedOf = (task: TeamTask): string[] => (Array.isArray(task.blockedBy) ? task.blockedBy : [])
+        /** Every blocker reference no task on the board carries, which is REPORTED rather than dropped. */
+        const missing = new Set<string>()
+        /** How many blocker references DO resolve to a task on the board. */
+        let resolved = 0
+        for (const task of tasks) {
+          for (const reference of blockedOf(task)) {
+            if (byId[reference] === undefined) missing.add(reference)
+            else resolved += 1
+          }
+        }
+        // THE UNRESOLVED REFERENCES ARE A RESULT, NOT A LOG LINE: the store's silent filter is what
+        // produced the one-column board, so the view hands the list on (the page reports the count).
+        // AND THE RECORD'S OWN REPORT IS READ BESIDE THE VIEW'S RE-DERIVATION (R18's reader side): the
+        // producer stores what matched nothing at write time in `unresolvedBlockers`, a fact that
+        // survives a later repair of the references — the live board was repaired that way — so a
+        // viewer must see BOTH: what the record said then, and what the served references say now.
+        /** The references the RECORD itself reports, task by task; empty when the payload carries none. */
+        const recorded = new Set<string>()
+        for (const task of tasks) {
+          for (const reference of Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []) recorded.add(reference)
+        }
+        /** The record's own report, sorted and de-duplicated. */
+        const unresolvedRecorded = [...recorded].sort()
+        /** The blocker references that resolve to nothing, from the record AND from the board. */
+        const unresolved = [...new Set([...unresolvedRecorded, ...missing])].sort()
+        /** The rank a served `depth` claims; a negative or non-finite depth is a root. */
+        const servedRank = (task: TeamTask): number => (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0)
+        /** Whether the served depths claim any structure at all. */
+        const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1
+        // THE DERIVATION WINS; THE SERVED DEPTH IS THE NARROW FALLBACK, exactly as in the TUI engine: it
+        // draws only when NOT ONE reference resolves AND the served depths still vary, i.e. when the
+        // record knows about structure its references cannot express. Both arms matter — a genuinely
+        // flat board served flat draws flat, and our broken board (nothing resolves, every depth 0, so
+        // they do NOT vary) falls through to the derivation.
+        /** Whether the ranks were DERIVED; `false` means the served depth was the only signal left. */
+        const derived = !(resolved === 0 && servedVaries)
+        /** The rank every task draws in. */
+        const rankOf = new Map<string, number>()
+        if (!derived) {
+          for (const task of tasks) rankOf.set(task.id, servedRank(task))
+        } else {
+          /** The settled rank of every task. */
+          const settled = new Map<string, number>()
+          /** The tasks on the current walk, whose ranks are not settled yet. */
+          const walking = new Set<string>()
+          for (const root of tasks) {
+            if (settled.has(root.id)) continue
+            /** The walk's frames: the id, and how many of its blockers have been expanded. */
+            const stack: Array<{ id: string; next: number }> = [{ id: root.id, next: 0 }]
+            walking.add(root.id)
+            while (stack.length > 0) {
+              /** The frame being worked. */
+              const frame = stack[stack.length - 1]
+              /** This task's blocker references that RESOLVE to a task on the board. */
+              const blocked = blockedOf(byId[frame.id]).filter((reference) => byId[reference] !== undefined)
+              if (frame.next < blocked.length) {
+                /** The next blocker to expand. */
+                const dependency = blocked[frame.next]
+                frame.next += 1
+                // A blocker already on the walk closes a CYCLE: it contributes nothing, so the walk
+                // neither recurses nor settles it twice — and every rank stays finite.
+                if (settled.has(dependency) || walking.has(dependency)) continue
+                walking.add(dependency)
+                stack.push({ id: dependency, next: 0 })
+                continue
+              }
+              /** The longest chain under this task, one longer than its deepest blocker. */
+              let deepest = 0
+              for (const dependency of blocked) deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1)
+              settled.set(frame.id, deepest)
+              walking.delete(frame.id)
+              stack.pop()
+            }
+          }
+          for (const task of tasks) rankOf.set(task.id, settled.get(task.id) ?? 0)
+        }
         /** The board bucketed by rank, which is the graph's column axis. */
         const columns: TeamTask[][] = []
         for (const task of tasks) {
-          /** The rank this task draws in; a negative or unknown depth falls back to the first. */
-          const at = Number.isFinite(task.depth) && task.depth >= 0 ? task.depth : 0
+          /** The rank this task draws in, per the plan above — never a value off the record. */
+          const at = Math.max(0, rankOf.get(task.id) ?? 0)
           while (columns.length <= at) columns.push([])
           columns[at].push(task)
         }
+        // R19 — WITHIN A COLUMN THE TASK ORDER IS NUMERIC, not the order the route happened to serve.
+        // MEASURED before this comparator: a scrambled board drew `T10, T2, T1, T3, T20`, which is the
+        // order a reader has to re-sort in their head; the TUI sibling derived the same rule from the
+        // same reference model (`localeCompare(..., { numeric: true })`), and the two planes must agree
+        // or the same board reads differently in the sidebar and the terminal.
+        for (const column of columns) column.sort((left, right) => ID_ORDER.compare(left.id, right.id))
         /** The grid's width in columns: one per rank, never zero. */
         const rankCount = Math.max(columns.length, 1)
-        /** The tallest column, which is how tall the grid must be. */
-        let tallest = 0
-        for (const column of columns) tallest = Math.max(tallest, column.length)
-        /** Every node's box, in column-major order. */
+        /** Every node's box, before the reserved rows are known — its `row` is final, its `top` is not. */
         const nodes: GraphNode[] = []
         for (let rank = 0; rank < columns.length; rank += 1) {
           for (let row = 0; row < columns[rank].length; row += 1) {
             nodes.push({ task: columns[rank][row], rank, row, top: boxTop(row) })
           }
         }
+        /** The node each task id names, so an edge resolves both of its boxes in one lookup. */
+        const nodeOf: Record<string, GraphNode> = {}
+        for (const node of nodes) nodeOf[node.task.id] = node
+
+        // ── THE DEPENDENCIES TO DRAW ──────────────────────────────────────────────────────────────
+        // One per `blockedBy` entry naming a task ON THIS BOARD. An id the board does not carry draws
+        // NOTHING: the payload serves the list raw, so a ghost entry is reachable in real data, and an
+        // edge into a node that is not there would be a picture of a dependency the record lacks.
+        /** The dependencies to route, in board order. */
+        const wants: Array<{ parent: GraphNode; child: GraphNode; key: string }> = []
+        for (const node of nodes) {
+          // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so the
+          // list is read defensively rather than trusted to be an array.
+          /** This task's blocker references, empty when the record carries none. */
+          const blocked = Array.isArray(node.task.blockedBy) ? node.task.blockedBy : []
+          for (const blockerId of blocked) {
+            /** The blocker's own box; a blocker the board does not carry draws no edge. */
+            const parent = nodeOf[blockerId]
+            if (parent === undefined) continue
+            wants.push({ parent, child: node, key: parent.task.id + ">" + node.task.id })
+          }
+        }
+
+        // ── DUMMY ROWS: one reserved row per (long edge × intermediate rank) ──────────────────────
+        /** The reserved row each long edge owns in each rank it crosses. */
+        const reserved = new Map<string, Map<number, number>>()
+        /** How many rows each rank's column must hold: its boxes, plus the rows reserved inside it. */
+        const slots: number[] = columns.map((column) => column.length)
+        for (const want of wants) {
+          /** The lower rank this edge touches. */
+          const lo = Math.min(want.parent.rank, want.child.rank)
+          /** The higher rank it touches. */
+          const hi = Math.max(want.parent.rank, want.child.rank)
+          if (hi - lo < 2) continue
+          /** This edge's own reserved rows, one per rank strictly between its two ends. */
+          const mine = reserved.get(want.key) ?? new Map<number, number>()
+          for (let rank = lo + 1; rank < hi; rank += 1) {
+            mine.set(rank, slots[rank])
+            slots[rank] += 1
+          }
+          reserved.set(want.key, mine)
+        }
+
+        // ── LANES: one per hop, per gutter, always distinct ──────────────────────────────────────
+        /** The edge keys crossing each gutter, gutter by gutter, in board order. */
+        const crossing: string[][] = []
+        for (let rank = 0; rank + 1 < rankCount; rank += 1) crossing.push([])
+        /** The same-rank edges' own keys per column, which have no gutter between their ends. */
+        const levelKeys: string[][] = columns.map(() => [])
+        for (const want of wants) {
+          /** The lower rank this edge touches. */
+          const lo = Math.min(want.parent.rank, want.child.rank)
+          /** The higher rank it touches. */
+          const hi = Math.max(want.parent.rank, want.child.rank)
+          if (hi === lo) {
+            levelKeys[lo].push(want.key)
+            continue
+          }
+          for (let rank = lo; rank < hi; rank += 1) if (crossing[rank] !== undefined) crossing[rank].push(want.key)
+        }
+        /** The lane index each edge takes in each gutter. */
+        const laneIndex = new Map<string, number>()
+        /** How many lanes the busiest gutter must carry, which is what sizes the inset. */
+        let maxLanes = 0
+        for (let rank = 0; rank < crossing.length; rank += 1) {
+          maxLanes = Math.max(maxLanes, crossing[rank].length)
+          crossing[rank].forEach((key, index) => laneIndex.set(rank + "@" + key, index))
+        }
+        // THE GUTTER IS DERIVED FROM THE LANES, not written down: a box keeps `inset` on each side of
+        // its column, two neighbouring boxes therefore stand `2 * inset` apart, and the busiest gutter
+        // asks for enough of that room to give every lane its preferred spacing plus a clearance.
+        /** The inset every box keeps inside its column at this board's lane count. */
+        const inset = Math.max(GEO.inset, Math.min(MAX_INSET, Math.ceil((maxLanes * LANE_STEP + LANE_CLEARANCE * 2) / 2)))
+        /** The measured gutter between two neighbouring columns' boxes. */
+        const gutter = inset * 2
+        /** How far a lane may stand from a gutter's centre and still clear both boxes. */
+        const halfBand = Math.max(0, inset - LANE_CLEARANCE)
+        /** The most lanes one gutter can hold as DISTINCT columns at one pixel apart. */
+        const capacity = halfBand * 2 + 1
+        /** How many hops could not be given a distinct column, which a page must be able to report. */
+        let laneOverflow = 0
+        for (const keys of crossing) laneOverflow += Math.max(0, keys.length - capacity)
+        // A same-rank dependency has no gutter between its ends, so it runs around the RIGHT of its
+        // column, in the inset space no box occupies. Its lanes are counted here so an overflow there
+        // is reported on the same terms.
+        for (const keys of levelKeys) laneOverflow += Math.max(0, keys.length - halfBand)
+
+        /** The x of the LEFT border of a box in one column, at this board's inset. */
+        const leftOf = (rank: number): number => borderLeft(rank, inset)
+        /** The x of the RIGHT border of a box in one column, at this board's inset. */
+        const rightOf = (rank: number): number => borderRight(rank, inset)
+        /**
+         * The x of one lane inside one gutter: the gutter's centre plus its alternating offset.
+         * @param rank - the gutter's index, i.e. the column it sits to the right of.
+         * @param key - the edge's key.
+         * @returns the lane's x, always inside the gutter and never on a box's border.
+         */
+        const laneX = (rank: number, key: string): number => {
+          /** How many lanes this gutter carries. */
+          const count = crossing[rank]?.length ?? 1
+          /** The furthest any lane of this gutter stands from the centre. */
+          const reach = Math.max(0, Math.ceil((count - 1) / 2))
+          /** The spacing the measured band pays for, so two lanes never share a column. */
+          const step = reach === 0 ? 0 : Math.max(1, Math.floor(halfBand / reach))
+          /** This lane's own index in the gutter. */
+          const index = laneIndex.get(rank + "@" + key) ?? 0
+          /** The alternating offset: 0, +1, -1, +2, -2 … the first lane stays nearest the centre. */
+          const offset = index === 0 ? 0 : (index % 2 === 1 ? 1 : -1) * Math.ceil(index / 2)
+          /** The furthest a lane may stand here, which only a REPORTED overflow reaches. */
+          const bound = Math.max(0, Math.min(halfBand, reach * step))
+          return (rank + 1) * GEO.column + Math.max(-bound, Math.min(bound, offset * step))
+        }
+        /**
+         * One horizontal run that STOPS where the next element starts, from either side.
+         *
+         * The end convention matters and is not cosmetic: a run that meets another RUN stops one pixel
+         * short of it (the perpendicular element covers that pixel), which is what keeps two segments
+         * from double-painting a corner and a lane's x exact.
+         */
+        const run = (fromX: number, toX: number, y: number): EdgeRect =>
+          ({ left: Math.min(fromX, toX), top: y, width: Math.max(Math.abs(toX - fromX), 1), height: 1 })
+        /**
+         * One horizontal run that REACHES a box's border, covering that border's own pixel.
+         *
+         * The mirror of {@link run}: an end that meets a BOX must touch it, or a 1px line stops a pixel
+         * short of the task it describes and the picture reads as a dependency that does not arrive.
+         */
+        const reach = (fromX: number, toX: number, y: number): EdgeRect =>
+          ({ left: Math.min(fromX, toX), top: y, width: Math.abs(toX - fromX) + 1, height: 1 })
+        /** One vertical run's rectangle, stopping just as a `run` does. */
+        const runV = (x: number, fromY: number, toY: number): EdgeRect =>
+          ({ left: x, top: Math.min(fromY, toY), width: 1, height: Math.max(Math.abs(toY - fromY), 1) })
+
+        /** Every routed edge, in board order. */
+        const edges: DrawnEdge[] = []
+        for (const want of wants) {
+          /** Whether the dependency runs downhill, which is the ordinary case. */
+          const forward = want.parent.rank <= want.child.rank
+          /** Whether both ends sit in the SAME column, which is a cyclic board's shape. */
+          const level = want.parent.rank === want.child.rank
+          /** The x the edge leaves the blocker's own border at, at that border's middle. */
+          const fromX = forward ? rightOf(want.parent.rank) : leftOf(want.parent.rank)
+          /** The x it arrives at on the blocked task's border. */
+          const toX = level ? rightOf(want.child.rank) : forward ? leftOf(want.child.rank) : rightOf(want.child.rank)
+          /** The y it leaves at: the blocker's vertical middle. */
+          const fromY = boxMiddle(want.parent.row)
+          /** The y it arrives at: the blocked task's vertical middle. */
+          const toY = boxMiddle(want.child.row)
+          /** The reserved rows this edge owns, empty for an adjacent-rank edge. */
+          const mine = reserved.get(want.key)
+          /** The painted runs, in draw order. */
+          const segments: Array<{ key: string; rect: EdgeRect }> = []
+          /** The x the path currently stands at, starting on the blocker's border. */
+          let x = fromX
+          /** The y the path currently stands at, starting at the blocker's middle. */
+          let y = fromY
+          /** How many vertical runs have been painted, which numbers their keys. */
+          let risers = 0
+          /** How many intermediate-column crossings have been painted, which numbers their keys. */
+          let crossings = 0
+          if (level) {
+            // A SAME-RANK DEPENDENCY: no gutter lies between its ends, so the path leaves the blocker's
+            // right border, steps into the inset space to the RIGHT of the column — which no box
+            // occupies — runs down to the blocked task's row and comes back in on its right border.
+            /** This edge's own slot in that inset space. */
+            const slot = Math.max(0, Math.min(Math.max(0, halfBand - 1), levelKeys[want.parent.rank].indexOf(want.key)))
+            /** The x that slot stands at, one clearance off the column's own boxes. */
+            const lane = rightOf(want.parent.rank) + LANE_CLEARANCE + slot
+            segments.push({ key: "out", rect: run(x, lane, y) })
+            segments.push({ key: "riser", rect: runV(lane, y, toY) })
+            x = lane
+            y = toY
+          } else {
+            /** The gutters this path walks, in walk order: downhill forward, uphill for a back edge. */
+            const walk: number[] = []
+            for (let rank = Math.min(want.parent.rank, want.child.rank); rank < Math.max(want.parent.rank, want.child.rank); rank += 1) walk.push(rank)
+            if (!forward) walk.reverse()
+            for (let index = 0; index < walk.length; index += 1) {
+              /** The gutter this hop's vertical run stands in. */
+              const lane = laneX(walk[index], want.key)
+              // The horizontal run that reaches the lane: the LEAD-OUT leaves the blocker's border, and
+              // a later one crosses an intermediate column at the row reserved in it — which is the
+              // whole point of the reservation, and why no horizontal can meet a box.
+              if (risers === 0) segments.push({ key: "out", rect: run(x, lane, y) })
+              else {
+                crossings += 1
+                segments.push({ key: "cross" + crossings, rect: run(x, lane, y) })
+              }
+              /** The y this hop ends at: the blocked task's middle last, a reserved row in between. */
+              const next = index === walk.length - 1
+                ? toY
+                : boxMiddle(mine?.get(forward ? walk[index] + 1 : walk[index]) ?? 0)
+              risers += 1
+              segments.push({ key: risers === 1 ? "riser" : "riser" + risers, rect: runV(lane, y, next) })
+              x = lane
+              y = next
+            }
+          }
+          // The lead-in lands ON the blocked task's border — covering that border's pixel, because this
+          // end meets a BOX rather than another run — and the arrival marker's tip sits on the same x.
+          segments.push({ key: "in", rect: reach(x, toX, y) })
+          // THE MARKER POINTS ALONG THE TRAVEL: it points LEFT when the path's last leg ran leftward,
+          // which is what a back edge does and what a same-rank edge does when it comes back around its
+          // own column. A marker that pointed the other way would read as an edge leaving the task.
+          /** Whether the arrowhead points left, i.e. the edge arrives from the right. */
+          const pointsLeft = level || toX < fromX
+          /** The arrival marker: a triangle whose tip touches the border the edge arrives at. */
+          // CLAMPED INTO THE GRID, so the last column's own marker cannot open a horizontal scrollbar.
+          /** The furthest left a marker may start and still fit inside the canvas. */
+          const headMax = Math.max(0, rankCount * GEO.column - MARK_W)
+          edges.push({
+            parent: want.parent.task.id,
+            child: want.child.task.id,
+            witness: want.child.task.id + "<-" + want.parent.task.id,
+            segments,
+            marker: {
+              left: Math.min(headMax, pointsLeft ? toX : toX - MARK_W),
+              top: toY - Math.floor(MARK_H / 2),
+              width: MARK_W,
+              height: MARK_H,
+            },
+            pointsLeft,
+          })
+        }
+
+        /** The tallest column's slot count, which is how tall the grid must be. */
+        let tallest = 0
+        for (const count of slots) tallest = Math.max(tallest, count)
         return {
           columns,
           rankCount,
@@ -616,6 +1061,15 @@
           height: Math.max(tallest * (GEO.nodeHeight + GEO.nodeGap) - GEO.nodeGap + GEO.pad * 2, GEO.nodeHeight + GEO.pad * 2),
           gridTemplateColumns: "repeat(" + rankCount + ", " + GEO.column + "px)",
           nodes,
+          edges,
+          inset,
+          gutter,
+          maxLanes,
+          laneOverflow,
+          slots,
+          ranksDerived: derived,
+          unresolved,
+          unresolvedRecorded,
         }
       }
 
@@ -624,21 +1078,28 @@
        * DESCENDANTS (what rests on it), along the drawn dependency edges.
        *
        * A chain is a RANK-MONOTONE path over the drawn edges: every hop to the left climbs to a strictly
-       * lower `depth`, every hop to the right descends to a strictly higher one. That is the relation the
+       * lower rank, every hop to the right descends to a strictly higher one. That is the relation the
        * columns draw, and it is the only one that survives a diamond. Measured: walking the edges alone
        * lit `T1 → T2 → T3 → T4` up entirely when T2 was hovered, because T3 (a legitimate descendant) then
        * handed the walk its own dependent T4 — and a walk that let the two directions feed each other did
        * the same the other way round. The origin is the ONE exception, because a cycle resolves a
        * revisited node to rank 0, so a back-edge genuinely runs between two nodes of the same rank.
        *
+       * THE RANKS ARE THE DRAWN ONES (R20). This walk used to compare the served `depth` values, which is
+       * the same lie the columns trusted: on a board whose depths are all 0 the guard pruned EVERY hop
+       * (`parent.depth >= byId[id].depth` is `0 >= 0`), so a hover lit one node and dimmed everything —
+       * a halo that reaches nothing is exactly as wrong as a one-column drawing. The caller passes the
+       * ranks the geometry actually drew, so the halo and the picture cannot disagree.
+       *
        * Each frontier is worked as a QUEUE rather than a recursion, and `inHalo` holds it to one visit
        * per node, so a dependency cycle in the payload — which the route reports rather than repairs —
        * cannot spin this into a stack overflow.
        * @param tasks - the board.
        * @param from - the hovered task's id.
+       * @param rankOf - the rank each task was DRAWN in, straight off the geometry's own nodes.
        * @returns the ids to tint; every other node is dimmed while a focus is held.
        */
-      const focusChain = (tasks: TeamTask[], from: string): Record<string, boolean> => {
+      const focusChain = (tasks: TeamTask[], from: string, rankOf: Record<string, number>): Record<string, boolean> => {
         /** The task each id names, for the dependency lookups below. */
         const byId: Record<string, TeamTask> = {}
         for (const task of tasks) byId[task.id] = task
@@ -672,8 +1133,9 @@
             /** The blocker's own row; one the board does not carry draws no edge and tints nothing. */
             const parent = byId[blockerId]
             if (parent === undefined) continue
-            // Strictly to the left — never a step back to the right, which is what keeps a cousin out.
-            if (parent.depth >= byId[id].depth && !atOrigin && blockerId !== from) continue
+            // Strictly to the left — never a step back to the right, which is what keeps a cousin out —
+            // measured in the ranks the DRAWING used, never in the served depth (see the note above).
+            if ((rankOf[blockerId] ?? 0) >= (rankOf[id] ?? 0) && !atOrigin && blockerId !== from) continue
             seenUp[blockerId] = true
             focus[blockerId] = true
             up.push(blockerId)
@@ -688,7 +1150,7 @@
             /** The dependent's own row, which must lie strictly to the right of the node expanded. */
             const child = byId[childId]
             if (child === undefined || seenDown[childId] === true) continue
-            if (child.depth <= byId[id].depth && !atOrigin && childId !== from) continue
+            if ((rankOf[childId] ?? 0) <= (rankOf[id] ?? 0) && !atOrigin && childId !== from) continue
             seenDown[childId] = true
             focus[childId] = true
             down.push(childId)
@@ -698,97 +1160,62 @@
       }
 
       /**
-       * The one drawn edge of a `blockedBy` entry: a horizontal lead-out, a vertical riser, a horizontal
-       * lead-in. Three plain absolutely-positioned divs — no SVG, no measuring pass.
-       * @param parent - the blocker's node box.
-       * @param child - the dependant's node box.
-       * @param tinted - whether this edge is inside the hover focus chain.
-       * @returns the edge element and its three segments.
+       * Paint one routed edge: its runs, plus the arrival marker that says which way it runs.
+       *
+       * NO GEOMETRY IS COMPUTED HERE. The layout routed the edge — dummy rows, gutters, lanes and all —
+       * and this function only decides the colour and emits the divs, so the drawing and the asserted
+       * geometry cannot drift apart. A CSS triangle carries the marker: an SVG here would be a second
+       * drawing plane with its own measuring rules, and the frozen contract forbids one.
+       * @param edge - the routed edge, straight off the geometry.
+       * @param tinted - whether BOTH of its ends are inside the hover halo.
+       * @returns the edge element, its runs and its arrival marker.
        */
-      const edgeOf = (parent: GraphNode, child: GraphNode, tinted: boolean | undefined, lane: number): unknown => {
-        // ── MERMAID-STYLE ORTHOGONAL ROUTING ──────────────────────────────────────────────────────
-        // WHAT WAS WRONG (reported from a screenshot 2026-10-06): the ends were snapped to COLUMN
-        // geometry (`rank * COLUMN_W ± (COLUMN_W - NODE_INSET - EDGE_LEAD)`) instead of to the boxes, so
-        // an edge met its node a fixed distance inside the border rather than at the border's middle;
-        // and the ARRIVAL segment was as long as the lead-out, so it ran from the riser all the way
-        // under any sibling that happened to stand between the arriving point and its own box.
-        //
-        // Both are fixed by describing the edge the way a diagram does:
-        //   * every end attaches at the MIDPOINT of the border it meets — a node is `COLUMN_PAD` inside
-        //     its column on each side, so its left border sits at `col + COLUMN_PAD` and its right at
-        //     `col + COLUMN_W - COLUMN_PAD`;
-        //   * the two horizontal ends cover ONLY the gap between the two boxes, and the vertical riser
-        //     joins them inside that gap — so nothing the edge draws overlaps a box, its own or a
-        //     sibling's;
-        //   * each edge gets its OWN LANE inside the gap (deterministically from which row it leaves),
-        //     which is what keeps two edges out of the same column from landing on one vertical line.
-        //
-        // A BACK-EDGE (a dependency cycle, where the blocker stands in a LATER rank) mirrors the whole
-        // shape: it leaves the parent's LEFT border and arrives at the child's RIGHT border, with the
-        // riser in the gap on that side — the lane offset is measured from that side too, so the picture
-        // is the same shape read right-to-left.
-        // NOT ONE OF THESE IS A LITERAL: `borderLeft`/`borderRight`/`boxMiddle` are the accessors the
-        // LAYOUT renders the boxes with, so an endpoint cannot drift from the box it names — change a
-        // size and both move together (see GEO).
-        /** The blocker's left border. */
-        const parentLeft = borderLeft(parent.rank)
-        /** The blocker's right border. */
-        const parentRight = borderRight(parent.rank)
-        /** The dependant's left border. */
-        const childLeft = borderLeft(child.rank)
-        /** The dependant's right border. */
-        const childRight = borderRight(child.rank)
-        /** Whether this edge runs left-to-right (the ordinary case) or right-to-left (a back-edge). */
-        const forward = parent.rank <= child.rank
-        /** The border x each end attaches to, at that border's vertical MIDDLE. */
-        /** The parent's attachment point: the middle of the border it leaves. */
-        const fromX = forward ? parentRight : parentLeft
-        /** The child's attachment point: the middle of the border the edge meets. */
-        const toX = forward ? childLeft : childRight
-        // THE BAND IS BOUNDED BY THE TWO BOX BORDERS, NOT BY THE COLUMN EDGES — and getting that wrong
-        // is what made the first version of this fix place every riser 1px off (MEASURED 2026-10-06:
-        // both column edges are the SAME x for adjacent ranks, so a band taken from them is zero-width
-        // and the clamp collapsed to the column boundary instead of the middle of the gap).
-        /** The band the riser lives in: the space between the two boxes the edge connects. */
-        const gapLeft = forward ? parentRight : childRight
-        /** The other end of that band. */
-        const gapRight = forward ? childLeft : parentLeft
-        /** The band's own centre — the natural lane position, symmetric between the two boxes. */
-        const bandCentre = (gapLeft + gapRight) / 2
-        /** The left bound a lane may occupy, kept a pixel clear of the near box's border. */
-        const laneLeft = Math.min(gapLeft, gapRight) + 1
-        /** The right bound a lane may occupy, kept a pixel clear of the far box's border. */
-        const laneRight = Math.max(gapLeft, gapRight) - 1
-        // ROUNDED, because a half-pixel lane makes every horizontal stub a fractional width: the riser
-        // is inside the band either way, and an integer keeps the segments crisp (and the assertions
-        // arithmetic rather than tolerance-matching).
-        /** One lane per edge, clamped to the band so a crowded column cannot push an edge into a box. */
-        const riserX = Math.round(Math.max(laneLeft, Math.min(laneRight, bandCentre + lane)))
-        /** The blocker's vertical MIDDLE, where the edge leaves its border. */
-        const outY = boxMiddle(parent.row)
-        /** The dependant's vertical middle, where the edge meets its border. */
-        const inY = boxMiddle(child.row)
-        /** The colour every segment of this edge draws in; a focused edge reads brighter. */
-        const base = tinted === true ? FOCUS_EDGE : CSS.edge.background
-        /** One segment's style: the shared edge box, this edge's colour, then its own geometry. */
-        const segment = (left: number, top: number, width: number, height: number): Record<string, string> =>
-          ({ ...CSS.edge, background: base, left: left + "px", top: top + "px", width: width + "px", height: height + "px" })
-        /** The riser's own box: the vertical run between the two rows, one pixel wide at minimum. */
-        const riserTop = Math.min(outY, inY)
+      const edgeOf = (edge: DrawnEdge, tinted: boolean): unknown => {
+        /** The colour every run of this edge draws in; a focused edge reads brighter. */
+        const base = tinted ? FOCUS_EDGE : CSS.edge.background
+        /** One run's style: the shared edge box, this edge's colour, then its own rectangle. */
+        const runStyle = (rect: EdgeRect): Record<string, string> =>
+          ({ ...CSS.edge, background: base, left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px" })
+        /** The arrival marker: a triangle whose tip touches the border the edge arrives at. */
+        const headStyle: Record<string, string> = {
+          position: "absolute",
+          left: edge.marker.left + "px",
+          top: edge.marker.top + "px",
+          width: "0",
+          height: "0",
+          borderTop: Math.floor(MARK_H / 2) + "px solid transparent",
+          borderBottom: Math.ceil(MARK_H / 2) + "px solid transparent",
+        }
+        headStyle[edge.pointsLeft ? "borderRight" : "borderLeft"] = MARK_W + "px solid " + base
         return react.createElement("div", {
-          key: "edge:" + parent.task.id + ">" + child.task.id,
+          key: "edge:" + edge.parent + ">" + edge.child,
           // THE WITNESSABLE MARK: `capture.mts` (docker/ui) reads `data-mpd-edge` and counts `data-mpd-graph`'s
           // `edges=` against exactly these, so one edge per DRAWN dependency is what must appear here.
-          "data-mpd-edge": child.task.id + "<-" + parent.task.id,
+          "data-mpd-edge": edge.witness,
+          "data-mpd-route": routeText(edge),
           style: CSS.edgeLayer,
         },
-          // The lead-out covers the gap only: from the parent's border to the riser's lane.
-          react.createElement("div", { key: "out", style: segment(Math.min(fromX, riserX), outY, Math.max(Math.abs(riserX - fromX), 1), 1) }),
-          react.createElement("div", { key: "riser", style: segment(riserX, riserTop, 1, Math.max(Math.abs(inY - outY), 1)) }),
-          // The lead-in likewise: from the riser's lane to the child's border.
-          react.createElement("div", { key: "in", style: segment(Math.min(riserX, toX), inY, Math.abs(toX - riserX) + 1, 1) }),
+          ...edge.segments.map((segment) => react.createElement("div", { key: segment.key, style: runStyle(segment.rect) })),
+          react.createElement("div", { key: "head", "data-mpd-head": "1", style: headStyle }),
         )
       }
+
+      /**
+       * One rectangle as the comma-joined text `data-mpd-route` publishes.
+       * @param rect - the rectangle.
+       * @returns `left,top,width,height`.
+       */
+      const rectText = (rect: EdgeRect): string => rect.left + "," + rect.top + "," + rect.width + "," + rect.height
+
+      /**
+       * One edge's whole route as the text `data-mpd-route` publishes, so a test asserts the geometry
+       * that was DRAWN rather than re-deriving it: the runs in draw order, then `R`/`L`, then the
+       * arrival marker's own box.
+       * @param edge - the routed edge.
+       * @returns the serialized route.
+       */
+      const routeText = (edge: DrawnEdge): string =>
+        edge.segments.map((segment) => rectText(segment.rect)).join(";") + "|" + (edge.pointsLeft ? "L" : "R") + rectText(edge.marker)
 
       /**
        * The TASK DETAIL body of the pinned node: the record's own fields, its blockers and its
@@ -823,6 +1250,12 @@
         if (task.verdict !== undefined) rows.push(detailRow("d-verdict", "task.verdict", task.verdict))
         rows.push(detailRow("d-blocked", "task.blockedBy", task.blockedBy.length === 0 ? "—" : task.blockedBy.join(", ")))
         rows.push(detailRow("d-dependents", "task.dependents", dependents.length === 0 ? "—" : dependents.join(", ")))
+        // THE PRODUCER'S OWN REPORT, on the task it belongs to (R18's reader side): these references
+        // matched nothing when the record was written, so naming them is what turns "this task looks
+        // like it has no blockers" into "this task HAS blockers the record could not resolve".
+        /** The references this record reports as unresolved, absent when everything resolved. */
+        const recordedUnresolved = Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []
+        if (recordedUnresolved.length > 0) rows.push(detailRow("d-unresolved", "task.unresolved", recordedUnresolved.join(", ")))
         if (contract === undefined) {
           rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t("task.contract.none")))
         } else {
@@ -950,6 +1383,11 @@
         /** The node each task id draws in, so an edge is placed from the board alone. */
         const nodeOf: Record<string, GraphNode> = {}
         for (const node of graph.nodes) nodeOf[node.task.id] = node
+        // THE RANKS THE DRAWING USED, handed to the hover halo so it cannot measure a different relation
+        // than the columns draw: the node's own `rank` IS the derived rank (R20), never the served value.
+        /** The drawn rank of every task, straight off the geometry. */
+        const drawnRank: Record<string, number> = {}
+        for (const node of graph.nodes) drawnRank[node.task.id] = node.rank
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
         // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
@@ -958,7 +1396,7 @@
           + " · " + counts.blocked + " " + t("tally.blocked")
           + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " " + t("tally.released"))
         /** The focus halo of the hovered node — empty while nothing is hovered, so every node is full. */
-        const focus: Record<string, boolean> = hover === null ? {} : focusChain(tasks, hover as string)
+        const focus: Record<string, boolean> = hover === null ? {} : focusChain(tasks, hover as string, drawnRank)
         /** Whether a hover is dimming the rest of the board. */
         const focusing = Object.keys(focus).length > 0
         // A CHAIN IS ACTIVE ONLY WITH A RELATED NODE: a hover whose halo holds nothing beyond the
@@ -966,30 +1404,18 @@
         // reading a highlight that tinted one node and dimmed no other.
         /** Whether the hovered node's halo reaches at least one other node. */
         const chainActive = focusing && Object.keys(focus).length > 1
-        /** The drawn edges, one per `blockedBy` entry naming a task ON THIS BOARD. */
+        /** The drawn edges, PAINTED FROM THE LAYOUT'S OWN ROUTES: one per dependency on the board. */
         // A `blockedBy` id the board does not carry draws NOTHING: the payload serves the list raw,
         // while the rank projection drops unknown ids, so an entry naming a ghost is reachable in real
         // data — and an edge into a node that is not there would be a picture of a dependency that the
-        // record does not have.
+        // record does not have. The layout already applied that rule, so the count here is the count
+        // the `data-mpd-graph` witness announces.
         const edges: unknown[] = []
-        /** How many edges have already been given a lane in each source column. */
-        const laneCount: Record<string, number> = {}
-        for (const node of graph.nodes) {
-          for (const blockerId of node.task.blockedBy) {
-            /** The blocker's own box; a blocker the board does not carry draws no edge. */
-            const parent = nodeOf[blockerId]
-            if (parent === undefined) continue
-            // ONE LANE PER EDGE, deterministic from the order the board lists them, so two blockers of
-            // the same task never draw their vertical runs on top of each other — the "lines are all
-            // over the place" half of the report. The lanes are alternating around the gap's centre,
-            // which keeps the FIRST edge (usually the primary one) nearest it.
-            /** This source column's running edge count. */
-            const used = laneCount[parent.task.id] ?? 0
-            laneCount[parent.task.id] = used + 1
-            /** Alternating offsets: 0, +3, -3, +6, -6 … */
-            const lane = used === 0 ? 0 : (used % 2 === 1 ? 1 : -1) * Math.ceil(used / 2) * 3
-            edges.push(edgeOf(parent, node, focus[parent.task.id] === true && focus[node.task.id] === true, lane))
-          }
+        for (const edge of graph.edges) {
+          // THE TINT IS A HOVER FACT, so it is decided here and not in the geometry: an edge reads
+          // brighter only while BOTH of its ends are inside the halo, which is what makes a chain
+          // readable as a path rather than as two unrelated highlights.
+          edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true))
         }
         /** The pinned task's own record, or undefined when the pinned id left the board. */
         const pinnedTask = pinned === null ? undefined : tasks.find((candidate) => candidate.id === pinned)
@@ -1068,25 +1494,39 @@
             // the origin an edge's absolute coordinates are measured from stays the grid itself.
             react.createElement("div", { style: { position: "relative", width: graph.width + "px", padding: GEO.pad + "px 0" } },
               react.createElement("div", { style: { ...CSS.grid, width: graph.width + "px", height: graph.height + "px", gridTemplateColumns: graph.gridTemplateColumns } },
-                graph.columns.map((column, rank) => react.createElement("div", {
-                  key: "col-" + rank,
-                  "data-mpd-rank": String(rank),
-                  style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
+              // THE EDGES LAYER IS THE GRID'S FIRST CHILD, so every run paints BEHIND the boxes. The
+              // routes no longer cross a box (the layout reserves a row for each long edge's hops),
+              // but this is the safety net that makes an overlap impossible rather than merely
+              // unlikely: a mis-routed line can only be hidden by a node, never cover a task.
+              react.createElement("div", { key: "edges", "data-edges": "1", style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" } }, edges),
+              graph.columns.map((column, rank) => react.createElement("div", {
+                key: "col-" + rank,
+                "data-mpd-rank": String(rank),
+                style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
+              },
+              column.map((task, row) => react.createElement("div", {
+                key: "node-" + task.id,
+                "data-mpd-node": task.id,
+                // THE BOX'S OWN RECTANGLE, published so the geometry can be ASSERTED from what was
+                // actually rendered: an edge's runs and every box come out of the same object, and a
+                // test proves no run crosses a box without re-deriving a single number.
+                "data-mpd-box": (rank * GEO.column + graph.inset) + "," + boxTop(row) + "," + (GEO.column - graph.inset * 2) + "," + GEO.nodeHeight,
+                role: "button",
+                tabIndex: 0,
+                "aria-pressed": pinned === task.id,
+                title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
+                style: {
+                  ...CSS.node,
+                  // THE INSET IS THE LAYOUT'S, not the stylesheet's: it is the width the busiest
+                  // gutter's lanes were paid for out of, so a fixed 4px here would detach every box
+                  // from the geometry the edges were routed against.
+                  left: graph.inset + "px",
+                  right: graph.inset + "px",
+                  top: boxTop(row) + "px",
+                  borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
+                  opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
+                  borderWidth: pinned === task.id ? "1px" : "0.5px",
                 },
-                column.map((task, row) => react.createElement("div", {
-                  key: "node-" + task.id,
-                  "data-mpd-node": task.id,
-                  role: "button",
-                  tabIndex: 0,
-                  "aria-pressed": pinned === task.id,
-                  title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
-                  style: {
-                    ...CSS.node,
-                    top: boxTop(row) + "px",
-                    borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
-                    opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
-                    borderWidth: pinned === task.id ? "1px" : "0.5px",
-                  },
                   // THE HOVER CHAIN LIVES ON THE NODE ITSELF: the host drives it with a real mouse move,
                   // so `onMouseEnter`/`onMouseLeave` here are the only writers — no document listener,
                   // no layout effect, and therefore nothing that can outlive this element.
@@ -1103,11 +1543,9 @@
                   react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
                   react.createElement("span", { key: "kind", style: CSS.dim }, kindOf(task.kind))),
                 react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.subject),
-                ))),
-              ),
-              // THE EDGES LAYER IS THE GRAPH'S OWN SECOND CHILD, and the closers below it end the
-              // column, the node, the grid, the wrapper and the graph in that order.
-              react.createElement("div", { key: "edges", "data-edges": "1", style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" } }, edges)))))
+                // The closers, in order: the node, the column's node map, the column, the grid's column
+                // map, the grid, the padded wrapper, the graph element, and `children.push`.
+                ))))))))
         }
         if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id]))
         for (const problem of state.problems) {

@@ -1,0 +1,12 @@
+[tui-panels] dsh-tui home fixture=.mpd/recon/tui-013/home/.dsh-tui/onboarding.json, .mpd/recon/tui-013/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-panels] seeded workmate library at .mpd/recon/tui-013/home/.mpd/workmate/qa-tui-probe
+[tui-panels] model-echo check: runSessions=1 checked=0 offenders=0 (must be 0)
+[tui-panels] harness command records THIS run: [{"sessionId":"09eceb85-d23e-4c89-b24c-8293637b436e","commandId":"cmd-02141b38-1","kind":"success","text":"mpd workmates（1）：qa-tui-probe"},{"sessionId":"09eceb85-d23e-4c89-b24c-8293637b436e","commandId":"cmd-02141b38-2","kind":"success","text":"mpd 侧栏面板：已打开（act1:team）"},{"sessionId":"09eceb85-d23e-4c89-b24c-8293637b436e","commandId":"cmd-02141b38-3","kind":"success"}]
+[tui-panels] surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiPanels=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=rendered tuiDialogs=rendered
+[tui-panels] panel registration id=act1:team ok=true
+[tui-panels] negative control ok=false (must be false)
+[tui-panels] board-opened events in the sandbox store=7 scene-reported transcript rows=0
+[tui-panels] renderer cross-check: the plugin APPENDED its log-only event (proven in the session store) but the host projected NO row: the Channel's own row count and the captured transcript are both empty, so this is a PROJECTION gap, not a registration one
+[tui-panels] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-06T14-02-20.539Z
+[tui-panels] FAIL: [{"surface":"tuiRenderers","step":"renderer","source":"pane","keys":["Escape"],"waitMs":6000,"pattern":"/board opened via/","label":"the log-only event rendered a transcript row","requiredPatterns":["/board opened via/"],"missingPatterns":["/board opened via/"],"missingProof":[],"rendered":false,"sourceChars":54,"paneChars":5070,"judgedChars":5070}]
+tui-panels exit=1

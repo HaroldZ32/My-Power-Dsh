@@ -1,0 +1,16 @@
+$ tsgo --noEmit
+packages/mpd-tui-plugin/src/panel-dag.ts(499,17): error TS2353: Object literal may only specify known properties, and 'absoluteRow' does not exist in type 'ElementKey & { onClick?: ((event: unknown) => void) | undefined; }'.
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts(153,49): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'DagTone[]'.
+      Type 'string' is not assignable to type 'DagTone'.
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts(187,39): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type '"▼"'.
+      Type 'undefined' is not assignable to type '"▼"'.
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts(188,40): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type '"▸"'.
+      Type 'undefined' is not assignable to type '"▸"'.
+error: script "typecheck" exited with code 1
+typecheck exit=1

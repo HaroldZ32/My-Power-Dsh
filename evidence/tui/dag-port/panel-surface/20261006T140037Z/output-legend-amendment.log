@@ -1,0 +1,49 @@
+=== the legend-ladder expectation amendment (test-only) ===
+
+--- bun test ./packages ---
+ 3 skip
+ 2 fail
+ 18974 expect() calls
+Ran 1794 tests across 146 files. [20.08s]
+
+--- bun test packages/mpd-tui-plugin/test/panel.test.ts ---
+ 18 pass
+ 0 fail
+ 133 expect() calls
+Ran 18 tests across 1 file. [112.00ms]
+
+--- tsgo --noEmit ---
+exit: 0
+
+--- verify:comments ---
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+--- src mtimes (must predate the freeze) ---
+2026-10-06T22:02:31 packages/mpd-tui-plugin/src/command-trees.ts
+2026-10-06T22:02:21 packages/mpd-tui-plugin/src/commands.ts
+2026-10-06T22:02:12 packages/mpd-tui-plugin/src/dag-theme.ts
+2026-10-05T22:12:51 packages/mpd-tui-plugin/src/dashboard-key.ts
+2026-10-04T11:43:48 packages/mpd-tui-plugin/src/decisions.ts
+2026-10-04T11:43:48 packages/mpd-tui-plugin/src/dialogs.ts
+2026-10-06T22:08:31 packages/mpd-tui-plugin/src/graph.ts
+2026-10-06T22:14:19 packages/mpd-tui-plugin/src/i18n.ts
+2026-10-06T22:04:28 packages/mpd-tui-plugin/src/index.ts
+2026-10-04T11:43:48 packages/mpd-tui-plugin/src/log.ts
+2026-10-06T17:24:28 packages/mpd-tui-plugin/src/model-menu.ts
+2026-10-06T22:18:03 packages/mpd-tui-plugin/src/panel-core.ts
+2026-10-06T22:19:31 packages/mpd-tui-plugin/src/panel-dag.ts
+2026-10-06T22:19:31 packages/mpd-tui-plugin/src/panel-workmate.ts
+2026-10-06T22:19:31 packages/mpd-tui-plugin/src/panel.ts
+2026-10-02T20:34:41 packages/mpd-tui-plugin/src/registration.ts
+2026-10-06T22:01:35 packages/mpd-tui-plugin/src/renderers.ts
+2026-10-02T20:34:41 packages/mpd-tui-plugin/src/sanitize.ts
+2026-10-06T22:15:57 packages/mpd-tui-plugin/src/scenes.ts
+2026-10-02T20:34:41 packages/mpd-tui-plugin/src/session-events.d.ts
+2026-10-06T17:24:28 packages/mpd-tui-plugin/src/settings.ts
+2026-10-04T11:43:48 packages/mpd-tui-plugin/src/shortcuts.ts
+2026-10-06T17:24:28 packages/mpd-tui-plugin/src/state.ts
+2026-10-06T22:10:07 packages/mpd-tui-plugin/src/status.ts
+2026-10-06T22:15:57 packages/mpd-tui-plugin/src/subagent-scene.ts
+2026-10-02T20:38:16 packages/mpd-tui-plugin/src/team-state.ts
+2026-10-06T19:32:38 packages/mpd-tui-plugin/src/types.ts
+2026-10-06T17:24:28 packages/mpd-tui-plugin/src/watchdog.ts

@@ -48,9 +48,404 @@
 // form), so it cannot drag a second React copy under the host's reconciler.
 import type { TuiScenePropsLike } from "./types.js"
 import { clampCells, stripControl } from "./sanitize.js"
-import { GRAPH_THEME, layoutGraph, legendLines, type GraphTask, type GraphView } from "./graph.js"
+import { layoutGraph, legendLines, type GraphTask, type GraphView } from "./graph.js"
 import { teamWorkflowLines, type TeamWorkflow } from "./team-state.js"
 import { t } from "./i18n.js"
+import { legendLinesFor, panelKit, textRow, toneColor, visualGlyph, type PanelKit } from "./panel-core.js"
+import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
+
+// ── THE SHARED SURFACE VISUAL SYSTEM ────────────────────────────────────────
+//
+// ONE vocabulary for every MPD terminal surface: the two scene modules (this one and `scenes.ts`), the
+// sidebar pages, the status row and the transcript rows. Nothing here invents a colour, a glyph, a
+// marker or a legend: the TONE table, the GLYPHS and the legend come from `dag-theme.ts` (frozen,
+// captain-owned) through `panel-core.ts` (the shared page core), so the DAG page, the merged panel and
+// the status line cannot drift apart in what a state LOOKS like. A surface composes these helpers; it
+// never names a theme key of its own.
+//
+// WHAT IS HERE AND WHAT IS NOT. `panel-core.ts` owns everything that is the same on a page and in a
+// scene: the tone→theme-key resolution, the glyphs, the toned text row and the composed legend — this
+// module IMPORTS those rather than re-deriving them. What is added here is only what a full-screen
+// SCENE has and a sidebar page does not: its own clock (the scene kit exposes `useAnimationFrame`,
+// whose time value the panel kit's `useAnimationTime` already is), a frame whose border title and
+// colour carry the surface's state, a section rule, the body-row label vocabulary, the progress bar and
+// the aggregate tone a status marker reports. A page that needs one of those may import it from here:
+// this module sits BELOW both scene consumers and above the core, so no import cycle can form.
+
+/** One tone a surface draws with: the frozen DAG union, re-exported so a consumer names ONE type. */
+export type SurfaceTone = DagTone
+
+/** The host kit a surface draws with: the React instance plus the element constructors it calls. */
+export interface SurfaceKit {
+  /** The host's React instance; every element goes through it (the single-React rule). */
+  React: ReactLike
+  /** The host's ui kit (`Box`, `Text`, `useInput`, `useTerminalSize`, the timers). */
+  ui: UiLike
+}
+
+/** The draw instructions one surface row carries. */
+export interface SurfaceRowStyle {
+  /** The tone the row draws in; omitted leaves the row in the host's plain text colour. */
+  tone?: DagTone
+  /** True for a row that must read as a heading. */
+  bold?: boolean
+  /** True for a row the surface draws dimmed (its legend, its key hints, its nested detail). */
+  dim?: boolean
+}
+
+/** The body-row vocabulary: the tone each LABEL draws in, keyed by the label a row opens with. */
+const ROW_LABEL_TONE: Readonly<Record<string, DagTone>> = Object.freeze({
+  workspace: "dim",
+  team: "focus",
+  phase: "chain",
+  plan: "chain",
+  "team-plan": "chain",
+  captain: "dim",
+  staged: "blocked",
+  watchdog: "blocked",
+  "team-hold": "blocked",
+  members: "dim",
+  roster: "focus",
+  tasks: "running",
+  boulder: "chain",
+  plans: "dim",
+  workmates: "dim",
+  mail: "dim",
+  note: "blocked",
+  confirm: "focus",
+  required: "chain",
+  runnable: "chain",
+})
+
+/**
+ * A body row's own shape: a lowercase label, its padding run, then the value.
+ *
+ * This is the vocabulary every MPD body row is written in (`boardLines`, `teamWorkflowLines`,
+ * `planProjectionLines`), and matching it is what lets a surface tone the LABEL column without
+ * re-parsing the sentence that follows it. A row that does not match is prose, and prose is never
+ * toned by position.
+ */
+const LABEL_ROW = /^([a-z][a-z0-9-]*)( {2,})([\s\S]*)$/u
+
+/**
+ * How one body row splits into its label column and the value that follows it.
+ * @param line - the row exactly as the body builder produced it.
+ * @returns the label (padding INCLUDED, so its tone paints a run of cells) and the remainder, whose
+ *   concatenation is byte-identical to `line`; undefined when this row is not a label row.
+ */
+export function labelSplit(line: string): { label: string; rest: string } | undefined {
+  /** The row's own label/padding/value triple, when it has one. */
+  const matched = LABEL_ROW.exec(line)
+  if (matched === null) return undefined
+  return { label: `${matched[1]}${matched[2]}`, rest: matched[3] }
+}
+
+/**
+ * The label one body row opens with, when it opens with one.
+ * @param line - the row exactly as the body builder produced it.
+ * @returns the bare label (no padding), or undefined for a prose or nested row.
+ */
+export function rowLabel(line: string): string | undefined {
+  /** The row's own split, when it is a label row at all. */
+  const split = labelSplit(line)
+  return split === undefined ? undefined : split.label.trimEnd()
+}
+
+/**
+ * The tone one host subagent row maps onto, in the same six-state vocabulary the DAG uses.
+ * @param row - the projected host row.
+ * @returns `running` for a live run, `failed` for a failed or cancelled one, `completed` only for the
+ *   status the host itself reports as completed, and `dim` for anything it does not recognize.
+ */
+export function toneOfStatus(row: SubagentRowView): DagTone {
+  if (row.live) return "running"
+  if (row.failed) return "failed"
+  return row.status === "completed" ? "completed" : "dim"
+}
+
+/**
+ * The team's dominant state — what the frame colour and the state marker report.
+ *
+ * The order of the tests IS the precedence: a failure outranks a live run, a live run outranks a
+ * finished board, and `blocked` is only reached when every task the tally has not resolved is drawn
+ * blocked. Nothing here re-derives a state the record already computed (the OPT-1 rule in `graph.ts`):
+ * `blocked` is read off the DRAWN states, never recomputed from the dependency graph.
+ * @param counts - the record's own task tally.
+ * @param states - the DRAWN state of every task, for the `blocked` reading.
+ * @returns the tone the surface's frame, marker and summary rows draw in.
+ */
+export function toneOfTally(
+  counts: { total: number; completed: number; inProgress: number; failed: number },
+  states: readonly unknown[] = [],
+): DagTone {
+  if (counts.failed > 0) return "failed"
+  if (counts.inProgress > 0) return "running"
+  if (counts.total > 0 && counts.completed >= counts.total) return "completed"
+  /** The tasks the tally has not resolved: neither finished nor cancelled. */
+  const unfinished = states.filter((state) => state !== "completed" && state !== "cancelled")
+  if (counts.total > 0 && unfinished.length > 0 && unfinished.every((state) => state === "blocked")) return "blocked"
+  return "open"
+}
+
+/**
+ * The order a surface reports its own state in: the loudest state present wins.
+ *
+ * `failed` first and `running` before `blocked` is the whole content of this table — a board with one
+ * broken task IS a broken board whatever else it is doing, and a board that is still moving is not
+ * "waiting". The drawing's own tones (`focus`, `chain`, `edge`, `blank`) sit below the six states so a
+ * decorative tone can never mask one that means something.
+ */
+const TONE_PRECEDENCE: readonly DagTone[] = Object.freeze([
+  "failed", "running", "blocked", "completed", "cancelled", "open", "focus", "chain", "edge", "dim", "blank",
+])
+
+/**
+ * The one tone a surface reports for a whole set of things.
+ * @param tones - the tones present on the surface, in any order.
+ * @returns the highest-precedence tone, or `dim` when the set is empty (nothing to report).
+ */
+export function dominantTone(tones: readonly DagTone[]): DagTone {
+  for (const tone of TONE_PRECEDENCE) if (tones.includes(tone)) return tone
+  return "dim"
+}
+
+/**
+ * One progress bar, over the frozen bar cells.
+ * @param filled - how many units are done; clamped into `0..total`.
+ * @param total - the tally's size; a non-finite or non-positive size draws an EMPTY bar.
+ * @param cells - the bar's width in cells; a non-positive or unmeasurable width draws nothing.
+ * @returns `cells` characters, never wider than the width asked for.
+ */
+export function barCells(filled: number, total: number, cells: number): string {
+  /** The bar's width in cells; a width that is not a finite number draws nothing at all. */
+  const width = Number.isFinite(cells) ? Math.max(0, Math.floor(cells)) : 0
+  if (width === 0) return ""
+  /** The tally, clamped to a finite and coherent pair. */
+  const whole = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
+  /** How much of that tally is done, never more than the whole and never below zero. */
+  const part = Number.isFinite(filled) ? Math.min(whole, Math.max(0, Math.floor(filled))) : 0
+  // ZERO OF ZERO DRAWS EMPTY, not full: rounding `0/0` up would paint a finished bar over a board the
+  // record has said nothing about. A non-zero part always lights at least one cell, so a bar that has
+  // started never reads as untouched.
+  const lit = whole === 0 ? 0 : Math.min(width, Math.max(part > 0 ? 1 : 0, Math.round((part / whole) * width)))
+  return DAG_CHROME.barFull.repeat(lit) + DAG_CHROME.barEmpty.repeat(width - lit)
+}
+
+/**
+ * The frames a running marker breathes through.
+ *
+ * Frame {@link DAG_ANIM.staticPhase} IS the published `running` state glyph, so a host with no timer
+ * draws exactly the character the legend says means `running` — the degraded frame is the static one,
+ * never a stalled intermediate.
+ */
+export const RUNNING_FRAMES: readonly string[] = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"])
+
+/**
+ * The running marker at one phase, wrapping rather than going out of range.
+ * @param phase - the phase index, from {@link animPhase} or from a caller's own clock.
+ * @returns one of {@link RUNNING_FRAMES}.
+ */
+export function runningMarker(phase: number): string {
+  /** The phase actually drawn; a non-finite phase is the static one. */
+  const index = Number.isFinite(phase) ? ((Math.floor(phase) % RUNNING_FRAMES.length) + RUNNING_FRAMES.length) % RUNNING_FRAMES.length : DAG_ANIM.staticPhase
+  return RUNNING_FRAMES[index] ?? DAG_TONE_GLYPH.running ?? "◐"
+}
+
+/**
+ * The tick a running marker is drawn at, from the frozen animation budget.
+ * @param timeMs - the host clock in milliseconds; a non-finite or non-positive clock is the static frame.
+ * @returns the phase index in `0..DAG_ANIM.frames`.
+ */
+export function animPhase(timeMs: number): number {
+  if (!Number.isFinite(timeMs) || timeMs <= 0) return DAG_ANIM.staticPhase
+  return Math.floor(timeMs / DAG_ANIM.intervalMs) % DAG_ANIM.frames
+}
+
+/**
+ * The marker a surface draws for its dominant state.
+ * @param tone - the state's tone.
+ * @param phase - the animation phase; only a `running` marker breathes.
+ * @returns the breathing marker for a live state, the contract's own state glyph for every other one
+ *   (read through `panel-core.ts`, so a scene and a page spell a state identically).
+ */
+export function stateMarker(tone: DagTone, phase: number): string {
+  return tone === "running" ? runningMarker(phase) : visualGlyph(tone)
+}
+
+/**
+ * Join the parts of one chrome title, dropping the ones that are not there.
+ * @param parts - the parts, in print order; an empty or absent part contributes nothing.
+ * @returns the parts joined with the surface separator, or "" when none of them exists.
+ */
+export function chromeTitle(parts: readonly (string | undefined)[]): string {
+  return parts.filter((part): part is string => part !== undefined && part !== "").join(" · ")
+}
+
+/**
+ * The one animation source a full-screen SCENE reads.
+ *
+ * The host's SCENE kit exposes `useAnimationFrame(ms)`, returning a `[ref, time]` pair whose ref must
+ * be attached to the animated element or the shared clock never starts; its PANEL kit exposes the time
+ * alone as `useAnimationTime(ms)` (which is why `panel-core.ts`'s `useRunningPhase` cannot drive a
+ * scene: the member it reads is absent from this kit). A kit with NEITHER is a host with no timer at
+ * all, and the surface then draws the frozen static frame — the honest degradation, never a
+ * half-animation that looks running while nothing ticks.
+ * @param ui - the host ui kit.
+ * @returns the clock in milliseconds (0 when the host has no timer) plus the ref to attach.
+ */
+export function useSurfaceClock(ui: UiLike): { time: number; ref: unknown } {
+  if (typeof ui.useAnimationFrame === "function") {
+    /** The host's own pair: the viewport ref that keeps the clock alive, and the current time. */
+    const pair = ui.useAnimationFrame(DAG_ANIM.intervalMs)
+    /** The ref (first) and the time (second), whatever shape the host returned. */
+    const ref = Array.isArray(pair) ? pair[0] : undefined
+    /** The clock, narrowed to a finite number. */
+    const time = Number(Array.isArray(pair) ? pair[1] : 0)
+    return { time: Number.isFinite(time) ? time : 0, ref }
+  }
+  if (typeof ui.useAnimationTime === "function") {
+    /** The panel kit's clock, narrowed to a finite number. */
+    const time = Number(ui.useAnimationTime(DAG_ANIM.intervalMs))
+    return { time: Number.isFinite(time) ? time : 0, ref: undefined }
+  }
+  return { time: 0, ref: undefined }
+}
+
+/**
+ * One drawn row, in the tone that carries its meaning.
+ *
+ * This is a thin SCENE-SHAPED ADAPTER over `panel-core.ts`'s {@link textRow}, not a second row builder:
+ * the element, the sanitizer and the tone→theme-key resolution are the core's, and what this adapter
+ * adds is the ONE precedence rule this file's surfaces obey.
+ * @param kit - the host kit.
+ * @param key - the React key (every row carries one, so a diff is stable and a test can address it).
+ * @param text - the row's text; sanitized by the core, so a caller may pass a raw record field.
+ * @param style - the tone, the emphasis and the dimming this row draws with.
+ * @returns the host element.
+ */
+export function surfaceText(kit: SurfaceKit, key: string, text: string, style: SurfaceRowStyle = {}): unknown {
+  // A TONED ROW IS NOT ALSO DIMMED. `dimColor` and a tone are two different signals, and the host's own
+  // `ThemedText` resolves an explicit colour OVER `dimColor`, so asking for both would silently drop one
+  // of them — the dim is reserved for the rows that have no tone of their own.
+  //
+  // THE CAST IS THE TWO LANE-OWNED KIT TYPES MEETING, and it is sound where it is used: the scene kit
+  // and the panel kit are different host objects that both carry `Box`/`Text` (the only members
+  // `textRow` reads), while the two structural declarations list different React members (the scene kit
+  // has no `useRef` contract here, the panel kit has no `useInput`), so neither type is assignable to
+  // the other even though every member `textRow` calls is present.
+  return textRow(kit as unknown as PanelKit, text, {
+    key,
+    ...(style.tone === undefined ? {} : { tone: style.tone }),
+    ...(style.bold === true ? { bold: true } : {}),
+    ...(style.dim === true && style.tone === undefined ? { dim: true } : {}),
+  })
+}
+
+/**
+ * One body row: its LABEL column in the row's own tone, its value in the surface's plain text.
+ *
+ * A row that does not open with a known label (a task line, a member line, a localized sentence, a
+ * blank) is drawn whole. The concatenation of the two spans is byte-identical to the input, so a
+ * surface may restyle a body without re-rendering it — the projection stays the body builder's.
+ * @param kit - the host kit.
+ * @param key - the React key.
+ * @param line - the row exactly as the body builder produced it.
+ * @param overrides - per-label tones for the rows whose tone depends on a VALUE (`tasks` is toned by
+ *   the tally, `runnable` by whether the plan can run), applied over the shared table.
+ * @returns the host element.
+ */
+export function surfaceBodyRow(kit: SurfaceKit, key: string, line: string, overrides?: Readonly<Record<string, DagTone>>): unknown {
+  if (line === "") return surfaceText(kit, key, line)
+  /** How this row splits into a label column and its value, when it is a label row. */
+  const split = labelSplit(line)
+  if (split === undefined) {
+    // A NESTED ROW IS DIMMED, and that is the whole hierarchy rule: an indented member or task line is
+    // detail under a heading the surface already toned, and the drawing below states its own colours.
+    return surfaceText(kit, key, line, line.startsWith("  ") ? { dim: true } : {})
+  }
+  /** The label this row opens with, without its padding. */
+  const label = split.label.trimEnd()
+  /** The tone this row draws: its override first, then the shared table, then the row's own fallback. */
+  const tone = overrides?.[label] ?? ROW_LABEL_TONE[label] ?? "dim"
+  return kit.React.createElement(
+    kit.ui.Text,
+    { key },
+    kit.React.createElement(kit.ui.Text, { key: "label", color: toneColor(tone) }, split.label),
+    kit.React.createElement(kit.ui.Text, { key: "value" }, split.rest),
+  )
+}
+
+/**
+ * A horizontal rule, in the host's own divider craft: a one-row box carrying ONLY its top border, with
+ * an optional section title embedded in it (the host's `SidePanelColumn` draws its separator the same
+ * way, and its frame titles go through `borderText`).
+ * @param kit - the host kit.
+ * @param key - the React key.
+ * @param title - the section title; omitted draws a bare rule.
+ * @param tone - the tone the rule and its title draw in.
+ * @returns the host element.
+ */
+export function surfaceRule(kit: SurfaceKit, key: string, title?: string, tone: DagTone = "dim"): unknown {
+  return kit.React.createElement(kit.ui.Box, {
+    key,
+    height: 1,
+    flexShrink: 0,
+    borderStyle: DAG_CHROME.frameBorder,
+    borderTop: true,
+    borderBottom: false,
+    borderLeft: false,
+    borderRight: false,
+    borderColor: toneColor(tone),
+    ...(title === undefined || title === "" ? {} : { borderText: { content: safeRow(title), position: "top", align: "start" } }),
+  })
+}
+
+/**
+ * The surface's own frame: the outer box a scene body sits in, its title embedded in the border and its
+ * border colour carrying the surface's dominant state.
+ * @param kit - the host kit.
+ * @param key - the React key.
+ * @param title - the border title, ALREADY clamped by the caller to the measured width.
+ * @param children - the drawn rows, in render order.
+ * @param tone - the surface's dominant tone (the same one its marker and summary rows use).
+ * @param ref - the animated element ref the host's clock wants, when this host has a timer.
+ * @returns the host element.
+ */
+export function surfaceFrame(
+  kit: SurfaceKit,
+  key: string,
+  title: string,
+  children: readonly unknown[],
+  tone: DagTone = "dim",
+  ref?: unknown,
+): unknown {
+  return kit.React.createElement(
+    kit.ui.Box,
+    {
+      key,
+      flexDirection: "column",
+      width: "100%",
+      flexGrow: 1,
+      paddingX: 1,
+      borderStyle: DAG_CHROME.frameBorder,
+      borderColor: toneColor(tone),
+      ...(ref === undefined ? {} : { ref }),
+      ...(title === "" ? {} : { borderText: { content: safeRow(title), position: "top", align: "start" } }),
+    },
+    children,
+  )
+}
+
+/**
+ * The key-hint footer every surface ends with.
+ * @param kit - the host kit.
+ * @param key - the React key.
+ * @param hints - the hints, in the order the reader should try them.
+ * @returns the host element.
+ */
+export function surfaceHints(kit: SurfaceKit, key: string, hints: readonly string[]): unknown {
+  return surfaceText(kit, key, chromeTitle(hints), { dim: true })
+}
 
 /** The scene id this component is registered under (unique, kebab-case, MPD-owned). */
 export const SUBAGENT_SCENE_ID = "mpd-tui-subagents"
@@ -182,6 +577,14 @@ interface UiLike {
   useInput?(handler: (input: string, key: SceneKey | undefined) => void): void
   /** The host's terminal-size hook, when this build exposes it. */
   useTerminalSize?(): { columns?: unknown; rows?: unknown }
+  /**
+   * The host's shared-clock hook, when this build exposes it: the SCENE kit's timer, returning a
+   * `[ref, time]` pair. A host without it (and without {@link UiLike.useAnimationTime}) has no timer at
+   * all, and a surface then draws its static frame rather than pretending to animate.
+   */
+  useAnimationFrame?(intervalMs: number | null): unknown
+  /** The PANEL kit's timer, when the same surface is handed a panel kit instead: the time alone. */
+  useAnimationTime?(intervalMs: number | null): number
 }
 
 /** The host kit, once the guard has proved both halves usable. */
@@ -239,20 +642,18 @@ function isoInstant(value: unknown): string | undefined {
 
 /**
  * Prove the host handed a usable React instance and ui kit.
+ *
+ * The VERDICT is `panel-core.ts`'s own guard, so a page and a scene refuse exactly the same hosts; the
+ * casts below are the two kit declarations meeting (the scene kit carries `useInput` and
+ * `useAnimationFrame` where the panel kit carries `useAnimationTime`, so neither structural type is
+ * assignable to the other even though every member proved here is the same). Each ADDITIONAL field is
+ * feature-detected at its own use site, so a leaner host build degrades instead of throwing.
  * @param React - the props' React field.
  * @param ui - the props' ui field.
  * @returns the two, typed, or undefined when the host kit is unusable.
  */
 function hostKit(React: unknown, ui: unknown): HostKit | undefined {
-  if (React === null || React === undefined || ui === null || ui === undefined) return undefined
-  if (typeof (React as { createElement?: unknown }).createElement !== "function") return undefined
-  /** The ui kit's own two required components, before anything is drawn with it. */
-  const kit = ui as { Box?: unknown; Text?: unknown }
-  if (typeof kit.Box !== "function" || typeof kit.Text !== "function") return undefined
-  // These two casts are the only narrowing available: the host hands its own React and ui kit
-  // across a JS boundary with no shared type. Every ADDITIONAL field read off them (`useInput`,
-  // `useTerminalSize`, `useSyncExternalStore`) is feature-detected at its own use site, so an older
-  // or leaner host build degrades instead of throwing.
+  if (panelKit(React, ui) === undefined) return undefined
   return { React: React as ReactLike, ui: ui as UiLike }
 }
 
@@ -722,6 +1123,13 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
     const close = typeof props.close === "function" ? props.close : () => {}
     /** The live session channel — the SAME object the host's own dashboard renders from. */
     const channel = props?.channel
+    // THE ONE TIMER this surface reads, taken BEFORE any other hook so its position never depends on a
+    // branch: a host with no timer answers `{time: 0}` and every animated cell below then draws the
+    // frozen static frame (see `useSurfaceClock`).
+    /** The host clock and the ref the animated element must carry to keep it running. */
+    const clock = useSurfaceClock(ui)
+    /** The phase the running marker breathes at, from the frozen animation budget. */
+    const phase = animPhase(clock.time)
 
     /** The team projection this render draws; undefined before the first read. */
     const workflowState = React.useState(undefined as TeamWorkflow | undefined)
@@ -921,15 +1329,31 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
       })
     }
 
+    // THE SURFACE'S DOMINANT STATE. Every surface reports ONE state in its frame colour and its
+    // marker, and this one has two bodies to report: the host's subagents on top, the MPD team below.
+    // The section tone is the host's own row states; the team tone is the record's tally. Neither is
+    // invented here — both come from the frozen six-state vocabulary.
+    /** The host section's dominant tone, from the rows actually drawn. */
+    const sectionTone: DagTone = dominantTone(rows.map((row) => toneOfStatus(row)))
+    /** The team's dominant tone, or `dim` when this workspace holds no readable team. */
+    const teamTone: DagTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual))
+    /** The tone the whole surface draws in, before the detail mode overrides it with its own row. */
+    const surfaceTone: DagTone = dominantTone([sectionTone, teamTone])
+    /** The tone this render's frame, marker and summary rows all read. */
+    const frameTone: DagTone = detailOpen && detailRow !== undefined ? toneOfStatus(detailRow) : surfaceTone
+
     /** The elements handed to the host's Box, in render order. */
     const children: unknown[] = []
     children.push(
-      React.createElement(
-        ui.Text,
-        { key: "title", bold: true },
+      surfaceText(
+        kit,
+        "title",
         // Resolved per render through MPD's own dictionary: the descriptor's title is fixed at
-        // registration, so the body must not read a stale constant either (see `i18n.ts`).
-        safeRow(`${t("scene.subagents")}${measured.size === "" ? "" : ` · ${measured.size}`}`),
+        // registration, so the body must not read a stale constant either (see `i18n.ts`). The state
+        // mark opens the row here as it does on every other scene, and it is NOT a title part: joining
+        // it with the separator would read `◐ · MPD …`, a mark followed by a dangling separator.
+        chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]),
+        { bold: true, tone: frameTone },
       ),
     )
     if (detailOpen) {
@@ -942,17 +1366,19 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
       for (let index = 0; index < detailRows.length; index += 1) {
         /** This row's own draw instructions. */
         const row = detailRows[index]
+        // THE DETAIL CARRIES ITS OWN TONES: its title takes the row's state tone (it is the row the
+        // user opened), its labelled facts are body rows like every other surface's.
         children.push(
-          React.createElement(
-            ui.Text,
-            {
-              key: `detail-${index}`,
-              ...(row.title === true ? { bold: true } : {}),
-              ...(row.dim === true ? { dimColor: true } : {}),
-            },
-            safeRow(row.text),
-          ),
+          row.title === true
+            ? surfaceText(kit, `detail-${index}`, row.text, { bold: true, tone: frameTone })
+            : surfaceBodyRow(kit, `detail-${index}`, row.text, row.dim === true ? undefined : { output: "dim" }),
         )
+        if (row.dim === true) {
+          // `subagentDetailRows` marks its paging hint dim rather than toned, and the hint is prose —
+          // it is redrawn here through the one row builder so it keeps the dim signal the projection
+          // asked for. The key is REUSED deliberately: the element replaces the one pushed above.
+          children[children.length - 1] = surfaceText(kit, `detail-${index}`, row.text, { dim: true })
+        }
       }
     } else {
       // (a) THE HOST'S OWN SUBAGENT ROWS — the top section, and the reason this scene exists.
@@ -961,14 +1387,22 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
       for (let index = 0; index < section.length; index += 1) {
         /** This row's own draw instructions. */
         const row = section[index]
+        // A SUBAGENT ROW DRAWS IN ITS OWN STATE TONE, and the tone is derived from the row's own
+        // projection rather than from its text: the header and the counts row summarise the section and
+        // take its dominant tone, an empty state keeps the host's dim, and a run row takes the tone of
+        // the status the host reported for it (`running`/`completed`/`failed`, `dim` when unknown).
+        /** The row view this section row projects, when it is a subagent row. */
+        const view = row.rowIndex === undefined ? undefined : rows[row.rowIndex]
+        /** The tone this row draws in. */
+        const tone: DagTone | undefined = view !== undefined ? toneOfStatus(view) : row.dim === true ? undefined : sectionTone
         /** The emphasis this row draws with, in the file's own row vocabulary. */
         const emphasis = {
-          ...(row.header === true ? { bold: true } : {}),
-          ...(row.dim === true ? { dimColor: true } : {}),
-          ...(row.rowIndex !== undefined && row.rowIndex === selectedIndex ? { bold: true } : {}),
+          ...(tone === undefined ? {} : { tone }),
+          bold: row.header === true || (view !== undefined && row.rowIndex === selectedIndex),
+          ...(row.dim === true ? { dim: true } : {}),
         }
         if (row.rowIndex === undefined) {
-          children.push(React.createElement(ui.Text, { key: `sub-${index}`, ...emphasis }, safeRow(row.text)))
+          children.push(surfaceText(kit, `sub-${index}`, row.text, emphasis))
           continue
         }
         // A SUBAGENT ROW IS WRAPPED IN A BOX because the kit's `Box` is the component that carries a
@@ -977,17 +1411,12 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
         // so the handler answers the row it was drawn for.
         /** The row index this Box selects when it is clicked. */
         const clicked = row.rowIndex
-        children.push(
-          React.createElement(
-            ui.Box,
-            { key: `sub-${index}`, onClick: () => setFocus(clicked) },
-            React.createElement(ui.Text, { key: "row", ...emphasis }, safeRow(row.text)),
-          ),
-        )
+        children.push(React.createElement(ui.Box, { key: `sub-${index}`, onClick: () => setFocus(clicked) }, surfaceText(kit, "row", row.text, emphasis)))
       }
       // (b) THE MPD TEAM PANEL BELOW IT — the SAME row builder and the SAME projection the team scene
-      // uses, so the two surfaces cannot describe the team differently.
-      children.push(React.createElement(ui.Text, { key: "sep" }, safeRow("")))
+      // uses, so the two surfaces cannot describe the team differently. The rule the section ends with
+      // is the host's own divider craft, and it carries the section's tone.
+      children.push(surfaceRule(kit, "sep", undefined, surfaceTone))
       /** The team body's rows, or the team scene's own unreadable line. */
       let teamLines: string[]
       try {
@@ -996,7 +1425,9 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
         teamLines = ["team state unreadable"]
       }
       for (let index = 0; index < teamLines.length; index += 1) {
-        children.push(React.createElement(ui.Text, { key: `team-${index}` }, safeRow(teamLines[index])))
+        /** The one row whose tone depends on a VALUE rather than on its label. */
+        const overrides: Readonly<Record<string, DagTone>> = { tasks: teamTone }
+        children.push(surfaceBodyRow(kit, `team-${index}`, teamLines[index], overrides))
       }
       /** The DAG box, absent when the team has no task to draw. */
       const view = teamGraphView(workflow, measured.cols)
@@ -1005,41 +1436,67 @@ export function createSubagentSceneComponent(readWorkflow: () => TeamWorkflow | 
         for (let index = 0; index < view.lines.length; index += 1) {
           // The spans go through WITHOUT `safeRow`, exactly as the team scene draws them: `graph.ts`
           // already applies `clampCells(stripControl(...))` at layout time, and re-clamping here would
-          // cut the row's own multi-span geometry twice.
+          // cut the row's own multi-span geometry twice. The COLOUR is resolved through the frozen
+          // contract's table, which is the table `graph.ts`'s own `GRAPH_THEME` mirrors — the drawing
+          // and the panels therefore cannot drift apart (asserted in `test/scene-visuals.test.ts`).
           /** The spans of this row, each drawn in its own theme colour. */
-          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: GRAPH_THEME[span.tone] }, span.text))
+          const spans = view.lines[index].map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans))
         }
         // THE LEGEND sits directly under the DAG, in the SAME width budget the graph was laid out
-        // for, so a line can never claim more cells than the drawing above it used. `graph.ts` owns
-        // the content (and clamps it); a drawing module that refuses costs the legend, never the
-        // surface — hence the contained call.
-        /** The legend lines the drawing module offers for this width. */
+        // for, so a line can never claim more cells than the drawing above it used. It is COMPOSED, not
+        // private: `graph.ts` owns the drawing's own sentences (the arrow/focus line and its own state
+        // key), and `panel-core.ts`'s `legendLinesFor` appends the CONTRACT's six-state key — the one
+        // that tells `○ blocked` from `○ open`, which the drawing module's own key cannot. Handing the
+        // drawing's lines to that helper is what keeps this scene's legend identical to the DAG page's.
+        // A drawing module that refuses costs the legend, never the surface (hence the contained call).
+        /** The drawing module's own lines: its arrow sentence and its own state key. */
+        let arrow: string[] = []
+        try {
+          arrow = legendLines(measured.cols)
+        } catch {
+          arrow = []
+        }
+        // THE TWO GROUPS KEEP THEIR OWNER'S KEY: the drawing's lines stay `legend-<i>` (the interface
+        // this package's own suite pins), and the contract's appended key rows are `state-key-<i>`, so
+        // a reader — and a test — can tell which owner said what. Both are drawn DIMMED: a legend
+        // explains the drawing and never competes with it.
+        for (let index = 0; index < arrow.length; index += 1) {
+          children.push(surfaceText(kit, `legend-${index}`, arrow[index], { dim: true }))
+        }
+        /** The composed legend: the drawing's lines followed by the contract's six-state key. */
         let legend: string[] = []
         try {
-          legend = legendLines(measured.cols)
+          legend = legendLinesFor(measured.cols, arrow)
         } catch {
           legend = []
         }
-        for (let index = 0; index < legend.length; index += 1) {
-          children.push(React.createElement(ui.Text, { key: `legend-${index}`, dimColor: true }, safeRow(legend[index])))
+        for (let index = arrow.length; index < legend.length; index += 1) {
+          children.push(surfaceText(kit, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
         }
       }
     }
-    if (noticeLine !== "") children.push(React.createElement(ui.Text, { key: "notice", color: "yellow" }, safeRow(noticeLine)))
+    if (noticeLine !== "") {
+      // A SUCCESS AND A REFUSAL ARE NOT THE SAME COLOUR: the notice vocabulary is this file's own
+      // (`interrupt requested …` / `interrupt: …`), and it is the only thing that tells them apart.
+      children.push(surfaceText(kit, "notice", noticeLine, { tone: noticeLine.startsWith("interrupt requested") ? "completed" : "blocked" }))
+    }
     // (c) The footer hint: what THIS mode answers to, and which MPD key opens the neighbours. The
     // detail advertises its own keys, because the list's esc/q mean something else there.
     children.push(
-      React.createElement(
-        ui.Text,
-        { key: "footer", dimColor: true },
-        safeRow(
-          detailOpen
-            ? "esc/backspace/q back to the list · ↑↓ scroll the output · i interrupt the selected run · r refresh"
-            : "esc/q close · ↑↓ select · enter detail · i interrupt the selected run · r refresh · alt+a this panel · alt+t team · alt+m board",
-        ),
+      surfaceHints(
+        kit,
+        "footer",
+        detailOpen
+          ? ["esc/backspace/q back to the list", "↑↓ scroll the output", "i interrupt the selected run", "r refresh"]
+          : ["esc/q close", "↑↓ select", "enter detail", "i interrupt the selected run", "r refresh", "alt+a this panel", "alt+t team", "alt+m board"],
       ),
     )
-    return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children)
+    // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
+    // dominant state — the same signal the marker in the title row draws. The host's animation ref goes
+    // HERE, because the frame is always on screen while a time-based cell is drawn inside it.
+    /** The border title, clamped to the measured width so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(kit, "frame", borderTitle, children, frameTone, clock.ref)
   }
 }

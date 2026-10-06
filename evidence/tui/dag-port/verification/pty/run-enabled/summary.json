@@ -1,0 +1,70 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013-en",
+  "widths": [
+    120,
+    80,
+    48,
+    32
+  ],
+  "verdicts": [
+    {
+      "cols": 120,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": true,
+      "panelTitleSeen": true,
+      "widestLine": 118,
+      "panelBars": [
+        "≡ ▸ ◆ ‹ MPD › D W",
+        "‹ 待办 › ▸ ◆ M D W",
+        "≡ ▸ ◆ M ‹ Dag › W",
+        "≡ ▸ ◆ M D ‹ Workmate ›",
+        "≡ ‹ 任务 › ◆ M D W                ⤢",
+        "≡ ▸ ‹ 代理 › M D W                ⤢"
+      ],
+      "mpdTabSeen": true,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run-enabled/w120/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run-enabled/w120/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 80,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 80,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run-enabled/w80/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run-enabled/w80/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 48,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 47,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run-enabled/w48/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run-enabled/w48/panel.pane.txt",
+      "failures": []
+    },
+    {
+      "cols": 32,
+      "chatRendered": true,
+      "tooNarrow": false,
+      "splitPresent": false,
+      "panelTitleSeen": false,
+      "widestLine": 32,
+      "panelBars": [],
+      "mpdTabSeen": false,
+      "bootPane": "evidence/tui/dag-port/verification/pty/run-enabled/w32/boot.pane.txt",
+      "panelPane": "evidence/tui/dag-port/verification/pty/run-enabled/w32/panel.pane.txt",
+      "failures": []
+    }
+  ]
+}

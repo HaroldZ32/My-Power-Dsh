@@ -82,8 +82,22 @@ export interface TeamTaskRecord {
   kind: TaskKind
   /** This task's own state. */
   status: TaskStatus
-  /** Ids of mpd tasks that must close before this one is ready. */
+  /** Ids of mpd tasks that must close before this one is ready; the caller's own text is KEPT. */
   blockedBy: string[]
+  /**
+   * The entries of {@link blockedBy} that matched NO task when they were accepted.
+   *
+   * `blockedBy` keeps the caller's text verbatim — an unresolvable reference is never deleted, because
+   * that text is the only record of what the writer meant — and on its own it cannot be told apart from
+   * "this task has no blockers": a reader that filters `blockedBy` against the live ids sees the same
+   * empty edge set either way. MEASURED 2026-10-06 on a live board: a plan whose `blockedBy` carried
+   * plan POSITIONS (`["2"]`, `["2","3","4","6"]`, `["7","8","9"]`) instead of ids or subjects was
+   * accepted silently and its whole dependency DAG flattened to one column with no warning anywhere.
+   * This field is that missing fact: non-empty exactly when some entry of `blockedBy` names nothing on
+   * this board. ABSENT means every entry resolved — so a reader can distinguish the two cases without
+   * guessing, and a page can say WHY it drew no edge.
+   */
+  unresolvedBlockers?: string[]
   /** Paths the task is expected to touch, forwarded to the executor's write-scope check. */
   writeScopes: string[]
   /** Display name of the owning member, when one is assigned. */
@@ -392,7 +406,11 @@ export interface NewTaskInput {
   description: string
   /** What the task is; defaults to `work`. */
   kind?: TaskKind
-  /** Subjects or ids this task is blocked by; a subject is resolved when a task carries it. */
+  /**
+   * What this task is blocked by: a task id (`"T2"`), a task SUBJECT, or — on the plan-approval path —
+   * the plan's own 1-based position. A reference that names nothing is KEPT verbatim and REPORTED on
+   * the stored task ({@link TeamTaskRecord.unresolvedBlockers}), never dropped in silence.
+   */
   blockedBy?: string[]
   /** Paths the task is expected to touch. */
   writeScopes?: string[]
@@ -404,12 +422,57 @@ export interface NewTaskInput {
   sourceTaskId?: string
 }
 
-/** Resolve one blocker reference to a task id: an exact id wins, else the first subject match. */
+/**
+ * Resolve one blocker reference to a task id: an exact id wins, else the first subject match.
+ *
+ * AN UNRESOLVED REFERENCE COMES BACK UNCHANGED, deliberately: the caller's text is the only record of
+ * what was meant, and DROPPING it is what made the 2026-10-06 flattening invisible. That also means this
+ * function alone cannot report the condition — every ACCEPTANCE point must split its references with
+ * {@link resolveBlockers} and store both halves, which is what makes the board able to say why an edge
+ * is missing.
+ * @param record - the record whose tasks are matched.
+ * @param reference - one reference, as the caller wrote it.
+ * @returns the matching task's id, else the reference unchanged.
+ */
 function resolveBlocker(record: TeamRecord, reference: string): string {
   if (record.tasks.some((task) => task.id === reference)) return reference
   /** The first task whose subject is the reference, which is how a staged plan writes blockers. */
   const bySubject = record.tasks.find((task) => task.subject === reference)
   return bySubject === undefined ? reference : bySubject.id
+}
+
+/** What a list of blocker references resolves to: the stored entries, and the ones nothing matched. */
+export interface BlockerResolution {
+  /** The entries to STORE in `blockedBy`: ids where a task matched, the caller's text where it did not. */
+  blockedBy: string[]
+  /** The subset of the input that named no task — the report a caller must carry into the record. */
+  unresolved: string[]
+}
+
+/**
+ * Split blocker references into the ids this record resolves and the entries it cannot.
+ *
+ * THE ONE PLACE THE SPLIT IS COMPUTED, so `addTeamTask` and `updateTeamTask` cannot disagree about what
+ * counts as unresolved, and a caller that needs the report (an approval path warning its captain, a tool
+ * answering with what it accepted) reads the same answer the record stores.
+ * @param record - the board the references are matched against.
+ * @param references - the references, as written.
+ * @returns the entries to store and the ones that resolved to nothing.
+ */
+export function resolveBlockers(record: TeamRecord, references: readonly string[]): BlockerResolution {
+  /** The stored entries, in the caller's order. */
+  const blockedBy: string[] = []
+  /** The entries that matched nothing, deduplicated so a repeated typo is reported once. */
+  const unresolved: string[] = []
+  for (const reference of references) {
+    /** What this one reference resolved to; equal to the input when nothing matched. */
+    const resolved = resolveBlocker(record, reference)
+    blockedBy.push(resolved)
+    // A reference that resolves to a task id (its own text matched) is NOT unresolved; one that merely
+    // LOOKS like an id but names no task is, which is exactly the case that used to be invisible.
+    if (!record.tasks.some((task) => task.id === resolved) && !unresolved.includes(reference)) unresolved.push(reference)
+  }
+  return { blockedBy, unresolved }
 }
 
 /**
@@ -426,8 +489,11 @@ export function addTeamTask(record: TeamRecord, input: NewTaskInput, now: Date):
   /** The trimmed subject, which is what gets stored. */
   const subject = input.subject.trim()
   if (subject === "") return record
-  /** The blockers, each resolved against the tasks this record already carries. */
-  const blockedBy = (input.blockedBy ?? []).map((reference) => resolveBlocker(record, reference))
+  // The blockers are split HERE, at the moment the reference is accepted: the ids go to `blockedBy` and
+  // whatever named nothing is reported BESIDE it on the task, so the next reader can say why there is no
+  // edge instead of silently drawing a flat board (see `TeamTaskRecord.unresolvedBlockers`).
+  /** What this task's references resolved to. */
+  const blockers = resolveBlockers(record, input.blockedBy ?? [])
   /** The appended task, carrying the record's own monotonic id. */
   const task: TeamTaskRecord = {
     id: "T" + record.nextTaskNumber,
@@ -435,11 +501,12 @@ export function addTeamTask(record: TeamRecord, input: NewTaskInput, now: Date):
     description: input.description,
     kind: input.kind ?? "work",
     status: "pending",
-    blockedBy,
+    blockedBy: blockers.blockedBy,
     writeScopes: [...(input.writeScopes ?? [])],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     revision: 1,
+    ...(blockers.unresolved.length === 0 ? {} : { unresolvedBlockers: blockers.unresolved }),
     ...(input.owner === undefined ? {} : { owner: input.owner }),
     ...(input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf }),
     ...(input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }),
@@ -480,6 +547,10 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
   const tasks = record.tasks.map((task) => {
     if (task.id !== taskId) return task
     touched = true
+    // A patched blocker list is split exactly like an appended one, so a re-edit can neither hide a
+    // dangling reference nor keep a stale report from an earlier edit.
+    /** What the patched references resolved to; untouched when the patch carries no blockers. */
+    const blockers = patch.blockedBy === undefined ? undefined : resolveBlockers(record, patch.blockedBy)
     /** The patched task; every optional field is applied only when the patch carries it. */
     const next: TeamTaskRecord = {
       ...task,
@@ -490,7 +561,12 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
       ...(patch.round === undefined ? {} : { round: patch.round }),
       ...(patch.verdict === undefined ? {} : { verdict: patch.verdict }),
       ...(patch.executorRef === undefined ? {} : { executorRef: patch.executorRef }),
-      ...(patch.blockedBy === undefined ? {} : { blockedBy: patch.blockedBy.map((reference) => resolveBlocker(record, reference)) }),
+      ...(blockers === undefined ? {} : { blockedBy: blockers.blockedBy }),
+    }
+    // The report FOLLOWS the list: clearing it when every entry now resolves, setting it otherwise.
+    if (blockers !== undefined) {
+      if (blockers.unresolved.length === 0) delete next.unresolvedBlockers
+      else next.unresolvedBlockers = blockers.unresolved
     }
     if (patch.owner !== undefined) {
       if (patch.owner === "") delete next.owner

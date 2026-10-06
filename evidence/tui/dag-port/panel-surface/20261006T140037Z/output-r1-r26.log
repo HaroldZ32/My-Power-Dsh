@@ -1,0 +1,25 @@
+=== R1 DIAGNOSIS + frame-title and R26 fixes ===
+
+--- R1 acceptance arms ---
+(pass) R1: non-empty board vs empty workspace > a board WITH tasks paints its rows (plus the header, the mode row and the legend) [0.61ms]
+(pass) R1: non-empty board vs empty workspace > a workspace with NO team prints the empty state that names the call which fills it [0.17ms]
+
+--- ./node_modules/.bin/tsgo --noEmit -p tsconfig.json ---
+tsgo exit: 0
+
+--- bun run verify:comments ---
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+packages/mpd-team-core-plugin/test/blocker-report.test.ts (1)
+comments exit: 0
+
+--- bun test packages/mpd-tui-plugin/test/panel.test.ts ---
+ 18 pass
+ 0 fail
+ 129 expect() calls
+Ran 18 tests across 1 file. [102.00ms]
+
+--- bun test packages/mpd-tui-plugin/test/panel-dag.test.ts ---
+ 32 pass
+ 2 fail
+ 531 expect() calls
+Ran 34 tests across 1 file. [184.00ms]

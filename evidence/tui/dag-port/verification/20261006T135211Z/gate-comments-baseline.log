@@ -1,0 +1,28 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 399 TypeScript file(s) of 399 in the source set; inspected 32806 declaration(s); skipped 15706 inline callback(s) as out of family
+
+VERDICT: FAIL — 13 violation(s) across 3 file(s).
+
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts (9)
+  68: comment — at
+  70: comment — open
+  74: comment — close
+  76: comment — ch
+  87: comment — body
+  126: comment — webHex
+  160: comment — webWord
+  175: comment — values
+  186: comment — graph
+
+packages/mpd-tui-plugin/src/panel-core.ts (3)
+  336: comment — drawn
+  487: comment — tick
+  617: comment — push
+
+packages/mpd-tui-plugin/src/panel-dag.ts (1)
+  433: comment — phase
+
+error: script "verify:comments" exited with code 1
+comments exit=1

@@ -12,7 +12,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { listTeams, readTeam, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
+import { listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
 import type { DispatchLedger } from "../src/dispatch"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
@@ -327,6 +327,86 @@ describe("approval builds an mpd-owned team record", () => {
     await h.call("agent_teams_plan", { action: "approve", dry_run: true })
     expect(listTeams(h.workspace)).toEqual([])
     expect(h.calls.length).toBe(0)
+  })
+
+  test("a plan written in its own POSITIONS resolves to real board ids — the measured one-column defect", async () => {
+    // THE DEFECT (R21, 2026-10-06): a captain wrote `blocked_by: ["2"]`, `["2","3"]`, … meaning the
+    // plan's own task positions. Every reference was accepted, none resolved, and the whole DAG
+    // flattened to one rank with no edge and no warning anywhere. The approval now resolves the plan's
+    // own namespace: a bare number is the 1-BASED position of a staged task, and both directions work
+    // (position 2 blocks 3; a forward reference from 2 to 3 is allowed because the whole plan is on the
+    // board before any reference is resolved).
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await h.call("agent_teams_plan", { action: "create", name: "positions", description: "d" })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second", description: "d", blocked_by: ["1"] } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", blocked_by: ["2"] } })
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The approved record's board. */
+    const board = listTeams(h.workspace)[0].tasks
+    expect(board.map((task) => task.id)).toEqual(["T1", "T2", "T3"])
+    expect(board[1].blockedBy).toEqual(["T1"])
+    expect(board[2].blockedBy).toEqual(["T2"])
+    // EVERY reference resolved, so nothing is reported: the picture is a real chain, not a flat board.
+    expect(board.every((task) => task.unresolvedBlockers === undefined)).toBe(true)
+    // …and the ranks the graph draws follow the edges, which is the whole point: 0, 1, 2.
+    expect(board.map((task) => taskDepths(board).get(task.id))).toEqual([0, 1, 2])
+  })
+
+  test("create_task ANSWERS with what its references will resolve to, at the moment they are written", async () => {
+    // WHERE THE CAPTAIN MEETS IT FIRST (R21). The defect was accepted in silence at write time and only
+    // showed up three layers downstream as a flat graph; the branch now answers with one `{reference,
+    // form}` entry per reference, and the rendered line says out loud which of them names nothing.
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await h.call("agent_teams_plan", { action: "create", name: "reading", description: "d" })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d" } })
+    /** What the second task's call answered. */
+    const answer = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "d", blocked_by: ["core", "1", "T2", "the review task"] } })) as { blockers?: Array<{ reference: string; form: string }> }
+    expect(answer.blockers).toEqual([
+      { reference: "core", form: "subject" },
+      { reference: "1", form: "position" },
+      { reference: "T2", form: "board-id" },
+      { reference: "the review task", form: "unknown" },
+    ])
+    /** The tool's own renderer (declared under `output`), which is the text a captain actually reads. */
+    const render = (h.tools.get("agent_teams_plan") as unknown as { output?: { render?: (args: unknown, value: unknown) => Array<{ text?: string }> } }).output?.render
+    /** The sentence it paints for this answer. */
+    const painted = (render?.({}, answer) ?? []).map((part) => part.text ?? "").join("")
+    expect(painted).toContain("the review task")
+    expect(painted).toContain("no task this plan can resolve")
+    // A task with NO blockers keeps the answer quiet: the reading is a report, not a banner.
+    /** What a blocker-free task answers. */
+    const plain = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d" } })) as { blockers?: unknown }
+    expect(plain.blockers).toBeUndefined()
+  })
+
+  test("a reference that names NOTHING is reported at approval, on the task AND in the plan", async () => {
+    // The other half: some references CANNOT be resolved (free text that matches no subject, or a
+    // number past the plan's own length). Those must not vanish — the board task keeps the text beside
+    // the report, the approval ANSWER carries it (so the captain sees it in the same turn), and the
+    // archived plan keeps it for whoever reads the plan afterwards.
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    /** The staged plan's id, which names its archive directory. */
+    const staged = (await h.call("agent_teams_plan", { action: "create", name: "dangling", description: "d" })) as { plan: { planId: string } }
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "only", description: "d", blocked_by: ["the review task"] } })
+    /** What the approval answered. */
+    const approved = (await h.call("agent_teams_plan", { action: "approve" })) as { created?: { unresolved?: Array<{ taskId: string; references: string[] }> } }
+    /** The board the approval built. */
+    const board = listTeams(h.workspace)[0].tasks
+    expect(board[0].blockedBy).toEqual(["the review task"])
+    expect(board[0].unresolvedBlockers).toEqual(["the review task"])
+    // The answer names the task and the exact text, so a captain cannot miss it…
+    expect(approved.created?.unresolved).toEqual([{ taskId: "T1", references: ["the review task"] }])
+    // …and the ARCHIVED plan carries the same reading, for whoever reads it afterwards.
+    /** The archived copy of the approved plan. */
+    const archived = JSON.parse(readFileSync(join(h.workspace, ".mpd", "team", "archive", staged.plan.planId, "plan.json"), "utf8")) as { created?: { unresolved?: unknown } }
+    expect(archived.created?.unresolved).toEqual([{ taskId: "T1", references: ["the review task"] }])
   })
 })
 

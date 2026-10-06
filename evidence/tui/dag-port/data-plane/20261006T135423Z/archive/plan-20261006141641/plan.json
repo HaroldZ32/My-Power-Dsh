@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "planId": "plan-20261006141641",
+  "sessionId": "sess-1",
+  "name": "r21-before-after",
+  "description": "the captain's pre-repair plan shape",
+  "approval": "required",
+  "members": [],
+  "tasks": [
+    {
+      "subject": "REQUIREMENT: freeze the acceptance contract",
+      "description": "d"
+    },
+    {
+      "subject": "WORK: the adaptive vertical DAG layout engine",
+      "description": "d"
+    },
+    {
+      "subject": "WORK: the independent dag + workmate sidebar pages",
+      "description": "d"
+    },
+    {
+      "subject": "WORK: redesign the whole mpd-tui surface layer",
+      "description": "d"
+    },
+    {
+      "subject": "WORK: ROOT-CAUSE why the existing team sidebar panel was invisible",
+      "description": "d"
+    },
+    {
+      "subject": "WORK: wire the dag + workmate panels through the adapter",
+      "description": "d",
+      "blockedBy": [
+        "2"
+      ]
+    },
+    {
+      "subject": "REVIEW: independent verification of R1..R16",
+      "description": "d",
+      "blockedBy": [
+        "2",
+        "3",
+        "4",
+        "6"
+      ]
+    },
+    {
+      "subject": "REVIEW: visual fidelity of the rendered TUI",
+      "description": "d",
+      "blockedBy": [
+        "7"
+      ]
+    },
+    {
+      "subject": "WORK: bilingual docs for the new panels",
+      "description": "d",
+      "blockedBy": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    {
+      "subject": "INTEGRATION: rebuild dist, gate sweep, Docker, PR",
+      "description": "d",
+      "blockedBy": [
+        "7",
+        "8",
+        "9"
+      ]
+    }
+  ],
+  "stagedAt": "2026-10-06T14:16:41.140Z",
+  "approvedAt": "2026-10-06T14:16:41.142Z",
+  "created": {
+    "members": [],
+    "tasks": [
+      {
+        "subject": "REQUIREMENT: freeze the acceptance contract",
+        "id": "T1"
+      },
+      {
+        "subject": "WORK: the adaptive vertical DAG layout engine",
+        "id": "T2"
+      },
+      {
+        "subject": "WORK: the independent dag + workmate sidebar pages",
+        "id": "T3"
+      },
+      {
+        "subject": "WORK: redesign the whole mpd-tui surface layer",
+        "id": "T4"
+      },
+      {
+        "subject": "WORK: ROOT-CAUSE why the existing team sidebar panel was invisible",
+        "id": "T5"
+      },
+      {
+        "subject": "WORK: wire the dag + workmate panels through the adapter",
+        "id": "T6"
+      },
+      {
+        "subject": "REVIEW: independent verification of R1..R16",
+        "id": "T7"
+      },
+      {
+        "subject": "REVIEW: visual fidelity of the rendered TUI",
+        "id": "T8"
+      },
+      {
+        "subject": "WORK: bilingual docs for the new panels",
+        "id": "T9"
+      },
+      {
+        "subject": "INTEGRATION: rebuild dist, gate sweep, Docker, PR",
+        "id": "T10"
+      }
+    ]
+  }
+}

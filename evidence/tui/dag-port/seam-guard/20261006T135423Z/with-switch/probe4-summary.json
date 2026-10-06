@@ -1,0 +1,32 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+  "out": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch",
+  "panelId": "act1:team",
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/boot.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-completions",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/panel-completions.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "clear",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/clear.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆ M",
+      "mentionsPanelId": false
+    },
+    {
+      "step": "panel-by-id",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/with-switch/panel-by-id.pane.txt",
+      "bar": "│ ≡ ▸ ◆ ‹ MPD ›",
+      "mentionsPanelId": false
+    }
+  ]
+}

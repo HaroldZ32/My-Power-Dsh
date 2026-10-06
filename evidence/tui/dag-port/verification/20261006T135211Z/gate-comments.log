@@ -1,0 +1,49 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 402 TypeScript file(s) of 402 in the source set; inspected 33234 declaration(s); skipped 15976 inline callback(s) as out of family
+
+VERDICT: FAIL — 40 violation(s) across 7 file(s).
+
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts (26)
+  270: comment — out
+  271: comment — cell
+  287: comment — hit
+  293: comment — view
+  305: comment — derived
+  308: comment — served
+  315: comment — view
+  323: comment — view
+  343: comment — served
+  344: comment — view
+  351: comment — cyclic
+  352: comment — view
+  … 14 more
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts (4)
+  438: comment — ctx
+  584: comment — label
+  585: comment — bottom
+  635: comment — page
+
+packages/mpd-tui-plugin/src/panel-core.ts (3)
+  381: comment — drawn
+  547: comment — tick
+  681: comment — push
+
+packages/mpd-tui-plugin/test/panel-visibility.test.ts (3)
+  34: comment — launcher
+  104: comment — factory
+  145: comment — resolved
+
+packages/mpd-tui-plugin/src/panel-workmate.ts (2)
+  204: comment — model
+  377: comment — next
+
+packages/mpd-tui-plugin/src/panel-dag.ts (1)
+  585: comment — phase
+
+packages/mpd-tui-plugin/src/subagent-scene.ts (1)
+  225: comment — part
+
+error: script "verify:comments" exited with code 1

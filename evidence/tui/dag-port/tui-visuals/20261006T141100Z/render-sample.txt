@@ -1,0 +1,38 @@
+=== MPD team scene, 100x30 (the frame's border is drawn by the HOST; a double shows only rows) ===
+◐ MPD team — wave-visuals (team-20261007120000) · 100x30
+█████░░░░░░░░░░░ 1/3 · staged · 3 task(s) · 1 done · 1 running · 1 pending · 0 failed · 2 link(s)
+roster  ◐Architect 0/1
+task dependency graph
+┌────────────────────────────────┐
+│ ✓ T1 REQ 冻结验收契约          │
+└────────────────┬───────────────┘
+                 │
+                 │
+                 ▼
+┌────────────────┴───────────────┐
+│ ◐ T2 WRK build the surface laye│
+└────────────────┬───────────────┘
+                 │
+                 │
+                 ▼
+┌────────────────┴───────────────┐
+│ ○ T3 REV review the visuals    │
+└────────────────────────────────┘
+▼/▸ blocker above → dependent below · ▶ focus lights its chain
+✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled
+✓ completed · ◐ running · ○ open=blocked · ✗ failed · ○ blocked=open · ⊘ cancelled
+esc/q close · ↑↓ focus · click pins · hover previews · ⇧↑↓ scroll · r refresh · a plan · p board
+
+=== MPD board scene, 100x30 ===
+◐ MPD board — 9 line(s) · 100x30
+0 transcript row(s) · ████████░░░░░░░░░░░░░░░░ 1/3
+workspace  /tmp/look-whz4tx
+
+team       wave-visuals (team-20261007120000) · phase staged
+members    1
+tasks      3 total · 1 completed · 1 in progress · 1 pending · 0 claimed · 0 failed
+
+boulder    （无工作台账）
+plans      0
+workmates  0
+esc/q close · r refresh · a team workflow

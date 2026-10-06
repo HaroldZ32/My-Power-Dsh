@@ -1,0 +1,144 @@
+{
+  "lane": "panel-surface",
+  "claims": [
+    "R1",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R11",
+    "R12"
+  ],
+  "status": "done",
+  "files": {
+    "written": [
+      "packages/mpd-tui-plugin/src/panel-core.ts",
+      "packages/mpd-tui-plugin/src/panel-dag.ts",
+      "packages/mpd-tui-plugin/src/panel-workmate.ts",
+      "packages/mpd-tui-plugin/test/panel-dag.test.ts"
+    ],
+    "edited": [
+      "packages/mpd-tui-plugin/src/panel.ts"
+    ],
+    "not_touched": [
+      "src/dag-theme.ts",
+      "src/graph.ts",
+      "src/subagent-scene.ts",
+      "src/index.ts",
+      "src/registration.ts",
+      "test/panel.test.ts"
+    ]
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/",
+      "result": "278 pass, 3 fail",
+      "failures": [
+        "test/dag-fidelity.test.ts 'R19: within a rank the task order is NUMERIC' (dag-geometry/fidelity-verifier)",
+        "test/panel-visibility.test.ts 'AT the split threshold the panel column is exactly the host's own floor' \u2014 PANEL_MIN_COLUMNS=32 exceeds dimensions.PANEL_MIN_COLUMNS=28",
+        "test/panel-visibility.test.ts 'the descriptor this bundle registers is the shape the host accepts' \u2014 the same 32 vs 28 assertion"
+      ],
+      "scope_note": "every failure is outside this lane: dag-fidelity is dag-geometry's fixture, panel-visibility is fidelity-verifier's, and its two arms red on the PRE-EXISTING PANEL_MIN_COLUMNS = 32 in panel.ts (not changed by this lane)."
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/panel-dag.test.ts",
+      "result": "24 pass, 0 fail"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/panel.test.ts",
+      "result": "18 pass, 0 fail",
+      "scope_note": "the frozen merged-panel contract was preserved: descriptor shape, section order, geometry budget, null-render arms"
+    },
+    {
+      "command": "./node_modules/.bin/tsgo --noEmit -p tsconfig.json",
+      "result": "exit code 0, no output"
+    }
+  ],
+  "revised_requirements": {
+    "R7": "layoutList gained a real caller: dagPanelLayout's dense-list branch (>24 tasks at a narrow width). No scene-facing supersede needed; graph.ts is untouched by this lane.",
+    "R8": "useRunningPhase(true -> interval, false -> null). Degradation proven by a kit with no useAnimationTime AND a kit whose timer answers NaN.",
+    "R9": "badge ladder failed->error, blocked->warning, running->info, else null(clear). Icons: dag '\u25c8', workmate '\u25c6' (DAG_CHROME.pinMarker), both measured at 1 cell by sanitize.cellWidth."
+  },
+  "unfinished": [
+    "panel.ts keeps its frozen shape: no icon, and NO key bindings (it exposes Esc-unpin only). A browser-managed icon on the merged panel would require editing the frozen descriptor assertion in test/panel.test.ts, which is outside this lane's write scope.",
+    "The three page titles are English literals; i18n entries belong to the seam lane (panel titles are not localized by the host).",
+    "dist/ rebuild is the captain's scope."
+  ],
+  "exports_for_seam_guard": {
+    "panel-dag.ts": [
+      "DAG_PANEL_ID",
+      "DAG_PANEL_TITLE",
+      "DAG_PANEL_ICON",
+      "DAG_PANEL_ORDER",
+      "DAG_PANEL_DESCRIPTOR_FROZEN",
+      "createDagPanelComponent",
+      "registerDagPanel",
+      "dagPageOf",
+      "dagPanelLayout",
+      "dagBadge",
+      "pinnedDetailLines",
+      "dagPanelKeyAction"
+    ],
+    "panel-workmate.ts": [
+      "WORKMATE_PANEL_ID",
+      "WORKMATE_PANEL_TITLE",
+      "WORKMATE_PANEL_ICON",
+      "WORKMATE_PANEL_ORDER",
+      "WORKMATE_PANEL_DESCRIPTOR_FROZEN",
+      "createWorkmatePanelComponent",
+      "registerWorkmatePanel",
+      "readWorkmateLibrary"
+    ],
+    "panel.ts": [
+      "PANEL_SLUG",
+      "PANEL_TITLE",
+      "PANEL_MIN_COLUMNS",
+      "PANEL_ORDER",
+      "PANEL_DESCRIPTOR_FROZEN",
+      "createPanelComponent",
+      "registerPanelSurface",
+      "panelStatusLine",
+      "takeoverArmed",
+      "PanelDeps",
+      "PanelSeam",
+      "PanelOutcome",
+      "PanelOpenOutcome"
+    ]
+  },
+  "ruling_wave_2026_10_13": {
+    "ruling": "descriptor minColumns lowered to the host's own PANEL_MIN_COLUMNS = 28 for all three pages",
+    "changed": [
+      "src/panel.ts: PANEL_MIN_COLUMNS 32 -> 28 (+ the measured rationale, citing the captain's dag-theme.ts note)",
+      "src/panel-core.ts: panelFloorColumns comment records that the merged and DAG pages share the contract's floor",
+      "test/panel.test.ts:400 amended 32 -> 28 (the ONE line the captain put in scope; nothing else in that file touched)",
+      "test/panel-dag.test.ts: floor arm recalibrated to assert 28 AND 32 both draw rail"
+    ],
+    "unchanged_by_design": [
+      "src/panel-dag.ts descriptor now reads DAG_PANEL_MIN_COLUMNS (the captain's 28) \u2014 no literal in that file",
+      "src/panel-workmate.ts descriptor reads WORKMATE_PANEL_MIN_COLUMNS (28) \u2014 already correct",
+      "MIN_BOX_LABEL_CELLS stays 32: the descriptor ASKS the host, the layout gate decides readability"
+    ],
+    "commands": [
+      {
+        "command": "bun test packages/mpd-tui-plugin/test/panel-dag.test.ts",
+        "result": "24 pass, 0 fail"
+      },
+      {
+        "command": "bun test packages/mpd-tui-plugin/test/panel.test.ts",
+        "result": "18 pass, 0 fail"
+      },
+      {
+        "command": "./node_modules/.bin/tsgo --noEmit -p tsconfig.json",
+        "result": "exit 1, ONE error, outside this lane: packages/mpd-bundle-plugin/src/team-view.ts(1360,9) TS1005 ',' expected \u2014 the WEB reference, actively mid-edit by another lane. Zero errors in any mpd-tui-plugin file."
+      }
+    ],
+    "new_finding": {
+      "file": "packages/mpd-tui-plugin/test/panel-visibility.test.ts:154",
+      "assertion": "expect(firstWidth).toBeGreaterThan(threshold)",
+      "observed": "Expected: > 93, Received: 93",
+      "cause": "firstWidth is the first width at which resolved.panel >= PANEL_MIN_COLUMNS. With the floor now AT the host's own 28, that is satisfied at the split threshold itself (resolveSidePanelGeometry({columns: 93}) returns panel 28), so firstWidth === threshold. The arm was CALIBRATED to the defect (it proved the band existed below 101); with the band gone it can no longer pass, and its sibling arm on line 167 now PASSES.",
+      "disposition": "NOT fixed here \u2014 panel-visibility.test.ts belongs to fidelity-verifier and the captain's scope grant covered exactly one line of panel.test.ts. Recommended replacement (captain to hand to fidelity-verifier): drop the firstWidth probe and assert the containment , which is the real invariant and is already TRUE.",
+      "expected": "1 fail in panel-visibility.test.ts, of which the R13 'descriptor shape' arm has gone GREEN"
+    }
+  }
+}

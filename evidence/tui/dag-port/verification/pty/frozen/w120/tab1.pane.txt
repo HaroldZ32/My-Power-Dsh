@@ -1,0 +1,50 @@
+
+                                                                                │ ≡ ▸ ◆ M ‹ MPD DAG › ◆
+  ✦ dsh-TUI  v0.13.0                                                            ├─────────────────────────────────────
+  ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓  ▓▓                       │┌MPD DAG────────────────────────────┐
+  ▓▓  ▓▓ ▓▓     ▓▓     ▓▓  ▓▓ ▓▓     ▓▓     ▓▓     ▓▓ ▓▓                        ││team tui-dag-port  phase active  ta│
+  ▓▓  ▓▓ ▓▓▒▒▒  ▓▓▒▒▒  ▓▓▒▒▒▒  ▒▒▒▒▒ ▓▓▒▒▒  ▓▓▒▒▒  ▓▓▓                          ││○ T1 WRK REQUIREMENT: freeze   lead│
+  ▓▓  ▓▓ ▓▓     ▓▓     ▓▓         ▓▓ ▓▓     ▓▓     ▓▓ ▓▓                        ││○ T2 WRK WORK: the ad  dag-geometry│
+  ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓     ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓▒▒▒▒ ▓▓  ▓▓                       ││└─▸ ○ T11 FIX FIX: th  dag-geometry│
+                                                                                ││○ T3 WRK WORK: the i  panel-surface│
+  ▓▓  ▓▓   ▒▒▒▒   ▓▓▒▒▒▒  ▓▓  ▓▓  ▓▓▒▒▒▒  ▓▓▒▒▒▒  ▓▓▒▒▒▒                        ││└─▸ ○ T6 WRK WORK: wire  seam-guard│
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓▓ ▓▓  ▓▓      ▓▓      ▓▓                            ││   ├─▸ ○ T7 WRK REVIEW: independent│
+  ▓▓▒▒▓▓  ▓▓▒▒▓▓  ▓▓▒▒▒▒  ▓▓ ▓▓▓  ▓▓▒▒▒    ▒▒▒▒▒   ▒▒▒▒▒                        ││   │  └─▸ ○ T8 WRK REVIEW: visual f│
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓ ▓▓   ▓▓  ▓▓  ▓▓          ▓▓      ▓▓                        ││   │     └─▸ ○ T10 WRK INTEGRATION:│
+  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓  ▓▓▒▒▒▒  ▓▓▒▒▒▒  ▓▓▒▒▒▒                        ││   ├─▸ ○ T9 WRK WORK: bilingual doc│
+  deepseek-flash · Max effort                                                   ││   └─▸ ○ T12 FIX FIX: t  seam-guard│
+  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013-en/ws         ││○ T4 WRK WORK: redesig  tui-visuals│
+  提示：/mcp 查看 MCP 服务器与工具连接 · /tips 更多技巧                         ││○ T5 WRK WORK: ROOT-CAU  seam-guard│
+                                                                                ││view rail · 12 tasks · ranks derive│
+    探索未至之境！                                                              ││▼/▸ blocker → dependent · ▶ focus  │
+                                                                                ││✓ completed · ◐ running            │
+                                                                                ││○ open=blocked · ✗ failed          │
+   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 19 段 · 运行时上下文 2 项 · 技…  ││○ blocked=open · ⊘ cancelled       │
+                                                                                ││↑↓/jk move · Enter pin · Esc unpin │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+                                                                                ││                                   │
+  mpd: 团队 tui-dag-port 7·0/12 · 计划 0 · workmate 1                           ││                                   │
+                                                                                ││                                   │
+  ╭────────────────────────────────────────────────────────────────────────────╮││                                   │
+  ⌸ ❯                                                                          ⛶││                                   │
+  ╰────────────────────────────────────────────────────────────────────────────╯│└───────────────────────────────────┘
+   deepseek-flash · max · ws                                                    ├─────────────────────────────────────
+                                                                                │ Esc 聊天 · ←/→ 切换 · z 缩放 · +/-…
+

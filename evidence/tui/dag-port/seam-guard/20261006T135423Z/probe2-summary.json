@@ -1,0 +1,33 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013",
+  "out": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z",
+  "stderrFile": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/tui-013/ws/seam-guard-boot-stderr.log",
+  "failures": [],
+  "rows": [
+    {
+      "step": "boot",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/boot.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "cmd-status",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/cmd-status.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "cmd-panel",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/cmd-panel.pane.txt",
+      "bar": ""
+    },
+    {
+      "step": "panel-toggle",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/panel-toggle.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆"
+    },
+    {
+      "step": "ctrl-b",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/dag-port/seam-guard/20261006T135423Z/ctrl-b.pane.txt",
+      "bar": "│ ‹ 待办 › ▸ ◆"
+    }
+  ]
+}

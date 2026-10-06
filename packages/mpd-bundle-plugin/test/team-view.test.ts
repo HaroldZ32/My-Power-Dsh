@@ -225,6 +225,24 @@ interface GraphGeometry {
   gridTemplateColumns: string
   /** Every node's box, in column-major order. */
   nodes: Array<{ task: { id: string }; rank: number; row: number; top: number }>
+  /** One ROUTED edge per drawable dependency, which is what the render paints and the arms assert. */
+  edges: Array<{ parent: string; child: string; witness: string; segments: Array<{ key: string; rect: Rect }>; marker: Rect; pointsLeft: boolean }>
+  /** The inset every box keeps inside its column, widened by the lane count it must pay for. */
+  inset: number
+  /** The measured gutter between two neighbouring columns' boxes. */
+  gutter: number
+  /** How many vertical runs the busiest gutter carries. */
+  maxLanes: number
+  /** How many lanes could not be given a distinct column. */
+  laneOverflow: number
+  /** How many rows each rank's column holds, reserved rows included. */
+  slots: number[]
+  /** Whether the ranks were DERIVED from the `blockedBy` graph (R20), or taken off the served depth. */
+  ranksDerived: boolean
+  /** The blocker references no task on the board carries, sorted. */
+  unresolved: string[]
+  /** The subset of `unresolved` that the RECORD ITSELF reports; empty when the payload carries none. */
+  unresolvedRecorded: string[]
 }
 
 /** Everything one rendered case needs: the tree, the runtime and the restored globals. */
@@ -348,6 +366,24 @@ describe("team-view DAG geometry", () => {
     // would otherwise cross a node in.
     expect(graph.columns.map((column) => column.map((task) => task.id))).toEqual([["A", "B"], [], ["C"]])
     expect(graph.nodes.map((node) => [node.task.id, node.rank])).toEqual([["A", 0], ["B", 0], ["C", 2]])
+  })
+
+  test("R19: within a column the task order is NUMERIC, so t2 precedes t10 and t20 follows t2", () => {
+    // THE BOARD IS HANDED IN DELIBERATELY SCRAMBLED, and the ids are chosen to break a LEXICAL sort:
+    // character-wise `T10` and `T20` both precede `T2`, which is exactly the order this arm exists to
+    // catch. MEASURED before the fix: the column drew `T10, T2, T1, T3, T20`.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** Five tasks of one rank, served in an order no reader would draw. */
+    const scrambled = [
+      { id: "T10", depth: 0 }, { id: "T2", depth: 0 }, { id: "T1", depth: 0 }, { id: "T3", depth: 0 }, { id: "T20", depth: 0 },
+    ]
+    /** The geometry of that board. */
+    const graph = view.layout(scrambled)
+    expect(graph.columns[0].map((task) => task.id)).toEqual(["T1", "T2", "T3", "T10", "T20"])
+    // AND THE NODES ARE PLACED IN THAT ORDER: the rows are what the render stacks, so a sorted column
+    // that the boxes ignored would be a fix in name only.
+    expect(graph.nodes.map((node) => [node.task.id, node.row])).toEqual([["T1", 0], ["T2", 1], ["T3", 2], ["T10", 3], ["T20", 4]])
   })
 })
 
@@ -573,7 +609,10 @@ describe("team-view drawn edges", () => {
     expect(edge.length).toBe(1)
     /** The edge's three segments, in draw order. */
     const segments = (edge[0].props.children as ElementNode[])
-    expect(segments.map((segment) => segment.key)).toEqual(["out", "riser", "in"])
+    // The lead-out, the riser, the lead-in — and the ARRIVAL MARKER, which is the fourth child: the
+    // WEB view used to draw no arrowhead at all, so with several edges meeting one node there was no
+    // way to read which way the dependency ran. The marker is a sibling of the runs, never a run.
+    expect(segments.map((segment) => segment.key)).toEqual(["out", "riser", "in", "head"])
     // MERMAID-STYLE ROUTING, so the numbers are the boxes' own borders rather than a fixed inset.
     // A node is `COLUMN_PAD` (4) inside its 168px column, so column 0's box spans 4..164 and column 1's
     // spans 172..332. Both boxes' vertical middle is their top (4) plus half a node (21) = 25.
@@ -659,6 +698,9 @@ describe("team-view drawn edges", () => {
     expect(edges.map((edge) => edge.props["data-mpd-edge"]).sort()).toEqual(["T1<-T2", "T2<-T1"])
     for (const edge of edges) {
       for (const segment of edge.props.children as ElementNode[]) {
+        // THE MARKER IS NOT A RUN: it is a CSS triangle whose box is zero-wide by construction (the
+        // border widths are its size), so the "every run has a px width" rule applies to the runs.
+        if (segment.key === "head") continue
         /** This segment's own width, which must never be negative or unparsable. */
         const width = styleOf(segment, "width")
         expect(width.endsWith("px")).toBe(true)
@@ -813,5 +855,432 @@ describe("team-view localization", () => {
     /** The settled render through a translator that always fails. */
     const rendered = await renderView({ t: () => { throw new Error("locale is broken") } })
     expect(flatText(rendered.tree)).toContain("MEMBERS (2)")
+  })
+})
+
+/**
+ * The board from the user's own screenshot (2026-10-06), transcribed rank by rank.
+ *
+ * FIVE ranks, and — the point of the fixture — EIGHT edges that SKIP a rank:
+ * `T2→T7`, `T3→T7`, `T4→T7` (rank 0 → rank 2), `T2→T9`, `T3→T9`, `T4→T9`, `T5→T9` (rank 0 → rank 2)
+ * and `T7→T10` (rank 2 → rank 4). Those are exactly the edges the old router ran THROUGH the
+ * intermediate column: it took the space between the two end boxes as "the band the riser lives in",
+ * and for a skipping edge that band is the whole column, so the riser stood in the middle of it.
+ *
+ * `T12←T6` is deliberately a SAME-RANK edge (the captain's own rank list puts both in rank 1), which is
+ * how the third routing shape — no gutter between the ends — is exercised by real data too.
+ */
+const LONG_EDGE_TASKS = [
+  { id: "T1", subject: "freeze the contract", kind: "requirement", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T2", subject: "the layout engine", kind: "work", status: "running", visual: "running", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T3", subject: "the panels", kind: "work", status: "running", visual: "running", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T4", subject: "the surface redesign", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T5", subject: "the invisible panel", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T6", subject: "wire the panels", kind: "work", status: "open", visual: "blocked", blockedBy: ["T3"], failedBy: [], depth: 1 },
+  { id: "T11", subject: "sidebar adapters", kind: "work", status: "open", visual: "blocked", blockedBy: ["T2"], failedBy: [], depth: 1 },
+  { id: "T12", subject: "the panel seam", kind: "work", status: "open", visual: "blocked", blockedBy: ["T6"], failedBy: [], depth: 1 },
+  { id: "T7", subject: "independent verification", kind: "review", status: "open", visual: "blocked", blockedBy: ["T2", "T3", "T4", "T6"], failedBy: [], depth: 2 },
+  { id: "T9", subject: "bilingual docs", kind: "work", status: "open", visual: "blocked", blockedBy: ["T2", "T3", "T4", "T5", "T6"], failedBy: [], depth: 2 },
+  { id: "T8", subject: "visual fidelity", kind: "review", status: "open", visual: "blocked", blockedBy: ["T7"], failedBy: [], depth: 3 },
+  { id: "T10", subject: "integration", kind: "integration", status: "open", visual: "blocked", blockedBy: ["T7", "T8", "T9"], failedBy: [], depth: 4 },
+]
+
+/** One axis-aligned rectangle, as the geometry and the DOM both publish them. */
+interface Rect {
+  /** The left x. */
+  left: number
+  /** The top y. */
+  top: number
+  /** The width. */
+  width: number
+  /** The height. */
+  height: number
+}
+
+/** Parse one `left,top,width,height` text into a rectangle. */
+function parseRect(text: string): Rect {
+  /** The four numbers, in the order the view writes them. */
+  const parts = text.split(",").map((value) => Number(value))
+  expect(parts.length).toBe(4)
+  for (const value of parts) expect(Number.isFinite(value)).toBe(true)
+  return { left: parts[0], top: parts[1], width: parts[2], height: parts[3] }
+}
+
+/**
+ * Whether a run enters a box's INTERIOR.
+ *
+ * The tolerance is deliberate and is the only honest one: a run may ABUT the border it attaches to
+ * (that is what "the edge arrives here" means, and the lead-in covers that border's own pixel), so the
+ * comparison is against the box shrunk by one pixel on every side. A run that crosses a box enters
+ * its interior and is caught; a line stopping one pixel short of the box it describes would show up in
+ * the separate "every edge reaches both of its boxes" arm.
+ */
+function entersInterior(run: Rect, box: Rect): boolean {
+  /** The box without its one-pixel border, which is the area a drawing may never cover. */
+  const inner = { left: box.left + 1, top: box.top + 1, width: box.width - 2, height: box.height - 2 }
+  return run.left < inner.left + inner.width && inner.left < run.left + run.width
+    && run.top < inner.top + inner.height && inner.top < run.top + run.height
+}
+
+describe("team-view edge legibility (the reported tangle)", () => {
+  test("NO drawn run enters any node box, on the five-rank board from the screenshot", async () => {
+    /** The settled render of the screenshot's board. */
+    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(LONG_EDGE_TASKS) } } })
+    // The witness counts first: 16 drawable dependencies on this board, in 5 ranks. The docker capture
+    // reads exactly these, so the geometric arm below is asserting the picture the user sees.
+    expect(one(tree, "data-mpd-graph", "ranks=5 edges=16").props["data-mpd-graph"]).toBe("ranks=5 edges=16")
+    /** Every box, as the render published it, keyed by task id. */
+    const boxes = new Map<string, Rect>()
+    for (const node of collect(tree, "data-mpd-node")) boxes.set(String(node.props["data-mpd-node"]), parseRect(String(node.props["data-mpd-box"])))
+    expect(boxes.size).toBe(LONG_EDGE_TASKS.length)
+    /** Every run of every drawn edge, each tagged with the edge that painted it. */
+    const runs: Array<{ edge: string; rect: Rect }> = []
+    for (const edge of collect(tree, "data-mpd-edge")) {
+      /** The witness value, which names the edge a run belongs to. */
+      const mark = String(edge.props["data-mpd-edge"])
+      /** The route as published: the runs, then `R`/`L` and the marker's own box. */
+      const [route] = String(edge.props["data-mpd-route"]).split("|")
+      for (const text of route.split(";")) runs.push({ edge: mark, rect: parseRect(text) })
+    }
+    expect(collect(tree, "data-mpd-edge").length).toBe(16)
+    expect(runs.length).toBeGreaterThan(16)
+    /** How many (run, box) pairs overlap, which must be none. */
+    let crossings = 0
+    for (const run of runs) for (const box of boxes.values()) if (entersInterior(run.rect, box)) crossings += 1
+    expect(crossings).toBe(0)
+    // POSITIVE CONTROL: the same check must FLAG the run the OLD router drew for T2→T7, or this arm
+    // could pass by measuring nothing at all. The old formula put that edge's riser at the centre of
+    // the band between T2's right border (164) and T7's left border (340) — x=252, inside rank 1 — and
+    // ran it from the parent's middle (25) down to the child's (77).
+    /** The pre-fix T2→T7 riser, reconstructed from the removed formula, which the check MUST catch. */
+    const oldRiser: Rect = { left: 252, top: 25, width: 1, height: 52 }
+    /** The boxes that riser stood inside, which is the tangle the user photographed. */
+    const caught = [...boxes].filter(([, box]) => entersInterior(oldRiser, box)).map(([id]) => id)
+    expect(caught.length).toBeGreaterThan(0)
+  })
+
+  test("a rank-skipping edge is routed as a CHAIN of adjacent-rank hops, not one riser through a column", async () => {
+    /** The view module, built without rendering, for the pure geometry. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The routed geometry of the screenshot's board. */
+    const graph = view.layout(LONG_EDGE_TASKS)
+    /** The long edge this arm follows: rank 0 → rank 2, over rank 1. */
+    const long = graph.edges.find((edge) => edge.parent === "T2" && edge.child === "T7")
+    expect(long).toBeDefined()
+    // BEFORE: three runs (lead-out, riser, lead-in) with ONE riser standing in the middle of rank 1's
+    // column. AFTER: five runs — the path leaves T2, drops into gutter 0, CROSSES rank 1 along a row
+    // reserved in it, drops into gutter 1 and arrives at T7.
+    expect((long as { segments: Array<{ key: string }> }).segments.map((segment) => segment.key)).toEqual(["out", "riser", "cross1", "riser2", "in"])
+    /** The runs of that edge, by key, so each claim reads off the drawn rectangle. */
+    const byKey = new Map((long as { segments: Array<{ key: string; rect: Rect }> }).segments.map((segment) => [segment.key, segment.rect]))
+    /** The first riser: the one that leaves T2's gutter. */
+    const riser1 = byKey.get("riser") as Rect
+    /** The second riser: the one that arrives at T7. */
+    const riser2 = byKey.get("riser2") as Rect
+    // THE TWO RISERS STAND IN DIFFERENT GUTTERS, which is the whole construction: a single riser could
+    // only travel down one x, and that x would have to cross rank 1's column.
+    expect(riser2.left).not.toBe(riser1.left)
+    // And the CROSSING runs along a row BELOW every box of the rank it crosses, which is why it cannot
+    // meet one. The rank members are read off the GEOMETRY's own nodes (R20 derives them), never off the
+    // fixture's served `depth`: this board is the captain's rank list, and the two disagree for `T12` —
+    // which is exactly the class of lie the derivation exists to ignore.
+    /** The crossing run, which is the horizontal hop over rank 1. */
+    const crossing = byKey.get("cross1") as Rect
+    /** The bottom edge of the lowest box the DRAWING placed in rank 1. */
+    const rank1Bottom = Math.max(...graph.nodes.filter((node) => node.rank === 1).map((node) => node.top + 42))
+    expect(crossing.top).toBeGreaterThanOrEqual(rank1Bottom)
+  })
+
+  test("every gutter lane gets its OWN column: one x per hop, none on a border", async () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The routed geometry of the screenshot's board. */
+    const graph = view.layout(LONG_EDGE_TASKS)
+    // THE ARITHMETIC IS CHECKED AGAINST THE DRAWING, not against a literal: an edge crosses EVERY gutter
+    // between its two ends, so each gutter's lane count is countable from the fixture and the DRAWN ranks
+    // alone. (The busiest is gutter 1 with ten hops here, because the rank-skipping edges pass through it
+    // on their way to rank 2 — the served depths would have said nine.)
+    /** The drawn rank of every task, read off the geometry. */
+    const rankOf: Record<string, number> = {}
+    for (const node of graph.nodes) rankOf[node.task.id] = node.rank
+    /** How many hops cross each gutter, counted from the fixture's own references. */
+    const perGutter = new Map<number, number>()
+    for (const task of LONG_EDGE_TASKS) {
+      for (const reference of task.blockedBy) {
+        /** The blocker's drawn rank. */
+        const from = rankOf[reference]
+        /** The blocked task's drawn rank. */
+        const to = rankOf[task.id]
+        for (let gap = Math.min(from, to); gap < Math.max(from, to); gap += 1) perGutter.set(gap, (perGutter.get(gap) ?? 0) + 1)
+      }
+    }
+    expect(graph.maxLanes).toBe(Math.max(...perGutter.values()))
+    // THE GUTTER IS PAID FOR OUT OF THE INSET: with that many lanes at the preferred 3px spacing the
+    // boxes give up more of their column, so the lanes are distinct instead of clamped onto one another.
+    expect(graph.gutter).toBeGreaterThanOrEqual(8)
+    expect(graph.laneOverflow).toBe(0)
+    /** The x of every riser standing in the first gutter, one per hop through it. */
+    const xs: number[] = []
+    for (const edge of graph.edges) {
+      // The FIRST vertical run is the one that drops out of the edge's blocker, so it stands in the
+      // gutter the blocker's column opens onto — here gutter 0, whose centre is the 168px boundary.
+      /** That edge's lead-out riser, absent when the route has no vertical run at all. */
+      const riser = edge.segments.find((segment) => segment.key === "riser")
+      if (riser === undefined) continue
+      if (riser.rect.left > 168 - graph.inset && riser.rect.left < 168 + graph.inset) xs.push(riser.rect.left)
+    }
+    /** How many hops cross the FIRST gutter, which is the lane count its risers must match. */
+    const firstGutterHops = perGutter.get(0) ?? 0
+    expect(xs.length).toBe(firstGutterHops)
+    expect(new Set(xs).size).toBe(xs.length)
+    // EVERY LANE CLEARS BOTH BORDERS: the lanes are strictly inside the gutter, which is what a crowded
+    // board buys by widening the gutter instead of letting a lane land on a box.
+    for (const x of xs) expect(x).toBeGreaterThan(168 - graph.inset)
+    for (const x of xs) expect(x).toBeLessThan(168 + graph.inset)
+  })
+
+  test("every drawn run reaches both of the boxes it names", async () => {
+    /** The settled render of the screenshot's board. */
+    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(LONG_EDGE_TASKS) } } })
+    /** Every box, as published. */
+    const boxes = new Map<string, Rect>()
+    for (const node of collect(tree, "data-mpd-node")) boxes.set(String(node.props["data-mpd-node"]), parseRect(String(node.props["data-mpd-box"])))
+    for (const edge of collect(tree, "data-mpd-edge")) {
+      /** `child<-parent`, the witness the edge publishes. */
+      const mark = String(edge.props["data-mpd-edge"])
+      /** The two task ids the witness names. */
+      const [child, parent] = mark.split("<-")
+      /** The route, split into its runs and its marker. */
+      const [route, marker] = String(edge.props["data-mpd-route"]).split("|")
+      /** The runs, as rectangles. */
+      const runs = route.split(";").map((text) => parseRect(text))
+      /** The marker's own box, whose `R`/`L` says which way the edge arrives. */
+      const head = parseRect(marker.slice(1))
+      // The lead-out starts ON the parent's border, and the lead-in covers the child's border's pixel:
+      // an edge that stopped short would be a picture of a dependency that does not arrive.
+      expect(runs[0].left === boxes.get(parent)!.left + boxes.get(parent)!.width || runs[0].left + runs[0].width === boxes.get(parent)!.left).toBe(true)
+      /** The child's box. */
+      const into = boxes.get(child) as Rect
+      /** The last run, which is the lead-in. */
+      const last = runs[runs.length - 1]
+      // WHICH BORDER THE EDGE ARRIVES AT IS A FACT ABOUT THE ROUTE, not a constant: a forward edge
+      // arrives on the left border, a back edge and a same-rank edge wrap around to the right one. The
+      // marker's own `R`/`L` publishes that, and the border's pixel column is what both must cover.
+      /** Whether this edge arrives at the child's RIGHT border, which is what `L` says. */
+      const arrivesAtRight = marker.startsWith("L")
+      // THE CODEBASE'S ONE CONVENTION, restated so this arm reads it rather than re-inventing it:
+      // `leftOf` is the box's FIRST pixel, and `rightOf` is the pixel immediately AFTER its last one —
+      // the box's right edge — so a left arrival covers the first pixel (an overlap of exactly one) and
+      // a right arrival starts on that edge, one pixel past the box's last one. Both MEET the box; a
+      // run that stopped short would leave a gap and read as a dependency that does not arrive.
+      if (arrivesAtRight) {
+        expect(last.left).toBeLessThanOrEqual(into.left + into.width)
+      } else {
+        expect(last.left).toBeLessThanOrEqual(into.left)
+        expect(last.left + last.width).toBeGreaterThan(into.left)
+      }
+      expect(last.top).toBeGreaterThan(into.top)
+      expect(last.top).toBeLessThan(into.top + into.height)
+      // The arrowhead's tip sits on that border — on the box's first pixel from the left, and on its
+      // right edge from the right — so a reader can see which way the dependency runs.
+      expect(arrivesAtRight ? head.left : head.left + head.width).toBe(arrivesAtRight ? into.left + into.width : into.left)
+      expect(head.height).toBe(8)
+    }
+  })
+})
+
+/**
+ * THE WEB PLANE'S OWN R20 BOARD — and the fixture that catches what the earlier arm could not.
+ *
+ * The board the captain measured green before this port was the REPAIRED RECORD: its stored depths had
+ * been rewritten, so the view's `task.depth` bucketing happened to agree with the graph. This fixture
+ * removes that accident: every reference RESOLVES, and every served `depth` is 0 — the lie the store
+ * served on our live board, with the ordinals replaced by real ids.
+ */
+const WEB_DERIVED_TASKS = [
+  { id: "T1", subject: "freeze the contract", kind: "requirement", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T2", subject: "the layout", kind: "work", status: "running", visual: "running", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T3", subject: "the panels", kind: "work", status: "running", visual: "running", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T4", subject: "the redesign", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T5", subject: "the invisible panel", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+  { id: "T6", subject: "wire the panels", kind: "work", status: "open", visual: "blocked", blockedBy: ["T2"], failedBy: [], depth: 0 },
+  { id: "T7", subject: "verification", kind: "review", status: "open", visual: "blocked", blockedBy: ["T2", "T3", "T4", "T6"], failedBy: [], depth: 0 },
+  { id: "T8", subject: "fidelity", kind: "review", status: "open", visual: "blocked", blockedBy: ["T7"], failedBy: [], depth: 0 },
+  { id: "T9", subject: "docs", kind: "work", status: "open", visual: "blocked", blockedBy: ["T2", "T3", "T4", "T5", "T6"], failedBy: [], depth: 0 },
+  { id: "T10", subject: "integration", kind: "integration", status: "open", visual: "blocked", blockedBy: ["T7", "T8", "T9"], failedBy: [], depth: 0 },
+]
+
+describe("team-view R20: the rank is DERIVED, never trusted from the served depth", () => {
+  test("a board whose references RESOLVE and whose every depth is 0 draws FIVE columns, not one", () => {
+    // THE ARM THE EARLIER VERIFICATION LACKED. Before this port the view bucketed by `task.depth`, so
+    // this board — all zeros — collapsed to ONE column with no edges, which is the user's photograph.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The geometry of the lying board. */
+    const graph = view.layout(WEB_DERIVED_TASKS)
+    expect(graph.ranksDerived).toBe(true)
+    expect(graph.rankCount).toBe(5)
+    expect(graph.rankCount).not.toBe(1)
+    // The ranks are the longest resolving blocker chain: five roots, then T6, then T7/T9, then T8, then
+    // T10 — read off the COLUMNS, which is what the render draws left to right.
+    expect(graph.columns.map((column) => column.map((task) => task.id))).toEqual([
+      ["T1", "T2", "T3", "T4", "T5"], ["T6"], ["T7", "T9"], ["T8"], ["T10"],
+    ])
+    // And the drawing is not merely sorted differently: the nodes carry those ranks, which is what every
+    // edge's geometry is computed from.
+    expect(graph.nodes.map((node) => [node.task.id, node.rank])).toEqual([
+      ["T1", 0], ["T2", 0], ["T3", 0], ["T4", 0], ["T5", 0],
+      ["T6", 1], ["T7", 2], ["T9", 2], ["T8", 3], ["T10", 4],
+    ])
+    expect(graph.unresolved).toEqual([])
+  })
+
+  test("the two fallback arms, exactly as the TUI engine has them", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // ARM A — A GENUINELY FLAT BOARD SERVED FLAT STAYS FLAT, and says it derived: nothing is invented.
+    /** Two independent roots, served flat. */
+    const flat = view.layout([{ id: "A", depth: 0 }, { id: "B", depth: 0 }])
+    expect(flat.rankCount).toBe(1)
+    expect(flat.ranksDerived).toBe(true)
+    // ARM B — NOTHING RESOLVES AND THE SERVED DEPTHS VARY, so the fallback fires and reports itself.
+    /** Ghost references whose served depths claim two ranks. */
+    const ghosts = view.layout([{ id: "A", depth: 0, blockedBy: ["Z"] }, { id: "B", depth: 1, blockedBy: ["Y"] }])
+    expect(ghosts.ranksDerived).toBe(false)
+    expect(ghosts.rankCount).toBe(2)
+    expect(ghosts.unresolved).toEqual(["Y", "Z"])
+  })
+
+  test("R21: unresolved references are SURFACED with their ids, never silently dropped", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // The MEASURED record, verbatim: ids T1..T10 and `blockedBy` holding plan ordinals. Not one
+    // reference resolves, so the board is genuinely flat — and now it SAYS why instead of drawing a
+    // one-column picture that looks like a healthy board.
+    /** The record as it sits on disk. */
+    const ordinals = [
+      { id: "T1", depth: 0, blockedBy: [] }, { id: "T2", depth: 0, blockedBy: [] }, { id: "T3", depth: 0, blockedBy: [] },
+      { id: "T4", depth: 0, blockedBy: [] }, { id: "T5", depth: 0, blockedBy: [] },
+      { id: "T6", depth: 0, blockedBy: ["2"] }, { id: "T7", depth: 0, blockedBy: ["2", "3", "4", "6"] },
+      { id: "T8", depth: 0, blockedBy: ["7"] }, { id: "T9", depth: 0, blockedBy: ["2", "3", "4", "5", "6"] },
+      { id: "T10", depth: 0, blockedBy: ["7", "8", "9"] },
+    ]
+    /** The geometry of that record. */
+    const graph = view.layout(ordinals)
+    expect(graph.unresolved).toEqual(["2", "3", "4", "5", "6", "7", "8", "9"])
+    expect(graph.rankCount).toBe(1)
+    expect(graph.edges.length).toBe(0)
+    // A MIXED BOARD SEPARATES THE TWO FACTS: the reference that resolves draws, the ghost is reported.
+    /** One drawable blocker and one ghost on the same task. */
+    const mixed = view.layout([{ id: "P", depth: 0 }, { id: "C", depth: 0, blockedBy: ["P", "GHOST"] }])
+    expect(mixed.unresolved).toEqual(["GHOST"])
+    expect(mixed.edges.length).toBe(1)
+    expect(mixed.rankCount).toBe(2)
+  })
+
+  test("the hover halo measures the DRAWN ranks, so a lying depth cannot kill the highlight", () => {
+    // The second site that trusted the lie: the chain's monotone guard compared served depths, so on this
+    // all-zero board EVERY hop was pruned (`0 >= 0`) and a hover lit one node while dimming the rest.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The geometry of the lying board, which is where the halo's ranks come from. */
+    const graph = view.layout(WEB_DERIVED_TASKS)
+    /** The drawn rank of every task. */
+    const rankOf: Record<string, number> = {}
+    for (const node of graph.nodes) rankOf[node.task.id] = node.rank
+    // The columns prove the relation the halo needs: T10 rests on T7/T8/T9, each of which is drawn ABOVE
+    // it, so an upstream walk from T10 has somewhere to go.
+    expect(rankOf.T7).toBeLessThan(rankOf.T10)
+    expect(rankOf.T8).toBeLessThan(rankOf.T10)
+    expect(rankOf.T9).toBeLessThan(rankOf.T10)
+    expect(rankOf.T2).toBeLessThan(rankOf.T7)
+  })
+})
+
+describe("R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation", () => {
+  test("the served `unresolvedBlockers` reaches the geometry, and is reported AS the record's", () => {
+    // THE SHAPE IS NOT INVENTED: `evidence/tui/dag-port/web-dag/20261006T143500Z/producer-shape.mts`
+    // mints these very objects with the producer's own `addTeamTask`/`resolveBlockers`, which store the
+    // entries that resolved in `blockedBy` — unresolvable ones INCLUDED, verbatim — and the ones that
+    // matched nothing, de-duplicated, in `unresolvedBlockers`. Measured there:
+    //   {"id":"T2",…,"blockedBy":["T1","ghost-7"],…,"unresolvedBlockers":["ghost-7"]}
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The producer's own shape: one blocker that resolves, one that names nothing. */
+    const board = [
+      { id: "T1", depth: 0, blockedBy: [], failedBy: [] },
+      { id: "T2", depth: 1, blockedBy: ["T1", "ghost-7"], failedBy: [], unresolvedBlockers: ["ghost-7"] },
+    ]
+    /** The geometry of that board. */
+    const graph = view.layout(board)
+    expect(graph.unresolved).toEqual(["ghost-7"])
+    expect(graph.unresolvedRecorded).toEqual(["ghost-7"])
+    // The two sources agree here, which is the state a board written by the current producer is in.
+    expect(graph.edges.length).toBe(1)
+    expect(graph.rankCount).toBe(2)
+  })
+
+  test("a REPAIRED board still reports what the record said: the reader sees more than the re-derivation", () => {
+    // THE CASE ONLY THE READER CAN SEE, and the live board is exactly it: `blockedBy` was rewritten to
+    // real ids after the fact, so the served references now ALL resolve and the view's own scan finds
+    // nothing. The record still remembers what did not resolve when it was written, and a viewer must
+    // not be told the board is clean.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** A board whose references were repaired while the record's own report was kept. */
+    const repaired = [
+      { id: "T1", depth: 0, blockedBy: [], failedBy: [] },
+      { id: "T2", depth: 1, blockedBy: ["T1"], failedBy: [], unresolvedBlockers: ["2", "6"] },
+    ]
+    /** The geometry of the repaired board. */
+    const graph = view.layout(repaired)
+    // The view's re-derivation sees a clean board…
+    expect(graph.unresolvedRecorded).toEqual(["2", "6"])
+    expect(graph.unresolved).toEqual(["2", "6"])
+    expect(graph.ranksDerived).toBe(true)
+  })
+
+  test("an ABSENT key means this task HAS no blockers, not that its blockers were lost", () => {
+    // The producer omits `unresolvedBlockers` when everything resolved — measured in `producer-shape.mts`,
+    // where the clean task carries no such key at all. That absence is the distinction the field exists
+    // for, so the reader must not turn it into a report.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** A board with no unresolved facts anywhere. */
+    const clean = view.layout([{ id: "T1", depth: 0, blockedBy: [], failedBy: [] }, { id: "T2", depth: 1, blockedBy: ["T1"], failedBy: [] }])
+    expect(clean.unresolved).toEqual([])
+    expect(clean.unresolvedRecorded).toEqual([])
+  })
+
+  test("the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents", async () => {
+    // R19's other half, on the same surface: the detail body already names what the task UNLOCKS (its
+    // dependents), and it now also names what the RECORD could not resolve.
+    /** The fixture board, with one repaired-but-recorded task and one dependent of it. */
+    const board = [
+      { id: "T1", subject: "first", kind: "work", status: "open", visual: "open", owner: "web-team-gui", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "second", kind: "work", status: "open", visual: "open", blockedBy: ["T1"], failedBy: [], depth: 1, unresolvedBlockers: ["2", "6"] },
+      { id: "T3", subject: "third", kind: "work", status: "open", visual: "blocked", blockedBy: ["T2"], failedBy: [], depth: 2 },
+    ]
+    /** The settled render of that board, plus the handles a node's handler needs. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    // Open T2's body the way a reader does: a click on its node, then the re-render the hook runtime
+    // performs after the state it set lands.
+    ;(one(rendered.tree, "data-mpd-node", "T2").props.onClick as () => void)()
+    /** The tree with T2 pinned. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** T2's detail body. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "T2"))
+    // WHAT IT UNLOCKS (R19): T3 rests on it, so the dependents row names T3.
+    expect(detail).toContain("dependents T3")
+    // AND WHAT THE RECORD COULD NOT RESOLVE (R18): the two references, named rather than dropped.
+    expect(detail).toContain("unresolved blockers 2, 6")
+    // A task with no recorded report renders NO such row, so the absence stays an absence.
+    ;(one(pinned, "data-detail-close", "T2").props.onClick as () => void)()
+    /** The tree with T2 closed again. */
+    const closed = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    ;(one(closed, "data-mpd-node", "T1").props.onClick as () => void)()
+    /** The tree with T1 pinned, which carries no unresolved report. */
+    const clean = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(flatText(one(clean, "data-mpd-detail", "T1"))).not.toContain("unresolved blockers")
   })
 })
