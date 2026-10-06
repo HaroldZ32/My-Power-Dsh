@@ -1,0 +1,11 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: mpd-config
+  name: "@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js"
+  config:
+    teamModels:
+      slot3:
+        provider: deepseek-official
+        model: deepseek-flash
+        reasoningEffort: off
