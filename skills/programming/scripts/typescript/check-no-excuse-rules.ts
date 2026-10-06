@@ -22,6 +22,13 @@
  * The `typescript` package is resolved from the caller project (process.cwd()),
  * not from this script's location, so the script works when executed from an
  * installed skill-cache path (e.g. ~/.codex/...) against a project checkout.
+ * A caller whose TypeScript 7 ships under `@typescript/native-preview` (the
+ * package behind `tsgo`) is served too — see `TS7_PACKAGES`: the caller's own
+ * `typescript` is always tried FIRST, and the second name is the declared
+ * fallback for a project whose TypeScript 7 arrives under that name.
+ * The TYPE-side mapping of the same two specifiers lives in
+ * `typescript-unstable.d.ts`, so a project without a caller `typescript` (this
+ * repository: its TypeScript 5 alias is `typescript5`) still typechecks.
  *
  * Exit codes:
  *   0 - no violations
@@ -45,26 +52,36 @@ type TsModule = {
   readonly ast: TsAstModule
 }
 
-/** Resolve both TypeScript entry points from the caller project (process.cwd()) rather than from this script's own location; exits 2 with a clear message when they cannot be resolved. */
+/** The package specifiers that may provide the TypeScript 7 `unstable/*` API, in resolution order from the caller. */
+const TS7_PACKAGES = ["typescript", "@typescript/native-preview"] as const
+
+/** Resolve both TypeScript entry points from the caller project (process.cwd()) rather than from this script's own location; exits 2 with a clear message when none of {@link TS7_PACKAGES} answers the API. */
 function loadTypescriptFromCaller(): TsModule {
   // A static import resolves from this script's installed skill-cache path
   // instead of the caller project. Resolve each TypeScript 7 API subpath from
   // the caller so the script uses the project it audits.
   const callerRequire = createRequire(path.join(process.cwd(), "no-excuse-anchor.cjs"))
-  try {
-    /** The caller's async API module, loaded before its shape is checked. */
-    const api: Partial<TsApiModule> = callerRequire("typescript/unstable/async")
-    /** The caller's AST module, loaded before its shape is checked. */
-    const ast: Partial<TsAstModule> = callerRequire("typescript/unstable/ast")
-    if (typeof api.API === "function" && typeof ast.isAsExpression === "function") {
-      return { api: api as TsApiModule, ast: ast as TsAstModule }
+  /** Every package name tried and why it did not answer, so the failure names the whole search. */
+  const tried: string[] = []
+  for (const pkg of TS7_PACKAGES) {
+    try {
+      /** One candidate's async API module, loaded before its shape is checked. */
+      const api: Partial<TsApiModule> = callerRequire(pkg + "/unstable/async")
+      /** The same candidate's AST module, loaded before its shape is checked. */
+      const ast: Partial<TsAstModule> = callerRequire(pkg + "/unstable/ast")
+      if (typeof api.API === "function" && typeof ast.isAsExpression === "function") {
+        return { api: api as TsApiModule, ast: ast as TsAstModule }
+      }
+      tried.push(pkg + " (no API/isAsExpression export)")
+    } catch { // no-excuse-ok: catch
+      // The candidate is absent from the caller, or its subpaths do not exist: try the next one.
+      tried.push(pkg + " (not resolvable from the caller)")
     }
-  } catch { // no-excuse-ok: catch
-    // fall through to the clear error below
   }
   console.error(
-    `error: cannot resolve "typescript" from the caller project (${process.cwd()}). ` +
-      "Install it in the project being checked (e.g. `bun add -d typescript`) and re-run.",
+    `error: cannot resolve the TypeScript 7 API from the caller project (${process.cwd()}). ` +
+      `Tried: ${tried.join(", ")}. ` +
+      "Install it in the project being checked (e.g. `bun add -d typescript` or `bun add -d @typescript/native-preview`) and re-run.",
   )
   process.exit(2)
 }

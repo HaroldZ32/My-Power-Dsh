@@ -282,7 +282,7 @@ interface PluginEntryModule {
 
 /** The row's own warn channel: present in the hostile ctx, and never the only place a failure may land. */
 interface HostileLogger {
-  /** A warn sink that records nothing, so the check reads stdout alone. */
+  /** A warn sink that records nothing, so the verdict must come from the row's own LOG FILE. */
   warn: () => void
 }
 
@@ -296,6 +296,16 @@ interface HostileRowContext {
   provide: () => void
 }
 
+/** What one hostile apply left behind, split by destination so both R5 halves are separately assertable. */
+interface SeamApplyOutcome {
+  /** Every terminal write the row attempted while applying — `channel: text`, deduplicated; `[]` is the R5 contract. */
+  readonly terminalWrites: string[]
+  /** The text of the row's own log file (`<sandbox root>/.mpd/logs/mpd-ext.log`), or `""` when the row opened none. */
+  readonly rowLog: string
+  /** The log file path, reported even when it does not exist so a failure names the destination it looked for. */
+  readonly rowLogPath: string
+}
+
 /** One targeted mutation of the built artifact: the exact anchor line and its replacement. */
 interface ArtifactMutation {
   /** Human-readable name, also sanitized into the mutant copy's file name. */
@@ -306,13 +316,92 @@ interface ArtifactMutation {
   to: string
 }
 
+/** The row's diagnostic file under the sandbox root's `.mpd/logs/`, the R5 destination this check asserts. */
+const ROW_LOG_NAME = "mpd-ext.log"
+
+/**
+ * Apply the built row against a HOSTILE ctx — every seam service present but
+ * useless — inside a SANDBOXED workspace root, and report BOTH destinations
+ * separately: what (if anything) reached the terminal, and what the row's own log
+ * file holds.
+ *
+ * R5 is the reason for the split: `rowLogLine` is the ONE sanctioned destination
+ * (`<root>/.mpd/logs/<name>.log`), and `packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts`
+ * is the static half that fails on a NEW `console.*` / `process.stdout.write` in
+ * an MPD runtime path. The workspace root is taken over through
+ * `DSH_WORKSPACE_ROOT` (the adapter's documented operator/QA override) because the
+ * row resolves its root PER CALL and must never be chdir'd or cached around.
+ * @param apply The built row's `apply`, imported by the caller.
+ * @returns The terminal writes observed and the row log's text, with the env and the sinks restored.
+ */
+async function applyInHostileContext(apply: PluginEntryModule["apply"]): Promise<SeamApplyOutcome> {
+  /** The sandbox workspace root the row's file sink must resolve to; removed before this promise settles. */
+  const root = mkdtempSync(join(tmpdir(), "mpd-ext-seam-root-"))
+  /** The row's log file under that root, the only place a diagnostic is allowed to land. */
+  const rowLogPath = join(root, ".mpd", "logs", ROW_LOG_NAME)
+  /** Terminal writes observed, tagged by channel and deduplicated across the console and stream layers. */
+  const terminalWrites = new Set<string>()
+  /** Records one attempted terminal write; the channel tag says which writer was used. */
+  const record = (channel: string, text: string): void => { terminalWrites.add(channel + ": " + text.slice(0, 200)) }
+  /** The console members replaced for the duration of the apply; all of them are restored below. */
+  const consoleMethods = ["log", "info", "warn", "error", "debug"] as const
+  /** The originals, keyed by member, restored in the `finally`. */
+  const originalConsole = consoleMethods.map((method) => [method, console[method]] as const)
+  /** The real stdout writer, restored in the `finally` (the capture suppresses the process's own output). */
+  const originalStdoutWrite = process.stdout.write
+  /** The real stderr writer, restored in the `finally`. */
+  const originalStderrWrite = process.stderr.write
+  /** The previous `DSH_WORKSPACE_ROOT`, restored verbatim (or deleted) in the `finally`. */
+  const previousRoot = process.env.DSH_WORKSPACE_ROOT
+  for (const method of consoleMethods) {
+    console[method] = (...args: unknown[]): void => { record("console." + method, args.map((part) => String(part)).join(" ")) }
+  }
+  // A cast, not a narrowing: `process.stdout.write` is an overload set (encoding, callback), so a
+  // single capturing signature cannot be assigned without one; the wrapper's job is to RECORD the
+  // call and suppress the bytes, and it restores the real writer in the `finally`.
+  process.stdout.write = ((chunk: unknown): boolean => { record("stdout.write", String(chunk)); return true }) as typeof process.stdout.write
+  process.stderr.write = ((chunk: unknown): boolean => { record("stderr.write", String(chunk)); return true }) as typeof process.stderr.write
+  try {
+    process.env.DSH_WORKSPACE_ROOT = root
+    // HOSTILE ctx: the services are NOT plain properties and get() resolves
+    // nothing — the exact composition that used to fail with no visible line.
+    /** The row context the entry is applied with: every seam present but useless. */
+    const ctx: HostileRowContext = { logger: { warn: (): void => {} }, get: (): undefined => undefined, provide: (): void => {} }
+    await apply(ctx, {})
+    /** The row log's text, read before the sandbox is removed; `""` when the row never opened one. */
+    const rowLog = existsSync(rowLogPath) ? readFileSync(rowLogPath, "utf8") : ""
+    return { terminalWrites: [...terminalWrites].sort(), rowLog, rowLogPath }
+  } finally {
+    // The `finally` covers the THROWING path too (a row that lets a failure escape): the sinks, the
+    // env override and the sandbox are restored/removed on every exit, so a red run cannot leak a
+    // captured console into the rest of the lane or leave a temp root behind.
+    for (const [method, original] of originalConsole) console[method] = original
+    process.stdout.write = originalStdoutWrite
+    process.stderr.write = originalStderrWrite
+    if (previousRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT
+    else process.env.DSH_WORKSPACE_ROOT = previousRoot
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
 /**
  * The regression test that WOULD HAVE CAUGHT the seam defect (measured
- * 2026-09-14): the built row must DECLARE the seams it registers through, and a
- * boot whose seams are unavailable must be LOUD on stdout and must never print
- * the success summary. Both halves fail on the pre-fix artifact (`inject: []`
- * plus an unconditional success line) and pass on the fixed one, so this is a
- * real falsifiable check rather than a re-statement of the fix.
+ * 2026-09-14), re-pointed at the SHIPPED contract after R5: the built row must
+ * DECLARE the seams it registers through, an unavailable seam must be LOUD in the
+ * row's OWN LOG FILE, nothing may reach the terminal, and the row must never claim
+ * the success summary. The earlier expectation — `/FATAL/` on STDOUT — predates R5
+ * ("no MPD diagnostic may reach the terminal") and stood in DIRECT conflict with
+ * its gate `packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts`: a row
+ * that satisfied the old case would fail the R5 gate. R5 wins, so the check now
+ * reads the FILE the row really writes through `rowLogLine`.
+ *
+ * WHAT WOULD REDDEN IT NOW, one rule per failure message: (1) dropping `tools` /
+ * `skills` from `inject`; (2) muting the row's file sink, so no `FATAL` reaches
+ * `<root>/.mpd/logs/mpd-ext.log`; (3) any `console.*` or `process.stdout/stderr.write`
+ * during apply (the R5 half); (4) logging `mpdExtensions provided` while the four
+ * tools did not register. The self-test drives (1), (2), (3) and (4) through
+ * targeted mutants of the built artifact, so a check that stopped being able to
+ * fail reddens its own lane.
  * @param artifactPath The built entry to check; defaults to the shipped plugin dist.
  * @returns `undefined` when the artifact behaves, else the one-line failure reason.
  */
@@ -329,19 +418,11 @@ async function seamRegressionCheck(artifactPath?: string): Promise<string | unde
   if (!Array.isArray(dist.inject) || !dist.inject.includes("tools") || !dist.inject.includes("skills")) {
     return "the built row must declare the seams it registers through (inject must include tools and skills; got " + JSON.stringify(dist.inject) + ")"
   }
-  /** Everything the row writes to stdout while applying, captured for the two signature tests. */
-  const captured: string[] = []
-  /** The real console sink, restored on every exit path so the capture cannot leak out of this check. */
-  const originalLog = console.log
-  console.log = (...args: unknown[]): void => { captured.push(args.map((part) => String(part)).join(" ")) }
+  /** The hostile apply's two destinations, captured with the env and the sinks restored afterwards. */
+  let outcome: SeamApplyOutcome
   try {
-    // HOSTILE ctx: the services are NOT plain properties and get() resolves
-    // nothing — the exact composition that used to fail with no visible line.
-    /** The row context the entry is applied with: every seam present but useless. */
-    const ctx: HostileRowContext = { logger: { warn: (): void => {} }, get: (): undefined => undefined, provide: (): void => {} }
-    await dist.apply(ctx, {})
+    outcome = await applyInHostileContext(dist.apply)
   } catch (error) {
-    console.log = originalLog
     // `catch` binds `unknown` under `strict`: the thrown value's own truthy `message` is preferred, and
     // anything else falls back to its string form — the same choice the original expression made.
     /** The failure text embedded in the returned reason. */
@@ -349,13 +430,14 @@ async function seamRegressionCheck(artifactPath?: string): Promise<string | unde
       ? String(error.message)
       : String(error)
     return "apply threw out of the row (it must contain every failure): " + detail
-  } finally {
-    console.log = originalLog
   }
-  /** Everything the row printed while applying, joined for the signature tests. */
-  const text = captured.join("\n")
-  if (!/FATAL/.test(text)) return "an unavailable seam must be reported LOUDLY on stdout, not only through ctx.logger.warn"
-  if (/mpdExtensions provided/.test(text)) return "the success summary must never be printed when the four tools did not register"
+  if (!/FATAL/.test(outcome.rowLog)) {
+    return "an unavailable seam must be reported LOUDLY in the row's own log (" + outcome.rowLogPath + "), not only through ctx.logger.warn — R5 sends every MPD diagnostic to <workspace>/.mpd/logs/, never to the terminal"
+  }
+  if (outcome.terminalWrites.length > 0) {
+    return "R5: an MPD row must write NOTHING to the terminal, but this row wrote " + JSON.stringify(outcome.terminalWrites.slice(0, 3))
+  }
+  if (/mpdExtensions provided/.test(outcome.rowLog)) return "the success summary must never be logged when the four tools did not register"
   return undefined
 }
 
@@ -428,19 +510,31 @@ async function selfTest(): Promise<void> {
   check(SKILL_MD(SKILL_NAME, SKILL_MARKER).includes(SKILL_MARKER), "the skill fixture must carry its marker")
   check(/description: ".+"/.test(SKILL_MD(SKILL_NAME, SKILL_MARKER)), "the skill fixture must declare a non-empty description")
 
-  // 5) the regression test for the seam defect (declared seams + loud failure +
-  //    no false success claim), proven FALSIFIABLE: the same check must go RED on
-  //    a mutated copy of the built artifact (the pre-fix `inject: []`, and a
-  //    forced success branch). A check that cannot fail proves nothing.
+  // 5) the regression test for the seam defect (declared seams + LOUD in the row's
+  //    OWN LOG FILE + silent terminal + no false success claim), proven FALSIFIABLE
+  //    in BOTH R5 directions: the same check must go RED on a mutated copy of the
+  //    built artifact — the pre-fix `inject: []` (half 1), a muted file sink (half 2),
+  //    an added terminal write (half 3, the R5 gate's own rule) and a forced success
+  //    branch (half 4). A check that cannot fail proves nothing.
   /** The seam check's verdict on the shipped artifact; `undefined` means it passed. */
   const seamProblem = await seamRegressionCheck()
   check(seamProblem === undefined, String(seamProblem))
 
-  /** The built bundle text the two mutant copies are cut from. */
+  /** The built bundle text the mutant copies are cut from. */
   const distSource = readFileSync(join(REPO, "packages", "mpd-ext-plugin", "dist", "index.js"), "utf8")
-  /** The two targeted mutations, one per half of the defect this check guards. */
+  /** The targeted mutations, one per half of the contract this check guards. */
   const mutations: ArtifactMutation[] = [
     { name: "pre-fix inject", from: "var inject = [...REQUIRED_SEAMS];", to: "var inject = [];" },
+    // The R5 FILE half muted: `warn` keeps its inert ctx.logger.warn call and loses the
+    // row-log append, so the FATAL line reaches NO destination and the check must say so.
+    { name: "muted row log", from: 'rowLogLine("mpd-ext", text2);', to: "void text2;" },
+    // The R5 TERMINAL half broken on purpose: the FATAL line still lands in the row log
+    // (half 2 stays green) and ALSO prints, which is exactly what the R5 gate forbids.
+    {
+      name: "terminal write added",
+      from: 'warn("FATAL: the harness seams this row registers through are unavailable"',
+      to: 'console.log("[mpd-ext] FATAL: the harness seams are unavailable"), warn("FATAL: the harness seams this row registers through are unavailable"',
+    },
     { name: "forced success branch", from: "if (missingTools.length > 0) {", to: "if (false) {" },
   ]
   /** Temp dir holding the mutant copies; removed in the `finally` below. */
@@ -458,6 +552,10 @@ async function selfTest(): Promise<void> {
       /** The seam check's verdict on the mutant, which must be non-undefined (RED). */
       const red = await seamRegressionCheck(mutantPath)
       check(red !== undefined, "the seam check must go RED on the "+ mutation.name + " mutant, but it passed")
+      // The REASON is printed, not just the verdict: the four mutants exist to prove each R5
+      // leg is separately falsifiable, and a run whose four mutants all failed for the SAME
+      // reason would look identical to a healthy one in the exit code alone.
+      console.log("  mutant " + mutation.name + " -> " + (red ?? "(GREEN — the check did NOT redden: the leg it targets is no longer checked)"))
     }
   } finally {
     rmSync(mutateDir, { recursive: true, force: true })
@@ -511,7 +609,7 @@ async function selfTest(): Promise<void> {
     for (const problem of problems) console.error("[" + SLUG + " self-test] FAIL: " + problem)
     process.exit(1)
   }
-  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified")
+  console.log("[" + SLUG + " self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD in the row's OWN log, terminal SILENT, no false success; four mutants redden) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified")
 }
 
 // ── arms ────────────────────────────────────────────────────────────────────
